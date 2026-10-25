@@ -1,5 +1,8 @@
 #import "RoadMap.h"
 #include "nav_map.h"
+#if TIO_MAPKIT_ENABLED
+#import "NavigationGuidance.h"
+#endif
 #include <math.h>
 #include <float.h>
 static BOOL N(id v,double lo,double hi){return [v isKindOfClass:NSNumber.class]&&isfinite([v doubleValue])&&[v doubleValue]>=lo&&[v doubleValue]<=hi;}
@@ -20,6 +23,12 @@ static NSArray *Pieces(NSArray *coords,NSArray *origin,NSArray *(^convert)(doubl
  return pieces;
 }
 static NSString *Text(id value){return [value isKindOfClass:NSString.class]?value:[value isKindOfClass:NSNumber.class]?[value stringValue]:@"";}
+#if TIO_MAPKIT_ENABLED
+// English labels, abbreviated to fit the 104 px glasses label slot.
+static NSString *LabelName(NSDictionary *p){NSString *en=Text(p[@"name:en"]);return TIOGuideAbbreviate(en.length?en:Text(p[@"name"]));}
+#else
+static NSString *LabelName(NSDictionary *p){return Text(p[@"name:zh"]).length?Text(p[@"name:zh"]):Text(p[@"name"]);}
+#endif
 static NSArray *Simplify(NSArray *p){
  if(p.count<3||p.count>2049)return p;NSUInteger todo[4098],top=0;NSMutableIndexSet *keep=[NSMutableIndexSet indexSetWithIndex:0];[keep addIndex:p.count-1];todo[top++]=0;todo[top++]=p.count-1;
  while(top){NSUInteger b=todo[--top],a=todo[--top],at=0;double ax=[p[a][0] doubleValue],ay=[p[a][1] doubleValue],dx=[p[b][0] doubleValue]-ax,dy=[p[b][1] doubleValue]-ay,den=dx*dx+dy*dy,best=64;
@@ -118,7 +127,7 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  NSMutableArray *items=[NSMutableArray new];NSUInteger visited=0;
  for(NSDictionary *f in _features){if(++visited>10000)break;NSDictionary *p=f[@"properties"],*g=f[@"geometry"];if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"]||![g[@"coordinates"] isKindOfClass:NSArray.class])continue;
   if([Text(p[@"area"]) isEqual:@"yes"])continue;
-  unsigned style=RoadStyle(Text(p[@"highway"]));for(NSArray *part in Pieces(g[@"coordinates"],origin,_convert,YES)){if(part.count<2)continue;double rank=DBL_MAX;for(NSUInteger i=1;i<part.count;i++){double x=[part[i-1][0] doubleValue],y=[part[i-1][1] doubleValue],dx=[part[i][0] doubleValue]-x,dy=[part[i][1] doubleValue]-y,t=MAX(0,MIN(1,-(x*dx+y*dy)/MAX(1,dx*dx+dy*dy)));rank=MIN(rank,hypot(x+dx*t,y+dy*t)/4);}NSString *bridge=Text(p[@"bridge"]),*tunnel=Text(p[@"tunnel"]);unsigned flags=(bridge.length&&![bridge isEqual:@"no"]?1:0)|(tunnel.length&&![tunnel isEqual:@"no"]?2:0);[items addObject:@{@"points":part,@"style":@(style),@"flags":@(flags),@"layer":@(MAX(-8,MIN(8,[Text(p[@"layer"]) intValue]))),@"name":Text(p[@"name:zh"]).length?Text(p[@"name:zh"]):Text(p[@"name"]),@"rank":@(rank+style*18)}];if(items.count>4096)break;}if(items.count>4096)break;
+  unsigned style=RoadStyle(Text(p[@"highway"]));for(NSArray *part in Pieces(g[@"coordinates"],origin,_convert,YES)){if(part.count<2)continue;double rank=DBL_MAX;for(NSUInteger i=1;i<part.count;i++){double x=[part[i-1][0] doubleValue],y=[part[i-1][1] doubleValue],dx=[part[i][0] doubleValue]-x,dy=[part[i][1] doubleValue]-y,t=MAX(0,MIN(1,-(x*dx+y*dy)/MAX(1,dx*dx+dy*dy)));rank=MIN(rank,hypot(x+dx*t,y+dy*t)/4);}NSString *bridge=Text(p[@"bridge"]),*tunnel=Text(p[@"tunnel"]);unsigned flags=(bridge.length&&![bridge isEqual:@"no"]?1:0)|(tunnel.length&&![tunnel isEqual:@"no"]?2:0);[items addObject:@{@"points":part,@"style":@(style),@"flags":@(flags),@"layer":@(MAX(-8,MIN(8,[Text(p[@"layer"]) intValue]))),@"name":LabelName(p),@"rank":@(rank+style*18)}];if(items.count>4096)break;}if(items.count>4096)break;
  }
  [items sortUsingComparator:^NSComparisonResult(id a,id b){return [a[@"rank"] compare:b[@"rank"]];}];
  NSMutableArray *route=[NSMutableArray new];for(NSArray *part in Pieces(coords,origin,nil,NO))if(part.count>=2)[route addObject:@{@"points":part,@"style":@6,@"flags":@0,@"layer":@8,@"rank":@0}];

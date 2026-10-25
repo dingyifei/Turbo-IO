@@ -30,6 +30,9 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "ReaderUI.h"
 #import "TDPhoneBridge.h"
 #import "PrivateBootstrap.h"
+#if TIO_MAPKIT_ENABLED
+#import "MapKitNavigationUI.h"
+#endif
 #import "ResearchCatalog.h"
 #import "ExperimentalOTAUI.h"
 #import "ExperimentalOTAFeed.h"
@@ -351,7 +354,11 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if([r[@"key"] isEqual:@"agent"]){__weak typeof(self) weak=self;c.accessoryView=TIOAgentPicker(^{[weak.tableView reloadData];});c.detailTextLabel.text=[TIOSelectedAgent() isEqual:@"Codex"]?@"Mac · projectmanager":@"未连接执行器";}
     if([r[@"key"] isEqual:@"knowledge"])c.detailTextLabel.text=@"微信归档 · 项目文档 · 学习资料";
     if([r[@"key"] isEqual:@"a2ui"])c.detailTextLabel.text=@"文字7392 → 排版8642 → 单卡卸载；需镜片验收";
+#if TIO_MAPKIT_ENABLED
+    if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"Apple Maps · glasses turn-by-turn";
+#else
     if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"地点搜索 · 路线总览 · 眼镜字幕导航（模拟验收）";
+#endif
     if([r[@"key"] isEqual:@"tts"]){c.detailTextLabel.text=@"官方/自有回答 · 眼镜蓝牙音频";
         UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"ttsEnabled"];[s addTarget:self action:@selector(ttsToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
     if([r[@"key"] isEqual:@"ttsEngine"])c.detailTextLabel.text=[[Prefs stringForKey:@"ttsEngine"] isEqual:@"local"]?@"iOS 本机语音 · 无需 Key · 默认":@"阿里 qwen-audio-3.1-tts-flash · 云端";
@@ -485,7 +492,11 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if([r[@"key"] isEqual:@"experimentalOTA"]){[self.navigationController pushViewController:TIOExperimentalOTAController() animated:YES];return;}
     if([r[@"key"] isEqual:@"a2ui"]){[self.navigationController pushViewController:TIOA2UIController() animated:YES];return;}
     if([r[@"key"] isEqual:@"subtitleHUD"]){[self.navigationController pushViewController:TIOSubtitleHUDController() animated:YES];return;}
+#if TIO_MAPKIT_ENABLED
+    if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIOMapKitNavigationController() animated:YES];return;}
+#else
     if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIONavigationController() animated:YES];return;}
+#endif
     if([r[@"key"] isEqual:@"ttsEngine"]){[self configureTTSEngine];return;}
     if([r[@"key"] isEqual:@"ttsKey"]){[self configureTTS];return;}
     if([r[@"key"] isEqual:@"ttsTest"]){[self testTTS];return;}

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {validateHost,validateOptions,validateResearchPair,entitlementsFor} from './package.mjs';
+import {validateHost,validateOptions,validateResearchPair,entitlementsFor,locationUsageFor} from './package.mjs';
 import {inspectedHost} from './host-compatibility.mjs';
 import {inspectMachO,addEmbeddedLoad} from './macho-embed.mjs';
 import {patch,verifyRoute} from './patch-route.mjs';
@@ -24,6 +24,11 @@ test('entitlements restricted to existing profile grants',()=>{
  assert.equal(entitlementsFor(p,options)['aps-environment'],undefined);
  assert.throws(()=>entitlementsFor({...p,devices:[]},options));
  assert.throws(()=>entitlementsFor({...p,expires:'2000-01-01T00:00:00Z'},options));
+});
+test('location prompt follows the linked navigation provider',()=>{
+ assert.match(locationUsageFor('_x OBJC_CLASS_$_TIOMapKitNavigationPanel _y',false),/turn-by-turn/);
+ assert.match(locationUsageFor('_x',true),/导航/);
+ assert.equal(locationUsageFor('_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap',false),null);
 });
 test('unknown original image bytes and private markers rejected',()=>{
  assert.throws(()=>validateHost({...info,TIOPackagingRevision:'private'},Buffer.alloc(32),Buffer.alloc(32)));

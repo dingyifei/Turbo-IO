@@ -35,6 +35,11 @@ export function validateResearchPair(symbols, kind, firmware) {
   if(!Buffer.isBuffer(firmware)||firmware.length!==8842896||createHash('sha256').update(firmware).digest('hex')!=='6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473')throw Error('navs3_firmware_identity_mismatch');
 
 }
+// Location prompts for whichever navigation provider the addon links; null when none does.
+export function locationUsageFor(symbols,amapResources){
+  if(symbols.includes('OBJC_CLASS_$_TIOMapKitNavigationPanel'))return 'Shows your position and gives turn-by-turn directions on your glasses while navigating.';
+  return amapResources?'用于用户主动选择的地图定位和前台步行导航。':null;
+}
 export function entitlementsFor(p,o) {
   if(!Array.isArray(p.certs)||!p.certs.includes(o.identity.toUpperCase())||!Array.isArray(p.devices)||!p.devices.includes(o.device)||!(Date.parse(p.expires)>Date.now()))throw Error('profile_identity_device_or_expiry_mismatch');
   const e=structuredClone(p.entitlements), appID=e?.['application-identifier'];
@@ -107,7 +112,9 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
     if(info.NSAppTransportSecurity?.NSAllowsLocalNetworking===undefined)run('plutil',['-insert','NSAppTransportSecurity.NSAllowsLocalNetworking','-bool','YES',plist]);
     fs.cpSync(path.join(here,'tests/maps'),path.join(app,'TurboHUDMaps'),{recursive:true,errorOnExist:true,force:false});
   }
-  if(mapResources.length){copyAMapResources(mapResources,app);const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(!info.NSLocationWhenInUseUsageDescription)run('plutil',['-insert','NSLocationWhenInUseUsageDescription','-string','用于用户主动选择的地图定位和前台步行导航。',plist]);}
+  if(mapResources.length)copyAMapResources(mapResources,app);
+  const locationUsage=locationUsageFor(symbols,mapResources.length>0);
+  if(locationUsage){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(!info.NSLocationWhenInUseUsageDescription)run('plutil',['-insert','NSLocationWhenInUseUsageDescription','-string',locationUsage,plist]);}
   if(o.product){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(Array.isArray(info.UISupportedDevices)&&!info.UISupportedDevices.includes(o.product))run('plutil',['-insert','UISupportedDevices.0','-string',o.product,plist]);}
   const ep=path.join(destination,'signing-entitlements.plist');
   run('python3',['-c','import sys,json,plistlib; plistlib.dump(json.load(sys.stdin),open(sys.argv[1],"wb"))',ep],{input:JSON.stringify(entitlement)});fs.chmodSync(ep,0o600);

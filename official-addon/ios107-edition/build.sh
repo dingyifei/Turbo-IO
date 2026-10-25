@@ -12,6 +12,7 @@ case "$mode" in
   embedded) output=build/embedded/TurboIOPrivateAddon.dylib; install_name=@rpath/TurboIOPrivateAddon.dylib; mkdir -p build/embedded ;;
   *) echo 'Usage: build.sh [jailbreak|embedded] [target.bundle.id]' >&2; exit 2 ;;
 esac
+[[ ${TIO_MAPKIT_ENABLED:-0} != 1 || ${TIO_AMAP_ENABLED:-0} != 1 ]] || { echo 'MapKit and AMap navigation builds are mutually exclusive' >&2; exit 2; }
 nav_options=()
 if [[ ${TIO_AMAP_ENABLED:-0} == 1 ]]; then
   [[ "$mode" == embedded ]] || { echo 'AMap build is private embedded only' >&2; exit 2; }
@@ -51,6 +52,13 @@ fi
 if [[ ${TIO_DISPLAY_FLASH:-0} == 1 ]]; then
   [[ ${TIO_DISPLAY_PHONE:-0} == 1 && ${TIO_OTA_FLASH_ENABLED:-0} == 1 && "$mode" == embedded ]] || exit 2
   link_options+=(-DTIO_DISPLAY_FLASH=1)
+fi
+# Apple Maps navigation panel; replaces the AMap panel entry, never links both.
+if [[ ${TIO_MAPKIT_ENABLED:-0} == 1 ]]; then
+  [[ "$mode" == embedded && ${TIO_DISPLAY_PHONE:-0} == 1 ]] || { echo 'MapKit navigation requires embedded mode and TIO_DISPLAY_PHONE=1' >&2; exit 2; }
+  output=build/mapkit/TurboIOPrivateAddon.dylib
+  mkdir -p build/mapkit
+  nav_options=(-DTIO_MAPKIT_ENABLED=1 -framework MapKit NavigationGuidance.m MapKitNavigationUI.m)
 fi
 if [[ ${TIO_CLASSIC_BINDINGS:-0} == 1 ]]; then
   link_options+=(-Wl,-no_fixup_chains)
