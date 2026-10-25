@@ -291,7 +291,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     // Show the matched position when close to the route; the raw fix when clearly off it.
     BOOL matched=s.offRoute<=15;double plat=matched?s.lat:lat,plon=matched?s.lon:lon;
     NSArray *ahead=TIOGuideUpcoming(self.guide,s,512);
-    NSMutableDictionary *f=[@{@"phase":@"navigating",@"icon":@(icon),@"meters":@(arrive?0:lround(p.toManeuver)),@"turn":turn,@"road":road,@"remainingMeters":@(arrive?0:lround(p.remainingMeters)),@"remainingSeconds":@(arrive?0:lround(p.remainingSeconds)),
+    NSMutableDictionary *f=[@{@"phase":@"navigating",@"icon":@(icon),@"meters":@(arrive?0:TIOGuideRoundMeters(p.toManeuver)),@"turn":turn,@"road":road,@"remainingMeters":@(arrive?0:TIOGuideRoundMeters(p.remainingMeters)),@"remainingSeconds":@(arrive?0:60*(long)ceil(p.remainingSeconds/60)),
         @"simulated":@(self.simulated),@"segment":@(s.step),@"observedAt":@(NSDate.date.timeIntervalSince1970),@"tnrSource":self.simulated?@"mapkit-simulation":@"mapkit-realtime"} mutableCopy];
     [f addEntriesFromDictionary:TNVNormalizeCoordinates(ahead)];
     f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(now);f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
@@ -334,7 +334,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     if(!self.trace)return;self.lastTrace=NSProcessInfo.processInfo.systemUptime;NSDictionary *s=TDPPhoneNavigationStatus();
     NSMutableDictionary *e=[@{@"event":event,@"t":@(round(self.lastTrace*10)/10),@"app":AppState(),@"fixes":@(self.fixes),@"offers":@(self.offers),@"glassesStarted":@(self.glassesStarted),@"simulated":@(self.simulated),@"rerouting":@(self.rerouting),@"weak":@(self.weak)} mutableCopy];
     if(self.fix)e[@"fixAge"]=@(round(-self.fix.timestamp.timeIntervalSinceNow*10)/10);
-    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"fileMs",@"poseAgeMs",@"replayPaused",@"inFlightOp"])if(s[k])e[k]=s[k];
+    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"fileMs",@"poseAgeMs",@"replayPaused",@"inFlightOp",@"files",@"backoff"])if(s[k])e[k]=s[k];
     [self.trace addObject:e];if(self.trace.count>900)[self.trace removeObjectAtIndex:0];
 }
 - (void)saveTrace{
@@ -342,7 +342,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     NSString *dir=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
     [NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
     NSString *file=[dir stringByAppendingPathComponent:@"mapkit-navigation-trace.json"];
-    NSDictionary *d=@{@"build":@"MAPKIT-NAV-03",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
+    NSDictionary *d=@{@"build":@"MAPKIT-NAV-04",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
     NSData *data=[NSJSONSerialization dataWithJSONObject:d options:0 error:nil];
     if([data writeToFile:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil])[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }

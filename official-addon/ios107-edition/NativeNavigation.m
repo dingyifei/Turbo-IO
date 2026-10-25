@@ -15,7 +15,7 @@ static BOOL DecodeReply(NSDictionary *event,TNReply *out,uint32_t *capabilities)
  if(version!=1||type!=6||!json)return NO;id j=[NSJSONSerialization JSONObjectWithData:json options:0 error:nil];if(![j isKindOfClass:NSDictionary.class]||![j[@"cmd"] isEqual:@"turbo_nav_v1"]||![j[@"payload"] isKindOfClass:NSDictionary.class])return NO;
  NSString *hex=j[@"payload"][@"data"];if(![hex isKindOfClass:NSString.class]||hex.length!=64)return NO;uint8_t b[32];
  for(unsigned i=0;i<32;i++){unsigned v=0;for(unsigned k=0;k<2;k++){unichar c=[hex characterAtIndex:2*i+k];unsigned x=c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:16;if(x>15)return NO;v=v*16+x;}b[i]=v;}
- if(memcmp(b,"TNA1",4)||b[4]!=1||b[5]>TN_NO_SESSION||(b[6]&~7)||b[7]>1||U32(b+16)!=60000||U32(b+20)!=32||(U32(b+24)&~1u)||tn_crc(b,28)!=U32(b+28))return NO;
+ if(memcmp(b,"TNA1",4)||b[4]!=1||b[5]>TN_NO_SESSION||(b[6]&~7)||b[7]>1||U32(b+16)!=60000||U32(b+20)!=32||tn_crc(b,28)!=U32(b+28))return NO;
  if(capabilities)*capabilities=U32(b+24);
  if(out)*out=(TNReply){.result=b[5],.sid=U32(b+8),.sequence=U32(b+12),.active=!!(b[6]&1),.awake=!!(b[6]&2),.stale=!!(b[6]&4),.mode=b[7]};return YES;
 }
@@ -27,6 +27,7 @@ static void Clip(char *out,NSUInteger cap,id value){
   if([s lengthOfBytesUsingEncoding:NSUTF8StringEncoding]+[c lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>=cap){*stop=YES;return;}[s appendString:c];}];
  NSData *d=[s dataUsingEncoding:NSUTF8StringEncoding];memcpy(out,d.bytes,d.length);
 }
+static BOOL Moved(const uint8_t *a,const uint8_t *b){if(U32(a)!=U32(b))return YES;int dx=(int16_t)U16(a+4)-(int16_t)U16(b+4),dy=(int16_t)U16(a+6)-(int16_t)U16(b+6),dh=((int)U16(a+8)-(int)U16(b+8)+540)%360-180;return dx*dx+dy*dy>=16||abs(dh)>=3;}
 static BOOL Number(id v,double max){return [v isKindOfClass:NSNumber.class]&&isfinite([v doubleValue])&&[v doubleValue]>=0&&[v doubleValue]<=max;}
 NSDictionary *TNVNormalizeCoordinates(NSArray *coords){
  if(![coords isKindOfClass:NSArray.class]||coords.count<2||coords.count>512)return @{};
@@ -49,15 +50,15 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 @implementation TNVSession{
  NSString *_device,*_task,*_nativeTask,*_note;uint32_t _sid,_seq;NSTimeInterval(^_clock)(void);void(^_sender)(NSData *,NSString *,TNVSubmitted);void(^_cleanup)(NSString *);
  NSData *_packet,*_latest,*_committed,*_sending;NSMutableArray *_early;BOOL _active,_fileBusy,_ack,_submitted,_failed,_stopping,_always;
- NSData *_mapLatest,*_map2Latest,*_mapCommitted,*_mapSending,*_poseLatest,*_poseCommitted;NSTimeInterval _poseAt,_lastPose;NSUInteger _maps,_poses;BOOL _extended,_probed,_mapV2,_paused,_wantFarewell,_farewell;
+ NSData *_mapLatest,*_map2Latest,*_mapCommitted,*_mapSending,*_poseLatest,*_poseCommitted;NSTimeInterval _poseAt,_lastPose;NSUInteger _maps,_poses;BOOL _extended,_probed,_mapV2,_paused,_wantFarewell,_farewell,_background;NSTimeInterval _backoffUntil;NSUInteger _files;
  NSString *_source;double _ackMs,_fileMs,_commitMs,_poseAgeMs;NSUInteger _wireBytes;
  NSMutableArray *_trace;
  NSTimeInterval _deadline,_lastOffer,_lastCommit,_lastWire,_next;NSUInteger _count;unsigned _op;
 }
 - (instancetype)initWithDevice:(NSString *)device session:(uint32_t)sid clock:(NSTimeInterval(^)(void))clock sender:(void(^)(NSData *,NSString *,TNVSubmitted))sender cleanup:(void(^)(NSString *))cleanup{if(!device.length||!sid||!clock||!sender)return nil;if((self=[super init])){_device=[device copy];_sid=sid;_clock=[clock copy];_sender=[sender copy];_cleanup=[cleanup copy];_note=@"尚未开始";}return self;}
-- (BOOL)active{return _active;}- (BOOL)busy{return _packet||_fileBusy;}
+- (BOOL)active{return _active;}- (BOOL)backoff{return _background||_clock()<_backoffUntil;}- (void)setBackground:(BOOL)background{_background=background;}- (BOOL)busy{return _packet||_fileBusy;}
 - (void)trace:(NSString *)event{if(!_trace)_trace=[NSMutableArray new];[_trace addObject:@{@"event":event,@"at":@(_clock()),@"seq":@(_seq),@"op":@(_op),@"ack":@(_ack),@"fileBusy":@(_fileBusy),@"submitted":@(_submitted),@"paused":@(_paused)}];if(_trace.count>48)[_trace removeObjectAtIndex:0];}
-- (NSDictionary *)status{return @{@"active":@(_active),@"busy":@(self.busy),@"note":_note?:@"",@"snapshots":@(_count),@"session":@(_sid),@"sequence":@(_seq),@"always":@(_always),@"failed":@(_failed),@"maps":@(_maps),@"poses":@(_poses),@"mapBytes":@(_mapV2?_map2Latest.length:_mapLatest.length),@"mapPaths":@(_mapLatest.length>=16?U16((const uint8_t *)_mapLatest.bytes+6):0),@"mapLabels":@(_map2Latest.length>=16?U16((const uint8_t *)_map2Latest.bytes+10):0),@"mapMode":@(_extended),@"roadLabels":@(_mapV2),@"replayPaused":@(_paused),@"source":_source?:@"unknown",@"ackMs":@(_ackMs),@"fileMs":@(_fileMs),@"commitMs":@(_commitMs),@"poseAgeMs":@(_poseAgeMs),@"wireBytes":@(_wireBytes),@"inFlightOp":@(_packet?_op:0),@"inFlightAck":@(_ack),@"nativeFilePending":@(_fileBusy),@"trace":[_trace copy]?:@[]};}
+- (NSDictionary *)status{return @{@"active":@(_active),@"busy":@(self.busy),@"note":_note?:@"",@"snapshots":@(_count),@"session":@(_sid),@"sequence":@(_seq),@"always":@(_always),@"failed":@(_failed),@"maps":@(_maps),@"poses":@(_poses),@"mapBytes":@(_mapV2?_map2Latest.length:_mapLatest.length),@"mapPaths":@(_mapLatest.length>=16?U16((const uint8_t *)_mapLatest.bytes+6):0),@"mapLabels":@(_map2Latest.length>=16?U16((const uint8_t *)_map2Latest.bytes+10):0),@"mapMode":@(_extended),@"roadLabels":@(_mapV2),@"replayPaused":@(_paused),@"source":_source?:@"unknown",@"ackMs":@(_ackMs),@"fileMs":@(_fileMs),@"commitMs":@(_commitMs),@"poseAgeMs":@(_poseAgeMs),@"wireBytes":@(_wireBytes),@"files":@(_files),@"backoff":@(self.backoff),@"inFlightOp":@(_packet?_op:0),@"inFlightAck":@(_ack),@"nativeFilePending":@(_fileBusy),@"trace":[_trace copy]?:@[]};}
 - (void)fail:(NSString *)note{[self trace:@"failed"];_active=NO;_failed=YES;_packet=nil;_note=note;/* preserve uncertain native file ownership */}
 - (void)finish{if(!_packet||!_ack||_fileBusy||!_submitted)return;unsigned op=_op;_commitMs=(_clock()-_lastWire)*1000;_packet=nil;_nativeTask=nil;_early=nil;if(_cleanup)_cleanup(_task);_task=nil;_next=_clock()+(_extended?0:1);
  if(op==TN_START||op==TN_UPDATE){_committed=_sending;_lastCommit=_clock();_count++;}
@@ -71,7 +72,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 }
 - (BOOL)send:(enum TNOp)op scene:(NSData *)scene{
  if(self.busy||_failed||_seq==UINT32_MAX)return NO;uint8_t b[TNR_MAX_BYTES];size_t n=op>=TNR_SCENE?tnr_wrap(b,sizeof b,op,_sid,++_seq,scene.bytes,scene.length):tn_encode(b,sizeof b,op,_sid,++_seq,scene?(const TNScene *)scene.bytes:NULL);if(!n)return NO;
- _packet=[NSData dataWithBytes:b length:n];_wireBytes+=n;_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_submitted=NO;_fileBusy=YES;_op=op;_sending=scene;_lastWire=_clock();_deadline=_lastWire+8;/* poses too: a slow background transfer is late, and failing loses STOP */NSString *task=_task;
+ _packet=[NSData dataWithBytes:b length:n];_wireBytes+=n;_files++;_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_submitted=NO;_fileBusy=YES;_op=op;_sending=scene;_lastWire=_clock();_deadline=_lastWire+8;/* poses too: a slow background transfer is late, and failing loses STOP */NSString *task=_task;
  [self trace:@"send"];__weak typeof(self) weak=self;_sender(_packet,task,^(BOOL ok,NSString *native){TNVSession *s=weak;if(!s||![task isEqual:s->_task])return;
   if(!ok||![native isKindOfClass:NSString.class]||!native.length||native.length>256){s->_fileBusy=NO;[s fail:@"文件提交失败；停止导航发送"];return;}
   s->_submitted=YES;s->_nativeTask=[native copy];NSArray *early=[s->_early copy];s->_early=nil;for(NSDictionary *e in early)[s consume:e];[s finish];});return YES;
@@ -107,17 +108,22 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(_extended&&_mapCommitted&&!_mapLatest){[self send:(enum TNOp)TNR_CLEAR scene:nil];return;}
  BOOL fresh=now-_lastOffer<=15;
  BOOL changed=![_latest isEqual:_committed],urgent=NO;
- if(_latest&&_committed){const TNScene *a=_latest.bytes,*b=_committed.bytes;urgent=a->icon!=b->icon||a->mode!=b->mode||strcmp(a->road,b->road)||strcmp(a->turn,b->turn);}
- if(fresh&&(urgent||now-_lastCommit>=10||(changed&&now-_lastCommit>=1))){[self send:TN_UPDATE scene:_latest];return;}
+ if(_latest&&_committed){const TNScene *a=_latest.bytes,*b=_committed.bytes;urgent=a->icon!=b->icon||a->mode!=b->mode||strcmp(a->road,b->road)||strcmp(a->turn,b->turn);
+  /* The vector map already moves the car and the route; resend only text and numbers. */
+  if(_extended&&_mapCommitted)changed=urgent||a->distance_m!=b->distance_m||a->remaining_m!=b->remaining_m||a->remaining_s!=b->remaining_s;}
+ // A routine number change waits up to 0.1 s for the pose forced at 1 s, so slow links keep poses steady; turns never wait.
+ BOOL poseDue=_extended&&_mapCommitted&&_poseLatest&&now-_lastPose>=0.9;
+ if(fresh&&(urgent||(!poseDue&&(now-_lastCommit>=10||(changed&&now-_lastCommit>=1))))){[self send:TN_UPDATE scene:_latest];return;}
  if(_extended&&fresh&&_poseLatest&&now-_poseAt<=4&&now>=_poseAt){
   NSData *map=_mapV2&&_map2Latest?_map2Latest:_mapLatest;
   if(map&&![map isEqual:_mapCommitted]){
    if(_mapV2&&_map2Latest){NSMutableData *combined=[map mutableCopy];uint8_t *p=(uint8_t *)combined.mutableBytes+combined.length-12;memcpy(p,_poseLatest.bytes,12);unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;_mapSending=map;_poseAgeMs=age;[self send:(enum TNOp)TNR_SCENE2 scene:combined];}
    else [self send:(enum TNOp)TNR_SCENE scene:map];return;
   }
-  if(_mapCommitted&&now-_lastPose>=0.2){
+  // Slow links and the background get one pose a second; otherwise 2 Hz, and only for >=1 m or >=3 degrees.
+  if(_mapCommitted&&now-_lastPose>=(self.backoff?1:0.5)){
    NSMutableData *pose=[_poseLatest mutableCopy];uint8_t *p=pose.mutableBytes;unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;
-   if(!_poseCommitted||memcmp(_poseLatest.bytes,_poseCommitted.bytes,10)||now-_lastPose>=1){_poseAgeMs=age;[self send:(enum TNOp)TNR_POSE scene:pose];return;}
+   if(!_poseCommitted||Moved(_poseLatest.bytes,_poseCommitted.bytes)||now-_lastPose>=1){_poseAgeMs=age;[self send:(enum TNOp)TNR_POSE scene:pose];return;}
   }
  }
  if(!_extended&&fresh&&changed){[self send:TN_UPDATE scene:_latest];return;}
@@ -130,7 +136,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
   NSString *tid=e[@"taskId"];if(![tid isKindOfClass:NSString.class]||!tid.length||tid.length>256)return NO;
   if([type isEqual:@"fileShareSuccess"]&&![e[@"fileName"] isEqual:@"turbo-navigation.tnv"])return NO;
   if(!_nativeTask&&_fileBusy){if(_early.count<8)[_early addObject:[e copy]];return NO;}
-  if(![tid isEqual:_nativeTask])return NO;_fileBusy=NO;_fileMs=(_clock()-_lastWire)*1000;
+  if(![tid isEqual:_nativeTask])return NO;_fileBusy=NO;_fileMs=(_clock()-_lastWire)*1000;if(_fileMs>1000)_backoffUntil=_clock()+30;
   [self trace:[type isEqual:@"fileShareFailed"]?@"file-failed":@"file-success"];
   if([type isEqual:@"fileShareFailed"])[self fail:@"导航文件传输失败，未继续发送"];else [self finish];return YES;
  }

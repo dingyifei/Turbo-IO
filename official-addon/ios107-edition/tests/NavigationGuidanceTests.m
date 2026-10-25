@@ -49,6 +49,7 @@ int main(void){@autoreleasepool{
 
     assert(TIOGuideHeading(-1,5,90)==90&&TIOGuideHeading(180,0.5,90)==90&&TIOGuideHeading(180,5,90)==180&&TIOGuideHeading(NAN,5,450)==90);
 
+    assert(TIOGuideRoundMeters(-3)==0&&TIOGuideRoundMeters(NAN)==0&&TIOGuideRoundMeters(42)==40&&TIOGuideRoundMeters(43)==45&&TIOGuideRoundMeters(347)==350&&TIOGuideRoundMeters(730)==750&&TIOGuideRoundMeters(1249)==1200&&TIOGuideRoundMeters(990)==1000);
     TIOGuideRerouteState r=TIOGuideRerouteInitial();
     assert(!TIOGuideShouldReroute(&r,50,0)&&!TIOGuideShouldReroute(&r,50,1)&&TIOGuideShouldReroute(&r,50,2));
     for(int t=3;t<=6;t++)assert(!TIOGuideShouldReroute(&r,50,t)); // 30 s spacing
@@ -63,5 +64,5 @@ int main(void){@autoreleasepool{
     pose=TIOGuideSimulate(route,250/1.4,1.4);assert(!pose.done&&Near(pose.heading,90,1)&&TIOGuideDistance(pose.lat,pose.lon,[P(50,200)[0] doubleValue],[P(50,200)[1] doubleValue])<0.5);
     pose=TIOGuideSimulate(route,1000,1.4);assert(pose.done&&TIOGuideDistance(pose.lat,pose.lon,[route.points.lastObject[0] doubleValue],[route.points.lastObject[1] doubleValue])<0.01);
     pose=TIOGuideSimulate(route,NAN,1.4);assert(!pose.done&&TIOGuideDistance(pose.lat,pose.lon,Lat0,Lon0)<0.5);
-    puts("PASS guidance: junction dedupe, windowed snap with full-route fallback, progress/ETA, >=2 upcoming points, icon bands, roundabout/U-turn text, English turn text, road names/abbreviation, heading fallback, reroute strikes/spacing/cap, arrival, simulation");
+    puts("PASS guidance: junction dedupe, windowed snap with full-route fallback, progress/ETA, >=2 upcoming points, icon bands, roundabout/U-turn text, English turn text, road names/abbreviation, heading fallback, display distance steps, reroute strikes/spacing/cap, arrival, simulation");
 }return 0;}

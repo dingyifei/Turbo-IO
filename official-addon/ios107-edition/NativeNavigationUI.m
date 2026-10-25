@@ -41,7 +41,7 @@ BOOL TNVConsume(NSDictionary *e){if(Peer&&![Peer isEqual:TIOProtocolDevice()])[S
 BOOL TNVPauseForOTA(void){return !Session.active&&!Session.busy;}
 void TNVPump(void){
  if(Peer&&![Peer isEqual:TIOProtocolDevice()])[Session disconnect];
- [Session pump];CheckDrain();NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(now-LastSave<1)return;LastSave=now;
+ [Session setBackground:UIApplication.sharedApplication.applicationState==UIApplicationStateBackground];[Session pump];CheckDrain();NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(now-LastSave<1)return;LastSave=now;
  NSString *root=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
  [NSFileManager.defaultManager createDirectoryAtPath:root withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
  NSMutableDictionary *d=[TNVStatus() mutableCopy];d[@"build"]=@"TNR3-PHONE-01";d[@"lifecycle"]=Lifecycle?:@"none";d[@"physicalVerified"]=@NO;d[@"timestamp"]=@(NSDate.date.timeIntervalSince1970);d[@"appState"]=@(UIApplication.sharedApplication.applicationState);

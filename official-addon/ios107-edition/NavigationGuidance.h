@@ -37,6 +37,8 @@ NSString *TIOGuideTurnText(NSInteger icon);
 NSString *TIOGuideRoadName(NSString *instructions);
 NSString *TIOGuideAbbreviate(NSString *name);
 double TIOGuideHeading(double course,double speed,double segmentBearing);
+// Display-sized distance steps, so the glasses get a new number only when it visibly changes.
+long TIOGuideRoundMeters(double meters);
 TIOGuideRerouteState TIOGuideRerouteInitial(void);
 BOOL TIOGuideShouldReroute(TIOGuideRerouteState *state,double offRoute,double now);
 BOOL TIOGuideArrived(TIOGuideRoute *route,TIOGuideSnapResult snap,double lat,double lon);

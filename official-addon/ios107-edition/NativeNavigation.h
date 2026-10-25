@@ -13,6 +13,7 @@ NSDictionary *TNVNormalizeCoordinates(NSArray *);
 - (void)setReplayPaused:(BOOL)paused;
 - (void)backgroundDrainExpired;
 - (void)disconnect;
+- (void)setBackground:(BOOL)background; // background apps get the slower pose rate
 - (void)pump;
 - (BOOL)consume:(NSDictionary *)event;
 @property(nonatomic,readonly) BOOL active,busy;

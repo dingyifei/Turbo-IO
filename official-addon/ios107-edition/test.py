@@ -22,6 +22,7 @@ test('coordinates',['RoadMap.m','nav_runtime.c','tests/CoordinateTests.m'])
 test('replay',['RoadMap.m','NativeNavigation.m','nav_runtime.c','tests/RoadMapTests.m'],[P/'tests/maps',out,'v2'])
 test('guidance',['NavigationGuidance.m','tests/NavigationGuidanceTests.m'])
 test('labels',['RoadMap.m','NavigationGuidance.m','nav_runtime.c','tests/RoadMapLabelTests.m'],[],['-DTIO_MAPKIT_ENABLED=1'])
+test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:

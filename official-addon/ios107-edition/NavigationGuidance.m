@@ -121,6 +121,9 @@ NSString *TIOGuideAbbreviate(NSString *name){
 double TIOGuideHeading(double course,double speed,double segmentBearing){
     double h=isfinite(course)&&course>=0&&isfinite(speed)&&speed>1?course:segmentBearing;h=fmod(h,360);return h<0?h+360:h;
 }
+long TIOGuideRoundMeters(double meters){
+    if(!isfinite(meters)||meters<=0)return 0;double step=meters<100?5:meters<500?10:meters<1000?50:100;return lround(meters/step)*(long)step;
+}
 TIOGuideRerouteState TIOGuideRerouteInitial(void){return (TIOGuideRerouteState){0,0,-INFINITY};}
 BOOL TIOGuideShouldReroute(TIOGuideRerouteState *s,double offRoute,double now){
     if(!s)return NO;s->strikes=offRoute>TIOGuideOffRouteMeters?s->strikes+1:0;
