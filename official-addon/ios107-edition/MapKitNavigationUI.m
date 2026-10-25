@@ -21,6 +21,10 @@ static MKDirectionsTransportType Transport(NSInteger mode){return mode==ModeDriv
 static NSString *Meters(double m){if(!isfinite(m)||m<0)return @"—";if(m>=1000)return [NSString stringWithFormat:@"%.1f km",m/1000];long r=m<50?lround(m):lround(m/10)*10;return [NSString stringWithFormat:@"%ld m",r];}
 static NSString *Minutes(double s){if(!isfinite(s)||s<0)return @"—";long m=MAX(1,lround(ceil(s/60)));return m>=60?[NSString stringWithFormat:@"%ld h %ld min",m/60,m%60]:[NSString stringWithFormat:@"%ld min",m];}
 static NSString *Clock(double s){if(!isfinite(s)||s<0)return @"—";NSDateFormatter *f=[NSDateFormatter new];f.timeStyle=NSDateFormatterShortStyle;f.dateStyle=NSDateFormatterNoStyle;return [f stringFromDate:[NSDate dateWithTimeIntervalSinceNow:s]];}
+// The 1.0.7 host declares the location background mode; check rather than assume, since
+// enabling background updates without it raises an exception.
+static BOOL BackgroundLocation(void){id m=[NSBundle.mainBundle objectForInfoDictionaryKey:@"UIBackgroundModes"];return [m isKindOfClass:NSArray.class]&&[m containsObject:@"location"];}
+static NSString *AppState(void){switch(UIApplication.sharedApplication.applicationState){case UIApplicationStateActive:return @"active";case UIApplicationStateInactive:return @"inactive";default:return @"background";}}
 static NSString *GlassesBusy(void){
     if(![TIOSubtitleNavigationStatus()[@"phase"] isEqual:@"idle"])return @"Caption navigation is still running.";
     if([TIONewsTeleStatus()[@"active"] boolValue])return @"The teleprompter is still running.";
@@ -46,7 +50,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 @property MKLocalSearchCompleter *completer;
 @property UISegmentedControl *modeControl,*sourceControl;
 @property UILabel *titleLabel,*detailLabel,*metricsLabel,*glassesLabel;
-@property UIButton *startButton,*stopButton;
+@property UIButton *startButton,*stopButton,*appleMapsButton;
 @property CLLocationManager *locator;
 @property CLLocation *fix;
 @property MKMapItem *destination;
@@ -65,7 +69,10 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 @property NSDictionary *display;
 @property TIORoadMap *roadMap;
 @property NSTimer *timer;
-@property BOOL idleBefore;
+@property BOOL idleBefore,inBackground,openMapsPending;
+@property NSTimeInterval openMapsAt,lastTrace,lastTraceSave;
+@property NSUInteger offers,fixes;
+@property NSMutableArray *trace;
 @property NSString *note;
 @end
 
@@ -97,7 +104,8 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     for(UIView *v in @[self.titleLabel,self.detailLabel,self.metricsLabel])[bottom addArrangedSubview:v];
     UIStackView *buttons=[UIStackView new];buttons.spacing=10;buttons.distribution=UIStackViewDistributionFillEqually;
     self.startButton=[self action:@"Start" icon:@"location.north.fill" selector:@selector(start) primary:YES];self.stopButton=[self action:@"End" icon:@"stop.fill" selector:@selector(stopTapped) primary:NO];
-    [buttons addArrangedSubview:self.startButton];[buttons addArrangedSubview:self.stopButton];[bottom addArrangedSubview:buttons];[bottom addArrangedSubview:self.glassesLabel];[self.view addSubview:bottom];
+    self.appleMapsButton=[self action:@"Apple Maps" icon:@"map" selector:@selector(appleMapsTapped) primary:NO];
+    [buttons addArrangedSubview:self.startButton];[buttons addArrangedSubview:self.appleMapsButton];[buttons addArrangedSubview:self.stopButton];[bottom addArrangedSubview:buttons];[bottom addArrangedSubview:self.glassesLabel];[self.view addSubview:bottom];
     UILayoutGuide *safe=self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[[self.map.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[self.map.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],[self.map.topAnchor constraintEqualToAnchor:self.view.topAnchor],[self.map.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         [top.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:12],[top.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-12],[top.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
@@ -107,6 +115,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(researchClosed) name:@"TIOResearchClosed" object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(resignActive) name:UIApplicationWillResignActiveNotification object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(becomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(enterBackground) name:UIApplicationDidEnterBackgroundNotification object:nil];
     self.note=@"Search for a destination, or long-press the map.";[self refresh];
 }
 - (void)viewWillAppear:(BOOL)animated{
@@ -144,7 +153,8 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     if(l.horizontalAccuracy>50){if(!self.weakSince)self.weakSince=now;if(now-self.weakSince>5&&!self.weak){self.weak=YES;self.note=@"Weak GPS signal. Guidance resumes when the signal improves.";[self refresh];}}
     else{self.weakSince=0;if(self.weak){self.weak=NO;self.note=nil;}}
     if(self.weak||l.horizontalAccuracy>80)return;
-    [self updateAt:l.coordinate.latitude lon:l.coordinate.longitude course:l.course speed:l.speed now:now];
+    self.fixes++;[self updateAt:l.coordinate.latitude lon:l.coordinate.longitude course:l.course speed:l.speed now:now];
+    TDPPhoneNavigationPump(); // timers may be coalesced in the background; fixes keep the glasses fed
 }
 
 #pragma mark Destination
@@ -224,9 +234,13 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     self.idleBefore=UIApplication.sharedApplication.idleTimerDisabled;UIApplication.sharedApplication.idleTimerDisabled=YES;
     self.locator.desiredAccuracy=kCLLocationAccuracyBestForNavigation;self.locator.distanceFilter=kCLDistanceFilterNone;
     self.locator.activityType=self.mode==ModeDrive?CLActivityTypeAutomotiveNavigation:self.mode==ModeCycle?CLActivityTypeOtherNavigation:CLActivityTypeFitness;
+    // Keep running behind Apple Maps or the lock screen. Location updates keep the process alive,
+    // which also keeps the simulation timer and the glasses transport running.
+    if(BackgroundLocation()){self.locator.allowsBackgroundLocationUpdates=YES;self.locator.pausesLocationUpdatesAutomatically=NO;self.locator.showsBackgroundLocationIndicator=YES;[self.locator startUpdatingLocation];}
+    self.offers=0;self.fixes=0;self.trace=[NSMutableArray new];[self traceEvent:sim?@"start-simulation":@"start-live"];
     if(sim){self.simMarker=[MKPointAnnotation new];self.simMarker.title=@"Simulated position";[self.map addAnnotation:self.simMarker];}
     else [self.map setUserTrackingMode:MKUserTrackingModeFollowWithHeading animated:YES];
-    self.note=sim?@"Simulating along the route. Keep this screen open.":@"Navigating. Keep the phone unlocked with this screen open.";[self refresh];
+    self.note=!BackgroundLocation()?@"Keep the phone unlocked with this screen open.":sim?@"Simulating. You can switch apps or lock the phone (experimental).":@"Navigating. You can switch to Apple Maps or lock the phone (experimental).";[self refresh];
 }
 - (void)stopTapped{[self stopNavigation:self.navigating?@"Navigation ended.":nil];}
 - (void)stopNavigation:(NSString *)message{
@@ -234,11 +248,23 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     if(self.glassesStarted||[TDPPhoneNavigationStatus()[@"active"] boolValue])TDPPhoneNavigationStop();
     self.glassesStarted=NO;self.glassesTried=NO;[self.roadMap reset];
     if(self.simMarker){[self.map removeAnnotation:self.simMarker];self.simMarker=nil;}
-    if(was){UIApplication.sharedApplication.idleTimerDisabled=self.idleBefore;self.map.userTrackingMode=MKUserTrackingModeNone;self.locator.desiredAccuracy=kCLLocationAccuracyBest;}
+    if(was){UIApplication.sharedApplication.idleTimerDisabled=self.idleBefore;self.map.userTrackingMode=MKUserTrackingModeNone;self.locator.desiredAccuracy=kCLLocationAccuracyBest;
+        if(BackgroundLocation()){self.locator.allowsBackgroundLocationUpdates=NO;self.locator.pausesLocationUpdatesAutomatically=YES;}
+        [self traceEvent:@"stop"];[self saveTrace];}
+    self.openMapsPending=NO;
     if(message)self.note=message;[self refresh];
 }
-- (void)resignActive{if(self.navigating&&self.simulated){self.simPaused=YES;TNVReplayPaused(YES);}}
-- (void)becomeActive{if(self.simPaused){self.simPaused=NO;self.simLastTick=NSProcessInfo.processInfo.systemUptime;TNVReplayPaused(NO);}}
+- (void)resignActive{
+    if(!self.navigating)return;[self traceEvent:@"inactive"];
+    // Without the background mode the process will be suspended: pause cleanly instead.
+    if(self.simulated&&!BackgroundLocation()){self.simPaused=YES;TNVReplayPaused(YES);}
+}
+- (void)enterBackground{if(!self.navigating)return;self.inBackground=YES;TNVLifecycle(@"mapkit-background");[self traceEvent:@"background"];[self saveTrace];}
+- (void)becomeActive{
+    if(self.navigating){self.inBackground=NO;TNVLifecycle(@"mapkit-foreground");[self traceEvent:@"active"];}
+    if(self.simPaused){self.simPaused=NO;TNVReplayPaused(NO);}
+    self.simLastTick=NSProcessInfo.processInfo.systemUptime;
+}
 - (void)tick{
     TDPPhoneNavigationPump();NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;
     if(self.navigating&&self.simulated&&!self.simPaused&&!self.arrived&&self.guide){
@@ -248,7 +274,10 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
             [self updateAt:p.lat lon:p.lon course:p.heading speed:SimSpeed(self.mode) now:now];}
     }
     if(self.glassesStarted){NSDictionary *s=TDPPhoneNavigationStatus();if([s[@"failed"] boolValue]||(![s[@"active"] boolValue]&&![s[@"busy"] boolValue])){self.glassesStarted=NO;if(self.navigating&&!self.arrived)self.note=@"Lost the glasses connection. Use ⋯ › Reconnect glasses.";}}
-    if(now-self.lastUI>=0.5)[self refresh];
+    if(self.openMapsPending&&(self.glassesStarted||(self.glassesTried&&!self.glassesStarted)||now-self.openMapsAt>8)){self.openMapsPending=NO;[self openAppleMaps];}
+    if(self.navigating&&now-self.lastTrace>=2)[self traceEvent:@"tick"];
+    if(self.navigating&&now-self.lastTraceSave>=5)[self saveTrace];
+    if(now-self.lastUI>=0.5&&!self.inBackground)[self refresh];
 }
 - (void)updateAt:(double)lat lon:(double)lon course:(double)course speed:(double)speed now:(NSTimeInterval)now{
     if(!self.navigating||self.arrived||!self.guide)return;self.lastOffer=now;
@@ -268,7 +297,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(now);f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
     NSDictionary *frame=[self.roadMap decorate:f coordinates:ahead];self.display=frame;
     if(!self.firstFrameAt)self.firstFrameAt=now;
-    if(self.glassesStarted)TDPPhoneNavigationOffer(frame);
+    if(self.glassesStarted){TDPPhoneNavigationOffer(frame);self.offers++;}
     else if(!self.glassesTried&&(!self.roadMap.enabled||frame[@"tnrScene"]||now-self.firstFrameAt>5))[self startGlasses:frame];
     if(arrive)[self arriveWithFrame:frame];
 }
@@ -281,6 +310,41 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 - (void)arriveWithFrame:(NSDictionary *)frame{
     self.arrived=YES;self.note=[NSString stringWithFormat:@"Arrived at %@.",self.destinationName?:@"your destination"];[self refresh];NSUInteger g=self.generation;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(g==self.generation&&self.arrived)[self stopNavigation:self.note];});
+}
+
+#pragma mark Apple Maps hand-off
+- (void)appleMapsTapped{
+    if(self.navigating){[self openAppleMaps];return;}
+    if(!self.guide||self.planning)return;
+    // Start first: the glasses session can only open while this app is in front.
+    self.sourceControl.selectedSegmentIndex=1;[self start];if(!self.navigating)return;
+    self.openMapsPending=YES;self.openMapsAt=NSProcessInfo.processInfo.systemUptime;self.note=@"Connecting the glasses, then opening Apple Maps…";[self refresh];
+}
+- (void)openAppleMaps{
+    if(!self.destination)return;NSString *mode=self.mode==ModeDrive?MKLaunchOptionsDirectionsModeDriving:self.mode==ModeCycle?MKLaunchOptionsDirectionsModeCycling:MKLaunchOptionsDirectionsModeWalking;
+    [self traceEvent:@"open-apple-maps"];
+    BOOL ok=[MKMapItem openMapsWithItems:@[[MKMapItem mapItemForCurrentLocation],self.destination] launchOptions:@{MKLaunchOptionsDirectionsModeKey:mode}];
+    if(!ok)[self alert:@"Couldn't open Apple Maps" message:@"Turbo IO navigation continues on the glasses."];
+}
+
+#pragma mark Background trace
+// Evidence for the unresolved background stall: what the app, location and glasses
+// transport were doing, sampled every 2 s. No coordinates are stored.
+- (void)traceEvent:(NSString *)event{
+    if(!self.trace)return;self.lastTrace=NSProcessInfo.processInfo.systemUptime;NSDictionary *s=TDPPhoneNavigationStatus();
+    NSMutableDictionary *e=[@{@"event":event,@"t":@(round(self.lastTrace*10)/10),@"app":AppState(),@"fixes":@(self.fixes),@"offers":@(self.offers),@"glassesStarted":@(self.glassesStarted),@"simulated":@(self.simulated),@"rerouting":@(self.rerouting),@"weak":@(self.weak)} mutableCopy];
+    if(self.fix)e[@"fixAge"]=@(round(-self.fix.timestamp.timeIntervalSinceNow*10)/10);
+    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"poseAgeMs",@"replayPaused"])if(s[k])e[k]=s[k];
+    [self.trace addObject:e];if(self.trace.count>900)[self.trace removeObjectAtIndex:0];
+}
+- (void)saveTrace{
+    if(!self.trace.count)return;self.lastTraceSave=NSProcessInfo.processInfo.systemUptime;
+    NSString *dir=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
+    [NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
+    NSString *file=[dir stringByAppendingPathComponent:@"mapkit-navigation-trace.json"];
+    NSDictionary *d=@{@"build":@"MAPKIT-NAV-02",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
+    NSData *data=[NSJSONSerialization dataWithJSONObject:d options:0 error:nil];
+    if([data writeToFile:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil])[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }
 
 #pragma mark UI
@@ -297,6 +361,8 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     self.metricsLabel.hidden=!self.metricsLabel.text.length;
     UIButtonConfiguration *c=self.startButton.configuration;c.title=self.planning?@"Finding route…":sim?@"Start simulation":@"Start";self.startButton.configuration=c;
     self.startButton.hidden=self.navigating;self.startButton.enabled=self.guide&&!self.planning;self.stopButton.hidden=!self.navigating;
+    // Apple Maps only follows your real position, so the hand-off is for live routes.
+    self.appleMapsButton.hidden=self.navigating?self.simulated:sim;self.appleMapsButton.enabled=self.navigating||(self.guide&&!self.planning);
     self.modeControl.enabled=self.sourceControl.enabled=!self.navigating;self.search.userInteractionEnabled=!self.navigating;
     self.glassesLabel.text=[self glassesText];
 }
@@ -307,7 +373,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     return @"Glasses: turn-by-turn starts automatically with navigation (TMG2 firmware).";
 }
 - (void)more{
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Navigation options" message:@"Keep the phone unlocked with this screen open; locking it stops guidance. Not for driving." preferredStyle:UIAlertControllerStyleActionSheet];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Navigation options" message:@"Guidance behind Apple Maps or the lock screen is experimental; if the glasses freeze, return to this screen. Not for driving." preferredStyle:UIAlertControllerStyleActionSheet];
     BOOL roads=[NSUserDefaults.standardUserDefaults boolForKey:RoadsKey];
     [a addAction:[UIAlertAction actionWithTitle:roads?@"Turn off nearby roads on glasses":@"Show nearby roads on glasses…" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[self toggleRoads];}]];
     [a addAction:[UIAlertAction actionWithTitle:TNVAlways()?@"Let glasses display sleep":@"Keep glasses display on" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){TNVSetAlways(!TNVAlways());}]];
