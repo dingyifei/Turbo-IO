@@ -49,7 +49,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 @implementation TNVSession{
  NSString *_device,*_task,*_nativeTask,*_note;uint32_t _sid,_seq;NSTimeInterval(^_clock)(void);void(^_sender)(NSData *,NSString *,TNVSubmitted);void(^_cleanup)(NSString *);
  NSData *_packet,*_latest,*_committed,*_sending;NSMutableArray *_early;BOOL _active,_fileBusy,_ack,_submitted,_failed,_stopping,_always;
- NSData *_mapLatest,*_map2Latest,*_mapCommitted,*_mapSending,*_poseLatest,*_poseCommitted;NSTimeInterval _poseAt,_lastPose;NSUInteger _maps,_poses;BOOL _extended,_probed,_mapV2,_paused;
+ NSData *_mapLatest,*_map2Latest,*_mapCommitted,*_mapSending,*_poseLatest,*_poseCommitted;NSTimeInterval _poseAt,_lastPose;NSUInteger _maps,_poses;BOOL _extended,_probed,_mapV2,_paused,_wantFarewell,_farewell;
  NSString *_source;double _ackMs,_fileMs,_commitMs,_poseAgeMs;NSUInteger _wireBytes;
  NSMutableArray *_trace;
  NSTimeInterval _deadline,_lastOffer,_lastCommit,_lastWire,_next;NSUInteger _count;unsigned _op;
@@ -71,7 +71,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 }
 - (BOOL)send:(enum TNOp)op scene:(NSData *)scene{
  if(self.busy||_failed||_seq==UINT32_MAX)return NO;uint8_t b[TNR_MAX_BYTES];size_t n=op>=TNR_SCENE?tnr_wrap(b,sizeof b,op,_sid,++_seq,scene.bytes,scene.length):tn_encode(b,sizeof b,op,_sid,++_seq,scene?(const TNScene *)scene.bytes:NULL);if(!n)return NO;
- _packet=[NSData dataWithBytes:b length:n];_wireBytes+=n;_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_submitted=NO;_fileBusy=YES;_op=op;_sending=scene;_lastWire=_clock();_deadline=_lastWire+(op==TNR_POSE?3:8);NSString *task=_task;
+ _packet=[NSData dataWithBytes:b length:n];_wireBytes+=n;_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_submitted=NO;_fileBusy=YES;_op=op;_sending=scene;_lastWire=_clock();_deadline=_lastWire+8;/* poses too: a slow background transfer is late, and failing loses STOP */NSString *task=_task;
  [self trace:@"send"];__weak typeof(self) weak=self;_sender(_packet,task,^(BOOL ok,NSString *native){TNVSession *s=weak;if(!s||![task isEqual:s->_task])return;
   if(!ok||![native isKindOfClass:NSString.class]||!native.length||native.length>256){s->_fileBusy=NO;[s fail:@"文件提交失败；停止导航发送"];return;}
   s->_submitted=YES;s->_nativeTask=[native copy];NSArray *early=[s->_early copy];s->_early=nil;for(NSDictionary *e in early)[s consume:e];[s finish];});return YES;
@@ -86,12 +86,18 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 - (BOOL)start:(NSDictionary *)frame always:(BOOL)always{if(_seq||_active||self.busy||_failed)return NO;TNScene s;if(!TNVScene(frame,always,&s))return NO;[self mapOffer:frame];_source=[@[@"offline-replay",@"amap-simulation",@"amap-realtime",@"mapkit-simulation",@"mapkit-realtime"] containsObject:frame[@"tnrSource"]]?frame[@"tnrSource"]:@"unknown";_always=always;_latest=[NSData dataWithBytes:&s length:sizeof s];_lastOffer=_clock();_active=YES;_note=@"正在请求自动打开原生导航";if(![self send:TN_START scene:_latest]){_active=NO;return NO;}return YES;}
 - (void)offer:(NSDictionary *)frame{if(!_active||_stopping)return;[self mapOffer:frame];TNScene s;if(!TNVScene(frame,_always,&s)){[self stop];return;}_latest=[NSData dataWithBytes:&s length:sizeof s];_lastOffer=_clock();}
 - (void)setAlways:(BOOL)always{_always=always;if(_latest){NSMutableData *d=[_latest mutableCopy];((TNScene *)d.mutableBytes)->mode=always?TN_ALWAYS:TN_SMART;_latest=d;}}
-- (void)stop{if(!_active)return;_stopping=YES;_note=@"等待在途包结束后退出导航";[self pump];}
+// After a failure the glasses still show the last frame; send one STOP once no native file is uncertain.
+- (void)farewell{
+ if(!_wantFarewell||_farewell||!_failed||_fileBusy||_packet||_seq==UINT32_MAX)return;_farewell=YES;_failed=NO;_active=YES;_stopping=YES;
+ if(![self send:TN_STOP scene:nil]){_failed=YES;_active=NO;_stopping=NO;}
+}
+- (void)stop{if(_failed){_wantFarewell=YES;[self farewell];return;}if(!_active)return;_stopping=YES;_note=@"等待在途包结束后退出导航";[self pump];}
 - (void)setReplayPaused:(BOOL)paused{if(_paused==paused)return;_paused=paused;[self trace:paused?@"pause":@"resume"];if(paused&&!_failed)_note=self.busy?@"回放暂停中，正在收尾最后一笔文件":@"回放已暂停；不主动退出眼镜，旧地图按超时策略变暗息屏";}
 - (void)backgroundDrainExpired{if(_packet||_fileBusy)[self fail:@"锁屏在途文件未确认完成；结果未知，未重试。请回前台检查并退出旧会话。"];}
 - (void)disconnect{[self fail:@"连接中断；已停止。眼镜按60秒策略退出常亮，请查看手机。"];}
 - (void)pump{
  if(_packet&&_clock()>=_deadline){[self fail:@"导航协议超时；停止发送，请确认已刷TNV1固件并用实体键退出旧画面。"];return;}
+ if(_wantFarewell&&_failed){[self farewell];return;}
  if(!_active||self.busy||_clock()<_next)return;
  if(_stopping){[self send:TN_STOP scene:nil];return;}
  if(_paused)return;

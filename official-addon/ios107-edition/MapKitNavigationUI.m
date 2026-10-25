@@ -245,7 +245,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 - (void)stopTapped{[self stopNavigation:self.navigating?@"Navigation ended.":nil];}
 - (void)stopNavigation:(NSString *)message{
     BOOL was=self.navigating;self.navigating=NO;self.generation++;self.rerouting=NO;self.weak=NO;self.simPaused=NO;
-    if(self.glassesStarted||[TDPPhoneNavigationStatus()[@"active"] boolValue])TDPPhoneNavigationStop();
+    TDPPhoneNavigationStop(); // also asks a failed session to send its one farewell STOP
     self.glassesStarted=NO;self.glassesTried=NO;[self.roadMap reset];
     if(self.simMarker){[self.map removeAnnotation:self.simMarker];self.simMarker=nil;}
     if(was){UIApplication.sharedApplication.idleTimerDisabled=self.idleBefore;self.map.userTrackingMode=MKUserTrackingModeNone;self.locator.desiredAccuracy=kCLLocationAccuracyBest;
@@ -334,7 +334,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     if(!self.trace)return;self.lastTrace=NSProcessInfo.processInfo.systemUptime;NSDictionary *s=TDPPhoneNavigationStatus();
     NSMutableDictionary *e=[@{@"event":event,@"t":@(round(self.lastTrace*10)/10),@"app":AppState(),@"fixes":@(self.fixes),@"offers":@(self.offers),@"glassesStarted":@(self.glassesStarted),@"simulated":@(self.simulated),@"rerouting":@(self.rerouting),@"weak":@(self.weak)} mutableCopy];
     if(self.fix)e[@"fixAge"]=@(round(-self.fix.timestamp.timeIntervalSinceNow*10)/10);
-    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"poseAgeMs",@"replayPaused"])if(s[k])e[k]=s[k];
+    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"fileMs",@"poseAgeMs",@"replayPaused",@"inFlightOp"])if(s[k])e[k]=s[k];
     [self.trace addObject:e];if(self.trace.count>900)[self.trace removeObjectAtIndex:0];
 }
 - (void)saveTrace{
@@ -342,7 +342,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     NSString *dir=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
     [NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
     NSString *file=[dir stringByAppendingPathComponent:@"mapkit-navigation-trace.json"];
-    NSDictionary *d=@{@"build":@"MAPKIT-NAV-02",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
+    NSDictionary *d=@{@"build":@"MAPKIT-NAV-03",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
     NSData *data=[NSJSONSerialization dataWithJSONObject:d options:0 error:nil];
     if([data writeToFile:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil])[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }

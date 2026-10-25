@@ -1,5 +1,6 @@
 #import "NativeNavigation.h"
 #import "TNVTransport.h"
+#include "nav_map.h"
 #include <assert.h>
 static uint32_t U32(const uint8_t *p){uint32_t v;memcpy(&v,p,4);return v;}
 static NSDictionary *Frame(unsigned n){return @{@"phase":@"navigating",@"icon":@3,@"meters":@(n),@"remainingMeters":@1200,@"remainingSeconds":@600,@"road":@"测试路",@"turn":@"前方右转",@"navPoints":@[@[@100,@900],@[@100,@500],@[@900,@500]],@"navHeading":@90};}
@@ -23,6 +24,19 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(![s start:Frame(40) always:NO]); // Each START requires a new persisted monotonic SID.
  s=[[TNVSession alloc]initWithDevice:@"test-peer" session:11 clock:^{return now;} sender:^(NSData *b,NSString *t,TNVSubmitted done){wire=b;task=t;submit=done;} cleanup:nil];
  assert([s start:Frame(40) always:NO]);now+=9;[s pump];assert(!s.active&&s.busy);submit(YES,@"late-task");[s consume:File(@"late-task")];[s consume:Ack(wire,0)];assert(!s.active&&!s.busy);assert(![s start:Frame(40) always:NO]);
+ // A failed session still owes the glasses a STOP once its uncertain file settles.
+ [s stop];assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TN_STOP);submit(YES,@"farewell");[s consume:Ack(wire,0)];[s consume:File(@"farewell")];assert(!s.active&&!s.busy);
+ [s stop];assert(!s.busy); // only one farewell
+ // A slow position file (background BLE) is late, not lost: the session must survive it.
+ {uint8_t map[16+8+8]={0};map[0]=1;map[4]=320&255;map[5]=320>>8;map[6]=1;map[8]=2;map[16]=2;map[18]=6;int16_t pts[4]={0,0,40,40};memcpy(map+24,pts,8);
+  uint8_t pose[12]={0};pose[0]=1;assert(tnr_body_valid(TNR_SCENE,map,sizeof map)&&tnr_body_valid(TNR_POSE,pose,12));
+  uint8_t *mp=map,*pp=pose;NSMutableDictionary *(^MapFrame)(void)=^{NSMutableDictionary *f=[Frame(80) mutableCopy];f[@"tnrScene"]=[NSData dataWithBytes:mp length:32];f[@"tnrPose"]=[NSData dataWithBytes:pp length:12];f[@"tnrPoseAt"]=@(now);return f;};
+  __block unsigned n=0;s=[[TNVSession alloc]initWithDevice:@"test-peer" session:12 clock:^{return now;} sender:^(NSData *b,NSString *t,TNVSubmitted done){wire=b;task=t;submit=done;n++;} cleanup:nil];
+  void(^Settle)(void)=^{NSString *native=[NSString stringWithFormat:@"pose-%u",n];submit(YES,native);[s consume:Ack(wire,0)];[s consume:File(native)];assert(!s.busy);};
+  assert([s start:MapFrame() always:NO]);Settle();
+  for(int i=0;i<6&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE;i++){now+=0.3;[s offer:MapFrame()];pose[4]++;[s pump];if(s.busy&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE)Settle();}
+  assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TNR_POSE);
+  now+=4;[s pump];assert(s.active&&![s.status[@"failed"] boolValue]);Settle();assert(s.active&&[s.status[@"poses"] unsignedIntValue]==1);}
  // Sender rejects wrong-peer / malformed data before touching SDK; cleanup is scoped.
  NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] isDirectory:YES];
  __block BOOL called=NO,finished=NO;
@@ -32,5 +46,5 @@ int main(int argc,char **argv){@autoreleasepool{
  NSDate *limit=[NSDate dateWithTimeIntervalSinceNow:2];while(!finished&&[limit timeIntervalSinceNow]>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];assert(called&&finished);[transport cleanup:tid];assert([[NSFileManager.defaultManager contentsOfDirectoryAtPath:root.path error:nil] count]==0);
  [NSFileManager.defaultManager removeItemAtURL:root error:nil];
  if(argc==2){NSDictionary *record=@{@"syntheticOnly":@YES,@"packets":trace};assert([[NSJSONSerialization dataWithJSONObject:record options:NSJSONWritingPrettyPrinted error:nil] writeToFile:@(argv[1]) atomically:YES]);}
- puts("PASS TNV1 codec, real SDK task binding, early file/ACK ordering, latest-only pacing, heartbeat freshness, STOP, timeout/late ACK, bounded geometry, scoped transport and cleanup");
+ puts("PASS TNV1 codec, real SDK task binding, early file/ACK ordering, latest-only pacing, heartbeat freshness, STOP, timeout/late ACK, post-failure STOP, slow pose survives, bounded geometry, scoped transport and cleanup");
 }return 0;}
