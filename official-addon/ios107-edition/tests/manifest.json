@@ -62,8 +62,8 @@
       "group": "flash"
     },
     "ExperimentalOTAGuardTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "ota-guard"
     },
     "ExperimentalOTATests.m": {
       "status": "run",
@@ -94,8 +94,8 @@
       "reason": "pending WP0 wiring"
     },
     "ImageUploadTransportTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "image-upload-transport"
     },
     "KnowledgeToolFlowTests.m": {
       "status": "excluded",
@@ -150,12 +150,12 @@
       "reason": "module removed in WP3 (News)"
     },
     "OTAHostTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "ota-host"
     },
     "PhoneOTAGateTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "phone-ota-gate"
     },
     "ProtocolRestartTests.m": {
       "status": "excluded",
