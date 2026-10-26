@@ -18,36 +18,36 @@
       "group": "dashboard-card"
     },
     "DisplayDeltaSessionTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-delta-session"
     },
     "DisplayDeltaTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-delta"
     },
     "DisplayDiagnosticsTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-diagnostics"
     },
     "DisplayFramePacingTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-frame-pacing"
     },
     "DisplayNavigationTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-navigation"
     },
     "DisplayPhoneTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-phone"
     },
     "DisplayReplyObserverTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-reply-observer"
     },
     "DisplayTaskBindingTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "display-task-binding"
     },
     "ExperimentalOTADirectoryTests.m": {
       "status": "run",
