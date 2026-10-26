@@ -1,0 +1,373 @@
+{
+  "version": 1,
+  "tests": {
+    "A2UIProtocolTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "AlwaysOnAudioTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "AlwaysOnOggTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DashboardCardTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayDeltaSessionTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayDeltaTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayDiagnosticsTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayFramePacingTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayNavigationTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayPhoneTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayReplyObserverTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "DisplayTaskBindingTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "ExperimentalOTADirectoryTests.m": {
+      "status": "run",
+      "group": "directory"
+    },
+    "ExperimentalOTAFeedTests.m": {
+      "status": "run",
+      "group": "feed"
+    },
+    "ExperimentalOTAFlashTests.m": {
+      "status": "run",
+      "group": "flash"
+    },
+    "ExperimentalOTAGuardTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "ExperimentalOTATests.m": {
+      "status": "run",
+      "group": "archive"
+    },
+    "GlassesLogContractTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "GlassesLogGateTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "HUDPreviewTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "HomeTabLayoutTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "HostCompatibilityTests.m": {
+      "status": "run",
+      "group": "host"
+    },
+    "ImageUploadTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "ImageUploadTransportTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "KnowledgeToolFlowTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "MenuLayoutTests.m": {
+      "status": "run",
+      "group": "menu-layout"
+    },
+    "NativeNavigationTests.m": {
+      "status": "run",
+      "group": "session"
+    },
+    "NavigationCoreTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "NavigationModesTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "NavigationPlacesTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "NavigationSubtitleHUDTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "NavigationTeleHUDTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (NavigationTeleHUDTests)"
+    },
+    "NewsCaptionTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (News)"
+    },
+    "NewsCoreTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (News)"
+    },
+    "NewsPreferencesTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (News)"
+    },
+    "NewsPresentationTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (News)"
+    },
+    "NewsTeleprompterTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (News)"
+    },
+    "OTAHostTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "PhoneOTAGateTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "ProtocolRestartTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "ReaderBridgeTest.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (WeRead)"
+    },
+    "ReadingContentTest.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (WeRead)"
+    },
+    "ReadingOverviewTest.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (WeRead)"
+    },
+    "RecordingExportsTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "RecordingTextTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "ResearchCatalogTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "SubtitleHUDTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "Tests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "TodoBridgeClientTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (TodoBridgeClientTests)"
+    },
+    "TodoProtocolTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "TodoToolFlowTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "WebSearchFlowTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "WebSearchTests.m": {
+      "status": "excluded",
+      "reason": "pending WP0 wiring"
+    },
+    "camera-v1/CameraCaptureTests.m": {
+      "status": "run",
+      "group": "camera-capture"
+    },
+    "camera-v1/CameraImageTests.m": {
+      "status": "run",
+      "group": "camera-image"
+    },
+    "camera-v1/CameraLinkTests.m": {
+      "status": "run",
+      "group": "camera-link"
+    },
+    "context-english-v1/CEAutoPlanTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/ContextEnglishBridgeTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/ContextEnglishClientTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/ContextEnglishHistoryTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/ContextEnglishTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_files_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_flow_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_progress_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_service_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_session_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_store_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/english_wire_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "context-english-v1/head_lifetime_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (context-english-v1)"
+    },
+    "dots-v1/DotsCatalogTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/DotsClientTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/DotsFileGateTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/DotsGlassesTransferTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/DotsPhoneBridgeTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/DotsVoiceTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/dots_menu_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/dots_sender_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/dots_service_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/dots_view_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "dots-v1/dots_wire_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (dots-v1)"
+    },
+    "enhanced-lifelog-v1/TNLTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (enhanced-lifelog-v1)"
+    },
+    "navigation-runtime-v1/nav_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (navigation-runtime-v1)"
+    },
+    "navigation-runtime-v1/nav_view_test.c": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (navigation-runtime-v1)"
+    },
+    "notification-archive-v1/NotificationTests.m": {
+      "status": "excluded",
+      "reason": "module removed in WP3 (notification-archive-v1)"
+    },
+    "tests/CoordinateTests.m": {
+      "status": "run",
+      "group": "coordinates"
+    },
+    "tests/NavigationGuidanceTests.m": {
+      "status": "run",
+      "group": "guidance"
+    },
+    "tests/OTAFeedRestartTests.m": {
+      "status": "run",
+      "group": "feed-restart"
+    },
+    "tests/PoseRateTests.m": {
+      "status": "run",
+      "group": "rate"
+    },
+    "tests/RoadMapLabelTests.m": {
+      "status": "run",
+      "group": "labels"
+    },
+    "tests/RoadMapTests.m": {
+      "status": "run",
+      "group": "replay"
+    },
+    "tests/RoadTilesTests.m": {
+      "status": "run",
+      "group": "tiles"
+    },
+    "tests/StabilityTests.m": {
+      "status": "run",
+      "group": "stability"
+    }
+  }
+}
