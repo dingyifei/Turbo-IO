@@ -82,6 +82,34 @@ if args.app107 and args.patched_app:
 else:
     skip('ota-host','needs --app107/--patched-app')
 
+# WP0 step 7: previously orphaned tests.
+test('core',['Tests.m', 'Core.m'],argv=[],extra=['-fmodules', '-Wno-unused-parameter'])
+test('knowledge-tool-flow',['KnowledgeToolFlowTests.m', 'Core.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
+test('todo-tool-flow',['TodoToolFlowTests.m', 'Core.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
+test('web-search-flow',['WebSearchFlowTests.m', 'Core.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
+test('web-search',['WebSearchTests.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
+test('todo-protocol',['TodoProtocolTests.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules'])
+restart_dir=out/'protocol-restart-dir'
+if only is None or 'protocol-restart' in only:
+    import shutil
+    shutil.rmtree(restart_dir,ignore_errors=True);restart_dir.mkdir()
+test('protocol-restart',['ProtocolRestartTests.m', 'ProtocolContext.m', 'NewsTeleprompter.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules', '-DNSHomeDirectory=TIOTestHome'],runs=[['write',restart_dir],['read',restart_dir]])
+test('recording-exports',['RecordingExportsTests.m', 'RecordingExports.m'],argv=[],extra=['-fmodules'])
+test('recording-text',['RecordingTextTests.m', 'RecordingText.m'],argv=[],extra=['-fmodules'])
+test('alwayson-audio',['AlwaysOnAudioTests.m', 'AlwaysOnAudioFiles.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])
+test('alwayson-ogg',['AlwaysOnOggTests.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])
+test('subtitle-hud',['SubtitleHUDTests.m', 'SubtitleHUDCore.m'],argv=[],extra=['-fmodules'])
+test('hometab',['HomeTabLayoutTests.m', 'HomeTabLayout.m'],argv=[],extra=['-fmodules'])
+test('navigation-modes',['NavigationModesTests.m', 'NavigationModes.m'],argv=[],extra=['-fmodules'])
+test('navigation-core',['NavigationCoreTests.m', 'A2UIProtocol.m', 'NavigationCore.m'],argv=[],extra=['-fmodules', '-Wno-unused-parameter'])
+test('navigation-subtitle-hud',['NavigationSubtitleHUDTests.m', 'A2UIProtocol.m', 'NavigationCore.m', 'SubtitleHUDCore.m', 'NavigationSubtitleHUD.m'],argv=[],extra=['-fmodules'])
+test('navigation-places',['NavigationPlacesTests.m', 'A2UIProtocol.m', 'NavigationCore.m', 'NavigationPlaces.m'],argv=[],extra=['-fmodules'])
+test('a2ui-protocol',['A2UIProtocolTests.m', 'A2UIProtocol.m'],argv=[],extra=['-fmodules'])
+test('dashboard-card',['DashboardCardTests.m', 'DashboardCard.m', 'A2UIProtocol.m', 'card.c'],argv=[],extra=['-fmodules'])
+test('glasses-log-contract',['GlassesLogContractTests.m', 'GlassesLogContract.m', 'A2UIProtocol.m'],argv=[],extra=['-fmodules'])
+test('glasses-log-gate',['GlassesLogGateTests.m', 'GlassesLogGate.m', 'GlassesLogContract.m', 'A2UIProtocol.m'],argv=[],extra=['-fmodules'])
+test('image-upload',['ImageUploadTests.m', 'ImageUpload.m'],argv=[],extra=['-fmodules', '-DTIO_IMAGE_RX_LAB=1', '-DTIO_IMAGE_RX_WIDE=1', '-framework', 'ImageIO', '-framework', 'CoreGraphics'])
+
 if only is None:
     missing={v['group'] for v in manifest.values() if v['status']=='run'}-set(groups)-{n for n,_ in skipped}
     if missing:raise SystemExit('manifest groups not executed: '+str(sorted(missing)))

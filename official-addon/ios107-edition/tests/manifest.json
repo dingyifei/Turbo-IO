@@ -2,20 +2,20 @@
   "version": 1,
   "tests": {
     "A2UIProtocolTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "a2ui-protocol"
     },
     "AlwaysOnAudioTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "alwayson-audio"
     },
     "AlwaysOnOggTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "alwayson-ogg"
     },
     "DashboardCardTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "dashboard-card"
     },
     "DisplayDeltaSessionTests.m": {
       "status": "excluded",
@@ -70,36 +70,37 @@
       "group": "archive"
     },
     "GlassesLogContractTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "glasses-log-contract"
     },
     "GlassesLogGateTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "glasses-log-gate"
     },
     "HUDPreviewTests.m": {
       "status": "excluded",
       "reason": "pending WP0 wiring"
     },
     "HomeTabLayoutTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "hometab"
     },
     "HostCompatibilityTests.m": {
       "status": "run",
       "group": "host"
     },
     "ImageUploadTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "image-upload"
     },
     "ImageUploadTransportTests.m": {
       "status": "run",
       "group": "image-upload-transport"
     },
     "KnowledgeToolFlowTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "knowledge-tool-flow",
+      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
     },
     "MenuLayoutTests.m": {
       "status": "run",
@@ -110,20 +111,23 @@
       "group": "session"
     },
     "NavigationCoreTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "navigation-core",
+      "note": "Kept while MapKitNavigationUI.m/LocalTranslationEntry.m import NavigationSubtitleHUD.h; WP3 may delete only together with that dependency."
     },
     "NavigationModesTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "navigation-modes"
     },
     "NavigationPlacesTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "navigation-places",
+      "note": "Kept while MapKitNavigationUI.m/LocalTranslationEntry.m import NavigationSubtitleHUD.h; WP3 may delete only together with that dependency."
     },
     "NavigationSubtitleHUDTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "navigation-subtitle-hud",
+      "note": "Kept while MapKitNavigationUI.m/LocalTranslationEntry.m import NavigationSubtitleHUD.h; WP3 may delete only together with that dependency."
     },
     "NavigationTeleHUDTests.m": {
       "status": "excluded",
@@ -158,8 +162,9 @@
       "group": "phone-ota-gate"
     },
     "ProtocolRestartTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "protocol-restart",
+      "note": "Imports NewsTeleprompter.h; WP3 must rewrite against ProtocolContext alone."
     },
     "ReaderBridgeTest.m": {
       "status": "excluded",
@@ -174,44 +179,48 @@
       "reason": "module removed in WP3 (WeRead)"
     },
     "RecordingExportsTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "recording-exports"
     },
     "RecordingTextTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "recording-text"
     },
     "ResearchCatalogTests.m": {
       "status": "excluded",
       "reason": "pending WP0 wiring"
     },
     "SubtitleHUDTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "subtitle-hud"
     },
     "Tests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "core",
+      "note": "Asserts Chinese voice-exit phrases and persona; WP1/WP2 must update these tests."
     },
     "TodoBridgeClientTests.m": {
       "status": "excluded",
       "reason": "module removed in WP3 (TodoBridgeClientTests)"
     },
     "TodoProtocolTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "todo-protocol"
     },
     "TodoToolFlowTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "todo-tool-flow",
+      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
     },
     "WebSearchFlowTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "web-search-flow",
+      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
     },
     "WebSearchTests.m": {
-      "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "status": "run",
+      "group": "web-search",
+      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
     },
     "camera-v1/CameraCaptureTests.m": {
       "status": "run",
