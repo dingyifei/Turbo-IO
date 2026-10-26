@@ -82,3 +82,59 @@ NSArray *TIORoadTilesCovering(NSArray *bbox,unsigned z,NSUInteger max){
  x0=MAX(0,x0);y0=MAX(0,y0);x1=MIN((long)n-1,x1);y1=MIN((long)n-1,y1);if((NSUInteger)((x1-x0+1)*(y1-y0+1))>max)return @[];
  NSMutableArray *out=[NSMutableArray new];for(long ty=y0;ty<=y1;ty++)for(long tx=x0;tx<=x1;tx++)[out addObject:@[@(z),@(tx),@(ty)]];return out;
 }
+NSArray *TIORoadTilesAlongRoute(NSArray *coords,unsigned z,double radius,NSUInteger max){
+ NSMutableArray *out=[NSMutableArray new];NSMutableSet *seen=[NSMutableSet new];if(coords.count<2||radius<=0)return out;
+ void(^cover)(double,double)=^(double lat,double lon){double dlat=radius/111319.49,dlon=dlat/fmax(.2,cos(lat*M_PI/180));
+  for(NSArray *t in TIORoadTilesCovering(@[@(lat-dlat),@(lon-dlon),@(lat+dlat),@(lon+dlon)],z,16))if(out.count<max&&![seen containsObject:t]){[seen addObject:t];[out addObject:t];}};
+ double step=radius/2;
+ for(NSUInteger i=0;i+1<coords.count&&out.count<max;i++){double a=[coords[i][0] doubleValue],b=[coords[i][1] doubleValue],c=[coords[i+1][0] doubleValue],d=[coords[i+1][1] doubleValue];
+  if(!isfinite(a)||!isfinite(b)||!isfinite(c)||!isfinite(d))continue;
+  double meters=hypot((c-a)*111319.49,(d-b)*111319.49*cos(a*M_PI/180));unsigned n=(unsigned)fmin(100000,ceil(meters/step));
+  for(unsigned k=0;k<=n&&out.count<max;k++){double t=n?(double)k/n:0;cover(a+(c-a)*t,b+(d-b)*t);}}
+ return out;
+}
+@implementation TIORoadTileStore{
+ NSURL *_dir;TIORoadTileFetch _fetch;NSString *_template;BOOL _templateBusy,_retryQueued;
+ NSMutableArray *_queue;NSMutableSet *_queued,*_busy;NSMutableDictionary *_failedAt;NSUInteger _saved,_downloads,_epoch;unsigned long long _bytes;
+}
+static NSString *Key(NSArray *t){return [NSString stringWithFormat:@"%@-%@-%@",t[0],t[1],t[2]];}
+- (instancetype)initWithDirectory:(NSURL *)directory fetch:(TIORoadTileFetch)fetch{
+ if(!directory||!fetch||!(self=[super init]))return nil;_dir=directory;_fetch=[fetch copy];_retryAfter=30;_queue=[NSMutableArray new];_queued=[NSMutableSet new];_busy=[NSMutableSet new];_failedAt=[NSMutableDictionary new];
+ NSFileManager *fm=NSFileManager.defaultManager;[fm createDirectoryAtURL:_dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
+ // A trip that never ended normally (crash, force quit) is forgotten after a day.
+ for(NSURL *u in [fm contentsOfDirectoryAtURL:_dir includingPropertiesForKeys:@[NSURLContentModificationDateKey] options:0 error:nil]){NSDate *m=nil;[u getResourceValue:&m forKey:NSURLContentModificationDateKey error:nil];if(m&&-m.timeIntervalSinceNow>86400)[fm removeItemAtURL:u error:nil];}
+ _template=[NSString stringWithContentsOfURL:[_dir URLByAppendingPathComponent:@"template.txt"] encoding:NSUTF8StringEncoding error:nil];return self;
+}
+- (NSURL *)fileFor:(NSArray *)t{return [_dir URLByAppendingPathComponent:[Key(t) stringByAppendingString:@".tile"]];}
+- (NSData *)tile:(NSArray *)t{if(t.count!=3)return nil;NSData *d=[NSData dataWithContentsOfURL:[self fileFor:t]];return d?[d decompressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZFSE error:nil]:nil;}
+- (BOOL)saved:(NSArray *)t{return [NSFileManager.defaultManager fileExistsAtPath:[self fileFor:t].path];}
+- (void)want:(NSArray *)tiles urgent:(BOOL)urgent{
+ NSMutableArray *add=[NSMutableArray new];for(NSArray *t in tiles){if(t.count!=3||[self saved:t])continue;BOOL queued=[_queued containsObject:Key(t)];if(urgent||!queued){if(queued)[_queue removeObject:t];[_queued addObject:Key(t)];[add addObject:t];}}
+ if(urgent){[_queue insertObjects:add atIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0,add.count)]];for(NSArray *t in add)[_failedAt removeObjectForKey:Key(t)];}else [_queue addObjectsFromArray:add];
+ [self pump];
+}
+- (void)pump{
+ if(!_queue.count)return;NSUInteger epoch=_epoch;
+ if(!_template){if(_templateBusy)return;_templateBusy=YES;
+  _fetch([NSURL URLWithString:@"https://tiles.openfreemap.org/planet"],^(NSData *d){NSDictionary *j=d.length&&d.length<=256*1024?[NSJSONSerialization JSONObjectWithData:d options:0 error:nil]:nil;
+   NSString *t=[j isKindOfClass:NSDictionary.class]&&[j[@"tiles"] isKindOfClass:NSArray.class]&&[j[@"tiles"] count]?j[@"tiles"][0]:nil;
+   BOOL ok=[t isKindOfClass:NSString.class]&&[t hasPrefix:@"https://tiles.openfreemap.org/"]&&[t hasSuffix:@"/{z}/{x}/{y}.pbf"];
+   dispatch_async(dispatch_get_main_queue(),^{if(epoch!=self->_epoch)return;self->_templateBusy=NO;if(ok){self->_template=t;[t writeToURL:[self->_dir URLByAppendingPathComponent:@"template.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];[self pump];}else [self retryLater];});});
+  return;}
+ NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;BOOL waiting=NO;
+ for(NSArray *t in [_queue copy]){if(_busy.count>=4||_downloads>=5000)break;NSString *k=Key(t);if([_busy containsObject:k])continue;
+  NSNumber *failed=_failedAt[k];if(failed&&now-failed.doubleValue<_retryAfter){waiting=YES;continue;}
+  [_busy addObject:k];_downloads++;NSString *u=[[[_template stringByReplacingOccurrencesOfString:@"{z}" withString:[t[0] stringValue]] stringByReplacingOccurrencesOfString:@"{x}" withString:[t[1] stringValue]] stringByReplacingOccurrencesOfString:@"{y}" withString:[t[2] stringValue]];
+  _fetch([NSURL URLWithString:u],^(NSData *d){NSData *packed=d.length&&d.length<=4*1024*1024?[d compressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZFSE error:nil]:nil;
+   BOOL ok=packed&&[packed writeToURL:[self fileFor:t] options:NSDataWritingAtomic error:nil];
+   dispatch_async(dispatch_get_main_queue(),^{if(epoch!=self->_epoch){if(ok)[NSFileManager.defaultManager removeItemAtURL:[self fileFor:t] error:nil];return;}
+    [self->_busy removeObject:k];if(ok){[self->_queue removeObject:t];[self->_queued removeObject:k];[self->_failedAt removeObjectForKey:k];self->_saved++;self->_bytes+=d.length;if(self.landed)self.landed();}else self->_failedAt[k]=@(NSProcessInfo.processInfo.systemUptime);
+    [self pump];});});
+ }
+ if(waiting&&!_busy.count)[self retryLater];
+}
+- (void)retryLater{if(_retryQueued)return;_retryQueued=YES;NSUInteger epoch=_epoch;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(_retryAfter*NSEC_PER_SEC)),dispatch_get_main_queue(),^{if(epoch!=self->_epoch)return;self->_retryQueued=NO;[self pump];});}
+- (void)clear{_epoch++;[_queue removeAllObjects];[_queued removeAllObjects];[_busy removeAllObjects];[_failedAt removeAllObjects];_saved=0;_downloads=0;_bytes=0;_retryQueued=NO;_templateBusy=NO;
+ NSFileManager *fm=NSFileManager.defaultManager;for(NSURL *u in [fm contentsOfDirectoryAtURL:_dir includingPropertiesForKeys:nil options:0 error:nil])if([u.pathExtension isEqual:@"tile"])[fm removeItemAtURL:u error:nil];}
+- (NSDictionary *)status{return @{@"wanted":@(_queue.count+_saved),@"saved":@(_saved),@"failed":@(_failedAt.count),@"downloading":@(_busy.count),@"downloadedBytes":@(_bytes)};}
+@end

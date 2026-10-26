@@ -6,4 +6,8 @@
 - (NSDictionary *)decorate:(NSDictionary *)frame coordinates:(NSArray *)coords;
 - (void)reset;
 - (NSDictionary *)coverageStatus; // regions, features, requests, requestInFlight
+#if TIO_MAPKIT_ENABLED
+- (void)prefetchRoute:(NSArray *)coords; // save the route corridor's tiles now, for dead zones later
+- (void)forgetSavedRoads;                  // delete this trip's saved tiles
+#endif
 @end

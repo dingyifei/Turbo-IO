@@ -14,7 +14,7 @@
 // MKPlacemark is deprecated on newer SDKs but is the iOS 16 way to build a map item.
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-static NSString *const RoadsKey=@"TurboMapKitNearbyRoadsV2"; // V2: road data moved from Overpass to OpenFreeMap; asks again
+static NSString *const RoadsKey=@"TurboMapKitNearbyRoadsV3"; // V3: route corridor saved on the phone for dead zones; asks again
 enum {ModeWalk=0,ModeCycle=1,ModeDrive=2};
 static double SimSpeed(NSInteger mode){return mode==ModeDrive?11:mode==ModeCycle?4.5:1.4;}
 static MKDirectionsTransportType Transport(NSInteger mode){return mode==ModeDrive?MKDirectionsTransportTypeAutomobile:mode==ModeCycle?MKDirectionsTransportTypeCycling:MKDirectionsTransportTypeWalking;}
@@ -70,7 +70,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 @property TIORoadMap *roadMap;
 @property NSTimer *timer;
 @property BOOL idleBefore,inBackground,openMapsPending;
-@property NSTimeInterval openMapsAt,lastTrace,lastTraceSave;
+@property NSTimeInterval openMapsAt,lastTrace,lastTraceSave,lastLabel;
 @property NSUInteger offers,fixes;
 @property NSMutableArray *trace;
 @property NSString *note;
@@ -127,7 +127,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     [super viewDidDisappear:animated];
     // A presented alert or the lock screen does not end navigation; leaving the panel does.
     if(!self.isMovingFromParentViewController&&!self.isBeingDismissed&&!self.navigationController.isBeingDismissed)return;
-    TNVLifecycle(@"mapkit-panel-closed");[self stopNavigation:nil];[self.timer invalidate];self.timer=nil;[self.locator stopUpdatingLocation];
+    TNVLifecycle(@"mapkit-panel-closed");[self stopNavigation:nil];[self.roadMap forgetSavedRoads];[self.timer invalidate];self.timer=nil;[self.locator stopUpdatingLocation];
 }
 - (void)dealloc{[self.timer invalidate];[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)researchClosed{[self stopNavigation:@"Navigation ended."];}
@@ -212,6 +212,8 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
         if(g!=self.generation)return;MKRoute *route=response.routes.firstObject;TIOGuideRoute *guide=route?GuideRoute(route):nil;
         if(!guide){self.planning=NO;self.rerouting=NO;self.note=reroute?@"Couldn't find a new route. Keep following the old one or end navigation.":[NSString stringWithFormat:@"No route found%@.",error.localizedDescription.length?[@": " stringByAppendingString:error.localizedDescription]:@""];[self refresh];return;}
         self.route=route;self.guide=guide;self.planning=NO;self.snapStep=0;
+        // Save the street map along the whole route now (often still on Wi-Fi); a reroute adds its new corridor.
+        if([NSUserDefaults.standardUserDefaults boolForKey:RoadsKey]){self.roadMap.allowNetwork=YES;if(!reroute&&!self.navigating)[self.roadMap forgetSavedRoads];[self.roadMap prefetchRoute:guide.points];}
         if(self.line)[self.map removeOverlay:self.line];self.line=route.polyline;[self.map addOverlay:self.line level:MKOverlayLevelAboveRoads];
         if(reroute){self.rerouting=NO;self.note=@"New route found.";}
         else{self.note=nil;[self.map setVisibleMapRect:self.line.boundingMapRect edgePadding:UIEdgeInsetsMake(200,40,260,40) animated:YES];}
@@ -246,7 +248,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 - (void)stopNavigation:(NSString *)message{
     BOOL was=self.navigating;self.navigating=NO;self.generation++;self.rerouting=NO;self.weak=NO;self.simPaused=NO;
     TDPPhoneNavigationStop(); // also asks a failed session to send its one farewell STOP
-    self.glassesStarted=NO;self.glassesTried=NO;[self.roadMap reset];
+    self.glassesStarted=NO;self.glassesTried=NO;[self.roadMap reset];if(was)[self.roadMap forgetSavedRoads]; // a trip's route corridor is not kept after it ends
     if(self.simMarker){[self.map removeAnnotation:self.simMarker];self.simMarker=nil;}
     if(was){UIApplication.sharedApplication.idleTimerDisabled=self.idleBefore;self.map.userTrackingMode=MKUserTrackingModeNone;self.locator.desiredAccuracy=kCLLocationAccuracyBest;
         if(BackgroundLocation()){self.locator.allowsBackgroundLocationUpdates=NO;self.locator.pausesLocationUpdatesAutomatically=YES;}
@@ -275,6 +277,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     }
     if(self.glassesStarted){NSDictionary *s=TDPPhoneNavigationStatus();if([s[@"failed"] boolValue]||(![s[@"active"] boolValue]&&![s[@"busy"] boolValue])){self.glassesStarted=NO;if(self.navigating&&!self.arrived)self.note=@"Lost the glasses connection. Use ⋯ › Reconnect glasses.";}}
     if(self.openMapsPending&&(self.glassesStarted||(self.glassesTried&&!self.glassesStarted)||now-self.openMapsAt>8)){self.openMapsPending=NO;[self openAppleMaps];}
+    if(now-self.lastLabel>=1){self.lastLabel=now;self.glassesLabel.text=[self glassesText];} // map-saving progress
     if(self.navigating&&now-self.lastTrace>=2)[self traceEvent:@"tick"];
     if(self.navigating&&now-self.lastTraceSave>=5)[self saveTrace];
     if(now-self.lastUI>=0.5&&!self.inBackground)[self refresh];
@@ -334,7 +337,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     if(!self.trace)return;self.lastTrace=NSProcessInfo.processInfo.systemUptime;NSDictionary *s=TDPPhoneNavigationStatus();
     NSMutableDictionary *e=[@{@"event":event,@"t":@(round(self.lastTrace*10)/10),@"app":AppState(),@"fixes":@(self.fixes),@"offers":@(self.offers),@"glassesStarted":@(self.glassesStarted),@"simulated":@(self.simulated),@"rerouting":@(self.rerouting),@"weak":@(self.weak)} mutableCopy];
     if(self.fix)e[@"fixAge"]=@(round(-self.fix.timestamp.timeIntervalSinceNow*10)/10);
-    NSDictionary *roads=self.roadMap.coverageStatus;e[@"roadsOn"]=@(self.roadMap.enabled);e[@"roadFeatures"]=roads[@"features"]?:@0;e[@"roadRequests"]=roads[@"requests"]?:@0;e[@"roadLoading"]=roads[@"requestInFlight"]?:@NO;
+    NSDictionary *roads=self.roadMap.coverageStatus;e[@"roadsOn"]=@(self.roadMap.enabled);e[@"roadFeatures"]=roads[@"features"]?:@0;e[@"roadRequests"]=roads[@"requests"]?:@0;e[@"roadLoading"]=roads[@"requestInFlight"]?:@NO;e[@"tilesWanted"]=roads[@"tiles"][@"wanted"]?:@0;e[@"tilesSaved"]=roads[@"tiles"][@"saved"]?:@0;e[@"tilesFailed"]=roads[@"tiles"][@"failed"]?:@0;e[@"tileBytes"]=roads[@"tiles"][@"downloadedBytes"]?:@0;
     for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"fileMs",@"poseAgeMs",@"replayPaused",@"inFlightOp",@"files",@"backoff",@"mapPaths",@"mapLabels"])if(s[k])e[k]=s[k];
     [self.trace addObject:e];if(self.trace.count>900)[self.trace removeObjectAtIndex:0];
 }
@@ -343,7 +346,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     NSString *dir=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
     [NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
     NSString *file=[dir stringByAppendingPathComponent:@"mapkit-navigation-trace.json"];
-    NSDictionary *d=@{@"build":@"MAPKIT-NAV-05",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
+    NSDictionary *d=@{@"build":@"MAPKIT-NAV-06",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
     NSData *data=[NSJSONSerialization dataWithJSONObject:d options:0 error:nil];
     if([data writeToFile:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil])[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }
@@ -368,10 +371,12 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     self.glassesLabel.text=[self glassesText];
 }
 - (NSString *)glassesText{
-    NSDictionary *s=TDPPhoneNavigationStatus();NSDictionary *c=self.roadMap.coverageStatus;NSString *roads=!self.roadMap.enabled?@"roads off":[c[@"features"] unsignedIntegerValue]?@"roads on · OpenFreeMap © OpenStreetMap":[c[@"requestInFlight"] boolValue]?@"roads loading":[c[@"requests"] unsignedIntegerValue]?@"roads unavailable, retrying":@"roads waiting for GPS";
+    NSDictionary *s=TDPPhoneNavigationStatus();NSDictionary *c=self.roadMap.coverageStatus,*t=c[@"tiles"];NSUInteger saved=[t[@"saved"] unsignedIntegerValue],wanted=[t[@"wanted"] unsignedIntegerValue];
+    NSString *stored=wanted>saved?[NSString stringWithFormat:@" · saving map %lu/%lu%@",(unsigned long)saved,(unsigned long)wanted,[t[@"failed"] unsignedIntegerValue]?@", no signal":@""]:wanted?@" · route map saved":@"";
+    NSString *roads=!self.roadMap.enabled?@"roads off":[([c[@"features"] unsignedIntegerValue]?@"roads on · OpenFreeMap © OpenStreetMap":@"roads waiting") stringByAppendingString:stored];
     if([s[@"active"] boolValue])return [NSString stringWithFormat:@"Glasses: connected · %@ updates · %@ maps · %@",s[@"snapshots"]?:@0,s[@"maps"]?:@0,roads];
-    if(self.navigating)return self.glassesTried?@"Glasses: not connected":@"Glasses: connecting…";
-    return @"Glasses: turn-by-turn starts automatically with navigation (TMG2 firmware).";
+    if(self.navigating)return [(self.glassesTried?@"Glasses: not connected":@"Glasses: connecting…") stringByAppendingString:stored];
+    return [@"Glasses: turn-by-turn starts automatically with navigation" stringByAppendingString:stored];
 }
 - (void)more{
     UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Navigation options" message:@"Guidance behind Apple Maps or the lock screen is experimental; if the glasses freeze, return to this screen. Not for driving." preferredStyle:UIAlertControllerStyleActionSheet];
@@ -388,10 +393,10 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 }
 - (void)toggleRoads{
     NSUserDefaults *u=NSUserDefaults.standardUserDefaults;
-    if([u boolForKey:RoadsKey]){[u setBool:NO forKey:RoadsKey];self.roadMap.enabled=NO;self.roadMap.allowNetwork=NO;[self refresh];return;}
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Show nearby roads?" message:@"While navigating, the map tiles around you (about 2 km) are downloaded from OpenFreeMap (tiles.openfreemap.org, OpenStreetMap data) to draw nearby streets on the glasses: a few tiles each time you move about 700 m, at most 40 requests per trip. The route itself still comes from Apple Maps. Coverage can be incomplete." preferredStyle:UIAlertControllerStyleAlert];
+    if([u boolForKey:RoadsKey]){[u setBool:NO forKey:RoadsKey];self.roadMap.enabled=NO;self.roadMap.allowNetwork=NO;[self.roadMap forgetSavedRoads];[self refresh];return;}
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Show nearby roads?" message:@"When you plan a route, the street map along it (about 700 m either side) is downloaded from OpenFreeMap (tiles.openfreemap.org, OpenStreetMap data) and saved on this phone until navigation ends, so nearby streets still show on the glasses without cell signal. Open highway needs well under 1 MB per 100 km; city driving more (San Francisco to San Jose is about 10 MB). Plan on Wi-Fi when you can. The route itself still comes from Apple Maps." preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [a addAction:[UIAlertAction actionWithTitle:@"Allow" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[u setBool:YES forKey:RoadsKey];self.roadMap.enabled=YES;self.roadMap.allowNetwork=YES;[self refresh];}]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Allow" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[u setBool:YES forKey:RoadsKey];self.roadMap.enabled=YES;self.roadMap.allowNetwork=YES;if(self.guide)[self.roadMap prefetchRoute:self.guide.points];[self refresh];}]];
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)reconnect{

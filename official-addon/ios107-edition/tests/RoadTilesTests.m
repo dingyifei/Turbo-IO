@@ -46,5 +46,30 @@ int main(void){@autoreleasepool{
  // ~2 km box in San Francisco spans 2x2 z14 tiles; a cap below that returns nothing rather than partial coverage.
  NSArray *sf=@[@(37.7858-.009),@(-122.4064-.0114),@(37.7858+.009),@(-122.4064+.0114)];NSArray *t=TIORoadTilesCovering(sf,14,9);
  assert(t.count==4&&[t[0] isEqual:(@[@14,@2620,@6331])]&&[t[3] isEqual:(@[@14,@2621,@6332])]&&TIORoadTilesCovering(sf,14,3).count==0&&TIORoadTilesCovering(@[@1,@2],14,9).count==0);
- puts("PASS tiles: OpenMapTiles class mapping, ramps/bridges/layers, multi-lines, label-only names, bbox filter, truncation/bit-flip safety, tile cover");
+ // Corridor: a 5 km drive due east saves tiles in driving order, both sides of the road where the corridor crosses a tile row.
+ NSMutableArray *drive=[NSMutableArray new];for(int i=0;i<=50;i++)[drive addObject:@[@37.7858,@(-122.4064+i*100/(111319.49*cos(37.7858*M_PI/180)))]];
+ NSArray *corridor=TIORoadTilesAlongRoute(drive,14,600,3000);assert(corridor.count>=3&&corridor.count<=12&&[corridor[0][1] intValue]<=2621);
+ for(NSUInteger i=1;i<corridor.count;i++)assert([corridor[i][1] intValue]>=[corridor[i-1][1] intValue]-1);assert([[NSSet setWithArray:corridor] count]==corridor.count);
+ assert(TIORoadTilesAlongRoute(drive,14,600,2).count==2&&TIORoadTilesAlongRoute(@[drive[0]],14,600,10).count==0);
+ // Store: fake network serves the tile index and tiles; one tile fails until the "signal" returns.
+ NSURL *dir=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] isDirectory:YES];
+ __block BOOL signal=NO;__block unsigned fetches=0;NSData *body=[@"tile-bytes" dataUsingEncoding:NSUTF8StringEncoding];
+ TIORoadTileFetch fake=^(NSURL *url,void(^done)(NSData *)){fetches++;NSData *d=nil;
+  if([url.absoluteString isEqual:@"https://tiles.openfreemap.org/planet"])d=[NSJSONSerialization dataWithJSONObject:@{@"tiles":@[@"https://tiles.openfreemap.org/planet/v1/{z}/{x}/{y}.pbf"]} options:0 error:nil];
+  else if([url.absoluteString hasPrefix:@"https://tiles.openfreemap.org/planet/v1/14/"]&&(signal||![url.absoluteString hasSuffix:@"/2/2.pbf"]))d=body;
+  dispatch_async(dispatch_get_global_queue(0,0),^{done(d);});};
+ void(^spin)(BOOL(^)(void))=^(BOOL(^until)(void)){NSDate *end=[NSDate dateWithTimeIntervalSinceNow:5];while(!until()&&end.timeIntervalSinceNow>0)[NSRunLoop.mainRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];};
+ TIORoadTileStore *store=[[TIORoadTileStore alloc]initWithDirectory:dir fetch:fake];store.retryAfter=0.2;__block unsigned landed=0;store.landed=^{landed++;};
+ NSArray *six=@[@[@14,@1,@1],@[@14,@2,@1],@[@14,@3,@1],@[@14,@1,@2],@[@14,@2,@2],@[@14,@3,@2]];[store want:six urgent:NO];
+ spin(^{return (BOOL)([store.status[@"saved"] intValue]==5&&[store.status[@"failed"] intValue]==1);});
+ assert([store.status[@"saved"] intValue]==5&&[store.status[@"wanted"] intValue]==6&&landed==5&&[[store tile:six[0]] isEqual:body]&&![store tile:six[4]]);
+ unsigned before=fetches;[store want:@[six[0]] urgent:YES];assert(fetches==before); // saved tiles are never fetched again
+ signal=YES;spin(^{return (BOOL)([store.status[@"saved"] intValue]==6);});assert([store.status[@"saved"] intValue]==6&&[store.status[@"failed"] intValue]==0&&[[store tile:six[4]] isEqual:body]);
+ // Offline restart: a fresh store reads the saved tiles and the saved tile index without the network.
+ TIORoadTileStore *offline=[[TIORoadTileStore alloc]initWithDirectory:dir fetch:^(NSURL *u,void(^done)(NSData *)){assert(0);}];[offline want:six urgent:YES];assert([[offline tile:six[5]] isEqual:body]);
+ // Ending the trip deletes every saved tile.
+ [store clear];assert(![store tile:six[0]]&&[store.status[@"saved"] intValue]==0);
+ for(NSURL *u in [NSFileManager.defaultManager contentsOfDirectoryAtURL:dir includingPropertiesForKeys:nil options:0 error:nil])assert(![u.pathExtension isEqual:@"tile"]);
+ [NSFileManager.defaultManager removeItemAtURL:dir error:nil];
+ puts("PASS tiles: OpenMapTiles class mapping, ramps/bridges/layers, multi-lines, label-only names, bbox filter, truncation/bit-flip safety, tile cover, route corridor order, saved-tile store with retry/offline/clear");
 }return 0;}
