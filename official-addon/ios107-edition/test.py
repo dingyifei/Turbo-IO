@@ -1,6 +1,6 @@
 """Portable macOS offline tests. No phone, network, signing or flashing."""
 from pathlib import Path
-import argparse, fnmatch, json, subprocess, tempfile, zipfile
+import argparse, fnmatch, json, os, subprocess, tempfile, zipfile
 P=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,required=True)
 parser.add_argument('--app107',type=Path)
@@ -26,8 +26,8 @@ ROOT=P.parents[1];FW=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
 out=P/'build/tests';out.mkdir(parents=True,exist_ok=True)
-def run(name,cmd):
-    r=subprocess.run(list(map(str,cmd)),capture_output=True,text=True,timeout=180)
+def run(name,cmd,env=None):
+    r=subprocess.run(list(map(str,cmd)),capture_output=True,text=True,timeout=180,env=env)
     (out/(name+'.log')).write_text(r.stdout+r.stderr)
     if r.returncode:raise RuntimeError(name+' failed: '+r.stdout+r.stderr)
 flags=['xcrun','clang','-O1','-g','-fobjc-arc','-fblocks','-Wno-incompatible-pointer-types','-fsanitize=address,undefined','-framework','Foundation','-I',P]
@@ -45,6 +45,16 @@ def test(name,files,argv=(),extra=(),san=True,runs=None):
     run(name+'-build',compile_flags+list(extra)+[P/f for f in files]+['-o',out/name])
     for i,arguments in enumerate(runs if runs is not None else [argv]):
         run(name+('-'+str(i+1) if runs is not None else ''),[out/name,*arguments])
+    groups.append(name);print(name+': PASS')
+def catalyst_test(name,files,argv=(),extra=()):
+    seen.add(name)
+    if only is not None and name not in only:
+        skip(name,'not selected by --only');return
+    catalyst=['xcrun','clang','-target','arm64-apple-ios16.0-macabi','-fobjc-arc','-fmodules',
+        '-framework','Foundation','-framework','UIKit','-I',P]
+    run(name+'-build',catalyst+list(extra)+[P/f for f in files]+['-o',out/name])
+    home=out/'catalyst-home';(home/'Documents').mkdir(parents=True,exist_ok=True)
+    run(name,[out/name,*argv],env={**os.environ,'CFFIXED_USER_HOME':str(home)})
     groups.append(name);print(name+': PASS')
 test('host',['HostCompatibilityTests.m'])
 test('stability',['RoadMap.m','nav_runtime.c','tests/StabilityTests.m'])
@@ -119,6 +129,8 @@ test('display-phone',['DisplayPhoneTests.m', 'DisplayPhoneSession.m', 'DisplayPh
 test('display-task-binding',['DisplayTaskBindingTests.m', 'DisplayPhoneSession.m', 'DisplayPhoneTransport.m', 'DisplayReplyObserver.m', 'DisplayDiagnostics.m', 'DisplayDelta.c', 'display_client.c', 'display_carrier.c', 'display_runtime.c'],argv=[],extra=['-fmodules', '-DTIO_DISPLAY_PHONE=1', '-DTIO_DISPLAY_DIAGNOSTICS=1', '-DTIO_NATIVE_NAV=1', '-DTIO_IMAGE_RX_WIDE=1'])
 test('display-delta-session',['DisplayDeltaSessionTests.m', 'DisplayPhoneSession.m', 'DisplayPhoneTransport.m', 'DisplayReplyObserver.m', 'DisplayDiagnostics.m', 'DisplayDelta.c', 'display_client.c', 'display_carrier.c', 'display_runtime.c'],argv=[],extra=['-fmodules', '-DTIO_DISPLAY_PHONE=1', '-DTIO_DISPLAY_DIAGNOSTICS=1', '-DTIO_NATIVE_NAV=1', '-DTIO_IMAGE_RX_WIDE=1'])
 test('display-frame-pacing',['DisplayFramePacingTests.m', 'DisplayPhoneSession.m', 'DisplayPhoneTransport.m', 'DisplayReplyObserver.m', 'DisplayDiagnostics.m', 'DisplayDelta.c', 'display_client.c', 'display_carrier.c', 'display_runtime.c'],argv=[],extra=['-fmodules', '-DTIO_DISPLAY_PHONE=1', '-DTIO_DISPLAY_DIAGNOSTICS=1', '-DTIO_NATIVE_NAV=1', '-DTIO_IMAGE_RX_WIDE=1'])
+
+# UIKit Catalyst attempts failed on baseline; see manifest exclusion reasons.
 
 if only is None:
     missing={v['group'] for v in manifest.values() if v['status']=='run'}-set(groups)-{n for n,_ in skipped}

@@ -79,7 +79,7 @@
     },
     "HUDPreviewTests.m": {
       "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "reason": "UIKit-only; host cannot run (Catalyst failed: RuntimeError: hud-preview-build failed: HUDPreviewTests.m:1:9: fatal error: 'UIKit/UIKit.h' file not found); covered by preview smoke"
     },
     "HomeTabLayoutTests.m": {
       "status": "run",
@@ -188,7 +188,7 @@
     },
     "ResearchCatalogTests.m": {
       "status": "excluded",
-      "reason": "pending WP0 wiring"
+      "reason": "UIKit; ResearchCatalog is replaced in WP5 (Catalyst failed: CameraUI.h:1:9: fatal error: 'UIKit/UIKit.h' file not found)"
     },
     "SubtitleHUDTests.m": {
       "status": "run",
