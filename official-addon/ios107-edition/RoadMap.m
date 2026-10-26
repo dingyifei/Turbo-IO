@@ -2,6 +2,10 @@
 #include "nav_map.h"
 #if TIO_MAPKIT_ENABLED
 #import "NavigationGuidance.h"
+#import "RoadTiles.h"
+#define TIO_ROAD_REQUESTS 40
+#else
+#define TIO_ROAD_REQUESTS 6
 #endif
 #include <math.h>
 #include <float.h>
@@ -46,11 +50,11 @@ static NSData *NameData(id value){
 static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_link",@"trunk_link"] containsObject:h])return 0;if([h hasPrefix:@"primary"])return 1;if([h hasPrefix:@"secondary"])return 2;if([h hasPrefix:@"tertiary"])return 3;if([@[@"residential",@"unclassified",@"living_street"] containsObject:h])return 4;return 5;}
 @implementation TIORoadMap{
  NSArray *(^_convert)(double,double);NSArray *_features,*_bbox,*_origin,*_regions;double _labelHeading,_sceneAt;NSData *_scene,*_scene2;uint32_t _generation;id _segment;NSString *_note;
- NSURLSession *_session;NSURLSessionDataTask *_task;NSMutableData *_received;NSTimeInterval _lastRequest;NSUInteger _requests,_epoch;BOOL _httpOK;
+ NSURLSession *_session;NSURLSessionDataTask *_task;NSMutableData *_received;NSTimeInterval _lastRequest;NSUInteger _requests,_epoch;BOOL _httpOK,_tileBusy;NSString *_tileTemplate;
 }
 - (instancetype)initWithWGS84ToMap:(NSArray *(^)(double,double))convert{if((self=[super init])){_convert=[convert copy];_note=@"路网关闭 · 保留原路线示意图";}return self;}
 - (NSString *)note{return _note?:@"";}
-- (void)reset{_epoch++;[_task cancel];[_session invalidateAndCancel];_task=nil;_session=nil;_received=nil;_regions=nil;_features=nil;_bbox=nil;_scene=nil;_scene2=nil;_origin=nil;_segment=nil;_requests=0;_lastRequest=0;self.allowNetwork=NO;_note=@"路网缓存已清理";}
+- (void)reset{_epoch++;[_task cancel];[_session invalidateAndCancel];_task=nil;_session=nil;_received=nil;_tileBusy=NO;_regions=nil;_features=nil;_bbox=nil;_scene=nil;_scene2=nil;_origin=nil;_segment=nil;_requests=0;_lastRequest=0;self.allowNetwork=NO;_note=@"路网缓存已清理";}
 - (void)dealloc{[_session invalidateAndCancel];}
 - (NSArray *)wgs:(NSArray *)map{
  if(!LL(map))return nil;if(!_convert)return map;
@@ -87,7 +91,7 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
 }
 - (BOOL)covers:(NSArray *)ll {return [self hasCoverage:ll margin:0];}
 - (NSDictionary *)coverageStatus {
- return @{@"regions":@(_regions.count),@"features":@(_features.count),@"requests":@(_requests),@"networkAllowed":@(self.allowNetwork),@"requestInFlight":@(_task!=nil),@"requestLimit":@6};
+ return @{@"regions":@(_regions.count),@"features":@(_features.count),@"requests":@(_requests),@"networkAllowed":@(self.allowNetwork),@"requestInFlight":@(_task!=nil||_tileBusy),@"requestLimit":@(TIO_ROAD_REQUESTS)};
 }
 - (BOOL)hasVisibleLabelsAt:(NSArray *)position heading:(unsigned)heading {
  if(!_scene2||!_origin)return NO;
@@ -101,6 +105,38 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
 }
 - (NSString *)fixturePath:(NSString *)name{return [NSBundle.mainBundle pathForResource:name ofType:@"json" inDirectory:@"TurboHUDMaps"];}
 - (BOOL)loadFixture:(NSArray *)ll{for(NSString *name in @[@"shenzhen",@"hongkong"]){NSString *p=[self fixturePath:name];NSData *d=p?[NSData dataWithContentsOfFile:p]:nil;if(!d||d.length>2*1024*1024)continue;NSDictionary *j=[NSJSONSerialization JSONObjectWithData:d options:0 error:nil];if(![j isKindOfClass:NSDictionary.class]||![j[@"meta"] isKindOfClass:NSDictionary.class]||![j[@"geojson"] isKindOfClass:NSDictionary.class])continue;NSArray *b=j[@"meta"][@"bbox"],*features=j[@"geojson"][@"features"];if(![b isKindOfClass:NSArray.class]||b.count!=4||![features isKindOfClass:NSArray.class]||features.count>5000)continue;BOOL valid=YES;for(id n in b)valid&=N(n,-180,180);if(!valid)continue;double lat=[ll[0] doubleValue],lon=[ll[1] doubleValue];if(lat< [b[0] doubleValue]||lat>[b[2] doubleValue]||lon<[b[1] doubleValue]||lon>[b[3] doubleValue])continue;[self installFeatures:features bbox:b];_note=@"公开区域离线路网 · © OpenStreetMap";return YES;}return NO;}
+#if TIO_MAPKIT_ENABLED
+// OpenFreeMap z14 vector tiles from a CDN answer in ~0.2 s; the public Overpass servers took 30+ s or failed (502/timeout).
+- (void)request:(NSArray *)ll{
+ NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(!self.allowNetwork||_tileBusy||_requests>=TIO_ROAD_REQUESTS||(_lastRequest&&now-_lastRequest<5))return;
+ double lat=[ll[0] doubleValue],lon=[ll[1] doubleValue],dlat=.009,dlon=.009/MAX(.2,cos(lat*M_PI/180));
+ NSArray *bbox=@[@(lat-dlat),@(lon-dlon),@(lat+dlat),@(lon+dlon)],*tiles=TIORoadTilesCovering(bbox,14,9);if(!tiles.count)return;
+ if(!_session){NSURLSessionConfiguration *c=NSURLSessionConfiguration.ephemeralSessionConfiguration;c.URLCache=nil;c.HTTPCookieStorage=nil;c.timeoutIntervalForRequest=10;c.timeoutIntervalForResource=20;c.HTTPAdditionalHeaders=@{@"User-Agent":@"TurboIO-TNR1-private-pilot/1.0"};_session=[NSURLSession sessionWithConfiguration:c];}
+ _tileBusy=YES;_lastRequest=now;_requests++;_note=@"Loading nearby roads";NSUInteger epoch=_epoch;NSURLSession *session=_session;
+ void(^done)(NSArray *,NSString *)=^(NSArray *features,NSString *note){dispatch_async(dispatch_get_main_queue(),^{if(epoch!=self->_epoch)return;self->_tileBusy=NO;
+  if(features.count){[self installFeatures:features bbox:bbox];self->_note=@"Nearby roads ready · OpenFreeMap © OpenMapTiles © OpenStreetMap";}else self->_note=note;});};
+ BOOL(^ours)(NSURLResponse *,NSData *,NSUInteger)=^BOOL(NSURLResponse *r,NSData *d,NSUInteger cap){return [r isKindOfClass:NSHTTPURLResponse.class]&&[(NSHTTPURLResponse *)r statusCode]==200&&[r.URL.host isEqual:@"tiles.openfreemap.org"]&&d.length&&d.length<=cap;};
+ void(^fetch)(NSString *)=^(NSString *template){
+  NSMutableArray *all=[NSMutableArray new];__block BOOL failed=NO;dispatch_group_t group=dispatch_group_create();NSLock *lock=[NSLock new];
+  for(NSArray *t in tiles){NSString *u=[[[template stringByReplacingOccurrencesOfString:@"{z}" withString:[t[0] stringValue]] stringByReplacingOccurrencesOfString:@"{x}" withString:[t[1] stringValue]] stringByReplacingOccurrencesOfString:@"{y}" withString:[t[2] stringValue]];
+   dispatch_group_enter(group);[[session dataTaskWithURL:[NSURL URLWithString:u] completionHandler:^(NSData *d,NSURLResponse *r,NSError *e){
+    NSArray *f=!e&&ours(r,d,4*1024*1024)?TIORoadTileFeatures(d,[t[0] unsignedIntValue],[t[1] unsignedIntValue],[t[2] unsignedIntValue],bbox):nil;
+    [lock lock];if(f)[all addObjectsFromArray:f];else failed=YES;[lock unlock];dispatch_group_leave(group);}] resume];}
+  dispatch_group_notify(group,dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{
+   // Partial coverage would claim the whole box; retry the whole set instead. Keep names and main roads before paths when trimming.
+   if(failed){done(nil,@"Nearby roads unavailable · retrying");return;}
+   NSMutableArray *keep=[NSMutableArray new],*minor=[NSMutableArray new];NSArray *small=@[@"service",@"track",@"path",@"footway",@"cycleway",@"steps",@"bridleway",@"pedestrian"];
+   for(NSDictionary *f in all)[([small containsObject:f[@"properties"][@"highway"]]&&!f[@"properties"][@"labelOnly"]?minor:keep) addObject:f];
+   for(NSDictionary *f in minor){if(keep.count>=5000)break;[keep addObject:f];}while(keep.count>5000)[keep removeLastObject];
+   done(keep,@"No roads in this area");});
+ };
+ if(_tileTemplate){fetch(_tileTemplate);return;}
+ [[session dataTaskWithURL:[NSURL URLWithString:@"https://tiles.openfreemap.org/planet"] completionHandler:^(NSData *d,NSURLResponse *r,NSError *e){
+  NSDictionary *j=!e&&ours(r,d,256*1024)?[NSJSONSerialization JSONObjectWithData:d options:0 error:nil]:nil;NSString *template=[j isKindOfClass:NSDictionary.class]&&[j[@"tiles"] isKindOfClass:NSArray.class]&&[j[@"tiles"] count]?j[@"tiles"][0]:nil;
+  if(![template isKindOfClass:NSString.class]||![template hasPrefix:@"https://tiles.openfreemap.org/"]||![template hasSuffix:@"/{z}/{x}/{y}.pbf"]){done(nil,@"Nearby roads unavailable · retrying");return;}
+  dispatch_async(dispatch_get_main_queue(),^{if(epoch!=self->_epoch)return;self->_tileTemplate=template;fetch(template);});}] resume];
+}
+#else
 - (void)request:(NSArray *)ll{
  NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(!self.allowNetwork||_task||_requests>=6||(_lastRequest&&now-_lastRequest<60))return;
  double lat=[ll[0] doubleValue],lon=[ll[1] doubleValue],dlat=.006,dlon=.006/MAX(.2,cos(lat*M_PI/180));
@@ -112,6 +148,7 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  _session=[NSURLSession sessionWithConfiguration:c delegate:self delegateQueue:NSOperationQueue.mainQueue];_received=[NSMutableData new];_httpOK=NO;_task=[_session dataTaskWithRequest:r];_task.taskDescription=[[NSJSONSerialization dataWithJSONObject:bbox options:0 error:nil] base64EncodedStringWithOptions:0];
  _lastRequest=now;_requests++;_note=@"试验图源请求中（最多6次/会话，间隔60秒）";[_task resume];
 }
+#endif
 - (void)URLSession:(NSURLSession *)s task:(NSURLSessionTask *)t willPerformHTTPRedirection:(NSHTTPURLResponse *)r newRequest:(NSURLRequest *)q completionHandler:(void(^)(NSURLRequest *))done{done(nil);}
 - (void)URLSession:(NSURLSession *)s dataTask:(NSURLSessionDataTask *)t didReceiveResponse:(NSURLResponse *)r completionHandler:(void(^)(NSURLSessionResponseDisposition))done{_httpOK=s==_session&&t==_task&&[(NSHTTPURLResponse *)r statusCode]==200&&r.expectedContentLength<=2*1024*1024;done(_httpOK?NSURLSessionResponseAllow:NSURLSessionResponseCancel);}
 - (void)URLSession:(NSURLSession *)s dataTask:(NSURLSessionDataTask *)t didReceiveData:(NSData *)d{if(s!=_session||t!=_task)return;if(d.length>2*1024*1024-_received.length){_httpOK=NO;[t cancel];return;}[_received appendData:d];}
@@ -124,10 +161,10 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  });
 }
 - (NSData *)scene:(NSArray *)coords origin:(NSArray *)origin{
- NSMutableArray *items=[NSMutableArray new];NSUInteger visited=0;
+ NSMutableArray *items=[NSMutableArray new],*nameLines=[NSMutableArray new];NSUInteger visited=0; // name lines label drawn roads, never drawn themselves
  for(NSDictionary *f in _features){if(++visited>10000)break;NSDictionary *p=f[@"properties"],*g=f[@"geometry"];if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"]||![g[@"coordinates"] isKindOfClass:NSArray.class])continue;
-  if([Text(p[@"area"]) isEqual:@"yes"])continue;
-  unsigned style=RoadStyle(Text(p[@"highway"]));for(NSArray *part in Pieces(g[@"coordinates"],origin,_convert,YES)){if(part.count<2)continue;double rank=DBL_MAX;for(NSUInteger i=1;i<part.count;i++){double x=[part[i-1][0] doubleValue],y=[part[i-1][1] doubleValue],dx=[part[i][0] doubleValue]-x,dy=[part[i][1] doubleValue]-y,t=MAX(0,MIN(1,-(x*dx+y*dy)/MAX(1,dx*dx+dy*dy)));rank=MIN(rank,hypot(x+dx*t,y+dy*t)/4);}NSString *bridge=Text(p[@"bridge"]),*tunnel=Text(p[@"tunnel"]);unsigned flags=(bridge.length&&![bridge isEqual:@"no"]?1:0)|(tunnel.length&&![tunnel isEqual:@"no"]?2:0);[items addObject:@{@"points":part,@"style":@(style),@"flags":@(flags),@"layer":@(MAX(-8,MIN(8,[Text(p[@"layer"]) intValue]))),@"name":LabelName(p),@"rank":@(rank+style*18)}];if(items.count>4096)break;}if(items.count>4096)break;
+  if([Text(p[@"area"]) isEqual:@"yes"])continue;BOOL labelOnly=[p[@"labelOnly"] isEqual:@YES];
+  unsigned style=RoadStyle(Text(p[@"highway"]));for(NSArray *part in Pieces(g[@"coordinates"],origin,_convert,YES)){if(part.count<2)continue;double rank=DBL_MAX;for(NSUInteger i=1;i<part.count;i++){double x=[part[i-1][0] doubleValue],y=[part[i-1][1] doubleValue],dx=[part[i][0] doubleValue]-x,dy=[part[i][1] doubleValue]-y,t=MAX(0,MIN(1,-(x*dx+y*dy)/MAX(1,dx*dx+dy*dy)));rank=MIN(rank,hypot(x+dx*t,y+dy*t)/4);}NSString *bridge=Text(p[@"bridge"]),*tunnel=Text(p[@"tunnel"]);unsigned flags=(bridge.length&&![bridge isEqual:@"no"]?1:0)|(tunnel.length&&![tunnel isEqual:@"no"]?2:0);[items addObject:@{@"points":part,@"style":@(style),@"flags":@(flags),@"layer":@(MAX(-8,MIN(8,[Text(p[@"layer"]) intValue]))),@"name":LabelName(p),@"rank":@(rank+style*18)}];if(labelOnly){[nameLines addObject:items.lastObject];[items removeLastObject];}if(items.count>4096)break;}if(items.count>4096)break;
  }
  [items sortUsingComparator:^NSComparisonResult(id a,id b){return [a[@"rank"] compare:b[@"rank"]];}];
  NSMutableArray *route=[NSMutableArray new];for(NSArray *part in Pieces(coords,origin,nil,NO))if(part.count>=2)[route addObject:@{@"points":part,@"style":@6,@"flags":@0,@"layer":@8,@"rank":@0}];
@@ -141,7 +178,9 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  // Use the same heading transform and occlusion zones as the unchanged firmware.
  NSMutableData *labels=[NSMutableData new];NSMutableSet *seen=[NSMutableSet new];NSMutableArray *occupied=[NSMutableArray new];
  double radians=_labelHeading*M_PI/180,ss=sin(radians),cc=cos(radians);
- for(NSDictionary *item in [selected sortedArrayUsingComparator:^NSComparisonResult(id a,id b){return [a[@"rank"] compare:b[@"rank"]];}]){
+ double reach=0;for(NSDictionary *item in selected)if([item[@"style"] intValue]!=6)reach=MAX(reach,[item[@"rank"] doubleValue]);
+ NSMutableArray *candidates=[selected mutableCopy];for(NSDictionary *line in nameLines)if([line[@"rank"] doubleValue]<=reach)[candidates addObject:line]; // only names of roads that made the drawn budget
+ for(NSDictionary *item in [candidates sortedArrayUsingComparator:^NSComparisonResult(id a,id b){return [a[@"rank"] compare:b[@"rank"]];}]){
   NSData *name=NameData(item[@"name"]);if(!name.length||[seen containsObject:name])continue;
   unsigned width=0;NSString *text=[[NSString alloc]initWithData:name encoding:NSUTF8StringEncoding];for(NSUInteger j=0;j<text.length;j++)width+=[text characterAtIndex:j]<128?9:16;
   NSArray *part=item[@"points"],*anchor=nil,*screenRect=nil;double best=DBL_MAX;
@@ -164,8 +203,8 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  // Prefetch before the rendered viewport reaches an edge. Do not clear the old
  // region while a new request is queued, rate-limited, fails, or is parsing.
  if(![self hasCoverage:wgs margin:300]) [self request:wgs];
- if(covered)_note=_task?@"周边路网已显示 · 正在预取下一段":@"周边路网已就绪 · © OpenStreetMap";
- else _note=_task?@"正在加载周边道路 · 保留已知路网":self.allowNetwork?(_requests>=6?@"本次图源请求已达上限 · 仅显示已有道路":@"当前区域路网暂缺 · 保留已有道路"):@"未授权周边道路 · 仅显示已有道路";
+ if(covered)_note=_task||_tileBusy?@"周边路网已显示 · 正在预取下一段":@"周边路网已就绪 · © OpenStreetMap";
+ else _note=_task||_tileBusy?@"正在加载周边道路 · 保留已知路网":self.allowNetwork?(_requests>=TIO_ROAD_REQUESTS?@"本次图源请求已达上限 · 仅显示已有道路":@"当前区域路网暂缺 · 保留已有道路"):@"未授权周边道路 · 仅显示已有道路";
  double now=NSProcessInfo.processInfo.systemUptime,heading=[frame[@"navHeading"] doubleValue],turn=fabs(fmod(heading-_labelHeading+540,360)-180);
  BOOL refreshNames=_features.count&&now-_sceneAt>=3&&(turn>=30||Distance(position,_origin?:position)>50||![self hasVisibleLabelsAt:position heading:(unsigned)heading]);
  if(!_scene||!_origin||Distance(position,_origin)>100||![_segment isEqual:frame[@"segment"]]||refreshNames){

@@ -14,7 +14,7 @@
 // MKPlacemark is deprecated on newer SDKs but is the iOS 16 way to build a map item.
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-static NSString *const RoadsKey=@"TurboMapKitNearbyRoadsV1";
+static NSString *const RoadsKey=@"TurboMapKitNearbyRoadsV2"; // V2: road data moved from Overpass to OpenFreeMap; asks again
 enum {ModeWalk=0,ModeCycle=1,ModeDrive=2};
 static double SimSpeed(NSInteger mode){return mode==ModeDrive?11:mode==ModeCycle?4.5:1.4;}
 static MKDirectionsTransportType Transport(NSInteger mode){return mode==ModeDrive?MKDirectionsTransportTypeAutomobile:mode==ModeCycle?MKDirectionsTransportTypeCycling:MKDirectionsTransportTypeWalking;}
@@ -287,7 +287,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     BOOL arrive=TIOGuideArrived(self.guide,s,lat,lon)||(self.simulated&&TIOGuideSimulate(self.guide,self.simElapsed,SimSpeed(self.mode)).done);
     TIOGuideProgressResult p=TIOGuideProgress(self.guide,s);NSInteger icon=arrive?TIOGuideIconArrive:self.rerouting?TIOGuideIconUnknown:TIOGuideIcon(self.guide,s.step);
     NSString *turn=self.rerouting&&!arrive?@"Rerouting…":TIOGuideTurnText(icon);
-    NSString *road=icon==TIOGuideIconArrive?(self.destinationName?:@""):self.rerouting||s.step+1>=(NSInteger)self.guide.steps.count?@"":TIOGuideRoadName(self.guide.steps[s.step+1].instructions);
+    NSString *road=icon==TIOGuideIconArrive?(self.destinationName?:@""):self.rerouting?@"":TIOGuideManeuverRoad(self.guide,s.step);
     // Show the matched position when close to the route; the raw fix when clearly off it.
     BOOL matched=s.offRoute<=15;double plat=matched?s.lat:lat,plon=matched?s.lon:lon;
     NSArray *ahead=TIOGuideUpcoming(self.guide,s,512);
@@ -334,7 +334,8 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     if(!self.trace)return;self.lastTrace=NSProcessInfo.processInfo.systemUptime;NSDictionary *s=TDPPhoneNavigationStatus();
     NSMutableDictionary *e=[@{@"event":event,@"t":@(round(self.lastTrace*10)/10),@"app":AppState(),@"fixes":@(self.fixes),@"offers":@(self.offers),@"glassesStarted":@(self.glassesStarted),@"simulated":@(self.simulated),@"rerouting":@(self.rerouting),@"weak":@(self.weak)} mutableCopy];
     if(self.fix)e[@"fixAge"]=@(round(-self.fix.timestamp.timeIntervalSinceNow*10)/10);
-    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"fileMs",@"poseAgeMs",@"replayPaused",@"inFlightOp",@"files",@"backoff"])if(s[k])e[k]=s[k];
+    NSDictionary *roads=self.roadMap.coverageStatus;e[@"roadsOn"]=@(self.roadMap.enabled);e[@"roadFeatures"]=roads[@"features"]?:@0;e[@"roadRequests"]=roads[@"requests"]?:@0;e[@"roadLoading"]=roads[@"requestInFlight"]?:@NO;
+    for(NSString *k in @[@"active",@"busy",@"failed",@"snapshots",@"maps",@"poses",@"ackMs",@"fileMs",@"poseAgeMs",@"replayPaused",@"inFlightOp",@"files",@"backoff",@"mapPaths",@"mapLabels"])if(s[k])e[k]=s[k];
     [self.trace addObject:e];if(self.trace.count>900)[self.trace removeObjectAtIndex:0];
 }
 - (void)saveTrace{
@@ -342,7 +343,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     NSString *dir=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
     [NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
     NSString *file=[dir stringByAppendingPathComponent:@"mapkit-navigation-trace.json"];
-    NSDictionary *d=@{@"build":@"MAPKIT-NAV-04",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
+    NSDictionary *d=@{@"build":@"MAPKIT-NAV-05",@"backgroundLocationMode":@(BackgroundLocation()),@"saved":@(NSDate.date.timeIntervalSince1970),@"events":[self.trace copy]};
     NSData *data=[NSJSONSerialization dataWithJSONObject:d options:0 error:nil];
     if([data writeToFile:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil])[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }
@@ -367,7 +368,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     self.glassesLabel.text=[self glassesText];
 }
 - (NSString *)glassesText{
-    NSDictionary *s=TDPPhoneNavigationStatus();NSString *roads=!self.roadMap.enabled?@"roads off":self.display[@"tnrScene"]?@"roads on · © OpenStreetMap":@"roads loading";
+    NSDictionary *s=TDPPhoneNavigationStatus();NSDictionary *c=self.roadMap.coverageStatus;NSString *roads=!self.roadMap.enabled?@"roads off":[c[@"features"] unsignedIntegerValue]?@"roads on · OpenFreeMap © OpenStreetMap":[c[@"requestInFlight"] boolValue]?@"roads loading":[c[@"requests"] unsignedIntegerValue]?@"roads unavailable, retrying":@"roads waiting for GPS";
     if([s[@"active"] boolValue])return [NSString stringWithFormat:@"Glasses: connected · %@ updates · %@ maps · %@",s[@"snapshots"]?:@0,s[@"maps"]?:@0,roads];
     if(self.navigating)return self.glassesTried?@"Glasses: not connected":@"Glasses: connecting…";
     return @"Glasses: turn-by-turn starts automatically with navigation (TMG2 firmware).";
@@ -388,7 +389,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 - (void)toggleRoads{
     NSUserDefaults *u=NSUserDefaults.standardUserDefaults;
     if([u boolForKey:RoadsKey]){[u setBool:NO forKey:RoadsKey];self.roadMap.enabled=NO;self.roadMap.allowNetwork=NO;[self refresh];return;}
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Show nearby roads?" message:@"While navigating, the area around you (about 1.2 km) is sent to the public OpenStreetMap Overpass service to draw nearby streets on the glasses: at most 6 requests per trip, at least 60 s apart. The route itself still comes from Apple Maps. Coverage can be incomplete." preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Show nearby roads?" message:@"While navigating, the map tiles around you (about 2 km) are downloaded from OpenFreeMap (tiles.openfreemap.org, OpenStreetMap data) to draw nearby streets on the glasses: a few tiles each time you move about 700 m, at most 40 requests per trip. The route itself still comes from Apple Maps. Coverage can be incomplete." preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [a addAction:[UIAlertAction actionWithTitle:@"Allow" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[u setBool:YES forKey:RoadsKey];self.roadMap.enabled=YES;self.roadMap.allowNetwork=YES;[self refresh];}]];
     [self presentViewController:a animated:YES completion:nil];

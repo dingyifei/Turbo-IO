@@ -7,11 +7,12 @@ static TIOGuideStep *Step(NSArray *points,NSString *text){return [TIOGuideStep s
 static BOOL Near(double a,double b,double tolerance){return fabs(a-b)<=tolerance;}
 static TIOGuideRoute *Turn(double degrees,NSString *text){
     double r=degrees*M_PI/180;
-    return [TIOGuideRoute routeWithSteps:@[Step(@[P(0,0),P(0,100)],@"Head north"),Step(@[P(0,100),P(100*sin(r),100+100*cos(r))],text)] expectedSeconds:200];
+    return [TIOGuideRoute routeWithSteps:@[Step(@[P(0,0),P(0,100)],text),Step(@[P(0,100),P(100*sin(r),100+100*cos(r))],@"Arrive at the destination")] expectedSeconds:200];
 }
 int main(void){@autoreleasepool{
     // North 200 m, east 150 m, north 100 m; a zero-length MapKit start step is dropped.
-    TIOGuideRoute *route=[TIOGuideRoute routeWithSteps:@[Step(@[P(0,0)],@""),Step(@[P(0,0),P(0,50),P(0,100),P(0,150),P(0,200)],@"Head north on Market Street"),Step(@[P(0,200),P(150,200)],@"Turn right onto Mission Street"),Step(@[P(150,200),P(150,300)],@"Turn left onto North 3rd Street toward Downtown")] expectedSeconds:450];
+    // As MKDirections returns it: each step's text is the maneuver at the END of its polyline.
+    TIOGuideRoute *route=[TIOGuideRoute routeWithSteps:@[Step(@[P(0,0)],@"Start on Market Street"),Step(@[P(0,0),P(0,50),P(0,100),P(0,150),P(0,200)],@"Turn right onto Mission Street"),Step(@[P(0,200),P(150,200)],@"Turn left onto North 3rd Street toward Downtown"),Step(@[P(150,200),P(150,300)],@"The destination is on your left")] expectedSeconds:450];
     assert(route&&route.steps.count==3&&route.points.count==7&&Near(route.totalMeters,450,1));
     assert(![TIOGuideRoute routeWithSteps:@[Step(@[P(0,0)],@"")] expectedSeconds:10]);
 
@@ -41,6 +42,9 @@ int main(void){@autoreleasepool{
     assert([TIOGuideTurnText(TIOGuideIconRight) isEqual:@"Turn right"]&&[TIOGuideTurnText(TIOGuideIconArrive) isEqual:@"Arrive"]&&[TIOGuideTurnText(0) isEqual:@"Follow the route"]);
     for(NSInteger icon=0;icon<32;icon++)assert([TIOGuideTurnText(icon) lengthOfBytesUsingEncoding:NSUTF8StringEncoding]<48);
 
+    // Driving north on step 0 the glasses show the road of the coming right turn, not the one after it.
+    assert([TIOGuideManeuverRoad(route,0) isEqual:@"Mission St"]&&[TIOGuideManeuverRoad(route,1) isEqual:@"N 3rd St"]&&[TIOGuideManeuverRoad(route,2) isEqual:@""]&&[TIOGuideManeuverRoad(route,3) isEqual:@""]&&[TIOGuideManeuverRoad(route,-1) isEqual:@""]);
+    assert([TIOGuideRoadName(@"Take a right onto McAllister St") isEqual:@"McAllister St"]);
     assert([TIOGuideRoadName(@"Turn right onto Mission Street") isEqual:@"Mission St"]);
     assert([TIOGuideRoadName(@"Turn left onto North 3rd Street toward Downtown") isEqual:@"N 3rd St"]);
     assert([TIOGuideRoadName(@"Continue on US-101 South.") isEqual:@"US-101 S"]);
@@ -64,5 +68,5 @@ int main(void){@autoreleasepool{
     pose=TIOGuideSimulate(route,250/1.4,1.4);assert(!pose.done&&Near(pose.heading,90,1)&&TIOGuideDistance(pose.lat,pose.lon,[P(50,200)[0] doubleValue],[P(50,200)[1] doubleValue])<0.5);
     pose=TIOGuideSimulate(route,1000,1.4);assert(pose.done&&TIOGuideDistance(pose.lat,pose.lon,[route.points.lastObject[0] doubleValue],[route.points.lastObject[1] doubleValue])<0.01);
     pose=TIOGuideSimulate(route,NAN,1.4);assert(!pose.done&&TIOGuideDistance(pose.lat,pose.lon,Lat0,Lon0)<0.5);
-    puts("PASS guidance: junction dedupe, windowed snap with full-route fallback, progress/ETA, >=2 upcoming points, icon bands, roundabout/U-turn text, English turn text, road names/abbreviation, heading fallback, display distance steps, reroute strikes/spacing/cap, arrival, simulation");
+    puts("PASS guidance: junction dedupe, windowed snap with full-route fallback, progress/ETA, >=2 upcoming points, icon bands, roundabout/U-turn text, English turn text, road names/abbreviation, maneuver road from the current step, heading fallback, display distance steps, reroute strikes/spacing/cap, arrival, simulation");
 }return 0;}

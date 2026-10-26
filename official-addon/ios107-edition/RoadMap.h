@@ -5,4 +5,5 @@
 - (instancetype)initWithWGS84ToMap:(NSArray *(^)(double lat,double lon))convert;
 - (NSDictionary *)decorate:(NSDictionary *)frame coordinates:(NSArray *)coords;
 - (void)reset;
+- (NSDictionary *)coverageStatus; // regions, features, requests, requestInFlight
 @end

@@ -86,9 +86,10 @@ NSArray *TIOGuideUpcoming(TIOGuideRoute *r,TIOGuideSnapResult s,NSUInteger max){
     if(out.count<2){NSUInteger n=r.points.count;return @[r.points[n-2],r.points[n-1]];}
     return out;
 }
+NSString *TIOGuideManeuverRoad(TIOGuideRoute *r,NSInteger k){return k>=0&&k<(NSInteger)r.steps.count?TIOGuideRoadName(r.steps[k].instructions):@"";}
 NSInteger TIOGuideIcon(TIOGuideRoute *r,NSInteger k){
     NSInteger last=(NSInteger)r.steps.count-1;if(k<0)return TIOGuideIconUnknown;if(k>=last)return TIOGuideIconArrive;
-    NSString *next=r.steps[k+1].instructions.lowercaseString;
+    NSString *next=r.steps[k].instructions.lowercaseString; // MapKit: a step's text is the maneuver at its end
     if([next containsString:@"u-turn"]||[next containsString:@"make a u"])return TIOGuideIconUTurn;
     if([next containsString:@"roundabout"]||[next containsString:@"traffic circle"]||[next containsString:@"rotary"])return TIOGuideIconRoundabout;
     double junction=r.cum[[r endOf:k]],stepStart=r.cum[[r startOf:k]],nextEnd=r.cum[[r endOf:k+1]];
@@ -107,6 +108,7 @@ NSString *TIOGuideRoadName(NSString *text){
     if(![text isKindOfClass:NSString.class]||!text.length)return @"";NSRange at=NSMakeRange(NSNotFound,0);
     for(NSString *key in @[@" onto ",@" on "]){at=[text rangeOfString:key options:NSCaseInsensitiveSearch|NSBackwardsSearch];if(at.location!=NSNotFound)break;}
     if(at.location==NSNotFound)return @"";NSString *name=[text substringFromIndex:NSMaxRange(at)];
+    if([name.lowercaseString hasPrefix:@"your "]||[name.lowercaseString hasPrefix:@"the left"]||[name.lowercaseString hasPrefix:@"the right"])return @""; // "The destination is on your left"
     for(NSString *cut in @[@" toward",@" towards",@" for ",@", then"]){NSRange c=[name rangeOfString:cut options:NSCaseInsensitiveSearch];if(c.location!=NSNotFound)name=[name substringToIndex:c.location];}
     name=[name stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" .,;"]];
     return [name.lowercaseString hasPrefix:@"the destination"]?@"":TIOGuideAbbreviate(name);

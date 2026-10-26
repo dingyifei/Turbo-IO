@@ -58,7 +58,7 @@ if [[ ${TIO_MAPKIT_ENABLED:-0} == 1 ]]; then
   [[ "$mode" == embedded && ${TIO_DISPLAY_PHONE:-0} == 1 ]] || { echo 'MapKit navigation requires embedded mode and TIO_DISPLAY_PHONE=1' >&2; exit 2; }
   output=build/mapkit/TurboIOPrivateAddon.dylib
   mkdir -p build/mapkit
-  nav_options=(-DTIO_MAPKIT_ENABLED=1 -framework MapKit NavigationGuidance.m MapKitNavigationUI.m)
+  nav_options=(-DTIO_MAPKIT_ENABLED=1 -framework MapKit NavigationGuidance.m MapKitNavigationUI.m RoadTiles.m)
 fi
 if [[ ${TIO_CLASSIC_BINDINGS:-0} == 1 ]]; then
   link_options+=(-Wl,-no_fixup_chains)

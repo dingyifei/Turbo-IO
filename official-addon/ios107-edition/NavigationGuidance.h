@@ -35,6 +35,8 @@ NSArray<NSArray<NSNumber *> *> *TIOGuideUpcoming(TIOGuideRoute *route,TIOGuideSn
 NSInteger TIOGuideIcon(TIOGuideRoute *route,NSInteger step);
 NSString *TIOGuideTurnText(NSInteger icon);
 NSString *TIOGuideRoadName(NSString *instructions);
+// Road entered at the end of step k. MapKit step text describes the maneuver at the end of the step's polyline.
+NSString *TIOGuideManeuverRoad(TIOGuideRoute *route,NSInteger k);
 NSString *TIOGuideAbbreviate(NSString *name);
 double TIOGuideHeading(double course,double speed,double segmentBearing);
 // Display-sized distance steps, so the glasses get a new number only when it visibly changes.
