@@ -1,7 +1,5 @@
 #import "camera-v1/CameraUI.h"
 #import "context-english-v1/CEOfficialLifelog.h"
-#import "dots-v1/DotsUI.h"
-#import "dots-v1/DotsVoiceRuntime.h"
 #import "context-english-v1/ContextEnglishPanel.h"
 #import "context-english-v1/CEAutoRuntime.h"
 extern BOOL TDPPhoneAutomaticIdle(void);
@@ -250,8 +248,6 @@ static id CopyResponse(id source,NSString *answer,BOOL final) {
         NSString *test=[@"私用模型测试 " stringByAppendingString:[NSUUID.UUID.UUIDString substringToIndex:6]];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(),^{[self emitText:test done:YES error:nil generation:gen];});
     }else{
-        NSString *dots=TDDotsVoiceSubmit(_asr);
-        if(dots){[self emitText:dots done:YES error:nil generation:gen];return YES;}
         _request=[TIORequest new];__weak typeof(self) weakSelf=self;
         TIOTodoSetChatContext(listener,response);
         _request.createTodo=^(NSString *title,void (^completion)(NSDictionary *result)){TIOTodoCreateFromTool(title,completion);};
@@ -446,7 +442,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
     NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];[tableView deselectRowAtIndexPath:ip animated:YES];
     if([r[@"key"] isEqual:@"camera"]){[self.navigationController pushViewController:TCCameraController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"dots"]){[self.navigationController pushViewController:TIOGetDotsPanel() animated:YES];return;}
     if([r[@"key"] isEqual:@"contextEnglish"]){[self.navigationController pushViewController:TIOContextEnglishPanel() animated:YES];return;}
     if([r[@"key"] isEqual:@"didi"]){[self.navigationController pushViewController:[DRRideController new] animated:YES];return;}
     if([r[@"key"] isEqual:@"dashboardCard"]){[self.navigationController pushViewController:TDCDashboardController() animated:YES];return;}
@@ -597,7 +592,6 @@ __attribute__((constructor)) static void Load(void) {
                 return @{@"endpoint":endpoint,@"model":[Prefs stringForKey:@"model"]?:@"",
                     @"key":ReadKey(endpoint)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};
             },^(NSArray *cards,NSDictionary *settings,void(^progress)(NSString *,BOOL)){CEPhoneSendCards(cards,settings,progress);});
-            TDDotsVoiceConfigure(^BOOL{return HooksReady&&(!Controller.ownsTurn||Controller.responseDone)&&TDPPhoneAutomaticIdle();});
             CEAutoConfigure(^NSDictionary *{NSString *endpoint=[Prefs stringForKey:@"endpoint"]?:@"";
                 return @{@"endpoint":endpoint,@"model":[Prefs stringForKey:@"model"]?:@"",
                     @"key":ReadKey(endpoint)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};

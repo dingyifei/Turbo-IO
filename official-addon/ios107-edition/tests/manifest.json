@@ -282,50 +282,6 @@
       "status": "excluded",
       "reason": "module removed in WP3 (context-english-v1)"
     },
-    "dots-v1/DotsCatalogTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/DotsClientTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/DotsFileGateTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/DotsGlassesTransferTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/DotsPhoneBridgeTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/DotsVoiceTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/dots_menu_test.c": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/dots_sender_test.c": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/dots_service_test.c": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/dots_view_test.c": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
-    "dots-v1/dots_wire_test.c": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (dots-v1)"
-    },
     "navigation-runtime-v1/nav_test.c": {
       "status": "excluded",
       "reason": "module removed in WP3 (navigation-runtime-v1)"

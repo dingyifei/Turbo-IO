@@ -1,5 +1,4 @@
 #import "camera-v1/CameraUI.h"
-#import "dots-v1/DotsPhoneBridge.h"
 #import "Brightness.h"
 #import "TodoRuntime.h"
 #import "context-english-v1/CEAutoRuntime.h"
@@ -52,25 +51,23 @@ static void MethodHook(id self,SEL cmd,id call,id result){
 #if TIO_DISPLAY_PHONE
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"])TDPDiagRecord(@"gate",@{@"blocked":@(otaBlocked),@"otaStage":TIOOTAFlashStatus()[@"stage"]?:@0});
 #endif
-    if(otaBlocked){TDDotsPhoneRejectedBeforeSDK(Get(call,@"arguments"));if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO transfer gate: not authorized or packet mismatch"});return;}
-    if(TIOOTABlockPreparationCall(call)){TDDotsPhoneRejectedBeforeSDK(Get(call,@"arguments"));if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO OTA preparation only: outbound traffic blocked"});return;}
-    if(TIOGlassesLogBlockCall(call)){TDDotsPhoneRejectedBeforeSDK(Get(call,@"arguments"));if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"本机日志研究任务隔离中，未重复请求"});return;}
-    if(TDDotsPhoneBlocks(Get(call,@"method"),Get(call,@"arguments"))){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Dots file transfer active; retry after completion"});return;}
+    if(otaBlocked){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO transfer gate: not authorized or packet mismatch"});return;}
+    if(TIOOTABlockPreparationCall(call)){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO OTA preparation only: outbound traffic blocked"});return;}
+    if(TIOGlassesLogBlockCall(call)){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"本机日志研究任务隔离中，未重复请求"});return;}
     {NSString *method=Get(call,@"method");id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIONewsTeleObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIONavObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
     if([Get(call,@"method") isEqual:@"rayneonet_sendMessage"]){id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]&&[args[@"businessId"] isEqual:@22]){void (^work)(void)=^{TIOTodoObserveSnapshotMessage(args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
     id args=Get(call,@"arguments");
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&[args isKindOfClass:NSDictionary.class]){
         CEAutoHostFileActivity();
-        NSString *dotsTicket=TDDotsPhoneWillSend(args);
         void(^original)(id)=result;
-        PriorMethod(self,cmd,call,[^(id response){dispatch_async(dispatch_get_main_queue(),^{TDDotsPhoneFileResult(dotsTicket,response);TIONewsTeleObserveFileResult(args,response);});if(original)original(response);} copy]);
+        PriorMethod(self,cmd,call,[^(id response){dispatch_async(dispatch_get_main_queue(),^{TIONewsTeleObserveFileResult(args,response);});if(original)original(response);} copy]);
     }else PriorMethod(self,cmd,call,result);
 }
 static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
     if([channel isKindOfClass:NSString.class]&&[channel.lowercaseString containsString:@"rayneonet"]&&message.length<262144){
         Class cls=NSClassFromString(@"FlutterStandardMethodCodec");
         @try{if([cls respondsToSelector:@selector(sharedInstance)]){id codec=((id(*)(id,SEL))objc_msgSend)(cls,@selector(sharedInstance));id event=((id(*)(id,SEL,id))objc_msgSend)(codec,NSSelectorFromString(@"decodeEnvelope:"),message);
-            if([event isKindOfClass:NSDictionary.class]){dispatch_async(dispatch_get_main_queue(),^{TCCameraObserveConnection(event);TDDotsPhoneObserveConnection(event);});NSMutableDictionary *copy=[event mutableCopy];id original=copy[@"message"];if([original isKindOfClass:NSDictionary.class]){NSMutableDictionary *m=[original mutableCopy];NSData *data=Data(m[@"payload"]);if(data)m[@"payload"]=data;copy[@"message"]=m;}
+            if([event isKindOfClass:NSDictionary.class]){dispatch_async(dispatch_get_main_queue(),^{TCCameraObserveConnection(event);});NSMutableDictionary *copy=[event mutableCopy];id original=copy[@"message"];if([original isKindOfClass:NSDictionary.class]){NSMutableDictionary *m=[original mutableCopy];NSData *data=Data(m[@"payload"]);if(data)m[@"payload"]=data;copy[@"message"]=m;}
 #if TIO_DISPLAY_PHONE
                 TDPDiagEnvelope(copy);
 #endif
@@ -79,7 +76,6 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
             // File results are siblings of messageReceived, not business messages.
             // Only our exact sender task is consumed; foreign events keep Flutter's path.
             if(RouteFileEvent(event, ^BOOL(NSDictionary *e){
-                TDDotsPhoneObserveFile(e);
                 TAPObserveEvent(e); // Observe on main before the shared file router returns. Do not consume foreign tasks.
 #if TIO_DISPLAY_PHONE
                 if(TDPPhoneConsumeEvent(e))return YES;
@@ -113,5 +109,5 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
         }}@catch(NSException *e){}
     }PriorSend(self,cmd,channel,message,reply);
 }
-BOOL TIOInstallGlassesChannelHook(void){if(Installed)return YES;Method method=class_getInstanceMethod(NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(NSClassFromString(@"FlutterEngine"),NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));if(!Sign(method,4)||!Sign(send,5))return NO;PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;TIOOTARecordTransportHookReady();TDDotsPhoneHooksReady();return YES;}
+BOOL TIOInstallGlassesChannelHook(void){if(Installed)return YES;Method method=class_getInstanceMethod(NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(NSClassFromString(@"FlutterEngine"),NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));if(!Sign(method,4)||!Sign(send,5))return NO;PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;TIOOTARecordTransportHookReady();return YES;}
 BOOL TIOGlassesChannelHookInstalled(void){return Installed;}

@@ -17,7 +17,6 @@ NSArray<NSDictionary *> *LegacySections(NSString *page){
     if([page isEqual:@"library"])return @[
 
         @{@"title":@"遥控拍照",@"rows":@[Row(@"camera",@"遥控拍照 · TCM1",@"camera",-2,29)]},
-        @{@"title":@"Dots",@"rows":@[Row(@"dots",@"Dots · 消息",@"bubble.left.and.bubble.right",-2,28)]},
         @{@"title":@"学习研究",@"rows":@[Row(@"contextEnglish",@"情境英语",@"character.book.closed",-2,27)]},
         @{@"title":@"阅读空间",@"rows":@[Row(@"weread",@"微信读书 · 第十一项菜单",@"books.vertical",-2,21)]},
         @{@"title":@"音乐随行",@"rows":@[Row(@"music",@"网易云音乐 · 第十项菜单",@"music.note",-2,20)]},
@@ -48,7 +47,7 @@ NSArray<NSDictionary *> *TIOResearchSections(NSString *page){
  NSMutableDictionary *lookup=[NSMutableDictionary new];for(NSString *p in @[@"model",@"library",@"diagnostics"])for(NSDictionary *section in LegacySections(p))for(NSDictionary *r in section[@"rows"])lookup[r[@"key"]]=r;
  NSArray *groups=nil;
  if([page isEqual:@"model"])groups=@[@[@"日常对话",@"mode",@"tts",@"search"],@[@"模型与接口",@"api",@"thinking"],@[@"语音设置",@"ttsTest",@"exit"],@[@"Agent 与工具",@"agent",@"knowledge",@"didi",@"tools",@"searchKey"],@[@"提示词与记忆",@"prompt",@"aboutMe",@"history"]];
- if([page isEqual:@"library"])groups=@[@[@"遥控拍照",@"camera"],@[@"Dots 消息",@"dots"],@[@"随身应用",@"music",@"weread",@"navigation",@"didi",@"localTranslation",@"recordings"],@[@"学习研究",@"contextEnglish"],@[@"文字整理",@"summary"],@[@"全天智记",@"lifelogText",@"lifelogAudio",@"capture",@"archive"]];
+ if([page isEqual:@"library"])groups=@[@[@"遥控拍照",@"camera"],@[@"随身应用",@"music",@"weread",@"navigation",@"didi",@"localTranslation",@"recordings"],@[@"学习研究",@"contextEnglish"],@[@"文字整理",@"summary"],@[@"全天智记",@"lifelogText",@"lifelogAudio",@"capture",@"archive"]];
  if([page isEqual:@"diagnostics"])groups=@[@[@"运行与日志",@"diagnosticsRuntime",@"glassesLog",@"status"],@[@"协议实验",@"subtitleHUD",@"dashboardCard",@"a2ui",@"apiTest",@"searchTest",@"todoTest"],@[@"显示实验",@"displayPhone",@"imageRXLab"],@[@"实验固件 · 有风险",@"experimentalOTA"]];
  if([page isEqual:@"homeTools"])groups=@[@[@"首页工具",@"dashboardEditor",@"developerApps"]];
  if(!groups)return @[];NSMutableArray *sections=[NSMutableArray new];NSDictionary *names=@{@"dashboardEditor":@"仪表盘",@"developerApps":@"应用广场",@"music":@"音乐",@"weread":@"微信读书",@"navigation":NavigationName,@"localTranslation":@"本地翻译与字幕",@"recordings":@"录音与分享"};

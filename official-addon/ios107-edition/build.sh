@@ -287,17 +287,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   context-english-v1/ContextEnglishTransport.m \
   context-english-v1/ContextEnglishHistory.m \
   context-english-v1/english_progress.c \
-  dots-v1/DotsClient.m \
-  dots-v1/DotsVoice.m \
-  dots-v1/DotsVoiceRuntime.m \
-  dots-v1/DotsUI.m \
-  dots-v1/DotsSnapshot.m \
-  dots-v1/DotsGlassesTransfer.m \
-  dots-v1/DotsFileGate.m \
-  dots-v1/DotsPhoneBridge.m \
-  dots-v1/dots_view.c \
-  dots-v1/dots_wire.c \
-  dots-v1/dots_sender.c \
   -o "$output"
 codesign --force --sign - "$output"
 plutil -lint TurboIOPrivateAddon.plist

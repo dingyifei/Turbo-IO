@@ -1,6 +1,5 @@
 #import "OTAHost.h"
 #import "ExperimentalOTAFeed.h"
-#import "dots-v1/DotsGlassesTransfer.h"
 #import "context-english-v1/ContextEnglishTransport.h"
 #import "ExperimentalOTAFlash.h"
 #import "MusicTransport.h"
@@ -36,7 +35,6 @@ static const TIOOTAScopedSender ScopedFileSenders[]={
  TDPPhoneIsScopedCall,
 #endif
 #if TIO_DISPLAY_PHONE && TIO_NATIVE_NAV
- TDGlassesIsScopedCall,
  TAPIsScopedCall,
  TNVIsScopedCall,
  TMIsScopedCall,
