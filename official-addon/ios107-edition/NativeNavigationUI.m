@@ -1,4 +1,5 @@
 #import "NativeNavigationUI.h"
+#import "TIOLanguage.h"
 #import "MusicPlayer.h"
 #import "NativeNavigation.h"
 #import "TNVTransport.h"
@@ -34,7 +35,7 @@ void TNVLifecycle(NSString *event){Lifecycle=[event copy];if(!LifecycleTrace)Lif
  [LifecycleTrace addObject:@{@"event":event,@"at":@(NSProcessInfo.processInfo.systemUptime),@"busy":@(Session.busy),@"failed":Session.status[@"failed"]?:@NO}];if(LifecycleTrace.count>32)[LifecycleTrace removeObjectAtIndex:0];}
 BOOL TNVAlways(void){return [NSUserDefaults.standardUserDefaults boolForKey:@"TurboNavigationAlwaysOnV1"];}
 void TNVSetAlways(BOOL value){[NSUserDefaults.standardUserDefaults setBool:value forKey:@"TurboNavigationAlwaysOnV1"];[Session setAlways:value];}
-NSDictionary *TNVStatus(void){return Session.status?:@{@"active":@NO,@"busy":@NO,@"snapshots":@0,@"note":@"TNV1专用固件：手机开始导航后可自动打开眼镜页面"};}
+NSDictionary *TNVStatus(void){return Session.status?:@{@"active":@NO,@"busy":@NO,@"snapshots":@0,@"note":TIOText(@"TNV1专用固件：手机开始导航后可自动打开眼镜页面")};}
 BOOL TNVConsume(NSDictionary *e){if(Peer&&![Peer isEqual:TIOProtocolDevice()])[Session disconnect];BOOL used=[Session consume:e];CheckDrain();return used;}
 BOOL TNVPauseForOTA(void){return !Session.active&&!Session.busy;}
 void TNVPump(void){

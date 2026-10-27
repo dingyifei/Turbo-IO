@@ -1,4 +1,5 @@
 #import "NativeNavigation.h"
+#import "TIOLanguage.h"
 static unsigned U16(const uint8_t *p){return (unsigned)p[0]|((unsigned)p[1]<<8);}
 #include <math.h>
 #include "nav_map.h"
@@ -55,7 +56,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  NSMutableArray *_trace;
  NSTimeInterval _deadline,_lastOffer,_lastCommit,_lastWire,_next;NSUInteger _count;unsigned _op;
 }
-- (instancetype)initWithDevice:(NSString *)device session:(uint32_t)sid clock:(NSTimeInterval(^)(void))clock sender:(void(^)(NSData *,NSString *,TNVSubmitted))sender cleanup:(void(^)(NSString *))cleanup{if(!device.length||!sid||!clock||!sender)return nil;if((self=[super init])){_device=[device copy];_sid=sid;_clock=[clock copy];_sender=[sender copy];_cleanup=[cleanup copy];_note=@"尚未开始";}return self;}
+- (instancetype)initWithDevice:(NSString *)device session:(uint32_t)sid clock:(NSTimeInterval(^)(void))clock sender:(void(^)(NSData *,NSString *,TNVSubmitted))sender cleanup:(void(^)(NSString *))cleanup{if(!device.length||!sid||!clock||!sender)return nil;if((self=[super init])){_device=[device copy];_sid=sid;_clock=[clock copy];_sender=[sender copy];_cleanup=[cleanup copy];_note=TIOText(@"尚未开始");}return self;}
 - (BOOL)active{return _active;}- (BOOL)backoff{return _background||_clock()<_backoffUntil;}- (void)setBackground:(BOOL)background{_background=background;}- (BOOL)busy{return _packet||_fileBusy;}
 - (void)trace:(NSString *)event{if(!_trace)_trace=[NSMutableArray new];[_trace addObject:@{@"event":event,@"at":@(_clock()),@"seq":@(_seq),@"op":@(_op),@"ack":@(_ack),@"fileBusy":@(_fileBusy),@"submitted":@(_submitted),@"paused":@(_paused)}];if(_trace.count>48)[_trace removeObjectAtIndex:0];}
 - (NSDictionary *)status{return @{@"active":@(_active),@"busy":@(self.busy),@"note":_note?:@"",@"snapshots":@(_count),@"session":@(_sid),@"sequence":@(_seq),@"always":@(_always),@"failed":@(_failed),@"maps":@(_maps),@"poses":@(_poses),@"mapBytes":@(_mapV2?_map2Latest.length:_mapLatest.length),@"mapPaths":@(_mapLatest.length>=16?U16((const uint8_t *)_mapLatest.bytes+6):0),@"mapLabels":@(_map2Latest.length>=16?U16((const uint8_t *)_map2Latest.bytes+10):0),@"mapMode":@(_extended),@"roadLabels":@(_mapV2),@"replayPaused":@(_paused),@"source":_source?:@"unknown",@"ackMs":@(_ackMs),@"fileMs":@(_fileMs),@"commitMs":@(_commitMs),@"poseAgeMs":@(_poseAgeMs),@"wireBytes":@(_wireBytes),@"files":@(_files),@"backoff":@(self.backoff),@"inFlightOp":@(_packet?_op:0),@"inFlightAck":@(_ack),@"nativeFilePending":@(_fileBusy),@"trace":[_trace copy]?:@[]};}
@@ -68,13 +69,13 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(op==TNR_POSE){_poseCommitted=_sending;_lastPose=_clock();_poses++;}
  if(op==TNR_CLEAR){_mapCommitted=nil;_poseCommitted=nil;}
  _sending=nil;[self trace:@"committed"];
- if(op==TN_STOP){_active=NO;_stopping=NO;_note=@"眼镜已确认退出导航";}else _note=@"原生导航已提交 · 镜片效果待确认";
+ if(op==TN_STOP){_active=NO;_stopping=NO;_note=TIOText(@"眼镜已确认退出导航");}else _note=TIOText(@"原生导航已提交 · 镜片效果待确认");
 }
 - (BOOL)send:(enum TNOp)op scene:(NSData *)scene{
  if(self.busy||_failed||_seq==UINT32_MAX)return NO;uint8_t b[TNR_MAX_BYTES];size_t n=op>=TNR_SCENE?tnr_wrap(b,sizeof b,op,_sid,++_seq,scene.bytes,scene.length):tn_encode(b,sizeof b,op,_sid,++_seq,scene?(const TNScene *)scene.bytes:NULL);if(!n)return NO;
  _packet=[NSData dataWithBytes:b length:n];_wireBytes+=n;_files++;_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_submitted=NO;_fileBusy=YES;_op=op;_sending=scene;_lastWire=_clock();_deadline=_lastWire+8;/* poses too: a slow background transfer is late, and failing loses STOP */NSString *task=_task;
  [self trace:@"send"];__weak typeof(self) weak=self;_sender(_packet,task,^(BOOL ok,NSString *native){TNVSession *s=weak;if(!s||![task isEqual:s->_task])return;
-  if(!ok||![native isKindOfClass:NSString.class]||!native.length||native.length>256){s->_fileBusy=NO;[s fail:@"文件提交失败；停止导航发送"];return;}
+  if(!ok||![native isKindOfClass:NSString.class]||!native.length||native.length>256){s->_fileBusy=NO;[s fail:TIOText(@"文件提交失败；停止导航发送")];return;}
   s->_submitted=YES;s->_nativeTask=[native copy];NSArray *early=[s->_early copy];s->_early=nil;for(NSDictionary *e in early)[s consume:e];[s finish];});return YES;
 }
 - (void)mapOffer:(NSDictionary *)frame{
@@ -84,7 +85,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  NSData *v2=frame[@"tnrScene2"];_map2Latest=[v2 isKindOfClass:NSData.class]&&tnr_body_valid(TNR_SCENE2,v2.bytes,v2.length)&&U32(v2.bytes)==U32(map.bytes)?[v2 copy]:nil;
  _extended=YES;_mapLatest=[map copy];_poseLatest=[pose copy];_poseAt=[at doubleValue];
 }
-- (BOOL)start:(NSDictionary *)frame always:(BOOL)always{if(_seq||_active||self.busy||_failed)return NO;TNScene s;if(!TNVScene(frame,always,&s))return NO;[self mapOffer:frame];_source=[@[@"offline-replay",@"amap-simulation",@"amap-realtime",@"mapkit-simulation",@"mapkit-realtime"] containsObject:frame[@"tnrSource"]]?frame[@"tnrSource"]:@"unknown";_always=always;_latest=[NSData dataWithBytes:&s length:sizeof s];_lastOffer=_clock();_active=YES;_note=@"正在请求自动打开原生导航";if(![self send:TN_START scene:_latest]){_active=NO;return NO;}return YES;}
+- (BOOL)start:(NSDictionary *)frame always:(BOOL)always{if(_seq||_active||self.busy||_failed)return NO;TNScene s;if(!TNVScene(frame,always,&s))return NO;[self mapOffer:frame];_source=[@[@"offline-replay",@"amap-simulation",@"amap-realtime",@"mapkit-simulation",@"mapkit-realtime"] containsObject:frame[@"tnrSource"]]?frame[@"tnrSource"]:@"unknown";_always=always;_latest=[NSData dataWithBytes:&s length:sizeof s];_lastOffer=_clock();_active=YES;_note=TIOText(@"正在请求自动打开原生导航");if(![self send:TN_START scene:_latest]){_active=NO;return NO;}return YES;}
 - (void)offer:(NSDictionary *)frame{if(!_active||_stopping)return;[self mapOffer:frame];TNScene s;if(!TNVScene(frame,_always,&s)){[self stop];return;}_latest=[NSData dataWithBytes:&s length:sizeof s];_lastOffer=_clock();}
 - (void)setAlways:(BOOL)always{_always=always;if(_latest){NSMutableData *d=[_latest mutableCopy];((TNScene *)d.mutableBytes)->mode=always?TN_ALWAYS:TN_SMART;_latest=d;}}
 // After a failure the glasses still show the last frame; send one STOP once no native file is uncertain.
@@ -92,12 +93,12 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(!_wantFarewell||_farewell||!_failed||_fileBusy||_packet||_seq==UINT32_MAX)return;_farewell=YES;_failed=NO;_active=YES;_stopping=YES;
  if(![self send:TN_STOP scene:nil]){_failed=YES;_active=NO;_stopping=NO;}
 }
-- (void)stop{if(_failed){_wantFarewell=YES;[self farewell];return;}if(!_active)return;_stopping=YES;_note=@"等待在途包结束后退出导航";[self pump];}
-- (void)setReplayPaused:(BOOL)paused{if(_paused==paused)return;_paused=paused;[self trace:paused?@"pause":@"resume"];if(paused&&!_failed)_note=self.busy?@"回放暂停中，正在收尾最后一笔文件":@"回放已暂停；不主动退出眼镜，旧地图按超时策略变暗息屏";}
-- (void)backgroundDrainExpired{if(_packet||_fileBusy)[self fail:@"锁屏在途文件未确认完成；结果未知，未重试。请回前台检查并退出旧会话。"];}
-- (void)disconnect{[self fail:@"连接中断；已停止。眼镜按60秒策略退出常亮，请查看手机。"];}
+- (void)stop{if(_failed){_wantFarewell=YES;[self farewell];return;}if(!_active)return;_stopping=YES;_note=TIOText(@"等待在途包结束后退出导航");[self pump];}
+- (void)setReplayPaused:(BOOL)paused{if(_paused==paused)return;_paused=paused;[self trace:paused?@"pause":@"resume"];if(paused&&!_failed)_note=self.busy?TIOText(@"回放暂停中，正在收尾最后一笔文件"):TIOText(@"回放已暂停；不主动退出眼镜，旧地图按超时策略变暗息屏");}
+- (void)backgroundDrainExpired{if(_packet||_fileBusy)[self fail:TIOText(@"锁屏在途文件未确认完成；结果未知，未重试。请回前台检查并退出旧会话。")];}
+- (void)disconnect{[self fail:TIOText(@"连接中断；已停止。眼镜按60秒策略退出常亮，请查看手机。")];}
 - (void)pump{
- if(_packet&&_clock()>=_deadline){[self fail:@"导航协议超时；停止发送，请确认已刷TNV1固件并用实体键退出旧画面。"];return;}
+ if(_packet&&_clock()>=_deadline){[self fail:TIOText(@"导航协议超时；停止发送，请确认已刷TNV1固件并用实体键退出旧画面。")];return;}
  if(_wantFarewell&&_failed){[self farewell];return;}
  if(!_active||self.busy||_clock()<_next)return;
  if(_stopping){[self send:TN_STOP scene:nil];return;}
@@ -138,12 +139,12 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
   if(!_nativeTask&&_fileBusy){if(_early.count<8)[_early addObject:[e copy]];return NO;}
   if(![tid isEqual:_nativeTask])return NO;_fileBusy=NO;_fileMs=(_clock()-_lastWire)*1000;if(_fileMs>1000)_backoffUntil=_clock()+30;
   [self trace:[type isEqual:@"fileShareFailed"]?@"file-failed":@"file-success"];
-  if([type isEqual:@"fileShareFailed"])[self fail:@"导航文件传输失败，未继续发送"];else [self finish];return YES;
+  if([type isEqual:@"fileShareFailed"])[self fail:TIOText(@"导航文件传输失败，未继续发送")];else [self finish];return YES;
  }
  TNReply q;uint32_t caps=0;if(!DecodeReply(e,&q,&caps))return NO;if(![e[@"message"][@"deviceId"] isEqual:_device])return NO;
  if(!_packet||q.sid!=_sid||q.sequence!=_seq)return YES;
- if(_clock()>=_deadline){[self fail:@"收到迟到回执，未恢复发送"];return YES;}
- if(q.result!=TN_OK||(_op!=TN_STOP&&!q.active)){[self fail:[NSString stringWithFormat:@"眼镜拒绝导航（%u）；先退出其他任务后重新开启",q.result]];return YES;}
+ if(_clock()>=_deadline){[self fail:TIOText(@"收到迟到回执，未恢复发送")];return YES;}
+ if(q.result!=TN_OK||(_op!=TN_STOP&&!q.active)){[self fail:[NSString stringWithFormat:TIOText(@"眼镜拒绝导航（%u）；先退出其他任务后重新开启"),q.result]];return YES;}
  if(_op==TN_QUERY)_mapV2=!!(caps&1);_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
 }
 @end

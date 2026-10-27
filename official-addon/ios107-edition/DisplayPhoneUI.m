@@ -1,4 +1,5 @@
 #import "camera-v1/CameraUI.h"
+#import "TIOLanguage.h"
 #import "DisplayPhoneUI.h"
 #import "AppBridge.h"
 #import "TodoRuntime.h"
@@ -94,9 +95,9 @@ static UIImage *NavigationImage(BOOL left,unsigned meters){
  return [[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(512,128) format:f] imageWithActions:^(UIGraphicsImageRendererContext *r){
   [UIColor.blackColor setFill];UIRectFill(CGRectMake(0,0,512,128));[UIColor.whiteColor setStroke];
   UIBezierPath *arrow=[UIBezierPath bezierPath];[arrow moveToPoint:CGPointMake(45,100)];[arrow addLineToPoint:CGPointMake(45,46)];[arrow addLineToPoint:CGPointMake(left?14:82,46)];[arrow moveToPoint:CGPointMake(left?30:66,30)];[arrow addLineToPoint:CGPointMake(left?14:82,46)];[arrow addLineToPoint:CGPointMake(left?30:66,62)];arrow.lineWidth=7;arrow.lineJoinStyle=kCGLineJoinRound;[arrow stroke];
-  [[NSString stringWithFormat:@"%u 米",meters] drawAtPoint:CGPointMake(102,5) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:42],NSForegroundColorAttributeName:UIColor.whiteColor}];
-  [(left?@"前方左转 · 测试道路":@"前方右转 · 测试道路") drawAtPoint:CGPointMake(103,59) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:23 weight:UIFontWeightMedium],NSForegroundColorAttributeName:UIColor.whiteColor}];
-  [@"TURBO IO · 本机布局示例 7392" drawAtPoint:CGPointMake(103,100) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:13],NSForegroundColorAttributeName:UIColor.lightGrayColor}];
+  [[NSString stringWithFormat:TIOText(@"%u 米"),meters] drawAtPoint:CGPointMake(102,5) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:42],NSForegroundColorAttributeName:UIColor.whiteColor}];
+  [(left?TIOText(@"前方左转 · 测试道路"):TIOText(@"前方右转 · 测试道路")) drawAtPoint:CGPointMake(103,59) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:23 weight:UIFontWeightMedium],NSForegroundColorAttributeName:UIColor.whiteColor}];
+  [TIOText(@"TURBO IO · 本机布局示例 7392") drawAtPoint:CGPointMake(103,100) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:13],NSForegroundColorAttributeName:UIColor.lightGrayColor}];
   [[UIColor colorWithWhite:0.3 alpha:1] setStroke];UIBezierPath *map=[UIBezierPath bezierPathWithRoundedRect:CGRectMake(396,8,108,112) cornerRadius:8];map.lineWidth=2;[map stroke];
   UIBezierPath *streets=[UIBezierPath bezierPath];for(int i=0;i<3;i++){[streets moveToPoint:CGPointMake(404,30+i*30)];[streets addLineToPoint:CGPointMake(496,30+i*30)];[streets moveToPoint:CGPointMake(414+i*32,16)];[streets addLineToPoint:CGPointMake(414+i*32,111)];}streets.lineWidth=1;[streets stroke];
   [UIColor.whiteColor setStroke];UIBezierPath *route=[UIBezierPath bezierPath];[route moveToPoint:CGPointMake(445,106)];[route addLineToPoint:CGPointMake(445,60)];[route addLineToPoint:CGPointMake(left?407:491,60)];route.lineWidth=4;[route stroke];
@@ -137,9 +138,9 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
 @end
 @implementation TDPPhonePage
 - (void)viewDidLoad{
- [super viewDidLoad];self.title=@"灵活显示 · PHONE 06";self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=76;
+ [super viewDidLoad];self.title=TIOText(@"灵活显示 · PHONE 06");self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=76;
  TDPDiagConfigure([NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/display-phone-diagnostics.json"]]);
- self.note=@"保留TDP1传图测试。先在眼镜进入Turbo Display SID页面，再查询。原生导航请从导航页开启。本包的TNV1升级需另行明确授权，默认锁定。";
+ self.note=TIOText(@"保留TDP1传图测试。先在眼镜进入Turbo Display SID页面，再查询。原生导航请从导航页开启。本包的TNV1升级需另行明确授权，默认锁定。");
  self.meters=80;self.preview=NavigationImage(NO,self.meters);self.pixels=Gray(self.preview);
  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(suspend) name:UIApplicationWillResignActiveNotification object:nil];
  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(resume) name:UIApplicationDidBecomeActiveNotification object:nil];
@@ -178,49 +179,49 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
  return s==0?2:s==1?4:s==2?2:4;
 #endif
 }
-- (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s{return @[@"连接与能力 · 必须真实回执",@"手机绘图 · 不改变眼镜固件",@"测试与退出",@"低延迟实验 · 只传变化区域"][s];}
+- (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s{return @[TIOText(@"连接与能力 · 必须真实回执"),TIOText(@"手机绘图 · 不改变眼镜固件"),TIOText(@"测试与退出"),TIOText(@"低延迟实验 · 只传变化区域")][s];}
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{
  UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.numberOfLines=c.detailTextLabel.numberOfLines=0;c.detailTextLabel.textColor=UIColor.secondaryLabelColor;
- if(ip.section==0){c.textLabel.text=ip.row?@"1 · 查询眼镜 SID":@"DISPLAY PHONE 06 · 诊断";c.detailTextLabel.text=ip.row?@"先在眼镜进入 Turbo Display SID 页面。只查询一次，5秒无匹配回执停止；不根据旧提示猜测固件版本。":self.note;c.imageView.image=[UIImage systemImageNamed:ip.row?@"antenna.radiowaves.left.and.right":@"checkmark.shield"];}
- if(ip.section==1){NSArray *titles=@[@"导航布局 · 本机预览",@"切换左转 / 右转示例",@"从文件选择 PNG / JPEG / HEIC",@"2 · 发送完整画布（64 KiB）"];c.textLabel.text=titles[ip.row];
+ if(ip.section==0){c.textLabel.text=ip.row?TIOText(@"1 · 查询眼镜 SID"):TIOText(@"DISPLAY PHONE 06 · 诊断");c.detailTextLabel.text=ip.row?TIOText(@"先在眼镜进入 Turbo Display SID 页面。只查询一次，5秒无匹配回执停止；不根据旧提示猜测固件版本。"):self.note;c.imageView.image=[UIImage systemImageNamed:ip.row?@"antenna.radiowaves.left.and.right":@"checkmark.shield"];}
+ if(ip.section==1){NSArray *titles=@[TIOText(@"导航布局 · 本机预览"),TIOText(@"切换左转 / 右转示例"),TIOText(@"从文件选择 PNG / JPEG / HEIC"),TIOText(@"2 · 发送完整画布（64 KiB）")];c.textLabel.text=titles[ip.row];
   if(ip.row==0){
    c.textLabel.text=nil;c.detailTextLabel.text=nil;UIImageView *v=[[UIImageView alloc]initWithImage:self.preview];v.contentMode=UIViewContentModeScaleAspectFit;v.backgroundColor=UIColor.blackColor;v.layer.cornerRadius=10;v.clipsToBounds=YES;
-   UILabel *label=[UILabel new];label.text=@"512×128 灰度 · 手机布局预览\n箭头 / 距离 / 路名 / 示意小地图\n不是实时导航，也不是眼镜截图";label.numberOfLines=0;label.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];label.textColor=UIColor.secondaryLabelColor;
+   UILabel *label=[UILabel new];label.text=TIOText(@"512×128 灰度 · 手机布局预览\n箭头 / 距离 / 路名 / 示意小地图\n不是实时导航，也不是眼镜截图");label.numberOfLines=0;label.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];label.textColor=UIColor.secondaryLabelColor;
    UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[v,label]];stack.axis=UILayoutConstraintAxisVertical;stack.spacing=10;stack.translatesAutoresizingMaskIntoConstraints=NO;[c.contentView addSubview:stack];
    [NSLayoutConstraint activateConstraints:@[[stack.leadingAnchor constraintEqualToAnchor:c.contentView.leadingAnchor constant:16],[stack.trailingAnchor constraintEqualToAnchor:c.contentView.trailingAnchor constant:-16],[stack.topAnchor constraintEqualToAnchor:c.contentView.topAnchor constant:16],[stack.bottomAnchor constraintEqualToAnchor:c.contentView.bottomAnchor constant:-16],[v.heightAnchor constraintEqualToAnchor:v.widthAnchor multiplier:0.25]]];
   }
-  else if(ip.row==3)c.detailTextLabel.text=@"单帧139块；此前真机约20秒。完整校验后才换画面，25秒未完成停止。首次发送后建立局部更新基线。";
-  else c.detailTextLabel.text=self.loading?@"正在本机解码…":@"只修改手机预览，不自动发送";
+  else if(ip.row==3)c.detailTextLabel.text=TIOText(@"单帧139块；此前真机约20秒。完整校验后才换画面，25秒未完成停止。首次发送后建立局部更新基线。");
+  else c.detailTextLabel.text=self.loading?TIOText(@"正在本机解码…"):TIOText(@"只修改手机预览，不自动发送");
  }
  if(ip.section==2){
-  c.textLabel.text=@[@"3 · 发送 20×20 测试标记",@"关闭眼镜测试页"
+  c.textLabel.text=@[TIOText(@"3 · 发送 20×20 测试标记"),TIOText(@"关闭眼镜测试页")
 #if TIO_IMAGE_RX_LAB
-  ,@"返回 N8W 旧版传图"
+  ,TIOText(@"返回 N8W 旧版传图")
 #endif
   ][ip.row];
-  c.detailTextLabel.text=ip.row==0?Session.state?:@"尚未查询":
+  c.detailTextLabel.text=ip.row==0?Session.state?:TIOText(@"尚未查询"):
 #if TIO_IMAGE_RX_LAB
-  ip.row==1?@"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭":@"保留 FIX 01，使用人工 SID；无需新固件";
+  ip.row==1?TIOText(@"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭"):TIOText(@"保留 FIX 01，使用人工 SID；无需新固件");
 #else
-  @"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭";
+  TIOText(@"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭");
 #endif
  }
  if(ip.section==3){
-  c.textLabel.text=@[@"4 · 距离 80 / 60 米切换并局部发送",@"5 · 左右转切换并局部发送",@"6 · 重发同图（应为零传输）",@"像素基线与局部传输状态"][ip.row];
-  c.detailTextLabel.text=ip.row==3?[NSString stringWithFormat:@"基线%@ · %lu/%lu块 · %.2f秒\n%@",Session.hasPixelBaseline?@"已确认":@"无效",(unsigned long)Session.completedRects,(unsigned long)Session.deltaTotal,Session.deltaElapsed,Session.state?:@"未查询"]:@"先成功发送一次完整导航示例图，再点本项。只发送差异，最多32块；不是实时导航，不自动连续发送。";
+  c.textLabel.text=@[TIOText(@"4 · 距离 80 / 60 米切换并局部发送"),TIOText(@"5 · 左右转切换并局部发送"),TIOText(@"6 · 重发同图（应为零传输）"),TIOText(@"像素基线与局部传输状态")][ip.row];
+  c.detailTextLabel.text=ip.row==3?[NSString stringWithFormat:TIOText(@"基线%@ · %lu/%lu块 · %.2f秒\n%@"),Session.hasPixelBaseline?TIOText(@"已确认"):TIOText(@"无效"),(unsigned long)Session.completedRects,(unsigned long)Session.deltaTotal,Session.deltaElapsed,Session.state?:TIOText(@"未查询")]:TIOText(@"先成功发送一次完整导航示例图，再点本项。只发送差异，最多32块；不是实时导航，不自动连续发送。");
  }
  BOOL action=!(ip.section==0&&ip.row==0)&&!(ip.section==1&&ip.row==0)&&!(ip.section==3&&ip.row==3);if(action){c.textLabel.textColor=UIColor.systemBlueColor;c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;}return c;
 }
-- (void)result:(BOOL)ok {if(!ok){self.note=Session.state?:@"未发送：请先连接并进入眼镜 Turbo Display 页面，再查询 SID。";[self.tableView reloadData];} [self saveStatus];}
+- (void)result:(BOOL)ok {if(!ok){self.note=Session.state?:TIOText(@"未发送：请先连接并进入眼镜 Turbo Display 页面，再查询 SID。");[self.tableView reloadData];} [self saveStatus];}
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{
  [t deselectRowAtIndexPath:p animated:YES];if(self.loading)return;
- if(p.section==0&&p.row==1){if(!Setup()){self.note=@"没有当前官方连接，或旧任务结果未知。请在官方设备页确认连接，不会创建第二个蓝牙连接。";[t reloadData];return;}[self bind];[self resume];[self result:[Session query]];}
+ if(p.section==0&&p.row==1){if(!Setup()){self.note=TIOText(@"没有当前官方连接，或旧任务结果未知。请在官方设备页确认连接，不会创建第二个蓝牙连接。");[t reloadData];return;}[self bind];[self resume];[self result:[Session query]];}
  if(p.section==1&&p.row==1){self.left=!self.left;self.preview=NavigationImage(self.left,self.meters);self.pixels=Gray(self.preview);[t reloadData];}
  if(p.section==1&&p.row==2){UIDocumentPickerViewController *c=[[UIDocumentPickerViewController alloc]initForOpeningContentTypes:@[UTTypePNG,UTTypeJPEG,UTTypeHEIC] asCopy:YES];c.delegate=self;[self presentViewController:c animated:YES completion:nil];}
  if(p.section==1&&p.row==3){if(!Session.ready||Session.busy){[self result:NO];return;}
-  UIAlertController *a=[UIAlertController alertControllerWithTitle:@"发送本机画布？" message:@"只发给当前配对眼镜，不上传云端、不刷固件。真实文件吞吐待验，超时后不会盲目重发。" preferredStyle:UIAlertControllerStyleAlert];
-  [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];__weak typeof(self) weak=self;
-  [a addAction:[UIAlertAction actionWithTitle:@"发送" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[weak result:[Session sendFrame:weak.pixels]];}]];[self presentViewController:a animated:YES completion:nil];
+  UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"发送本机画布？") message:TIOText(@"只发给当前配对眼镜，不上传云端、不刷固件。真实文件吞吐待验，超时后不会盲目重发。") preferredStyle:UIAlertControllerStyleAlert];
+  [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];__weak typeof(self) weak=self;
+  [a addAction:[UIAlertAction actionWithTitle:TIOText(@"发送") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[weak result:[Session sendFrame:weak.pixels]];}]];[self presentViewController:a animated:YES completion:nil];
  }
  if(p.section==2&&p.row==0)[self result:[Session sendTestRect]];
  if(p.section==2&&p.row==1)[self result:[Session closePage]];
@@ -250,7 +251,7 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
    }
   }
   if(scoped)[url stopAccessingSecurityScopedResource];NSData *gray=Gray(im);
-  dispatch_async(dispatch_get_main_queue(),^{self.loading=NO;if(gray){self.preview=GrayPreview(gray);self.pixels=gray;self.note=@"已本机缩图，没有发送。";}else self.note=@"文件不可用或超限：请先在文件 App 下载到本机，限单帧 PNG/JPEG/HEIC、16MP/20MiB。";[self.tableView reloadData];});
+  dispatch_async(dispatch_get_main_queue(),^{self.loading=NO;if(gray){self.preview=GrayPreview(gray);self.pixels=gray;self.note=TIOText(@"已本机缩图，没有发送。");}else self.note=TIOText(@"文件不可用或超限：请先在文件 App 下载到本机，限单帧 PNG/JPEG/HEIC、16MP/20MiB。");[self.tableView reloadData];});
  });
 }
 @end
