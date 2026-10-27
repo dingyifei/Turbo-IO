@@ -564,7 +564,7 @@ __attribute__((constructor)) static void Load(void) {
             TIOStartExperimentalOTAFeedIfMarked();
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();TWReaderProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
-            if(![Prefs boolForKey:@"ttsCloudRemoved"]){StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: one-shot cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref
+            if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
             [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
             Controller=[TIOController new];
