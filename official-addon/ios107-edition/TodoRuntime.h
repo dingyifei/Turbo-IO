@@ -1,5 +1,7 @@
 #import <Foundation/Foundation.h>
 FOUNDATION_EXPORT void TIOInstallTodoRuntime(void);
+FOUNDATION_EXPORT void TIOTodoObserveSnapshotMessage(NSDictionary *args);
+FOUNDATION_EXPORT void TIOTodoObservePhysical(NSDictionary *physical);
 FOUNDATION_EXPORT void TIOTodoObserveNlp(id listener,id response);
 FOUNDATION_EXPORT NSDictionary *TIOTodoRuntimeStatus(void);
 FOUNDATION_EXPORT NSString *TIOTodoCreateTestTask(void);

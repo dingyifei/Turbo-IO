@@ -24,6 +24,7 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "RideRPC.h"
 #import "RideUI.h"
 #import "TodoRuntime.h"
+#import "GlassesChannelHook.h"
 #import "TodoProtocol.h"
 #import "NewsReader.h"
 #import "MusicPlayer.h"
@@ -613,7 +614,7 @@ __attribute__((constructor)) static void Load(void) {
             Class helper=NSClassFromString(@"rayneo_venus_sdk_plugin.VoiceAssistantHelper");
             VoiceExitReady=valid&&Signature(object_getClass(helper),@"shared",2,"@",@[])&&Signature(helper,@"stopWorkflow",2,"v",@[])&&Signature(voice,@"onAudioRecordStart",2,"v",@[]);
             if(VoiceExitReady)OriginalAudioStart=(void *)method_setImplementation(class_getInstanceMethod(voice,NSSelectorFromString(@"onAudioRecordStart")),(IMP)AudioStartHook);
-            if(valid)TIOInstallTodoRuntime();
+            if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
             TIOOTAFlashDisableAutoUpdateIfRequested();
             // Explicit developer launch, not a stored preference or automatic restore.
             // armArchive additionally requires the installed preparation interlock.

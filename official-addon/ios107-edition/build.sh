@@ -178,6 +178,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   NewsPresentation.m \
   PrivateBootstrap.m \
   WebSearch.m \
+  GlassesChannelHook.m \
   TodoProtocol.m \
   TodoRuntime.m \
   AppPackage.m \

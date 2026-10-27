@@ -1,37 +1,10 @@
-#import "notification-archive-v1/NotificationRuntime.h"
-#import "camera-v1/CameraUI.h"
-#import "dots-v1/DotsPhoneBridge.h"
-#import "Brightness.h"
 #import "TodoRuntime.h"
-#import "context-english-v1/CEAutoRuntime.h"
-#if TIO_IMAGE_RX_LAB
-#import "ImageUploadUI.h"
-#import "ImageUploadTransport.h"
-#if TIO_DISPLAY_PHONE
-#import "DisplayPhoneUI.h"
-#import "DisplayDiagnostics.h"
-#endif
-#endif
-#import "ProtocolContext.h"
 #import "TodoProtocol.h"
-#import "NewsReader.h"
-#import "NewsTeleprompter.h"
-#import "A2UIProbe.h"
-#import "DashboardCard.h"
-#import "EditorTransport.h"
-#import "AppBridge.h"
-#import "GlassesLogProbe.h"
-#import "NavigationTransport.h"
-#import "SubtitleHUD.h"
-#import "ExperimentalOTAGuard.h"
-#import "ExperimentalOTAFlash.h"
+#import "GlassesChannelHook.h"
 #import <UIKit/UIKit.h>
-#import <objc/runtime.h>
 #import <objc/message.h>
 
 // Only observed public ObjC callbacks. No Dart pointer invocation or cloud tokens.
-static void (*PriorMethod)(id,SEL,id,id);
-static void (*PriorSend)(id,SEL,id,id,id);
 static NSDictionary *Snapshot,*Baseline;
 static NSString *Device,*TestTitle,*TestWire,*TestDevice,*State=@"尚未观察到官方待办列表";
 static NSTimeInterval SnapshotAt,TemplateAt;
@@ -52,7 +25,6 @@ static id Get(id o,NSString *k){@try{return [o valueForKey:k];}@catch(NSExceptio
 static NSData *Data(id v){if([v isKindOfClass:NSData.class])return v;if([NSStringFromClass([v class]) isEqual:@"FlutterStandardTypedData"]){id d=Get(v,@"data");if([d isKindOfClass:NSData.class])return d;}return nil;}
 static NSString *Text(id o){return [o isKindOfClass:NSString.class]?o:@"";}
 static NSDictionary *Task(id params){if(![params isKindOfClass:NSDictionary.class])return nil;id t=params[@"task"];if([t isKindOfClass:NSString.class]&&[t length]<65536)t=[NSJSONSerialization JSONObjectWithData:[t dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];return [t isKindOfClass:NSDictionary.class]?t:nil;}
-static BOOL Sign(Method m,NSUInteger n){if(!m||method_getNumberOfArguments(m)!=n)return NO;char *r=method_copyReturnType(m);BOOL ok=r&&r[0]=='v';free(r);for(NSUInteger i=2;i<n;i++){char *t=method_copyArgumentType(m,(unsigned)i);ok=ok&&t&&t[0]=='@';free(t);}return ok;}
 static void SaveEvidence(void){
     // No official transcript or unrelated tasks. Only the named test and metadata.
     NSMutableDictionary *row=[@{@"state":State?:@"",@"snapshots":@(Snapshots),@"taskEvents":@(TaskEvents),@"physicalEvents":@(PhysicalEvents),@"testTitle":TestTitle?:@"",@"testWireId":TestWire?:@"",@"physicalComplete":@(PhysicalComplete),@"time":@([NSDate.date timeIntervalSince1970])} mutableCopy];
@@ -72,71 +44,8 @@ static void ObserveSnapshot(NSDictionary *args){
     Snapshot=s;Device=device;SnapshotAt=[NSDate.date timeIntervalSince1970];
     if(!Busy&&!TestWire.length)State=Template?@"已取得官方列表与新增模板；可测试创建入口":@"已取得官方全量列表基线；等待官方语音新增模板";SaveEvidence();
 }
-static void MethodHook(id self,SEL cmd,id call,id result){
-    if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&!NSThread.isMainThread){
-        dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;
-    }
-    BOOL otaBlocked=TIOOTAFlashBlockCall(call);
-#if TIO_DISPLAY_PHONE
-    if([Get(call,@"method") isEqual:@"rayneonet_sendFile"])TDPDiagRecord(@"gate",@{@"blocked":@(otaBlocked),@"otaStage":TIOOTAFlashStatus()[@"stage"]?:@0});
-#endif
-    if(otaBlocked){TDDotsPhoneRejectedBeforeSDK(Get(call,@"arguments"));if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO transfer gate: not authorized or packet mismatch"});return;}
-    if(TIOOTABlockPreparationCall(call)){TDDotsPhoneRejectedBeforeSDK(Get(call,@"arguments"));if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO OTA preparation only: outbound traffic blocked"});return;}
-    if(TIOGlassesLogBlockCall(call)){TDDotsPhoneRejectedBeforeSDK(Get(call,@"arguments"));if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"本机日志研究任务隔离中，未重复请求"});return;}
-    if(TDDotsPhoneBlocks(Get(call,@"method"),Get(call,@"arguments"))){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Dots file transfer active; retry after completion"});return;}
-    {NSString *method=Get(call,@"method");id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIONewsTeleObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIONavObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
-    if([Get(call,@"method") isEqual:@"rayneonet_sendMessage"]){id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]&&[args[@"businessId"] isEqual:@22]){void (^work)(void)=^{ObserveSnapshot(args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
-    id args=Get(call,@"arguments");
-    if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&[args isKindOfClass:NSDictionary.class]){
-        CEAutoHostFileActivity();
-        NSString *dotsTicket=TDDotsPhoneWillSend(args);
-        void(^original)(id)=result;
-        PriorMethod(self,cmd,call,[^(id response){dispatch_async(dispatch_get_main_queue(),^{TDDotsPhoneFileResult(dotsTicket,response);TIONewsTeleObserveFileResult(args,response);});if(original)original(response);} copy]);
-    }else PriorMethod(self,cmd,call,result);
-}
-static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
-    if([channel isKindOfClass:NSString.class]&&[channel.lowercaseString containsString:@"rayneonet"]&&message.length<262144){
-        Class cls=NSClassFromString(@"FlutterStandardMethodCodec");
-        @try{if([cls respondsToSelector:@selector(sharedInstance)]){id codec=((id(*)(id,SEL))objc_msgSend)(cls,@selector(sharedInstance));id event=((id(*)(id,SEL,id))objc_msgSend)(codec,NSSelectorFromString(@"decodeEnvelope:"),message);
-            if([event isKindOfClass:NSDictionary.class]){dispatch_async(dispatch_get_main_queue(),^{TCCameraObserveConnection(event);TDDotsPhoneObserveConnection(event);});NSMutableDictionary *copy=[event mutableCopy];id original=copy[@"message"];if([original isKindOfClass:NSDictionary.class]){NSMutableDictionary *m=[original mutableCopy];NSData *data=Data(m[@"payload"]);if(data)m[@"payload"]=data;copy[@"message"]=m;}
-#if TIO_DISPLAY_PHONE
-                TDPDiagEnvelope(copy);
-#endif
-                TNAObserveEvent(copy);
-                if(TIOGlassesLogConsumeEvent(copy)){if(reply)((void(^)(NSData *))reply)(nil);return;}}
-#if TIO_IMAGE_RX_LAB
-            // File results are siblings of messageReceived, not business messages.
-            // Only our exact sender task is consumed; foreign events keep Flutter's path.
-            if(TIOImageUploadRouteFileEvent(event, ^BOOL(NSDictionary *e){
-                TDDotsPhoneObserveFile(e);
-                TAPObserveEvent(e); // Observe on main before the shared file router returns. Do not consume foreign tasks.
-#if TIO_DISPLAY_PHONE
-                if(TDPPhoneConsumeEvent(e))return YES;
-#endif
-                return TIOImageUploadLabConsumeFileEvent(e);}, ^(BOOL owned){
-                if(owned){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);
-            }))return;
-#endif
-            if([event isKindOfClass:NSDictionary.class]&&[event[@"eventType"] isEqual:@"messageReceived"]&&[event[@"message"] isKindOfClass:NSDictionary.class]){
-                NSMutableDictionary *e=[event mutableCopy],*m=[event[@"message"] mutableCopy];NSData *data=Data(m[@"payload"]);if(data)m[@"payload"]=data;e[@"message"]=m;TIOOTAFlashObserveEvent(e);NSDictionary *physical=TIOTodoPhysicalStatus(e);
-#if TIO_DISPLAY_PHONE
-                if(TCCameraRouteReply(e,^(BOOL owned){if(owned){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);}))return;
-                if(TDPPhoneRouteReply(e,^(BOOL owned){if(owned){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);}))return;
-#endif
-                if([m[@"businessId"] isEqual:@20]){
-                    // Own manuscripts live in TurboIO, not the official Dart
-                    // repository. Let our state machine consume their replies
-                    // before Flutter mistakes the unknown DID for a deleted doc.
-                    // Foreign DID/device, list messages and unknown types pass.
-                    void(^work)(void)=^{BOOL own=TIONewsTeleOwnsEvent(e);TIOProtocolObserveEvent(e);TIOBrightnessObserveEvent(e);TIONewsTeleObserveEvent(e);TIOA2UIObserveEvent(e);TDCObserveEvent(e);TCEObserveEvent(e);TAPObserveEvent(e);TIONavObserveEvent(e);TIOSubtitleObserveEvent(e);if(own){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);};
-                    if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);return;
-                }
-                dispatch_async(dispatch_get_main_queue(),^{TIOProtocolObserveEvent(e);TIOBrightnessObserveEvent(e);TIONewsTeleObserveEvent(e);TIOA2UIObserveEvent(e);TDCObserveEvent(e);TCEObserveEvent(e);TAPObserveEvent(e);TIONavObserveEvent(e);TIOSubtitleObserveEvent(e);});
-                if(physical)dispatch_async(dispatch_get_main_queue(),^{PhysicalEvents++;if(TestWire.length&&[physical[@"wireId"] isEqual:TestWire]&&[physical[@"deviceId"] isEqual:TestDevice]){PhysicalComplete=[physical[@"status"] isEqual:@1];State=PhysicalComplete?@"收到此测试项的眼镜完成回传，真实ID匹配":@"收到此测试项的眼镜未完成回传";SaveEvidence();}});
-            }
-        }}@catch(NSException *e){}
-    }PriorSend(self,cmd,channel,message,reply);
-}
+void TIOTodoObserveSnapshotMessage(NSDictionary *args){ObserveSnapshot(args);}
+void TIOTodoObservePhysical(NSDictionary *physical){PhysicalEvents++;if(TestWire.length&&[physical[@"wireId"] isEqual:TestWire]&&[physical[@"deviceId"] isEqual:TestDevice]){PhysicalComplete=[physical[@"status"] isEqual:@1];State=PhysicalComplete?@"收到此测试项的眼镜完成回传，真实ID匹配":@"收到此测试项的眼镜未完成回传";SaveEvidence();}}
 void TIOTodoObserveNlp(id listener,id response){
     if(Injecting||!Installed||![Get(response,@"domain") isEqual:@"task"]||![Get(response,@"intent") isEqual:@"create_task"]||![Get(response,@"finished") boolValue]||[Get(response,@"offline") boolValue])return;
     TaskEvents++;id command=Get(response,@"command"),params=Get(command,@"params");
@@ -203,11 +112,7 @@ NSString *TIOTodoCreateTestTask(void){
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,25*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(Busy){Busy=NO;State=@"25秒内未观察到唯一新项；结果未知，不自动重发";SaveEvidence();}});
     return [@"已提交：" stringByAppendingString:title];
 }
-void TIOInstallTodoRuntime(void){
-    if(Installed)return;Method method=class_getInstanceMethod(NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(NSClassFromString(@"FlutterEngine"),NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));
-    if(!Sign(method,4)||!Sign(send,5)){State=@"观察方法签名不匹配，未安装";return;}
-    PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;TIOOTARecordTransportHookReady();TDDotsPhoneHooksReady();
-}
+void TIOInstallTodoRuntime(void){if(Installed)return;if(!TIOGlassesChannelHookInstalled()&&!TIOInstallGlassesChannelHook()){State=@"观察方法签名不匹配，未安装";return;}Installed=YES;}
 @interface TIOTodoRuntimePanel:UITableViewController @end
 @implementation TIOTodoRuntimePanel
 - (void)viewDidLoad{[super viewDidLoad];self.title=@"待办协议验收";self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"刷新" style:UIBarButtonItemStylePlain target:self action:@selector(refresh)];}
