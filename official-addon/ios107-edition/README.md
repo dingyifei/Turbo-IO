@@ -21,11 +21,14 @@
 
 ## 公开边界
 
-仅公开原创源码、构建/打包工具与离线测试，**不含合并/个人签名 IPA、Cookie、Key、私人服务地址、签名材料、备份、用户通知/智记/路线、微信读书网页正文适配或 Dots Bridge**。Dots UI 仍未完成；微信读书保留公开书架与本地正文路径，账号与服务自行配置。
+仅公开原创源码、构建/打包工具与离线测试，**不含合并/个人签名 IPA、Cookie、Key、私人服务地址、签名材料、备份、用户通知/智记/路线**。
 
-从已脱敏 NAVS3 基线导出，合入已审核的 1.0.7 兼容及 OTA 适配，不从私人 IPA 抽取配置或素材。沿用 [PolyForm Noncommercial 1.0.0](../../LICENSE)，第三方许可不变。原厂 App、高德 SDK 须自行合法取得。
+从已脱敏 NAVS3 基线导出，合入已审核的 1.0.7 兼容及 OTA 适配，不从私人 IPA 抽取配置或素材。沿用 [PolyForm Noncommercial 1.0.0](../../LICENSE)，第三方许可不变。原厂 App 须自行合法取得。
 
 ## 构建与检查（macOS / Xcode）
+
+The legacy six-flag command (`TIO_MAPKIT_ENABLED`, `TIO_IMAGE_RX_LAB`, `TIO_DISPLAY_PHONE`, `TIO_DISPLAY_FLASH`, `TIO_OTA_FLASH_ENABLED`, `TIO_CLASSIC_BINDINGS`) builds the same feature set as `TIO_DEV=1`.
+Music remains unchanged pending WP4.
 
 在本目录执行：
 
@@ -59,7 +62,7 @@ node package.mjs \
   --profile /absolute/your.mobileprovision \
   --identity YOUR_CERTIFICATE_SHA1 --device YOUR_DEVICE_UDID \
   --out /absolute/new-private-output --bundle com.rayneo.venus.pub \
-  --product iPhone18,2 --amap-sdk-root /absolute/path/to/amap-sdk \
+  --product iPhone18,2 \
   --firmware /absolute/path/to/exact-TMG2-release.zip
 ```
 
