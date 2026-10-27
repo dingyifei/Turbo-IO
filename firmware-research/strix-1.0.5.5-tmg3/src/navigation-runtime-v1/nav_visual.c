@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 #include "nav_visual.h"
 #include <string.h>
 static char *decimal(char *p,uint32_t v){char tmp[10];unsigned n=0;do{tmp[n++]=(char)('0'+v%10);v/=10;}while(v);while(n)*p++=tmp[--n];*p=0;return p;}
@@ -13,14 +14,16 @@ static char *clock_hm(char *p,int64_t epoch){unsigned min=((uint32_t)epoch%86400
  *p++=(char)('0'+min%60/10);*p++=(char)('0'+min%10);*p=0;return p;
 }
 void tn_clock_text(char out[64],int64_t now,int64_t eta,bool stale){
- memset(out,0,64);
- if(stale){append(out,"导航数据已过期 · 请查看手机");return;}
- if(now<946684800||now>4102444800LL){append(out,"当前 --:-- · 到达时间待更新");return;}
- char *p=append(out,"当前 ");p=clock_hm(p,now);p=append(p," · ");
- if(eta<now||eta-now>604800){append(p,"到达时间待更新");return;}
+ unsigned lang=tio_lang();memset(out,0,64);
+ if(stale){append(out,tio_text(TT_NAV_STALE,lang));return;}
+ if(now<946684800||now>4102444800LL){append(out,tio_text(TT_NAV_NOW_UNKNOWN,lang));return;}
+ char *p=append(out,tio_text(TT_NAV_NOW,lang));p=clock_hm(p,now);p=append(p,tio_text(TT_NAV_SEP,lang));
+ if(eta<now||eta-now>604800){append(p,tio_text(TT_NAV_ETA_PENDING,lang));return;}
  unsigned days=(uint32_t)eta/86400-(uint32_t)now/86400;
- if(days==1)p=append(p,"明日 ");else if(days){p=decimal(p,days);p=append(p,"天后 ");}
- p=append(p,"预计 ");p=clock_hm(p,eta);append(p," 到达");
+ if(!lang)p=append(p,tio_text(TT_NAV_ETA_PREFIX,lang));
+ if(days==1)p=append(p,tio_text(TT_NAV_TOMORROW,lang));else if(days){if(!lang)*p++='+';p=decimal(p,days);p=append(p,tio_text(TT_NAV_DAYS,lang));}
+ if(lang)p=append(p,tio_text(TT_NAV_ETA_PREFIX,lang));
+ p=clock_hm(p,eta);append(p,tio_text(TT_NAV_ETA_SUFFIX,lang));
 }
 static const TNXY straight[]={{48,84},{48,12},{20,40},{48,12},{76,40}};
 static const TNXY right[]={{18,84},{18,36},{76,36},{52,12},{76,36},{52,60}};
@@ -32,6 +35,7 @@ static const TNXY arrive[]={{22,84},{22,12},{76,12},{76,50},{22,50}};
 static const TNXY unknown[]={{28,25},{38,15},{58,15},{70,26},{70,38},{48,54},{48,66},{48,75},{48,82}};
 static TNXY map(TNPoint p){return (TNXY){406+(int32_t)p.x*112/1023,10+(int32_t)p.y*112/1023};}
 bool tn_visual(const TNScene *s,bool stale,TNVisual *v){
+ unsigned lang=tio_lang();
  if(!s||!v||s->icon>=TN_ICON_COUNT||s->point_count>TN_POINTS_MAX||s->heading>=360||s->position.x>1023||s->position.y>1023)return false;
  memset(v,0,sizeof *v);v->stale=stale;const TNXY *icon=unknown;size_t n=sizeof unknown/sizeof *unknown;bool flip=false;
  switch(s->icon){
@@ -60,7 +64,7 @@ bool tn_visual(const TNScene *s,bool stale,TNVisual *v){
  char *p=v->distance;if(s->distance_m<1000){p=decimal(p,s->distance_m);append(p," m");}
  else {p=decimal(p,s->distance_m/1000);*p++='.';*p++=(char)('0'+s->distance_m%1000/100);append(p," km");}
  memcpy(v->turn,s->turn,sizeof v->turn);memcpy(v->road,s->road,sizeof v->road);v->turn[TN_TURN_MAX]=0;v->road[TN_ROAD_MAX]=0;
- p=append(v->summary,"剩余 ");p=distance(p,s->remaining_m);p=append(p," / ");
+ p=append(v->summary,tio_text(TT_NAV_LEFT,lang));p=distance(p,s->remaining_m);p=append(p," / ");
  unsigned minutes=s->remaining_s/60+(s->remaining_s%60!=0);
  if(minutes>=60){p=decimal(p,minutes/60);p=append(p,"h ");minutes%=60;}
  p=decimal(p,minutes);append(p,"min");

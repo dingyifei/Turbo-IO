@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 #include "../common-v1/business_idle.h"
 #include "../app-runtime-v1/app_service.h"
 #include "music_service.h"
@@ -53,19 +54,20 @@ static void emit(Control *c,unsigned event,unsigned result,uint32_t sid,uint32_t
 static void request(Control *c,unsigned event){if(!c)return;c->request_id++;if(!c->request_id)c->request_id=1;c->event=event;c->event_tries=0;c->last_event=0;}
 static void close_view(Control *c,bool notify){if(!c)return;release(c);c->music.active=c->music.awake=false;c->waiting=false;if(c->root)c->closing=true;if(notify)request(c,TM_VIEW_CLOSED);}
 static void deleted(void *e){Control *c=stream_event_user(e);if(!c)return;c->root=NULL;c->canvas=NULL;for(unsigned i=0;i<TM_LABELS;i++)c->labels[i]=NULL;close_view(c,false);c->closing=false;}
-static bool render(Control *c,uint32_t now){if(!c->root||c->closing||!c->api.idle(NULL))return false;
+static void copy_text(char *out,size_t cap,const char *text){size_t n=strlen(text);if(n>=cap)n=cap-1;memcpy(out,text,n);out[n]=0;}
+static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root||c->closing||!c->api.idle(NULL))return false;
  Frame *f=&c->frames[1-c->front];memcpy(f->title,c->music.title,sizeof f->title);
  /* Five fixed viewport rows. Never clamp the window near first/last line:
   * padding stays blank so the current lyric always occupies row 2. Static
   * label pointers and cover bytes switch together only while DMA is idle. */
  for(unsigned i=0;i<TM_LYRIC_ROWS;i++)f->lyrics[i][0]=0;
- if(c->waiting){memcpy(f->title,"网易云音乐",sizeof "网易云音乐");memcpy(f->lyrics[2],"请在手机选择歌曲",sizeof "请在手机选择歌曲");}
+ if(c->waiting){copy_text(f->title,sizeof f->title,tio_text(TT_MUSIC_TITLE,lang));copy_text(f->lyrics[2],sizeof f->lyrics[2],tio_text(TT_MUSIC_PICK,lang));}
  else {int line=tm_line(&c->music,now);for(unsigned i=0;i<TM_LYRIC_ROWS;i++)tm_text(&c->music,line+(int)i-2,f->lyrics[i],sizeof f->lyrics[i]);
-  if(!c->music.lyrics_ready)memcpy(f->lyrics[2],"歌词加载中…",sizeof "歌词加载中…");}
+  if(!c->music.lyrics_ready)copy_text(f->lyrics[2],sizeof f->lyrics[2],tio_text(TT_MUSIC_LYRICS,lang));}
  if(c->music.cover_ready)tm_rotate(c->music.cover,f->pixels,c->music.playing?(now/125)%64:0);
  else for(unsigned y=0;y<144;y++)for(unsigned x=0;x<144;x++){int dx=(int)x-72,dy=(int)y-72,r=dx*dx+dy*dy;f->pixels[y*144+x]=(r<4900&&r>36)?(uint8_t)(45+(x+y)%64):0;}
  unsigned p=tm_position(&c->music,now)/1000,d=c->music.duration_ms/1000;
- const char *state=c->music.playing?"播放中":"已暂停";memset(f->status,0,sizeof f->status);unsigned k=0;while(state[k]){f->status[k]=state[k];k++;}
+ const char *state=c->music.playing?tio_text(TT_MUSIC_PLAYING,lang):tio_text(TT_MUSIC_PAUSED,lang);memset(f->status,0,sizeof f->status);unsigned k=0;while(state[k]){f->status[k]=state[k];k++;}
  f->status[k++]=' ';unsigned vals[4]={p/60%100,p%60,d/60%100,d%60};for(unsigned j=0;j<4;j++){f->status[k++]=(char)('0'+vals[j]/10);f->status[k++]=(char)('0'+vals[j]%10);if(j!=3)f->status[k++]=j==1?'/':':';}
  c->api.buffer(NULL,c->canvas,f->pixels,144,144);
  for(unsigned i=0;i<TM_LYRIC_ROWS;i++)c->api.text_static(NULL,c->labels[i],f->lyrics[i]);

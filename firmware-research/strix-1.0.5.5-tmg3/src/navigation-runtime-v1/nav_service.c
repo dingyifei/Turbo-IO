@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 #include "../common-v1/business_idle.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
@@ -115,7 +116,7 @@ void tn_slot_hidden(TNNavSlot *s){if(s&&s->control)retire(s->control);}
 void tn_slot_destroy(TNNavSlot *s){if(!s)return;Control *c=s->control;if(c){retire(c);c->retired=true;c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tn_slot_visible(TNNavSlot *s){Control *c=s?s->control:NULL;return c&&c->view;}
 bool tn_slot_open(TNNavSlot *s){Control *c=control(s);if(!c||!safe_home()||c->runtime.active)return false;
- TNScene empty;memset(&empty,0,sizeof empty);memcpy(empty.turn,"请从手机开始导航",sizeof "请从手机开始导航");
+ TNScene empty;memset(&empty,0,sizeof empty);{const char *label=tio_text(TT_NAV_START,tio_lang());size_t n=strlen(label);if(n>TN_TURN_MAX)n=TN_TURN_MAX;memcpy(empty.turn,label,n);empty.turn[n]=0;};
  if(!enter(c,&empty))return false;c->waiting=true;c->waiting_since=stream_tick();
  if(!power(c,TN_POWER_WAKE_HOLD)){retire(c);return false;}return true;
 }

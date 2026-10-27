@@ -1,4 +1,5 @@
 #include "../src/focus-v1/focus_menu.h"
+#include "../src/common-v1/tio_text.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,11 +19,11 @@ static FMView view;
 int main(void){
  Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy};
  assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==23);
- assert(fm_view_update(&view,8,1704067200,75,0));
+ assert(fm_view_update(&view,8,1704067200,75,0));assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,0)));
  for(unsigned j=0;j<9;j++)assert(f.texts[(uintptr_t)view.labels[j]]&&f.visible[(uintptr_t)view.labels[j]]);
- const char *before=f.texts[(uintptr_t)view.labels[8]];unsigned calls=f.text_calls;
+ const char *before=f.texts[(uintptr_t)view.labels[8]];unsigned calls=f.text_calls;g_lang=1;
  assert(fm_view_update(&view,8,1704067200,75,1));assert(f.text_calls==calls+1);assert(f.texts[(uintptr_t)view.labels[8]]==before);
- calls=f.text_calls;fm_view_suspend(&view);assert(fm_view_update(&view,8,1704067200,75,2));assert(f.text_calls==calls+10);
+ calls=f.text_calls;fm_view_suspend(&view);assert(fm_view_update(&view,8,1704067200,75,2));assert(f.text_calls==calls+10);assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,1)));
  for(int i=0;i<13;i++){assert(fm_view_update(&view,i,1704067200,75,(unsigned)(1000+i*200)));assert(!strcmp(f.texts[(uintptr_t)view.status],"00:00   75%"));}
  assert(!fm_view_update(&view,-1,0,0,5000)&&!fm_view_update(&view,13,0,0,5000));
  f.idle=false;assert(!fm_view_update(&view,0,0,0,5000)&&!fm_view_close(&view));f.idle=true;

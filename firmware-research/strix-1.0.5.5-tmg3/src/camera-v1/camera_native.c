@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 /* Pinned 1.0.5.5 AP bindings, Launcher UI executor only. No driver or BTH patch. */
 #include "camera_native.h"
 #include "camera.h"
@@ -44,11 +45,11 @@ static bool dispose(TCControl *c){TNWidgets w=tn_lvgl_widgets();if(!w.idle(NULL)
  if(c->root){void *r=c->root;c->root=NULL;w.destroy(NULL,r);}c->canvas=c->title=c->state=c->hint=NULL;
  if(c->frame){stream_free(c->frame);c->frame=NULL;}c->closing=false;return true;}
 static char *num(char *p,unsigned n){char v[10];unsigned k=0;do{v[k++]=(char)('0'+n%10);n/=10;}while(n);while(k)*p++=v[--k];return p;}
-static void render_status(TCControl *c){if(!c->root)return;char text[80],*p=text;
- const char *state=c->phase==TC_COUNTDOWN?"倒计时 ":c->phase==TC_CAPTURING?"正在拍照":c->phase==TC_SAVED?"已保存 · 照片回看":c->phase==TC_ERROR?"相机暂不可用":c->sid?"实时取景":"请从手机开启相机";
+static void render_status(TCControl *c){unsigned lang=tio_lang();if(!c->root)return;char text[80],*p=text;
+ const char *state=c->phase==TC_COUNTDOWN?tio_text(TT_CAM_COUNTDOWN,lang):c->phase==TC_CAPTURING?tio_text(TT_CAM_TAKING,lang):c->phase==TC_SAVED?tio_text(TT_CAM_SAVED,lang):c->phase==TC_ERROR?tio_text(TT_CAM_UNAVAILABLE,lang):c->sid?tio_text(TT_CAM_LIVE,lang):tio_text(TT_CAM_OPEN_ON_PHONE,lang);
  while(*state)*p++=*state++;if(c->phase==TC_COUNTDOWN){p=num(p,(c->remaining+999)/1000);*p++='s';}*p=0;native_label_text(c->state,text);
  p=text;p=num(p,c->zoom/100);*p++='.';*p++=(char)('0'+c->zoom/10%10);*p++='x';*p=0;native_label_text(c->title,text);
- native_label_text(c->hint,c->sid?"短按拍照 · 滚动变焦\n长按取消 / 退出":"TurboIO → 资料\n遥控拍照 · 手机需前台");
+ native_label_text(c->hint,c->sid?tio_text(TT_CAM_HINT,lang):tio_text(TT_CAM_SETUP,lang));
 }
 static void tick(void *t){TCControl *c=ptr(t,12);if(!c)return;uint32_t now=stream_tick();
  if(c->root&&!c->closing&&(!owns(c)||(c->sid&&(!paired()||(uint32_t)(now-c->seen)>15000))))close_page(c);

@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 /* TMG2: fixed nine-cell renderer, no per-frame heap, bounded packed artwork.
  * All retained text and pixels live with the view. Write/swap only while idle.
  * Stock selection is authoritative; rapid input replaces, never queues, motion.
@@ -5,7 +6,7 @@
 #include "focus_menu.h"
 #include "focus_menu_icons.h"
 #include <string.h>
-static const char *const names[]={"录音","实时字幕","实时提示","待办","提词器","全天智记","勿扰模式","显示测试","导航","音乐","番茄时钟","我的应用","遥控拍照"};
+static const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
 _Static_assert(sizeof names/sizeof *names==FM_ITEMS,"labels match stock item count");
 _Static_assert(sizeof fm_icon4==14976,"artwork budget");
 static unsigned per(const FMView *v){return v->rows*3;}
@@ -30,6 +31,7 @@ static void icon(uint8_t *out,unsigned index,unsigned weight,unsigned fade,unsig
  }
 }
 static void render(FMView *v,uint32_t now){
+ unsigned lang=tio_lang();
  sample(v,now);unsigned bank=v->bank^1;unsigned q=v->page_motion?ease(now-v->started,120):256;
  int offset=v->page_motion?mix(v->page_offset,0,q):0;unsigned fade=v->page_motion?192+q/4:256;
  unsigned size=icon_size(v),cells=per(v);
@@ -42,7 +44,7 @@ static void render(FMView *v,uint32_t now){
   v->api.buffer(v->api.ctx,v->icons[i],v->pixels[bank][i],size,size);
   v->api.place(v->api.ctx,v->icons[i],center(i)-(int)size/2+offset,top(v,i),size,size);
   v->api.place(v->api.ctx,v->labels[i],center(i)-80+offset,top(v,i)+(int)size+3,160,20);
-  v->api.text_static(v->api.ctx,v->labels[i],names[index]);
+  v->api.text_static(v->api.ctx,v->labels[i],tio_text(names[index],lang));
  }
  memset(v->pager[bank],0,144);
  unsigned pages=(FM_ITEMS+cells-1)/cells,start=(36-(pages*12-6))/2;

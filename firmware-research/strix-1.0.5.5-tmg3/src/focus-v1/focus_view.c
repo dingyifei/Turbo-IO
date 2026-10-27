@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 #include "focus_view.h"
 #include <string.h>
 static void copy(char *d,const char *s){size_t n=0;while(n<111&&s[n])n++;memcpy(d,s,n);d[n]=0;}
@@ -23,12 +24,12 @@ bool tf_view_open(TFView *v,const TNWidgets *api,void *surface,void *parent){if(
  for(unsigned i=0;i<4;i++){v->labels[i]=api->label(surface,v->root,fonts[i]);if(!v->labels[i]){api->destroy(surface,v->root);memset(v,0,sizeof *v);return false;}api->place(surface,v->labels[i],rects[i][0],rects[i][1],rects[i][2],rects[i][3]);}
  v->icon=api->canvas(surface,v->root);if(!v->icon){api->destroy(surface,v->root);memset(v,0,sizeof *v);return false;}api->place(surface,v->icon,24,38,96,96);v->open=true;return true;
 }
-bool tf_view_draw(TFView *v,const TFocus *s,bool compact){if(!v||!v->open||!v->root||!v->api.idle(v->api.ctx))return false;unsigned b=v->bank^1;memset(v->text[b],0,sizeof v->text[b]);
- const char *phase=s->phase==0?"番茄时钟 · 专注":s->phase==1?"番茄时钟 · 短休息":"番茄时钟 · 长休息";
- copy(v->text[b][0],compact?"● 专注计时中":phase);
+bool tf_view_draw(TFView *v,const TFocus *s,bool compact){unsigned lang=tio_lang();if(!v||!v->open||!v->root||!v->api.idle(v->api.ctx))return false;unsigned b=v->bank^1;memset(v->text[b],0,sizeof v->text[b]);
+ const char *phase=s->phase==0?tio_text(TT_FOCUS_T_FOCUS,lang):s->phase==1?tio_text(TT_FOCUS_T_SHORT,lang):tio_text(TT_FOCUS_T_LONG,lang);
+ copy(v->text[b][0],compact?tio_text(TT_FOCUS_RUNNING,lang):phase);
  clock_text(v->text[b][1],(s->remaining_ms+999)/1000);
- copy(v->text[b][2],s->status==TF_DONE?"时间到，休息一下。":s->status==TF_PAUSED?"已暂停":s->status==TF_RUNNING?"安静计时 · 息屏后继续":"准备好，专注一件事");
- copy(v->text[b][3],s->status==TF_RUNNING?"短按暂停 · 长按停止 · 息屏继续计时":s->status==TF_PAUSED?"短按继续 · 长按停止并退出":s->status==TF_DONE?"短按开始下一阶段 · 长按退出":"滚动选时长 · 短按开始 · 长按退出");
+ copy(v->text[b][2],s->status==TF_DONE?tio_text(TT_FOCUS_DONE,lang):s->status==TF_PAUSED?tio_text(TT_FOCUS_PAUSED,lang):s->status==TF_RUNNING?tio_text(TT_FOCUS_QUIET,lang):tio_text(TT_FOCUS_READY,lang));
+ copy(v->text[b][3],s->status==TF_RUNNING?tio_text(TT_FOCUS_H_RUN,lang):s->status==TF_PAUSED?tio_text(TT_FOCUS_H_PAUSED,lang):s->status==TF_DONE?tio_text(TT_FOCUS_H_DONE,lang):tio_text(TT_FOCUS_H_IDLE,lang));
  for(unsigned i=0;i<4;i++){v->api.text_static(v->api.ctx,v->labels[i],v->text[b][i]);v->api.visible(v->api.ctx,v->labels[i],!compact||i==0);}
  glyph(v->pixels[b],s);v->api.buffer(v->api.ctx,v->icon,v->pixels[b],96,96);v->api.visible(v->api.ctx,v->icon,!compact);v->api.visible(v->api.ctx,v->root,true);v->bank=b;return true;
 }

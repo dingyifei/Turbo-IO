@@ -1,3 +1,4 @@
+#include "../common-v1/tio_text.h"
 #include "menu_tiles.h"
 #include "../menu-grid-v2/menu_config.h"
 #include "../camera-v1/camera_native.h"
@@ -94,9 +95,9 @@ const char *m8_hook_app_id(int index){
  if(index>=TIO_STOCK_ITEMS&&index<TIO_MENU_ITEMS)return ids[index-TIO_STOCK_ITEMS];
  return index>=0&&index<TIO_STOCK_ITEMS?stock_app_id(index):"";
 }
-void m8_hook_names(void *app){
-  {TCSlot *e=camera_slot(app);if(e&&!e->row&&ptr(app,4)){e->row=tio_lv_obj_create_ex(ptr(app,4),0);if(e->row){clean_style(e->row);tio_lv_obj_set_size(e->row,260,26);native_align(e->row,5,0,-60);hidden(e->row,true);e->label=native_label_create(e->row);if(e->label){clean_style(e->label);native_label_text(e->label,"遥控拍照");void *f=menu_font(20,0);if(f)menu_text_font(e->label,f,0);native_text_color(e->label,0x00ff00,0);menu_text_align(e->label,2,0);tio_lv_obj_set_size(e->label,260,26);native_align(e->label,9,0,0);}}}}
-  TAPMenu *a=apps(app);if(a&&!a->row&&ptr(app,4)){a->row=tio_lv_obj_create_ex(ptr(app,4),0);if(a->row){clean_style(a->row);tio_lv_obj_set_size(a->row,260,26);native_align(a->row,5,0,-60);hidden(a->row,true);a->label=native_label_create(a->row);if(a->label){clean_style(a->label);native_label_text(a->label,"我的应用");void *f=menu_font(20,0);if(f)menu_text_font(a->label,f,0);native_text_color(a->label,0x00ff00,0);menu_text_align(a->label,2,0);tio_lv_obj_set_size(a->label,260,26);native_align(a->label,9,0,0);}}}
+void m8_hook_names(void *app){unsigned lang=tio_lang();
+  {TCSlot *e=camera_slot(app);if(e&&!e->row&&ptr(app,4)){e->row=tio_lv_obj_create_ex(ptr(app,4),0);if(e->row){clean_style(e->row);tio_lv_obj_set_size(e->row,260,26);native_align(e->row,5,0,-60);hidden(e->row,true);e->label=native_label_create(e->row);if(e->label){clean_style(e->label);native_label_text(e->label,tio_text(TT_TILE_CAMERA,lang));void *f=menu_font(20,0);if(f)menu_text_font(e->label,f,0);native_text_color(e->label,0x00ff00,0);menu_text_align(e->label,2,0);tio_lv_obj_set_size(e->label,260,26);native_align(e->label,9,0,0);}}}}
+  TAPMenu *a=apps(app);if(a&&!a->row&&ptr(app,4)){a->row=tio_lv_obj_create_ex(ptr(app,4),0);if(a->row){clean_style(a->row);tio_lv_obj_set_size(a->row,260,26);native_align(a->row,5,0,-60);hidden(a->row,true);a->label=native_label_create(a->row);if(a->label){clean_style(a->label);native_label_text(a->label,tio_text(TT_TILE_APPS,lang));void *f=menu_font(20,0);if(f)menu_text_font(a->label,f,0);native_text_color(a->label,0x00ff00,0);menu_text_align(a->label,2,0);tio_lv_obj_set_size(a->label,260,26);native_align(a->label,9,0,0);}}}
   stock_names(app);M8NativeTail *t=tail(app);
   if(t->row || !ptr(app,4))return;
   void *row=tio_lv_obj_create_ex(ptr(app,4),0);if(!row){t->errors|=1;return;}
@@ -104,7 +105,7 @@ void m8_hook_names(void *app){
   hidden(row,true);
   void *label=native_label_create(row);
   if(!label){tio_lv_obj_delete(row);t->errors|=1;return;}
-  clean_style(label);native_label_text(label,"Turbo Display");
+  clean_style(label);native_label_text(label,tio_text(TT_TILE_DISPLAY,lang));
   void *font=menu_font(20,0);if(font)menu_text_font(label,font,0);
   native_text_color(label,0x00ff00,0);menu_text_align(label,2,0);
   tio_lv_obj_set_size(label,260,26);native_align(label,9,0,0);
@@ -113,28 +114,28 @@ void m8_hook_names(void *app){
   s->row=tio_lv_obj_create_ex(ptr(app,4),0);if(!s->row)return;
   clean_style(s->row);tio_lv_obj_set_size(s->row,260,26);native_align(s->row,5,0,-60);hidden(s->row,true);
   s->label=native_label_create(s->row);if(!s->label)return;
-  clean_style(s->label);native_label_text(s->label,"导航");
+  clean_style(s->label);native_label_text(s->label,tio_text(TT_TILE_NAVIGATION,lang));
   if(font)menu_text_font(s->label,font,0);native_text_color(s->label,0x00ff00,0);menu_text_align(s->label,2,0);
   tio_lv_obj_set_size(s->label,260,26);native_align(s->label,9,0,0);
   TMMusicSlot *m=music(app);if(!m)return;
   m->row=tio_lv_obj_create_ex(ptr(app,4),0);if(!m->row)return;
   clean_style(m->row);tio_lv_obj_set_size(m->row,260,26);native_align(m->row,5,0,-60);hidden(m->row,true);
   m->label=native_label_create(m->row);if(!m->label)return;
-  clean_style(m->label);native_label_text(m->label,"网易云音乐");
+  clean_style(m->label);native_label_text(m->label,tio_text(TT_TILE_MUSIC,lang));
   if(font)menu_text_font(m->label,font,0);native_text_color(m->label,0x00ff00,0);menu_text_align(m->label,2,0);
   tio_lv_obj_set_size(m->label,260,26);native_align(m->label,9,0,0);
   TFSlot *f=focus(app);if(!f)return;f->row=tio_lv_obj_create_ex(ptr(app,4),0);if(!f->row)return;
   clean_style(f->row);tio_lv_obj_set_size(f->row,260,26);native_align(f->row,5,0,-60);hidden(f->row,true);
-  f->label=native_label_create(f->row);if(!f->label)return;clean_style(f->label);native_label_text(f->label,"番茄时钟");
+  f->label=native_label_create(f->row);if(!f->label)return;clean_style(f->label);native_label_text(f->label,tio_text(TT_TILE_FOCUS,lang));
   if(font)menu_text_font(f->label,font,0);native_text_color(f->label,0x00ff00,0);menu_text_align(f->label,2,0);tio_lv_obj_set_size(f->label,260,26);native_align(f->label,9,0,0);
 }
-void m8_hook_refresh_label(void *app,int index){
-  if(index==TIO_TILE_CAMERA){if(camera_slot(app)&&camera_slot(app)->label)native_label_text(camera_slot(app)->label,"遥控拍照");return;}
-  if(index==TIO_TILE_APPS){if(apps(app)&&apps(app)->label)native_label_text(apps(app)->label,"我的应用");return;}
-  if(index==TIO_TILE_FOCUS){if(focus(app)&&focus(app)->label)native_label_text(focus(app)->label,"番茄时钟");return;}
-  if(index==TIO_TILE_MUSIC){if(music(app)&&music(app)->label)native_label_text(music(app)->label,"网易云音乐");return;}
-  if(index==TIO_TILE_NAVIGATION){if(slot(app)&&slot(app)->label)native_label_text(slot(app)->label,"导航");return;}
-  if(index==TIO_TILE_DISPLAY){if(tail(app)->label)native_label_text(tail(app)->label,"Turbo Display");return;}
+void m8_hook_refresh_label(void *app,int index){unsigned lang=tio_lang();
+  if(index==TIO_TILE_CAMERA){if(camera_slot(app)&&camera_slot(app)->label)native_label_text(camera_slot(app)->label,tio_text(TT_TILE_CAMERA,lang));return;}
+  if(index==TIO_TILE_APPS){if(apps(app)&&apps(app)->label)native_label_text(apps(app)->label,tio_text(TT_TILE_APPS,lang));return;}
+  if(index==TIO_TILE_FOCUS){if(focus(app)&&focus(app)->label)native_label_text(focus(app)->label,tio_text(TT_TILE_FOCUS,lang));return;}
+  if(index==TIO_TILE_MUSIC){if(music(app)&&music(app)->label)native_label_text(music(app)->label,tio_text(TT_TILE_MUSIC,lang));return;}
+  if(index==TIO_TILE_NAVIGATION){if(slot(app)&&slot(app)->label)native_label_text(slot(app)->label,tio_text(TT_TILE_NAVIGATION,lang));return;}
+  if(index==TIO_TILE_DISPLAY){if(tail(app)->label)native_label_text(tail(app)->label,tio_text(TT_TILE_DISPLAY,lang));return;}
   if(index>=0 && index<7)stock_refresh_label(app,index);
 }
 void m8_hook_delete_dots(void *app){
