@@ -50,6 +50,13 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "NavigationUI.h"
 #import "SubtitleHUD.h"
 #import "VoiceTTS.h"
+#if __has_include("TIOLanguage.h")
+#import "TIOLanguage.h"
+static NSString *AddonUILanguage(void){NSString *l=TIOUILanguage();return TIOScriptLanguageIsChinese(l)?@"zh-Hans":@"en";}
+#else
+static NSString *AddonUILanguage(void){NSString *l=NSLocale.preferredLanguages.firstObject?:@"en";return TIOScriptLanguageIsChinese(l)?@"zh-Hans":@"en";}
+#endif
+static NSString *UIText(NSString *en,NSString *zh){return [AddonUILanguage() isEqual:@"zh-Hans"]?zh:en;}
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
 #if TIO_DISPLAY_PHONE
@@ -85,7 +92,7 @@ static NSString *ReadKey(NSString *host) {
     CFTypeRef out=NULL; if(SecItemCopyMatching((__bridge CFDictionaryRef)q,&out)!=errSecSuccess)return @"";
     return [[NSString alloc]initWithData:CFBridgingRelease(out) encoding:NSUTF8StringEncoding]?:@"";
 }
-static BOOL TTSOn(void){return [Prefs boolForKey:@"ttsEnabled"]&&([[Prefs stringForKey:@"ttsEngine"] isEqual:@"local"]||ReadKey(TIOVoiceTTSService()).length>0);}
+static BOOL TTSOn(void){return [Prefs boolForKey:@"ttsEnabled"];}
 static BOOL StoreKey(NSString *host,NSString *key) {
     NSDictionary *q=KeyQuery(host);
     if(!key.length){OSStatus s=SecItemDelete((__bridge CFDictionaryRef)q);return s==errSecSuccess||s==errSecItemNotFound;}
@@ -108,16 +115,6 @@ static void ImportPrivateBootstrap(void){
     [Prefs setObject:endpoint forKey:@"endpoint"];[Prefs setObject:j[@"model"] forKey:@"model"];
     for(NSString *k in @[@"tinyfishEnabled",@"deepseekDisableThinking",@"voiceExitCommands"])[Prefs setObject:j[k] forKey:k];
     [Prefs setBool:YES forKey:@"privateBootstrapImported"];
-}
-static void ImportPrivateTTSBootstrap(void){
-    // Private local test IPA only: this JSON is extractable and must never be
-    // shipped in a public source tree or distributable build.
-    if(ReadKey(TIOVoiceTTSService()).length)return;
-    NSString *path=[NSBundle.mainBundle pathForResource:@"TurboIOPrivateTTSBootstrap" ofType:@"json"];
-    if(!path||[[NSFileManager.defaultManager attributesOfItemAtPath:path error:nil][NSFileSize] unsignedLongLongValue]>4096)return;
-    NSDictionary *j=[NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:path] options:0 error:nil];
-    NSString *key=[j isKindOfClass:NSDictionary.class]&&[j[@"key"] isKindOfClass:NSString.class]?j[@"key"]:@"";
-    if([key hasPrefix:@"sk-"]&&key.length<1024)StoreKey(TIOVoiceTTSService(),key);
 }
 static id Get(id obj,NSString *key) {if(!obj)return nil;@try{return [obj valueForKey:key];}@catch(NSException *e){return nil;}}
 static NSString *String(id obj) {return [obj isKindOfClass:NSString.class]?obj:@"";}
@@ -342,7 +339,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if(section==0&&[self.page isEqual:@"model"])return [TIOSelectedAgent() isEqual:@"Codex"]?@"Codex · 只读知识库查询，连接状态见知识库。":@"当前 Agent 未连接执行器；切换选择不会自动发起任务。";
     if(section==0)return [@{@"model":@"TURBO IO · 选择回答方式，管理自己的模型与搜索服务。",@"library":@"音频、转写集中管理；分享只创建副本，不删除原件。",@"diagnostics":@"手动测试与协议状态，不与日常操作混放。"} objectForKey:self.page];
     if(section!=self.sections.count-1)return nil;
-    if([self.page isEqual:@"model"])return @"官方 ASR 保留，语音仍可能经过官方云。回答默认由 iOS 本机朗读，也可切换云端 Flash；语音经眼镜蓝牙音频输出。历史仅保留本次进程最近50条成功消息。";
+    if([self.page isEqual:@"model"])return UIText(@"Official ASR is kept; speech may still pass through the official cloud. Answers are read aloud on this iPhone with an English or Chinese voice chosen per sentence and played through the glasses' Bluetooth audio. History keeps only the latest 50 successful messages of this session.",@"官方 ASR 保留，语音仍可能经过官方云。回答由 iOS 本机按句自动选择中文或英文音色朗读，经眼镜蓝牙音频输出。历史仅保留本次进程最近50条成功消息。" /*i18n:keep*/);
     if([self.page isEqual:@"library"])return @"此处是可选实时文字备份，开关会保留；情境英语可直接读取官方已缓存的历史正文，无需先开启备份。";
     return @"测试需要手动触发，可能调用已配置的服务。接口成功不等于眼镜显示成功。关闭研究只关闭界面，不改变正在运行的功能。";
 }
@@ -361,9 +358,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #endif
     if([r[@"key"] isEqual:@"tts"]){c.detailTextLabel.text=@"官方/自有回答 · 眼镜蓝牙音频";
         UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"ttsEnabled"];[s addTarget:self action:@selector(ttsToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
-    if([r[@"key"] isEqual:@"ttsEngine"])c.detailTextLabel.text=[[Prefs stringForKey:@"ttsEngine"] isEqual:@"local"]?@"iOS 本机语音 · 无需 Key · 默认":@"阿里 qwen-audio-3.1-tts-flash · 云端";
-    if([r[@"key"] isEqual:@"ttsKey"])c.detailTextLabel.text=ReadKey(TIOVoiceTTSService()).length?@"云端备用 Key 已存手机 Keychain，不回显":@"仅云端模式需要配置 Key";
-    if([r[@"key"] isEqual:@"ttsTest"]){c.detailTextLabel.text=[NSString stringWithFormat:@"固定短句 · %@",VoiceTTS.status?:@"待命"];
+    if([r[@"key"] isEqual:@"ttsTest"]){c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",[VoiceTTS voiceSummaryForLanguage:AddonUILanguage()],[VoiceTTS statusForLanguage:AddonUILanguage()]];
         UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:@"播放" forState:UIControlStateNormal];
         button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
         [button addTarget:self action:@selector(testTTS) forControlEvents:UIControlEventTouchUpInside];c.accessoryView=button;}
@@ -397,36 +392,12 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     return c;
 }
 - (void)thinking:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"deepseekDisableThinking"];}
-- (void)ttsToggle:(UISwitch *)sender {
-    if(sender.on&&![[Prefs stringForKey:@"ttsEngine"] isEqual:@"local"]&&!ReadKey(TIOVoiceTTSService()).length){sender.on=NO;Alert(@"请先配置云端 TTS",@"阿里 Flash 模式需要 API Key；本机朗读不需要。");return;}
-    [Prefs setBool:sender.on forKey:@"ttsEnabled"];if(!sender.on)[VoiceTTS cancel];
-    [self.tableView reloadData];
-}
-- (void)configureTTSEngine {
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"回答朗读引擎" message:@"只朗读聊天回答。默认使用 iOS 本机语音，不需要 Key；云端 Flash 是可选实验模式。" preferredStyle:UIAlertControllerStyleActionSheet];
-    [a addAction:[UIAlertAction actionWithTitle:@"本机朗读 · 默认，无需 Key" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[Prefs setObject:@"local" forKey:@"ttsEngine"];[Prefs setBool:YES forKey:@"ttsEnabled"];VoiceTTS.localMode=YES;[self.tableView reloadData];}]];
-    [a addAction:[UIAlertAction actionWithTitle:@"阿里 Flash · 云端流式" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){
-        if(!ReadKey(TIOVoiceTTSService()).length){Alert(@"未配置云端 Key",@"请先进入“阿里 Flash TTS 配置”，或继续使用本机朗读。");return;}
-        [Prefs setObject:@"cloud" forKey:@"ttsEngine"];[Prefs setBool:YES forKey:@"ttsEnabled"];VoiceTTS.localMode=NO;[self.tableView reloadData];}]];
-    [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    a.popoverPresentationController.sourceView=self.view;a.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);
-    [self presentViewController:a animated:YES completion:nil];
-}
-- (void)configureTTS {
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"阿里 Flash TTS" message:@"仅用于当前私用 App 的回答朗读。使用 qwen-audio-3.1-tts-flash 和龙安欢 v3.1 音色；Key 存在手机钥匙串，不回显。留空保留现有 Key。" preferredStyle:UIAlertControllerStyleAlert];
-    [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=@"新 TTS API Key（不回显）";f.secureTextEntry=YES;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;}];
-    [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [a addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){NSString *key=a.textFields.firstObject.text?:@"";a.textFields.firstObject.text=@"";
-        if(key.length&&(![key hasPrefix:@"sk-"]||key.length>1024||[key rangeOfCharacterFromSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].location!=NSNotFound||!StoreKey(TIOVoiceTTSService(),key))){Alert(@"未保存",@"TTS Key 格式或钥匙串写入失败。");return;}
-        [self.tableView reloadData];}]];
-    [a addAction:[UIAlertAction actionWithTitle:@"删除 TTS Key" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){[VoiceTTS cancel];StoreKey(TIOVoiceTTSService(),@"");[Prefs setObject:@"local" forKey:@"ttsEngine"];VoiceTTS.localMode=YES;[self.tableView reloadData];}]];
-    [self presentViewController:a animated:YES completion:nil];
-}
+- (void)ttsToggle:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"ttsEnabled"];if(!sender.on)[VoiceTTS cancel];[self.tableView reloadData];}
 - (void)testTTS {
     [Prefs setObject:@"已触发固定短句测试" forKey:@"ttsTestDiagnostic"];
-    if(!TTSOn()){Alert(@"请先开启",@"请打开“回答同步朗读”开关；仅云端模式需要 TTS Key。");return;}
+    if(!TTSOn()){Alert(UIText(@"Turn it on first",@"请先开启" /*i18n:keep*/),UIText(@"Turn on “Read answers aloud” first.",@"请打开“回答同步朗读”开关。" /*i18n:keep*/));return;}
     [Prefs setObject:@"manual.test" forKey:@"ttsLastReset"];
-    [VoiceTTS beginTurn];[VoiceTTS appendFullText:@"Turbo IO 实时语音测试，现在可以听到我说话。" finished:YES];
+    [VoiceTTS beginTurn];[VoiceTTS appendFullText:@"Turbo IO voice test. 这是中文语音测试。" /*i18n:keep*/ finished:YES];
     [Prefs setObject:VoiceTTS.status?:@"" forKey:@"ttsTestImmediate"];
     [self.tableView reloadData];
     __weak typeof(self) weak=self;
@@ -497,8 +468,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #else
     if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIONavigationController() animated:YES];return;}
 #endif
-    if([r[@"key"] isEqual:@"ttsEngine"]){[self configureTTSEngine];return;}
-    if([r[@"key"] isEqual:@"ttsKey"]){[self configureTTS];return;}
     if([r[@"key"] isEqual:@"ttsTest"]){[self testTTS];return;}
     if([r[@"key"] isEqual:@"glassesLog"]){[self.navigationController pushViewController:TIOGlassesLogController() animated:YES];return;}
     if([@[@"thinking",@"search",@"exit",@"capture",@"tts"] containsObject:r[@"key"]])return;
@@ -532,9 +501,8 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #if TIO_UI_PREVIEW
 UITabBarController *TIOCreateResearchPreview(void){
     Prefs=[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.research.preview"];
-    [Prefs registerDefaults:@{@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"ttsEngine":@"local"}];
-    VoiceTTS=[[TIOVoiceTTS alloc]initWithKeyProvider:^{return @"";}];
-    VoiceTTS.localMode=YES;
+    [Prefs registerDefaults:@{@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+    VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
     Controller=[TIOController new];Diagnostic=@"界面预览：未连接眼镜，未加载官方通信库";
     ArchiveQueue=dispatch_queue_create("io.turboio.preview.archive",DISPATCH_QUEUE_SERIAL);
     Archive=[[TIOTranscriptArchive alloc]initWithDirectory:[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"ResearchPreview"]]];
@@ -584,12 +552,11 @@ __attribute__((constructor)) static void Load(void) {
             TIOStartExperimentalOTAFeedIfMarked();
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();TWReaderProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
-            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"ttsEngine":@"local"}];
+            if(![Prefs boolForKey:@"ttsCloudRemoved"]){StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: one-shot cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref
+            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
             Controller=[TIOController new];
             ImportPrivateBootstrap();
-            ImportPrivateTTSBootstrap();
-            VoiceTTS=[[TIOVoiceTTS alloc]initWithKeyProvider:^{return ReadKey(TIOVoiceTTSService());}];
-            VoiceTTS.localMode=[[Prefs stringForKey:@"ttsEngine"] isEqual:@"local"];
+            VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
             TIONewsConfigure(^TIONewsCancel(NSString *prompt,void (^completion)(NSString *,NSString *)){
                 TIORequest *request=[TIORequest new];request.newsMode=YES;request.history=@[];
                 request.update=^(NSString *text,BOOL done,NSString *error){if(done)completion(text,error);};
@@ -599,7 +566,7 @@ __attribute__((constructor)) static void Load(void) {
                 return [^{cancelled=YES;[request cancel];} copy];
             });
             // Research rows are explicit routes now, not a chain of table hooks.
-            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"ttsEngine":@"local"}];
+            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
             // Do not automatically resume model takeover. Text capture remains opt-in and persistent.
             [Prefs setInteger:0 forKey:@"mode"]; // Keep the explicitly chosen text-save preference across launches.
             [Prefs removeObjectForKey:@"verifiedChatDomain"];
