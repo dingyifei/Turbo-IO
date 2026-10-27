@@ -22,20 +22,9 @@ for screen in "${screens[@]}"; do
 done
 
 udid_file="$inputs/preview-sim.udid"
-runtime_file="$inputs/preview-sim.runtime"
-udid=''
-[[ ! -f "$udid_file" ]] || udid=$(cat "$udid_file")
-# grep consumes the whole stream so pipefail cannot turn SIGPIPE into a miss.
-if [[ -z "$udid" ]] || ! xcrun simctl list devices | grep -F -- "$udid" >/dev/null; then
-  runtime=com.apple.CoreSimulator.SimRuntime.iOS-27-0
-  if ! udid=$(xcrun simctl create TurboIO-Preview com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro "$runtime"); then
-    runtime=com.apple.CoreSimulator.SimRuntime.iOS-26-5
-    udid=$(xcrun simctl create TurboIO-Preview com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro "$runtime")
-  fi
-  [[ -n "$udid" ]] || { echo 'PREVIEW SHOOT FAIL: simulator creation returned no identifier' >&2; exit 1; }
-  printf '%s\n' "$udid" > "$udid_file"
-  printf '%s\n' "$runtime" > "$runtime_file"
-fi
+[[ -s "$udid_file" ]] || { echo 'PREVIEW SHOOT FAIL: missing pinned simulator' >&2; exit 1; }
+udid=$(cat "$udid_file")
+[[ "$udid" =~ ^[0-9A-Fa-f-]{36}$ ]] || { echo 'PREVIEW SHOOT FAIL: invalid pinned simulator' >&2; exit 1; }
 
 boot_started=$SECONDS
 xcrun simctl bootstatus "$udid" -b
