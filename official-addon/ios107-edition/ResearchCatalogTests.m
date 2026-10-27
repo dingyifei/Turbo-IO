@@ -89,8 +89,14 @@ int main(void) {
         assert(TIOHubSections(@"unknown").count == 0);
 
         for (NSString *key in @[@"language",@"languageStatus",@"aboutMe",@"ttsTest",@"music",@"experimentalOTA",@"lifelogText",@"lifelogAudio",@"capture",@"archive"]) assert([keys containsObject:key]);
-        for (NSString *key in @[@"appleAI",@"uiLanguage",@"searchKey",@"ttsEngine",@"ttsKey",@"weread",@"didi",@"netease",@"contextEnglish",@"dots",@"enhancedLifelog",@"notificationArchive",@"news",@"newsTeleprompter"]) assert(![keys containsObject:key]);
+        for (NSString *key in @[@"uiLanguage",@"searchKey",@"ttsEngine",@"ttsKey",@"weread",@"didi",@"netease",@"contextEnglish",@"dots",@"enhancedLifelog",@"notificationArchive",@"news",@"newsTeleprompter"]) assert(![keys containsObject:key]);
 
+#if TIO_APPLE_AI
+        assert([keys containsObject:@"appleAI"]);
+        NSDictionary *apple=RowForKey(catalog,@"appleAI");assert([apple[@"section"] integerValue]==TIOHubSectionDeveloper&&![apple[@"parent"] length]&&[apple[@"icon"] isEqual:@"sparkles"]);
+#else
+        assert(![keys containsObject:@"appleAI"]);
+#endif
         CheckTitles(catalog, 28);
         NSString *englishLanguageTitle = language[@"title"];
         TIOSetUILanguageOverride(@"zh");

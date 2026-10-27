@@ -72,6 +72,7 @@ test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m',
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c'])
 test('apple-ai-core',['AppleAICoreTests.m','AppleAICore.m'])
 test('catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1'])
+test('research-catalog-apple',['ResearchCatalogTests.m','ResearchCatalog.m','AppleAICore.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1','-DTIO_APPLE_AI=1'])
 test('music-clock',['tests/MusicClockTests.m'])
 test('spotify-lyrics',['SpotifyHTTP.m','SpotifyLyrics.m','tests/SpotifyLyricsTests.m'],[P/'tests/fixtures/spotify'])
 test('spotify-auth',['SpotifyHTTP.m','SpotifyAuth.m','tests/SpotifyAuthTests.m'],[P/'tests/fixtures/spotify'],['-framework','Security'])

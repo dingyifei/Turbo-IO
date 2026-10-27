@@ -1,3 +1,7 @@
+#if TIO_APPLE_AI
+#import "AppleAI.h"
+#import "AppleAICore.h"
+#endif
 #import "camera-v1/CameraUI.h"
 extern BOOL TDPPhoneAutomaticIdle(void);
 #import <UIKit/UIKit.h>
@@ -403,8 +407,15 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"mode"]) {
         NSInteger mode=[Prefs integerForKey:@"mode"];
         NSString *kind=mode==1?@"test":mode==2?@"custom":@"official"; // WP7 adds mode 3.
+#if TIO_APPLE_AI
+        if(mode==3)kind=@"apple";
+#endif
         status=TIOText([@"hub.status.mode." stringByAppendingString:kind]);
-    } else if ([key isEqual:@"api"]) status=[Prefs stringForKey:@"model"]?:TIOText(@"hub.status.api.unset");
+    }
+#if TIO_APPLE_AI
+    else if ([key isEqual:@"appleAI"]) status=TIOAppleAIStatusLine();
+#endif
+    else if ([key isEqual:@"api"]) status=[Prefs stringForKey:@"model"]?:TIOText(@"hub.status.api.unset");
     else if ([key isEqual:@"tts"]) status=TIOText(TTSOn()?@"hub.status.tts.on":@"hub.status.tts.off");
     else if ([key isEqual:@"search"]) status=TIOText(ReadKey(@"https://api.search.tinyfish.ai").length?@"hub.status.search.ready":@"hub.status.search.nokey");
     else if ([key isEqual:@"knowledge"]) status=TIOText([TIOSelectedAgent() isEqual:@"Codex"]?@"hub.status.knowledge.codex":@"hub.status.knowledge.none");
@@ -512,6 +523,9 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     [self openKey:key];
 }
 - (void)openKey:(NSString *)key {
+#if TIO_APPLE_AI
+    if([key isEqual:@"appleAI"]){[self.navigationController pushViewController:TIOAppleAIController() animated:YES];return;}
+#endif
     UIViewController *screen=nil;
     if ([key isEqual:@"experimentalOTA"]) screen=TIOExperimentalOTAController();
 #if TIO_MAPKIT_ENABLED
@@ -568,7 +582,13 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)performKey:(NSString *)key {
     if ([key isEqual:@"mode"]) {
         NSArray *titles=@[TIOText(@"hub.choose.mode.official"),TIOText(@"hub.choose.mode.test"),TIOText(@"hub.choose.mode.custom")]; // WP7 appends option 4.
+#if TIO_APPLE_AI
+        titles=[titles arrayByAddingObject:TIOText(@"hub.choose.mode.apple")];
+#endif
         TIOChoose(self,TIOText(@"hub.choose.mode.title"),TIOText(@"hub.alert.mode.message"),titles,[Prefs integerForKey:@"mode"],nil,^(NSInteger i){
+#if TIO_APPLE_AI
+            if(i==3){NSDictionary *availability=TIOAppleModelAvailability();if(![availability[@"available"] boolValue]){Alert(TIOText(@"apple.model.unavailable"),TIOAppleErrorMessage(availability[@"reason"]));return;}}
+#endif
             [Controller cancel];[Prefs setInteger:i forKey:@"mode"];[self.tableView reloadData];if(i&&![Prefs stringForKey:@"verifiedChatDomain"])Alert(TIOText(@"hub.notice.takeover.title"),TIOText(@"hub.notice.takeover.message"));
         });return;
     }

@@ -49,6 +49,9 @@ static const TIOHubRowDefinition Rows[] = {
     {@"capture", @"square.and.arrow.down", TIOHubSectionMedia, @"lifelog", @""},
     {@"archive", @"square.and.arrow.up", TIOHubSectionMedia, @"lifelog", @""},
 
+#if TIO_APPLE_AI
+    {@"appleAI", @"sparkles", TIOHubSectionDeveloper, @"", @""},
+#endif
     {@"status", @"checkmark.shield", TIOHubSectionDeveloper, @"", @""},
     {@"diagnosticsRuntime", @"gauge.with.dots.needle.67percent", TIOHubSectionDeveloper, @"", @"TDG1"},
     {@"glassesLog", @"doc.text.magnifyingglass", TIOHubSectionDeveloper, @"", @""},

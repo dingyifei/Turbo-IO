@@ -1929,3 +1929,6 @@
 {"key":"apple.action.probe","en":"Run probe again","zh":"重新检测"}
 {"key":"apple.action.copy","en":"Copy report","zh":"复制报告"}
 {"key":"apple.requirements","en":"Requires iOS 26+, Apple Intelligence on, matching device and Siri languages, and the TurboAppleAI module.","zh":"需要 iOS 26 或更新版本、开启 Apple 智能、设备语言与 Siri 语言一致，并已打包 TurboAppleAI 模块。"}
+{"key":"hub.row.appleAI","en":"Apple Intelligence","zh":"Apple 智能"}
+{"key":"hub.choose.mode.apple","en":"Apple on-device model","zh":"Apple 本机模型"}
+{"key":"apple.model.unavailable","en":"Apple model unavailable","zh":"Apple 模型不可用"}
