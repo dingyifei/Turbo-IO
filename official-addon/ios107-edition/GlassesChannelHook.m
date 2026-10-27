@@ -1,7 +1,6 @@
 #import "camera-v1/CameraUI.h"
 #import "Brightness.h"
 #import "TodoRuntime.h"
-#import "context-english-v1/CEAutoRuntime.h"
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
 #endif
@@ -58,7 +57,6 @@ static void MethodHook(id self,SEL cmd,id call,id result){
     if([Get(call,@"method") isEqual:@"rayneonet_sendMessage"]){id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]&&[args[@"businessId"] isEqual:@22]){void (^work)(void)=^{TIOTodoObserveSnapshotMessage(args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
     id args=Get(call,@"arguments");
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&[args isKindOfClass:NSDictionary.class]){
-        CEAutoHostFileActivity();
         void(^original)(id)=result;
         PriorMethod(self,cmd,call,[^(id response){dispatch_async(dispatch_get_main_queue(),^{TIONewsTeleObserveFileResult(args,response);});if(original)original(response);} copy]);
     }else PriorMethod(self,cmd,call,result);

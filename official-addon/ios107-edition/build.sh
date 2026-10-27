@@ -267,26 +267,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   -framework CoreImage \
   -framework ImageIO \
   Addon.m \
-  context-english-v1/ContextEnglishUI.m \
-  context-english-v1/ContextEnglish.m \
-  context-english-v1/ContextEnglishNative.m \
-  context-english-v1/english_session.c \
-  context-english-v1/head_gate.c \
-  context-english-v1/english_view.c \
-  context-english-v1/english_flow.c \
-  context-english-v1/english_schedule.c \
-  context-english-v1/english_wire.c \
-  context-english-v1/english_transfer.c \
-  context-english-v1/ContextEnglishPanel.m \
-  context-english-v1/CEAutoPlan.m \
-  context-english-v1/CEAutoRuntime.m \
-  context-english-v1/CEHiveSnapshot.m \
-  context-english-v1/CEOfficialLifelog.m \
-  context-english-v1/ContextEnglishClient.m \
-  context-english-v1/ContextEnglishBridge.m \
-  context-english-v1/ContextEnglishTransport.m \
-  context-english-v1/ContextEnglishHistory.m \
-  context-english-v1/english_progress.c \
   -o "$output"
 codesign --force --sign - "$output"
 plutil -lint TurboIOPrivateAddon.plist

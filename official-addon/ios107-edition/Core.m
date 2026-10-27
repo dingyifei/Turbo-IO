@@ -200,15 +200,6 @@ NSDictionary *TIOChatRequestWithHistory(NSString *model, NSString *question, NSA
     for (id r in rows) if (![r isKindOfClass:NSDictionary.class] || ![r[@"id"] isKindOfClass:NSString.class] || ![r[@"text"] isKindOfClass:NSString.class] || ![r[@"at"] isKindOfClass:NSString.class] || ![r[@"role"] isKindOfClass:NSString.class]) { if(error)*error=[self failure]; return nil; }
     return rows;
 }
-- (NSArray<NSDictionary *> *)contextEnglishSnapshot:(NSError **)error {
-    @synchronized(self) {
-        NSArray *rows=[self load:error];if(!rows)return nil;
-        // Independent immutable snapshot; never create a full-text export.
-        NSMutableArray *snapshot=[NSMutableArray arrayWithCapacity:rows.count];
-        for(NSDictionary *row in rows)[snapshot addObject:@{@"text":[row[@"text"] copy],@"at":[row[@"at"] copy]}];
-        return [snapshot copy];
-    }
-}
 - (BOOL)recordText:(NSString *)text round:(NSString *)round role:(NSString *)role at:(NSDate *)date error:(NSError **)error {
     @synchronized(self) {
         if (!text.length || text.length>32000 || round.length>512 || role.length>80) return NO;

@@ -1,6 +1,5 @@
 #import "OTAHost.h"
 #import "ExperimentalOTAFeed.h"
-#import "context-english-v1/ContextEnglishTransport.h"
 #import "ExperimentalOTAFlash.h"
 #import "MusicTransport.h"
 #import "ReaderTransport.h"
@@ -40,7 +39,6 @@ static const TIOOTAScopedSender ScopedFileSenders[]={
  TMIsScopedCall,
  TWIsScopedCall,
  TFIsScopedCall,
- CEIsScopedCall,
  DRIsScopedCall,
  TDIsScopedCall,
 #endif

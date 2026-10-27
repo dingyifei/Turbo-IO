@@ -1,9 +1,5 @@
 #import "camera-v1/CameraUI.h"
-#import "context-english-v1/CEOfficialLifelog.h"
-#import "context-english-v1/ContextEnglishPanel.h"
-#import "context-english-v1/CEAutoRuntime.h"
 extern BOOL TDPPhoneAutomaticIdle(void);
-#import "context-english-v1/ContextEnglishBridge.h"
 #import <UIKit/UIKit.h>
 #import <Security/Security.h>
 #import <objc/runtime.h>
@@ -303,7 +299,6 @@ static void CompleteHook(id self,SEL cmd) {
 }
 static void AlwaysOnHook(id self,SEL cmd,id value) {
     OriginalAlwaysOn(self,cmd,value);
-    if([Get(value,@"finish") boolValue])CEAutoObserveFinal(String(Get(value,@"text")));
     if(![Prefs boolForKey:@"captureFinalText"]||![Get(value,@"finish") boolValue])return;
     NSString *text=String(Get(value,@"text")),*round=String(Get(value,@"roundId"));
     id r=Get(value,@"role");NSString *role=[r respondsToSelector:@selector(stringValue)]?[r stringValue]:String(r);
@@ -335,7 +330,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if(section==0)return [@{@"model":@"TURBO IO · 选择回答方式，管理自己的模型与搜索服务。",@"library":@"音频、转写集中管理；分享只创建副本，不删除原件。",@"diagnostics":@"手动测试与协议状态，不与日常操作混放。"} objectForKey:self.page];
     if(section!=self.sections.count-1)return nil;
     if([self.page isEqual:@"model"])return UIText(@"Official ASR is kept; speech may still pass through the official cloud. Answers are read aloud on this iPhone with an English or Chinese voice chosen per sentence and played through the glasses' Bluetooth audio. History keeps only the latest 50 successful messages of this session.",@"官方 ASR 保留，语音仍可能经过官方云。回答由 iOS 本机按句自动选择中文或英文音色朗读，经眼镜蓝牙音频输出。历史仅保留本次进程最近50条成功消息。" /*i18n:keep*/);
-    if([self.page isEqual:@"library"])return @"此处是可选实时文字备份，开关会保留；情境英语可直接读取官方已缓存的历史正文，无需先开启备份。";
+    if([self.page isEqual:@"library"])return @"此处是可选实时文字备份，开关会保留。";
     return @"测试需要手动触发，可能调用已配置的服务。接口成功不等于眼镜显示成功。关闭研究只关闭界面，不改变正在运行的功能。";
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)ip {
@@ -362,7 +357,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if([r[@"key"] isEqual:@"mode"]){c.detailTextLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleTitle3];c.detailTextLabel.textColor=UIColor.labelColor;}
     if([r[@"key"] isEqual:@"history"])c.detailTextLabel.text=[c.detailTextLabel.text stringByAppendingString:@" · 点此管理清空"];
     if(section==-1)c.detailTextLabel.text=@[@"本机音频 / TXT / Markdown · AirDrop与文件",@"导入或粘贴转写，确认后交给自有模型",@"导出 Markdown 或整理已保存文字",@"明确开启保存后，查看与分享音频副本"][row];
-    if([r[@"key"] isEqual:@"contextEnglish"])c.detailTextLabel.text=@"选择片段 · 确认后生成 · TEL1 题库发送";
     if([r[@"key"] isEqual:@"archive"])c.detailTextLabel.text=@"一次导出 Markdown 与 JSON";
     if([r[@"key"] isEqual:@"capture"])c.detailTextLabel.text=@"可选实时备份 · 开关保持到手动关闭；学习无需开启";
     if([r[@"key"] isEqual:@"status"])c.accessoryType=UITableViewCellAccessoryNone;
@@ -427,7 +421,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 - (void)capture:(UISwitch *)sender {
     if(!sender.on){[Prefs setBool:NO forKey:@"captureFinalText"];return;}
     sender.on=NO;
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"保存全天智记文字？" message:@"仅将之后收到的最终识别文字另存于本机扩展目录，重启后仍保持开启，直到你手动关闭。包含真实谈话内容，请确保相关人员同意。不启动麦克风，不自动上传。情境英语读取已有官方正文不需要此开关。" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"保存全天智记文字？" message:@"仅将之后收到的最终识别文字另存于本机扩展目录，重启后仍保持开启，直到你手动关闭。包含真实谈话内容，请确保相关人员同意。不启动麦克风，不自动上传。" preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     [a addAction:[UIAlertAction actionWithTitle:@"启用本机保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){Controller.captureEpoch=NSUUID.UUID.UUIDString;[Prefs setBool:YES forKey:@"captureFinalText"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];
 }
@@ -442,7 +436,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
     NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];[tableView deselectRowAtIndexPath:ip animated:YES];
     if([r[@"key"] isEqual:@"camera"]){[self.navigationController pushViewController:TCCameraController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"contextEnglish"]){[self.navigationController pushViewController:TIOContextEnglishPanel() animated:YES];return;}
     if([r[@"key"] isEqual:@"didi"]){[self.navigationController pushViewController:[DRRideController new] animated:YES];return;}
     if([r[@"key"] isEqual:@"dashboardCard"]){[self.navigationController pushViewController:TDCDashboardController() animated:YES];return;}
     if([r[@"key"] isEqual:@"dashboardEditor"]){TCEAIConfigure(^NSDictionary *{NSString *e=[Prefs stringForKey:@"endpoint"]?:@"";return @{@"endpoint":e,@"model":[Prefs stringForKey:@"model"]?:@"",@"key":ReadKey(e)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};});[self.navigationController pushViewController:TCEEditorController() animated:YES];return;}
@@ -578,24 +571,6 @@ __attribute__((constructor)) static void Load(void) {
             [Prefs removeObjectForKey:@"verifiedChatDomain"];
             NSURL *library=[NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject;
             Archive=[[TIOTranscriptArchive alloc]initWithDirectory:[library URLByAppendingPathComponent:@"TurboIOPrivateAddon" isDirectory:YES]];ArchiveQueue=dispatch_queue_create("io.turboio.private.archive",DISPATCH_QUEUE_SERIAL);
-            TIOContextEnglishConfigure(^(void (^done)(NSArray *,NSError *)){
-                dispatch_async(ArchiveQueue,^{NSError *officialError=nil,*archiveError=nil;
-                    NSArray *official=CEReadOfficialLifelog(library,&officialError);
-                    NSArray *saved=[Archive contextEnglishSnapshot:&archiveError];
-                    NSMutableArray *rows=[NSMutableArray new];NSMutableSet *seen=[NSMutableSet new];
-                    for(NSDictionary *r in [(official?:@[]) arrayByAddingObjectsFromArray:saved?:@[]]){
-                        NSString *identity=[NSString stringWithFormat:@"%@|%@",r[@"at"],r[@"text"]];
-                        if(![seen containsObject:identity]&&rows.count<20000){[seen addObject:identity];[rows addObject:r];}}
-                    NSError *error=rows.count?nil:(officialError?:archiveError);
-                    dispatch_async(dispatch_get_main_queue(),^{done([rows copy],error);});});
-            },^NSDictionary *{NSString *endpoint=[Prefs stringForKey:@"endpoint"]?:@"";
-                return @{@"endpoint":endpoint,@"model":[Prefs stringForKey:@"model"]?:@"",
-                    @"key":ReadKey(endpoint)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};
-            },^(NSArray *cards,NSDictionary *settings,void(^progress)(NSString *,BOOL)){CEPhoneSendCards(cards,settings,progress);});
-            CEAutoConfigure(^NSDictionary *{NSString *endpoint=[Prefs stringForKey:@"endpoint"]?:@"";
-                return @{@"endpoint":endpoint,@"model":[Prefs stringForKey:@"model"]?:@"",
-                    @"key":ReadKey(endpoint)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};
-            },^BOOL{return HooksReady&&!Controller.ownsTurn&&TDPPhoneAutomaticIdle();});
 
 
             Class voice=NSClassFromString(@"rayneo_venus_sdk_plugin.AiResultListenerBridge"),ao=NSClassFromString(@"rayneo_venus_sdk_plugin.AlwaysOnResultListenerBridge");

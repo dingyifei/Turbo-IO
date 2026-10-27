@@ -1,5 +1,4 @@
 #import "camera-v1/CameraUI.h"
-#import "context-english-v1/ContextEnglishBridge.h"
 #import "DisplayPhoneUI.h"
 #import "AppBridge.h"
 #import "TodoRuntime.h"
@@ -41,7 +40,7 @@ BOOL TDPPhoneAutomaticIdle(void){
  if(!TCCameraIdleForOTA())return NO;
  if(!NSThread.isMainThread||[TIOOTAFlashStatus()[@"stage"] integerValue]!=0||
     !DRRideIdleForOTA()||DRRideService.shared.busy||DRRideService.shared.pending||
-    !TFFocusIdleForOTA()||!CEPhoneIdleForOTA()||
+    !TFFocusIdleForOTA()||
     Session.busy||NavFeed.active||!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||
     !TMMusicPauseForOTA()||!TWReaderAutomaticIdle()||
     TAPPhoneBridge.shared.busy||TAPPhoneBridge.shared.needsReadback||
@@ -53,7 +52,7 @@ BOOL TDPPhoneAutomaticIdle(void){
 }
 BOOL TDPPhonePauseForOTA(void){
  if(!TCCameraIdleForOTA())return NO;
- if(!NSThread.isMainThread||!DRRideIdleForOTA()||DRRideService.shared.busy||DRRideService.shared.pending||!TFFocusIdleForOTA()||!CEPhoneIdleForOTA()||Session.busy||NavFeed.active||!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||!TMMusicPauseForOTA()||!TWReaderPauseForOTA())return NO;
+ if(!NSThread.isMainThread||!DRRideIdleForOTA()||DRRideService.shared.busy||DRRideService.shared.pending||!TFFocusIdleForOTA()||Session.busy||NavFeed.active||!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||!TMMusicPauseForOTA()||!TWReaderPauseForOTA())return NO;
  [Session setForegroundActive:NO];return YES;
 }
 static NSString *Peer;
@@ -69,7 +68,6 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
  if(TDDiagnosticsConsume(e))return YES;
  (void)DRRideService.shared;
  if(DRRideConsume(e))return YES;
- if(CEPhoneConsume(e))return YES;
  if(TFFocusConsume(e))return YES;
  if(TWReaderConsume(e))return YES;
  if(TMMusicConsume(e))return YES;
@@ -80,7 +78,7 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
 BOOL TDPPhoneRouteReply(NSDictionary *event,void(^completion)(BOOL)){
  if(![event isKindOfClass:NSDictionary.class]||![event[@"eventType"] isEqual:@"messageReceived"])return NO;
  NSDictionary *m=event[@"message"];if(![m isKindOfClass:NSDictionary.class]||![m[@"businessId"] isEqual:@15]||![m[@"payload"] isKindOfClass:NSData.class])return NO;
- NSData *data=m[@"payload"];TDPReply r;if(!CEPhoneIsReply(event)&&!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!DRDecodeReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TWDecodeReply(event,NULL)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!LegacyAppReply(event)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
+ NSData *data=m[@"payload"];TDPReply r;if(!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!DRDecodeReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TWDecodeReply(event,NULL)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!LegacyAppReply(event)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
  NSDictionary *snapshot=[event copy];void(^work)(void)=^{completion(TDPPhoneConsumeEvent(snapshot));};
  if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);return YES;
 }
