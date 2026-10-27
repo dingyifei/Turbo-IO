@@ -42,5 +42,17 @@ int main(void){@autoreleasepool{
         for(NSDictionary *row in live)assert([row[@"height"] doubleValue]==50);
         NSLog(@"PASS: real Air eight-node snapshot selects exactly four 50-pt targets");
     }
+    NSArray *englishNames=@[@"RayNeo",@"Glasses",@"Memory",@"Discover"];
+    NSMutableArray *englishTabs=[NSMutableArray new];
+    for(NSUInteger i=0;i<4;i++){NSMutableDictionary *row=[good[i] mutableCopy];row[@"name"]=englishNames[i];[englishTabs addObject:row];}
+    NSDictionary *englishLayout=TIOHomeTabLayout(englishTabs,420,912,34);
+    assert(englishLayout);assert([[englishLayout[@"items"] valueForKey:@"name"] isEqual:englishNames]);
+    NSMutableArray *mixedEnglish=[englishTabs mutableCopy];NSMutableDictionary *mixedMemory=[mixedEnglish[2] mutableCopy];mixedMemory[@"name"]=@"记忆";mixedEnglish[2]=mixedMemory;
+    NSMutableDictionary *mixedDiscover=[mixedEnglish[3] mutableCopy];mixedDiscover[@"name"]=@"Discover";mixedEnglish[3]=mixedDiscover;assert(!TIOHomeTabLayout(mixedEnglish,420,912,34));
+    NSMutableArray *unverified=[englishTabs mutableCopy];NSMutableDictionary *badMemory=[unverified[2] mutableCopy];badMemory[@"name"]=@"Memories";unverified[2]=badMemory;NSMutableDictionary *badDiscover=[unverified[3] mutableCopy];badDiscover[@"name"]=@"Explore";unverified[3]=badDiscover;assert(!TIOHomeTabLayout(unverified,420,912,34));
+    assert([TIOHomeTabName(@"Glasses, Tab, 2 of 4") isEqual:@"Glasses"]);assert(!TIOHomeTabName(@"Discover more"));
+    NSArray *hantNames=@[@"RayNeo",@"眼鏡",@"記憶",@"發現"];NSMutableArray *hant=[NSMutableArray new];
+    for(NSUInteger i=0;i<4;i++){NSMutableDictionary *row=[good[i] mutableCopy];row[@"name"]=hantNames[i];[hant addObject:row];}
+    assert(TIOHomeTabLayout(hant,420,912,34));
     NSLog(@"PASS: exact home-tab labels, geometry, complete four-item order, unknown/portrait/action guards");
 }return 0;}

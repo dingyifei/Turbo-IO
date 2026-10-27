@@ -1,12 +1,12 @@
 #import "HomeTabLayout.h"
 #include <math.h>
 static NSArray<NSArray<NSString *> *> *TabNamesBySlot(void){
-    return @[@[@"RayNeo"],@[/*i18n:keep*/@"眼镜"],@[/*i18n:keep*/@"记忆",/*i18n:keep*/@"回忆"],@[/*i18n:keep*/@"发现",/*i18n:keep*/@"探索"]];
+    return @[@[@"RayNeo"],@[/*i18n:keep*/@"眼镜",@"Glasses",/*i18n:keep*/@"眼鏡"],@[/*i18n:keep*/@"记忆",/*i18n:keep*/@"回忆",@"Memory",/*i18n:keep*/@"記憶",/*i18n:keep*/@"回憶"],@[/*i18n:keep*/@"发现",/*i18n:keep*/@"探索",@"Discover",/*i18n:keep*/@"發現"]];
 }
 NSString *TIOHomeTabName(NSString *label){
     if(![label isKindOfClass:NSString.class]||label.length>100)return nil;
     NSString *s=[label stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    for(NSString *name in @[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"记忆",/*i18n:keep*/@"发现",/*i18n:keep*/@"回忆",/*i18n:keep*/@"探索"]){
+    for(NSString *name in @[@"RayNeo",/*i18n:keep*/@"眼镜",@"Glasses",/*i18n:keep*/@"眼鏡",/*i18n:keep*/@"记忆",/*i18n:keep*/@"回忆",@"Memory",/*i18n:keep*/@"記憶",/*i18n:keep*/@"回憶",/*i18n:keep*/@"发现",/*i18n:keep*/@"探索",@"Discover",/*i18n:keep*/@"發現"]){
         if([s isEqual:name])return name;
         for(NSString *separator in @[@"\n",@",",/*i18n:keep*/@"，"]){if([s hasPrefix:[name stringByAppendingString:separator]])return name;}
     }return nil;
@@ -37,10 +37,13 @@ NSDictionary *TIOHomeTabLayout(NSArray<NSDictionary *> *nodes,double w,double h,
     if(!isfinite(w)||!isfinite(h)||!isfinite(inset)||w<300||h<480||w>=h||inset<0||inset>80||nodes.count!=4)return nil;
     NSArray *sorted=[nodes sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a,NSDictionary *b){return [a[@"x"] compare:b[@"x"]];}];
     NSArray *names=[sorted valueForKey:@"name"];
-    // Only the two observed complete official layouts, not arbitrary aliases
+    // Only the complete allowed official layouts, not arbitrary aliases
     // mixed across pages. Retain the actual label for the native button title.
     if(![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"记忆",/*i18n:keep*/@"发现"]]&&
-       ![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"回忆",/*i18n:keep*/@"探索"]])return nil;
+       ![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"回忆",/*i18n:keep*/@"探索"]]&&
+       ![names isEqual:@[@"RayNeo",@"Glasses",@"Memory",@"Discover"]]&&
+       ![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼鏡",/*i18n:keep*/@"記憶",/*i18n:keep*/@"發現"]]&&
+       ![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼鏡",/*i18n:keep*/@"回憶",/*i18n:keep*/@"探索"]])return nil;
     double previous=-1,minY=INFINITY,maxY=-INFINITY;
     for(NSUInteger i=0;i<4;i++){
         NSDictionary *n=sorted[i];double x=[n[@"x"] doubleValue],y=[n[@"y"] doubleValue],nw=[n[@"width"] doubleValue],nh=[n[@"height"] doubleValue];
