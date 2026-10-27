@@ -11,7 +11,3 @@ FOUNDATION_EXPORT void TIOOpenNewsReader(id parent);
 // Observed official preview transport only; no microphone/start-record command.
 FOUNDATION_EXPORT void TIONewsObserveSend(id plugin,NSDictionary *args);
 FOUNDATION_EXPORT void TIONewsObserveReceive(NSDictionary *event);
-FOUNDATION_EXPORT NSDictionary *TIONewsCaptionStatus(void);
-FOUNDATION_EXPORT void TIONewsCaptionStart(void (^completion)(BOOL,NSString *));
-FOUNDATION_EXPORT BOOL TIONewsCaptionText(NSString *text);
-FOUNDATION_EXPORT void TIONewsCaptionStop(void);

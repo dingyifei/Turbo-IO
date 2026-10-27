@@ -133,10 +133,6 @@
       "status": "excluded",
       "reason": "module removed in WP3 (NavigationTeleHUDTests)"
     },
-    "NewsCaptionTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (News)"
-    },
     "NewsCoreTests.m": {
       "status": "excluded",
       "reason": "module removed in WP3 (News)"
@@ -198,10 +194,6 @@
       "status": "run",
       "group": "core",
       "note": "Asserts Chinese voice-exit phrases and persona; WP1/WP2 must update these tests."
-    },
-    "TodoBridgeClientTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (TodoBridgeClientTests)"
     },
     "TodoProtocolTests.m": {
       "status": "run",
