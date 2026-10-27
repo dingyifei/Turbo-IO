@@ -1922,3 +1922,10 @@
 {"key":"；已请求退出，镜片未确认","en":"; exit requested, but not confirmed by glasses"}
 {"key":"；文件已结束，可在眼镜开页后重新查询","en":"; file complete; query again after opening the page on the glasses"}
 {"key":"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","en":"; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state."}
+{"key":"apple.title","en":"Apple Intelligence","zh":"Apple 智能"}
+{"key":"apple.status.ready","en":"Ready","zh":"已就绪"}
+{"key":"apple.section.status","en":"Status","zh":"状态"}
+{"key":"apple.section.actions","en":"Actions","zh":"操作"}
+{"key":"apple.action.probe","en":"Run probe again","zh":"重新检测"}
+{"key":"apple.action.copy","en":"Copy report","zh":"复制报告"}
+{"key":"apple.requirements","en":"Requires iOS 26+, Apple Intelligence on, matching device and Siri languages, and the TurboAppleAI module.","zh":"需要 iOS 26 或更新版本、开启 Apple 智能、设备语言与 Siri 语言一致，并已打包 TurboAppleAI 模块。"}
