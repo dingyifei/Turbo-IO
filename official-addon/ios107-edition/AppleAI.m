@@ -32,8 +32,11 @@ NSDictionary *TIOAppleModelAvailability(void){__block NSDictionary *value;TAIMai
     }else value=@{@"available":@NO,@"reason":@"osTooOld"};
 });return value;}
 id TIOAppleModelRespond(NSString *q,NSArray *history,NSString *instructions,NSString *language,BOOL stream,void(^update)(NSString *,BOOL,NSString *)){
-    // Filled when the model unit is introduced in step 6.
-    __block id task=nil;TAIMain(^{update(@"",YES,TIOAppleModelAvailability()[@"reason"]?:@"moduleOld");});return task;
+    __block id task=nil;TAIMain(^{
+        if(![TIOAppleModelAvailability()[@"available"] boolValue])return;
+        Class cls=NSClassFromString(@"TIOAppleLLM");SEL selector=NSSelectorFromString(@"respondTo:history:instructions:language:stream:update:");
+        if([cls respondsToSelector:selector])task=((id(*)(id,SEL,id,id,id,id,BOOL,id))objc_msgSend)(cls,selector,q,history,instructions,language,stream,[update copy]);
+    });return task;
 }
 void TIOAppleAIProbe(void(^completion)(NSDictionary *)) {TAIMain(^{
     NSMutableDictionary *report=[@{@"loadStatus":TIOAppleAILoadStatus(),@"speech.authorization":@([SFSpeechRecognizer authorizationStatus]),@"ffmpegKit":@(NSClassFromString(@"FFmpegKit")!=Nil),@"os":NSProcessInfo.processInfo.operatingSystemVersionString} mutableCopy];
