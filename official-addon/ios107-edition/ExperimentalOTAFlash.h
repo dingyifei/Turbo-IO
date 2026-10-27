@@ -18,4 +18,4 @@ void TIOOTAFlashObserveEvent(NSDictionary *event);
 BOOL TIOOTAFlashAuthorize(NSError **error);
 BOOL TIOOTAFlashCancel(void);
 NSDictionary *TIOOTAFlashStatus(void);
-void TIOOTAFlashDisableAutoUpdateIfRequested(void);
+BOOL TIOOTAFlashDisableAutoUpdate(void);

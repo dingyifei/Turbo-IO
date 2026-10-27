@@ -63,7 +63,8 @@
     },
     "ExperimentalOTAGuardTests.m": {
       "status": "run",
-      "group": "ota-guard"
+      "group": "ota-guard",
+      "note": "Also exercised by guard; WP0 ota-guard group retained."
     },
     "ExperimentalOTATests.m": {
       "status": "run",

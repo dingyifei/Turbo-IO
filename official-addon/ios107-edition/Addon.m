@@ -572,10 +572,6 @@ __attribute__((constructor)) static void Load(void) {
             VoiceExitReady=valid&&Signature(object_getClass(helper),@"shared",2,"@",@[])&&Signature(helper,@"stopWorkflow",2,"v",@[])&&Signature(voice,@"onAudioRecordStart",2,"v",@[]);
             if(VoiceExitReady)OriginalAudioStart=(void *)method_setImplementation(class_getInstanceMethod(voice,NSSelectorFromString(@"onAudioRecordStart")),(IMP)AudioStartHook);
             if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
-            TIOOTAFlashDisableAutoUpdateIfRequested();
-            // Explicit developer launch, not a stored preference or automatic restore.
-            // armArchive additionally requires the installed preparation interlock.
-            if([NSProcessInfo.processInfo.environment[@"TIO_OTA_PREPARE_ONCE"] isEqual:@"R3_DOWNLOAD_ONLY"]){NSError *prepareError=nil;TIOBeginExperimentalOTAPreparation(&prepareError);}
             TCCameraReportLoaded();
             NSMutableString *loadInfo=[NSMutableString stringWithFormat:@"setup reached; hooks=%d; version=%d; voiceClass=%d; alwaysOnClass=%d\n",valid,VersionMatches(),voice!=Nil,ao!=Nil];
 #if TIO_DISPLAY_PHONE

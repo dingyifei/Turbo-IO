@@ -143,16 +143,17 @@ BOOL TIOOTAFlashProtected(void){
 #endif
     return TIOOTAFlashBuild()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue];
 }
-void TIOOTAFlashDisableAutoUpdateIfRequested(void){
-    if(!TIOOTAFlashProtected()||![NSProcessInfo.processInfo.environment[@"TIO_OTA_DISABLE_AUTO_ONCE"] isEqual:@"DISABLE_FOR_PRIVATE_TMG2"])return;
+BOOL TIOOTAFlashDisableAutoUpdate(void){
+    if(!TIOOTAFlashProtected())return NO;
     NSUserDefaults *p=NSUserDefaults.standardUserDefaults;NSMutableArray *keys=[NSMutableArray new];
     for(NSString *key in p.dictionaryRepresentation)if([key hasSuffix:@"_ota_firmware_auto_update"])[keys addObject:key];
     // Do not guess between accounts. The private pre-install preference backup
     // preserves the old value; no account identifiers are written to reports.
-    if(keys.count!=1)return;id v=[p objectForKey:keys[0]];
+    if(keys.count!=1)return NO;id v=[p objectForKey:keys[0]];
     if([v isKindOfClass:NSString.class]&&([v isEqual:@"true"]||[v isEqual:@"false"]))[p setObject:@"false" forKey:keys[0]];
     else if([v isKindOfClass:NSNumber.class]&&CFGetTypeID((__bridge CFTypeRef)v)==CFBooleanGetTypeID())[p setBool:NO forKey:keys[0]];
-    [p synchronize];
+    else return NO;
+    [p synchronize];return YES;
 }
 static id Get(id obj,NSString *key){@try{return [obj valueForKey:key];}@catch(NSException *e){return nil;}}
 BOOL TIOOTAFlashBlockCall(id call){

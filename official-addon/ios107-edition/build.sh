@@ -20,12 +20,8 @@ nav_options=()
 sdk_path=$(xcrun --sdk iphoneos --show-sdk-path)
 link_options=()
 if [[ ${TIO_OTA_FLASH_ENABLED:-0} == 1 ]]; then
-  [[ ${TIO_OTA_PREPARATION_ENABLED:-0} != 1 && "$mode" == embedded ]] || { echo 'Flash gate requires separate embedded build' >&2; exit 2; }
+  [[ "$mode" == embedded ]] || { echo 'Flash gate requires separate embedded build' >&2; exit 2; }
   link_options+=(-DTIO_OTA_FLASH_ENABLED=1 -DTIO_OTA_FEED_ARMING_ENABLED=1)
-fi
-if [[ ${TIO_OTA_PREPARATION_ENABLED:-0} == 1 ]]; then
-  [[ "$mode" == embedded ]] || { echo 'OTA preparation is private embedded only' >&2; exit 2; }
-  link_options+=(-DTIO_OTA_PREPARATION_ENABLED=1 -DTIO_OTA_FEED_ARMING_ENABLED=1)
 fi
 # Opt-in diagnostic for the iOS 16 jailbreak injector's chained-fixup stall.
 image_options=()

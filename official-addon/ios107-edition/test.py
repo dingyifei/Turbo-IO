@@ -58,6 +58,7 @@ def catalyst_test(name,files,argv=(),extra=()):
     run(name,[out/name,*argv],env={**os.environ,'CFFIXED_USER_HOME':str(home)})
     groups.append(name);print(name+': PASS')
 test('host',['HostCompatibilityTests.m'])
+test('guard',['ExperimentalOTAGuardTests.m','ExperimentalOTAGuard.m'])
 test('language',['tests/TIOLanguageTests.m'])
 test('voice-exit',['tests/VoiceExitTests.m','Core.m'],extra=['-fmodules','-Wno-unused-parameter'])
 test('stability',['RoadMap.m','nav_runtime.c','tests/StabilityTests.m'])

@@ -83,7 +83,7 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
     (void)url;(void)seconds;if(error)*error=FeedError(TIOText(@"刷机门禁尚未开放：需先验收官方入口与同版本缓存。"));return NO;
 #else
 #if TARGET_OS_IPHONE
-    if(!TIOOTAPreparationProtected()&&!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"未确认发送保护，拒绝提供实验包。"));return NO;}
+    if(!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"未确认发送保护，拒绝提供实验包。"));return NO;}
 #endif
     if(!isfinite(seconds)||seconds<=0||seconds>900){if(error)*error=FeedError(TIOText(@"授权有效期必须在 0 至 900 秒之间。"));return NO;}
     if(!TIOReadExperimentalOTA(url,error))return NO;
@@ -205,7 +205,7 @@ NSDictionary *TIOExperimentalOTAFeedStatus(void){
         s[@"reason"]=BootstrapFailure?:@"";s[@"launchID"]=LaunchID?:@"";s[@"processIdentifier"]=@(NSProcessInfo.processInfo.processIdentifier);s[@"healthPassed"]=@(HealthPassed);s[@"healthCheckedAt"]=@(HealthCheckedAt);return s;}
 }
 BOOL TIOBeginExperimentalOTAPreparation(NSError **error){
-    if(!TIOOTAPreparationProtected()&&!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"此包没有启用发送保护；未开放下载。"));return NO;}
+    if(!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"此包没有启用发送保护；未开放下载。"));return NO;}
     if([TIOOTAFlashStatus()[@"stage"] integerValue]!=0){if(error)*error=FeedError(TIOText(@"已有授权或升级会话，未重建下载来源；不要重启或重复授权。"));return NO;}
     if(!EnsureFeedListening()){if(error)*error=FeedError(BootstrapFailure?:TIOText(@"本机来源尚未启动，未开放下载。"));TIORefreshExperimentalOTAReport();return NO;}
     ScheduleHealthCheck();
