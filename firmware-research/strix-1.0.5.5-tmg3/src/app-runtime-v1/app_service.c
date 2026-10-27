@@ -10,10 +10,8 @@
 #include "../navigation-runtime-v1/menu9.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../music-runtime-v1/music_service.h"
-#include "../weread-v1/reader_service.h"
 #include "../common-v1/wheel_input.h"
 #include "../focus-v1/focus_service.h"
-#include "../didi-v1/ride_service.h"
 #include <string.h>
 #define TAP_MESSAGE_ID 0x54415031u
 #define TAP_SERVICE_MAGIC 0x54415331u
@@ -42,7 +40,7 @@ static void *manager(void){return ptr(*(void **)(uintptr_t)0x19971594,0x3c);}
 static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){const char *name=nav_top_app();if(!name||strcmp(name,"com.rayneo.liteos.launcher"))return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
-static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),0x10)==app&&!dr_slot_visible(s->ride)&&!tf_slot_visible(s->focus)&&!wr_slot_visible(s->reader)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
+static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),0x10)==app&&!tf_slot_visible(s->focus)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
 static bool owns(TAPControl *c){return c->app&&ptr(manager(),0x10)==c->app&&home();}
 static TAPControl *control(bool create){
  void *t=NULL;for(unsigned i=0;i<512;i++){

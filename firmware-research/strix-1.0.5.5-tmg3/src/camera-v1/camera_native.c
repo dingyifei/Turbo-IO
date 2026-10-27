@@ -5,14 +5,10 @@
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
-#include "../weread-v1/reader_service.h"
 #include "../common-v1/wheel_input.h"
 #include "../focus-v1/focus_service.h"
 #include "../focus-v1/focus_menu.h"
-#include "../didi-v1/ride_service.h"
 #include "../app-runtime-v1/app_service.h"
-#include "../context-english-v1/english_native.h"
-#include "../dots-v1/dots_native.h"
 #include <string.h>
 typedef struct {
  TCSlot *slot;void *app,*timer,*root,*canvas,*title,*state,*hint;TCFrame *frame;
@@ -37,7 +33,7 @@ static TNNavSlot *navslot(void *app){return app?((M8NativeTail *)((uint8_t *)app
 static TCSlot *slot(void *app){TNNavSlot *n=navslot(app);return n?n->camera:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;const char *s=nav_top_app();return s&&!strcmp(s,"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&ce_extension_idle();}
-static bool other(void *app){TNNavSlot *n=navslot(app);return !n||dots_native_visible(app)||ce_native_visible(app)||tap_service_visible(app)||dr_slot_visible(n->ride)||tn_slot_visible(n)||tm_slot_visible(n->music)||wr_slot_visible(n->reader)||tf_slot_visible(n->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
+static bool other(void *app){TNNavSlot *n=navslot(app);return !n||tap_service_visible(app)||tn_slot_visible(n)||tm_slot_visible(n->music)||tf_slot_visible(n->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
 static bool owns(TCControl *c){return c&&c->app&&ptr(manager(),0x10)==c->app&&home()&&!other(c->app);}
 static void emit(const TCPacket *q){uint8_t raw[TC_RAW_MAX],wire[TC_WIRE_MAX];size_t n=tc_packet(raw,sizeof raw,q,true);if(n){n=tc_wrap(wire,sizeof wire,raw,n,true);if(n)(void)tdp_rnlink_send(15,wire,(unsigned)n,NULL);}}
 static void event(TCControl *c,unsigned op,unsigned value){if(!c||!c->sid||c->event==UINT32_MAX)return;TCPacket q={.op=op,.sid=c->sid,.seq=++c->event,.a=value,.b=stream_tick()};emit(&q);}

@@ -1,8 +1,5 @@
 #include "../camera-v1/camera_native.h"
-#include "../dots-v1/dots_native.h"
-#include "../context-english-v1/english_native.h"
 #include "../app-runtime-v1/app_service.h"
-#include "../didi-v1/ride_service.h"
 /* UI-thread-only launcher decoration. Allocation failure retains native menu.
  * Detach before app destruction, retire after renderer idle, no flash writes. */
 #include "focus_menu.h"
@@ -11,7 +8,6 @@
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
-#include "../weread-v1/reader_service.h"
 #include "../menu8-renderer.h"
 #include <string.h>
 extern const M8RenderAPI m8_native_api;
@@ -32,13 +28,11 @@ _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields"
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
-static bool detail(void *app){TNNavSlot *s=slot(app);return tc_native_visible(app)||dots_native_visible(app)||ce_native_visible(app)||tap_service_visible(app)||(s&&(dr_slot_visible(s->ride)||tn_slot_visible(s)||tm_slot_visible(s->music)||wr_slot_visible(s->reader)||tf_slot_visible(s->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page));}
+static bool detail(void *app){TNNavSlot *s=slot(app);return tc_native_visible(app)||tap_service_visible(app)||(s&&(tn_slot_visible(s)||tm_slot_visible(s->music)||tf_slot_visible(s->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page));}
 static void hide_legacy(void *app){
- M8NativeTail *t=(M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES);TNNavSlot *s=slot(app);TMMusicSlot *music=s?s->music:NULL;WRSlot *reader=s?s->reader:NULL;TFSlot *focus=s?s->focus:NULL;
- CENativeSlot *english=s?s->english:NULL;
- DotsNativeSlot *dots=s?s->dots:NULL;
+ M8NativeTail *t=(M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES);TNNavSlot *s=slot(app);TMMusicSlot *music=s?s->music:NULL;TFSlot *focus=s?s->focus:NULL;
  TCSlot *camera=s?s->camera:NULL;
- void *old[]={camera?camera->row:NULL,camera?camera->icon:NULL,dots?dots->row:NULL,dots?dots->icon:NULL,english?english->row:NULL,english?english->icon:NULL,ptr(app,8),t->row,t->icon,s?s->row:NULL,s?s->icon:NULL,music?music->row:NULL,music?music->icon:NULL,reader?reader->row:NULL,reader?reader->icon:NULL,focus?focus->row:NULL,focus?focus->icon:NULL,s&&s->ride?((DRSlot *)s->ride)->row:NULL,s&&s->ride?((DRSlot *)s->ride)->icon:NULL,s&&s->apps?((TAPMenu *)s->apps)->row:NULL,s&&s->apps?((TAPMenu *)s->apps)->icon:NULL};
+ void *old[]={camera?camera->row:NULL,camera?camera->icon:NULL,ptr(app,8),t->row,t->icon,s?s->row:NULL,s?s->icon:NULL,music?music->row:NULL,music?music->icon:NULL,focus?focus->row:NULL,focus?focus->icon:NULL,s&&s->apps?((TAPMenu *)s->apps)->row:NULL,s&&s->apps?((TAPMenu *)s->apps)->icon:NULL};
  for(unsigned i=0;i<7;i++){void *row=ptr(app,0xc+4*i);if(row)m8_native_api.hidden(row,true);}
  for(unsigned i=0;i<sizeof old/sizeof *old;i++)if(old[i])m8_native_api.hidden(old[i],true);
 }

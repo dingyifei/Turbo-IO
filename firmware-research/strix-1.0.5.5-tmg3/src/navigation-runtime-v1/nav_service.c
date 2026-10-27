@@ -1,11 +1,7 @@
 #include "../common-v1/business_idle.h"
 #include "../camera-v1/camera_native.h"
-#include "../dots-v1/dots_native.h"
-#include "../context-english-v1/english_native.h"
 #include "../app-runtime-v1/app_service.h"
-#include "../didi-v1/ride_service.h"
 #include "nav_service.h"
-#include "../weread-v1/reader_service.h"
 #include "nav_runtime.h"
 #include "nav_lvgl.h"
 #include "menu9.h"
@@ -53,7 +49,7 @@ static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),
 static bool available(void *ctx){Control *c=ctx;
 #if TIO_MUSIC_RUNTIME
  if(tap_service_visible(c->app))return false;
- if(c->slot&&(dr_slot_visible(c->slot->ride)||tm_slot_visible(c->slot->music)||wr_slot_visible(c->slot->reader)||tf_slot_visible(c->slot->focus)))return false;
+ if(c->slot&&(tm_slot_visible(c->slot->music)||tf_slot_visible(c->slot->focus)))return false;
 #endif
  return !c->retired&&paired()&&safe_home()&&c->slot&&!((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page&&(!c->view||c->view->open);}
 static void deleted(void *e){Control *c=stream_event_user(e);if(!c||!c->view)return;
@@ -157,7 +153,7 @@ void tn_message_dispatch(const TIONativeMessage *m){
 }
 void m8_hook_vm_event(void *event){
 #if TIO_MUSIC_RUNTIME
- if(tc_native_event(event)||dots_native_event(event)||ce_native_handle_event(event)||tap_service_event(event)||dr_handle_event(event)||tf_handle_event(event)||wr_handle_event(event)||tm_handle_event(event))return;
+ if(tc_native_event(event)||tap_service_event(event)||tf_handle_event(event)||tm_handle_event(event))return;
 #endif
  void *vm=stream_event_user(event),*app=ptr(vm,0x10);TNNavSlot *s=slot_of(app);Control *c=s?s->control:NULL;
  if(c&&c->view&&owns(c)&&native_event_code(event)==0xe){

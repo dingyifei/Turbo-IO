@@ -4,7 +4,7 @@
 typedef struct {void *row,*label,*icon,*dot,*app,*control;
 #if TIO_MUSIC_RUNTIME
  void *music;
- void *reader;
+ void *unused_reader;
 #if TD_DIAGNOSTICS_RUNTIME
  void *diagnostics;
  void *focus;
@@ -12,10 +12,10 @@ typedef struct {void *row,*label,*icon,*dot,*app,*control;
 #endif
  uint32_t back_until;
  void *quad;
- void *ride;
+ void *unused_ride;
  void *apps;
- void *english;
- void *dots;
+ void *unused_english;
+ void *unused_dots;
  void *camera;
 } TNNavSlot;
 static inline bool tf_back_blocked(TNNavSlot *s,uint32_t now){return s&&s->back_until&&(int32_t)(s->back_until-now)>0;}
