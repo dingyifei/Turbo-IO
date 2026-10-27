@@ -1,62 +1,64 @@
-# TMG2 · 可选排数菜单与矢量导航运行时
+# TMG3: 13-item bilingual menu and bounded navigation prediction
 
-2026-10-19 · **高风险实验预发布，非稳定版。小白不要刷，日常使用请保留原厂固件。**
+**CANDIDATE-NOT-APPROVED. Built and audited offline; never flashed or accepted on a device.** The normal phone features remain compatible with TMG2. The phone's fixed TMG3 candidate is opt-in through the existing human confirmation; packaging never authorizes or starts a flash.
 
-[配套 NAVS3 手机源码与构建](../../official-addon/navs3-edition/README.md) · [下载固件与校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [原厂 1.0.5.5 归档及恢复边界](../strix-1.0.5.5/stock/README.md)
+TMG3 removes the WeRead, Ride/DiDi, Dots and Context English modules. Camera, My Apps/Gallery, Pomodoro, Music, navigation, display, dashboard, diagnostics and the seven stock launch targets remain. The carousel and focus grid contain 13 items. The grid supports the unchanged two/three-row menu configuration.
 
-本包是用户此前刷入并反馈“可以了”的 **TMG2 原样包**，不是为本次发布重新裁剪的固件。宿主为 RayNeo AI iOS **1.0.6（218）**，设备反馈来自 iPhone 17 Pro Max。NAVS3 是其后续手机端修正版，已有 TMG2 的用户无需重刷。不声称 Android 旧插件与本包匹配。
-
-## 本版内容
-
-- 菜单默认三排三列，每页九项，手机可选两排三列并保存；菜单逻辑画布 540×220，不意味着所有应用页面都是这个尺寸。
-- TNR3 矢量小地图运行时：真实周边道路、路线、车标、有限路名与比例尺；手机生成有界矢量场景，眼镜原生绘制，位置更新与路网更新分开。
-- 保留原生音乐、阅读、番茄、情境英语、仪表盘、小应用和 Watch 输入等；加入遥控拍照。Dots 仍为开发中，不能开箱即用。
-- 相对新原厂 1.0.5.5，**自定义只改 application（nuttx_ap.bin）**，其余14个载荷逐字节相同。完整 OTA 仍会按官方流程写入其他原厂负载，不是“只刷 AP”。
-
-## 固定身份
-
-| 项目 | 值 |
+| Index | Item |
 | --- | --- |
-| ZIP SHA-256 | `6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473` |
-| AP SHA-256 | `13c1b953ac50b91c87ebbf039b3795eb82e6c47912e7e7d2bfd911f989c14261` |
-| AP MD5 | `d7e88db2e1ad22651c775ec8f4740d0e` |
-| AP 大小 | 7,408,584 字节，小于 9,600,000 字节预算 |
-| 原厂载荷 / 总成员数 | 15 / 16（含清单） |
+| 0 | Recorder |
+| 1 | Live Captions |
+| 2 | Live Assist |
+| 3 | To-do |
+| 4 | Teleprompter |
+| 5 | Lifelog |
+| 6 | Do Not Disturb |
+| 7 | Turbo Display (grid: Display Test) |
+| 8 | Navigation |
+| 9 | Music |
+| 10 | Pomodoro |
+| 11 | My Apps |
+| 12 | Camera |
 
-体积预算不是 RAM 余量，也不是安全保证。历史 `CANDIDATE-NOT-APPROVED` 文件名保留原样。公开源码完整重建必须得到相同 AP 和 ZIP 哈希，不能把工具链差异生成的新包当作实测原样包。
+## Language
 
-## 开发者刷写顺序
+The byte-identical phone/firmware `lang_flag.c/h` implement a 32-byte TLG1/TLA1 frame in a 74-byte carrier: `08 01 10 7f 1a 44`, then `TLG:`/`TLA:` and 64 lowercase hex digits, business 15. Language 0 is English and 1 is Chinese. State lives only in the launcher RAM controller: every boot starts in English until the phone sends a flag. Replies use source 0 (default) or 1 (phone), never persisted source 2. Invalid lengths, CRCs, reserved fields and languages are rejected before state changes.
 
-1. 构建并以自己的签名安装匹配的 NAVS3 插件。先备份手机数据；旧 TMIG1、Android GUARD-07 等固定门禁不能混用。
-2. 下载 Release 的 ZIP、SHA256SUMS，执行 `shasum -a 256 -c SHA256SUMS`；不一致立即停止。
-3. 眼镜回首页且无任务，电量至少50%，连接与供电稳定，手机保持解锁；关闭官方自动更新。
-4. TurboIO → 设置 → 诊断与实验固件 →「TMG2 · 可选排数菜单」，候选校验通过后开启「15分钟只下载验收」。回官方固件页检查下载，到「软件就绪」，先不安装；插件核对官方解压目录全部16个成员。
-5. 官方页重新检查版本，两分钟内回插件允许一次 TMG2 试刷，输入 `TMG2`，确认授权1；立即回官方页开始安装，只点一次。两分钟是授权前版本回读的新鲜度，并非传输时限。
-6. 不强退、不重启、不重复发送。等眼镜完成且自然重启回首页，确认传输/升级结束，才退出重开手机 App 结束进程内升级保护，再验收官方功能与插件。
+Language lookup scans an existing controller without allocating. A change defers grid invalidation and the custom carousel refresh to the UI executor. Other retained views use the flag when they render. The stock carousel labels 0–6 retain the stock firmware language; the replacement grid's 13 labels use the table. `menu_config.c/h`, TML/TMA/TMC wire bytes and saved row banks remain byte-identical to TMG2.
 
-已经开始或状态不明时，不解除保护、不盲目重试、不强制重启。未发送的超时也须确认“已开始0 / 分片0”、镜片无升级后再重开检查。**不提供绕过检查的强刷方式。**
+## POSE2 dead reckoning
 
-## 从公开源重建与审计
+Capability bit 1 advertises op 11, a 14-byte POSE2 body: the unchanged 12-byte pose plus little-endian speed in quarter-metres/second (0–200). Prediction uses bounded 32-bit integer arithmetic, stops advancing at 8 seconds, and clamps coordinates to ±8192 quarter metres. Moving POSE2 expires at 10 seconds; speed zero and legacy POSE retain the 5-second stale rule and the existing 180 ms blend.
 
-需要 Python 3（不要加 `-O`）和 Cortex-M33 LLVM 的 clang / ld.lld / llvm-nm / llvm-objcopy。本机复现使用 DevEco SDK 所附 LLVM，只借编译器，不包含鸿蒙运行时。
+The phone mirrors only acknowledged, fully committed wire bodies and sends corrections for prediction/heading/speed changes, a new scene, or the 4-second moving / 2.5-second stationary cadence. TMG2 peers (capabilities 1 or 5) allocate no prediction mirror and receive only the unchanged legacy POSE path. No op 11 is sent without bit 1.
+
+## Rebuild and audit
+
+The accepted toolchain differs from the historical TMG2 compiler: Homebrew clang 23.1.4 and Homebrew LLD 23.1.4. TMG3 is reproducible against itself; two clean pinned builds and a separate verification build match the candidate byte-for-byte. No package manager is needed.
 
 ```sh
-python3 firmware-research/strix-1.0.5.5-tmg2/build.py \
-  --stock firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip \
-  --llvm-bin /absolute/llvm/bin --out /absolute/new-tmg2-output
-python3 firmware-research/strix-1.0.5.5-tmg2/build.py \
-  --stock firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip \
-  --audit /absolute/downloaded/StrixOS-1.0.5.5-TurboIO-TMG2-CANDIDATE-NOT-APPROVED.zip
+R=$(git rev-parse --show-toplevel)
+FW3=$R/firmware-research/strix-1.0.5.5-tmg3
+IN=$HOME/projects/personal/turboio-inputs
+TC=$IN/toolchain/llvm-bin
+STOCK=$R/firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip
+D=$(mktemp -d)
+python3 -I "$FW3/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
+python3 -I "$FW3/build.py" --stock "$STOCK" --audit "$D/build/StrixOS-1.0.5.5-TurboIO-TMG3-CANDIDATE-NOT-APPROVED.zip"
+python3 -I "$FW3/tools/phone_pins.py" --zip "$D/build/StrixOS-1.0.5.5-TurboIO-TMG3-CANDIDATE-NOT-APPROVED.zip" --check "$R/official-addon/ios107-edition"
 ```
 
-71个编译单元、汇编、头文件、图标、链接脚本和34处白名单补丁均随源提供。审计核对7个启动描述符、头尾、全部载荷与清单、模块及完整包身份；无设备操作。原样包和公开重建一致，仍不等于硬件长期稳定。
+Normal builds enforce source/extra, toolchain, module, branch, AP and archive pins. `--compile-only` checks intermediate source compilation; `--repin` is a deliberate developer operation that emits a proposed pin file. The generated animation assembly is linked last. The only shared binary input is read-only `../strix-1.0.5.5-tmg2/assets/animation-frames.l8`; its required SHA-256 is `f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d`, and a mismatch fails closed. No duplicate bitmap is tracked here.
 
-## 已知问题与隐私
+| Identity | Bytes | SHA-256 | MD5 |
+| --- | ---: | --- | --- |
+| ZIP | 8803177 | `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` | `20547ed2ee0d4ceaee41a64ac46d19c6` |
+| AP | 7344072 | `b54a28a628112c2b548393328528c2f7a19e727741f1fd6ede35cfbee4290c52` | `28d26bb9965e2648ab514e02d4708957` |
 
-**手机锁屏后导航停止/卡住仍未闭环，不要用于驾驶或依赖它进行安全导航。** 周边道路受图源覆盖、网络及每会话请求上限影响；路名不保证始终可见。NAVS3 路网稳定性修正已离线回归并安装加载，持续实机导航仍待验收。
+The module is 135424 bytes, 64,512 bytes smaller than TMG2. The audit checks exactly 25 stock-byte patch sites, all symbolic targets and entry trampoline prologues, seven startup descriptors, header/tail preservation, 14 unchanged stock payloads, the AP under 9,600,000 bytes and total decompressed ZIP size under 24 MB. No AEABI shims were added.
 
-公开手机版不含微信读书网页正文适配、个人 Cookie / Key、签名信息、私用 IPA、通知或智记正文。自行配置服务与登录，Dots 未完成。固件可能无法启动、失去 OTA 或损坏设备，不承诺回滚、救砖或售后。原厂权利不变；原创代码沿用仓库非商业许可。
+## Human decision and rollback
 
-## Shared immutable animation input
+The morning flash is a separate human decision. The C6 phone package offers this exact TMG3 candidate as `TurboWeReadCandidate.zip`; opening the wizard or installing the phone package grants no flash authorization. The existing host, freshness, hash, ordered manifest/slice checks and single destructive confirmation remain mandatory. Follow the phone wizard; do not infer device acceptance from an offline test.
 
-TMG3 reads `../strix-1.0.5.5-tmg2/assets/animation-frames.l8` without modifying it. The builder checks SHA-256 `f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d` before compiling it, and fails closed on any mismatch. No duplicate binary asset is tracked in this tree.
+Keep the immutable TMG2 ZIP and a pre-WP6 signed phone package for rollback. That phone package carries the TMG2 pins; the TMG3-pinned package rejects a TMG2 candidate. Recovery/flashing is human-only and not guaranteed. Menu row-bank format is unchanged, so a rollback has no new language byte to invalidate its banks. TMG2 ignores TLG1; language state always resets on boot. No device, boot, OTA or radio-driver path was exercised during this work.

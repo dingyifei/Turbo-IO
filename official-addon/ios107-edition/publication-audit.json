@@ -24,7 +24,7 @@
   "unsigned107DerivativeInstalled": false,
   "signedSmokeOutputPublished": false,
   "firmwareChanged": false,
-  "firmwareResourceSHA256": "6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473",
+  "firmwareResourceSHA256": "45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274",
   "ios107OTADisabled": false,
   "ios107TMG2FlashAcceptedOnIPhone17ProMax": true,
   "officialTransfer100Percent": true,
@@ -48,5 +48,7 @@
     "Dots is unfinished",
     "Public web reading body adapter is excluded",
     "New official firmware compatibility was not assessed in this release"
-  ]
+  ],
+  "tmg3FlashAcceptedOnDevice": false,
+  "wp6CandidateStatus": "TMG3 CANDIDATE-NOT-APPROVED; unflashed; historical TMG2 device results do not apply"
 }

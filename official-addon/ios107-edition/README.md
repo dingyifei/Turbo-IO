@@ -1,5 +1,9 @@
 # iOS 1.0.7（230）· APP107 兼容适配
 
+## WP6 candidate status (current development branch)
+
+This branch bundles the unflashed **TMG3 CANDIDATE-NOT-APPROVED** as `TurboWeReadCandidate.zip`. ZIP SHA-256: `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` (8803177 bytes). AP: 7344072 bytes, MD5 `28d26bb9965e2648ab514e02d4708957`. [TMG3 source, tile map and rebuild](../../firmware-research/strix-1.0.5.5-tmg3/README.md). TMG2 glasses remain supported and do not need to be flashed for the phone update. The wizard offers TMG3 only after the existing checks and single human confirmation; no package automatically flashes. The 2026-10-19 TMG2 device results below are historical and do not establish TMG3 device acceptance.
+
 2026-10-19 · [首页更新](../../README.md#ios107-update) · [OTA 预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [上一版 NAVS3](../navs3-edition/README.md)
 
 **用户已在 iPhone 17 Pro Max 覆盖安装 1.0.7（230）私用适配包，测试后反馈“没啥问题”。** 回读确认 APP107-PHONE-01、宿主 1.0.7/230、hooks/版本门槛通过。不是所有功能、账号、机型与后台场景的全量验收；公开脱敏版单独编译与离线检查，不冒充与私用包逐字节相同。
@@ -9,7 +13,7 @@
 - 基于 NAVS3 保留起终点导航、矢量路网与路名、菜单排数配置及现有扩展模块。
 - 精确新增 `1.0.7 / 230 / 410DEFDB-F937-39EA-ACF2-F616ABFF9D0B`，不放宽未知宿主。
 - 8 个关键 native 类的 110 个既有方法签名无变化；Flutter 检查覆盖 445 个方法，关键桥接一致。静态一致不代表业务逻辑完全不变。
-- **固件原样沿用 TMG2**，已有 TMG2 不必因手机升级重刷；没有新增或更换官方固件基线。
+- **历史 2026-10-19 发布版沿用 TMG2**。当前 WP6 分支提供未实刷的 TMG3 候选；已有 TMG2 不必因手机升级重刷，刷写须另由人工决定。
 - **1.0.7 OTA 已实刷开放。** 2026-10-19，iPhone 17 Pro Max 使用 APP107-OTA-PHONE-01 经官方升级流程安装原样 TMG2 成功，重连版本匹配；刷后重启手机 App，授权归零。公开版移植同一升级逻辑，单独编译回归，不将公开包称为原样实测 IPA。
 - 新版两个 Dart 查询数据记录单独验证，仅修改字符串内容，长度、缓存哈希、对象头与代码指令不变；运行时精确检查宿主版本/UUID/标记和路由。完整包、15 文件清单、待传分片仍严格校验；未授权不能刷写。
 
@@ -37,12 +41,12 @@ TIO_MAPKIT_ENABLED=1 TIO_OTA_FLASH_ENABLED=1 TIO_DISPLAY_FLASH=1 TIO_CLASSIC_BIN
 TIO_DEV=1 TIO_MAPKIT_ENABLED=1 TIO_OTA_FLASH_ENABLED=1 TIO_DISPLAY_FLASH=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
 
 node --test package.test.mjs
-python3 test.py --firmware /absolute/path/to/exact-TMG2-release.zip
+python3 test.py --firmware /absolute/path/to/exact-TMG3-CANDIDATE-NOT-APPROVED.zip
 ```
 
-`FLASH` 是保护模块编译开关，**不是授权**；本版打包默认带 TMG2 升级通道，初始仍锁定。不要移除校验或改 Info.plist 冒充其他版本。
+`FLASH` 是保护模块编译开关，**不是授权**；WP6 打包默认携带 TMG3 候选，初始仍锁定。不要移除校验或改 Info.plist 冒充其他版本。
 
-固件 ZIP 从 [TMG2 原样预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)获取，SHA-256 为 `6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473`；不产生新固件，也不会自动授予刷写权限。
+WP6 使用本机构建的 TMG3 候选，SHA-256 为 `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274`；未实刷、未获得设备验收，不会自动授予刷写权限。历史 [TMG2 原样预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)保留为独立回退输入。
 
 ## 自行合并与签名
 
@@ -63,10 +67,10 @@ node package.mjs \
   --identity YOUR_CERTIFICATE_SHA1 --device YOUR_DEVICE_UDID \
   --out /absolute/new-private-output --bundle com.rayneo.venus.pub \
   --product iPhone18,2 \
-  --firmware /absolute/path/to/exact-TMG2-release.zip
+  --firmware /absolute/path/to/exact-TMG3-CANDIDATE-NOT-APPROVED.zip
 ```
 
-无需额外传 `--experimental-ota`，打包默认启用固定 TMG2 通道（显式传值也只接受 `TMG2`）。工具只修改两个已核验的 App.framework 查询数据记录，不改代码指令；签名后再次检查记录，不下载/安装/刷写，不新增官方推送或 Apple 登录权限。可选翻译模块与模型见[单独说明](../local-translation/README.md)；Watch 按 [Watch 说明](../../watch-remote/README.md)自行构建，不含作者签名包。源码含模块不代表打包器自动补齐所有第三方 SDK、模型、Watch、服务配置或应用广场资源。
+无需额外传 `--experimental-ota`，WP6 打包默认携带固定 TMG3 候选（显式传值也只接受 `TMG3`）。工具只修改两个已核验的 App.framework 查询数据记录，不改代码指令；签名后再次检查记录，不下载/安装/刷写，不新增官方推送或 Apple 登录权限。可选翻译模块与模型见[单独说明](../local-translation/README.md)；Watch 按 [Watch 说明](../../watch-remote/README.md)自行构建，不含作者签名包。源码含模块不代表打包器自动补齐所有第三方 SDK、模型、Watch、服务配置或应用广场资源。
 
 先备份，再使用同一有效签名覆盖安装；签名冲突时不要盲目卸载。启动确认版本、插件入口、眼镜连接并逐项测试，编译成功不等于你的设备验收通过。
 
@@ -74,7 +78,7 @@ node package.mjs \
 
 Turbo 入口按「眼镜、助手、媒体、开发者」分区显示现有功能；「开发者」默认收起，展开后可进入研究工具。唯一的界面语言控制位于「眼镜 › 语言」，可选「自动」（跟随 iOS/App）、「English」或「中文」，切换后界面会立即更新。固件向导位于「眼镜 › 眼镜固件」，操作步骤见[升级教程](OTA.md)。
 
-## 刷入 TMG2
+## WP6：TMG3 候选，仅由人工决定是否刷入
 
 按[1.0.7 升级教程](OTA.md)执行：内置校验 → 15 分钟只下载 → 官方软件就绪 → 目录校验 → 单次授权 → 官方安装 → 成功回首页后重启手机 App，确认授权归零。高风险实验，非开发者请勿刷。
 
@@ -82,7 +86,7 @@ Turbo 入口按「眼镜、助手、媒体、开发者」分区显示现有功�
 
 - 手机锁屏后导航停止/卡住仍待闭环，不用于驾驶或安全依赖。
 - 路网首次加载、断网或请求预算耗尽仍可能只显示路线。
-- 本版固定 TMG2，不接受原厂 ZIP 或其他候选；[原厂恢复](../../firmware-research/strix-1.0.5.5/README.md)需要独立匹配的恢复工具链，不能复用本版授权，也不保证救砖。
+- WP6 固定 TMG3 候选，不接受原厂 ZIP 或其他候选；[原厂恢复](../../firmware-research/strix-1.0.5.5/README.md)需要独立匹配的恢复工具链，不能复用本版授权，也不保证救砖。
 - 原厂登录/推送、Apple 登录、长期后台和所有功能均需独立验收。
 
 ## No-network answers / 无网络回答（WP7c）

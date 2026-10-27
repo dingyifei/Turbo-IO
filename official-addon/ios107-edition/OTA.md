@@ -1,4 +1,10 @@
-# iOS 1.0.7（230）刷入 TMG2
+# iOS 1.0.7（230）固件向导与 WP6 TMG3 候选
+
+## WP6: unflashed TMG3 candidate
+
+**The morning flash is a human decision.** WP6 offers TMG3, not a device-accepted upgrade: `StrixOS-1.0.5.5-TurboIO-TMG3-CANDIDATE-NOT-APPROVED.zip`, 8803177 bytes, SHA-256 `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274`. Its AP is 7344072 bytes, SHA-256 `b54a28a628112c2b548393328528c2f7a19e727741f1fd6ede35cfbee4290c52`, MD5 `28d26bb9965e2648ab514e02d4708957`. The package still uses resource name `TurboWeReadCandidate.zip` and the frozen APP107 routing marker. Packaging/installing the phone app never starts or authorizes a flash. The 2026-10-19 TMG2 acceptance record below is historical; `tmg3FlashAcceptedOnDevice` is false.
+
+The existing three-step wizard and single destructive confirmation below are unchanged. TMG2 glasses keep normal phone functionality, receive legacy POSE only and ignore TLG1. Check the new phone package with TMG2 still installed before making a separate TMG3 decision.
 
 2026-10-19 · [构建与签名](README.md) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)
 
@@ -12,7 +18,7 @@
 
 ## Firmware wizard (English)
 
-Open **Turbo › Glasses › Glasses firmware**. The wizard shows the firmware name from the app's `TIOExperimentalOTABuild` key. With that key set to `TMG3`, it names TMG3. The WP5 C4 package still carries the TMG2-safe `TurboWeReadCandidate.zip` and a TMG2 Info value; WP6 must update the pins and Info before a TMG3 package is available. Opening the wizard does not start an installation.
+Open **Turbo › Glasses › Glasses firmware**. The wizard shows the firmware name from the app's `TIOExperimentalOTABuild` key. With that key set to `TMG3`, it names TMG3. WP6 now pins the exact TMG3 bytes and sets the Info value to TMG3; the bundled filename remains `TurboWeReadCandidate.zip`. The earlier WP5 C4 package was TMG2-pinned. Opening the wizard does not start an installation.
 
 1. **Check.** Back up the phone App data. Keep the glasses above 50% charge, on their home screen and connected; finish recording, navigation, music and other active tasks. The Package row checks the candidate, Source checks the local download service, Protection checks the host gate, Auto Update checks RayNeo's setting, and Version checks the recent read from the glasses. On a fresh install, open **RayNeo › Glasses › Software version** and turn Auto Update **on, then off once** so RayNeo saves the setting. The wizard's **Fix** can turn it off only when an existing, recognizable setting is present; if the setting is missing or unknown, use RayNeo. Do not continue while a required check fails.
 2. **Download.** Open the wizard's 15-minute download window. In **RayNeo › Glasses › Software version**, download the update and stop at **Ready to install**; do not tap Start install yet. Return to Turbo and wait for the downloaded directory check to pass. RayNeo may reuse a matching verified cache, so a download request count of zero alone does not show failure. If the window expires or the directory does not match, stop and repeat the checks.
@@ -20,7 +26,7 @@ Open **Turbo › Glasses › Glasses firmware**. The wizard shows the firmware n
 
 ## 固件向导（中文）
 
-打开 **Turbo › 眼镜 › 眼镜固件**。向导从 App 的 `TIOExperimentalOTABuild` 键读取固件名称；该键为 `TMG3` 时显示 TMG3。WP5 C4 包仍包含面向 TMG2 的 `TurboWeReadCandidate.zip`，Info 值也仍为 TMG2；须等 WP6 更新校验信息和 Info 后才能提供 TMG3 包。打开向导不会开始安装。
+打开 **Turbo › 眼镜 › 眼镜固件**。向导从 App 的 `TIOExperimentalOTABuild` 键读取固件名称；该键为 `TMG3` 时显示 TMG3。WP6 已固定本次 TMG3 的字节校验值，Info 值为 TMG3；资源名仍为 `TurboWeReadCandidate.zip`。历史 WP5 C4 包固定的是 TMG2。打开向导不会开始安装。
 
 1. **检查。** 先备份手机 App 数据。眼镜电量保持 50% 以上、停在首页并保持连接，结束录音、导航、音乐等正在进行的任务。「固件包」检查候选包，「来源」检查本机下载服务，「保护」检查宿主门禁，「自动更新」检查雷鸟设置，「版本」检查最近一次眼镜版本回读。首次安装时，在 **RayNeo › 眼镜 › 软件版本**中把「自动更新」**先打开、再关闭一次**，让 RayNeo 保存该设置。仅当已有可识别的设置键时，向导的「修复」才能将其关闭；设置缺失或状态未知时请在 RayNeo 中操作。必需检查未通过时不要继续。
 2. **下载。** 在向导中开启 **15 分钟**下载窗口。到 **RayNeo › 眼镜 › 软件版本**下载更新，停在「**软件就绪**」，先不要点「开始安装」。返回 Turbo，等待解压目录校验通过。RayNeo 可能复用已校验且一致的缓存，因此下载请求数为 0 本身不代表失败。窗口过期或目录不匹配时，停止并重新检查。
