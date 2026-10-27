@@ -238,6 +238,10 @@
     "tests/VoiceExitTests.m": {
       "status": "run",
       "group": "voice-exit"
+    },
+    "OTAWizardModelTests.m": {
+      "status": "run",
+      "group": "wizard"
     }
   }
 }

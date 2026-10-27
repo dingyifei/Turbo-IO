@@ -143,6 +143,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   ResearchCatalog.m \
   ResearchUI.m \
   TIOConfirm.m \
+  OTAWizardModel.m \
   PrivateBootstrap.m \
   WebSearch.m \
   GlassesChannelHook.m \
