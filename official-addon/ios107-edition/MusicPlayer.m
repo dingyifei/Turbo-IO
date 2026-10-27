@@ -1,5 +1,6 @@
 #import "MusicPlayer.h"
 #import "MusicAPI.h"
+#import "SpotifyLyrics.h"
 #import "MusicLibrary.h"
 #import "MusicBridge.h"
 #import "NativeNavigationUI.h"

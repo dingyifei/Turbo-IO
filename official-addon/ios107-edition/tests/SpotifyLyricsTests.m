@@ -1,0 +1,68 @@
+#import <Foundation/Foundation.h>
+#import "SpotifyLyrics.h"
+#include <assert.h>
+
+@interface TMSpotifyHTTPTransaction:NSObject
+- (instancetype)initWithDone:(TMSpotifyHTTPDone)done cancel:(dispatch_block_t)cancel;
+- (BOOL)acceptResponse:(NSURLResponse *)response;
+- (void)appendData:(NSData *)data;
+- (void)finishWithError:(NSError *)error;
+- (void)refuseRedirect;
+- (NSUInteger)bufferedLength;
+@end
+@interface TMSpotifyHTTPDelegate:NSObject<NSURLSessionDataDelegate>
+- (void)registerTransaction:(TMSpotifyHTTPTransaction *)transaction forTask:(NSURLSessionTask *)task;
+- (TMSpotifyHTTPTransaction *)transactionForTask:(NSURLSessionTask *)task;
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(NSURLSessionResponseDisposition))completionHandler;
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)task didReceiveData:(NSData *)data;
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error;
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler;
+@end
+@interface TMSpotifyFakeTask:NSObject
+@property(nonatomic,readonly)NSUInteger taskIdentifier;
+@property(nonatomic)NSUInteger cancelCount;
+- (instancetype)initWithID:(NSUInteger)i;
+- (void)cancel;
+@end
+@implementation TMSpotifyFakeTask{NSUInteger _taskIdentifier;}
+- (instancetype)initWithID:(NSUInteger)i{if((self=[super init]))_taskIdentifier=i;return self;}
+- (NSUInteger)taskIdentifier{return _taskIdentifier;}
+- (void)cancel{self.cancelCount++;}
+@end
+static void PumpMainUntil(BOOL *ready){NSDate *limit=[NSDate dateWithTimeIntervalSinceNow:5];while(!*ready&&[limit timeIntervalSinceNow]>0)[[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:.01]];assert(*ready);}
+static NSHTTPURLResponse *HTTPResponse(void){return [[NSHTTPURLResponse alloc]initWithURL:[NSURL URLWithString:@"https://example.invalid/test"] statusCode:200 HTTPVersion:@"HTTP/1.1" headerFields:nil];}
+static void TestBoundedHTTPDelegate(void){TMSpotifyHTTPDelegate *delegate=[TMSpotifyHTTPDelegate new];NSData *fourMB=[NSMutableData dataWithLength:4*1024*1024];NSData *one=[NSMutableData dataWithLength:1];
+ // Unknown content length is accepted; exactly 4 MiB is valid.
+ __block TMSpotifyFakeTask *task=[[TMSpotifyFakeTask alloc]initWithID:11];__block BOOL ready=NO,main=NO;__block NSUInteger calls=0,received=0;TMSpotifyHTTPTransaction *tx=[[TMSpotifyHTTPTransaction alloc]initWithDone:^(NSData *b,NSHTTPURLResponse *r,NSError *e){calls++;main=NSThread.isMainThread;assert(!e&&r.statusCode==200);received=b.length;ready=YES;} cancel:^{task.cancelCount++;}];[delegate registerTransaction:tx forTask:(id)task];__block NSURLSessionResponseDisposition disp=NSURLSessionResponseCancel;[delegate URLSession:nil dataTask:(id)task didReceiveResponse:HTTPResponse() completionHandler:^(NSURLSessionResponseDisposition x){disp=x;}];assert(disp==NSURLSessionResponseAllow);assert(HTTPResponse().expectedContentLength<=0);[delegate URLSession:nil dataTask:(id)task didReceiveData:fourMB];assert(tx.bufferedLength==4*1024*1024);[delegate URLSession:nil task:(id)task didCompleteWithError:nil];PumpMainUntil(&ready);assert(main&&calls==1&&received==4*1024*1024&&task.cancelCount==0);
+ // The first byte over the cap cancels before append; completion after cancel cannot call done twice.
+ task=[[TMSpotifyFakeTask alloc]initWithID:12];ready=NO;main=NO;calls=0;received=0;tx=[[TMSpotifyHTTPTransaction alloc]initWithDone:^(NSData *b,NSHTTPURLResponse *r,NSError *e){calls++;main=NSThread.isMainThread;assert(e.code==NSURLErrorDataLengthExceedsMaximum&&b==nil);ready=YES;} cancel:^{task.cancelCount++;}];[delegate registerTransaction:tx forTask:(id)task];[delegate URLSession:nil dataTask:(id)task didReceiveResponse:HTTPResponse() completionHandler:^(NSURLSessionResponseDisposition x){assert(x==NSURLSessionResponseAllow);}];[delegate URLSession:nil dataTask:(id)task didReceiveData:fourMB];[delegate URLSession:nil dataTask:(id)task didReceiveData:one];[delegate URLSession:nil dataTask:(id)task didReceiveData:one];assert(tx.bufferedLength==4*1024*1024&&task.cancelCount==1);[delegate URLSession:nil task:(id)task didCompleteWithError:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]];PumpMainUntil(&ready);assert(main&&calls==1);
+ // Declared oversized content is rejected before any body chunk is accepted.
+ task=[[TMSpotifyFakeTask alloc]initWithID:15];ready=NO;calls=0;tx=[[TMSpotifyHTTPTransaction alloc]initWithDone:^(NSData *b,NSHTTPURLResponse *r,NSError *e){calls++;main=NSThread.isMainThread;assert(e.code==NSURLErrorDataLengthExceedsMaximum&&b==nil);ready=YES;} cancel:^{task.cancelCount++;}];[delegate registerTransaction:tx forTask:(id)task];NSHTTPURLResponse *largeHeader=[[NSHTTPURLResponse alloc]initWithURL:[NSURL URLWithString:@"https://example.invalid/large"] statusCode:200 HTTPVersion:@"HTTP/1.1" headerFields:@{@"Content-Length":@"4194305"}];[delegate URLSession:nil dataTask:(id)task didReceiveResponse:largeHeader completionHandler:^(NSURLSessionResponseDisposition x){assert(x==NSURLSessionResponseCancel);}];assert(task.cancelCount==1&&tx.bufferedLength==0);[delegate URLSession:nil task:(id)task didCompleteWithError:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]];PumpMainUntil(&ready);assert(main&&calls==1);
+ // A terminal event arriving from a worker queue still completes only on main.
+ ready=NO;main=NO;calls=0;tx=[[TMSpotifyHTTPTransaction alloc]initWithDone:^(NSData *b,NSHTTPURLResponse *r,NSError *e){calls++;main=NSThread.isMainThread;assert(!e&&r.statusCode==200);ready=YES;} cancel:^{}];assert([tx acceptResponse:HTTPResponse()]);dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT,0),^{[tx finishWithError:nil];});PumpMainUntil(&ready);assert(main&&calls==1);
+ // A non-HTTP response is canceled and completed exactly once.
+ task=[[TMSpotifyFakeTask alloc]initWithID:13];ready=NO;calls=0;tx=[[TMSpotifyHTTPTransaction alloc]initWithDone:^(NSData *b,NSHTTPURLResponse *r,NSError *e){calls++;main=NSThread.isMainThread;assert(e.code==NSURLErrorBadServerResponse&&b==nil);ready=YES;} cancel:^{task.cancelCount++;}];[delegate registerTransaction:tx forTask:(id)task];NSURLResponse *nonHTTP=[[NSURLResponse alloc]initWithURL:[NSURL URLWithString:@"file:///tmp/x"] MIMEType:@"text/plain" expectedContentLength:NSURLResponseUnknownLength textEncodingName:nil];[delegate URLSession:nil dataTask:(id)task didReceiveResponse:nonHTTP completionHandler:^(NSURLSessionResponseDisposition x){assert(x==NSURLSessionResponseCancel);}];assert(task.cancelCount==1);[delegate URLSession:nil task:(id)task didCompleteWithError:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]];PumpMainUntil(&ready);assert(main&&calls==1);
+ // Redirect refusal completes nil request; a later task completion is ignored.
+ task=[[TMSpotifyFakeTask alloc]initWithID:14];ready=NO;main=NO;calls=0;tx=[[TMSpotifyHTTPTransaction alloc]initWithDone:^(NSData *b,NSHTTPURLResponse *r,NSError *e){calls++;main=NSThread.isMainThread;assert(e.code==NSURLErrorHTTPTooManyRedirects&&b==nil);ready=YES;} cancel:^{task.cancelCount++;}];[delegate registerTransaction:tx forTask:(id)task];__block BOOL nilRedirect=NO;[delegate URLSession:nil task:(id)task willPerformHTTPRedirection:HTTPResponse() newRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"https://elsewhere.invalid"]] completionHandler:^(NSURLRequest *r){nilRedirect=(r==nil);}];assert(nilRedirect&&task.cancelCount==1);[delegate URLSession:nil task:(id)task didCompleteWithError:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]];PumpMainUntil(&ready);assert(calls==1&&main);
+}
+
+static NSString *Fixture;static NSMutableArray *Seen;static NSInteger FakeStatus(NSString *p){if([p isEqual:@"/api/get"]){if([Fixture containsString:@"404"])return 404;if([Fixture containsString:@"plain_only"])return 200;if([Fixture containsString:@"instrumental"])return 200;return 200;}return 200;}
+static NSData *BodyFor(NSString *p){NSString *n;if([p isEqual:@"/api/search"])n=@"lrclib_search.json";else n=Fixture;return [NSData dataWithContentsOfFile:[[[NSProcessInfo processInfo] arguments][1] stringByAppendingPathComponent:n]];}
+static void Call(NSString *name,NSString *ident,NSString *expected,NSUInteger count){Fixture=name;Seen=[NSMutableArray new];TMSpotifyHTTP fake=^(NSURLRequest *req,TMSpotifyHTTPDone done){[Seen addObject:req];NSInteger st=FakeStatus(req.URL.path);done(BodyFor(req.URL.path),[[NSHTTPURLResponse alloc] initWithURL:req.URL statusCode:st HTTPVersion:@"HTTP/1.1" headerFields:nil],nil);};TMSpotifyLyrics *lyrics=[[TMSpotifyLyrics alloc]initWithHTTP:fake];__block BOOL ready=NO;[lyrics lyricsForID:ident title:@"Song" artist:@"Artist" album:@"Album private" durationMs:213573 done:^(NSArray *rows,NSString *kind,BOOL failed){assert(!failed);assert([kind isEqual:expected]);if([expected isEqual:@"synced"]){assert(rows.count==([name isEqual:@"lrclib_get_hit.json"]?2:1));assert([rows[0][@"ms"] unsignedIntegerValue]==([name isEqual:@"lrclib_get_hit.json"]?18800:1000));}ready=YES;}];NSDate *limit=[NSDate dateWithTimeIntervalSinceNow:5];while(!ready&&[limit timeIntervalSinceNow]>0)[[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:.01]];assert(ready);assert(Seen.count==count);for(NSURLRequest *r in Seen){assert([r valueForHTTPHeaderField:@"User-Agent"]!=nil);if([r.URL.path isEqual:@"/api/get"]){NSURLComponents *c=[NSURLComponents componentsWithURL:r.URL resolvingAgainstBaseURL:NO];for(NSURLQueryItem *q in c.queryItems)assert(![q.name isEqual:@"album_name"]);}}}
+int main(int argc,const char **argv){@autoreleasepool{TestBoundedHTTPDelegate();assert(argc==2);NSString *root=[NSString stringWithUTF8String:argv[1]];NSURL *u=TMLRCLIBGetURL(@"Song",@"Artist",@"nonempty privacy value",213573);NSURLComponents *c=[NSURLComponents componentsWithURL:u resolvingAgainstBaseURL:NO];BOOL duration=NO;for(NSURLQueryItem *q in c.queryItems){if([q.name isEqual:@"duration"]){duration=[q.value isEqual:@"214"];assert(q.value!=nil);}assert(![q.name isEqual:@"album_name"]);}assert(duration);c=[NSURLComponents componentsWithURL:TMLRCLIBGetURL(@"Song",@"Artist",@"",213573) resolvingAgainstBaseURL:NO];for(NSURLQueryItem *q in c.queryItems)assert(![q.name isEqual:@"album_name"]);
+// Malformed LRCLIB JSON must be ignored without selector exceptions or false duration matches.
+NSData *badInstrumental=[@"{\"instrumental\":null}" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(badInstrumental,200,1000)[@"kind"] isEqual:@"none"]);
+NSData *emptyInstrumental=[@"{}" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(emptyInstrumental,200,1000)[@"kind"] isEqual:@"none"]);
+NSData *wrongInstrumental=[@"{\"instrumental\":{}}" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(wrongInstrumental,200,1000)[@"kind"] isEqual:@"none"]);
+NSData *missingDuration=[@"[{\"syncedLyrics\":\"[00:01.00]line\"}]" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(missingDuration,200,1000)[@"kind"] isEqual:@"none"]);
+NSData *nullDuration=[@"[{\"duration\":null,\"syncedLyrics\":\"[00:01.00]line\"}]" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(nullDuration,200,1000)[@"kind"] isEqual:@"none"]);
+NSData *wrongDuration=[@"[{\"duration\":{},\"syncedLyrics\":\"[00:01.00]line\"}]" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(wrongDuration,200,1000)[@"kind"] isEqual:@"none"]);
+NSData *stringDuration=[@"[{\"duration\":\"1\",\"syncedLyrics\":\"[00:01.00]line\"}]" dataUsingEncoding:NSUTF8StringEncoding];assert([TMLRCLIBRows(stringDuration,200,1000)[@"kind"] isEqual:@"none"]);
+NSArray *parsed=TMParseLRC(@"[offset:+500]\n[00:01.00][00:02.00]two stamps");assert(parsed.count==2&&[parsed[0][@"ms"] integerValue]==1500);Call(@"lrclib_get_hit.json",@"hit",@"synced",1);
+Fixture=@"lrclib_get_instrumental.json"; // separate fake for instrumental shape
+Call(@"lrclib_get_instrumental.json",@"inst",@"instrumental",1);
+Call(@"lrclib_get_plain_only.json",@"plain",@"synced",2);Call(@"lrclib_404.json",@"404",@"synced",2);
+// Per-instance cache: same track id second lookup issues no further request.
+Fixture=@"lrclib_get_hit.json";Seen=[NSMutableArray new];TMSpotifyHTTP fake=^(NSURLRequest *r,TMSpotifyHTTPDone d){[Seen addObject:r];d(BodyFor(r.URL.path),[[NSHTTPURLResponse alloc] initWithURL:r.URL statusCode:200 HTTPVersion:@"HTTP/1.1" headerFields:nil],nil);};TMSpotifyLyrics *l=[[TMSpotifyLyrics alloc]initWithHTTP:fake];__block int calls=0;void(^done)(void)=^{[l lyricsForID:@"cached" title:@"t" artist:@"a" album:@"" durationMs:213000 done:^(NSArray *r,NSString *k,BOOL f){assert(!f&&[k isEqual:@"synced"]);calls++;}];};done();assert(calls==1);done();assert(calls==2&&Seen.count==1);
+// HTTP errors are surfaced and not cached.
+__block int failures=0;TMSpotifyHTTP bad=^(NSURLRequest *r,TMSpotifyHTTPDone d){failures++;d(nil,nil,[NSError errorWithDomain:NSURLErrorDomain code:-1009 userInfo:nil]);};l=[[TMSpotifyLyrics alloc]initWithHTTP:bad];for(int i=0;i<2;i++){__block BOOL ready=NO;[l lyricsForID:@"fail" title:@"t" artist:@"a" album:@"" durationMs:1 done:^(NSArray *r,NSString *k,BOOL f){assert(f);ready=YES;}];assert(ready);}assert(failures==2);puts("SpotifyLyricsTests PASS");}return 0;}

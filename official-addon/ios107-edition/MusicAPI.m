@@ -18,14 +18,7 @@ NSDictionary *TMEncrypt(NSDictionary *data,NSString *path,BOOL eapi){NSData *j=[
  SecKeyRef key=SecKeyCreateWithData((__bridge CFDataRef)[NSData dataWithBytes:der length:140],(__bridge CFDictionaryRef)@{(__bridge id)kSecAttrKeyType:(__bridge id)kSecAttrKeyTypeRSA,(__bridge id)kSecAttrKeyClass:(__bridge id)kSecAttrKeyClassPublic},NULL);if(!key)return nil;
  uint8_t raw[128]={0};for(unsigned i=0;i<16;i++)raw[112+i]=secret[15-i];CFDataRef enc=SecKeyCreateEncryptedData(key,kSecKeyAlgorithmRSAEncryptionRaw,(__bridge CFDataRef)[NSData dataWithBytes:raw length:128],NULL);CFRelease(key);NSData *rsa=CFBridgingRelease(enc);return rsa.length==128?@{@"params":[two base64EncodedStringWithOptions:0],@"encSecKey":Hex(rsa)}:nil;
 }
-NSArray<NSDictionary *> *TMParseLRC(NSString *input){if(![input isKindOfClass:NSString.class]||input.length>200000)return @[];
- NSRegularExpression *stamp=[NSRegularExpression regularExpressionWithPattern:@"\\[(\\d{1,3}):(\\d{2})(?:[.:](\\d{1,3}))?\\]" options:0 error:nil],*offsetRE=[NSRegularExpression regularExpressionWithPattern:@"\\[offset:([+-]?\\d+)\\]" options:NSRegularExpressionCaseInsensitive error:nil];
- NSTextCheckingResult *off=[offsetRE firstMatchInString:input options:0 range:NSMakeRange(0,input.length)];NSInteger offset=off?[[input substringWithRange:[off rangeAtIndex:1]]integerValue]:0;offset=MAX(-60000,MIN(60000,offset));NSMutableArray *rows=[NSMutableArray new];
- for(NSString *line in [input componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]){NSArray *matches=[stamp matchesInString:line options:0 range:NSMakeRange(0,line.length)];if(!matches.count)continue;
-  NSString *text=[[line substringFromIndex:NSMaxRange([matches.lastObject range])]stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];text=[[text componentsSeparatedByCharactersInSet:NSCharacterSet.controlCharacterSet]componentsJoinedByString:@""];if(!text.length)continue;
-  for(NSTextCheckingResult *m in matches){NSInteger min=[[line substringWithRange:[m rangeAtIndex:1]]integerValue],sec=[[line substringWithRange:[m rangeAtIndex:2]]integerValue];if(sec>59)continue;NSRange r=[m rangeAtIndex:3];NSString *frac=r.location==NSNotFound?@"":[line substringWithRange:r];NSInteger ms=frac.integerValue*(frac.length==1?100:frac.length==2?10:1);NSInteger t=MAX(0,(min*60+sec)*1000+ms+offset);if(t<=86400000)[rows addObject:@{@"ms":@(t),@"text":text}];}
- }[rows sortUsingComparator:^NSComparisonResult(id a,id b){return [a[@"ms"] compare:b[@"ms"]];}];return rows.count>192?[rows subarrayWithRange:NSMakeRange(0,192)]:rows;
-}
+
 @interface TMMusicAPI()<NSURLSessionTaskDelegate>
 @property NSMutableDictionary *cookies;
 @property NSURLSession *session;

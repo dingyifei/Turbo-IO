@@ -210,6 +210,10 @@
       "status": "run",
       "group": "tiles"
     },
+    "tests/SpotifyLyricsTests.m": {
+      "status": "run",
+      "group": "spotify-lyrics"
+    },
     "tests/StabilityTests.m": {
       "status": "run",
       "group": "stability"

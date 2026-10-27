@@ -70,6 +70,7 @@ test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c'])
 test('music-clock',['tests/MusicClockTests.m'])
+test('spotify-lyrics',['SpotifyHTTP.m','SpotifyLyrics.m','tests/SpotifyLyricsTests.m'],[P/'tests/fixtures/spotify'])
 test('language-flag',['tests/LanguageFlagTests.m','LanguageFlag.m','lang_flag.c'])
 test('voice-tts',['VoiceTTSTests.m','VoiceTTSText.m'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
