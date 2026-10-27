@@ -19,7 +19,8 @@ def main():
         import json,re
         dylib=out/'TurboAppleAI.dylib'
         symbols=subprocess.check_output(['nm',str(dylib)],text=True)
-        for name in ['TIOAppleAIProbe','TIOAppleLLM','TIOAppleLLMTask','TIOAppleSpeech','TIOAppleSpeechTask']: assert '_OBJC_CLASS_$_'+name in symbols
+        for name in ['TIOAppleAIProbe','TIOAppleLLM','TIOAppleLLMTask','TIOAppleSpeech','TIOAppleSpeechTask','TIOAppleCaptionPanel','TIOAppleCaptionHost']: assert '_OBJC_CLASS_$_'+name in symbols
+        for name in ['TIOCaptionHost','TIOCaptionLocalPanel','TIOCaptionPhoneProbe']: assert '_OBJC_CLASS_$_'+name not in symbols
         links=subprocess.check_output(['otool','-L',str(dylib)],text=True)
         info=json.loads((out/'build-info.json').read_text())
         for framework in ('FoundationModels','Speech','Translation'):

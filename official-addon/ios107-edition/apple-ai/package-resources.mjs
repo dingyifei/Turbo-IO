@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-export const REQUIRED=['TIOAppleAIProbe','TIOAppleLLM','TIOAppleLLMTask','TIOAppleSpeech','TIOAppleSpeechTask'];
+export const REQUIRED=['TIOAppleAIProbe','TIOAppleLLM','TIOAppleLLMTask','TIOAppleSpeech','TIOAppleSpeechTask','TIOAppleCaptionPanel','TIOAppleCaptionHost'];
 export function prepareAppleAI(dylib,addonSymbols,{nm}={}) {
   if(dylib===undefined||dylib===null)return null;
   if(typeof dylib!=='string'||!path.isAbsolute(dylib))throw Error('apple_ai_absolute_path_required');
