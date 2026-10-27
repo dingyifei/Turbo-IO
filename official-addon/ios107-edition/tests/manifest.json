@@ -212,6 +212,10 @@
       "group": "todo-tool-flow",
       "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
     },
+    "VoiceTTSTests.m": {
+      "status": "run",
+      "group": "voice-tts"
+    },
     "WebSearchFlowTests.m": {
       "status": "run",
       "group": "web-search-flow",

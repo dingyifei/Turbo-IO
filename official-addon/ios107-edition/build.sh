@@ -258,6 +258,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   -lxml2 \
   -I"$(xcrun --sdk iphoneos --show-sdk-path)/usr/include/libxml2" \
   VoiceTTS.m \
+  VoiceTTSText.m \
   MusicAPI.m \
   MusicTransport.m \
   MusicBridge.m \
