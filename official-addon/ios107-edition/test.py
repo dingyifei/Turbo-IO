@@ -66,7 +66,6 @@ test('tiles',['RoadTiles.m','tests/RoadTilesTests.m'])
 test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c'])
-RIDE=[f for f in ['RideTool.m'] if (P/f).exists()]
 test('voice-tts',['VoiceTTSTests.m','VoiceTTSText.m'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     root=Path(tmp)
@@ -96,10 +95,10 @@ else:
 
 # WP0 step 7: previously orphaned tests.
 test('core',['Tests.m', 'Core.m'],argv=[],extra=['-fmodules', '-Wno-unused-parameter'])
-test('knowledge-tool-flow',['KnowledgeToolFlowTests.m', 'Core.m', 'WebSearch.m', *RIDE],argv=[],extra=['-fmodules'])
-test('todo-tool-flow',['TodoToolFlowTests.m', 'Core.m', 'WebSearch.m', *RIDE],argv=[],extra=['-fmodules'])
-test('web-search-flow',['WebSearchFlowTests.m', 'Core.m', 'WebSearch.m', *RIDE],argv=[],extra=['-fmodules'])
-test('web-search',['WebSearchTests.m', 'WebSearch.m', 'Core.m', *RIDE],argv=[],extra=['-fmodules'])
+test('knowledge-tool-flow',['KnowledgeToolFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],extra=['-fmodules'])
+test('todo-tool-flow',['TodoToolFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],extra=['-fmodules'])
+test('web-search-flow',['WebSearchFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],extra=['-fmodules'])
+test('web-search',['WebSearchTests.m', 'WebSearch.m', 'Core.m'],argv=[],extra=['-fmodules'])
 test('research-catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1'])
 test('todo-protocol',['TodoProtocolTests.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules'])
 restart_dir=out/'protocol-restart-dir'

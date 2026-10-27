@@ -6,7 +6,6 @@
 #import "AppTransport.h"
 #import "AppBridge.h"
 #import "FocusTransport.h"
-#import "RideTransport.h"
 #import "TDTransport.h"
 #import "ExperimentalOTA.h"
 #import "ExperimentalOTAGuard.h"
@@ -39,7 +38,6 @@ static const TIOOTAScopedSender ScopedFileSenders[]={
  TMIsScopedCall,
  TWIsScopedCall,
  TFIsScopedCall,
- DRIsScopedCall,
  TDIsScopedCall,
 #endif
  NULL};

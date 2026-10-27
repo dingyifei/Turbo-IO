@@ -234,14 +234,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   diagnostics.c \
   command.c \
   WeReadAPI.m \
-  RideTool.m \
-  RideStatus.m \
-  RideRPC.m \
-  RideTransport.m \
-  RideBridge.m \
-  RideService.m \
-  RideUI.m \
-  ride.c \
   FocusTransport.m \
   FocusBridge.m \
   focus.c \

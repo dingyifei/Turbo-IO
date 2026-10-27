@@ -29,7 +29,6 @@ FOUNDATION_EXPORT NSString *TIOWebNetworkErrorMessageInLanguage(BOOL search,NSEr
 @property(nonatomic,copy,nullable) void (^createTodo)(NSString *title, void (^completion)(NSDictionary *result));
 @property(nonatomic,copy,nullable) void (^knowledgeQuery)(NSDictionary *input,BOOL statusOnly,void (^completion)(NSDictionary *result));
 @property(nonatomic,copy,nullable) void (^cancelKnowledge)(void);
-@property(nonatomic,copy,nullable) void (^didiRide)(NSDictionary *,void(^)(NSDictionary *));
 - (void)startEndpoint:(NSURL *)url key:(NSString *)key payload:(NSDictionary *)payload searchKey:(NSString *)searchKey;
 - (void)cancel;
 @end

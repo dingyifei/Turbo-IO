@@ -12,9 +12,6 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "RecordingText.h"
 #import "AlwaysOnAudio.h"
 #import "WebSearch.h"
-#import "RideService.h"
-#import "RideRPC.h"
-#import "RideUI.h"
 #import "TodoRuntime.h"
 #import "GlassesChannelHook.h"
 #import "TodoProtocol.h"
@@ -137,7 +134,6 @@ static void Alert(NSString *title,NSString *message) {
     // Optional provider extension, sent only when explicitly selected by user.
     NSMutableDictionary *body=[payload mutableCopy];if([Prefs boolForKey:@"deepseekDisableThinking"])body[@"thinking"]=@{@"type":@"disabled"};
     NSString *searchKey=([Prefs boolForKey:@"tinyfishEnabled"]||self.newsMode)?ReadKey(@"https://api.search.tinyfish.ai"):@"";
-    if(!self.newsMode&&DRSandboxKey().length)self.didiRide=^(NSDictionary *a,void(^done)(NSDictionary *)){[DRRideService.shared tool:a completion:done];};
     TIOImportKnowledgeConnection();if(!self.newsMode&&TIOKnowledgeEnabled()){TIOKnowledgeClient *client=[TIOKnowledgeClient new];self.cancelKnowledge=^{[client cancel];};self.knowledgeQuery=^(NSDictionary *input,BOOL statusOnly,void(^done)(NSDictionary *)){void(^completion)(NSDictionary *,NSString *)=^(NSDictionary *j,NSString *e){done(j?:@{@"status":@"failed"});};if(statusOnly)[client refreshLast:completion];else [client query:input completion:completion];};}
     [self startEndpoint:url key:key payload:body searchKey:searchKey];
 }
@@ -436,7 +432,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
     NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];[tableView deselectRowAtIndexPath:ip animated:YES];
     if([r[@"key"] isEqual:@"camera"]){[self.navigationController pushViewController:TCCameraController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"didi"]){[self.navigationController pushViewController:[DRRideController new] animated:YES];return;}
     if([r[@"key"] isEqual:@"dashboardCard"]){[self.navigationController pushViewController:TDCDashboardController() animated:YES];return;}
     if([r[@"key"] isEqual:@"dashboardEditor"]){TCEAIConfigure(^NSDictionary *{NSString *e=[Prefs stringForKey:@"endpoint"]?:@"";return @{@"endpoint":e,@"model":[Prefs stringForKey:@"model"]?:@"",@"key":ReadKey(e)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};});[self.navigationController pushViewController:TCEEditorController() animated:YES];return;}
     if([r[@"key"] isEqual:@"developerApps"]){[self.navigationController pushViewController:TAPAppsController() animated:YES];return;}

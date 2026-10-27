@@ -99,8 +99,7 @@
     },
     "KnowledgeToolFlowTests.m": {
       "status": "run",
-      "group": "knowledge-tool-flow",
-      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
+      "group": "knowledge-tool-flow"
     },
     "MenuLayoutTests.m": {
       "status": "run",
@@ -201,8 +200,7 @@
     },
     "TodoToolFlowTests.m": {
       "status": "run",
-      "group": "todo-tool-flow",
-      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
+      "group": "todo-tool-flow"
     },
     "VoiceTTSTests.m": {
       "status": "run",
@@ -210,13 +208,11 @@
     },
     "WebSearchFlowTests.m": {
       "status": "run",
-      "group": "web-search-flow",
-      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
+      "group": "web-search-flow"
     },
     "WebSearchTests.m": {
       "status": "run",
-      "group": "web-search",
-      "note": "Links RideTool.m; WP3 must remove the RideTool dependency."
+      "group": "web-search"
     },
     "camera-v1/CameraCaptureTests.m": {
       "status": "run",
