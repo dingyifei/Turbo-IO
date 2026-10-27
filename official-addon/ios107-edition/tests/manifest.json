@@ -187,8 +187,8 @@
       "group": "recording-text"
     },
     "ResearchCatalogTests.m": {
-      "status": "excluded",
-      "reason": "UIKit; ResearchCatalog is replaced in WP5 (Catalyst failed: CameraUI.h:1:9: fatal error: 'UIKit/UIKit.h' file not found)"
+      "status": "run",
+      "group": "research-catalog"
     },
     "SubtitleHUDTests.m": {
       "status": "run",
