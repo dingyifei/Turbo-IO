@@ -1,4 +1,5 @@
 #import "ResearchUI.h"
+#import "TIOLanguage.h"
 #import <objc/runtime.h>
 #import <ImageIO/ImageIO.h>
 static UIColor *Color(CGFloat r,CGFloat g,CGFloat b){return [UIColor colorWithRed:r/255 green:g/255 blue:b/255 alpha:1];}

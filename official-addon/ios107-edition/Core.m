@@ -1,4 +1,5 @@
 #import "Core.h"
+#import "TIOLanguage.h"
 #import "TIOScript.h"
 #include <math.h>
 
@@ -202,7 +203,7 @@ NSDictionary *TIOChatRequestWithHistory(NSString *model, NSString *question, NSA
 @implementation TIOTranscriptArchive
 - (instancetype)initWithDirectory:(NSURL *)directory { if ((self=[super init])) _directory=directory; return self; }
 - (NSURL *)journal { return [_directory URLByAppendingPathComponent:@"final-transcripts.json"]; }
-- (NSError *)failure { return [NSError errorWithDomain:@"TurboIOPrivateArchive" code:1 userInfo:@{NSLocalizedDescriptionKey:@"归档读取或写入失败；原数据没有删除。"}]; }
+- (NSError *)failure { return [NSError errorWithDomain:@"TurboIOPrivateArchive" code:1 userInfo:@{NSLocalizedDescriptionKey:TIOText(@"归档读取或写入失败；原数据没有删除。")}]; }
 - (NSMutableArray *)load:(NSError **)error {
     NSURL *file=[self journal];
     if (![NSFileManager.defaultManager fileExistsAtPath:file.path]) return [NSMutableArray array];
@@ -238,10 +239,10 @@ NSDictionary *TIOChatRequestWithHistory(NSString *model, NSString *question, NSA
 - (NSArray<NSURL *> *)exportAt:(NSDate *)date error:(NSError **)error {
     @synchronized(self) {
         NSArray *rows=[self load:error]; if (!rows) return nil;
-        if(!rows.count) {if(error)*error=[NSError errorWithDomain:@"TurboIOPrivateArchive" code:2 userInfo:@{NSLocalizedDescriptionKey:@"暂无本扩展保存的最终文字。请先开启旁路保存，再使用官方全天智记；旧历史记录暂未导入。"}];return nil;}
+        if(!rows.count) {if(error)*error=[NSError errorWithDomain:@"TurboIOPrivateArchive" code:2 userInfo:@{NSLocalizedDescriptionKey:TIOText(@"暂无本扩展保存的最终文字。请先开启旁路保存，再使用官方全天智记；旧历史记录暂未导入。")}];return nil;}
         NSURL *folder=[_directory URLByAppendingPathComponent:[@"exports/" stringByAppendingString:NSUUID.UUID.UUIDString] isDirectory:YES];
         if(![NSFileManager.defaultManager createDirectoryAtURL:folder withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:error]) return nil;
-        NSMutableString *md=[NSMutableString stringWithString:@"# 全天智记导出\n\n来源：启用私用扩展后旁路保存的官方最终文字。不代表完整历史或逐字准确稿。\n\n"];
+        NSMutableString *md=[NSMutableString stringWithString:TIOText(@"# 全天智记导出\n\n来源：启用私用扩展后旁路保存的官方最终文字。不代表完整历史或逐字准确稿。\n\n")];
         NSMutableArray *publicRows=[NSMutableArray array];
         for(NSDictionary *row in rows) {
             [publicRows addObject:@{@"at":row[@"at"],@"role":row[@"role"],@"text":row[@"text"]}];
