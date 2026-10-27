@@ -1,6 +1,7 @@
 #if TIO_APPLE_AI
 #import "AppleAI.h"
 #import "AppleAICore.h"
+#import "NoNetworkTurn.h"
 #endif
 #import "camera-v1/CameraUI.h"
 extern BOOL TDPPhoneAutomaticIdle(void);
@@ -199,6 +200,9 @@ static void Alert(NSString *t,NSString *m){TIONotice(nil,t,m);}
 @property(nonatomic,copy) NSString *officialTTSAnswer;
 @property(nonatomic) BOOL officialTTSActive;
 - (BOOL)exitVoice;
+#if TIO_APPLE_AI
+- (BOOL)takeLocalTurn:(id)response question:(NSString *)question listener:(id)listener;
+#endif
 @end
 static TIOController *Controller;
 
@@ -293,6 +297,16 @@ static id CopyResponse(id source,NSString *answer,BOOL final) {
     }
     return YES;
 }
+#if TIO_APPLE_AI
+- (BOOL)takeLocalTurn:(id)response question:(NSString *)question listener:(id)listener {
+    NSString *trim=[question stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if(listener!=_listener||_ownsTurn||_voiceExited||!trim.length)return NO;
+    NSString *prior=_asr;NSUInteger generation=_generation;_asr=trim;
+    BOOL accepted=[self receiveNlp:response listener:listener];
+    if(!accepted&&generation==_generation)_asr=prior;
+    return accepted;
+}
+#endif
 - (id)observeOfficialVoice:(id)response {
     if(!TTSOn()||!TIOIsEligibleChat(String(Get(response,@"domain")),String(Get(response,@"intent")),String(Get(response,@"sub")),[Get(response,@"offline") boolValue],Get(response,@"command")!=nil))return response;
     NSString *answer=String(Get(response,@"answer"));if(!answer.length)return response;
@@ -311,6 +325,25 @@ static id CopyResponse(id source,NSString *answer,BOOL final) {
 }
 @end
 
+#if TIO_APPLE_AI
+static void AsrHook(id self,SEL cmd,id text,BOOL final,id sid) {
+    NSString *copy=[String(text) copy],*session=[String(sid) copy];
+    void (^work)(void)=^{
+        BOOL duplicate=final&&[Controller.seenFinals containsObject:[NSString stringWithFormat:@"%@|%@",session,copy]];
+        id token=TIONoNetworkBeginAsr(self,copy,final,session,duplicate,Controller.generation);
+        @try {
+            TIONoNetworkWillAsr(copy);
+            if(final&&[Prefs boolForKey:@"voiceExitCommands"]&&TIOIsVoiceExitCommand(copy)&&[Controller exitVoice])return;
+            if(Controller.voiceExited)return;
+            if(copy.length&&[Prefs boolForKey:@"ttsEnabled"]){[Prefs setObject:@"user.asr" forKey:@"ttsLastReset"];[VoiceTTS cancel];}
+            OriginalAsr(self,cmd,text,final,sid);
+            [Controller acceptAsr:copy finished:final session:session listener:self];
+            TIONoNetworkDidAcceptAsr(token,self,copy,final,session);
+        } @finally { TIONoNetworkEndAsr(token); }
+    };
+    TIONoNetworkSubmit(TIONoNetworkAsrEvent,self,NO,work);
+}
+#else
 static void AsrHook(id self,SEL cmd,id text,BOOL final,id sid) {
     NSString *copy=String(text),*session=String(sid);
     void (^work)(void)=^{
@@ -324,19 +357,42 @@ static void AsrHook(id self,SEL cmd,id text,BOOL final,id sid) {
     };
     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
 }
+#endif
+#if TIO_APPLE_AI
+static void AudioStartHook(id self,SEL cmd) {
+    void (^work)(void)=^{TIONoNetworkAudioStart();TMMusicPauseForVoice();Controller.voiceExited=NO;[Controller.taskGate beginTurn];OriginalAudioStart(self,cmd);};
+    TIONoNetworkSubmit(TIONoNetworkAudioEvent,self,NO,work);
+}
+#else
 static void AudioStartHook(id self,SEL cmd) {
     void (^work)(void)=^{TMMusicPauseForVoice();Controller.voiceExited=NO;[Controller.taskGate beginTurn];OriginalAudioStart(self,cmd);};
     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
 }
+#endif
+#if TIO_APPLE_AI
+static void NlpHook(id self,SEL cmd,id value) {
+    void (^work)(void)=^{if(Controller.voiceExited)return;if(TIOTodoIsToolDispatching()){OriginalNlp(self,cmd,value);return;}if(TIONoNetworkNlp(self,value))return;TIOTodoObserveNlp(self,value);if(![Controller receiveNlp:value listener:self])OriginalNlp(self,cmd,[Controller observeOfficialVoice:value]);};
+    void (^submit)(void)=^{TIONoNetworkSubmit(TIONoNetworkNlpEvent,self,TIOTodoIsToolDispatching(),work);};
+    if(NSThread.isMainThread)submit();else dispatch_async(dispatch_get_main_queue(),submit);
+}
+#else
 static void NlpHook(id self,SEL cmd,id value) {
     // Route decisions on the main queue to serialize ASR, cancellation and stream completion.
     void (^work)(void)=^{if(Controller.voiceExited)return;if(TIOTodoIsToolDispatching()){OriginalNlp(self,cmd,value);return;}TIOTodoObserveNlp(self,value);if(![Controller receiveNlp:value listener:self])OriginalNlp(self,cmd,[Controller observeOfficialVoice:value]);};
     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
 }
+#endif
+#if TIO_APPLE_AI
+static void CompleteHook(id self,SEL cmd) {
+    void (^work)(void)=^{CompletionEvents++;if(Controller.voiceExited)return;if(TIONoNetworkComplete(self))return;[Controller completeOfficialVoice];if(![Prefs integerForKey:@"mode"]||!(Controller.listener==self&&Controller.ownsTurn))OriginalComplete(self,cmd);};
+    TIONoNetworkSubmit(TIONoNetworkCompleteEvent,self,NO,work);
+}
+#else
 static void CompleteHook(id self,SEL cmd) {
     void (^work)(void)=^{CompletionEvents++;if(Controller.voiceExited)return;[Controller completeOfficialVoice];if(![Prefs integerForKey:@"mode"]||!(Controller.listener==self&&Controller.ownsTurn))OriginalComplete(self,cmd);};
     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
 }
+#endif
 static void AlwaysOnHook(id self,SEL cmd,id value) {
     OriginalAlwaysOn(self,cmd,value);
     if(![Prefs boolForKey:@"captureFinalText"]||![Get(value,@"finish") boolValue])return;
@@ -731,6 +787,14 @@ __attribute__((constructor)) static void Load(void) {
             Class helper=NSClassFromString(@"rayneo_venus_sdk_plugin.VoiceAssistantHelper");
             VoiceExitReady=valid&&Signature(object_getClass(helper),@"shared",2,"@",@[])&&Signature(helper,@"stopWorkflow",2,"v",@[])&&Signature(voice,@"onAudioRecordStart",2,"v",@[]);
             if(VoiceExitReady)OriginalAudioStart=(void *)method_setImplementation(class_getInstanceMethod(voice,NSSelectorFromString(@"onAudioRecordStart")),(IMP)AudioStartHook);
+#if TIO_APPLE_AI
+            if(valid&&VoiceExitReady)TIONoNetworkInstall(voice,
+                ^BOOL(id value,NSString *question,id listener){return [Controller takeLocalTurn:value question:question listener:listener];},
+                ^(id listener,id value){if(Controller.voiceExited)return;if(TIOTodoIsToolDispatching()){OriginalNlp(listener,NSSelectorFromString(@"onNlpResult:"),value);return;}TIOTodoObserveNlp(listener,value);if(![Controller receiveNlp:value listener:listener])OriginalNlp(listener,NSSelectorFromString(@"onNlpResult:"),[Controller observeOfficialVoice:value]);},
+                ^(id listener){if(Controller.voiceExited)return;[Controller completeOfficialVoice];if(![Prefs integerForKey:@"mode"]||!(Controller.listener==listener&&Controller.ownsTurn))OriginalComplete(listener,NSSelectorFromString(@"onResponseComplete"));},
+                ^{TIONoNetworkSnapshot *state=[TIONoNetworkSnapshot new];state.mode=[Prefs integerForKey:@"mode"];state.appleFallback=[Prefs boolForKey:@"appleFallback"];state.verified=[[Prefs stringForKey:@"verifiedChatDomain"] length]>0;state.hooksReady=HooksReady;state.voiceExitReady=VoiceExitReady;state.listener=Controller.listener;state.ownsTurn=Controller.ownsTurn;state.responseDone=Controller.responseDone;state.voiceExited=Controller.voiceExited;state.generation=Controller.generation;state.sid=Controller.sid?:@"";state.asr=Controller.asr?:@"";id timeout=[Prefs objectForKey:@"noNetworkTimeout"];state.timeout=[timeout isKindOfClass:NSNumber.class]?timeout:nil;state.stopHost=[Prefs boolForKey:@"noNetworkStopHost"];state.forceForeground=[Prefs boolForKey:@"noNetworkForceForeground"];return state;},
+                ^{id instance=((id(*)(id,SEL))objc_msgSend)(helper,NSSelectorFromString(@"shared"));if(instance)((void(*)(id,SEL))objc_msgSend)(instance,NSSelectorFromString(@"stopWorkflow"));});
+#endif
             if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
             TCCameraReportLoaded();
             NSMutableString *loadInfo=[NSMutableString stringWithFormat:@"setup reached; hooks=%d; version=%d; voiceClass=%d; alwaysOnClass=%d\n",valid,VersionMatches(),voice!=Nil,ao!=Nil];

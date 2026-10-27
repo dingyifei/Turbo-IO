@@ -285,7 +285,7 @@ void TIONoNetworkSubmit(TIONoNetworkEvent kind,id listener,BOOL toolDispatch,dis
 id TIONoNetworkBeginAsr(id listener,NSString *text,BOOL final,NSString *sid,BOOL duplicate,NSUInteger generation){return [NNShared() beginAsr:listener text:text final:final sid:sid duplicate:duplicate generation:generation];}
 void TIONoNetworkWillAsr(NSString *text){[NNShared() willAsr:text];}
 void TIONoNetworkDidAcceptAsr(id token,id listener,NSString *text,BOOL final,NSString *sid){[NNShared() accepted:token listener:listener text:text final:final sid:sid];}
-void TIONoNetworkEndAsr(id token){NNHost *h=NNShared();if(h.ingress==token)h.ingress=nil;[h publish];}
+void TIONoNetworkEndAsr(id token){NNHost *h=NNShared();if(h.ingress==token)h.ingress=nil;[h refresh];[h publish];}
 void TIONoNetworkAudioStart(void){[NNShared() cancel:@"cancel:audio"];}
 BOOL TIONoNetworkNlp(id listener,id value){return [NNShared() nlp:listener value:value];}
 BOOL TIONoNetworkComplete(id listener){return [NNShared() completion:listener];}

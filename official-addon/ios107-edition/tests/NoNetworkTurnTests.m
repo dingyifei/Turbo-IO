@@ -150,6 +150,7 @@ int main(void){@autoreleasepool{
 
     CASE("unverified hooks exits empty and unsupported error ABI");for(NSUInteger branch=0;branch<5;branch++){Setup(3,YES,branch==4?NNBadVoice.class:NNVoice.class,NO);if(branch==0)State.verified=NO;if(branch==1)State.hooksReady=NO;if(branch==2)State.voiceExited=YES;Arm(branch==3?@"   ":@"HELLO THERE",@"s");Advance(16);CHECK(Takes==0);CHECK(State.verified==(branch!=0));}
 
+    CASE("exit early-return finally cancels pending state immediately");Setup(3,YES,NNVoice.class,NO);Arm(@"HELLO THERE",@"s");CompleteAt(Voice);State.voiceExited=YES;TIONoNetworkEndAsr(nil);CHECK([TIONoNetworkTestStatus()[@"phase"] integerValue]==TIONoNetworkIdle);CHECK([TIONoNetworkTestStatus()[@"held"] integerValue]==0);Advance(1);CHECK(Takes==0);
     CASE("wrapper absence setter getter and takeover refusal replay");for(NSUInteger branch=0;branch<4;branch++){Setup(3,YES,NNVoice.class,NO);Arm(@"HELLO THERE",@"s");NlpAt(Voice,Reply(@"s",YES,NO),NO);CompleteAt(Voice);[Events removeAllObjects];if(branch==0)TIONoNetworkTestClassLookup(^Class(NSString *name){return Nil;});if(branch==1)ThrowSet=YES;if(branch==2)ThrowGet=YES;if(branch==3)Accept=NO;Advance(.7);CHECK([Events isEqual:@[@"N:n",@"C"]]);CHECK(Takes==(branch==3?1:0));ThrowSet=NO;ThrowGet=NO;}
 
     CASE("object error arguments retained through hold");Setup(3,YES,NNObjectVoice.class,NO);Accept=NO;Arm(@"HELLO THERE",@"s");__weak id weakCode;
