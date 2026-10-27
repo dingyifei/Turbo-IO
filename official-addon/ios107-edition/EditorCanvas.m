@@ -1,4 +1,5 @@
 #import "EditorCanvas.h"
+#import "TIOLanguage.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,13 +7,13 @@
 #include "editor.h"
 static CGRect TCEComponentRect(NSDictionary *c){return CGRectMake([c[@"x"]doubleValue],[c[@"y"]doubleValue],[c[@"w"]doubleValue],[c[@"h"]doubleValue]);}
 static NSDictionary *Attrs(NSDictionary *c){NSMutableParagraphStyle *p=[NSMutableParagraphStyle new];p.lineBreakMode=NSLineBreakByClipping;p.alignment=[@[@"left",@"center",@"right"]indexOfObject:c[@"align"]];return @{NSFontAttributeName:[UIFont systemFontOfSize:[c[@"font"]doubleValue]],NSForegroundColorAttributeName:UIColor.greenColor,NSParagraphStyleAttributeName:p};}
-NSString *TCETextWarnings(NSDictionary *d){NSMutableArray *a=[NSMutableArray new];for(NSDictionary *c in d[@"components"])if([c[@"kind"]isEqual:@"text"]&&[c[@"text"]sizeWithAttributes:Attrs(c)].width>[c[@"w"]doubleValue])[a addObject:c[@"id"]];return a.count?[NSString stringWithFormat:@"文字可能裁切：%@。手机字体仅近似预览，请缩短文字或调整字号/区域。",[a componentsJoinedByString:/*i18n:keep*/@"、"]]:@"";}
+NSString *TCETextWarnings(NSDictionary *d){NSMutableArray *a=[NSMutableArray new];for(NSDictionary *c in d[@"components"])if([c[@"kind"]isEqual:@"text"]&&[c[@"text"]sizeWithAttributes:Attrs(c)].width>[c[@"w"]doubleValue])[a addObject:c[@"id"]];return a.count?[NSString stringWithFormat:TIOText(@"文字可能裁切：%@。手机字体仅近似预览，请缩短文字或调整字号/区域。"),[a componentsJoinedByString:/*i18n:keep*/@"、"]]:@"";}
 @interface TCECanvas()<UIGestureRecognizerDelegate>
 @property NSDictionary *gestureDraft;
 @property NSDictionary *gestureItem;
 @end
 @implementation TCECanvas
-- (instancetype)initWithFrame:(CGRect)r{if((self=[super initWithFrame:r])){self.backgroundColor=UIColor.blackColor;self.layer.cornerRadius=16;self.clipsToBounds=YES;self.accessibilityLabel=@"眼镜卡片编辑画布";[self addGestureRecognizer:[[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(tap:)]];UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(pan:)];pan.maximumNumberOfTouches=1;pan.delegate=self;[self addGestureRecognizer:pan];UIPinchGestureRecognizer *pinch=[[UIPinchGestureRecognizer alloc]initWithTarget:self action:@selector(pinch:)];pinch.delegate=self;[self addGestureRecognizer:pinch];}return self;}
+- (instancetype)initWithFrame:(CGRect)r{if((self=[super initWithFrame:r])){self.backgroundColor=UIColor.blackColor;self.layer.cornerRadius=16;self.clipsToBounds=YES;self.accessibilityLabel=TIOText(@"眼镜卡片编辑画布");[self addGestureRecognizer:[[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(tap:)]];UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(pan:)];pan.maximumNumberOfTouches=1;pan.delegate=self;[self addGestureRecognizer:pan];UIPinchGestureRecognizer *pinch=[[UIPinchGestureRecognizer alloc]initWithTarget:self action:@selector(pinch:)];pinch.delegate=self;[self addGestureRecognizer:pinch];}return self;}
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)g{
  // This is also a UIView override, not just our pan/pinch delegate method.
  // Never apply the pinch selection prerequisite to the initial tap or to a
