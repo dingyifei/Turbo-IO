@@ -69,7 +69,7 @@ static BOOL Send(NSData *wire,NSString *peer){
 /* Fit entire source, never fill/crop. Black bars are encoded, so a portrait
  * phone frame remains a portrait frame within the landscape glasses viewport. */
 @implementation TCView
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"遥控拍照");self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;self.view.backgroundColor=TIOPaper();self.view.tintColor=TIOAccent();
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.camera");self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;self.view.backgroundColor=TIOPaper();self.view.tintColor=TIOAccent();
  atomic_init(&_wantFrames,false);atomic_init(&_mailboxPending,false);atomic_init(&_generation,0);atomic_init(&_formatRevision,0);
  NSNumber *quality=[NSUserDefaults.standardUserDefaults objectForKey:@"TCCameraPreviewProfile"];unsigned profile=quality&&quality.unsignedIntValue<TC_PREVIEW_PROFILES?quality.unsignedIntValue:TC_PREVIEW_DEFAULT;atomic_init(&_previewProfile,profile);
  atomic_init(&_landscape,[NSUserDefaults.standardUserDefaults boolForKey:@"TCCameraLandscape"]);

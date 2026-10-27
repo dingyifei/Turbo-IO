@@ -67,7 +67,7 @@ void TDCObserveEvent(NSDictionary *e){
 #ifndef TDC_HOST_TEST
 @interface TDCDashboardPanel:UITableViewController @end
 @implementation TDCDashboardPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"开发者仪表盘 · TDC1");TIOStyleResearchTable(self);self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=88;[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:@"TDCDashboardChanged" object:nil];}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.dashboardCard");TIOStyleResearchTable(self);self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=88;[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:@"TDCDashboardChanged" object:nil];}
 - (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return 6;}

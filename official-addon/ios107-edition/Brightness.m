@@ -7,7 +7,7 @@ void TIOBrightnessObserveEvent(NSDictionary *event) {}
 @interface TIOCoexistInfo:UITableViewController @end
 @implementation TIOCoexistInfo
 - (void)viewDidLoad {
-    [super viewDidLoad];self.title=TIOText(@"显示兼容性");TIOStyleResearchTable(self);
+    [super viewDidLoad];self.title=TIOText(@"hub.row.brightness");TIOStyleResearchTable(self);
     self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=100;
 }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return 3;}

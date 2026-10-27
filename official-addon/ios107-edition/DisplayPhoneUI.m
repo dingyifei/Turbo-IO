@@ -138,7 +138,7 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
 @end
 @implementation TDPPhonePage
 - (void)viewDidLoad{
- [super viewDidLoad];self.title=TIOText(@"灵活显示 · PHONE 06");self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=76;
+ [super viewDidLoad];self.title=TIOText(@"hub.row.displayPhone");self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=76;
  TDPDiagConfigure([NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/display-phone-diagnostics.json"]]);
  self.note=TIOText(@"保留TDP1传图测试。先在眼镜进入Turbo Display SID页面，再查询。原生导航请从导航页开启。本包的TNV1升级需另行明确授权，默认锁定。");
  self.meters=80;self.preview=NavigationImage(NO,self.meters);self.pixels=Gray(self.preview);

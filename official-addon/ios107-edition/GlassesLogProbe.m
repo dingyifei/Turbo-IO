@@ -98,7 +98,7 @@ static void Start(void){
 }
 @interface TIOGlassesLogPanel:UITableViewController @end
 @implementation TIOGlassesLogPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"眼镜日志 · 仅本机");[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:@"TIOGlassesLogChanged" object:nil];Restore();}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.glassesLog");[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:@"TIOGlassesLogChanged" object:nil];Restore();}
 - (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return 3;}

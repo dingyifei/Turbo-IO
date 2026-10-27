@@ -13,7 +13,7 @@ UIButton *TIOAgentPicker(void (^changed)(void)){
 @property(nonatomic) NSString *status;
 @end
 @implementation TIOKnowledgePanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"知识库");TIOStyleResearchTable(self);self.job=TIOKnowledgeSnapshot();self.status=TIOText(@"projectmanager · 只读查询");[self refreshSources];TIOAttachInfo(self,TIOText(@"连接你的知识"),TIOText(@"从眼镜提问，让 Agent 查证来源。"));}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.knowledge");TIOStyleResearchTable(self);self.job=TIOKnowledgeSnapshot();self.status=TIOText(@"projectmanager · 只读查询");[self refreshSources];TIOAttachInfo(self,TIOText(@"连接你的知识"),TIOText(@"从眼镜提问，让 Agent 查证来源。"));}
 - (void)dealloc{[self.client cancel];}
 - (void)viewDidDisappear:(BOOL)animated{[super viewDidDisappear:animated];if(!self.navigationController||!self.view.window)[self.client cancel];}
 - (void)alert:(NSString *)text{UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"知识库") message:text preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"知道了") style:UIAlertActionStyleCancel handler:nil]];[self presentViewController:a animated:YES completion:nil];}

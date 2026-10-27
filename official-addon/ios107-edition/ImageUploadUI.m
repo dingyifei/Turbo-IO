@@ -48,7 +48,7 @@ static NSData *Luminance(NSURL *url){
 @end
 @implementation TIOImageUploadPage
 - (void)viewDidLoad{
- [super viewDidLoad];self.title=TIOText(@"图片传输 · 实验");self.note=TIOText(@"仅本机选图与预览；原厂固件和当前 R3 头像固件不支持接收。需要新的 AP 模块和已验证路由。");
+ [super viewDidLoad];self.title=TIOText(@"hub.row.imageRXLab");self.note=TIOText(@"仅本机选图与预览；原厂固件和当前 R3 头像固件不支持接收。需要新的 AP 模块和已验证路由。");
  self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=80;
  __weak typeof(self) weak=self;self.client.changed=^{[weak.tableView reloadData];};
  self.timer=[NSTimer scheduledTimerWithTimeInterval:0.5 repeats:YES block:^(NSTimer *t){[weak.client tick:NSProcessInfo.processInfo.systemUptime];}];
@@ -134,7 +134,7 @@ UIViewController *TIOImageUploadLabController(void){
  TIOImageUploadPage *p=(id)TIOImageUploadController(LabClient);[p loadViewIfNeeded];
  p.note=TIOText(@"R4 单张传图验收：先选图，再打开眼镜 Turbo Image RX，点右上角输入 SID。原厂/R3 不支持；没有自动显示 ACK，最终看镜片 #1 和图片。");
 #if TIO_IMAGE_RX_WIDE
- p.title=TIOText(@"N8W · 传图 FIX 01");
+ p.title=TIOText(@"hub.title.singleImageTest");
  p.note=TIOText(@"N8W 大区域版：眼镜页面540×180，图片512×128、64KiB。先选图，再滚动到眼镜第八项 Turbo Image RX，按下进入后输入 SID。仅匹配 N8W 协议v2；最终看镜片 #1 和图片。");
 #endif
  p.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:TIOText(@"输入 SID") style:UIBarButtonItemStylePlain target:p action:@selector(armManualSession)];return p;

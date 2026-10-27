@@ -74,7 +74,7 @@ void TIOA2UIObserveEvent(NSDictionary *event){
 }
 @interface TIOA2UIPanel:UITableViewController @end
 @implementation TIOA2UIPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"自定义 UI 真机验收");LoadOwner();[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:@"TIOA2UIChanged" object:nil];}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.a2ui");LoadOwner();[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:@"TIOA2UIChanged" object:nil];}
 - (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return 9;}

@@ -116,7 +116,7 @@ void TIOSubtitleObserveEvent(NSDictionary *event){
 @property NSTimer *timer;
 @end
 @implementation TIOSubtitlePanel
-- (void)viewDidLoad{[super viewDidLoad];Ensure();self.title=TIOText(@"字幕导航 · 显示 v1.1");TIOStyleResearchTable(self);Save();}
+- (void)viewDidLoad{[super viewDidLoad];Ensure();self.title=TIOText(@"hub.row.subtitleHUD");TIOStyleResearchTable(self);Save();}
 - (void)viewWillAppear:(BOOL)a{[super viewWillAppear:a];__weak typeof(self) w=self;self.timer=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t){[w.tableView reloadData];}];}
 - (void)viewDidDisappear:(BOOL)a{[super viewDidDisappear:a];[self.timer invalidate];self.timer=nil;[Trial stop:TIOText(@"离开字幕测试页") now:Now()];}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return 8;}

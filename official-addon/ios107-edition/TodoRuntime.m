@@ -116,7 +116,7 @@ NSString *TIOTodoCreateTestTask(void){
 void TIOInstallTodoRuntime(void){if(Installed)return;if(!TIOGlassesChannelHookInstalled()&&!TIOInstallGlassesChannelHook()){State=TIOText(@"观察方法签名不匹配，未安装");return;}Installed=YES;}
 @interface TIOTodoRuntimePanel:UITableViewController @end
 @implementation TIOTodoRuntimePanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"待办协议验收");self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:TIOText(@"刷新") style:UIBarButtonItemStylePlain target:self action:@selector(refresh)];}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.todoTest");self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:TIOText(@"刷新") style:UIBarButtonItemStylePlain target:self action:@selector(refresh)];}
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return 2;}
 - (NSString *)tableView:(UITableView *)t titleForFooterInSection:(NSInteger)s{return TIOText(@"只测试官方持久化创建入口；不发送网页业务待办、不覆盖眼镜列表。一次创建后不自动重试。列表基线仅保留进程内存，文件只记录命名测试项和计数。");}

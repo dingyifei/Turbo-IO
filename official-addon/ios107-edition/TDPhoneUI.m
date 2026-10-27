@@ -12,7 +12,7 @@ static NSArray *Rows(void){return @[
  @[@"allocation_failures",TIOText(@"分配失败"),TIOText(@"次")],@[@"rx_packets",TIOText(@"接收包数"),TIOText(@"包")],@[@"rx_bytes",TIOText(@"接收数据量"),@"B"],@[@"rx_max_ms",TIOText(@"接收处理最大耗时"),@"ms"],
  @[@"render_submissions",TIOText(@"渲染提交数（非 FPS）"),TIOText(@"次")],@[@"render_max_ms",TIOText(@"提交最大耗时"),@"ms"],@[@"errors",TIOText(@"扩展错误计数"),TIOText(@"次")]];}
 @implementation TDPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"眼镜运行状态 · 自动记录");
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.diagnosticsRuntime");
  self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(share)];
  UILabel *intro=[[UILabel alloc]initWithFrame:CGRectMake(20,0,320,130)];intro.numberOfLines=0;intro.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];intro.textColor=UIColor.secondaryLabelColor;
  intro.text=TIOText(@"PHONE 02 · 开启后自动记录 10 分钟，可返回音乐/导航正常使用。每 5 秒本机存盘，无需导出；不保存歌词、对话或密钥。系统挂起可能中断回传，未知原因如实记录；不自动重连或续期。");

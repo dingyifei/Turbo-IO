@@ -22,7 +22,7 @@ static TIOMenuLayoutLink *Link(void){
 BOOL TIOMenuLayoutConsume(NSDictionary *e){return [Link() consume:e];}
 @interface TIOMenuLayoutUI:UITableViewController @end
 @implementation TIOMenuLayoutUI
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"眼镜菜单布局");TIOStyleResearchTable(self);self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=90;}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"hub.row.menuLayout");TIOStyleResearchTable(self);self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=90;}
 - (void)viewWillAppear:(BOOL)animated{[super viewWillAppear:animated];[self refresh];}
 - (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[Link() cancel];}
 - (void)refresh{__weak typeof(self) w=self;[Link() query:^{[w.tableView reloadData];}];[self.tableView reloadData];}
