@@ -27,7 +27,7 @@ test('entitlements restricted to existing profile grants',()=>{
 });
 test('location prompt follows the linked navigation provider',()=>{
  assert.match(locationUsageFor('_x OBJC_CLASS_$_TIOMapKitNavigationPanel _y',false),/turn-by-turn/);
- assert.match(locationUsageFor('_x',true),/导航/);
+ assert.equal(locationUsageFor('_x'),null);
  assert.equal(locationUsageFor('_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap',false),null);
 });
 test('unknown original image bytes and private markers rejected',()=>{

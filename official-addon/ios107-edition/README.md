@@ -30,10 +30,8 @@
 在本目录执行：
 
 ```bash
-export TIO_AMAP_SDK_ROOT=/absolute/path/to/amap-sdk
-TIO_AMAP_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_IMAGE_RX_WIDE=1 \
-TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 \
-TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
+TIO_MAPKIT_ENABLED=1 TIO_OTA_FLASH_ENABLED=1 TIO_DISPLAY_FLASH=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
+TIO_DEV=1 TIO_MAPKIT_ENABLED=1 TIO_OTA_FLASH_ENABLED=1 TIO_DISPLAY_FLASH=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
 
 node --test package.test.mjs
 python3 test.py --firmware /absolute/path/to/exact-TMG2-release.zip

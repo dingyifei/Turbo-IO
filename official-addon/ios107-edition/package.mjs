@@ -5,7 +5,6 @@ import path from 'node:path';
 import { execFileSync as exec } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import {amapResources,copyAMapResources} from '../amap-resources.mjs';
 import {validateTranslationPair,prepareTranslationResources,copyTranslationResources} from '../local-translation/package-resources.mjs';
 import {inspectMachO} from './macho-embed.mjs';
 import {patch as patchOTARoute,verifyRoute} from './patch-route.mjs';
@@ -36,9 +35,9 @@ export function validateResearchPair(symbols, kind, firmware) {
 
 }
 // Location prompts for whichever navigation provider the addon links; null when none does.
-export function locationUsageFor(symbols,amapResources){
+export function locationUsageFor(symbols){
   if(symbols.includes('OBJC_CLASS_$_TIOMapKitNavigationPanel'))return 'Shows your position and gives turn-by-turn directions on your glasses while navigating.';
-  return amapResources?'用于用户主动选择的地图定位和前台步行导航。':null;
+  return null;
 }
 export function entitlementsFor(p,o) {
   if(!Array.isArray(p.certs)||!p.certs.includes(o.identity.toUpperCase())||!Array.isArray(p.devices)||!p.devices.includes(o.device)||!(Date.parse(p.expires)>Date.now()))throw Error('profile_identity_device_or_expiry_mismatch');
@@ -55,15 +54,13 @@ function main(){
   if(process.argv.includes('--help')){console.log('node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-TMG2-release.zip [--product iPhone18,2] [--amap-sdk-root /absolute/build/amap-sdk]');return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
   if(args.length%2)throw Error('expected_named_arguments');
-  const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','amap-sdk-root','experimental-ota','firmware','translation-module-dir','translation-models'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
+  const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','experimental-ota','firmware','translation-module-dir','translation-models'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
   validateOptions(o);
-  const mapResources=o['amap-sdk-root']?amapResources(o['amap-sdk-root']):[];
   const symbols=run('/usr/bin/nm',['-g',o.addon],{encoding:'utf8',maxBuffer:64*1024*1024});
   // FOCUS has a dynamic optional entry even without the translation module.
   const focusEdition=symbols.includes('_TFFocusConsume');
   validateTranslationPair(focusEdition&&!o['translation-module-dir']&&!o['translation-models']?symbols.replaceAll('_TIOOpenLocalTranslation',''):symbols,o);
   const translationResources=prepareTranslationResources(o);
-  if(symbols.includes('OBJC_CLASS_$_AMapNaviWalkManager')&&!mapResources.length)throw Error('amap_resources_option_required');
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
   if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=APP107-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
@@ -112,8 +109,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
     if(info.NSAppTransportSecurity?.NSAllowsLocalNetworking===undefined)run('plutil',['-insert','NSAppTransportSecurity.NSAllowsLocalNetworking','-bool','YES',plist]);
     fs.cpSync(path.join(here,'tests/maps'),path.join(app,'TurboHUDMaps'),{recursive:true,errorOnExist:true,force:false});
   }
-  if(mapResources.length)copyAMapResources(mapResources,app);
-  const locationUsage=locationUsageFor(symbols,mapResources.length>0);
+  const locationUsage=locationUsageFor(symbols);
   if(locationUsage){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(!info.NSLocationWhenInUseUsageDescription)run('plutil',['-insert','NSLocationWhenInUseUsageDescription','-string',locationUsage,plist]);}
   if(o.product){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(Array.isArray(info.UISupportedDevices)&&!info.UISupportedDevices.includes(o.product))run('plutil',['-insert','UISupportedDevices.0','-string',o.product,plist]);}
   const ep=path.join(destination,'signing-entitlements.plist');

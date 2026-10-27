@@ -1,7 +1,6 @@
 #import "MapKitNavigationUI.h"
 #import "NavigationGuidance.h"
 #import "NavigationSubtitleHUD.h"
-#import "NavigationTransport.h"
 #import "NewsTeleprompter.h"
 #import "ResearchUI.h"
 #import "RoadMap.h"
@@ -28,8 +27,6 @@ static NSString *AppState(void){switch(UIApplication.sharedApplication.applicati
 static NSString *GlassesBusy(void){
     if(![TIOSubtitleNavigationStatus()[@"phase"] isEqual:@"idle"])return @"Caption navigation is still running.";
     if([TIONewsTeleStatus()[@"active"] boolValue])return @"The teleprompter is still running.";
-    NSDictionary *t=TIONavTransportStatus();
-    if([t[@"enabled"] boolValue]||[t[@"pending"] boolValue]||[t[@"notices"] boolValue]||[t[@"noticePending"] boolValue])return @"The dashboard navigation card is still active.";
     return nil;
 }
 static NSArray *Coordinates(MKPolyline *line){

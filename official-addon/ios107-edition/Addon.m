@@ -36,7 +36,6 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "AppUI.h"
 #import "EditorAI.h"
 #import "GlassesLogProbe.h"
-#import "NavigationUI.h"
 #import "SubtitleHUD.h"
 #import "VoiceTTS.h"
 #if __has_include("TIOLanguage.h")
@@ -339,7 +338,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #if TIO_MAPKIT_ENABLED
     if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"Apple Maps · glasses turn-by-turn";
 #else
-    if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"地点搜索 · 路线总览 · 眼镜字幕导航（模拟验收）";
+    if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"Requires the MapKit build";
 #endif
     if([r[@"key"] isEqual:@"tts"]){c.detailTextLabel.text=@"官方/自有回答 · 眼镜蓝牙音频";
         UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"ttsEnabled"];[s addTarget:self action:@selector(ttsToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
@@ -454,7 +453,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #if TIO_MAPKIT_ENABLED
     if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIOMapKitNavigationController() animated:YES];return;}
 #else
-    if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIONavigationController() animated:YES];return;}
+    if([r[@"key"] isEqual:@"navigation"]){Alert(@"Navigation",@"Navigation needs the MapKit build (TIO_MAPKIT_ENABLED=1).");return;}
 #endif
     if([r[@"key"] isEqual:@"ttsTest"]){[self testTTS];return;}
     if([r[@"key"] isEqual:@"aboutMe"]){[self configureAboutMe];return;}

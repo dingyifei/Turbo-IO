@@ -2,7 +2,7 @@
 #if TIO_MAPKIT_ENABLED
 static NSString *const NavigationTitle=@"Navigation (Apple Maps)",*const NavigationName=@"Navigation";
 #else
-static NSString *const NavigationTitle=@"步行 / 骑行 / 驾车导航",*const NavigationName=@"导航";
+static NSString *const NavigationTitle=@"Navigation (MapKit build only)",*const NavigationName=@"Navigation";
 #endif
 static NSDictionary *Row(NSString *key,NSString *title,NSString *icon,NSInteger section,NSInteger row){return @{@"key":key,@"title":title,@"icon":icon,@"section":@(section),@"row":@(row)};}
 NSArray<NSDictionary *> *LegacySections(NSString *page){

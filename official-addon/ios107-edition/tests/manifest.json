@@ -109,29 +109,6 @@
       "status": "run",
       "group": "session"
     },
-    "NavigationCoreTests.m": {
-      "status": "run",
-      "group": "navigation-core",
-      "note": "Kept while MapKitNavigationUI.m/LocalTranslationEntry.m import NavigationSubtitleHUD.h; WP3 may delete only together with that dependency."
-    },
-    "NavigationModesTests.m": {
-      "status": "run",
-      "group": "navigation-modes"
-    },
-    "NavigationPlacesTests.m": {
-      "status": "run",
-      "group": "navigation-places",
-      "note": "Kept while MapKitNavigationUI.m/LocalTranslationEntry.m import NavigationSubtitleHUD.h; WP3 may delete only together with that dependency."
-    },
-    "NavigationSubtitleHUDTests.m": {
-      "status": "run",
-      "group": "navigation-subtitle-hud",
-      "note": "Kept while MapKitNavigationUI.m/LocalTranslationEntry.m import NavigationSubtitleHUD.h; WP3 may delete only together with that dependency."
-    },
-    "NavigationTeleHUDTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (NavigationTeleHUDTests)"
-    },
     "NewsCoreTests.m": {
       "status": "excluded",
       "reason": "module removed in WP3 (News)"

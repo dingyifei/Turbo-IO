@@ -15,39 +15,8 @@ esac
 [[ ${TIO_DEV:-0} != 1 ]] || export TIO_IMAGE_RX_LAB=1
 [[ ${TIO_MAPKIT_ENABLED:-0} != 1 ]] || export TIO_DISPLAY_PHONE=1
 diag=${TIO_DEV:-${TIO_IMAGE_RX_LAB:-0}}
-[[ ${TIO_MAPKIT_ENABLED:-0} != 1 || ${TIO_AMAP_ENABLED:-0} != 1 ]] || { echo 'MapKit and AMap navigation builds are mutually exclusive' >&2; exit 2; }
+[[ ${TIO_AMAP_ENABLED:-0} != 1 ]] || { echo 'AMap navigation was removed; use TIO_MAPKIT_ENABLED=1' >&2; exit 2; }
 nav_options=()
-if [[ ${TIO_AMAP_ENABLED:-0} == 1 ]]; then
-  [[ "$mode" == embedded ]] || { echo 'AMap build is private embedded only' >&2; exit 2; }
-  nav_root="${TIO_AMAP_SDK_ROOT:-$PWD/../build/amap-sdk}"
-  [[ -f "$nav_root/navi/AMapNaviKit.framework/AMapNaviKit" && -f "$nav_root/foundation/AMapFoundationKit.framework/AMapFoundationKit" ]] || { echo 'Missing pinned private AMap SDK dependencies' >&2; exit 2; }
-  output=build/navigation/TurboIOPrivateAddon.dylib
-  mkdir -p build/navigation
-  nav_options=(-DTIO_AMAP_ENABLED=1 \
-  -F "$nav_root/navi" \
-  -F "$nav_root/foundation" \
-  -framework AMapNaviKit \
-  -framework AMapFoundationKit \
-  -lc++ \
-  -lz \
-  -lsqlite3 \
-  -framework SystemConfiguration \
-  -framework CoreTelephony \
-  -framework QuartzCore \
-  -framework CoreGraphics \
-  -framework OpenGLES \
-  -framework GLKit \
-  -framework CoreMotion \
-  -framework AVFoundation \
-  -framework AudioToolbox \
-  -framework Accelerate \
-  -framework Metal \
-  -framework CoreText \
-  -framework CallKit \
-  -framework WebKit)
-  [[ -f "$nav_root/search/AMapSearchKit.framework/AMapSearchKit" ]] || { echo 'Missing pinned AMap Search SDK 9.8.1' >&2; exit 2; }
-  nav_options+=(-F "$nav_root/search" -framework AMapSearchKit)
-fi
 sdk_path=$(xcrun --sdk iphoneos --show-sdk-path)
 link_options=()
 if [[ ${TIO_OTA_FLASH_ENABLED:-0} == 1 ]]; then
@@ -102,7 +71,7 @@ if [[ ${TIO_DISPLAY_FLASH:-0} == 1 ]]; then
   [[ ${TIO_DISPLAY_PHONE:-0} == 1 && ${TIO_OTA_FLASH_ENABLED:-0} == 1 && "$mode" == embedded ]] || exit 2
   link_options+=(-DTIO_DISPLAY_FLASH=1)
 fi
-# Apple Maps navigation panel; replaces the AMap panel entry, never links both.
+# Apple Maps navigation panel.
 if [[ ${TIO_MAPKIT_ENABLED:-0} == 1 ]]; then
   [[ "$mode" == embedded && ${TIO_DISPLAY_PHONE:-0} == 1 ]] || { echo 'MapKit navigation requires embedded mode and TIO_DISPLAY_PHONE=1' >&2; exit 2; }
   output=build/mapkit/TurboIOPrivateAddon.dylib
@@ -155,11 +124,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   ExperimentalOTAFlash.m \
   ExperimentalOTAFeed.m \
   ExperimentalOTAUI.m \
-  NavigationModes.m \
   ProtocolContext.m \
-  NavigationSubtitleHUD.m \
-  NavigationPlaces.m \
-  NavigationPlacePicker.m \
   ${nav_options[@]+"${nav_options[@]}"} \
   ${image_options[@]+"${image_options[@]}"} \
   "-DTIO_TARGET_BUNDLE_ID=\"$bundle\"" -install_name "$install_name" ${link_options[@]+"${link_options[@]}"} \
@@ -201,11 +166,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   card.c \
   A2UIProtocol.m \
   A2UIProbe.m \
-  NavigationCore.m \
-  NavigationTeleHUD.m \
-  NavigationTransport.m \
-  NavigationUI.m \
-  ManualHUD.m \
   SubtitleHUDCore.m \
   SubtitleHUD.m \
   GlassesLogContract.m \
