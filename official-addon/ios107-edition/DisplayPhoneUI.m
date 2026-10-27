@@ -61,6 +61,8 @@ BOOL TDPPhonePauseForOTA(void){
 static NSString *Peer;
 static BOOL PeerInvalidated;
 static void CheckPeer(void){if(!PeerInvalidated&&Peer&&![TIOProtocolDevice() isEqual:Peer]){PeerInvalidated=YES;[Session disconnect];}}
+// Retained for TMG2 compatibility and never removed overnight (I11).
+static BOOL LegacyAppReply(NSDictionary *e){if(![e isKindOfClass:NSDictionary.class]||![e[@"eventType"] isEqual:@"messageReceived"])return NO;NSDictionary *m=e[@"message"];if(![m isKindOfClass:NSDictionary.class]||![m[@"businessId"] isEqual:@15]||![m[@"payload"] isKindOfClass:NSData.class])return NO;NSDictionary *f=TIOOTAFrame(m[@"payload"]);id j=f[@"json"];return [f[@"type"] isEqual:@6]&&[j isKindOfClass:NSDictionary.class]&&[@[@"turbo_read_v1",@"turbo_ride_v1",@"turbo_english_v1",@"turbo_english_progress_v1",@"turbo_dots_v1"] containsObject:j[@"cmd"]];}
 BOOL TDPPhoneConsumeEvent(NSDictionary *e){
  NSCAssert(NSThread.isMainThread,@"main only");
  CheckPeer();
@@ -75,12 +77,13 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
  if(TWReaderConsume(e))return YES;
  if(TMMusicConsume(e))return YES;
  if(TNVConsume(e))return YES;
+ if(LegacyAppReply(e))return YES;
  return [Session consumeEvent:e];
 }
 BOOL TDPPhoneRouteReply(NSDictionary *event,void(^completion)(BOOL)){
  if(![event isKindOfClass:NSDictionary.class]||![event[@"eventType"] isEqual:@"messageReceived"])return NO;
  NSDictionary *m=event[@"message"];if(![m isKindOfClass:NSDictionary.class]||![m[@"businessId"] isEqual:@15]||![m[@"payload"] isKindOfClass:NSData.class])return NO;
- NSData *data=m[@"payload"];TDPReply r;DotsAck dotsAck;if(!CEPhoneIsReply(event)&&!TDGlassesReply(event,&dotsAck)&&!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!DRDecodeReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TWDecodeReply(event,NULL)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
+ NSData *data=m[@"payload"];TDPReply r;DotsAck dotsAck;if(!CEPhoneIsReply(event)&&!TDGlassesReply(event,&dotsAck)&&!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!DRDecodeReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TWDecodeReply(event,NULL)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!LegacyAppReply(event)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
  NSDictionary *snapshot=[event copy];void(^work)(void)=^{completion(TDPPhoneConsumeEvent(snapshot));};
  if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);return YES;
 }
