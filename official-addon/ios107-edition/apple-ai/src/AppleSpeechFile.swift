@@ -13,7 +13,9 @@ import Speech
     var cancelled: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
     func install(_ task: Task<Void, Never>) { lock.lock(); work = task; let stop = stopped; lock.unlock(); if stop { task.cancel() } }
     func onCancel(_ action: @escaping () -> Void) { lock.lock(); cleanup = action; let stop = stopped; lock.unlock(); if stop { action() } }
-    @objc public func cancel() { lock.lock(); stopped = true; let task = work, action = cleanup; work = nil; cleanup = nil; lock.unlock(); task?.cancel(); action?() }
+    @objc public func cancel() {
+        if !Thread.isMainThread { DispatchQueue.main.sync { self.cancel() }; return }
+        lock.lock(); stopped = true; let task = work, action = cleanup; work = nil; cleanup = nil; lock.unlock(); task?.cancel(); action?() }
 }
 @available(iOS 26.0, *)
 @objc(TIOAppleSpeech) public final class AppleSpeech: NSObject {

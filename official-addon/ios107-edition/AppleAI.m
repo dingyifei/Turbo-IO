@@ -25,8 +25,10 @@ static void TAILoadModule(void){
 NSDictionary *TIOAppleAILoadStatus(void){__block NSDictionary *value;TAIMain(^{TAILoadModule();value=TAILoad;});return value;}
 BOOL TIOAppleAILoaded(void){return [TIOAppleAILoadStatus()[@"loaded"] boolValue];}
 NSDictionary *TIOAppleModelAvailability(void){__block NSDictionary *value;TAIMain(^{
+    TAISetLanguageProvider(^{return TIOUILanguage();});
     if(@available(iOS 26.0,*)){TAILoadModule();if(!TAIHandle){value=@{@"available":@NO,@"reason":[TAILoad[@"exists"] boolValue]?@"loadFailed":@"moduleMissing"};return;}
         Class cls=NSClassFromString(@"TIOAppleLLM");SEL selector=NSSelectorFromString(@"availability");
+        if(![cls respondsToSelector:NSSelectorFromString(@"respondTo:history:instructions:language:stream:update:")]){value=@{@"available":@NO,@"reason":@"moduleOld"};return;}
         value=[cls respondsToSelector:selector]?((id(*)(id,SEL))objc_msgSend)(cls,selector):@{@"available":@NO,@"reason":@"moduleOld"};
         if(![value isKindOfClass:NSDictionary.class])value=@{@"available":@NO,@"reason":@"moduleOld"};
     }else value=@{@"available":@NO,@"reason":@"osTooOld"};

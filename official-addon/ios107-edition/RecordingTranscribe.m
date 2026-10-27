@@ -71,7 +71,7 @@
                     if(self.activeTask){long expired=dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,(int64_t)(14400+120)*NSEC_PER_SEC));@synchronized(lock){finished=YES;if(!expired&&!self.cancelled&&!failure)markdown=result;}
                         if(expired||self.cancelled){id task=self.activeTask;SEL cancel=NSSelectorFromString(@"cancel");if([task respondsToSelector:cancel])((void(*)(id,SEL))objc_msgSend)(task,cancel);}
                     }
-                    self.activeTask=nil;if(markdown)break;
+                    self.activeTask=nil;if([failure isEqual:@"cancelled"]){code=@"cancelled";break;}if(markdown)break;
                 }
                 self.waiter=nil;if(self.cancelled){code=@"cancelled";break;}
             }

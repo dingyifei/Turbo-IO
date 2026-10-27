@@ -82,3 +82,24 @@ enum TAIL10n {
     }
     static func t(_ en: String, _ zh: String) -> String { language == "zh" ? zh : en }
 }
+
+// Main-queue owner callback lifecycle. Explicit cancellation is silent; a new
+// owner closes the previous stream before cancelling its underlying work.
+final class TAIResponseLifecycle {
+    private var cancelled = false
+    private var finished = false
+    private var latest = ""
+    private let update: (String, Bool, String?) -> Void
+    init(update: @escaping (String, Bool, String?) -> Void) { self.update = update }
+    func emit(_ text: String, done: Bool, code: String? = nil) {
+        guard !cancelled, !finished else { return }
+        latest = text; finished = done
+        update(text, done, code)
+    }
+    func cancel() { cancelled = true }
+    func supersede() {
+        guard !cancelled, !finished else { cancel(); return }
+        emit(latest, done: true, code: "cancelled")
+        cancel()
+    }
+}

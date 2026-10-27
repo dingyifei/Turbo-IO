@@ -41,6 +41,29 @@ import Foundation
         precondition(TAIL10n.t("Hello", "你好") == "你好")
         TAIL10n.language = "en"
         precondition(TAIL10n.t("Hello", "你好") == "Hello")
+        var events: [(String, Bool, String?)] = []
+        let active = TAIResponseLifecycle { events.append(($0, $1, $2)) }
+        active.emit("Hello", done: false); active.supersede()
+        active.emit("Hello late", done: false); active.supersede()
+        precondition(events.count == 2 && events[1].0 == "Hello" && events[1].1 && events[1].2 == "cancelled")
+        events = []
+        let pending = TAIResponseLifecycle { events.append(($0, $1, $2)) }
+        pending.supersede(); pending.supersede()
+        precondition(events.count == 1 && events[0].0.isEmpty && events[0].1)
+        events = []
+        let explicit = TAIResponseLifecycle { events.append(($0, $1, $2)) }
+        explicit.emit("partial", done: false); explicit.cancel(); explicit.supersede(); explicit.emit("late", done: true)
+        precondition(events.count == 1 && !events[0].1)
+        events = []
+        let complete = TAIResponseLifecycle { events.append(($0, $1, $2)) }
+        complete.emit("done", done: true); complete.supersede(); complete.emit("late", done: true)
+        precondition(events.count == 1 && events[0].0 == "done")
+        events = []
+        var reentrant: TAIResponseLifecycle!
+        reentrant = TAIResponseLifecycle { text, done, code in events.append((text, done, code)); if done { reentrant.cancel(); reentrant.supersede() } }
+        reentrant.emit("prefix", done: false); reentrant.supersede()
+        precondition(events.count == 2 && events[1].0 == "prefix" && events[1].1)
+        reentrant = nil
         print("PASS apple-ai core")
     }
 }

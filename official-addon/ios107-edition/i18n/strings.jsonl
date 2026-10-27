@@ -1950,3 +1950,8 @@
 {"key":"apple.captions.title","en":"Live captions (on-device)","zh":"实时字幕（本机）"}
 {"key":"apple.captions.unavailable.title","en":"On-device captions unavailable","zh":"本机字幕不可用"}
 {"key":"apple.captions.unavailable.message","en":"Requires iOS 26+ and the packaged TurboAppleAI module. The Hy-MT2 module is optional. Prepare speech and translation packs from the caption page.","zh":"需要 iOS 26 或更新版本，并已打包 TurboAppleAI 模块。Hy-MT2 模块可选。请在字幕页准备语音和翻译资源。"}
+{"key":"apple.status.yes","en":"Yes","zh":"是"}
+{"key":"apple.status.no","en":"No","zh":"否"}
+{"key":"apple.assets.installed","en":"Installed","zh":"已安装"}
+{"key":"apple.assets.supported","en":"Supported; prepare resources","zh":"支持，请准备资源"}
+{"key":"apple.assets.unsupported","en":"Unsupported","zh":"不支持"}

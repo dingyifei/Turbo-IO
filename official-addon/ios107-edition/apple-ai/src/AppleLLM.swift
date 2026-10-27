@@ -8,9 +8,14 @@ import FoundationModels
     private let lock = NSLock()
     private var stopped = false
     private var work: Task<Void, Never>?
+    var lifecycle: TAIResponseLifecycle?
+    func supersede() { lifecycle?.supersede(); cancel() }
     var cancelled: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
     func install(_ task: Task<Void, Never>) { lock.lock(); work = task; let stop = stopped; lock.unlock(); if stop { task.cancel() } }
-    @objc public func cancel() { lock.lock(); stopped = true; let task = work; work = nil; lock.unlock(); task?.cancel() }
+    @objc public func cancel() {
+        if !Thread.isMainThread { DispatchQueue.main.sync { self.cancel() }; return }
+        lifecycle?.cancel()
+        lock.lock(); stopped = true; let task = work; work = nil; lock.unlock(); task?.cancel() }
 }
 
 @available(iOS 26.0, *)
@@ -40,11 +45,11 @@ import FoundationModels
     public static func respond(_ q: String, history: [NSDictionary], instructions: String, language: String,
                                stream: Bool, update: @escaping (String, Bool, String?) -> Void) -> AppleLLMTask {
         if !Thread.isMainThread { return DispatchQueue.main.sync { respond(q, history: history, instructions: instructions, language: language, stream: stream, update: update) } }
-        current?.cancel()
-        let token = AppleLLMTask(); current = token
+        current?.supersede()
+        let token = AppleLLMTask(); token.lifecycle = TAIResponseLifecycle(update: update); current = token
         let work = Task { @MainActor in
             defer { if current === token { current = nil } }
-            func emit(_ text: String, _ done: Bool, _ code: String? = nil) { if !token.cancelled && !Task.isCancelled { update(text, done, code) } }
+            func emit(_ text: String, _ done: Bool, _ code: String? = nil) { if !token.cancelled && !Task.isCancelled { token.lifecycle?.emit(text, done: done, code: code) } }
             let state = availability()
             guard state["available"] as? Bool == true else { emit("", true, state["reason"] as? String ?? "other"); return }
             #if canImport(FoundationModels)

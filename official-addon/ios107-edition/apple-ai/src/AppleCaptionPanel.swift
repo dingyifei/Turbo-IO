@@ -9,13 +9,19 @@ import Translation
 @available(iOS 26.0, *)
 @objc(TIOAppleCaptionHost) @MainActor public final class AppleCaptionHost: NSObject {
     private static var handler: ((String, NSDictionary) -> NSDictionary)?
-    @objc(configure:) public static func configure(_ callback: @escaping (String, NSDictionary) -> NSDictionary) { handler = callback }
+    @objc(configure:) nonisolated public static func configure(_ callback: @escaping (String, NSDictionary) -> NSDictionary) {
+        if Thread.isMainThread { MainActor.assumeIsolated { handler = callback } }
+        else { DispatchQueue.main.sync { MainActor.assumeIsolated { handler = callback } } }
+    }
     static func call(_ name: String, _ args: NSDictionary = [:]) -> NSDictionary { handler?(name, args) ?? ["available": false] }
 }
 
 @available(iOS 26.0, *)
 @objc(TIOAppleCaptionPanel) @MainActor public final class AppleCaptionPanel: UITableViewController {
-    @objc public static func makeController() -> UIViewController { AppleCaptionPanel(style: .insetGrouped) }
+    @objc nonisolated public static func makeController() -> UIViewController {
+        if Thread.isMainThread { return MainActor.assumeIsolated { AppleCaptionPanel(style: .insetGrouped) } }
+        return DispatchQueue.main.sync { MainActor.assumeIsolated { AppleCaptionPanel(style: .insetGrouped) } }
+    }
     private let prefs = UserDefaults(suiteName: "io.turboio.official-private-addon")!
     private let mic = CaptionMicrophoneInput(), speech = AppleLiveSpeech(), translator = CaptionLocalTranslation()
     private var direction = "en-zh", glasses = false, hostAvailable = false
@@ -33,7 +39,7 @@ import Translation
     public override func viewDidLoad() {
         super.viewDidLoad(); title = t("Live captions (on-device)", "实时字幕（本机）")
         if let value = prefs.string(forKey: "appleCaptionDirection"), ["en-zh", "zh-en", "en", "zh"].contains(value) { direction = value }
-        hostAvailable = AppleCaptionHost.call("status")["available"] as? Bool != false
+        hostAvailable = AppleCaptionHost.call("status")["available"] as? Bool == true
         glasses = hostAvailable && prefs.bool(forKey: "appleCaptionGlasses")
         if !hostAvailable { prefs.set(false, forKey: "appleCaptionGlasses") }
         for view in [sourceView, targetView] { view.isEditable = false; view.font = .preferredFont(forTextStyle: .body) }
@@ -84,11 +90,7 @@ import Translation
         if indexPath.section == 0 {
             switch indexPath.row {
             case 0:
-                preparing = true
-                Task { [weak self] in guard let self else { return }; defer { self.preparing = false; self.mic.stop() }
-                    do { self.ports = try await self.mic.prepare(); try Task.checkCancellation(); self.choose(self.t("Microphone", "麦克风"), values: self.ports.map(\.name)) { [weak self] index in guard let self else { return }; self.portUID = self.ports[index].uid; self.portName = self.ports[index].name; self.tableView.reloadData() } }
-                    catch { self.state = self.t("Microphone permission or route unavailable.", "麦克风权限或路由不可用。"); self.tableView.reloadData() }
-                }
+                confirmMicrophoneSelection()
             case 1: choose(t("Direction", "方向"), values: [t("English → Chinese", "英语 → 中文"),t("Chinese → English", "中文 → 英语"),t("English only", "仅英语"),t("Chinese only", "仅中文")]) { [weak self] index in guard let self else { return }; self.direction = ["en-zh","zh-en","en","zh"][index]; self.prefs.set(self.direction, forKey: "appleCaptionDirection"); self.tableView.reloadData() }
             default: if hostAvailable { glasses.toggle(); prefs.set(glasses, forKey: "appleCaptionGlasses"); tableView.reloadData() }
             }
@@ -99,6 +101,37 @@ import Translation
                 navigationController?.pushViewController(UIHostingController(rootView: AppleTranslationPreparation(source: source, target: target)), animated: true)
                 #endif
             }
+        }
+    }
+    private func confirmMicrophoneSelection() {
+        let epoch = generation
+        let alert = UIAlertController(title: t("Inspect microphone inputs?", "查看麦克风输入？"), message: t("Confirm no recording, voice chat, playback or navigation is active. Input discovery temporarily configures the audio session.", "请确认录音、语音对话、播放和导航均未运行。查找输入会临时配置音频会话。"), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: t("Cancel", "取消"), style: .cancel))
+        alert.addAction(UIAlertAction(title: t("Confirm idle and inspect", "确认空闲并查看"), style: .default) { [weak self, weak alert] _ in
+            let inspect: () -> Void = { [weak self] in self?.inspectMicrophones(epoch: epoch) }
+            if let alert, alert.presentingViewController != nil { alert.dismiss(animated: true, completion: inspect) } else { inspect() }
+        })
+        present(alert, animated: true)
+    }
+    private func inspectMicrophones(epoch: Int) {
+        guard generation == epoch, !active, !starting, !preparing, viewIfLoaded?.window != nil, UIApplication.shared.applicationState == .active else { return }
+        if hostAvailable {
+            let status = AppleCaptionHost.call("status")
+            guard status["available"] as? Bool == true, status["phase"] as? String == "idle", status["pending"] as? Bool != true else {
+                state = t("Glasses are busy. End their session before inspecting microphone inputs.", "眼镜正忙，请先结束会话再查看麦克风输入。")
+                tableView.reloadData(); return
+            }
+        }
+        preparing = true
+        Task { [weak self] in guard let self else { return }; defer { self.preparing = false; self.mic.stop() }
+            do {
+                self.ports = try await self.mic.prepare(); try Task.checkCancellation()
+                guard self.generation == epoch, self.viewIfLoaded?.window != nil, UIApplication.shared.applicationState == .active else { throw CancellationError() }
+                self.choose(self.t("Microphone", "麦克风"), values: self.ports.map(\.name)) { [weak self] index in
+                    guard let self, self.generation == epoch, self.ports.indices.contains(index) else { return }
+                    self.portUID = self.ports[index].uid; self.portName = self.ports[index].name; self.tableView.reloadData()
+                }
+            } catch { if self.generation == epoch { self.state = self.t("Microphone permission or route unavailable.", "麦克风权限或路由不可用。"); self.tableView.reloadData() } }
         }
     }
     private func confirm() {
