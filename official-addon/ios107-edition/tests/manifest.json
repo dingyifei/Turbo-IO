@@ -205,6 +205,10 @@
     "tests/StabilityTests.m": {
       "status": "run",
       "group": "stability"
+    },
+    "tests/TIOLanguageTests.m": {
+      "status": "run",
+      "group": "language"
     }
   }
 }

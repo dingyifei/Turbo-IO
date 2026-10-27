@@ -31,6 +31,7 @@ def run(name,cmd,env=None):
     (out/(name+'.log')).write_text(r.stdout+r.stderr)
     if r.returncode:raise RuntimeError(name+' failed: '+r.stdout+r.stderr)
 flags=['xcrun','clang','-O1','-g','-fobjc-arc','-fblocks','-Wno-incompatible-pointer-types','-fsanitize=address,undefined','-framework','Foundation','-I',P]
+flags+=['-DTIO_TEST_UI_LANGUAGE_ZH=1','-framework','NaturalLanguage',P/'TIOLanguage.m',P/'TIOTextLanguage.m',P/'Localization.m']
 groups=[]
 skipped=[]
 seen=set()
@@ -57,6 +58,7 @@ def catalyst_test(name,files,argv=(),extra=()):
     run(name,[out/name,*argv],env={**os.environ,'CFFIXED_USER_HOME':str(home)})
     groups.append(name);print(name+': PASS')
 test('host',['HostCompatibilityTests.m'])
+test('language',['tests/TIOLanguageTests.m'])
 test('stability',['RoadMap.m','nav_runtime.c','tests/StabilityTests.m'])
 test('coordinates',['RoadMap.m','nav_runtime.c','tests/CoordinateTests.m'])
 test('replay',['RoadMap.m','NativeNavigation.m','nav_runtime.c','tests/RoadMapTests.m'],[P/'tests/maps',out,'v2'])

@@ -108,6 +108,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   camera-v1/CameraCapture.m \
   -framework Photos \
   -framework Foundation \
+  -framework NaturalLanguage \
   -framework UIKit \
   -framework Security \
   -framework UniformTypeIdentifiers \
@@ -130,6 +131,9 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   "-DTIO_TARGET_BUNDLE_ID=\"$bundle\"" -install_name "$install_name" ${link_options[@]+"${link_options[@]}"} \
   -I. \
   Core.m \
+  TIOLanguage.m \
+  TIOTextLanguage.m \
+  Localization.m \
   KnowledgeClient.m \
   KnowledgeUI.m \
   HomeTabLayout.m \
