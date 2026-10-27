@@ -10,6 +10,7 @@ import {prepareAppleAI,copyAppleAI} from './apple-ai/package-resources.mjs';
 import {inspectMachO} from './macho-embed.mjs';
 import {patch as patchOTARoute,verifyRoute} from './patch-route.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
+const pins=JSON.parse(fs.readFileSync(new URL('./firmware-pins.json',import.meta.url),'utf8'));
 const digest=b=>createHash('sha256').update(b).digest('hex');
 export function validateHost(info,runner,appImage){
   if(info.CFBundleIdentifier!=='com.rayneo.venus.pub'||info.CFBundleShortVersionString!=='1.0.7'||String(info.CFBundleVersion)!=='230'||Object.keys(info).some(k=>k.startsWith('TIO')))throw Error('requires_original_ios107_230');
@@ -27,12 +28,12 @@ export function validateOptions(o) {
   if(!/^[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z0-9.-]+$/.test(o.bundle||''))throw Error('invalid_bundle');
   if(o.product&&!/^iPhone\d+,\d+$/.test(o.product))throw Error('invalid_explicit_product');
   if(fs.existsSync(o.out))throw Error('output_must_not_exist');
-  if(o['experimental-ota']!==undefined&&o['experimental-ota']!=='TMG2')throw Error('only_exact_tmg2_supported');
+  if(o['experimental-ota']!==undefined&&o['experimental-ota']!==pins.name)throw Error('only_exact_'+pins.name.toLowerCase()+'_supported');
   if(o.bundle!=='com.rayneo.venus.pub'||typeof o.firmware!=='string'||!path.isAbsolute(o.firmware))throw Error('exact_host_and_firmware_resource_required');
 }
 export function validateResearchPair(symbols, kind, firmware) {
-  if(kind!=='TMG2'||!symbols.includes('_TIOMenuLayoutController')||!symbols.includes('OBJC_CLASS_$_TIORoadMap'))throw Error('ios107_addon_required');
-  if(!Buffer.isBuffer(firmware)||firmware.length!==8842896||createHash('sha256').update(firmware).digest('hex')!=='6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473')throw Error('navs3_firmware_identity_mismatch');
+  if(kind!==pins.name||!symbols.includes('_TIOMenuLayoutController')||!symbols.includes('OBJC_CLASS_$_TIORoadMap'))throw Error('ios107_addon_required');
+  if(!Buffer.isBuffer(firmware)||firmware.length!==pins.zipBytes||createHash('sha256').update(firmware).digest('hex')!==pins.zipSHA256)throw Error('navs3_firmware_identity_mismatch');
 
 }
 // Location prompts for whichever navigation provider the addon links; null when none does.
@@ -82,10 +83,10 @@ export function entitlementsFor(p,o) {
 }
 function run(program,args,options={}){return exec(program,args,{stdio:['pipe','pipe','pipe'],...options});}
 function main(){
-  if(process.argv.includes('--help'))console.log('iOS 1.0.7/230 APP107: exact TMG2 OTA route included by default. Installation does NOT grant flash permission; manual one-shot authorization required.');
+  if(process.argv.includes('--help'))console.log(`iOS 1.0.7/230 APP107: exact ${pins.name} OTA candidate included by default. Installation does NOT grant flash permission; manual one-shot authorization required.`);
   if(process.argv.includes('--help'))console.log('Optional Apple AI: --apple-ai-dylib /absolute/TurboAppleAI.dylib (requires TIO_APPLE_AI=1 addon)');
   if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see local-translation/README.md)');
-  if(process.argv.includes('--help')){console.log('node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-TMG2-release.zip [--product iPhone18,2] [--amap-sdk-root /absolute/build/amap-sdk]');return;}
+  if(process.argv.includes('--help')){console.log(`node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-${pins.name}-release.zip [--product iPhone18,2]`);return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
   if(args.length%2)throw Error('expected_named_arguments');
   const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','experimental-ota','firmware','translation-module-dir','translation-models','apple-ai-dylib'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
@@ -99,7 +100,7 @@ function main(){
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
   if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=APP107-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
-  validateResearchPair(symbols,'TMG2',firmware);
+  validateResearchPair(symbols,pins.name,firmware);
   const info=JSON.parse(run('plutil',['-convert','json','-o','-',path.join(source,'Info.plist')],{encoding:'utf8'}));
   validateHost(info,fs.readFileSync(path.join(source,'Runner')),fs.readFileSync(path.join(source,'Frameworks/App.framework/App')));
   if(destination===source||destination.startsWith(source+path.sep))throw Error('output_must_be_separate');
@@ -126,7 +127,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
     const plist=path.join(app,'Info.plist');
     run('plutil',['-insert','TIOExperimentalOTAQueryRouting','-string','ios107-tmg2-loopback-flash-gated',plist]);
     run('plutil',['-insert','TIOPackagingRevision','-string','APP107-OTA-PUBLIC-SOURCE-01',plist]);
-    run('plutil',['-insert','TIOExperimentalOTABuild','-string','TMG2',plist]);
+    run('plutil',['-insert','TIOExperimentalOTABuild','-string',pins.name,plist]);
     if(firmware)fs.writeFileSync(path.join(app,'TurboWeReadCandidate.zip'),firmware,{flag:'wx'});
     const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));
     if(!info.NSAppTransportSecurity)run('plutil',['-insert','NSAppTransportSecurity','-dictionary',plist]);

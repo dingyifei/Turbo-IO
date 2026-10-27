@@ -24,7 +24,7 @@ for file,entry in manifest.items():
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
 FW3=ROOT/'firmware-research/strix-1.0.5.5-tmg3'
-FW=FW2
+FW=FW3
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
 out=P/'build/tests';out.mkdir(parents=True,exist_ok=True)

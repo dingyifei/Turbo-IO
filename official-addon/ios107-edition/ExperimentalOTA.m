@@ -1,4 +1,5 @@
 #import "ExperimentalOTA.h"
+#import "FirmwarePins.h"
 #import "TIOLanguage.h"
 #import <CommonCrypto/CommonDigest.h>
 #import <TargetConditionals.h>
@@ -8,10 +9,10 @@
 #include <dirent.h>
 #include <errno.h>
 
-NSString *TIOExperimentalOTASHA(void){return @"6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473";}
+NSString *TIOExperimentalOTASHA(void){return TIO_FW_ZIP_SHA256;}
 static id Fail(NSError **error,NSString *message){if(error)*error=[NSError errorWithDomain:@"TurboIO.ExperimentalOTA" code:1 userInfo:@{NSLocalizedDescriptionKey:message}];return nil;}
 NSDictionary *TIOCheckExperimentalOTA(NSData *data,NSError **error){
-    if(data.length!=8842896)return Fail(error,TIOText(@"文件大小不符。只接受本次 TMG2 实验 ZIP，未保存、未发送。"));
+    if(data.length!=TIO_FW_ZIP_BYTES)return Fail(error,TIOText(@"文件大小不符。只接受本次 TMG2 实验 ZIP，未保存、未发送。"));
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(data.bytes,(CC_LONG)data.length,digest);
     NSMutableString *hex=[NSMutableString new];for(NSUInteger i=0;i<sizeof(digest);i++)[hex appendFormat:@"%02x",digest[i]];
     if(![hex isEqual:TIOExperimentalOTASHA()])return Fail(error,TIOText(@"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。"));
@@ -27,7 +28,7 @@ static NSData *Read(NSURL *source,NSError **error){
     NSInputStream *stream=[NSInputStream inputStreamWithURL:source];[stream open];
     NSMutableData *data=[NSMutableData new];uint8_t buffer[65536];NSInteger n;
     while((n=[stream read:buffer maxLength:sizeof(buffer)])>0){
-        if(data.length+(NSUInteger)n>8842896){[stream close];return Fail(error,TIOText(@"文件过大；未保存、未发送。"));}
+        if(data.length+(NSUInteger)n>TIO_FW_ZIP_BYTES){[stream close];return Fail(error,TIOText(@"文件过大；未保存、未发送。"));}
         [data appendBytes:buffer length:(NSUInteger)n];
     }
     NSError *readError=stream.streamError;[stream close];
@@ -57,13 +58,13 @@ NSDictionary *TIOImportExperimentalOTA(NSURL *source,NSURL *directory,NSError **
 }
 
 static NSDictionary *PayloadPins(void){return @{
-    @"OtaFileInfo.json":@[@2700,@"2438f3ad4f7966ff5d1a4b489b8fb931f6410933063b43a8dc092cd4dc5acdae"],
+    @"OtaFileInfo.json":@[@(TIO_FW_MANIFEST_BYTES),TIO_FW_MANIFEST_SHA256],
     @"bt_controller.bin":@[@625364,@"0060cc360b04577e8f5ce8f5d54fabde6103a6fef5a1a052260097920165a0c6"],
     @"cb_fw_venus.bin":@[@114592,@"8799f12071bdac082218e3601c24ab0989275fc2f7db74e37b8314a225c2cf7d"],
     @"fac_test_img.bin":@[@1821552,@"18eb0901c3e0daeae48dd5f015252b6931ea7368f0160c2c985c4e74296d17eb"],
     @"images.bin":@[@383431,@"219ba2f7935850a059ac7e6a1ffa181056ce70891501db28238940dfbdc44cc5"],
     @"lotties.bin":@[@651481,@"ad66d83a3394034f825a12769aad292fc03e59fa865fe06bc43536b918a0b32b"],
-    @"nuttx_ap.bin":@[@7408584,@"13c1b953ac50b91c87ebbf039b3795eb82e6c47912e7e7d2bfd911f989c14261"],
+    @"nuttx_ap.bin":@[@(TIO_FW_AP_BYTES),TIO_FW_AP_SHA256],
     @"nuttx_apc1.bin":@[@1423532,@"40ea15260a56b6c642120b3234a871662d0e74709deab14cda64be0949dacb40"],
     @"nuttx_audio.bin":@[@1461920,@"549a72c032595e3829da7d63b7e1fd13cceda1a55dfefa7a7cad02db5a9b42ab"],
     @"nuttx_bth.bin":@[@1189216,@"d48cb821f30045ea681cae0bfdab766c6d02be6f7b2bd5a75e1c41dc127d1a30"],

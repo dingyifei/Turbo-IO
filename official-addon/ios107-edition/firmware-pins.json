@@ -1,0 +1,12 @@
+{
+  "name": "TMG3",
+  "zipBytes": 8803177,
+  "zipSHA256": "45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274",
+  "apBytes": 7344072,
+  "apSHA256": "b54a28a628112c2b548393328528c2f7a19e727741f1fd6ede35cfbee4290c52",
+  "apMD5": "28d26bb9965e2648ab514e02d4708957",
+  "manifestBytes": 2700,
+  "manifestSHA256": "b866793b28a740566477ede2ccdbb7cd2cfdb99cea8b47b1d2b1ebdf66b17507",
+  "payloadBytes": 16959565,
+  "payloadSlices": 339
+}

@@ -1,5 +1,6 @@
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTA.h"
+#import "FirmwarePins.h"
 #import <CommonCrypto/CommonDigest.h>
 #include <assert.h>
 #include <arpa/inet.h>
@@ -31,14 +32,14 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert(![feed armArchive:file lifetime:901 error:&error]);
     assert([feed armArchive:file lifetime:60 error:&error]);NSDictionary *metadata=Query(port,path)[@"data"];
     for(NSString *wrong in @[@"/g/xxxxxxxA78p2M",@"/g/xxxxxxxA78p2M?packageType=app",[path stringByAppendingString:@"&packageType=firmware"],[path stringByReplacingOccurrencesOfString:@"S3" withString:@"OTHER"],[path stringByReplacingOccurrencesOfString:@"01.00.04.0012" withString:@"01.00.03.0015"]])assert(Query(port,wrong)[@"data"]==NSNull.null);
-    assert([metadata[@"apkSize"] intValue]==8842896);assert([metadata[@"versionName"] isEqual:@"0100050005"]);assert([metadata[@"versionCode"] intValue]==100050005);
+    assert([metadata[@"apkSize"] unsignedIntegerValue]==TIO_FW_ZIP_BYTES);assert([metadata[@"versionName"] isEqual:@"0100050005"]);assert([metadata[@"versionCode"] intValue]==100050005);
     NSData *zip=[NSData dataWithContentsOfURL:file];uint8_t digest[16];CC_MD5(zip.bytes,(CC_LONG)zip.length,digest);NSMutableString *md5=[NSMutableString new];for(unsigned i=0;i<16;i++)[md5 appendFormat:@"%02x",digest[i]];
     assert([metadata[@"apkMd5"] isEqual:md5]);assert(![metadata[@"apkMd5"] isEqual:@"bfc21e823f991962c852de22f02d62c1"]);
     NSString *download=[NSURL URLWithString:metadata[@"downloadUrl"]].path;NSDictionary *full=Fetch(port,@"GET",download,@"");assert([full[@"code"] intValue]==200);assert(TIOCheckExperimentalOTA(full[@"body"],nil));
-    NSDictionary *head=Fetch(port,@"HEAD",download,@"");assert([head[@"body"] length]==0);assert([head[@"header"] containsString:@"Content-Length: 8842896"]);
+    NSDictionary *head=Fetch(port,@"HEAD",download,@"");assert([head[@"body"] length]==0);assert(([head[@"header"] containsString:[NSString stringWithFormat:@"Content-Length: %u",TIO_FW_ZIP_BYTES]]));
     NSDictionary *part=Fetch(port,@"GET",download,@"Range: bytes=5-19\r\n");assert([part[@"code"] intValue]==206);assert([part[@"body"] isEqual:[full[@"body"] subdataWithRange:NSMakeRange(5,15)]]);
-    part=Fetch(port,@"GET",download,@"Range: bytes=8842882-\r\n");assert([part[@"code"] intValue]==206);assert([part[@"body"] length]==14);
-    for(NSString *range in @[@"bytes=-1",@"bytes=2-1",@"bytes=8842896-",@"bytes=1-2,4-5",@"bytes=99999999999999-"]){assert([Fetch(port,@"GET",download,[NSString stringWithFormat:@"Range: %@\r\n",range])[@"code"] intValue]==416);}
+    part=Fetch(port,@"GET",download,[NSString stringWithFormat:@"Range: bytes=%u-\r\n",TIO_FW_ZIP_BYTES-14u]);assert([part[@"code"] intValue]==206);assert([part[@"body"] length]==14);
+    for(NSString *range in @[@"bytes=-1",@"bytes=2-1",[NSString stringWithFormat:@"bytes=%u-",TIO_FW_ZIP_BYTES],@"bytes=1-2,4-5",@"bytes=99999999999999-"]){assert([Fetch(port,@"GET",download,[NSString stringWithFormat:@"Range: %@\r\n",range])[@"code"] intValue]==416);}
     [feed disarm];assert(Query(port,path)[@"data"]==NSNull.null);assert([Fetch(port,@"GET",download,@"")[@"code"] intValue]==404);
     assert([feed armArchive:file lifetime:0.01 error:&error]);usleep(20000);assert(![feed.status[@"armed"] boolValue]);assert(Query(port,path)[@"data"]==NSNull.null);
     assert([feed armArchive:file lifetime:60 error:&error]);NSString *next=[NSURL URLWithString:Query(port,path)[@"data"][@"downloadUrl"]].path;assert(![next isEqual:download]);assert([Fetch(port,@"GET",download,@"")[@"code"] intValue]==404);

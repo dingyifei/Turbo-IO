@@ -134,7 +134,6 @@ static const TIOStringRow Rows[]={
     {"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。","SHA-256 mismatch. Unknown, outdated, or modified packages are rejected; not sent.",NULL},
     {"SID 无效或设备已改变，未开启。","SID invalid or device changed; not started.",NULL},
     {"Server 与发布边界","Server and distribution boundaries",NULL},
-    {"Strix OS 1.0.5.5 · TMG2 可选排数菜单\nAP：7408584 字节；其余14个负载与新版原厂包一致（并非与旧系统一致）。完整 OTA 仍会写入其他原厂分区。\nAP MD5：d7e88db2e1ad22651c775ec8f4740d0e\n实验有风险；菜单、断线、抬头与原厂业务仍需实机回归，不保证恢复。","Strix OS 1.0.5.5 · TMG2 menu row options\nAP: 7408584 bytes; the other 14 payloads match the newer factory package (not the old system). Full OTA still writes other factory partitions.\nAP MD5: d7e88db2e1ad22651c775ec8f4740d0e\nThis experiment is risky. Menu behavior, disconnections, raise-to-wake, and stock features still need regression testing on real devices; recovery is not guaranteed.",NULL},
     {"TCE1 · 选择模板，拖动组件，裁剪自己的图标。\n最多 8 张本机草稿；仅配置快照，不自动联网。手机预览可用，发送需要配套 TCE1 固件。","TCE1 · Choose a template, drag components, and crop your own icons.\nUp to 8 phone drafts; config snapshots only, with no automatic network access. Preview on phone; sending requires companion TCE1 firmware.",NULL},
     {"TDC1 测试卡 · 演示数据，未读取真实账户或 Mac","TDC1 test card · Demo data; no real account or Mac data read",NULL},
     {"TLC1 全天智记共存候选","TLC1 All-day Lifelog coexistence candidate",NULL},
