@@ -1,4 +1,3 @@
-#import "notification-archive-v1/NotificationRuntime.h"
 #import "camera-v1/CameraUI.h"
 #import "dots-v1/DotsPhoneBridge.h"
 #import "Brightness.h"
@@ -75,7 +74,6 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
 #if TIO_DISPLAY_PHONE
                 TDPDiagEnvelope(copy);
 #endif
-                TNAObserveEvent(copy);
                 if(TIOGlassesLogConsumeEvent(copy)){if(reply)((void(^)(NSData *))reply)(nil);return;}}
 #if TIO_IMAGE_RX_LAB || TIO_DISPLAY_PHONE
             // File results are siblings of messageReceived, not business messages.

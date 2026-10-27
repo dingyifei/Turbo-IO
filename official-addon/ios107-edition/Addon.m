@@ -1,4 +1,3 @@
-#import "notification-archive-v1/NotificationUI.h"
 #import "camera-v1/CameraUI.h"
 #import "context-english-v1/CEOfficialLifelog.h"
 #import "dots-v1/DotsUI.h"
@@ -446,7 +445,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
     NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];[tableView deselectRowAtIndexPath:ip animated:YES];
-    if([r[@"key"] isEqual:@"notificationArchive"]){[self.navigationController pushViewController:TNANotificationsController() animated:YES];return;}
     if([r[@"key"] isEqual:@"camera"]){[self.navigationController pushViewController:TCCameraController() animated:YES];return;}
     if([r[@"key"] isEqual:@"dots"]){[self.navigationController pushViewController:TIOGetDotsPanel() animated:YES];return;}
     if([r[@"key"] isEqual:@"contextEnglish"]){[self.navigationController pushViewController:TIOContextEnglishPanel() animated:YES];return;}

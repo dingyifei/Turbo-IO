@@ -334,10 +334,6 @@
       "status": "excluded",
       "reason": "module removed in WP3 (navigation-runtime-v1)"
     },
-    "notification-archive-v1/NotificationTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (notification-archive-v1)"
-    },
     "tests/CoordinateTests.m": {
       "status": "run",
       "group": "coordinates"

@@ -164,10 +164,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   ${image_options[@]+"${image_options[@]}"} \
   "-DTIO_TARGET_BUNDLE_ID=\"$bundle\"" -install_name "$install_name" ${link_options[@]+"${link_options[@]}"} \
   -I. \
-  notification-archive-v1/NotificationArchive.m \
-  notification-archive-v1/NotificationRuntime.m \
-  notification-archive-v1/NotificationUI.m \
-  -lsqlite3 \
   Core.m \
   KnowledgeClient.m \
   KnowledgeUI.m \
