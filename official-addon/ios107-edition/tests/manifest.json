@@ -326,10 +326,6 @@
       "status": "excluded",
       "reason": "module removed in WP3 (dots-v1)"
     },
-    "enhanced-lifelog-v1/TNLTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (enhanced-lifelog-v1)"
-    },
     "navigation-runtime-v1/nav_test.c": {
       "status": "excluded",
       "reason": "module removed in WP3 (navigation-runtime-v1)"

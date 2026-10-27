@@ -1,5 +1,4 @@
 #import "notification-archive-v1/NotificationUI.h"
-#import "enhanced-lifelog-v1/TNLUI.h"
 #import "camera-v1/CameraUI.h"
 #import "context-english-v1/CEOfficialLifelog.h"
 #import "dots-v1/DotsUI.h"
@@ -447,7 +446,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
     NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];[tableView deselectRowAtIndexPath:ip animated:YES];
-    if([r[@"key"] isEqual:@"enhancedLifelog"]){[self.navigationController pushViewController:TNLController(^NSDictionary *{NSString *e=[Prefs stringForKey:@"endpoint"]?:@"";return @{@"endpoint":e,@"model":[Prefs stringForKey:@"model"]?:@"",@"key":ReadKey(e)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};}) animated:YES];return;}
     if([r[@"key"] isEqual:@"notificationArchive"]){[self.navigationController pushViewController:TNANotificationsController() animated:YES];return;}
     if([r[@"key"] isEqual:@"camera"]){[self.navigationController pushViewController:TCCameraController() animated:YES];return;}
     if([r[@"key"] isEqual:@"dots"]){[self.navigationController pushViewController:TIOGetDotsPanel() animated:YES];return;}
