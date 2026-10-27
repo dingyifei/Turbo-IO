@@ -61,7 +61,7 @@ static NSData *Luminance(NSURL *url){
  if(!device.length){self.note=TIOText(@"没有当前官方协议对象。请先在官方设备页确认连接；不会创建第二个蓝牙连接。");[self.tableView reloadData];return;}
  UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"N8 图片接收 · 人工会话") message:TIOText(@"仅用于新 N8 / N8W 测试固件。必须亲眼看到眼镜 Turbo Image RX 页上的 SID；原厂/R3 不支持。输入当前 SID 后 30 秒内点发送。本轮最多一张，SDK 收到文件不代表镜片显示，需人工验收。不会触发 OTA。") preferredStyle:UIAlertControllerStyleAlert];
  [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=TIOText(@"眼镜显示的十进制 SID");f.keyboardType=UIKeyboardTypeNumberPad;}];
- [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
+ [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
  __weak typeof(self) weak=self;
  [a addAction:[UIAlertAction actionWithTitle:TIOText(@"已看到 SID，开启本轮") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){
   if(!weak)return;

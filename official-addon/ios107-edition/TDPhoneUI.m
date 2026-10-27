@@ -1,4 +1,5 @@
 #import "TDPhoneUI.h"
+#import "TIOConfirm.h"
 #import "TIOLanguage.h"
 @interface TDPanel:UITableViewController
 @property(nonatomic,strong) TDPhoneRun *run;
@@ -38,7 +39,7 @@ static NSArray *Rows(void){return @[
  if(sender.on){if(![self.run start])sender.on=NO;}else [self.run stop:@"user_stop"];[self refresh];
 }
 - (void)share{
- if(!self.run.reportDirectory){UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"还没有报告") message:TIOText(@"开启过采集后，会自动保存采样或失败原因。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"知道了") style:UIAlertActionStyleCancel handler:nil]];[self presentViewController:a animated:YES completion:nil];return;}
+ if(!self.run.reportDirectory){TIONotice(self,TIOText(@"common.ui.tdPhone.noReport.title"),TIOText(@"common.ui.tdPhone.noReport.message"));return;}
  NSURL *dir=[[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES]URLByAppendingPathComponent:[@"TurboDiagnostics-" stringByAppendingString:NSUUID.UUID.UUIDString] isDirectory:YES];NSFileManager *fm=NSFileManager.defaultManager;NSError *error=nil;
  if(![fm createDirectoryAtURL:dir withIntermediateDirectories:NO attributes:@{NSFilePosixPermissions:@0700} error:&error])return;
  NSURL *json=[dir URLByAppendingPathComponent:@"diagnostics.json"],*md=[dir URLByAppendingPathComponent:@"diagnostics.md"];

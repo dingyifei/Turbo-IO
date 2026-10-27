@@ -245,6 +245,46 @@
 {"key":"common.info","en":"About this screen","zh":"关于本页"}
 {"key":"common.ok","en":"OK","zh":"好"}
 {"key":"common.save","en":"Save","zh":"保存"}
+{"key":"common.ui.alwaysOnAudio.notice.title","en":"All-day Lifelog audio","zh":"全天智记音频"}
+{"key":"common.ui.alwaysOnAudio.save.action","en":"Enable local audio saving","zh":"开启本机音频保存"}
+{"key":"common.ui.alwaysOnAudio.save.message","en":"When you next use All-day Lifelog in the RayNeo app, this also saves real conversation audio on this device.","zh":"之后使用官方全天智记时，额外在本机保存真实谈话音频，请确保已获相关人员同意。"}
+{"key":"common.ui.alwaysOnAudio.save.title","en":"Save audio from future Lifelog sessions?","zh":"保存之后的智记音频？"}
+{"key":"common.ui.displayPhone.send.action","en":"Send","zh":"发送"}
+{"key":"common.ui.displayPhone.send.message","en":"Only sends to the currently paired glasses.","zh":"只发给当前配对眼镜，不上传云端、不刷固件。"}
+{"key":"common.ui.displayPhone.send.title","en":"Send this local canvas?","zh":"发送本机画布？"}
+{"key":"common.ui.focus.more.custom","en":"Custom focus duration","zh":"自定义专注时长"}
+{"key":"common.ui.focus.more.long","en":"Start 15-minute long break","zh":"开始15分钟长休息"}
+{"key":"common.ui.focus.more.message","en":"Advanced features are here; the main screen stays simple.","zh":"高级功能在这里，主页面保持简洁。"}
+{"key":"common.ui.focus.more.short","en":"Start 5-minute short break","zh":"开始5分钟短休息"}
+{"key":"common.ui.focus.more.test","en":"30-second quick check (with reminder)","zh":"30秒短时验收（会提醒）"}
+{"key":"common.ui.focus.more.title","en":"Focus settings","zh":"番茄设置"}
+{"key":"common.ui.focus.reset.action","en":"Reset","zh":"重置"}
+{"key":"common.ui.focus.reset.message","en":"The timer will return to the selected duration.","zh":"计时将回到所选时长。"}
+{"key":"common.ui.focus.reset.title","en":"End this focus session?","zh":"结束本轮专注？"}
+{"key":"common.ui.glassesLog.start.action","en":"Internet disconnected; start one run","zh":"已断互联网，开始一次"}
+{"key":"common.ui.glassesLog.start.message","en":"Turn off phone internet, keep Bluetooth on, and end other glasses tasks first.","zh":"先关闭手机互联网、保留蓝牙，并结束其他眼镜任务。"}
+{"key":"common.ui.glassesLog.start.title","en":"Local log validation only?","zh":"仅本机日志验收？"}
+{"key":"common.ui.knowledge.notice.title","en":"Knowledge base","zh":"知识库"}
+{"key":"common.ui.localTranslation.unavailable.message","en":"Requires iOS 26 or later and the complete LOCAL-TRANSLATION-PHONE-01 private package. Existing voice and captions were not taken over.","zh":"需要 iOS 26 及以上、完整的 LOCAL-TRANSLATION-PHONE-01 私用包。原有语音与字幕没有被接管。"}
+{"key":"common.ui.localTranslation.unavailable.title","en":"Local translation not loaded","zh":"本地翻译未加载"}
+{"key":"common.ui.music.redirect.custom","en":"App link (recommended)","zh":"应用回调（推荐）"}
+{"key":"common.ui.music.redirect.loopback","en":"Local loopback (if Spotify rejects the app link)","zh":"本机回环（Spotify 拒绝应用回调时使用）"}
+{"key":"common.ui.music.redirect.title","en":"Redirect URI","zh":"Redirect URI"}
+{"key":"common.ui.music.signOut.action","en":"Sign out","zh":"退出登录"}
+{"key":"common.ui.music.signOut.title","en":"Sign out of Spotify on this phone?","zh":"在本机退出 Spotify？"}
+{"key":"common.ui.recordingExports.notice.title","en":"Not shared","zh":"未分享"}
+{"key":"common.ui.recordingText.notice.title","en":"Recording and Lifelog","zh":"录音与智记"}
+{"key":"common.ui.recordingText.send.action","en":"Confirm summary","zh":"确认整理"}
+{"key":"common.ui.recordingText.send.title","en":"Send transcript text?","zh":"发送转写文字？"}
+{"key":"common.ui.subtitle.confirm.action","en":"I checked the glasses","zh":"已实际确认"}
+{"key":"common.ui.subtitle.confirm.message","en":"Are the glasses on the home page with recording, Lifelog, teleprompter, captions, and voice conversations stopped?","zh":"眼镜已回首页，且录音、智记、提词、字幕、语音对话均已结束？"}
+{"key":"common.ui.subtitle.confirm.title","en":"Confirm based on the actual glasses state","zh":"请以实际眼镜状态确认"}
+{"key":"common.ui.tdPhone.noReport.message","en":"After capture is enabled, samples or the failure reason are saved automatically.","zh":"开启过采集后，会自动保存采样或失败原因。"}
+{"key":"common.ui.tdPhone.noReport.title","en":"No report yet","zh":"还没有报告"}
+{"key":"common.ui.todo.create.action","en":"Create test item","zh":"创建测试项"}
+{"key":"common.ui.todo.create.message","en":"The RayNeo app to-do flow will attempt to add a randomly numbered test item without changing other to-dos.","zh":"将通过官方待办流程尝试新增一条随机编号测试项，不动其他待办。"}
+{"key":"common.ui.todo.create.title","en":"Create a dedicated test item?","zh":"创建专用测试项？"}
+{"key":"common.ui.todo.status.title","en":"Submission status","zh":"提交状态"}
 {"key":"create_todo · web_search · 知识库工具需开启","en":"create_todo · web_search · Knowledge base tools must be enabled"}
 {"key":"create_todo已调用官方入口；等待真实列表，不宣称创建成功","en":"create_todo called through the RayNeo app entry point; waiting for the real list; not claiming success"}
 {"key":"create_todo未确认唯一新ID，结果未知；禁止重试","en":"create_todo did not confirm a unique new ID; result unknown; do not retry"}
@@ -287,6 +327,12 @@
 {"key":"hub.info.topic.search","en":"Web search\nWhen enabled, the custom model may send necessary search terms to TinyFish and receive search summaries. RayNeo app ASR is unchanged. Not suitable for sensitive searches. The API key is stored only in this device's Keychain; leave blank to retain the existing key.","zh":"联网搜索\n开启后，自有模型可把必要检索词发给 TinyFish，将搜索摘要交回模型。官方 ASR 不变。不适合检索敏感信息。Key 仅存本机钥匙串；留空保留已有 Key。"}
 {"key":"hub.info.topic.takeover","en":"Takeover check\nFirst confirm the chat-response domain for the current version. Complete one Q&A in RayNeo app mode; takeover can be enabled only after a developer verifies it.","zh":"接管校验\n需要先确认当前版本的聊天回包 domain。请先用官方模式完成一次问答，开发者核对后才开启接管。"}
 {"key":"hub.info.topic.tools","en":"Model tools\nknowledge_query / knowledge_query_status: %@. Codex searches WeChat archives, projects, and learning materials in read-only mode and cites sources; it does not modify the knowledge base.\n\ncreate_todo: Adds a title through the RayNeo app entry point. Confirmed only after a new ID appears in the list; no retry on timeout.\nweb_search: Public TinyFish search; internet access must be enabled.\n\nTo-do tools cannot edit, delete, complete, or set reminder times and currently do not write to knowledge base web pages. Only real voice sessions have the to-do execution context.","zh":"模型工具\nknowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。"}
+{"key":"hub.info.topic.ui.alwaysOnAudio.save.message","en":"Make sure everyone involved has agreed. It may use substantial storage. Audio is not uploaded. Files are not deleted automatically, and past recordings are not restored. This action does not start Lifelog.","zh":"可能占用较大空间，不上传、不自动删除，不恢复过去的录音。此操作本身不启动智记。"}
+{"key":"hub.info.topic.ui.displayPhone.send.message","en":"No cloud upload or firmware flashing. Real file throughput is not yet verified; no blind retry after a timeout.","zh":"真实文件吞吐待验，超时后不会盲目重发。"}
+{"key":"hub.info.topic.ui.focus.more.message","en":"Breaks and quick checks are for glasses mode only. An existing timer will not be replaced.","zh":"休息和短时验收只用于眼镜模式；已有计时不会被覆盖。"}
+{"key":"hub.info.topic.ui.glassesLog.start.message","en":"This creates a glasses log archive that may contain private information. The extension receives this task; it makes no upload call, does not unzip automatically, and does not delete originals. Do not use RayNeo app log feedback until recovery is complete.","zh":"此操作会让眼镜生成日志归档；可能包含私人信息。扩展接收本次任务，不调用上传、不自动解压、不删除原件。未恢复前请勿操作官方日志反馈。"}
+{"key":"hub.info.topic.ui.subtitle.confirm.message","en":"This is not a protocol exit acknowledgement.","zh":"这不是协议退出回执。"}
+{"key":"hub.info.topic.ui.todo.create.message","en":"It will not automatically resend, even if it times out.","zh":"即使超时也不自动重发。"}
 {"key":"hub.language.auto","en":"Automatic (follow iPhone)","zh":"自动（跟随 iPhone）"}
 {"key":"hub.language.en","en":"English","zh":"English"}
 {"key":"hub.language.zh","en":"Chinese","zh":"中文"}

@@ -1,4 +1,5 @@
 #import "camera-v1/CameraUI.h"
+#import "TIOConfirm.h"
 #import "TIOLanguage.h"
 #import "DisplayPhoneUI.h"
 #import "AppBridge.h"
@@ -219,9 +220,7 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
  if(p.section==1&&p.row==1){self.left=!self.left;self.preview=NavigationImage(self.left,self.meters);self.pixels=Gray(self.preview);[t reloadData];}
  if(p.section==1&&p.row==2){UIDocumentPickerViewController *c=[[UIDocumentPickerViewController alloc]initForOpeningContentTypes:@[UTTypePNG,UTTypeJPEG,UTTypeHEIC] asCopy:YES];c.delegate=self;[self presentViewController:c animated:YES completion:nil];}
  if(p.section==1&&p.row==3){if(!Session.ready||Session.busy){[self result:NO];return;}
-  UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"发送本机画布？") message:TIOText(@"只发给当前配对眼镜，不上传云端、不刷固件。真实文件吞吐待验，超时后不会盲目重发。") preferredStyle:UIAlertControllerStyleAlert];
-  [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];__weak typeof(self) weak=self;
-  [a addAction:[UIAlertAction actionWithTitle:TIOText(@"发送") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[weak result:[Session sendFrame:weak.pixels]];}]];[self presentViewController:a animated:YES completion:nil];
+  __weak typeof(self) weak=self;TIOConfirm(self,TIOText(@"common.ui.displayPhone.send.title"),TIOText(@"common.ui.displayPhone.send.message"),TIOText(@"common.ui.displayPhone.send.action"),NO,^{[weak result:[Session sendFrame:weak.pixels]];});
  }
  if(p.section==2&&p.row==0)[self result:[Session sendTestRect]];
  if(p.section==2&&p.row==1)[self result:[Session closePage]];

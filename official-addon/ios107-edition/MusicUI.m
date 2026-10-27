@@ -1,4 +1,5 @@
 #import "MusicPlayer.h"
+#import "TIOConfirm.h"
 #import "ResearchUI.h"
 #import "SpotifyAuth.h"
 #import "SpotifySignIn.h"
@@ -305,7 +306,7 @@
         field.autocorrectionType = UITextAutocorrectionTypeNo;
         field.clearButtonMode = UITextFieldViewModeWhileEditing;
     }];
-    [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"music.cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"music.save") style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         NSString *value = alert.textFields.firstObject.text ?: @"";
         self.footerError = [TMSpotifyAuth.shared setClientIDString:value] ? nil : TIOText(@"music.clientID.invalid");
@@ -315,32 +316,19 @@
 }
 
 - (void)confirmSignOut {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil
-        message:TIOText(@"music.signOut.confirm") preferredStyle:UIAlertControllerStyleActionSheet];
-    [sheet addAction:[UIAlertAction actionWithTitle:TIOText(@"music.signOut") style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
+    TIOConfirm(self,TIOText(@"common.ui.music.signOut.title"),nil,TIOText(@"common.ui.music.signOut.action"),YES,^{
         [TMSpotifyAuth.shared signOut];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:TIOText(@"music.cancel") style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = self.view;
-    sheet.popoverPresentationController.sourceRect = self.view.bounds;
-    [self presentViewController:sheet animated:YES completion:nil];
+    });
 }
 
 - (void)chooseRedirect {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:TIOText(@"music.redirect")
-        message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    [sheet addAction:[UIAlertAction actionWithTitle:TIOText(@"music.redirect.custom") style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+    NSArray *options=@[TIOText(@"common.ui.music.redirect.custom"),TIOText(@"common.ui.music.redirect.loopback")];NSInteger selected=[TMSpotifyAuth.shared.redirect isEqual:TMSpotifyLoopbackRedirect]?1:0;TIOChoose(self,TIOText(@"common.ui.music.redirect.title"),nil,options,selected,nil,^(NSInteger index){if(index==0){
         TMSpotifyAuth.shared.redirect = TMSpotifyDefaultRedirect;
         [self syncStructureAndReload];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:TIOText(@"music.redirect.loopback") style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+    }else if(index==1){
         TMSpotifyAuth.shared.redirect = TMSpotifyLoopbackRedirect;
         [self syncStructureAndReload];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:TIOText(@"music.cancel") style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = self.view;
-    sheet.popoverPresentationController.sourceRect = self.view.bounds;
-    [self presentViewController:sheet animated:YES completion:nil];
+    }});
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {

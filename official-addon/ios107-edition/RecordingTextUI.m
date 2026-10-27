@@ -15,7 +15,7 @@ static NSString *TextKey(NSString *endpoint){
     CFTypeRef result=NULL;if(SecItemCopyMatching((__bridge CFDictionaryRef)q,&result)!=errSecSuccess)return @"";
     return [[NSString alloc]initWithData:CFBridgingRelease(result) encoding:NSUTF8StringEncoding]?:@"";
 }
-static void TextAlert(UIViewController *vc,NSString *message){UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"录音与智记") message:message preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"知道了") style:UIAlertActionStyleCancel handler:nil]];[vc presentViewController:a animated:YES completion:nil];}
+static void TextAlert(UIViewController *vc,NSString *message){TIONotice(vc,TIOText(@"common.ui.recordingText.notice.title"),message);}
 static NSURL *SaveText(NSString *name,NSString *text){
     // Only independent extension documents; never modify official transcripts.
     NSURL *root=[[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject URLByAppendingPathComponent:@"TurboIOPrivateNotes"];
@@ -93,14 +93,12 @@ static void ShareText(UIViewController *vc,NSURL *file){if(!file){TextAlert(vc,T
     NSUserDefaults *prefs=TextPrefs();NSString *endpoint=[prefs stringForKey:@"endpoint"]?:@"",*model=[prefs stringForKey:@"model"]?:@"";
     if(!TextEndpoint(endpoint)||!TIORecordingSummaryPayload(model,chunks[0],NO)){TextAlert(self,TIOText(@"请先在研究菜单配置有效的自有模型接口。"));return;}
     NSString *source=[self.editor.text copy];BOOL thinking=[prefs boolForKey:@"deepseekDisableThinking"];
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"发送转写文字？") message:[NSString stringWithFormat:TIOText(@"服务：%@\n模型：%@\n%lu 字符，%lu 段顺序处理，可能产生费用。仅发这份文字，不发音频、聊天历史或官方凭据。原文保留，生成独立 Markdown。"),TextEndpoint(endpoint).host,model,(unsigned long)source.length,(unsigned long)chunks.count] preferredStyle:UIAlertControllerStyleAlert];
-    [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
-    __weak typeof(self) weak=self;[a addAction:[UIAlertAction actionWithTitle:TIOText(@"确认整理") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){typeof(self) self=weak;if(!self)return;NSString *key=TextKey(endpoint);if(!key.length){TextAlert(self,TIOText(@"当前服务没有可用的自有 Key，未发送文字。"));return;}
+    __weak typeof(self) weak=self;TIOConfirm(self,TIOText(@"common.ui.recordingText.send.title"),[NSString stringWithFormat:TIOText(@"服务：%@\n模型：%@\n%lu 字符，%lu 段顺序处理，可能产生费用。仅发这份文字，不发音频、聊天历史或官方凭据。原文保留，生成独立 Markdown。"),TextEndpoint(endpoint).host,model,(unsigned long)source.length,(unsigned long)chunks.count],TIOText(@"common.ui.recordingText.send.action"),NO,^{typeof(self) self=weak;if(!self)return;NSString *key=TextKey(endpoint);if(!key.length){TextAlert(self,TIOText(@"当前服务没有可用的自有 Key，未发送文字。"));return;}
         TIORecordingSummaryJob *job=[TIORecordingSummaryJob new];self.job=job;job.endpoint=endpoint;job.model=model;job.key=key;job.chunks=chunks;job.disableThinking=thinking;self.editor.editable=NO;self.resultFile=nil;
         [self updateActions];job.progress=^(NSUInteger i,NSUInteger n){weak.info.text=[NSString stringWithFormat:TIOText(@"正在整理第 %lu / %lu 段… 可取消；离开此页会停止。"),(unsigned long)i,(unsigned long)n];};
         job.complete=^(NSString *answer,NSString *error){typeof(self) self=weak;if(!self)return;self.job=nil;self.editor.editable=YES;[self updateActions];if(error){self.info.text=error;return;}
             NSString *document=[answer stringByAppendingFormat:TIOText(@"\n---\n\n# 输入转写（原样保留）\n\n%@\n"),source];self.resultFile=SaveText(TIOText(@"录音整理.md"),document);self.info.text=self.resultFile?TIOText(@"全部分段已整理，已另存本机 Markdown（含输入原文）。点击分享可 AirDrop / 存储到文件。"):TIOText(@"模型整理完成，但本机保存失败。内容保留在下方，请复制保存。");self.editor.text=document;[self updateActions];
-        };[job start];}]];[self presentViewController:a animated:YES completion:nil];
+        };[job start];});
 }
 - (void)shareResult{if(!self.resultFile){TextAlert(self,TIOText(@"暂无本次完整整理结果。取消、超时或截断不会生成成功文件。"));return;}ShareText(self,self.resultFile);}
 @end

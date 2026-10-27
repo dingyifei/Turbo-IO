@@ -1,4 +1,5 @@
 #import "SubtitleHUD.h"
+#import "TIOConfirm.h"
 #import "TIOLanguage.h"
 #import "SubtitleHUDCore.h"
 #import "NavigationSubtitleHUD.h"
@@ -136,7 +137,7 @@ void TIOSubtitleObserveEvent(NSDictionary *event){
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{
     [t deselectRowAtIndexPath:p animated:YES];
     if(p.row==1){[Trial stop:TIOText(@"回官方页面") now:Now()];TIOCloseResearch(self);}
-    if(p.row==2){UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"请以实际眼镜状态确认") message:TIOText(@"眼镜已回首页，且录音、智记、提词、字幕、语音对话均已结束？这不是协议退出回执。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"还没有") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"已实际确认") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){if(Trial.active&&![@[@"stopping",@"uncertain"] containsObject:Trial.phase])return;Trial.phase=@"idle";Trial.note=TIOText(@"用户确认镜片已退出；仍不是协议回执");Trial.sid=nil;ConfirmedIdle=YES;ConfirmedAt=Now();Save();}]];[self presentViewController:a animated:YES completion:nil];}
+    if(p.row==2){TIOConfirm(self,TIOText(@"common.ui.subtitle.confirm.title"),TIOText(@"common.ui.subtitle.confirm.message"),TIOText(@"common.ui.subtitle.confirm.action"),NO,^{if(Trial.active&&![@[@"stopping",@"uncertain"] containsObject:Trial.phase])return;Trial.phase=@"idle";Trial.note=TIOText(@"用户确认镜片已退出；仍不是协议回执");Trial.sid=nil;ConfirmedIdle=YES;ConfirmedAt=Now();Save();});}
     if(p.row==3&&Available()&&ConfirmedIdle&&Now()-ConfirmedAt<120){ConfirmedIdle=NO;[Trial startWithPreview:Preview stop:Stop now:Now()];}
     if(p.row>=4&&p.row<=6)[Trial nextAt:Now()];
     if(p.row==7)[Trial stop:TIOText(@"用户停止") now:Now()];[t reloadData];

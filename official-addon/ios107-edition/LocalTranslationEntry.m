@@ -1,4 +1,5 @@
 #import "LocalTranslationEntry.h"
+#import "TIOConfirm.h"
 #import "TIOLanguage.h"
 #import <dlfcn.h>
 #import <objc/message.h>
@@ -38,9 +39,7 @@ void TIOOpenLocalTranslation(UIViewController *presenter) {
         UIViewController *page=((id(*)(id,SEL))objc_msgSend)(cls,factory);
         if([page isKindOfClass:UIViewController.class]){[presenter.navigationController pushViewController:page animated:YES];return;}
     }
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:TIOText(@"本地翻译未加载") message:TIOText(@"需要 iOS 26 及以上、完整的 LOCAL-TRANSLATION-PHONE-01 私用包。原有语音与字幕没有被接管。") preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"知道了") style:UIAlertActionStyleCancel handler:nil]];
-    [presenter presentViewController:alert animated:YES completion:nil];
+    TIONotice(presenter,TIOText(@"common.ui.localTranslation.unavailable.title"),TIOText(@"common.ui.localTranslation.unavailable.message"));
 }
 void TIOCaptionRunFixedProbeIfRequested(void) {
     if(![NSProcessInfo.processInfo.environment[@"TIO_LOCAL_TRANSLATION_PROBE"] isEqual:@"HYMT_PHONE_01"])return;
