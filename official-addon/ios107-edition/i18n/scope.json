@@ -142,7 +142,8 @@
     "build.sh",
     "GlassesChannelHook.m",
     "MusicPlayer.m",
-    "MusicUI.m"
+    "MusicUI.m",
+    "WebSearch.m"
   ],
   "virtualIDs": {
     "baseline": "BASE85",

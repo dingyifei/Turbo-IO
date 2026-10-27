@@ -1932,3 +1932,6 @@
 {"key":"hub.row.appleAI","en":"Apple Intelligence","zh":"Apple 智能"}
 {"key":"hub.choose.mode.apple","en":"Apple on-device model","zh":"Apple 本机模型"}
 {"key":"apple.model.unavailable","en":"Apple model unavailable","zh":"Apple 模型不可用"}
+{"key":"apple.fallback.title","en":"Use Apple model when my endpoint fails","zh":"自有接口失败时改用 Apple 模型"}
+{"key":"apple.fallback.detail","en":"Applies only to voice questions in custom-endpoint mode. The official voice service must remain reachable.","zh":"仅用于自有接口模式的语音问题，官方语音服务仍须可用。"}
+{"key":"apple.action.test","en":"Test on-device model","zh":"测试本机模型"}

@@ -22,6 +22,7 @@ FOUNDATION_EXPORT NSString *TIOWebNetworkErrorMessageInLanguage(BOOL search,NSEr
 @interface TIOWebChatRequest : NSObject <NSURLSessionDataDelegate,NSURLSessionTaskDelegate>
 @property(nonatomic,copy,nullable) void (^update)(NSString *,BOOL,NSString * _Nullable);
 @property(nonatomic,readonly) NSUInteger searchCount;
+@property(nonatomic,readonly) BOOL modelTransportFailed;
 @property(nonatomic,copy,nullable) NSString *language;
 // Installed by the phone integration only. Completion is metadata, never an
 // invented success. At most one mutating call per user request; no auto retry.

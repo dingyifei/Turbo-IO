@@ -129,14 +129,48 @@ static void Alert(NSString *t,NSString *m){TIONotice(nil,t,m);}
 
 @interface TIORequest : TIOWebChatRequest
 @property(nonatomic,copy) NSArray<NSDictionary *> *history;
+#if TIO_APPLE_AI
+@property(nonatomic) BOOL voiceTurn;
+@property(nonatomic) BOOL configMissing;
+@property(nonatomic) BOOL appleCancelled;
+@property(nonatomic) id appleTask;
+- (void)startAppleQuestion:(NSString *)question marker:(BOOL)marker;
+#endif
 - (void)startQuestion:(NSString *)question;
 @end
 @implementation TIORequest
+#if TIO_APPLE_AI
+- (void)startAppleQuestion:(NSString *)question marker:(BOOL)marker {
+    NSString *language=TIOAppleLanguageForText(question);
+    void(^outer)(NSString *,BOOL,NSString *)=[self.update copy];__weak typeof(self) weak=self;
+    id task=TIOAppleModelRespond(question,self.history?:@[],TIOAppleInstructions(language,[Prefs stringForKey:@"aboutMe"]),language,UIApplication.sharedApplication.applicationState==UIApplicationStateActive,^(NSString *text,BOOL done,NSString *code){
+        typeof(self) s=weak;if(!s||s.appleCancelled)return;
+        if(outer)outer([(marker?TIOAppleFallbackMarker(language):@"") stringByAppendingString:text?:@""],done,code?TIOAppleErrorMessage(code):nil);
+    });self.appleTask=task;
+    if(!task&&!self.appleCancelled&&outer)outer(@"",YES,TIOAppleErrorMessage(TIOAppleModelAvailability()[@"reason"]?:@"other"));
+}
+- (void)cancel {self.appleCancelled=YES;SEL selector=NSSelectorFromString(@"cancel");if([self.appleTask respondsToSelector:selector])((void(*)(id,SEL))objc_msgSend)(self.appleTask,selector);self.appleTask=nil;[super cancel];}
+#endif
 - (void)startQuestion:(NSString *)question {
+#if TIO_APPLE_AI
+    NSInteger appleMode=[Prefs integerForKey:@"mode"];
+    if(TIOAppleShouldUseAppleMode(appleMode,self.voiceTurn)){[self startAppleQuestion:question marker:NO];return;}
+    if(self.voiceTurn&&appleMode==2){
+        void(^outer)(NSString *,BOOL,NSString *)=[self.update copy];__weak typeof(self) weak=self;
+        self.update=^(NSString *text,BOOL done,NSString *error){typeof(self) s=weak;if(!s||s.appleCancelled)return;
+            if(done&&error&&TIOAppleShouldFallback(appleMode,s.voiceTurn,[Prefs boolForKey:@"appleFallback"],s.modelTransportFailed||s.configMissing,text.length)&&[TIOAppleModelAvailability()[@"available"] boolValue]){s.update=outer;[s startAppleQuestion:question marker:YES];return;}
+            if(outer)outer(text,done,error);
+        };
+    }
+#endif
     NSString *endpoint=[Prefs stringForKey:@"endpoint"]?:@"",*model=[Prefs stringForKey:@"model"]?:@"";
     NSURL *url=TIOValidateEndpoint(endpoint); NSString *key=ReadKey(endpoint);
     NSDictionary *payload=TIOChatRequestWithHistory(model,question,_history?:@[]);
-    if(!url||!payload||!key.length){if(self.update)self.update(@"",YES,TIOWebStatusText(@"config.missing",TIOScriptLanguage(question,AddonUILanguage())));return;}
+    if(!url||!payload||!key.length){
+#if TIO_APPLE_AI
+        self.configMissing=YES;
+#endif
+        if(self.update)self.update(@"",YES,TIOWebStatusText(@"config.missing",TIOScriptLanguage(question,AddonUILanguage())));return;}
     // Optional provider extension, sent only when explicitly selected by user.
     NSMutableDictionary *body=[payload mutableCopy];if([Prefs boolForKey:@"deepseekDisableThinking"])body[@"thinking"]=@{@"type":@"disabled"};
     NSString *searchKey=[Prefs boolForKey:@"tinyfishEnabled"]?ReadKey(@"https://api.search.tinyfish.ai"):@"";
@@ -246,7 +280,11 @@ static id CopyResponse(id source,NSString *answer,BOOL final) {
         NSString *test=[TIOText(@"私用模型测试 ") stringByAppendingString:[NSUUID.UUID.UUIDString substringToIndex:6]];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(),^{[self emitText:test done:YES error:nil generation:gen];});
     }else{
-        _request=[TIORequest new];__weak typeof(self) weakSelf=self;
+        _request=[TIORequest new];
+#if TIO_APPLE_AI
+        _request.voiceTurn=YES;
+#endif
+        __weak typeof(self) weakSelf=self;
         TIOTodoSetChatContext(listener,response);
         _request.createTodo=^(NSString *title,void (^completion)(NSDictionary *result)){TIOTodoCreateFromTool(title,completion);};
         _requestQuestion=[_asr copy];_request.history=[_history snapshot];
@@ -611,7 +649,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 #if TIO_UI_PREVIEW
 UIViewController *TIOCreateTurboPreview(void){
     Prefs=[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.research.preview"];
-    [Prefs registerDefaults:@{@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
+    [Prefs registerDefaults:@{@"appleFallback":@YES,@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
     TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
     VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
     Controller=[TIOController new];Diagnostic=TIOText(@"界面预览：未连接眼镜，未加载官方通信库");
@@ -672,13 +710,13 @@ __attribute__((constructor)) static void Load(void) {
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
             TIOLanguageFlagStart();
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
-            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
+            [Prefs registerDefaults:@{@"appleFallback":@YES,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
             Controller=[TIOController new];
             ImportPrivateBootstrap();
             VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
             // Research rows are explicit routes now, not a chain of table hooks.
-            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+            [Prefs registerDefaults:@{@"appleFallback":@YES,@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
             // Do not automatically resume model takeover. Text capture remains opt-in and persistent.
             [Prefs setInteger:0 forKey:@"mode"]; // Keep the explicitly chosen text-save preference across launches.
