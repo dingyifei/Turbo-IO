@@ -1,0 +1,43 @@
+{
+  "is_playing": true,
+  "progress_ms": 61234,
+  "timestamp": 1730000000000,
+  "currently_playing_type": "track",
+  "device": {
+    "id": "dev-phone",
+    "name": "iPhone",
+    "type": "Smartphone",
+    "is_active": true,
+    "is_restricted": false
+  },
+  "item": {
+    "id": "4uLU6hMCjMI75M1A2tKUQC",
+    "name": "Never Gonna Give You Up",
+    "duration_ms": 213573,
+    "artists": [
+      {
+        "name": "Rick Astley"
+      }
+    ],
+    "album": {
+      "name": "Whenever You Need Somebody",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/ab67616d0000b273aaa",
+          "width": 640,
+          "height": 640
+        },
+        {
+          "url": "https://i.scdn.co/image/ab67616d00001e02bbb",
+          "width": 300,
+          "height": 300
+        },
+        {
+          "url": "https://i.scdn.co/image/ab67616d00004851ccc",
+          "width": 64,
+          "height": 64
+        }
+      ]
+    }
+  }
+}

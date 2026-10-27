@@ -1,0 +1,29 @@
+{
+  "is_playing": true,
+  "progress_ms": 12000,
+  "timestamp": 1730000000000,
+  "currently_playing_type": "episode",
+  "device": {
+    "id": "dev-phone",
+    "name": "iPhone",
+    "type": "Smartphone",
+    "is_active": true,
+    "is_restricted": false
+  },
+  "item": {
+    "id": "ep1",
+    "type": "episode",
+    "name": "Episode 1",
+    "duration_ms": 1800000,
+    "images": [
+      {
+        "url": "https://i.scdn.co/image/ep640",
+        "width": 640,
+        "height": 640
+      }
+    ],
+    "show": {
+      "name": "Some Show"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "is_playing": true,
+  "progress_ms": 0,
+  "timestamp": 1730000000000,
+  "currently_playing_type": "track",
+  "device": {
+    "id": "dev-phone",
+    "name": "iPhone",
+    "type": "Smartphone",
+    "is_active": true,
+    "is_restricted": false
+  },
+  "item": {
+    "id": "mix1",
+    "name": "Mixed",
+    "duration_ms": 200000,
+    "artists": [
+      {
+        "name": "A"
+      },
+      {
+        "name": "B"
+      }
+    ],
+    "album": {
+      "name": "Mixed Album",
+      "images": [
+        {
+          "url": "https://evil.example.com/x.jpg",
+          "width": 300,
+          "height": 300
+        },
+        {
+          "url": "https://image-cdn-ak.spotifycdn.com/image/ok.jpg",
+          "width": 300,
+          "height": 300
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "devices": [
+    {
+      "id": "dev-phone",
+      "is_active": false,
+      "is_restricted": false,
+      "name": "iPhone",
+      "type": "Smartphone"
+    },
+    {
+      "id": "dev-tv",
+      "is_active": false,
+      "is_restricted": true,
+      "name": "TV",
+      "type": "TV"
+    }
+  ]
+}

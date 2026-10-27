@@ -1,0 +1,9 @@
+{
+  "id": 3,
+  "trackName": "Plain Only",
+  "artistName": "A",
+  "duration": 120,
+  "instrumental": false,
+  "plainLyrics": "Plain text",
+  "syncedLyrics": null
+}
