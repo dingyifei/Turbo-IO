@@ -206,6 +206,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   SpotifyAuth.m \
   SpotifyAPI.m \
   SpotifyCover.m \
+  SpotifySignIn.m \
   MusicAPI.m \
   MusicTransport.m \
   MusicBridge.m \
@@ -214,6 +215,8 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   music.c \
   -framework AVFoundation \
   -framework MediaPlayer \
+  -framework AuthenticationServices \
+  -framework Network \
   -framework CoreImage \
   -framework ImageIO \
   Addon.m \
