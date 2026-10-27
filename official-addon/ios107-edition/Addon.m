@@ -51,7 +51,6 @@ static NSString *AddonUILanguage(void){NSString *l=TIOUILanguage();return TIOScr
 #else
 static NSString *AddonUILanguage(void){NSString *l=NSLocale.preferredLanguages.firstObject?:@"en";return TIOScriptLanguageIsChinese(l)?@"zh-Hans":@"en";}
 #endif
-static NSString *UIText(NSString *en,NSString *zh){return [AddonUILanguage() isEqual:@"zh-Hans"]?zh:en;}
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
 #endif
@@ -122,9 +121,7 @@ static UIViewController *TopController(void) {
     if(!window){for(UIWindow *w in UIApplication.sharedApplication.windows)if(w.isKeyWindow){window=w;break;}}
     UIViewController *c=window.rootViewController;while(c.presentedViewController)c=c.presentedViewController;return c;
 }
-static void Alert(NSString *title,NSString *message) {
-    dispatch_async(dispatch_get_main_queue(),^{UIViewController *top=TopController();if(!top)return;UIAlertController *a=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"知道了") style:UIAlertActionStyleCancel handler:nil]];[top presentViewController:a animated:YES completion:nil];});
-}
+static void Alert(NSString *t,NSString *m){TIONotice(nil,t,m);}
 
 @interface TIORequest : TIOWebChatRequest
 @property(nonatomic,copy) NSArray<NSDictionary *> *history;
@@ -340,6 +337,15 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     self.title=self.page.length ? ([self catalogRowForKey:self.page][@"title"] ?: TIOText(@"hub.title")) : TIOText(@"hub.title");
     if (!self.page.length) {
         NSMutableString *body=[TIOText(@"hub.info.body") mutableCopy];
+        for (NSString *infoKey in [[TIOStringTable() allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
+            if (![infoKey hasPrefix:@"hub.info.topic."]) continue;
+            NSString *details=TIOText(infoKey);
+            if ([infoKey isEqual:@"hub.info.topic.tools"]) {
+                NSString *state=TIOText(TIOKnowledgeEnabled()?@"hub.info.tools.active":@"hub.info.tools.inactive");
+                details=[NSString stringWithFormat:details,state];
+            }
+            [body appendFormat:@"\n\n%@",details];
+        }
         [body appendFormat:@"\n\n%@: \n",TIOText(@"hub.info.codes")];
         for (NSDictionary *row in TIOHubCatalog()) {
             NSString *code=row[@"code"];
@@ -452,7 +458,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)ttsToggle:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"ttsEnabled"];if(!sender.on)[VoiceTTS cancel];[self.tableView reloadData];}
 - (void)testTTS {
     [Prefs setObject:TIOText(@"已触发固定短句测试") forKey:@"ttsTestDiagnostic"];
-    if(!TTSOn()){Alert(UIText(@"Turn it on first",@"请先开启" /*i18n:keep*/),UIText(@"Turn on “Read answers aloud” first.",@"请打开“回答同步朗读”开关。" /*i18n:keep*/));return;}
+    if(!TTSOn()){Alert(TIOText(@"hub.ttsTest.off.title"),TIOText(@"hub.ttsTest.off.message"));return;}
     [Prefs setObject:@"manual.test" forKey:@"ttsLastReset"];
     [VoiceTTS beginTurn];[VoiceTTS appendFullText:@"Turbo IO voice test. 这是中文语音测试。" /*i18n:keep*/ finished:YES];
     [Prefs setObject:VoiceTTS.status?:@"" forKey:@"ttsTestImmediate"];
@@ -464,18 +470,18 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)voiceExit:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"voiceExitCommands"];}
 - (void)searchToggle:(UISwitch *)sender {if(sender.on&&!ReadKey(@"https://api.search.tinyfish.ai").length){sender.on=NO;Alert(TIOText(@"请先配置"),TIOText(@"需要你自己的 TinyFish API Key。"));return;}[Prefs setBool:sender.on forKey:@"tinyfishEnabled"];[Controller cancel];}
 - (void)configureAboutMe {
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:UIText(@"About me",@"关于我" /*i18n:keep*/) message:UIText(@"Optional background the model may use, such as how to address you, your job or your city. Stored only on this iPhone and sent with each request to your own model. Up to 500 characters.",@"可选。供模型参考的背景信息，如称呼、职业或城市。只存在本机，并随每次自有模型请求发送。最多 500 字。" /*i18n:keep*/) preferredStyle:UIAlertControllerStyleAlert];
-    [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.text=[Prefs stringForKey:@"aboutMe"];f.placeholder=UIText(@"e.g. Call me Alex. I design products in Toronto.",@"例如：叫我小李，在多伦多做产品设计。" /*i18n:keep*/);}];
-    [a addAction:[UIAlertAction actionWithTitle:UIText(@"Cancel",@"取消" /*i18n:keep*/) style:UIAlertActionStyleCancel handler:nil]];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"hub.row.aboutMe") message:TIOText(@"hub.alert.aboutMe.message") preferredStyle:UIAlertControllerStyleAlert];
+    [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.text=[Prefs stringForKey:@"aboutMe"];f.placeholder=TIOText(@"hub.aboutMe.placeholder");}];
+    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
     __weak UIAlertController *weakAlert=a;
-    [a addAction:[UIAlertAction actionWithTitle:UIText(@"Save",@"保存" /*i18n:keep*/) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){NSString *v=TIOSanitizeAboutMe(weakAlert.textFields.firstObject.text);if(v.length)[Prefs setObject:v forKey:@"aboutMe"];else [Prefs removeObjectForKey:@"aboutMe"];TIOSetUserProfile(v);[self.tableView reloadData];}]];
-    [a addAction:[UIAlertAction actionWithTitle:UIText(@"Clear",@"清除" /*i18n:keep*/) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action){[Prefs removeObjectForKey:@"aboutMe"];TIOSetUserProfile(nil);[self.tableView reloadData];}]];
+    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.save") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){NSString *v=TIOSanitizeAboutMe(weakAlert.textFields.firstObject.text);if(v.length)[Prefs setObject:v forKey:@"aboutMe"];else [Prefs removeObjectForKey:@"aboutMe"];TIOSetUserProfile(v);[self.tableView reloadData];}]];
+    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.clear") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action){[Prefs removeObjectForKey:@"aboutMe"];TIOSetUserProfile(nil);[self.tableView reloadData];}]];
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)configureSearch {
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"TinyFish 搜索配置") message:TIOText(@"开启后，自有模型可把必要检索词发给 TinyFish，将搜索摘要交回模型。官方 ASR 不变。不适合检索敏感信息。Key 仅存本机钥匙串；留空保留已有 Key。") preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"TinyFish 搜索配置") message:TIOText(@"hub.alert.search.message") preferredStyle:UIAlertControllerStyleAlert];
     [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=TIOText(@"TinyFish API Key（不回显）");f.secureTextEntry=YES;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;}];
-    [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
+    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
     [a addAction:[UIAlertAction actionWithTitle:TIOText(@"保存并启用") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){NSString *key=a.textFields[0].text?:@"";a.textFields[0].text=@"";if((key.length&&(![key hasPrefix:@"sk-tinyfish-"]||[key rangeOfCharacterFromSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].location!=NSNotFound||!StoreKey(@"https://api.search.tinyfish.ai",key)))||(!key.length&&!ReadKey(@"https://api.search.tinyfish.ai").length)){Alert(TIOText(@"未保存"),TIOText(@"Key 格式或钥匙串写入失败。"));return;}[Controller cancel];[Prefs setBool:YES forKey:@"tinyfishEnabled"];[self.tableView reloadData];}]];
     [a addAction:[UIAlertAction actionWithTitle:TIOText(@"移除本机搜索 Key") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){[Controller cancel];[Prefs setBool:NO forKey:@"tinyfishEnabled"];BOOL ok=StoreKey(@"https://api.search.tinyfish.ai",@"");[self.tableView reloadData];if(!ok)Alert(TIOText(@"未移除"),TIOText(@"钥匙串删除失败；搜索已关闭。"));}]];[self presentViewController:a animated:YES completion:nil];
 }
@@ -488,17 +494,15 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)capture:(UISwitch *)sender {
     if(!sender.on){[Prefs setBool:NO forKey:@"captureFinalText"];return;}
     sender.on=NO;
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"保存全天智记文字？") message:TIOText(@"仅将之后收到的最终识别文字另存于本机扩展目录，重启后仍保持开启，直到你手动关闭。包含真实谈话内容，请确保相关人员同意。不启动麦克风，不自动上传。") preferredStyle:UIAlertControllerStyleAlert];
-    [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
-    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"启用本机保存") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){Controller.captureEpoch=NSUUID.UUID.UUIDString;[Prefs setBool:YES forKey:@"captureFinalText"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];
+    TIOConfirm(self,TIOText(@"hub.confirm.capture.title"),TIOText(@"hub.alert.capture.message"),TIOText(@"hub.confirm.capture.action"),NO,^{Controller.captureEpoch=NSUUID.UUID.UUIDString;[Prefs setBool:YES forKey:@"captureFinalText"];[self.tableView reloadData];});
 }
 - (void)configure {
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"自有模型接口") message:TIOText(@"填写完整 HTTPS /chat/completions 地址。Key 仅存手机钥匙串；留空保留同一地址的旧 Key，改地址不会带过去。") preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"自有模型接口") message:TIOText(@"hub.alert.api.message") preferredStyle:UIAlertControllerStyleAlert];
     [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=@"https://…/v1/chat/completions";f.text=[Prefs stringForKey:@"endpoint"];f.keyboardType=UIKeyboardTypeURL;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;}];
     [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=TIOText(@"模型名称");f.text=[Prefs stringForKey:@"model"];f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;}];
     [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=TIOText(@"新 API Key（不回显）");f.secureTextEntry=YES;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;}];
-    [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
-    [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"保存") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){NSString *url=a.textFields[0].text?:@"",*model=a.textFields[1].text?:@"",*key=a.textFields[2].text?:@"";NSURL *valid=TIOValidateEndpoint(url);if(!valid||!TIOChatRequest(model,TIOText(@"测试"))){Alert(TIOText(@"未保存"),TIOText(@"需要有效的 HTTPS chat/completions 地址和模型名称。"));return;}url=valid.absoluteString;if(key.length&&!StoreKey(url,key)){Alert(TIOText(@"未保存"),TIOText(@"钥匙串写入失败。"));return;}[Controller cancel];if(![[Prefs stringForKey:@"endpoint"] isEqual:url]||![[Prefs stringForKey:@"model"] isEqual:model])[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[Prefs setObject:url forKey:@"endpoint"];[Prefs setObject:model forKey:@"model"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];
+    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [a addAction:[UIAlertAction actionWithTitle:TIOText(@"common.save") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){NSString *url=a.textFields[0].text?:@"",*model=a.textFields[1].text?:@"",*key=a.textFields[2].text?:@"";NSURL *valid=TIOValidateEndpoint(url);if(!valid||!TIOChatRequest(model,TIOText(@"测试"))){Alert(TIOText(@"未保存"),TIOText(@"需要有效的 HTTPS chat/completions 地址和模型名称。"));return;}url=valid.absoluteString;if(key.length&&!StoreKey(url,key)){Alert(TIOText(@"未保存"),TIOText(@"钥匙串写入失败。"));return;}[Controller cancel];if(![[Prefs stringForKey:@"endpoint"] isEqual:url]||![[Prefs stringForKey:@"model"] isEqual:model])[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[Prefs setObject:url forKey:@"endpoint"];[Prefs setObject:model forKey:@"model"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
@@ -563,17 +567,17 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 }
 - (void)performKey:(NSString *)key {
     if ([key isEqual:@"mode"]) {
-        NSArray *titles=@[TIOText(@"官方默认"),TIOText(@"随机字符串验收（不调自有 API）"),TIOText(@"自定义模型（实验）")]; // WP7 appends option 4.
-        TIOChoose(self,TIOText(@"回答模型"),TIOText(@"选择实验接管会将识别后的问题发给你配置的服务。未知业务仍走官方；无已验证聊天模板时只保留选择、不接管。"),titles,[Prefs integerForKey:@"mode"],nil,^(NSInteger i){
-            [Controller cancel];[Prefs setInteger:i forKey:@"mode"];[self.tableView reloadData];if(i&&![Prefs stringForKey:@"verifiedChatDomain"])Alert(TIOText(@"尚未接管"),TIOText(@"需要先确认当前版本的聊天回包 domain。请先用官方模式完成一次问答，开发者核对后才开启接管。"));
+        NSArray *titles=@[TIOText(@"hub.choose.mode.official"),TIOText(@"hub.choose.mode.test"),TIOText(@"hub.choose.mode.custom")]; // WP7 appends option 4.
+        TIOChoose(self,TIOText(@"hub.choose.mode.title"),TIOText(@"hub.alert.mode.message"),titles,[Prefs integerForKey:@"mode"],nil,^(NSInteger i){
+            [Controller cancel];[Prefs setInteger:i forKey:@"mode"];[self.tableView reloadData];if(i&&![Prefs stringForKey:@"verifiedChatDomain"])Alert(TIOText(@"hub.notice.takeover.title"),TIOText(@"hub.notice.takeover.message"));
         });return;
     }
     if ([key isEqual:@"api"]) {[self configure];return;}
     if ([key isEqual:@"search"]) {[self configureSearch];return;}
     if ([key isEqual:@"searchTest"]) {[self testSearch];return;}
     if ([key isEqual:@"todoTest"]) {TIOOpenTodoRuntime(self);return;}
-    if ([key isEqual:@"tools"]) {Alert(TIOText(@"当前语音模型 Tools"),[NSString stringWithFormat:TIOText(@"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。"),TIOKnowledgeEnabled()?TIOText(@"已开启"):TIOText(@"未开启，请在知识库配置连接")]);return;}
-    if ([key isEqual:@"history"]) {UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"清空自有模型上下文？") message:TIOText(@"仅清空本扩展内存中的聊天历史，不删除官方记录。正在进行的自有请求会取消并恢复官方模式。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"清空") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){[Controller cancel];[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];return;}
+    if ([key isEqual:@"tools"]) {NSString *format=TIOText(@"hub.alert.tools.message");Alert(TIOText(@"hub.row.tools"),[NSString stringWithFormat:format,TIOKnowledgeEnabled()?TIOText(@"hub.info.tools.active"):TIOText(@"hub.info.tools.inactive")]);return;}
+    if ([key isEqual:@"history"]) {TIOConfirm(self,TIOText(@"hub.confirm.history.title"),TIOText(@"hub.alert.history.message"),TIOText(@"hub.confirm.history.action"),YES,^{[Controller cancel];[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[self.tableView reloadData];});return;}
     if ([key isEqual:@"prompt"]) {Alert(TIOText(@"当前系统提示词"),TIOSystemPrompt([Prefs stringForKey:@"model"]?:TIOText(@"尚未配置")));return;}
     if ([key isEqual:@"apiTest"]) {[_testRequest cancel];_testRequest=[TIORequest new];__weak typeof(self) weakSelf=self;_testRequest.update=^(NSString *text,BOOL done,NSString *error){if(done){Alert(error?TIOText(@"API 测试失败"):TIOText(@"API 测试结果"),error?:text);weakSelf.testRequest=nil;}};[_testRequest startQuestion:@"Reply with exactly: API test passed."];return;}
     if ([key isEqual:@"archive"]) {dispatch_async(ArchiveQueue,^{NSError *error=nil;NSArray *urls=[Archive exportAt:NSDate.date error:&error];dispatch_async(dispatch_get_main_queue(),^{if(!urls){Alert(TIOText(@"暂无可分享文件"),error.localizedDescription?:TIOText(@"导出失败，原件未改。"));return;}UIActivityViewController *sheet=[[UIActivityViewController alloc]initWithActivityItems:urls applicationActivities:nil];sheet.popoverPresentationController.sourceView=self.view;sheet.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);[self presentViewController:sheet animated:YES completion:nil];});});return;}
