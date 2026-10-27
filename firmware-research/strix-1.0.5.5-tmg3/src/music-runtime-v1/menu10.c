@@ -1,3 +1,4 @@
+#include "menu_tiles.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
 /* 1.0.4.12 ONLY. Experimental native eight-index carousel, not a proven OTA.
@@ -81,14 +82,16 @@ static void *block(void *parent,int w,int h,int x,int y){
 }
 /* Assembler entry shims preserve r1-r3: stock callers use whole-unit register
  * knowledge beyond ordinary AAPCS (snap keeps a frame in r2 across this call). */
-int m8_impl_frame_start(int index){return 15+30*clamp(index,0,16);}
-int m8_impl_frame_index(int frame){return clamp(frame,0,509)/30;}
+int m8_impl_frame_start(int index){return tio_frame_start(index);}
+int m8_impl_frame_index(int frame){return tio_frame_index(frame);}
 void m8_hook_render_slide(void *app){
- float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);if(!(value>=-1.0f))value=-1.0f;if(value>17.0f)value=17.0f;
- int frame=(int)(value*30.0f+15.5f);(void)m8_hook_frame(app,clamp(frame,0,509));
+ float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);if(!(value>=-1.0f))value=-1.0f;if(value>(float)TIO_MENU_ITEMS)value=(float)TIO_MENU_ITEMS;
+ int frame=(int)(value*30.0f+15.5f);(void)m8_hook_frame(app,clamp(frame,0,TIO_MENU_FRAME_MAX));
 }
 const char *m8_hook_app_id(int index){
-  return index==16?"TurboCamera":index==13?"TurboApps":index==11?"TurboFocus":index==9?"TurboMusic":index==8?"TurboNavigation":index==7?"TurboDisplay":index>=0&&index<7?stock_app_id(index):"";
+ static const char *const ids[]={"TurboDisplay","TurboNavigation","TurboMusic","TurboFocus","TurboApps","TurboCamera"};
+ if(index>=TIO_STOCK_ITEMS&&index<TIO_MENU_ITEMS)return ids[index-TIO_STOCK_ITEMS];
+ return index>=0&&index<TIO_STOCK_ITEMS?stock_app_id(index):"";
 }
 void m8_hook_names(void *app){
   {TCSlot *e=camera_slot(app);if(e&&!e->row&&ptr(app,4)){e->row=tio_lv_obj_create_ex(ptr(app,4),0);if(e->row){clean_style(e->row);tio_lv_obj_set_size(e->row,260,26);native_align(e->row,5,0,-60);hidden(e->row,true);e->label=native_label_create(e->row);if(e->label){clean_style(e->label);native_label_text(e->label,"遥控拍照");void *f=menu_font(20,0);if(f)menu_text_font(e->label,f,0);native_text_color(e->label,0x00ff00,0);menu_text_align(e->label,2,0);tio_lv_obj_set_size(e->label,260,26);native_align(e->label,9,0,0);}}}}
@@ -125,12 +128,12 @@ void m8_hook_names(void *app){
   if(font)menu_text_font(f->label,font,0);native_text_color(f->label,0x00ff00,0);menu_text_align(f->label,2,0);tio_lv_obj_set_size(f->label,260,26);native_align(f->label,9,0,0);
 }
 void m8_hook_refresh_label(void *app,int index){
-  if(index==16){if(camera_slot(app)&&camera_slot(app)->label)native_label_text(camera_slot(app)->label,"遥控拍照");return;}
-  if(index==13){if(apps(app)&&apps(app)->label)native_label_text(apps(app)->label,"我的应用");return;}
-  if(index==11){if(focus(app)&&focus(app)->label)native_label_text(focus(app)->label,"番茄时钟");return;}
-  if(index==9){if(music(app)&&music(app)->label)native_label_text(music(app)->label,"网易云音乐");return;}
-  if(index==8){if(slot(app)&&slot(app)->label)native_label_text(slot(app)->label,"导航");return;}
-  if(index==7){if(tail(app)->label)native_label_text(tail(app)->label,"Turbo Display");return;}
+  if(index==TIO_TILE_CAMERA){if(camera_slot(app)&&camera_slot(app)->label)native_label_text(camera_slot(app)->label,"遥控拍照");return;}
+  if(index==TIO_TILE_APPS){if(apps(app)&&apps(app)->label)native_label_text(apps(app)->label,"我的应用");return;}
+  if(index==TIO_TILE_FOCUS){if(focus(app)&&focus(app)->label)native_label_text(focus(app)->label,"番茄时钟");return;}
+  if(index==TIO_TILE_MUSIC){if(music(app)&&music(app)->label)native_label_text(music(app)->label,"网易云音乐");return;}
+  if(index==TIO_TILE_NAVIGATION){if(slot(app)&&slot(app)->label)native_label_text(slot(app)->label,"导航");return;}
+  if(index==TIO_TILE_DISPLAY){if(tail(app)->label)native_label_text(tail(app)->label,"Turbo Display");return;}
   if(index>=0 && index<7)stock_refresh_label(app,index);
 }
 void m8_hook_delete_dots(void *app){
@@ -139,17 +142,13 @@ void m8_hook_delete_dots(void *app){
   tail(app)->dot=NULL;if(slot(app))slot(app)->dot=NULL;if(music(app))music(app)->dot=NULL;if(focus(app))focus(app)->dot=NULL;if(apps(app))apps(app)->dot=NULL;stock_delete_dots(app);
 }
 void m8_hook_dots(void *app){
-  stock_dots(app);M8NativeTail *t=tail(app);void *parent=ptr(app,0x60);
-  if(!parent || t->dot)return;
-  t->dot=block(parent,4,4,0,0);
-  if(!t->dot){t->errors|=2;return;}
-  /* Native flex parent owns positioning; clear explicit alignment offset. */
-  native_align(t->dot,0,0,0);tio_lv_obj_set_style_bg_opa(t->dot,127,0);
-  TCSlot *camera=camera_slot(app);if(camera&&!camera->dot){camera->dot=block(parent,4,4,0,0);if(camera->dot){native_align(camera->dot,0,0,0);tio_lv_obj_set_style_bg_opa(camera->dot,127,0);}}
-  TNNavSlot *s=slot(app);if(s&&!s->dot){s->dot=block(parent,4,4,0,0);if(s->dot){native_align(s->dot,0,0,0);tio_lv_obj_set_style_bg_opa(s->dot,127,0);}}
-  TMMusicSlot *m=music(app);if(m&&!m->dot){m->dot=block(parent,4,4,0,0);if(m->dot){native_align(m->dot,0,0,0);tio_lv_obj_set_style_bg_opa(m->dot,127,0);}}
-  TAPMenu *a=apps(app);if(a&&!a->dot){a->dot=block(parent,4,4,0,0);if(a->dot){native_align(a->dot,0,0,0);tio_lv_obj_set_style_bg_opa(a->dot,127,0);}}
-  TFSlot *f=focus(app);if(f&&!f->dot){f->dot=block(parent,4,4,0,0);if(f->dot){native_align(f->dot,0,0,0);tio_lv_obj_set_style_bg_opa(f->dot,127,0);}}
+ stock_dots(app);M8NativeTail *t=tail(app);void *parent=ptr(app,0x60);if(!parent)return;
+ TNNavSlot *n=slot(app);TMMusicSlot *m=music(app);TFSlot *f=focus(app);TAPMenu *a=apps(app);TCSlot *c=camera_slot(app);
+ void **dots[]={&t->dot,n?&n->dot:NULL,m?&m->dot:NULL,f?&f->dot:NULL,a?&a->dot:NULL,c?&c->dot:NULL};
+ for(unsigned k=0;k<6;k++)if(dots[k]&&!*dots[k]){
+   *dots[k]=block(parent,4,4,0,0);if(!*dots[k]){t->errors|=2;continue;}
+   native_align(*dots[k],0,0,0);tio_lv_obj_set_style_bg_opa(*dots[k],127,0);
+ }
 }
 void m8_hook_lottie(void *app){
   {TCSlot *e=camera_slot(app);if(e&&!e->icon&&ptr(app,4)){e->icon=tio_lv_obj_create_ex(ptr(app,4),0);if(e->icon){clean_style(e->icon);tio_lv_obj_set_size(e->icon,65,65);native_align(e->icon,2,0,52);hidden(e->icon,true);const int lines[][4]={{48,3,8,18},{48,3,8,50},{3,35,8,18},{3,35,53,18},{25,3,20,10},{3,10,20,10},{3,10,43,10},{20,3,23,27},{20,3,23,42},{3,18,23,27},{3,18,40,27}};for(unsigned i=0;i<sizeof lines/sizeof *lines;i++)if(!block(e->icon,lines[i][0],lines[i][1],lines[i][2],lines[i][3])){tio_lv_obj_delete(e->icon);e->icon=NULL;break;}}}}
@@ -184,10 +183,33 @@ void m8_hook_lottie(void *app){
   const int tomato[][4]={{34,3,15,15},{44,3,10,20},{3,28,8,23},{3,28,54,23},{44,3,10,51},{34,3,15,56},{3,18,31,25},{14,3,31,40},{4,10,30,5},{13,3,22,10},{13,3,32,8}};
   for(unsigned i=0;i<sizeof tomato/sizeof *tomato;i++)if(!block(f->icon,tomato[i][0],tomato[i][1],tomato[i][2],tomato[i][3])){tio_lv_obj_delete(f->icon);f->icon=NULL;break;}
 }
+static void *turbo_row(void *app,unsigned i){
+ if(i==TIO_TILE_DISPLAY)return tail(app)?tail(app)->row:NULL;
+ if(i==TIO_TILE_NAVIGATION)return slot(app)?slot(app)->row:NULL;
+ if(i==TIO_TILE_MUSIC)return music(app)?music(app)->row:NULL;
+ if(i==TIO_TILE_FOCUS)return focus(app)?focus(app)->row:NULL;
+ if(i==TIO_TILE_APPS)return apps(app)?apps(app)->row:NULL;
+ if(i==TIO_TILE_CAMERA)return camera_slot(app)?camera_slot(app)->row:NULL;
+ return i<TIO_STOCK_ITEMS?ptr(app,0xc+4*i):NULL;
+}
+static void *turbo_dot(void *app,unsigned i){
+ if(i==TIO_TILE_DISPLAY)return tail(app)?tail(app)->dot:NULL;
+ if(i==TIO_TILE_NAVIGATION)return slot(app)?slot(app)->dot:NULL;
+ if(i==TIO_TILE_MUSIC)return music(app)?music(app)->dot:NULL;
+ if(i==TIO_TILE_FOCUS)return focus(app)?focus(app)->dot:NULL;
+ if(i==TIO_TILE_APPS)return apps(app)?apps(app)->dot:NULL;
+ if(i==TIO_TILE_CAMERA)return camera_slot(app)?camera_slot(app)->dot:NULL;
+ return i<TIO_STOCK_ITEMS?ptr(app,0x64+4*i):NULL;
+}
+static void *turbo_icon(void *app,unsigned k){
+ void *icons[]={tail(app)->icon,slot(app)?slot(app)->icon:NULL,music(app)?music(app)->icon:NULL,
+   focus(app)?focus(app)->icon:NULL,apps(app)?apps(app)->icon:NULL,camera_slot(app)?camera_slot(app)->icon:NULL};
+ return k<6?icons[k]:NULL;
+}
 void m8_hook_label_frame(void *app,int frame){
-  frame=clamp(frame,0,509);
-  for(unsigned i=0;i<17;i++){
-    void *row=i==16?(camera_slot(app)?camera_slot(app)->row:NULL):i==13?(apps(app)?apps(app)->row:NULL):i==11?(focus(app)?focus(app)->row:NULL):i==9?(music(app)?music(app)->row:NULL):i==8?(slot(app)?slot(app)->row:NULL):i==7?tail(app)->row:(i<7?ptr(app,0xc+4*i):NULL);
+  frame=clamp(frame,0,TIO_MENU_FRAME_MAX);
+  for(unsigned i=0;i<TIO_MENU_ITEMS;i++){
+    void *row=turbo_row(app,i);
     if(!row)continue;
     int d=frame-m8_hook_frame_start((int)i),distance=d<0?-d:d;
     if(distance>=30){hidden(row,true);continue;}
@@ -199,9 +221,9 @@ void m8_hook_label_frame(void *app,int frame){
 void m8_hook_label_index(void *app,int index){m8_hook_label_frame(app,m8_hook_frame_start(index));}
 void m8_hook_indicator(void *app,int frame,int previous){
   (void)previous;if(!ptr(app,0x60))return;
-  frame=clamp(frame,15,495);
-  for(unsigned i=0;i<17;i++){
-    void *dot=i==16?(camera_slot(app)?camera_slot(app)->dot:NULL):i==13?(apps(app)?apps(app)->dot:NULL):i==11?(focus(app)?focus(app)->dot:NULL):i==9?(music(app)?music(app)->dot:NULL):i==8?(slot(app)?slot(app)->dot:NULL):i==7?tail(app)->dot:(i<7?ptr(app,0x64+4*i):NULL);if(!dot)continue;
+  frame=clamp(frame,15,30*TIO_MENU_ITEMS-15);
+  for(unsigned i=0;i<TIO_MENU_ITEMS;i++){
+    void *dot=turbo_dot(app,i);if(!dot)continue;
     int d=frame-m8_hook_frame_start((int)i);if(d<0)d=-d;
     int weight=30-clamp(d,0,30);
     tio_lv_obj_set_size(dot,4+(8*weight+15)/30,4);
@@ -209,7 +231,7 @@ void m8_hook_indicator(void *app,int frame,int previous){
   }
 }
 bool m8_hook_frame(void *app,int frame){
-  void *lottie=ptr(app,8);if(!lottie || frame<0 || frame>509)return false;
+  void *lottie=ptr(app,8);if(!lottie || frame<0 || frame>TIO_MENU_FRAME_MAX)return false;
   int previous=(int)*word(app,0x90);
   if(previous==frame)return false;
   *word(app,0x90)=(uint32_t)frame;
@@ -218,15 +240,9 @@ bool m8_hook_frame(void *app,int frame){
   int mix=clamp(frame-195,0,30);
   menu_lottie_frame(lottie,frame<=195?frame:195);
   menu_opa(lottie,(uint8_t)(255*(30-mix)/30),0);
-  /* Preserve the old positions for this removal-only step. Removed slots fade
-   * to empty space until the following renumbering step closes their gaps. */
-  void *icons[]={tail(app)->icon,slot(app)?slot(app)->icon:NULL,music(app)?music(app)->icon:NULL,
-    focus(app)?focus(app)->icon:NULL,apps(app)?apps(app)->icon:NULL,camera_slot(app)?camera_slot(app)->icon:NULL};
-  const int indices[]={7,8,9,11,13,16};
   for(unsigned k=0;k<6;k++){
-    int m=clamp(frame-(30*indices[k]-15),0,30);
-    int weight=m-(k<5?clamp(frame-(30*indices[k]+15),0,30):0);
-    if(icons[k]){hidden(icons[k],weight==0);menu_opa(icons[k],(uint8_t)(255*weight/30),0);menu_translate(icons[k],55*(30-m)/30,0);}
+    void *icon=turbo_icon(app,k);int weight=tio_tile_weight(frame,k),part=tio_tile_mix(frame,k);
+    if(icon){hidden(icon,weight==0);menu_opa(icon,(uint8_t)(255*weight/30),0);menu_translate(icon,55*(30-part)/30,0);}
   }
   m8_hook_indicator(app,frame,previous);fm_sync(app);return true;
 }
@@ -271,12 +287,13 @@ bool m8_hook_event(void *app,void *event){
   if(!eligible(app))return false;
   native_snap(app); /* Same stock snap BEFORE deciding which item to launch. */
   unsigned index=*word(app,0x88);
-  if(index<7)return stock_event(app,event);
-  if(index==16){trace(120,tc_slot_open(camera_slot(app)));return true;}
-  if(index==13){trace(90,tap_service_open(app));return true;}
-  if(index==11){trace(70,tf_slot_open(focus(app)));return true;}
-  if(index==9){trace(50,tm_slot_open(music(app)));return true;}
-  if(index==8){trace(40,tn_slot_open(slot(app)));return true;}
+  if(index<TIO_STOCK_ITEMS)return stock_event(app,event);
+  if(index>=TIO_MENU_ITEMS){trace(39,index);return true;}
+  if(index==TIO_TILE_CAMERA){trace(120,tc_slot_open(camera_slot(app)));return true;}
+  if(index==TIO_TILE_APPS){trace(90,tap_service_open(app));return true;}
+  if(index==TIO_TILE_FOCUS){trace(70,tf_slot_open(focus(app)));return true;}
+  if(index==TIO_TILE_MUSIC){trace(50,tm_slot_open(music(app)));return true;}
+  if(index==TIO_TILE_NAVIGATION){trace(40,tn_slot_open(slot(app)));return true;}
   if(index!=7){trace(39,index);return true;}
   M8NativeTail *t=tail(app);uint32_t sid=stream_tick();
   if(sid<=t->last_session)sid=t->last_session+1u;
