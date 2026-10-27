@@ -60,9 +60,9 @@ static NSString *AddonUILanguage(void){NSString *l=NSLocale.preferredLanguages.f
 static NSString *UIText(NSString *en,NSString *zh){return [AddonUILanguage() isEqual:@"zh-Hans"]?zh:en;}
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
+#endif
 #if TIO_DISPLAY_PHONE
 #import "DisplayPhoneUI.h"
-#endif
 #endif
 
 #ifndef TIO_TARGET_BUNDLE_ID
@@ -459,11 +459,11 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if([r[@"key"] isEqual:@"agent"])return;
 #if TIO_IMAGE_RX_LAB
     if([r[@"key"] isEqual:@"imageRXLab"]){[self.navigationController pushViewController:TIOImageUploadLabController() animated:YES];return;}
+#endif
 #if TIO_DISPLAY_PHONE
     if([r[@"key"] isEqual:@"displayPhone"]){[self.navigationController pushViewController:TDPPhoneController() animated:YES];return;}
 #if !TIO_DISPLAY_FLASH
     if([r[@"key"] isEqual:@"experimentalOTA"]){Alert(@"PHONE 01 禁止刷机",@"本包仅测试手机显示链路。OTA 更新已锁定；未生成、安装新眼镜固件。");return;}
-#endif
 #endif
 #endif
     if([r[@"key"] isEqual:@"localTranslation"]){TIOOpenLocalTranslation(self);return;}

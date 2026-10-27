@@ -6,11 +6,10 @@
 #import "context-english-v1/CEAutoRuntime.h"
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
-#import "ImageUploadTransport.h"
+#endif
 #if TIO_DISPLAY_PHONE
 #import "DisplayPhoneUI.h"
 #import "DisplayDiagnostics.h"
-#endif
 #endif
 #import "ProtocolContext.h"
 #import "TodoProtocol.h"
@@ -36,6 +35,16 @@ static id Get(id o,NSString *k){@try{return [o valueForKey:k];}@catch(NSExceptio
 static NSData *Data(id v){if([v isKindOfClass:NSData.class])return v;if([NSStringFromClass([v class]) isEqual:@"FlutterStandardTypedData"]){id d=Get(v,@"data");if([d isKindOfClass:NSData.class])return d;}return nil;}
 static BOOL Sign(Method m,NSUInteger n){if(!m||method_getNumberOfArguments(m)!=n)return NO;char *r=method_copyReturnType(m);BOOL ok=r&&r[0]=='v';free(r);for(NSUInteger i=2;i<n;i++){char *t=method_copyArgumentType(m,(unsigned)i);ok=ok&&t&&t[0]=='@';free(t);}return ok;}
 static BOOL Installed;
+#if TIO_IMAGE_RX_LAB || TIO_DISPLAY_PHONE
+static BOOL RouteFileEvent(id event,BOOL(^consume)(NSDictionary *),void(^completion)(BOOL)){
+ if(![event isKindOfClass:NSDictionary.class]||!consume||!completion||
+    (![[event objectForKey:@"eventType"] isEqual:@"fileShareSuccess"]&&![[event objectForKey:@"eventType"] isEqual:@"fileShareFailed"]))return NO;
+ NSDictionary *snapshot=[event copy];
+ void(^work)(void)=^{completion(consume(snapshot));};
+ if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
+ return YES;
+}
+#endif
 static void MethodHook(id self,SEL cmd,id call,id result){
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&!NSThread.isMainThread){
         dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;
@@ -68,16 +77,21 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
 #endif
                 TNAObserveEvent(copy);
                 if(TIOGlassesLogConsumeEvent(copy)){if(reply)((void(^)(NSData *))reply)(nil);return;}}
-#if TIO_IMAGE_RX_LAB
+#if TIO_IMAGE_RX_LAB || TIO_DISPLAY_PHONE
             // File results are siblings of messageReceived, not business messages.
             // Only our exact sender task is consumed; foreign events keep Flutter's path.
-            if(TIOImageUploadRouteFileEvent(event, ^BOOL(NSDictionary *e){
+            if(RouteFileEvent(event, ^BOOL(NSDictionary *e){
                 TDDotsPhoneObserveFile(e);
                 TAPObserveEvent(e); // Observe on main before the shared file router returns. Do not consume foreign tasks.
 #if TIO_DISPLAY_PHONE
                 if(TDPPhoneConsumeEvent(e))return YES;
 #endif
-                return TIOImageUploadLabConsumeFileEvent(e);}, ^(BOOL owned){
+#if TIO_IMAGE_RX_LAB
+                return TIOImageUploadLabConsumeFileEvent(e);
+#else
+                return NO;
+#endif
+            }, ^(BOOL owned){
                 if(owned){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);
             }))return;
 #endif

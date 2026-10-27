@@ -1,6 +1,9 @@
 #import "DisplayDiagnostics.h"
 #import "display_carrier.h"
 #include <math.h>
+#ifndef TIO_DISPLAY_DIAGNOSTICS
+#define TIO_DISPLAY_DIAGNOSTICS 1
+#endif
 static NSURL *Destination;
 static NSMutableArray *Rows;
 static NSMutableDictionary *Counts;
@@ -25,7 +28,7 @@ void TDPDiagRecord(NSString *event,NSDictionary *values){
   });}
  }
 }
-void TDPDiagConfigure(NSURL *file){@synchronized(NSProcessInfo.processInfo){
+void TDPDiagConfigure(NSURL *file){if(!TIO_DISPLAY_DIAGNOSTICS)return;@synchronized(NSProcessInfo.processInfo){
  if(!file.isFileURL||Destination)return;
  if(![NSFileManager.defaultManager createDirectoryAtURL:file.URLByDeletingLastPathComponent withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil])return;
  Destination=[file copy];Rows=[NSMutableArray new];Counts=[NSMutableDictionary new];Writer=dispatch_queue_create("io.turboio.display.numeric-diagnostics",DISPATCH_QUEUE_SERIAL);

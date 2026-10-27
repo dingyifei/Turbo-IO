@@ -30,10 +30,10 @@ NSArray<NSDictionary *> *LegacySections(NSString *page){
         @{@"title":@"运行状态",@"rows":@[Row(@"status",@"适配与回调",@"checkmark.shield",2,0),Row(@"glassesLog",@"眼镜日志 · 仅本机",@"doc.text.magnifyingglass",-2,3)]},
         @{@"title":@"手动测试",@"rows":@[Row(@"developerApps",@"我的应用 · SDK",@"square.stack.3d.up",-2,26),Row(@"dashboardEditor",@"我的仪表盘 · 可视化编辑",@"rectangle.3.group",-2,25),Row(@"dashboardCard",@"开发者仪表盘 · TDC1",@"chart.bar.xaxis",-2,24),Row(@"a2ui",@"自定义 UI 真机验收",@"rectangle.3.group",-2,2),Row(@"apiTest",@"测试模型接口",@"bubble.left.and.bubble.right",0,2),Row(@"searchTest",@"测试联网搜索",@"globe",0,9),Row(@"todoTest",@"待办协议验收",@"checklist",0,10)]},
         @{@"title":@"固件研究",@"rows":@[
-#if TIO_IMAGE_RX_LAB
 #if TIO_DISPLAY_PHONE
         Row(@"displayPhone",@"灵活显示 · PHONE 06",@"rectangle.connected.to.line.below",-2,8),
 #endif
+#if TIO_IMAGE_RX_LAB
         Row(@"imageRXLab",@"N8W 单张传图 · FIX 01",@"photo",-2,7),
 #endif
 #if TIO_DISPLAY_FLASH

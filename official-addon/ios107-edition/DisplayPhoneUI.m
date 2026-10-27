@@ -28,7 +28,9 @@ extern BOOL TWReaderAutomaticIdle(void);
 #import "ExperimentalOTAFlash.h"
 #import "display_carrier.h"
 #import "ProtocolContext.h"
+#if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
+#endif
 #import <objc/message.h>
 #import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -181,7 +183,13 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
  [NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:path error:nil];
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t{return 4;}
-- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return s==0?2:s==1?4:s==2?3:4;}
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{
+#if TIO_IMAGE_RX_LAB
+ return s==0?2:s==1?4:s==2?3:4;
+#else
+ return s==0?2:s==1?4:s==2?2:4;
+#endif
+}
 - (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s{return @[@"连接与能力 · 必须真实回执",@"手机绘图 · 不改变眼镜固件",@"测试与退出",@"低延迟实验 · 只传变化区域"][s];}
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{
  UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.numberOfLines=c.detailTextLabel.numberOfLines=0;c.detailTextLabel.textColor=UIColor.secondaryLabelColor;
@@ -196,7 +204,19 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
   else if(ip.row==3)c.detailTextLabel.text=@"单帧139块；此前真机约20秒。完整校验后才换画面，25秒未完成停止。首次发送后建立局部更新基线。";
   else c.detailTextLabel.text=self.loading?@"正在本机解码…":@"只修改手机预览，不自动发送";
  }
- if(ip.section==2){c.textLabel.text=@[@"3 · 发送 20×20 测试标记",@"关闭眼镜测试页",@"返回 N8W 旧版传图"][ip.row];c.detailTextLabel.text=ip.row==0?Session.state?:@"尚未查询":ip.row==1?@"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭":@"保留 FIX 01，使用人工 SID；无需新固件";}
+ if(ip.section==2){
+  c.textLabel.text=@[@"3 · 发送 20×20 测试标记",@"关闭眼镜测试页"
+#if TIO_IMAGE_RX_LAB
+  ,@"返回 N8W 旧版传图"
+#endif
+  ][ip.row];
+  c.detailTextLabel.text=ip.row==0?Session.state?:@"尚未查询":
+#if TIO_IMAGE_RX_LAB
+  ip.row==1?@"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭":@"保留 FIX 01，使用人工 SID；无需新固件";
+#else
+  @"需要会话有效且无在途任务；退出手机页会停止续租，不保证镜片立即关闭";
+#endif
+ }
  if(ip.section==3){
   c.textLabel.text=@[@"4 · 距离 80 / 60 米切换并局部发送",@"5 · 左右转切换并局部发送",@"6 · 重发同图（应为零传输）",@"像素基线与局部传输状态"][ip.row];
   c.detailTextLabel.text=ip.row==3?[NSString stringWithFormat:@"基线%@ · %lu/%lu块 · %.2f秒\n%@",Session.hasPixelBaseline?@"已确认":@"无效",(unsigned long)Session.completedRects,(unsigned long)Session.deltaTotal,Session.deltaElapsed,Session.state?:@"未查询"]:@"先成功发送一次完整导航示例图，再点本项。只发送差异，最多32块；不是实时导航，不自动连续发送。";
@@ -216,7 +236,9 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
  }
  if(p.section==2&&p.row==0)[self result:[Session sendTestRect]];
  if(p.section==2&&p.row==1)[self result:[Session closePage]];
+#if TIO_IMAGE_RX_LAB
  if(p.section==2&&p.row==2)[self.navigationController pushViewController:TIOImageUploadLabController() animated:YES];
+#endif
  if(p.section==3&&p.row<3){
   BOOL left=p.row==1?!self.left:self.left;unsigned meters=p.row==0?(self.meters==80?60:80):self.meters;
   UIImage *preview=p.row==2?self.preview:NavigationImage(left,meters);NSData *pixels=p.row==2?self.pixels:Gray(preview);

@@ -16,24 +16,26 @@
 #include <math.h>
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadTransport.h"
+#endif
 #if TIO_DISPLAY_PHONE
 #import "DisplayPhoneTransport.h"
-#if TIO_NATIVE_NAV
+#endif
+#if TIO_DISPLAY_PHONE && TIO_NATIVE_NAV
 #import "TNVTransport.h"
 #endif
 #if TARGET_OS_IPHONE && TIO_DISPLAY_FLASH
 #import "DisplayPhoneUI.h"
-#endif
-#endif
 #endif
 typedef BOOL (*TIOOTAScopedSender)(NSString *,NSDictionary *);
 // one row per module that sends its own scoped rayneonet_sendFile; deleting a module deletes its row and its #import.
 static const TIOOTAScopedSender ScopedFileSenders[]={
 #if TIO_IMAGE_RX_LAB
  TIOImageUploadIsScopedCall,
+#endif
 #if TIO_DISPLAY_PHONE
  TDPPhoneIsScopedCall,
-#if TIO_NATIVE_NAV
+#endif
+#if TIO_DISPLAY_PHONE && TIO_NATIVE_NAV
  TDGlassesIsScopedCall,
  TAPIsScopedCall,
  TNVIsScopedCall,
@@ -43,8 +45,6 @@ static const TIOOTAScopedSender ScopedFileSenders[]={
  CEIsScopedCall,
  DRIsScopedCall,
  TDIsScopedCall,
-#endif
-#endif
 #endif
  NULL};
 NSUInteger TIOOTAScopedSenderCount(void){NSUInteger n=0;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s;s++)n++;return n;}

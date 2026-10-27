@@ -12,6 +12,9 @@ case "$mode" in
   embedded) output=build/embedded/TurboIOPrivateAddon.dylib; install_name=@rpath/TurboIOPrivateAddon.dylib; mkdir -p build/embedded ;;
   *) echo 'Usage: build.sh [jailbreak|embedded] [target.bundle.id]' >&2; exit 2 ;;
 esac
+[[ ${TIO_DEV:-0} != 1 ]] || export TIO_IMAGE_RX_LAB=1
+[[ ${TIO_MAPKIT_ENABLED:-0} != 1 ]] || export TIO_DISPLAY_PHONE=1
+diag=${TIO_DEV:-${TIO_IMAGE_RX_LAB:-0}}
 [[ ${TIO_MAPKIT_ENABLED:-0} != 1 || ${TIO_AMAP_ENABLED:-0} != 1 ]] || { echo 'MapKit and AMap navigation builds are mutually exclusive' >&2; exit 2; }
 nav_options=()
 if [[ ${TIO_AMAP_ENABLED:-0} == 1 ]]; then
@@ -74,9 +77,9 @@ fi
 # Opt-in diagnostic for the iOS 16 jailbreak injector's chained-fixup stall.
 # Keep the normal embedded build unchanged until the device comparison passes.
 if [[ ${TIO_DISPLAY_PHONE:-0} == 1 ]]; then
-  [[ ${TIO_IMAGE_RX_LAB:-0} == 1 && "$mode" == embedded ]] || exit 2
+  [[ "$mode" == embedded ]] || { echo 'Display phone core is embedded only' >&2; exit 2; }
   image_options+=(-DTIO_DISPLAY_PHONE=1 \
-  -DTIO_DISPLAY_DIAGNOSTICS=1 \
+  -DTIO_DISPLAY_DIAGNOSTICS=$diag \
   -DTIO_NATIVE_NAV=1 \
   nav_runtime.c \
   RoadMap.m \
@@ -113,6 +116,7 @@ fi
 if [[ ${TIO_CLASSIC_BINDINGS:-0} == 1 ]]; then
   link_options+=(-Wl,-no_fixup_chains)
 fi
+echo "TurboIO profile: $([[ ${TIO_IMAGE_RX_LAB:-0} == 1 ]] && echo dev || echo daily)" >&2
 xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-min=16.0 \
   -fobjc-arc \
   -fmodules \
