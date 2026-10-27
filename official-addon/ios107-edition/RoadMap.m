@@ -223,6 +223,6 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  }
  if(!_scene)return frame;NSArray *xy=XY(position,_origin);double x=[xy[0] doubleValue]*4,y=[xy[1] doubleValue]*4;if(fabs(x)>2000||fabs(y)>2000)return frame;
  uint8_t pose[12]={0};W32(pose,_generation);W16(pose+4,(int)lround(x));W16(pose+6,(int)lround(y));W16(pose+8,[frame[@"navHeading"] unsignedIntValue]%360);
- NSMutableDictionary *out=[frame mutableCopy];out[@"tnrScene"]=_scene;if(_scene2)out[@"tnrScene2"]=_scene2;out[@"tnrPose"]=[NSData dataWithBytes:pose length:12];out[@"tnrPoseAt"]=frame[@"tnrLocationAt"];return out;
+ NSMutableDictionary *out=[frame mutableCopy];out[@"tnrScene"]=_scene;if(_scene2)out[@"tnrScene2"]=_scene2;out[@"tnrPose"]=[NSData dataWithBytes:pose length:12];out[@"tnrPoseAt"]=frame[@"tnrLocationAt"];double speed=[frame[@"navSpeed"] doubleValue];out[@"tnrSpeed"]=@((unsigned)lround(MIN(50.0,isfinite(speed)?MAX(0.0,speed):0.0)*4));return out;
 }
 @end

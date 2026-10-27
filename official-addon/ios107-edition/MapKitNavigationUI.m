@@ -292,7 +292,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     NSMutableDictionary *f=[@{@"phase":@"navigating",@"icon":@(icon),@"meters":@(arrive?0:TIOGuideRoundMeters(p.toManeuver)),@"turn":turn,@"road":road,@"remainingMeters":@(arrive?0:TIOGuideRoundMeters(p.remainingMeters)),@"remainingSeconds":@(arrive?0:60*(long)ceil(p.remainingSeconds/60)),
         @"simulated":@(self.simulated),@"segment":@(s.step),@"observedAt":@(NSDate.date.timeIntervalSince1970),@"tnrSource":self.simulated?@"mapkit-simulation":@"mapkit-realtime"} mutableCopy];
     [f addEntriesFromDictionary:TNVNormalizeCoordinates(ahead)];
-    f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(now);f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
+    f[@"navSpeed"]=@(isfinite(speed)&&speed>=0?speed:0);f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(now);f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
     NSDictionary *frame=[self.roadMap decorate:f coordinates:ahead];self.display=frame;
     if(!self.firstFrameAt)self.firstFrameAt=now;
     if(self.glassesStarted){TDPPhoneNavigationOffer(frame);self.offers++;}
