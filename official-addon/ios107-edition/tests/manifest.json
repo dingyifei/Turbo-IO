@@ -247,6 +247,10 @@
     "AppleAICoreTests.m": {
       "status": "run",
       "group": "apple-ai-core"
+    },
+    "tests/NoNetworkTurnTests.m": {
+      "status": "run",
+      "group": "no-network-turn"
     }
   }
 }
