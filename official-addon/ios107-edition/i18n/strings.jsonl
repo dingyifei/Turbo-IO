@@ -1277,7 +1277,7 @@
 {"key":"缓存音频","en":"Cached audio"}
 {"key":"编辑文字","en":"Edit text"}
 {"key":"缺少组件类型","en":"Missing component type"}
-{"key":"网易云音乐","en":"NetEase Cloud Music"}
+{"key":"网易云音乐","en":"NetEase Music"}
 {"key":"网易云音乐 · 第十项菜单","en":"NetEase Cloud Music · Tenth menu item"}
 {"key":"网络请求未完成；没有自动重试，请刷新确认状态。","en":"Network request did not finish. No automatic retry; refresh to confirm status."}
 {"key":"置顶卡片","en":"Move card to top"}
@@ -1445,7 +1445,7 @@
 {"key":"连接用户自己的 HTTPS API。只读取你授权的设备任务；不会上传本机草稿或聊天。","en":"Connect your own HTTPS API. Reads only device tasks you authorize; does not upload phone drafts or chats."}
 {"key":"连接目标变化，请重新读取基线","en":"Connection target changed; read the baseline again."}
 {"key":"连接设备变化，已停止本轮操作","en":"Device connection changed; this round stopped."}
-{"key":"连接设备变化，操作已停止。","en":"Device connection changed; operation stopped."}
+{"key":"连接设备变化，操作已停止。","en":"Connected device changed; operation stopped."}
 {"key":"连接设备变化，本轮停止；结果未知。请重新查询。","en":"Device connection changed; stopping this round; result unknown. Query again."}
 {"key":"连接路由不匹配","en":"Connection route mismatch"}
 {"key":"连接配置","en":"Connection settings"}
