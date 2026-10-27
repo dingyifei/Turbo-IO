@@ -209,6 +209,10 @@
     "tests/TIOLanguageTests.m": {
       "status": "run",
       "group": "language"
+    },
+    "tests/VoiceExitTests.m": {
+      "status": "run",
+      "group": "voice-exit"
     }
   }
 }

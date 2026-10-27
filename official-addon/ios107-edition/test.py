@@ -59,6 +59,7 @@ def catalyst_test(name,files,argv=(),extra=()):
     groups.append(name);print(name+': PASS')
 test('host',['HostCompatibilityTests.m'])
 test('language',['tests/TIOLanguageTests.m'])
+test('voice-exit',['tests/VoiceExitTests.m','Core.m'],extra=['-fmodules','-Wno-unused-parameter'])
 test('stability',['RoadMap.m','nav_runtime.c','tests/StabilityTests.m'])
 test('coordinates',['RoadMap.m','nav_runtime.c','tests/CoordinateTests.m'])
 test('replay',['RoadMap.m','NativeNavigation.m','nav_runtime.c','tests/RoadMapTests.m'],[P/'tests/maps',out,'v2'])

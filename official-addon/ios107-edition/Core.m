@@ -21,6 +21,22 @@
 
 BOOL TIOIsVoiceExitCommand(NSString *text) {
     if(![text isKindOfClass:NSString.class]||!text.length||text.length>48)return NO;
+    // English matching uses the original utterance and is independent of UI language.
+    NSMutableString *english=[text.lowercaseString mutableCopy];
+    [english replaceOccurrencesOfString:@"’" withString:@"'" options:0 range:NSMakeRange(0,english.length)];
+    [english replaceOccurrencesOfString:@"'" withString:@"" options:0 range:NSMakeRange(0,english.length)];
+    NSMutableCharacterSet *englishTrim=[NSCharacterSet.whitespaceAndNewlineCharacterSet mutableCopy];
+    [englishTrim addCharactersInString:/*i18n:keep*/@"，。！？,.!?、：: '\";"];
+    NSString *normalized=[english stringByTrimmingCharactersInSet:englishTrim];
+    NSRegularExpression *whitespace=[NSRegularExpression regularExpressionWithPattern:@"\\s+" options:0 error:NULL];
+    normalized=[whitespace stringByReplacingMatchesInString:normalized options:0 range:NSMakeRange(0,normalized.length) withTemplate:@" "];
+    NSRegularExpression *wake=[NSRegularExpression regularExpressionWithPattern:/*i18n:keep*/@"^(hey|hi|ok|okay) rayneo[ ,]*" options:0 error:NULL];
+    NSTextCheckingResult *match=[wake firstMatchInString:normalized options:0 range:NSMakeRange(0,normalized.length)];
+    if(match)normalized=[normalized substringFromIndex:NSMaxRange(match.range)];
+    static NSSet<NSString *> *englishExits;static dispatch_once_t once;dispatch_once(&once,^{englishExits=[NSSet setWithArray:@[
+        /*i18n:keep*/@"never mind",/*i18n:keep*/@"nevermind",/*i18n:keep*/@"stop",/*i18n:keep*/@"exit",/*i18n:keep*/@"close",/*i18n:keep*/@"cancel",/*i18n:keep*/@"dismiss",/*i18n:keep*/@"thats all",/*i18n:keep*/@"that is all",/*i18n:keep*/@"thats it",/*i18n:keep*/@"im done",/*i18n:keep*/@"go away",/*i18n:keep*/@"close window",/*i18n:keep*/@"close the window",/*i18n:keep*/@"close chat",/*i18n:keep*/@"end chat",/*i18n:keep*/@"end conversation",/*i18n:keep*/@"exit chat",/*i18n:keep*/@"no thanks",/*i18n:keep*/@"goodbye"
+    ]];});
+    if([englishExits containsObject:normalized])return YES;
     NSMutableCharacterSet *trim=[NSCharacterSet.whitespaceAndNewlineCharacterSet mutableCopy];
     [trim addCharactersInString:/*i18n:keep*/@"，。！？,.!?、：:"];
     NSString *s=[text stringByTrimmingCharactersInSet:trim];
