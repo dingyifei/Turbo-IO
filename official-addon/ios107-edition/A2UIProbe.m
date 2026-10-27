@@ -1,5 +1,6 @@
 #import "A2UIProbe.h"
 #import "TIOLanguage.h"
+#import "TIOConfirm.h"
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
 // All state transitions run on main. Passive observation never sends a packet.
@@ -87,7 +88,7 @@ void TIOA2UIObserveEvent(NSDictionary *event){
         if(!Owned){Owned=[@"turbo_ui_" stringByAppendingString:[NSUUID.UUID.UUIDString.lowercaseString stringByReplacingOccurrencesOfString:@"-" withString:@""]];OwnedDevice=Device;Save(@"owner.json",@{@"id":Owned,@"device":Device});}
     }else if(!Owned){Note=TIOText(@"没有本工具创建的测试卡，不执行卸载");[self refresh];return;}
     NSString *operation=@[@"",@"query",@"text",@"layout",@"uninstall",@"bar",@"line",@"card",@"list"][p.row];
-    UIAlertController *a=[UIAlertController alertControllerWithTitle:p.row==4?TIOText(@"卸载测试卡？"):p.row==2?TIOText(@"新增一张自定义文字卡？"):TIOText(@"已看到文字基线，继续单项测试？") message:TIOText(@"只操作本工具记录的测试 ID，不删除其他卡片。测试可能被当前固件拒绝；失败不自动重试，恢复文字卡可点第2项，清理点第4项。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"执行测试") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){Send([operation isEqual:@"uninstall"]?TIOA2UIUninstall(Owned):TIOA2UIFixtureInstall(Owned,operation),operation);}]];[self presentViewController:a animated:YES completion:nil];
+    TIOConfirm(self,p.row==4?TIOText(@"common.editor.a2uiUninstallTitle"):p.row==2?TIOText(@"common.editor.a2uiAddTitle"):TIOText(@"common.editor.a2uiContinueTitle"),TIOText(@"common.editor.a2uiPrompt"),TIOText(@"common.editor.a2uiAction"),NO,^{Send([operation isEqual:@"uninstall"]?TIOA2UIUninstall(Owned):TIOA2UIFixtureInstall(Owned,operation),operation);});
 }
 @end
 UIViewController *TIOA2UIController(void){return [[TIOA2UIPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];}

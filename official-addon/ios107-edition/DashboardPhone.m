@@ -5,6 +5,7 @@
 #ifndef TDC_HOST_TEST
 #import <UIKit/UIKit.h>
 #import "ResearchUI.h"
+#import "TIOConfirm.h"
 #endif
 #import <objc/message.h>
 // Main-thread, explicit user action only. Snapshots stay in RAM. No file backups.
@@ -80,8 +81,8 @@ void TDCObserveEvent(NSDictionary *e){
 }
 - (void)tableView:(UITableView *)v didSelectRowAtIndexPath:(NSIndexPath *)p{[v deselectRowAtIndexPath:p animated:YES];if(p.row==0||p.row==5)return;if(Sequence){Changed(TIOText(@"正在等待眼镜回执，请稍候"));return;}
  Device=TIOProtocolDevice();if(!Device.length){Stop(TIOText(@"请先返回官方首页确认眼镜连接"));return;}if(p.row==1){Query(/*i18n:id*/@"读取当前状态");return;}
- if(p.row==4){UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"只移除 Turbo 测试卡？") message:TIOText(@"不会删除待办事项或其他卡片。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"移除") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){Send(TIOA2UIUninstall(TDCIdentifier()),/*i18n:id*/@"移除测试卡");}]];[self presentViewController:a animated:YES completion:nil];return;}
- UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"已刷入 TDC1 固件？") message:TIOText(@"将新增/更新本测试卡并置顶，其余卡片按原序后移。仅演示数值，不读取账户和电脑。旧固件不支持该原生排版。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"已刷入，发送") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){Alternate=p.row==3;Installing=YES;Query(/*i18n:id*/@"读取原顺序");}]];[self presentViewController:a animated:YES completion:nil];
+ if(p.row==4){TIOConfirm(self,TIOText(@"common.editor.dashboardRemoveTitle"),TIOText(@"common.editor.dashboardRemoveDetail"),TIOText(@"common.editor.remove"),YES,^{Send(TIOA2UIUninstall(TDCIdentifier()),/*i18n:id*/@"移除测试卡");});return;}
+ TIOConfirm(self,TIOText(@"common.editor.dashboardInstallTitle"),TIOText(@"common.editor.dashboardPrompt"),TIOText(@"common.editor.dashboardInstallAction"),NO,^{Alternate=p.row==3;Installing=YES;Query(/*i18n:id*/@"读取原顺序");});
 }
 @end
 UIViewController *TDCDashboardController(void){return [[TDCDashboardPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];}
