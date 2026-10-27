@@ -1,3 +1,4 @@
+#include "../common-v1/business_idle.h"
 #include "../app-runtime-v1/app_service.h"
 #include "../didi-v1/ride_service.h"
 #include "music_service.h"
@@ -26,7 +27,7 @@ extern uint32_t stream_tick(void);
 extern void *nav_ensure_menu(void *),nav_set_state(void *,unsigned);
 extern const char *nav_top_app(void);
 extern void *nav_monitors(void),*nav_link(void *),*nav_input(void *);
-extern bool nav_bonded(void *),nav_folded(void *),dots_business_idle(void);
+extern bool nav_bonded(void *),nav_folded(void *),tio_business_idle(void);
 extern int nav_connection(unsigned),nav_force_off(void),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *);
 extern uint32_t nav_always_on(const char *);
 extern void nav_release_always_on(const char *,uint32_t),nav_screen_on(bool);
@@ -38,7 +39,7 @@ static void *manager(void){return ptr(*(void **)(uintptr_t)0x19971594,0x3c);}
 static TNNavSlot *navslot(void *app){return app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static TMMusicSlot *slot_of(void *app){TNNavSlot *n=navslot(app);return n?n->music:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
-static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;return same(nav_top_app(),"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&dots_business_idle();}
+static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;return same(nav_top_app(),"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&tio_business_idle();}
 static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),0x10)==c->app&&home();}
 static void release(Control *c){if(c->token){nav_release_always_on("turbo_music_v1",c->token);c->token=0;}}
 static bool wake(Control *c){if(!owns(c))return false;if(!c->token)c->token=nav_always_on("turbo_music_v1");if(!c->token)return false;nav_screen_on(true);c->music.awake=true;c->music.wake_tick=stream_tick();return true;}

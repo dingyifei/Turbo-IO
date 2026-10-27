@@ -2,7 +2,7 @@
 #include "../didi-v1/ride_service.h"
 #include "reader_service.h"
 #include "reader_view.h"
-#include "reader_input.h"
+#include "../common-v1/wheel_input.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"

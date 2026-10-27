@@ -1,4 +1,4 @@
-#include "reader_input.h"
+#include "../common-v1/wheel_input.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>

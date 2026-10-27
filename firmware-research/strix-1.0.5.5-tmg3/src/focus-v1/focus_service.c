@@ -1,3 +1,4 @@
+#include "../common-v1/business_idle.h"
 #include "../app-runtime-v1/app_service.h"
 #include "../didi-v1/ride_service.h"
 /* One bounded service owns time. Page/launcher destruction does NOT own time.
@@ -10,7 +11,7 @@
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
 #include "../weread-v1/reader_service.h"
-#include "../weread-v1/reader_input.h"
+#include "../common-v1/wheel_input.h"
 #include "../menu8-renderer.h"
 #include <string.h>
 #define TF_MESSAGE 0x54465031u
@@ -23,7 +24,7 @@ extern void stream_timer_period(void *,uint32_t);
 extern void *nav_ensure_menu(void *),nav_set_state(void *,unsigned);
 extern const char *nav_top_app(void);
 extern void *nav_monitors(void),*nav_link(void *),*nav_input(void *);
-extern bool nav_bonded(void *),nav_folded(void *),dots_business_idle(void),focus_screen_on(void);
+extern bool nav_bonded(void *),nav_folded(void *),tio_business_idle(void),focus_screen_on(void);
 extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *);
 extern uint32_t nav_always_on(const char *);
 extern void nav_release_always_on(const char *,uint32_t),nav_screen_on(bool),nav_stop_event(void *);
@@ -35,7 +36,7 @@ static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static void *manager(void){return ptr(*(void **)(uintptr_t)0x19971594,0x3c);}
 static TNNavSlot *navslot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
-static bool home(void){static const char name[]="com.rayneo.liteos.launcher";const char *s=nav_top_app();if(!s)return false;for(unsigned i=0;i<sizeof name;i++)if(s[i]!=name[i])return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&dots_business_idle();}
+static bool home(void){static const char name[]="com.rayneo.liteos.launcher";const char *s=nav_top_app();if(!s)return false;for(unsigned i=0;i<sizeof name;i++)if(s[i]!=name[i])return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
 static bool owns(TFControl *c){return c->app&&ptr(manager(),0x10)==c->app&&home();}
 static TFControl *control(bool create){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)break;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+8);if(cb==tick){TFControl *c=ptr(t,12);return c&&c->magic==TF_MAGIC&&c->timer==t?c:NULL;}if(i==511)return NULL;}
  if(!create)return NULL;TFControl *c=stream_memalign(64,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=TF_MAGIC;tf_init(&c->state,stream_tick());c->screen=focus_screen_on();c->timer=stream_timer_create(tick,250,c);if(!c->timer){stream_free(c);return NULL;}return c;

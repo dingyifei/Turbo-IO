@@ -7,7 +7,7 @@
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
 #include "../weread-v1/reader_service.h"
-#include "../weread-v1/reader_input.h"
+#include "../common-v1/wheel_input.h"
 #include "../focus-v1/focus_service.h"
 #include "../menu8-renderer.h"
 #include <string.h>

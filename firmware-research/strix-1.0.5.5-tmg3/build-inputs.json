@@ -546,6 +546,10 @@
     {
       "source": "camera-v1/camera_native.c",
       "sha256": "bfd3f2c2fa193d1f19e58d5ae4d760ca095aa68dc82d87311d0ac126d42bb9c9"
+    },
+    {
+      "source": "common-v1/business_idle.c",
+      "sha256": ""
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
@@ -576,7 +580,7 @@
       "sha256": ""
     },
     {
-      "path": "src/context-english-v1/coexist.S",
+      "path": "src/common-v1/coexist.S",
       "sha256": ""
     }
   ]

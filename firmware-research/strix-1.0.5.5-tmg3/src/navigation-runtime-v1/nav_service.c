@@ -1,3 +1,4 @@
+#include "../common-v1/business_idle.h"
 #include "../camera-v1/camera_native.h"
 #include "../dots-v1/dots_native.h"
 #include "../context-english-v1/english_native.h"
@@ -29,7 +30,7 @@ extern void stream_timer_period(void *,uint32_t);
 extern void *nav_ensure_menu(void *),nav_set_state(void *,unsigned),stock_vm_event(void *);
 extern const char *nav_top_app(void);
 extern void *nav_monitors(void),*nav_link(void *),*nav_input(void *);
-extern bool nav_bonded(void *),nav_folded(void *),dots_business_idle(void);
+extern bool nav_bonded(void *),nav_folded(void *),tio_business_idle(void);
 extern int nav_connection(unsigned);
 extern unsigned native_event_code(void *),native_event_key(void *);
 extern void nav_stop_event(void *);
@@ -46,7 +47,7 @@ static TNNavSlot *slot_of(void *app){return app?((M8NativeTail *)((uint8_t *)app
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool safe_home(void){
  if(!same(nav_top_app(),"com.rayneo.liteos.launcher"))return false;
- void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&dots_business_idle();
+ void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();
 }
 static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),0x10)==c->app&&word(manager(),0x1c)==1&&same(nav_top_app(),"com.rayneo.liteos.launcher");}
 static bool available(void *ctx){Control *c=ctx;
