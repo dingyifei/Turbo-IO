@@ -3,6 +3,7 @@
 #import "MusicTransport.h"
 #import "ProtocolContext.h"
 #import "music.h"
+#import "MusicClock.h"
 #import "DisplayDiagnostics.h"
 #import <objc/message.h>
 static uint32_t Read(const uint8_t *p){return p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
@@ -51,7 +52,7 @@ static NSData *Clip(NSString *s,NSUInteger max){if(![s isKindOfClass:NSString.cl
 - (void)pump{NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(_peer&&![_peer isEqual:TIOProtocolDevice()]){[self fail:TIOText(@"眼镜连接已变化，音乐仍可在手机播放")];return;}if(_failed)return;if(_packet){if(now>=_deadline)[self fail:TIOText(@"眼镜未回执：确认 TMU1 固件和蓝牙。传输已停止。")];return;}if(!_active||now<_next)return;
  if(_needClose){[self send:TM_CLOSE data:nil offset:0 final:NO];return;}
  if(_needOpen){_lastClock=now;[self send:TM_OPEN data:[self state] offset:0 final:NO];return;}
- if(now-_lastClock>=3){_lastClock=now;[self send:TM_CLOCK data:[self state] offset:0 final:NO];return;}
+ if(TMClockDue(_lastClock,now)){_lastClock=now;[self send:TM_CLOCK data:[self state] offset:0 final:NO];return;}
  if(_lyricsAt<_lyrics.length){NSUInteger n=MIN(TM_PACKET_MAX-32,_lyrics.length-_lyricsAt);[self send:TM_LYRICS data:[_lyrics subdataWithRange:NSMakeRange(_lyricsAt,n)] offset:_lyricsAt final:_lyricsAt+n==_lyrics.length];return;}
  if(_coverAt<_cover.length){NSUInteger n=MIN(TM_PACKET_MAX-32,_cover.length-_coverAt);[self send:TM_COVER data:[_cover subdataWithRange:NSMakeRange(_coverAt,n)] offset:_coverAt final:_coverAt+n==_cover.length];}
 }

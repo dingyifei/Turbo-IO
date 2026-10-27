@@ -101,10 +101,6 @@
       "status": "run",
       "group": "knowledge-tool-flow"
     },
-    "tests/LanguageFlagTests.m": {
-      "status": "run",
-      "group": "language-flag"
-    },
     "MenuLayoutTests.m": {
       "status": "run",
       "group": "menu-layout"
@@ -181,6 +177,14 @@
     "tests/CoordinateTests.m": {
       "status": "run",
       "group": "coordinates"
+    },
+    "tests/LanguageFlagTests.m": {
+      "status": "run",
+      "group": "language-flag"
+    },
+    "tests/MusicClockTests.m": {
+      "status": "run",
+      "group": "music-clock"
     },
     "tests/NavigationGuidanceTests.m": {
       "status": "run",
