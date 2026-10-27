@@ -2,6 +2,7 @@
 #import "ExperimentalOTAUI.h"
 #import "OTAWizardModel.h"
 #import "TIOLanguage.h"
+#import "TIOConfirm.h"
 #include <stdio.h>
 
 extern UIViewController *TIOCreateTurboPreview(void);
@@ -160,6 +161,68 @@ static void ScrollHubBottom(UINavigationController *navigation) {
     }
 }
 
+// A real UIKit alert reproduces the timing of a credential Save action. No
+// private UIAlertAction invocation is needed: the helper is called at the
+// same point, just before or just after an animated source dismissal starts.
+static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
+                               NSMutableArray<NSDictionary *> *results, dispatch_block_t finished);
+
+static void FinishConfirmRace(NSArray<NSDictionary *> *results) {
+    BOOL passed=results.count==6;
+    for (NSDictionary *entry in results) passed=passed && [entry[@"pass"] boolValue];
+    NSDictionary *report=@{@"pass":@(passed),@"cases":results};
+    NSURL *documents=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
+    NSURL *path=[documents URLByAppendingPathComponent:@"confirm-race-report.json"];
+    NSData *data=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted|NSJSONWritingSortedKeys error:nil];
+    BOOL written=data && [data writeToURL:path atomically:YES];
+    fprintf(stderr,"CONFIRM_RACE_%s %lu\n",passed&&written?"PASS":"FAIL",(unsigned long)results.count);
+    fflush(stderr);
+}
+
+static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
+                               NSMutableArray<NSDictionary *> *results, dispatch_block_t finished) {
+    if (index==6) { finished(); return; }
+    NSUInteger kind=index%3;
+    BOOL dismissing=index>=3;
+    NSString *kindName=@[@"notice",@"confirm",@"choose"][kind];
+    NSString *state=dismissing?@"dismissing":@"active";
+    NSString *targetTitle=[NSString stringWithFormat:@"race-%@-%@",kindName,state];
+    UIAlertController *source=[UIAlertController alertControllerWithTitle:@"race-source" message:nil preferredStyle:UIAlertControllerStyleAlert];
+    [source addTextFieldWithConfigurationHandler:^(UITextField *field) { field.text=@"invalid"; }];
+    [source addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [host presentViewController:source animated:YES completion:^{
+        __block NSUInteger callbackCount=0;
+        void (^invoke)(void)=^{
+            UIViewController *from=dismissing?host:nil;
+            if (kind==0) TIONotice(from,targetTitle,@"race-message");
+            else if (kind==1) TIOConfirm(from,targetTitle,@"race-message",TIOText(@"common.ok"),YES,^{callbackCount++;});
+            else TIOChoose(from,targetTitle,@"race-message",@[TIOText(@"common.ok")],0,[NSIndexSet indexSetWithIndex:0],^(NSInteger chosen) {
+                (void)chosen; callbackCount++;
+            });
+        };
+        BOOL sourceWasVisible=source.presentingViewController!=nil && source.view.window!=nil;
+        if (dismissing) [source dismissViewControllerAnimated:YES completion:nil];
+        invoke();
+        BOOL noPrematureTarget=(source.presentedViewController==nil &&
+            (host.presentedViewController==source || host.presentedViewController==nil));
+        if (!dismissing) [source dismissViewControllerAnimated:YES completion:nil];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(0.85*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
+            UIViewController *top=host.presentedViewController;
+            BOOL onScreen=[top isKindOfClass:UIAlertController.class] && top.view.window!=nil && !top.isBeingDismissed;
+            BOOL expected=onScreen && [((UIAlertController *)top).title isEqualToString:targetTitle];
+            BOOL pass=sourceWasVisible && noPrematureTarget && expected && callbackCount==0;
+            [results addObject:@{@"kind":kindName,@"state":state,@"pass":@(pass),
+                                 @"sourceWasVisible":@(sourceWasVisible),@"noPrematureTarget":@(noPrematureTarget),
+                                 @"targetOnScreen":@(expected),
+                                 @"observedTitle":onScreen?(((UIAlertController *)top).title?:@""):@"",
+                                 @"callbackCount":@(callbackCount)}];
+            dispatch_block_t next=^{ RunConfirmRaceCase(host,index+1,results,finished); };
+            if (host.presentedViewController) [host dismissViewControllerAnimated:NO completion:next];
+            else dispatch_async(dispatch_get_main_queue(),next);
+        });
+    }];
+}
+
 @interface TurboPreviewDelegate : NSObject<UIApplicationDelegate,UIWindowSceneDelegate>
 @property(nonatomic,strong) UIWindow *window;
 @end
@@ -179,6 +242,16 @@ static void ScrollHubBottom(UINavigationController *navigation) {
     host.view.backgroundColor=UIColor.systemBackgroundColor;
     self.window.rootViewController=host;
     [self.window makeKeyAndVisible];
+
+    if (HasArgument(@"--confirm-race-test")) {
+        fprintf(stderr,"PREVIEW_READY confirm-race %s\n",NSStringFromClass(host.class).UTF8String);
+        fflush(stderr);
+        NSMutableArray<NSDictionary *> *results=[NSMutableArray array];
+        dispatch_async(dispatch_get_main_queue(),^{
+            RunConfirmRaceCase(host,0,results,^{ FinishConfirmRace(results); });
+        });
+        return;
+    }
 
     NSString *screen=Argument(@"--screen")?:@"hub";
     NSString *fixture=Argument(@"--ota-fixture");

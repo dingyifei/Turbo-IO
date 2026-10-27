@@ -10,41 +10,21 @@
 
 公开版只提供源码与构建工具；自行取得合法未加密原厂输入、匹配签名和设备授权，按 README 打包。新打包器默认加入专用升级通道，**不自动开始下载或刷写**；旧 APP107 禁用 OTA 包必须重新构建，改 README 不会更新已装 App。
 
-## 1. 准备
+## Firmware wizard (English)
 
-- 备份手机 App 数据；签名冲突时不要直接卸载。
-- 眼镜电量至少 50%，回到首页；结束录音、全天智记、导航、音乐、阅读、拍照和对话。
-- 手机保持解锁和稳定连接。关闭官方固件的自动更新，避免与本次试刷冲突。
-- 进入「TurboIO → 诊断 → TMG2 · 可选排数菜单 · 默认锁定」。状态应显示 **APP107-OTA-PHONE-01**，初始授权 0、已开始 0。
-- 等待「内置 TMG2 候选校验通过」。固件 ZIP SHA-256 必须为：
+Open **Turbo › Glasses › Glasses firmware**. The wizard shows the firmware name from the app's `TIOExperimentalOTABuild` key. With that key set to `TMG3`, it names TMG3. The WP5 C4 package still carries the TMG2-safe `TurboWeReadCandidate.zip` and a TMG2 Info value; WP6 must update the pins and Info before a TMG3 package is available. Opening the wizard does not start an installation.
 
-```text
-6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473
-```
+1. **Check.** Back up the phone App data. Keep the glasses above 50% charge, on their home screen and connected; finish recording, navigation, music and other active tasks. The Package row checks the candidate, Source checks the local download service, Protection checks the host gate, Auto Update checks RayNeo's setting, and Version checks the recent read from the glasses. On a fresh install, open **RayNeo › Glasses › Software version** and turn Auto Update **on, then off once** so RayNeo saves the setting. The wizard's **Fix** can turn it off only when an existing, recognizable setting is present; if the setting is missing or unknown, use RayNeo. Do not continue while a required check fails.
+2. **Download.** Open the wizard's 15-minute download window. In **RayNeo › Glasses › Software version**, download the update and stop at **Ready to install**; do not tap Start install yet. Return to Turbo and wait for the downloaded directory check to pass. RayNeo may reuse a matching verified cache, so a download request count of zero alone does not show failure. If the window expires or the directory does not match, stop and repeat the checks.
+3. **Install.** Have RayNeo read the glasses version again and return to Turbo **within 120 seconds**. Check that the version read is fresh and the downloaded directory still matches. Read and accept the wizard's **single confirmation** to allow one transfer. Authorization alone does not start a flash: return to **Ready to install** in RayNeo and manually tap **Start install** there. Wait for RayNeo to finish and the glasses to restart and reconnect. Then fully close and relaunch RayNeo; check its result and the wizard status before using the glasses normally. If the result is unclear, stop rather than repeat the transfer.
 
-## 2. 只下载验收
+## 固件向导（中文）
 
-1. 点「开启 15 分钟只下载验收」，确认来源已开放、HTTP 自检通过。
-2. 回到官方固件页，重新检查并下载，停在「软件就绪」，**先不要开始安装**。
-3. 回插件 TMG2 页，点「核对官方解压目录」，确认 16 个成员均与 TMG2 一致。15 个负载文件加 1 个清单，不是只检查 ZIP 文件名。
+打开 **Turbo › 眼镜 › 眼镜固件**。向导从 App 的 `TIOExperimentalOTABuild` 键读取固件名称；该键为 `TMG3` 时显示 TMG3。WP5 C4 包仍包含面向 TMG2 的 `TurboWeReadCandidate.zip`，Info 值也仍为 TMG2；须等 WP6 更新校验信息和 Info 后才能提供 TMG3 包。打开向导不会开始安装。
 
-官方可能直接复用已经校验一致的缓存；下载请求计数为 0 本身不是失败，关键是目录与候选一致。若看不到更新，回插件确认下载窗口和 HTTP 自检，再重新进入官方固件页检查。若校验失败、出现别的候选或状态不明，停止，不授权。
-
-## 3. 单次授权与官方安装
-
-1. 再确认电量、无任务及自动更新已关闭。在官方固件页重新检查版本。
-2. **两分钟内**回插件 TMG2 页，点「允许一次 TMG2 可选排数菜单试刷」，阅读风险说明并输入 `TMG2`。
-3. 确认「授权：1」，再回官方「软件就绪」页手动点「开始安装」。
-4. 等待传输、安装、眼镜自然重启及重新连接。期间不要强退 App、切换包、断电或重复开始。
-
-门禁绑定实际设备、Mode 2、冻结的文件、版本和清单，逐片比对数据。预检过期时重新检查版本；未开始的授权可以撤销。**已经开始或结果不明时，不用重启 App 来绕过门禁。**
-
-## 4. 刷后必须收尾
-
-1. 确认官方显示安装成功，眼镜已经自然回到首页并重新连接；仅进度到 100% 不足以判断安装成功。
-2. **只有成功确认后**，在手机多任务界面划掉雷鸟 App，再重新打开（只切到后台再回来不等于退出重开）。不要重置或卸载 App。
-3. 回插件 TMG2 页确认 **授权 0、已开始 0、下载来源关闭**。若仍是授权 1，确认 App 确实已退出重开；状态不明先查日志，勿反复刷写。
-4. 重新测试眼镜菜单、音乐、导航及官方日常功能。未收尾的升级保护可能阻止正常业务。
+1. **检查。** 先备份手机 App 数据。眼镜电量保持 50% 以上、停在首页并保持连接，结束录音、导航、音乐等正在进行的任务。「固件包」检查候选包，「来源」检查本机下载服务，「保护」检查宿主门禁，「自动更新」检查雷鸟设置，「版本」检查最近一次眼镜版本回读。首次安装时，在 **RayNeo › 眼镜 › 软件版本**中把「自动更新」**先打开、再关闭一次**，让 RayNeo 保存该设置。仅当已有可识别的设置键时，向导的「修复」才能将其关闭；设置缺失或状态未知时请在 RayNeo 中操作。必需检查未通过时不要继续。
+2. **下载。** 在向导中开启 **15 分钟**下载窗口。到 **RayNeo › 眼镜 › 软件版本**下载更新，停在「**软件就绪**」，先不要点「开始安装」。返回 Turbo，等待解压目录校验通过。RayNeo 可能复用已校验且一致的缓存，因此下载请求数为 0 本身不代表失败。窗口过期或目录不匹配时，停止并重新检查。
+3. **安装。** 让 RayNeo 再次读取眼镜版本，并在 **120 秒内**返回 Turbo。确认版本回读仍有效、下载目录仍匹配。阅读向导的**单次确认**，允许一次传输。授权本身不会开始刷写：回到 RayNeo 的「软件就绪」页，**手动点「开始安装」**。等待 RayNeo 完成、眼镜重启并重新连接。随后彻底关闭并重新打开 RayNeo，核对官方结果和向导状态，再恢复日常使用。结果不明时停止，不要重复传输。
 
 本版不是原厂恢复工具：原厂 ZIP 或其他候选会被拒绝。恢复请读[原厂固件说明](../../firmware-research/strix-1.0.5.5/README.md)，使用独立匹配且经过验证的工具链。
 

@@ -3,6 +3,7 @@
 #import "ResearchUI.h"
 
 static UIViewController *TIOPresentationSource(UIViewController *from);
+static UIViewController *TIOWindowRoot(void);
 
 UIViewController *TIOTopController(void) {
     if (!NSThread.isMainThread) {
@@ -10,6 +11,10 @@ UIViewController *TIOTopController(void) {
         dispatch_sync(dispatch_get_main_queue(), ^{ result=TIOTopController(); });
         return result;
     }
+    return TIOPresentationSource(TIOWindowRoot());
+}
+
+static UIViewController *TIOWindowRoot(void) {
     UIWindow *window=nil;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (scene.activationState!=UISceneActivationStateForegroundActive || ![scene isKindOfClass:UIWindowScene.class]) continue;
@@ -22,7 +27,7 @@ UIViewController *TIOTopController(void) {
     if (!window) for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
         if (candidate.isKeyWindow) { window=candidate; break; }
     }
-    return TIOPresentationSource(window.rootViewController);
+    return window.rootViewController;
 }
 
 static UIViewController *TIOPresentationSource(UIViewController *from) {
@@ -41,7 +46,7 @@ static UIViewController *TIOPresenter(UIViewController *from) {
 
 // UIAlertAction handlers can run before UIKit finishes dismissing the alert.
 // Wait for the presentation relationship to end before invoking a caller's work.
-static void TIOAfterAlertDismissal(UIAlertController *alert, dispatch_block_t work) {
+static void TIOAfterAlertDismissal(UIViewController *alert, dispatch_block_t work) {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (!alert.presentingViewController) { work(); return; }
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(NSEC_PER_SEC/60)),
@@ -49,16 +54,41 @@ static void TIOAfterAlertDismissal(UIAlertController *alert, dispatch_block_t wo
     });
 }
 
+// An action handler may run before UIKit removes its source alert. The caller
+// can also pass the controller underneath an alert that is already dismissing.
+static UIViewController *TIOPresentationBlocker(UIViewController *from) {
+    UIViewController *cursor=(from && from.view.window) ? from : TIOWindowRoot();
+    for (NSUInteger depth=0;cursor && depth<32;depth++) {
+        if (cursor.presentingViewController &&
+            (cursor.isBeingDismissed || [cursor isKindOfClass:UIAlertController.class])) return cursor;
+        UIViewController *next=cursor.presentedViewController;
+        if (!next || next==cursor) break;
+        cursor=next;
+    }
+    return nil;
+}
+
+static void TIOPresentAfterDismissal(UIViewController *from, void(^present)(UIViewController *presenter)) {
+    UIViewController *blocker=TIOPresentationBlocker(from);
+    if (blocker) {
+        // Retain the outgoing alert until its presentation relationship ends.
+        TIOAfterAlertDismissal(blocker, ^{ TIOPresentAfterDismissal(from,present); });
+        return;
+    }
+    UIViewController *presenter=TIOPresenter(from);
+    if (presenter) present(presenter);
+}
+
 void TIONotice(UIViewController *from, NSString *title, NSString *message) {
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{ TIONotice(from,title,message); });
         return;
     }
-    UIViewController *presenter=TIOPresenter(from);
-    if (!presenter) return;
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.ok") style:UIAlertActionStyleCancel handler:nil]];
-    [presenter presentViewController:alert animated:YES completion:nil];
+    TIOPresentAfterDismissal(from, ^(UIViewController *presenter) {
+        UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.ok") style:UIAlertActionStyleCancel handler:nil]];
+        [presenter presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 void TIOConfirm(UIViewController *from, NSString *title, NSString *message,
@@ -67,17 +97,17 @@ void TIOConfirm(UIViewController *from, NSString *title, NSString *message,
         dispatch_async(dispatch_get_main_queue(), ^{ TIOConfirm(from,title,message,action,destructive,confirmed); });
         return;
     }
-    UIViewController *presenter=TIOPresenter(from);
-    if (!presenter) return;
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    __weak UIAlertController *weakAlert=alert;
-    [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:action style:destructive?UIAlertActionStyleDestructive:UIAlertActionStyleDefault
-                                        handler:^(__unused UIAlertAction *chosen) {
-        UIAlertController *activeAlert=weakAlert;
-        if (confirmed && activeAlert) TIOAfterAlertDismissal(activeAlert, confirmed);
-    }]];
-    [presenter presentViewController:alert animated:YES completion:nil];
+    TIOPresentAfterDismissal(from, ^(UIViewController *presenter) {
+        UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+        __weak UIAlertController *weakAlert=alert;
+        [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:action style:destructive?UIAlertActionStyleDestructive:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *chosen) {
+            UIAlertController *activeAlert=weakAlert;
+            if (confirmed && activeAlert) TIOAfterAlertDismissal(activeAlert, confirmed);
+        }]];
+        [presenter presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 void TIOChoose(UIViewController *from, NSString *title, NSString *message,
@@ -87,23 +117,23 @@ void TIOChoose(UIViewController *from, NSString *title, NSString *message,
         dispatch_async(dispatch_get_main_queue(), ^{ TIOChoose(from,title,message,options,selected,destructive,chosen); });
         return;
     }
-    UIViewController *presenter=TIOPresenter(from);
-    if (!presenter) return;
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleActionSheet];
-    __weak UIAlertController *weakAlert=alert;
-    [options enumerateObjectsUsingBlock:^(NSString *option, NSUInteger index, __unused BOOL *stop) {
-        NSString *label=(selected>=0 && index==(NSUInteger)selected)?[option stringByAppendingString:@" ✓"]:option;
-        UIAlertActionStyle style=[destructive containsIndex:index]?UIAlertActionStyleDestructive:UIAlertActionStyleDefault;
-        [alert addAction:[UIAlertAction actionWithTitle:label style:style handler:^(__unused UIAlertAction *action) {
-            UIAlertController *activeAlert=weakAlert;
-            if (chosen && activeAlert) TIOAfterAlertDismissal(activeAlert, ^{ chosen((NSInteger)index); });
-        }]];
-    }];
-    [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
-    UIPopoverPresentationController *popover=alert.popoverPresentationController;
-    popover.sourceView=presenter.view;
-    popover.sourceRect=CGRectMake(CGRectGetMidX(presenter.view.bounds),100,1,1);
-    [presenter presentViewController:alert animated:YES completion:nil];
+    TIOPresentAfterDismissal(from, ^(UIViewController *presenter) {
+        UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleActionSheet];
+        __weak UIAlertController *weakAlert=alert;
+        [options enumerateObjectsUsingBlock:^(NSString *option, NSUInteger index, __unused BOOL *stop) {
+            NSString *label=(selected>=0 && index==(NSUInteger)selected)?[option stringByAppendingString:@" ✓"]:option;
+            UIAlertActionStyle style=[destructive containsIndex:index]?UIAlertActionStyleDestructive:UIAlertActionStyleDefault;
+            [alert addAction:[UIAlertAction actionWithTitle:label style:style handler:^(__unused UIAlertAction *action) {
+                UIAlertController *activeAlert=weakAlert;
+                if (chosen && activeAlert) TIOAfterAlertDismissal(activeAlert, ^{ chosen((NSInteger)index); });
+            }]];
+        }];
+        [alert addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
+        UIPopoverPresentationController *popover=alert.popoverPresentationController;
+        popover.sourceView=presenter.view;
+        popover.sourceRect=CGRectMake(CGRectGetMidX(presenter.view.bounds),100,1,1);
+        [presenter presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 @interface TIOInfoSheet : UIViewController

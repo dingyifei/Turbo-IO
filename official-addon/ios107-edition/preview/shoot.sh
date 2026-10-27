@@ -61,5 +61,9 @@ for screen in "${screens[@]}"; do
   done
 done
 xcrun simctl terminate "$udid" "$bundle"
+# The lifecycle regression acquires the same lock for its own simulator calls.
+rmdir "$lock"
+trap - EXIT
+bash preview/wp5-confirm-test.sh
 printf 'preview-shoot real %s\n' "$((SECONDS-started))" >> "$inputs/baseline/timings.txt"
 printf 'PREVIEW SHOOT PASS: %s\n' "$shots"
