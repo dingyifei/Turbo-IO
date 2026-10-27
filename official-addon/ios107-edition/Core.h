@@ -4,6 +4,10 @@ NS_ASSUME_NONNULL_BEGIN
 FOUNDATION_EXPORT NSURL * _Nullable TIOValidateEndpoint(NSString *input);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOChatRequest(NSString *model, NSString *question);
 FOUNDATION_EXPORT NSString *TIOSystemPrompt(NSString *model);
+FOUNDATION_EXPORT NSString *TIOScriptLanguage(NSString * _Nullable text, NSString * _Nullable fallback);
+FOUNDATION_EXPORT NSString *TIOSanitizeAboutMe(NSString * _Nullable text);
+FOUNDATION_EXPORT void TIOSetUserProfile(NSString * _Nullable aboutMe);
+FOUNDATION_EXPORT NSString *TIOSystemPromptWithProfile(NSString *model, NSString * _Nullable aboutMe);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOChatRequestWithHistory(NSString *model, NSString *question, NSArray<NSDictionary *> *history);
 
 // Successful user/assistant pairs only, newest 50 messages. In-memory, no disk IO.

@@ -362,6 +362,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
         UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:@"播放" forState:UIControlStateNormal];
         button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
         [button addTarget:self action:@selector(testTTS) forControlEvents:UIControlEventTouchUpInside];c.accessoryView=button;}
+    if([r[@"key"] isEqual:@"aboutMe"]){NSString *about=[Prefs stringForKey:@"aboutMe"]?:@"";if(about.length>40)about=[[about substringWithRange:[about rangeOfComposedCharacterSequencesForRange:NSMakeRange(0,40)]] stringByAppendingString:@"…"];c.detailTextLabel.text=about.length?about:UIText(@"Not set · optional background for your own model",@"未设置 · 可选，供自有模型参考" /*i18n:keep*/);}
     if(!c.accessoryView)c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     if([r[@"key"] isEqual:@"mode"]){c.detailTextLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleTitle3];c.detailTextLabel.textColor=UIColor.labelColor;}
     if([r[@"key"] isEqual:@"history"])c.detailTextLabel.text=[c.detailTextLabel.text stringByAppendingString:@" · 点此管理清空"];
@@ -382,7 +383,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
         if(ip.row==1)c.detailTextLabel.text=[Prefs stringForKey:@"model"]?:@"尚未配置，未内置任何 Key";
         if(ip.row==3){UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"deepseekDisableThinking"];[s addTarget:self action:@selector(thinking:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
         if(ip.row==4)c.detailTextLabel.text=[NSString stringWithFormat:@"%lu / 50 条 · 当前进程内存 · 只含成功问答",(unsigned long)[Controller.history snapshot].count];
-        if(ip.row==5)c.detailTextLabel.text=@"Turbo · AI 产品专家和创业者 · 当前配置模型名";
+        if(ip.row==5)c.detailTextLabel.text=UIText(@"Follows your language · About me · model ID",@"跟随提问语言 · 关于我 · 模型 ID" /*i18n:keep*/);
         if(ip.row==6){c.detailTextLabel.text=VoiceExitReady?@"退下吧 / 关闭 / 没事了 / 关闭窗口；完整短句匹配":@"当前版本停止入口未通过校验，未启用";UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"voiceExitCommands"];s.enabled=VoiceExitReady;[s addTarget:self action:@selector(voiceExit:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
         if(ip.row==7){c.detailTextLabel.text=@"模型按需调用 · 只读公开网页 · 最多两次";UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"tinyfishEnabled"];[s addTarget:self action:@selector(searchToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
         if(ip.row==8)c.detailTextLabel.text=ReadKey(@"https://api.search.tinyfish.ai").length?@"已存手机 Keychain，不回显":@"未配置；不会使用 Mac 凭据";
@@ -406,6 +407,15 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 }
 - (void)voiceExit:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"voiceExitCommands"];}
 - (void)searchToggle:(UISwitch *)sender {if(sender.on&&!ReadKey(@"https://api.search.tinyfish.ai").length){sender.on=NO;Alert(@"请先配置",@"需要你自己的 TinyFish API Key。");return;}[Prefs setBool:sender.on forKey:@"tinyfishEnabled"];[Controller cancel];}
+- (void)configureAboutMe {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:UIText(@"About me",@"关于我" /*i18n:keep*/) message:UIText(@"Optional background the model may use, such as how to address you, your job or your city. Stored only on this iPhone and sent with each request to your own model. Up to 500 characters.",@"可选。供模型参考的背景信息，如称呼、职业或城市。只存在本机，并随每次自有模型请求发送。最多 500 字。" /*i18n:keep*/) preferredStyle:UIAlertControllerStyleAlert];
+    [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.text=[Prefs stringForKey:@"aboutMe"];f.placeholder=UIText(@"e.g. Call me Alex. I design products in Toronto.",@"例如：叫我小李，在多伦多做产品设计。" /*i18n:keep*/);}];
+    [a addAction:[UIAlertAction actionWithTitle:UIText(@"Cancel",@"取消" /*i18n:keep*/) style:UIAlertActionStyleCancel handler:nil]];
+    __weak UIAlertController *weakAlert=a;
+    [a addAction:[UIAlertAction actionWithTitle:UIText(@"Save",@"保存" /*i18n:keep*/) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){NSString *v=TIOSanitizeAboutMe(weakAlert.textFields.firstObject.text);if(v.length)[Prefs setObject:v forKey:@"aboutMe"];else [Prefs removeObjectForKey:@"aboutMe"];TIOSetUserProfile(v);[self.tableView reloadData];}]];
+    [a addAction:[UIAlertAction actionWithTitle:UIText(@"Clear",@"清除" /*i18n:keep*/) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action){[Prefs removeObjectForKey:@"aboutMe"];TIOSetUserProfile(nil);[self.tableView reloadData];}]];
+    [self presentViewController:a animated:YES completion:nil];
+}
 - (void)configureSearch {
     UIAlertController *a=[UIAlertController alertControllerWithTitle:@"TinyFish 搜索配置" message:@"开启后，自有模型可把必要检索词发给 TinyFish，将搜索摘要交回模型。官方 ASR 不变。不适合检索敏感信息。Key 仅存本机钥匙串；留空保留已有 Key。" preferredStyle:UIAlertControllerStyleAlert];
     [a addTextFieldWithConfigurationHandler:^(UITextField *f){f.placeholder=@"TinyFish API Key（不回显）";f.secureTextEntry=YES;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;}];
@@ -469,6 +479,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIONavigationController() animated:YES];return;}
 #endif
     if([r[@"key"] isEqual:@"ttsTest"]){[self testTTS];return;}
+    if([r[@"key"] isEqual:@"aboutMe"]){[self configureAboutMe];return;}
     if([r[@"key"] isEqual:@"glassesLog"]){[self.navigationController pushViewController:TIOGlassesLogController() animated:YES];return;}
     if([@[@"thinking",@"search",@"exit",@"capture",@"tts"] containsObject:r[@"key"]])return;
     NSInteger section=[r[@"section"] integerValue],row=[r[@"row"] integerValue];
@@ -502,6 +513,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 UITabBarController *TIOCreateResearchPreview(void){
     Prefs=[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.research.preview"];
     [Prefs registerDefaults:@{@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+    TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
     VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
     Controller=[TIOController new];Diagnostic=@"界面预览：未连接眼镜，未加载官方通信库";
     ArchiveQueue=dispatch_queue_create("io.turboio.preview.archive",DISPATCH_QUEUE_SERIAL);
@@ -554,6 +566,7 @@ __attribute__((constructor)) static void Load(void) {
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: one-shot cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref
             [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+            TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
             Controller=[TIOController new];
             ImportPrivateBootstrap();
             VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
@@ -567,6 +580,7 @@ __attribute__((constructor)) static void Load(void) {
             });
             // Research rows are explicit routes now, not a chain of table hooks.
             [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+            TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
             // Do not automatically resume model takeover. Text capture remains opt-in and persistent.
             [Prefs setInteger:0 forKey:@"mode"]; // Keep the explicitly chosen text-save preference across launches.
             [Prefs removeObjectForKey:@"verifiedChatDomain"];
