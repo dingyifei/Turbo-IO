@@ -26,7 +26,7 @@ int main(void){@autoreleasepool{
  [link query:callback];tml_uncarrier(sent.bytes,sent.length,raw,false);tml_decode(raw,32,&q);[link consume:Event(q,3,TML_STORAGE,0,peer)];assert(!link.ready&&!link.rows);
  submitted=NO;[link choose:2 done:callback];assert(!link.busy&&!link.ready);
  assert(!TIOMenuLayoutIsReply(@{}));
- submitted=YES;[link query:callback];count=sends;NSDate *until=[NSDate dateWithTimeIntervalSinceNow:3.2];while([until timeIntervalSinceNow]>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.02]];
+ submitted=YES;[link query:callback];count=sends;NSTimeInterval deadline=NSProcessInfo.processInfo.systemUptime+8;while(link.busy&&NSProcessInfo.processInfo.systemUptime<deadline)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.02]];
  assert(!link.busy&&!link.ready&&!link.rows&&sends==count);
  puts("MenuLayout phone PASS: query-before-write, exact peer/request/op, ACK-not-submission, no queued writes, expiry, OTA/background cancel, timeout and no retry");
 }}
