@@ -1,4 +1,5 @@
 #import "AppPackage.h"
+#import "TIOLanguage.h"
 #import <CommonCrypto/CommonDigest.h>
 #import <zlib.h>
 #include "app.h"
@@ -33,7 +34,7 @@ static NSData *Encode(NSDictionary *d){
  }}
  NSMutableData *wire=[NSMutableData dataWithBytes:"TAP1" length:4];uint8_t h[2]={(uint8_t)pages.count,[pageIndex[d[@"entry"]]unsignedIntValue]};[wire appendBytes:h length:2];P16(wire,count);P32(wire,(uint32_t)(12+body.length));[wire appendData:body];TAPDocument parsed;if(!tap_parse(wire.bytes,wire.length,&parsed))return nil;return wire;
 }
-NSData *TAPEncodeDocument(NSDictionary *doc,NSString **error){@try{NSData *d=Encode(doc);if(!d&&error)*error=@"应用格式、权限或 20 KiB/540×180 预算校验失败。";return d;}@catch(NSException *e){if(error)*error=@"应用字段不合法，未执行任何代码。";return nil;}}
+NSData *TAPEncodeDocument(NSDictionary *doc,NSString **error){@try{NSData *d=Encode(doc);if(!d&&error)*error=TIOText(@"应用格式、权限或 20 KiB/540×180 预算校验失败。");return d;}@catch(NSException *e){if(error)*error=TIOText(@"应用字段不合法，未执行任何代码。");return nil;}}
 static NSDictionary *ReadZIP(NSData *zip){
  // Narrow, deterministic ZIP profile: exactly two flat compiler members.
  // No extraction, ZIP64, descriptors, extra records, symlinks or comments.
@@ -55,7 +56,7 @@ static NSDictionary *ReadZIP(NSData *zip){
  NSDictionary *manifest=@{@"format":@"TAP1-draft",@"id":doc[@"id"],@"version":doc[@"version"],@"entry":@"app.json",@"sha256":TAPSHA256(Canonical(doc)),@"runtime":@"TAP1-draft",@"permissions":doc[@"permissions"]};if(![manifest isEqual:files[@"manifest.json"]])return nil;
  return @{@"document":doc,@"manifest":manifest,@"wire":wire,@"zipSHA256":TAPSHA256(zip),@"unpackedBytes":@(total),@"zipBytes":@(zip.length)};
 }
-NSDictionary *TAPReadPackage(NSData *zip,NSString **error){@try{NSDictionary *p=ReadZIP(zip);if(!p&&error)*error=@"ZIP 校验失败：请使用 SDK 编译器生成的双文件包（≤20 KiB），不支持任意网页/JS。";return p;}@catch(NSException *e){if(error)*error=@"损坏或不兼容的应用包，未解压到磁盘。";return nil;}}
+NSDictionary *TAPReadPackage(NSData *zip,NSString **error){@try{NSDictionary *p=ReadZIP(zip);if(!p&&error)*error=TIOText(@"ZIP 校验失败：请使用 SDK 编译器生成的双文件包（≤20 KiB），不支持任意网页/JS。");return p;}@catch(NSException *e){if(error)*error=TIOText(@"损坏或不兼容的应用包，未解压到磁盘。");return nil;}}
 NSData *TAPPhoneCommand(unsigned op,uint32_t request,uint32_t session,NSDictionary *package,NSDictionary *target,unsigned slot){
  if(op<1||op>5||!request)return nil;NSData *wire=NSData.data,*identity=NSData.data,*title=NSData.data;unsigned version=0;
  if(op==1){if(session||package||target||slot!=255)return nil;}else{if(!session)return nil;if(op==2){if(!package||target||slot!=255)return nil;NSDictionary *doc=package[@"document"];wire=TAPEncodeDocument(doc,nil);if(!wire||![wire isEqual:package[@"wire"]])return nil;identity=[doc[@"id"]dataUsingEncoding:NSUTF8StringEncoding];title=[doc[@"name"]dataUsingEncoding:NSUTF8StringEncoding];version=[doc[@"version"]unsignedIntValue];}else{if(package||slot>3||!Name(target[@"id"])||!Number(target[@"version"],1,65535))return nil;identity=[target[@"id"]dataUsingEncoding:NSUTF8StringEncoding];version=[target[@"version"]unsignedIntValue];}}

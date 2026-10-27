@@ -1,4 +1,5 @@
 #import "DashboardCard.h"
+#import "TIOLanguage.h"
 #import "A2UIProbe.h"
 #include "card.h"
 NSString *TDCIdentifier(void){return @DC_SURFACE;}
@@ -11,11 +12,11 @@ NSData *TDCRequest(uint32_t sequence,NSDictionary *json){
 NSString *TDCDemoText(BOOL alternate){return alternate?@"TDC1;25;50;75;640;1280;1000;2000;0;1;2":@"TDC1;99;90;85;375;1280;1400;2000;0;1;2";}
 NSDictionary *TDCInstall(NSString *text){
  if(![text isKindOfClass:NSString.class])return nil;NSData *d=[text dataUsingEncoding:NSUTF8StringEncoding];DCValues v;if(!dc_parse(d.bytes,d.length,&v))return nil;
- NSString *ident=TDCIdentifier();NSDictionary *extra=@{@"widgetId":ident,@"name":@"Turbo 开发者仪表盘",@"uiContent":@{
+ NSString *ident=TDCIdentifier();NSDictionary *extra=@{@"widgetId":ident,@"name":TIOText(@"Turbo 开发者仪表盘"),@"uiContent":@{
  @"createSurface":@{@"surfaceId":ident,@"catalogId":@"https://rayneo.com/a2ui/catalogs/glasses-base/v1/catalog.json"},
  @"updateComponents":@{@"surfaceId":ident,@"components":@[@{@"id":@DC_COMPONENT,@"component":@"Text",@"text":text,@"variant":@"caption"}]}}};
  NSData *json=[NSJSONSerialization dataWithJSONObject:extra options:NSJSONWritingSortedKeys error:nil];
- return @{@"cmd":@"widget_install",@"payload":@{@"data":@{@"id":ident,@"type":@"a2ui",@"name":@"Turbo 开发者仪表盘",@"extras":[[NSString alloc]initWithData:json encoding:NSUTF8StringEncoding]}}};
+ return @{@"cmd":@"widget_install",@"payload":@{@"data":@{@"id":ident,@"type":@"a2ui",@"name":TIOText(@"Turbo 开发者仪表盘"),@"extras":[[NSString alloc]initWithData:json encoding:NSUTF8StringEncoding]}}};
 }
 static NSArray *Rows(NSDictionary *s){
  if(![s isKindOfClass:NSDictionary.class]||![s[@"widgets_v2"] isKindOfClass:NSArray.class])return nil;
