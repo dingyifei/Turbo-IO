@@ -210,6 +210,10 @@
       "status": "run",
       "group": "tiles"
     },
+    "tests/SpotifyAuthTests.m": {
+      "status": "run",
+      "group": "spotify-auth"
+    },
     "tests/SpotifyLyricsTests.m": {
       "status": "run",
       "group": "spotify-lyrics"
