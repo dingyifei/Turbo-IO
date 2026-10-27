@@ -39,8 +39,7 @@
     "TodoBridgeClient.m"
   ],
   "owned": [
-    "MusicUI.m",
-    "MusicPlayer.m"
+    "MusicUI.m"
   ],
   "generated": [
     "Localization.m"
@@ -143,7 +142,8 @@
     "ProtocolContext.m",
     "ProtocolContext.h",
     "build.sh",
-    "GlassesChannelHook.m"
+    "GlassesChannelHook.m",
+    "MusicPlayer.m"
   ],
   "virtualIDs": {
     "baseline": "BASE85",

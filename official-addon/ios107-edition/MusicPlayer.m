@@ -1,71 +1,283 @@
 #import "MusicPlayer.h"
-#import "MusicAPI.h"
-#import "SpotifyLyrics.h"
-#import "MusicLibrary.h"
 #import "MusicBridge.h"
+#import "MusicClock.h"
+#import "SpotifyAPI.h"
+#import "SpotifyLyrics.h"
+#import "SpotifyCover.h"
 #import "NativeNavigationUI.h"
 #import "ExperimentalOTAFlash.h"
+#import "TIOLanguage.h"
 #import "music.h"
-#import <AVFoundation/AVFoundation.h>
-#import <MediaPlayer/MediaPlayer.h>
 #import <ImageIO/ImageIO.h>
-static NSString *String(id v){return [v isKindOfClass:NSString.class]?v:@"";}
-static NSURL *MediaURL(NSString *s){NSURLComponents *c=[NSURLComponents componentsWithString:s];NSString *h=c.host.lowercaseString;if(!h||!( [h hasSuffix:@".126.net"]||[h hasSuffix:@".163.com"]||[h isEqual:@"music.163.com"])||c.user||c.password)return nil;if([c.scheme isEqual:@"http"])c.scheme=@"https";return [c.scheme isEqual:@"https"]?c.URL:nil;}
-static NSData *Gray(UIImage *image){if(!image.CGImage)return nil;NSMutableData *d=[NSMutableData dataWithLength:TM_COVER_BYTES];CGColorSpaceRef cs=CGColorSpaceCreateDeviceGray();CGContextRef ctx=CGBitmapContextCreate(d.mutableBytes,144,144,8,144,cs,kCGImageAlphaNone);CGColorSpaceRelease(cs);if(!ctx)return nil;CGContextSetInterpolationQuality(ctx,kCGInterpolationHigh);CGContextDrawImage(ctx,CGRectMake(0,0,144,144),image.CGImage);CGContextRelease(ctx);return d;}
+#import <Security/Security.h>
+
+static void TMPlayerOnMain(void(^block)(void)){if(NSThread.isMainThread)block();else dispatch_async(dispatch_get_main_queue(),block);}
+static NSString *TMPlayerString(id value){return [value isKindOfClass:NSString.class]?value:@"";}
+static NSTimeInterval TMPlayerUptime(void){return NSProcessInfo.processInfo.systemUptime;}
+static NSString *TMPlayerStatus(TMSpotifyErrorKind kind){
+ switch(kind){
+  case TMSpotifyNotConfigured:return TIOText(@"music.status.config");
+  case TMSpotifySignedOut:return TIOText(@"music.status.signin");
+  case TMSpotifyPremiumRequired:return TIOText(@"music.status.premium");
+  case TMSpotifyRestricted:return TIOText(@"music.status.restricted");
+  case TMSpotifyNoActiveDevice:return TIOText(@"music.status.noDevice");
+  case TMSpotifyRateLimited:return TIOText(@"music.status.rate");
+  case TMSpotifyNetwork:case TMSpotifyServer:case TMSpotifyBadResponse:return TIOText(@"music.status.network");
+  case TMSpotifyOK:return nil;
+ }
+ return TIOText(@"music.status.network");
+}
+static NSString *TMPlayerTrackKey(NSDictionary *state){
+ NSString *identifier=TMPlayerString(state[@"id"]);if(identifier.length)return identifier;
+ // Local tracks can omit id. Their metadata still distinguishes generations.
+ return [@[TMPlayerString(state[@"type"]),TMPlayerString(state[@"title"]),TMPlayerString(state[@"artist"]),TMPlayerString(state[@"album"])] componentsJoinedByString:@"\x1f"];
+}
 @implementation TMPlayer{
- AVPlayer *_player;id _timeObserver;NSArray *_queue,*_lyrics;NSDictionary *_song;UIImage *_cover;NSData *_gray;NSString *_status;TMMusicBridge *_bridge;NSTimer *_timer;
- NSUInteger _ticket,_sentTicket;uint32_t _request;BOOL _glasses;NSInteger _mode;double _duration;id _endObserver;BOOL _wantsPlay;
- double _resumeTarget,_lastMemoryWrite;BOOL _restored;
+ TMMusicBridge *_bridge;NSTimer *_timer;NSDictionary *_state;NSTimeInterval _fetchedAt;TMClockSample _sample;
+ NSString *_trackID;NSUInteger _ticket,_sentTicket;UIImage *_cover;NSData *_gray;NSArray *_lyrics;NSString *_status;
+ NSInteger _mode;BOOL _glasses,_panelVisible;uint32_t _request;NSTimeInterval _pollAt;BOOL _inflight;
+ // Track/asset generations and command/auth revisions have different lifetimes.
+ // Poll ownership prevents an obsolete callback from releasing a newer request.
+ NSUInteger _revision,_pollSerial,_viewRevision,_resumeRevision,_resumeViewRevision;
+ BOOL _resumePending,_lyricsEnabled,_coverLoading,_lyricsLoading;
 }
 + (instancetype)shared{static TMPlayer *p;static dispatch_once_t once;dispatch_once(&once,^{p=[self new];});return p;}
-- (instancetype)init{if((self=[super init])){_player=[AVPlayer new];_bridge=[TMMusicBridge new];_mode=[NSUserDefaults.standardUserDefaults integerForKey:@"TurboMusicDisplayModeV1"];_mode=MAX(0,MIN(2,_mode));_glasses=[NSUserDefaults.standardUserDefaults boolForKey:@"TurboMusicGlassesV1"];_status=@"搜索歌曲，或先播放本机校验曲";
- NSDictionary *memory=[NSUserDefaults.standardUserDefaults dictionaryForKey:@"TurboMusicPlaybackV2"];_song=TMMusicSafeSong(memory[@"song"]?:[NSUserDefaults.standardUserDefaults dictionaryForKey:@"TurboMusicLastSongV1"]);if(_song){_queue=TMMusicSafeQueue(memory[@"queue"]);if(!_queue.count)_queue=@[_song];_duration=[_song[@"duration"]doubleValue]/1000;double pos=[memory[@"position"]respondsToSelector:@selector(doubleValue)]?[memory[@"position"]doubleValue]:0;_resumeTarget=isfinite(pos)?MAX(0,MIN(_duration>0?_duration:86400,pos)):0;_restored=YES;_status=@"已恢复上次歌曲与进度，点播放继续";}
- [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(saveMemory) name:UIApplicationDidEnterBackgroundNotification object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(saveMemory) name:UIApplicationWillTerminateNotification object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(accountChanged) name:TMMusicAccountChanged object:nil];
- __weak typeof(self) weak=self;_bridge.snapshot=^NSDictionary *{TMPlayer *s=weak;if(!s)return @{};return @{@"title":s.song[@"name"]?:@"",@"artist":s.song[@"artist"]?:@"",@"position":@((uint32_t)(s.position*1000)),@"duration":@((uint32_t)(s.duration*1000)),@"playing":@(s.playing),@"mode":@(s.mode),@"request":@(s->_request)};};
- _bridge.command=^(NSDictionary *q){TMPlayer *s=weak;if(!s)return;unsigned e=[q[@"event"]unsignedIntValue];s->_request=[q[@"request"]unsignedIntValue];if(e==TM_VIEW_CLOSED)return;
-  if(e==TM_RESUME){if(s->_song){[s play:YES];[s showOnGlasses];}else {NSDictionary *last=[NSUserDefaults.standardUserDefaults dictionaryForKey:@"TurboMusicLastSongV1"];if(last){[s setGlasses:YES];[s playSong:last queue:@[last]];}else s->_status=@"眼镜请求播放；请先在手机选歌";}return;}
-  if(e==TM_PLAY)[s play:YES];else if(e==TM_PAUSE)[s play:NO];else if(e==TM_NEXT)[s step:1];else if(e==TM_PREV)[s step:-1];
- };
- _timer=[NSTimer scheduledTimerWithTimeInterval:.15 repeats:YES block:^(NSTimer *t){TMPlayer *s=weak;if(s)[s->_bridge pump];}];
- _timeObserver=[_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(.25,600) queue:dispatch_get_main_queue() usingBlock:^(CMTime time){[weak refresh];}];
- [_player addObserver:self forKeyPath:@"timeControlStatus" options:0 context:NULL];[_player addObserver:self forKeyPath:@"currentItem.status" options:0 context:NULL];
- [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(interrupt:) name:AVAudioSessionInterruptionNotification object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(route:) name:AVAudioSessionRouteChangeNotification object:nil];
- MPRemoteCommandCenter *r=MPRemoteCommandCenter.sharedCommandCenter;[r.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *e){dispatch_async(dispatch_get_main_queue(),^{[weak play:YES];});return MPRemoteCommandHandlerStatusSuccess;}];[r.pauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *e){dispatch_async(dispatch_get_main_queue(),^{[weak play:NO];});return MPRemoteCommandHandlerStatusSuccess;}];[r.nextTrackCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *e){dispatch_async(dispatch_get_main_queue(),^{[weak step:1];});return MPRemoteCommandHandlerStatusSuccess;}];[r.previousTrackCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *e){dispatch_async(dispatch_get_main_queue(),^{[weak step:-1];});return MPRemoteCommandHandlerStatusSuccess;}];
- }return self;}
-- (NSDictionary *)song{return _song;}- (NSArray *)lyrics{return _lyrics?:@[];}- (UIImage *)cover{return _cover;}
-- (NSArray *)queue{return _queue?:@[];}
-- (BOOL)playing{return _player.timeControlStatus==AVPlayerTimeControlStatusPlaying;}
-- (double)position{if(_restored||_resumeTarget>0)return _resumeTarget;double n=CMTimeGetSeconds(_player.currentTime);return isfinite(n)?MAX(0,n):0;}
-- (double)duration{double n=CMTimeGetSeconds(_player.currentItem.duration);return isfinite(n)&&n>0?n:_duration;}
-- (NSString *)status{return _status?:@"";}- (NSString *)bridgeStatus{return _bridge.note;}
-- (NSInteger)mode{return _mode;}- (void)setMode:(NSInteger)m{_mode=MAX(0,MIN(2,m));[NSUserDefaults.standardUserDefaults setInteger:_mode forKey:@"TurboMusicDisplayModeV1"];}
-- (BOOL)glasses{return _glasses;}- (void)setGlasses:(BOOL)v{_glasses=v;[NSUserDefaults.standardUserDefaults setBool:v forKey:@"TurboMusicGlassesV1"];if(v&&_song)[self showOnGlasses];else if(!v)[_bridge close];}
-- (void)observeValueForKeyPath:(NSString *)k ofObject:(id)object change:(NSDictionary *)change context:(void *)context{if(_player.currentItem.status==AVPlayerItemStatusFailed){_status=@"播放失败：媒体地址可能已失效，请重新选歌";_wantsPlay=NO;}else if(_player.currentItem.status==AVPlayerItemStatusReadyToPlay&&_resumeTarget>0){double target=_resumeTarget;_resumeTarget=0;NSUInteger ticket=_ticket;[_player seekToTime:CMTimeMakeWithSeconds(MIN(target,MAX(0,self.duration-.25)),600) completionHandler:^(BOOL finished){dispatch_async(dispatch_get_main_queue(),^{if(ticket!=self->_ticket)return;[self play:self->_wantsPlay];});}];}else if(_player.timeControlStatus==AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate)_status=@"正在缓冲（歌词时钟已暂停）";else if(self.playing)_status=@"播放中";[_bridge changed];[self refresh];}
-- (void)interrupt:(NSNotification *)n{if([n.userInfo[AVAudioSessionInterruptionTypeKey]unsignedIntegerValue]==AVAudioSessionInterruptionTypeBegan){[self play:NO];_status=@"音频被其他任务中断，点击播放恢复";}}
-- (void)route:(NSNotification *)n{if([n.userInfo[AVAudioSessionRouteChangeReasonKey]unsignedIntegerValue]==AVAudioSessionRouteChangeReasonOldDeviceUnavailable){[self play:NO];_status=@"音频设备断开，已暂停";}}
-- (void)play:(BOOL)v{if(!v){_wantsPlay=NO;[_player pause];_status=@"已暂停";[self refresh];[self saveMemory];return;}if(!_player.currentItem){if(_song&&_restored){_restored=NO;[self prepareSong:_song queue:_queue];return;}_status=@"请先选择歌曲";return;}NSError *error=nil;AVAudioSession *audio=AVAudioSession.sharedInstance;if(![audio setCategory:AVAudioSessionCategoryPlayback mode:AVAudioSessionModeDefault options:0 error:&error]||![audio setActive:YES error:&error]){_status=@"无法取得音频输出，请先结束对话/录音";return;}_wantsPlay=YES;[_player play];}
-- (void)seek:(double)s{if(!isfinite(s))return;if(_restored){_resumeTarget=MAX(0,MIN(self.duration,s));[self saveMemory];return;}if(!_player.currentItem)return;NSUInteger ticket=_ticket;[_player seekToTime:CMTimeMakeWithSeconds(MAX(0,MIN(self.duration,s)),600) toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero completionHandler:^(BOOL done){dispatch_async(dispatch_get_main_queue(),^{if(ticket!=self->_ticket)return;[self->_bridge changed];[self saveMemory];});}];}
-- (void)step:(NSInteger)d{if(!_queue.count)return;NSUInteger index=[_queue indexOfObjectPassingTest:^BOOL(id v,NSUInteger i,BOOL *stop){return [v[@"id"]isEqual:self->_song[@"id"]];}];if(index==NSNotFound)index=0;NSInteger next=((NSInteger)index+d+(NSInteger)_queue.count)%(NSInteger)_queue.count;[self playSong:_queue[next] queue:_queue];}
-- (void)refresh{if(!_song)return;if([NSDate timeIntervalSinceReferenceDate]-_lastMemoryWrite>5)[self saveMemory];if(_restored)return;NSMutableDictionary *now=[@{MPMediaItemPropertyTitle:_song[@"name"]?:@"",MPMediaItemPropertyArtist:_song[@"artist"]?:@"",MPMediaItemPropertyPlaybackDuration:@(self.duration),MPNowPlayingInfoPropertyElapsedPlaybackTime:@(self.position),MPNowPlayingInfoPropertyPlaybackRate:@(self.playing?1:0)}mutableCopy];if(_cover){UIImage *im=_cover;now[MPMediaItemPropertyArtwork]=[[MPMediaItemArtwork alloc]initWithBoundsSize:im.size requestHandler:^UIImage *(CGSize s){return im;}];}MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo=now;}
-- (void)saveMemory{NSDictionary *song=TMMusicSafeSong(_song);if(!song)return;_lastMemoryWrite=[NSDate timeIntervalSinceReferenceDate];[NSUserDefaults.standardUserDefaults setObject:@{@"version":@2,@"song":song,@"queue":TMMusicSafeQueue(_queue),@"position":@(self.position)} forKey:@"TurboMusicPlaybackV2"];}
-- (void)accountChanged{++_ticket;_wantsPlay=NO;[_player pause];[_player replaceCurrentItemWithPlayerItem:nil];[_bridge close];_song=nil;_queue=@[];_lyrics=@[];_cover=nil;_gray=nil;_restored=NO;_resumeTarget=0;_status=@"账号已更新，请选择歌曲";MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo=nil;}
-- (void)installURL:(NSURL *)url ticket:(NSUInteger)ticket{if(ticket!=_ticket)return;if(_endObserver)[NSNotificationCenter.defaultCenter removeObserver:_endObserver];AVPlayerItem *item=[AVPlayerItem playerItemWithURL:url];[_player replaceCurrentItemWithPlayerItem:item];__weak typeof(self) weak=self;_endObserver=[NSNotificationCenter.defaultCenter addObserverForName:AVPlayerItemDidPlayToEndTimeNotification object:item queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){TMPlayer *s=weak;if(!s||ticket!=s->_ticket)return;if(s->_queue.count>1)[s step:1];else [s play:NO];}];if(_resumeTarget<=0)[self play:_wantsPlay];if(_glasses)[self showOnGlasses];}
-- (void)playSong:(NSDictionary *)value queue:(NSArray *)queue{_resumeTarget=0;_restored=NO;[self prepareSong:value queue:queue];}
-- (void)prepareSong:(NSDictionary *)value queue:(NSArray *)queue{NSDictionary *s=TMMusicSafeSong(value);if(!s)return;NSUInteger ticket=++_ticket;[_player pause];[_player replaceCurrentItemWithPlayerItem:nil];_wantsPlay=YES;_song=s;NSArray *q=TMMusicSafeQueue(queue);if(![q containsObject:s])q=TMMusicSafeQueue([@[s]arrayByAddingObjectsFromArray:q]);_queue=q.count?q:@[s];_duration=[s[@"duration"]doubleValue]/1000;_cover=nil;_gray=nil;_lyrics=@[];_status=@"正在获取播放地址";[NSUserDefaults.standardUserDefaults setObject:s forKey:@"TurboMusicLastSongV1"];[self saveMemory];
- [[TMMusicAPI shared]request:@"/api/song/enhance/player/url/v1" payload:@{@"ids":[NSString stringWithFormat:@"[%@]",s[@"id"]],@"level":@"standard",@"encodeType":@"aac"} eapi:YES done:^(NSDictionary *j,NSString *err){if(ticket!=self->_ticket)return;NSArray *a=[j[@"data"]isKindOfClass:NSArray.class]?j[@"data"]:@[];NSDictionary *v=[a.firstObject isKindOfClass:NSDictionary.class]?a.firstObject:@{};NSURL *url=MediaURL(String(v[@"url"]));if(err||!url){self->_status=err?:@"账号没有可播放地址，请登录或选择可播放歌曲（不绕过会员限制）";return;}self->_status=v[@"freeTrialInfo"]&&v[@"freeTrialInfo"]!=NSNull.null?@"当前账号仅可试听":@"准备播放";[self installURL:url ticket:ticket];}];
- [[TMMusicAPI shared]request:@"/api/song/lyric" payload:@{@"id":s[@"id"],@"lv":@-1,@"kv":@-1,@"tv":@-1} eapi:NO done:^(NSDictionary *j,NSString *err){if(ticket!=self->_ticket)return;id l=[j[@"lrc"]isKindOfClass:NSDictionary.class]?j[@"lrc"]:@{};self->_lyrics=TMParseLRC(String(l[@"lyric"]));if(!self->_lyrics.count)self->_lyrics=@[@{@"ms":@0,@"text":err?@"歌词获取失败，可继续播放":@"纯音乐或暂无歌词"}];[self->_bridge assetsCover:nil lyrics:self->_lyrics];}];
- NSURL *cover=MediaURL(s[@"cover"]);if(cover){[[NSURLSession.sharedSession dataTaskWithURL:cover completionHandler:^(NSData *d,NSURLResponse *r,NSError *e){if(e||d.length>8*1024*1024)return;CGImageSourceRef source=CGImageSourceCreateWithData((__bridge CFDataRef)d,NULL);if(!source)return;CGImageRef image=CGImageSourceCreateThumbnailAtIndex(source,0,(__bridge CFDictionaryRef)@{(__bridge id)kCGImageSourceCreateThumbnailFromImageAlways:@YES,(__bridge id)kCGImageSourceThumbnailMaxPixelSize:@360,(__bridge id)kCGImageSourceCreateThumbnailWithTransform:@YES});CFRelease(source);UIImage *im=image?[UIImage imageWithCGImage:image]:nil;if(image)CGImageRelease(image);NSData *gray=Gray(im);dispatch_async(dispatch_get_main_queue(),^{if(ticket!=self->_ticket)return;self->_cover=im;self->_gray=gray;[self->_bridge assetsCover:gray lyrics:nil];});}]resume];}
+- (instancetype)init{
+ if((self=[super init])){
+  NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;
+  [defaults registerDefaults:@{@"TurboSpotifyLyricsV1":@YES}];
+  if(![defaults boolForKey:@"TurboMusicNetEaseCleanedV1"]){
+   for(NSString *key in @[@"TurboMusicPlaybackV2",@"TurboMusicLastSongV1",@"TurboMusicLocalHistoryV2",@"TurboMusicLibraryKindV2",@"TurboMusicLibraryQueryV2",@"TurboMusicPageV2",@"TurboMusicAccountIDV2"])[defaults removeObjectForKey:key];
+   SecItemDelete((__bridge CFDictionaryRef)@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,(__bridge id)kSecAttrService:@"TurboIOMusicCookiesV1",(__bridge id)kSecAttrAccount:@"netease"});
+   [defaults setBool:YES forKey:@"TurboMusicNetEaseCleanedV1"];
+  }
+  _bridge=[TMMusicBridge new];_ticket=1;_revision=1;
+  _mode=MAX(0,MIN(2,[defaults integerForKey:@"TurboMusicDisplayModeV1"]));
+  _glasses=[defaults boolForKey:@"TurboMusicGlassesV1"];
+  _lyricsEnabled=[defaults boolForKey:@"TurboSpotifyLyricsV1"];
+  _status=TMSpotifyAuth.shared.signedIn?TIOText(@"music.nothing"):TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);
+  __weak typeof(self) weak=self;
+  _bridge.snapshot=^NSDictionary *{
+   TMPlayer *s=weak;if(!s)return @{};
+   return @{@"title":s->_state?TMPlayerString(s->_state[@"title"]):TIOText(@"music.glasses.idleTitle"),
+            @"artist":s->_state?TMPlayerString(s->_state[@"artist"]):TIOText(@"music.glasses.idleArtist"),
+            @"position":@((uint32_t)(s.position*1000)),@"duration":@((uint32_t)(s.duration*1000)),
+            @"playing":@(s.playing),@"mode":@(s.mode),@"request":@(s->_request)};
+  };
+  _bridge.command=^(NSDictionary *q){
+   TMPlayer *s=weak;if(!s)return;
+   unsigned event=[q[@"event"] unsignedIntValue];s->_request=[q[@"request"] unsignedIntValue];
+   if(event==TM_VIEW_CLOSED){++s->_viewRevision;s->_resumePending=NO;return;}
+   if(event==TM_RESUME){[s resumeFromGlasses];return;}
+   if(event==TM_PLAY){
+    // The glasses can resume an existing context; only an explicit phone action
+    // may discover a device and initiate a fresh transfer.
+    if(!s->_state){[s resumeFromGlasses];return;}
+    [s play:YES allowTransfer:NO];
+   }else if(event==TM_PAUSE)[s play:NO allowTransfer:NO];
+   else if(event==TM_NEXT)[s step:1];else if(event==TM_PREV)[s step:-1];
+  };
+  _timer=[NSTimer scheduledTimerWithTimeInterval:.15 repeats:YES block:^(NSTimer *timer){
+   TMPlayer *s=weak;if(!s)return;[s->_bridge pump];NSTimeInterval now=TMPlayerUptime();
+   if(TMSpotifyAuth.shared.signedIn&&(s->_panelVisible||(s->_glasses&&s->_bridge.active))&&now>=s->_pollAt&&!s->_inflight&&now>=TMSpotifyAPI.shared.backoffUntil)[s poll];
+  }];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(foreground:) name:UIApplicationWillEnterForegroundNotification object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(authChanged:) name:TMSpotifyAuthChanged object:TMSpotifyAuth.shared];
+ }
+ return self;
 }
-- (void)showOnGlasses{if(!_song)return;if(!TNVPauseForOTA()||[TIOOTAFlashStatus()[@"stage"]unsignedIntegerValue]){_status=@"导航或固件传输占用通道，请先结束";return;}if(_sentTicket==_ticket)[_bridge reopen];else{_sentTicket=_ticket;[_bridge openWithCover:_gray lyrics:_lyrics];}}
-- (void)hideGlasses{[_bridge close];}
-- (void)demo{NSUInteger ticket=++_ticket;_wantsPlay=YES;_resumeTarget=0;_restored=NO;_song=@{@"id":@0,@"name":@"夜航 · 本机校验 7392",@"artist":@"Turbo Lab · 合成测试音",@"duration":@90000};_queue=@[];_duration=90;_lyrics=@[@{@"ms":@0,@"text":@"音乐画面校验 7392"},@{@"ms":@5000,@"text":@"城市的灯渐渐远去"},@{@"ms":@10000,@"text":@"沿着星光 慢慢向前"},@{@"ms":@15000,@"text":@"让晚风带我到明天"},@{@"ms":@25000,@"text":@"旋钮切歌 · 按键播放暂停"},@{@"ms":@35000,@"text":@"关闭画面，音乐继续"},@{@"ms":@55000,@"text":@"手机拖动进度，歌词同步"},@{@"ms":@75000,@"text":@"校验结束 8642"}];
- UIGraphicsImageRendererFormat *f=[UIGraphicsImageRendererFormat defaultFormat];f.scale=1;_cover=[[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(288,288) format:f]imageWithActions:^(UIGraphicsImageRendererContext *c){[[UIColor colorWithRed:.12 green:.09 blue:.07 alpha:1]setFill];UIRectFill(CGRectMake(0,0,288,288));[[UIColor colorWithRed:1 green:.47 blue:.16 alpha:1]setFill];[[UIBezierPath bezierPathWithOvalInRect:CGRectMake(44,30,200,200)]fill];[@"TURBO LAB" drawAtPoint:CGPointMake(58,247) withAttributes:@{NSFontAttributeName:[UIFont monospacedSystemFontOfSize:22 weight:UIFontWeightMedium],NSForegroundColorAttributeName:UIColor.whiteColor}];}];_gray=Gray(_cover);
- NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory()stringByAppendingPathComponent:@"turbo-music-original-test.wav"]];dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{NSUInteger samples=22050*90;NSMutableData *wav=[NSMutableData dataWithLength:44+samples*2];uint8_t *b=wav.mutableBytes;memcpy(b,"RIFF",4);uint32_t size=(uint32_t)wav.length-8;memcpy(b+4,&size,4);memcpy(b+8,"WAVEfmt ",8);uint32_t fmt=16,rate=22050,bytes=44100;uint16_t pcm=1,channels=1,align=2,bits=16;memcpy(b+16,&fmt,4);memcpy(b+20,&pcm,2);memcpy(b+22,&channels,2);memcpy(b+24,&rate,4);memcpy(b+28,&bytes,4);memcpy(b+32,&align,2);memcpy(b+34,&bits,2);memcpy(b+36,"data",4);size=(uint32_t)samples*2;memcpy(b+40,&size,4);int16_t *out=(void *)(b+44);for(NSUInteger i=0;i<samples;i++){double t=(double)i/22050,beat=fmod(t,.5),freq=220*pow(2,((int)t%4)*2.0/12);out[i]=(int16_t)(1800*sin(2*M_PI*freq*t)*exp(-beat*7));}[wav writeToURL:url options:NSDataWritingAtomic error:nil];dispatch_async(dispatch_get_main_queue(),^{[self installURL:url ticket:ticket];});});
+- (void)dealloc{[_timer invalidate];[NSNotificationCenter.defaultCenter removeObserver:self];}
+- (NSDictionary *)song{
+ if(!_state)return nil;
+ return @{@"id":TMPlayerString(_state[@"id"]),@"name":TMPlayerString(_state[@"title"]),@"artist":TMPlayerString(_state[@"artist"]),@"album":TMPlayerString(_state[@"album"])};
 }
+- (NSArray *)lyrics{return _lyrics?:@[];}
+- (UIImage *)cover{return _cover;}
+- (BOOL)playing{return [_state[@"playing"] boolValue];}
+- (double)position{
+ if(!_state)return 0;
+ double milliseconds=[_state[@"progress_ms"] doubleValue]+(self.playing?MAX(0,TMPlayerUptime()-_fetchedAt)*1000:0);
+ return MAX(0,MIN([_state[@"duration_ms"] doubleValue],milliseconds))/1000;
+}
+- (double)duration{return [_state[@"duration_ms"] doubleValue]/1000;}
+- (NSString *)status{return _status?:TIOText(@"music.nothing");}
+- (NSString *)bridgeStatus{return _bridge.note;}
+- (NSInteger)mode{return _mode;}
+- (void)setMode:(NSInteger)value{_mode=MAX(0,MIN(2,value));[NSUserDefaults.standardUserDefaults setInteger:_mode forKey:@"TurboMusicDisplayModeV1"];}
+- (BOOL)glasses{return _glasses;}
+- (void)setGlasses:(BOOL)value{_glasses=value;[NSUserDefaults.standardUserDefaults setBool:value forKey:@"TurboMusicGlassesV1"];if(value)[self showOnGlasses];else [self hideGlasses];}
+- (BOOL)panelVisible{return _panelVisible;}
+- (void)setPanelVisible:(BOOL)value{_panelVisible=value;if(value)[self refreshNow];}
+- (NSArray *)idleLyrics{return @[@{@"ms":@0,@"text":TIOText(@"music.glasses.idleArtist")}];}
+- (void)invalidateRequests{
+ ++_revision;++_pollSerial;_inflight=NO;_resumePending=NO;_coverLoading=_lyricsLoading=NO;
+}
+- (BOOL)validTicket:(NSUInteger)ticket revision:(NSUInteger)revision client:(NSString *)client{
+ return ticket==_ticket&&revision==_revision&&TMSpotifyAuth.shared.signedIn&&[client isEqual:TMSpotifyAuth.shared.clientID];
+}
+- (void)foreground:(NSNotification *)notification{__weak typeof(self) weak=self;TMPlayerOnMain(^{[weak refreshNow];});}
+- (void)authChanged:(NSNotification *)notification{
+ __weak typeof(self) weak=self;TMPlayerOnMain(^{
+  TMPlayer *s=weak;if(!s)return;[s invalidateRequests];++s->_ticket;++s->_viewRevision;
+  s->_state=nil;s->_trackID=nil;s->_cover=nil;s->_gray=nil;s->_lyrics=nil;s->_sample=(TMClockSample){0};s->_fetchedAt=TMPlayerUptime();s->_pollAt=0;
+  [s->_bridge close];
+  s->_status=TMSpotifyAuth.shared.signedIn?TIOText(@"music.nothing"):TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);
+  if(TMSpotifyAuth.shared.signedIn)[s refreshNow];
+ });
+}
+- (void)syncLyricsPreference{
+ BOOL enabled=[NSUserDefaults.standardUserDefaults boolForKey:@"TurboSpotifyLyricsV1"];if(enabled==_lyricsEnabled)return;
+ _lyricsEnabled=enabled;[self invalidateRequests];++_ticket;_lyrics=nil;
+ // The bridge accepts each asset only once per generation, so replacing a
+ // previously sent lyric asset requires a new generation even on the same track.
+ if(_state)[self fetchAssets];else _lyrics=[self idleLyrics];
+ if(_bridge.active)[self showOnGlasses];
+}
+- (void)refreshNow{
+ [self syncLyricsPreference];_pollAt=0;
+ if(!TMSpotifyAuth.shared.signedIn){_status=TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);[self finishResume];return;}
+ if(TMPlayerUptime()<TMSpotifyAPI.shared.backoffUntil){_status=TMPlayerStatus(TMSpotifyRateLimited);[self finishResume];return;}
+ if(!_inflight)[self poll];
+}
+- (void)resumeFromGlasses{
+ [self syncLyricsPreference];_resumePending=YES;_resumeRevision=_revision;_resumeViewRevision=++_viewRevision;
+ [self refreshNow];
+}
+- (BOOL)finishResume{
+ if(!_resumePending)return NO;_resumePending=NO;
+ if(_resumeRevision!=_revision||_resumeViewRevision!=_viewRevision)return NO;
+ [self showOnGlasses];return YES;
+}
+- (void)poll{
+ if(_inflight||!TMSpotifyAuth.shared.signedIn||TMPlayerUptime()<TMSpotifyAPI.shared.backoffUntil)return;
+ _inflight=YES;_pollAt=TMPlayerUptime()+3;
+ NSUInteger serial=++_pollSerial,ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];
+ __weak typeof(self) weak=self;
+ [TMSpotifyAPI.shared player:^(NSDictionary *state,TMSpotifyErrorKind kind,NSTimeInterval retry){TMPlayerOnMain(^{
+  TMPlayer *s=weak;if(!s||serial!=s->_pollSerial||![s validTicket:ticket revision:revision client:client])return;
+  s->_inflight=NO;
+  if(kind!=TMSpotifyOK){s->_status=TMPlayerStatus(kind);[s finishResume];return;}
+  NSTimeInterval now=TMPlayerUptime();BOOL wasActive=s->_bridge.active;
+  if(!state){
+   BOOL hadState=s->_state!=nil;
+   if(hadState){++s->_ticket;s->_trackID=nil;s->_cover=nil;s->_gray=nil;s->_coverLoading=s->_lyricsLoading=NO;}
+   s->_state=nil;s->_sample=(TMClockSample){.at=now};s->_fetchedAt=now;s->_lyrics=[s idleLyrics];s->_status=TIOText(@"music.nothing");
+   BOOL resumed=[s finishResume];if(hadState&&wasActive&&!resumed)[s showOnGlasses];
+   return;
+  }
+  TMClockSample cur={.playing=[state[@"playing"] boolValue],.position_ms=[state[@"progress_ms"] unsignedIntValue],.duration_ms=[state[@"duration_ms"] unsignedIntValue],.at=now};
+  NSString *track=TMPlayerTrackKey(state);BOOL changed=![track isEqual:s->_trackID];BOOL drifted=TMClockDrifted(s->_sample,cur);
+  if(changed){++s->_ticket;s->_trackID=[track copy];s->_cover=nil;s->_gray=nil;s->_lyrics=nil;s->_coverLoading=s->_lyricsLoading=NO;}
+  // Commit all snapshot fields BEFORE openWithCover: can synchronously pump an
+  // OPEN packet. The original pseudocode opened the preceding track here.
+  s->_sample=cur;s->_state=[state copy];s->_fetchedAt=now;s->_status=cur.playing?TIOText(@"music.status.playing"):TIOText(@"music.status.paused");
+  [s fetchAssets];
+  BOOL resumed=[s finishResume];
+  if(changed&&s->_glasses&&!resumed)[s showOnGlasses];
+  else if(!changed&&drifted)[s->_bridge changed];
+ });}];
+}
+- (void)fetchAssets{
+ if(!_state)return;
+ NSUInteger ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];NSDictionary *state=_state;__weak typeof(self) weak=self;
+ NSURL *image=[state[@"image"] isKindOfClass:NSURL.class]?state[@"image"]:nil;
+ if(image&&!_cover&&!_coverLoading){
+  _coverLoading=YES;
+  TMSpotifyDefaultHTTP()([NSURLRequest requestWithURL:image],^(NSData *data,NSHTTPURLResponse *response,NSError *error){TMPlayerOnMain(^{
+   TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;
+   if(error||response.statusCode!=200||!data.length||data.length>8*1024*1024){s->_coverLoading=NO;return;}
+   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{
+    CGImageRef thumbnail=TMSpotifyThumbnail(data,360);NSData *gray=thumbnail?TMGrayCover(thumbnail):nil;
+    dispatch_async(dispatch_get_main_queue(),^{
+     TMPlayer *current=weak;
+     if(current&&[current validTicket:ticket revision:revision client:client]){
+      current->_coverLoading=NO;
+      if(thumbnail&&gray.length==TM_COVER_BYTES){current->_cover=[UIImage imageWithCGImage:thumbnail];current->_gray=gray;if(current->_sentTicket==current->_ticket)[current->_bridge assetsCover:gray lyrics:nil];}
+     }
+     if(thumbnail)CGImageRelease(thumbnail);
+    });
+   });
+  });});
+ }
+ if(_lyrics.count||_lyricsLoading)return;
+ if(!_lyricsEnabled){_lyrics=@[@{@"ms":@0,@"text":TIOText(@"music.lyrics.off")}];if(_sentTicket==_ticket)[_bridge assetsCover:nil lyrics:_lyrics];return;}
+ _lyricsLoading=YES;
+ [TMSpotifyLyrics.shared lyricsForID:TMPlayerString(state[@"id"]) title:TMPlayerString(state[@"title"]) artist:TMPlayerString(state[@"artist"]) album:TMPlayerString(state[@"album"]) durationMs:[state[@"duration_ms"] unsignedIntValue] done:^(NSArray *rows,NSString *kind,BOOL failed){TMPlayerOnMain(^{
+  TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;s->_lyricsLoading=NO;
+  if(!failed&&[kind isEqual:@"synced"]&&rows.count)s->_lyrics=[rows copy];
+  else s->_lyrics=@[@{@"ms":@0,@"text":failed?TIOText(@"music.lyrics.error"):[kind isEqual:@"instrumental"]?TIOText(@"music.lyrics.instrumental"):TIOText(@"music.lyrics.none")}];
+  if(s->_sentTicket==s->_ticket)[s->_bridge assetsCover:nil lyrics:s->_lyrics];
+ });}];
+}
+- (BOOL)beginControl{
+ if(!TMSpotifyAuth.shared.signedIn){_status=TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);return NO;}
+ [self syncLyricsPreference];[self invalidateRequests];_pollAt=TMPlayerUptime()+.5;
+ return YES;
+}
+- (void)followUpForTicket:(NSUInteger)ticket revision:(NSUInteger)revision client:(NSString *)client{
+ _pollAt=TMPlayerUptime()+.5;__weak typeof(self) weak=self;
+ dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;[s refreshNow];});
+}
+- (void)optimisticPlaying:(BOOL)value{
+ if(!_state)return;
+ NSTimeInterval now=TMPlayerUptime();uint32_t position=(uint32_t)(self.position*1000);
+ TMClockSample cur={.playing=value,.position_ms=position,.duration_ms=[_state[@"duration_ms"] unsignedIntValue],.at=now};BOOL drifted=TMClockDrifted(_sample,cur);
+ NSMutableDictionary *state=[_state mutableCopy];state[@"playing"]=@(value);state[@"progress_ms"]=@(position);
+ _state=state;_fetchedAt=now;_sample=cur;_status=value?TIOText(@"music.status.playing"):TIOText(@"music.status.paused");
+ if(drifted)[_bridge changed];
+}
+- (void)play:(BOOL)value{[self play:value allowTransfer:YES];}
+- (void)play:(BOOL)value allowTransfer:(BOOL)allowTransfer{
+ if(![self beginControl])return;[self optimisticPlaying:value];[self fetchAssets];
+ NSUInteger ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];__weak typeof(self) weak=self;
+ [self followUpForTicket:ticket revision:revision client:client];
+ void(^done)(TMSpotifyErrorKind,NSTimeInterval)=^(TMSpotifyErrorKind kind,NSTimeInterval retry){TMPlayerOnMain(^{
+  TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;
+  if(kind==TMSpotifyNoActiveDevice&&value&&allowTransfer){
+   [TMSpotifyAPI.shared devices:^(NSArray *devices,TMSpotifyErrorKind deviceKind){TMPlayerOnMain(^{
+    TMPlayer *current=weak;if(!current||![current validTicket:ticket revision:revision client:client])return;
+    if(deviceKind!=TMSpotifyOK){current->_status=TMPlayerStatus(deviceKind);return;}
+    NSString *device=TMSpotifyPickDevice(devices);if(!device.length){current->_status=TIOText(@"music.status.noDevice");return;}
+    [TMSpotifyAPI.shared transfer:device play:YES done:^(TMSpotifyErrorKind transferKind,NSTimeInterval transferRetry){TMPlayerOnMain(^{
+     TMPlayer *latest=weak;if(!latest||![latest validTicket:ticket revision:revision client:client])return;
+     if(transferKind!=TMSpotifyOK)latest->_status=TMPlayerStatus(transferKind);
+     [latest followUpForTicket:ticket revision:revision client:client];
+    });}];
+   });}];
+  }else if(kind!=TMSpotifyOK)s->_status=TMPlayerStatus(kind);
+ });};
+ if(value)[TMSpotifyAPI.shared play:done];else [TMSpotifyAPI.shared pause:done];
+}
+- (void)step:(NSInteger)delta{
+ if(!delta||![self beginControl])return;[self fetchAssets];
+ NSUInteger ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];__weak typeof(self) weak=self;
+ [self followUpForTicket:ticket revision:revision client:client];
+ void(^done)(TMSpotifyErrorKind,NSTimeInterval)=^(TMSpotifyErrorKind kind,NSTimeInterval retry){TMPlayerOnMain(^{TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;if(kind!=TMSpotifyOK)s->_status=TMPlayerStatus(kind);});};
+ if(delta>0)[TMSpotifyAPI.shared next:done];else [TMSpotifyAPI.shared previous:done];
+}
+- (void)seek:(double)seconds{
+ if(!isfinite(seconds)||!_state||![self beginControl])return;
+ uint32_t milliseconds=(uint32_t)(MAX(0,MIN(self.duration,seconds))*1000);[self fetchAssets];
+ NSUInteger ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];__weak typeof(self) weak=self;
+ [self followUpForTicket:ticket revision:revision client:client];
+ [TMSpotifyAPI.shared seek:milliseconds done:^(TMSpotifyErrorKind kind,NSTimeInterval retry){TMPlayerOnMain(^{
+  TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;
+  if(kind!=TMSpotifyOK){s->_status=TMPlayerStatus(kind);return;}
+  NSTimeInterval now=TMPlayerUptime();TMClockSample cur={.playing=s.playing,.position_ms=milliseconds,.duration_ms=[s->_state[@"duration_ms"] unsignedIntValue],.at=now};BOOL drifted=TMClockDrifted(s->_sample,cur);
+  NSMutableDictionary *state=[s->_state mutableCopy];state[@"progress_ms"]=@(milliseconds);s->_state=state;s->_sample=cur;s->_fetchedAt=now;
+  if(drifted)[s->_bridge changed];
+ });}];
+}
+- (void)showOnGlasses{
+ if(!TNVPauseForOTA()||[TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue]){_status=TIOText(@"music.status.blocked");return;}
+ if(!_state){_cover=nil;_gray=nil;_lyrics=[self idleLyrics];}
+ if(_sentTicket==_ticket)[_bridge reopen];else{_sentTicket=_ticket;[_bridge openWithCover:_gray lyrics:_lyrics];if(!_bridge.active)_sentTicket=0;}
+}
+- (void)hideGlasses{++_viewRevision;_resumePending=NO;[_bridge close];}
 - (BOOL)consume:(NSDictionary *)e{return [_bridge consume:e];}
-- (BOOL)watchRemoteAvailable{return _glasses&&_song&&_bridge.active&&!_bridge.busy;}
-- (BOOL)otaIdle{return !self.playing&&!_bridge.busy&&!_bridge.active;}
-- (void)pauseForVoice{if(self.playing){[self play:NO];_status=@"语音会话开始，音乐已暂停";}}
+- (BOOL)watchRemoteAvailable{return _glasses&&_state&&_bridge.active&&!_bridge.busy;}
+- (BOOL)otaIdle{return !_bridge.busy&&!_bridge.active;}
+- (void)pauseForVoice{}
 @end
 BOOL TMMusicConsume(NSDictionary *e){return [[TMPlayer shared]consume:e];}
 BOOL TMMusicPauseForOTA(void){return [[TMPlayer shared]otaIdle];}
