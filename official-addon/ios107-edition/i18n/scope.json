@@ -142,7 +142,8 @@
     "DisplayPhoneUI.m",
     "ProtocolContext.m",
     "ProtocolContext.h",
-    "build.sh"
+    "build.sh",
+    "GlassesChannelHook.m"
   ],
   "virtualIDs": {
     "baseline": "BASE85",

@@ -1,4 +1,5 @@
 #import "OTAHost.h"
+#import "TIOLanguage.h"
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAFlash.h"
 #import "MusicTransport.h"
@@ -75,7 +76,7 @@ BOOL TIOPhoneOTAReadAllowed(NSData *data){
 }
 - (BOOL)prepareDirectory:(NSURL *)directory device:(NSString *)device uptime:(NSTimeInterval)now error:(NSError **)error{
     @synchronized(self){
-        if(_stage||![device isKindOfClass:NSString.class]||!device.length||device.length>200||!isfinite(now)||now<0){Error(error,@"当前不是可授权状态或没有有效设备；未开放。");return NO;}
+        if(_stage||![device isKindOfClass:NSString.class]||!device.length||device.length>200||!isfinite(now)||now<0){Error(error,TIOText(@"当前不是可授权状态或没有有效设备；未开放。"));return NO;}
         NSDictionary *files=TIOCopyExperimentalOTAPayloads(directory,error);if(!files)return NO;
         id manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:error];if(![manifest isKindOfClass:NSArray.class]||[manifest count]!=15)return NO;
         _files=files;_manifest=manifest;_device=[device copy];_deadline=now+900;_stage=1;_failure=nil;return YES;
@@ -92,7 +93,7 @@ BOOL TIOPhoneOTAReadAllowed(NSData *data){
         if((t==1||t==2||t==11)&&empty)return YES;
         NSUInteger n=0;
         if(t==3&&dict&&[j count]==1&&Number(j[@"OtaSize"],&n)&&n==8842896&&!binary.length)return YES;
-        if(!_stage){if(t==4)_failure=@"TMG2 试刷尚未授权；开始指令未发送。请先在实验固件页完成 TMG2 风险确认。";return NO;}
+        if(!_stage){if(t==4)_failure=TIOText(@"TMG2 试刷尚未授权；开始指令未发送。请先在实验固件页完成 TMG2 风险确认。");return NO;}
         if(_stage==3||!isfinite(now)||now<0)return NO;
         if(_stage==1&&now>=_deadline){[self cancel];return NO;}
         BOOL ok=[device isEqual:_device];
@@ -105,7 +106,7 @@ BOOL TIOPhoneOTAReadAllowed(NSData *data){
             if(ok)ok=memcmp(binary.bytes,(const uint8_t *)file.bytes+start,size)==0;
             if(ok){_slices++;_bytes+=size;}
         }else ok=NO;
-        if(!ok){_failure=@"非预期设备、会话、清单或分片，发送被拒绝";if(_stage==2)_stage=3;return NO;}
+        if(!ok){_failure=TIOText(@"非预期设备、会话、清单或分片，发送被拒绝");if(_stage==2)_stage=3;return NO;}
         if(t==4)_stage=2;if(t==5)_versionSent=YES;if(t==6)_manifestSent=YES;return YES;
     }
 }
@@ -185,20 +186,20 @@ void TIOOTAFlashObserveEvent(NSDictionary *event){
     }
 }
 BOOL TIOOTAFlashAuthorize(NSError **error){
-    if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary)){Error(error,@"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。");return NO;}
+    if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary)){Error(error,TIOText(@"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。"));return NO;}
     NSDictionary *feed=TIOExperimentalOTAFeedStatus();
-    if(![feed[@"bootstrapEligible"] boolValue]||![feed[@"running"] boolValue]||![feed[@"healthPassed"] boolValue]){Error(error,@"未确认本机下载来源与健康检查，未授权。");return NO;}
+    if(![feed[@"bootstrapEligible"] boolValue]||![feed[@"running"] boolValue]||![feed[@"healthPassed"] boolValue]){Error(error,TIOText(@"未确认本机下载来源与健康检查，未授权。"));return NO;}
 #if TARGET_OS_IPHONE && TIO_DISPLAY_PHONE
-    if(TAPPhoneBridge.shared.busy||TAPPhoneBridge.shared.needsReadback){Error(error,@"应用文件仍在传输或结果未知，先查询完成；未开放升级。");return NO;}
+    if(TAPPhoneBridge.shared.busy||TAPPhoneBridge.shared.needsReadback){Error(error,TIOText(@"应用文件仍在传输或结果未知，先查询完成；未开放升级。"));return NO;}
 #endif
-    if(!TIOOTAFlashProtected()){Error(error,@"没有试刷构建与发送保护；未开放。");return NO;}
+    if(!TIOOTAFlashProtected()){Error(error,TIOText(@"没有试刷构建与发送保护；未开放。"));return NO;}
 #if TARGET_OS_IPHONE && TIO_DISPLAY_FLASH
-    if(!TDPPhonePauseForOTA()){Error(error,@"显示文件仍在传输或结果未知，请等待终态；未开放升级。若任务无法收尾，先退出显示页并重启 App 重新检查。");return NO;}
+    if(!TDPPhonePauseForOTA()){Error(error,TIOText(@"显示文件仍在传输或结果未知，请等待终态；未开放升级。若任务无法收尾，先退出显示页并重启 App 重新检查。"));return NO;}
 #endif
-    if(!TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation)){Error(error,@"请先在官方眼镜软件版本页关闭自动更新；未读到明确关闭状态，不授予试刷权限。");return NO;}
+    if(!TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation)){Error(error,TIOText(@"请先在官方眼镜软件版本页关闭自动更新；未读到明确关闭状态，不授予试刷权限。"));return NO;}
     NSString *device;NSTimeInterval at;@synchronized(NSProcessInfo.processInfo){device=ObservedDevice;at=ObservedAt;}
     NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;
-    if(!device.length||now-at>120){Error(error,@"请先从官方固件页重新检查版本；需要两分钟内的 1.0.4.12 或 1.0.5.5 有效回读。");return NO;}
+    if(!device.length||now-at>120){Error(error,TIOText(@"请先从官方固件页重新检查版本；需要两分钟内的 1.0.4.12 或 1.0.5.5 有效回读。"));return NO;}
     NSURL *dir=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"] isDirectory:YES];
     return [Current() prepareDirectory:dir device:device uptime:now error:error];
 }

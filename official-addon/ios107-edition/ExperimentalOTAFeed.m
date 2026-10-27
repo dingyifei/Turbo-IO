@@ -1,4 +1,5 @@
 #import "ExperimentalOTAFeed.h"
+#import "TIOLanguage.h"
 #import "OTAHost.h"
 #import "HostCompatibility.h"
 #import <mach-o/dyld.h>
@@ -52,15 +53,15 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
 - (uint16_t)port{@synchronized(self){return _port;}}
 - (BOOL)startOnPort:(uint16_t)port error:(NSError **)error{
     @synchronized(self){
-        if(_listener){if(error)*error=FeedError(@"本机服务已启动，未替换监听器。");return NO;}
-        int fd=socket(AF_INET,SOCK_STREAM,0);if(fd<0){if(error)*error=FeedError(@"创建本机监听器失败。");return NO;}
+        if(_listener){if(error)*error=FeedError(TIOText(@"本机服务已启动，未替换监听器。"));return NO;}
+        int fd=socket(AF_INET,SOCK_STREAM,0);if(fd<0){if(error)*error=FeedError(TIOText(@"创建本机监听器失败。"));return NO;}
         // Rebind after a previous process has left accepted connections in
         // TIME_WAIT. This is NOT SO_REUSEPORT: an active listener is exclusive.
         int reuse=1;
-        if(setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse))){close(fd);if(error)*error=FeedError(@"设置本机端口重启选项失败。");return NO;}
+        if(setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse))){close(fd);if(error)*error=FeedError(TIOText(@"设置本机端口重启选项失败。"));return NO;}
         struct sockaddr_in addr={0};addr.sin_len=sizeof(addr);addr.sin_family=AF_INET;addr.sin_port=htons(port);addr.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
         // No SO_REUSEPORT: never share the endpoint with another process.
-        if(bind(fd,(struct sockaddr *)&addr,sizeof(addr))||listen(fd,4)||fcntl(fd,F_SETFL,O_NONBLOCK)<0){int code=errno;close(fd);if(error)*error=[NSError errorWithDomain:@"TurboIO.OTAFeed.Socket" code:code userInfo:@{NSLocalizedDescriptionKey:@"本机来源端口暂不可用；会重试，未改用其他地址或远程服务。"}];return NO;}
+        if(bind(fd,(struct sockaddr *)&addr,sizeof(addr))||listen(fd,4)||fcntl(fd,F_SETFL,O_NONBLOCK)<0){int code=errno;close(fd);if(error)*error=[NSError errorWithDomain:@"TurboIO.OTAFeed.Socket" code:code userInfo:@{NSLocalizedDescriptionKey:TIOText(@"本机来源端口暂不可用；会重试，未改用其他地址或远程服务。")}];return NO;}
         socklen_t size=sizeof(addr);if(getsockname(fd,(struct sockaddr *)&addr,&size)){close(fd);return NO;}
         _port=ntohs(addr.sin_port);_listenerFD=fd;_listener=dispatch_source_create(DISPATCH_SOURCE_TYPE_READ,fd,0,_queue);
         __weak typeof(self) weakSelf=self;
@@ -79,12 +80,12 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
 }
 - (BOOL)armArchive:(NSURL *)url lifetime:(NSTimeInterval)seconds error:(NSError **)error{
 #if !TIO_OTA_FEED_ARMING_ENABLED
-    (void)url;(void)seconds;if(error)*error=FeedError(@"刷机门禁尚未开放：需先验收官方入口与同版本缓存。");return NO;
+    (void)url;(void)seconds;if(error)*error=FeedError(TIOText(@"刷机门禁尚未开放：需先验收官方入口与同版本缓存。"));return NO;
 #else
 #if TARGET_OS_IPHONE
-    if(!TIOOTAPreparationProtected()&&!TIOOTAFlashProtected()){if(error)*error=FeedError(@"未确认发送保护，拒绝提供实验包。");return NO;}
+    if(!TIOOTAPreparationProtected()&&!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"未确认发送保护，拒绝提供实验包。"));return NO;}
 #endif
-    if(!isfinite(seconds)||seconds<=0||seconds>900){if(error)*error=FeedError(@"授权有效期必须在 0 至 900 秒之间。");return NO;}
+    if(!isfinite(seconds)||seconds<=0||seconds>900){if(error)*error=FeedError(TIOText(@"授权有效期必须在 0 至 900 秒之间。"));return NO;}
     if(!TIOReadExperimentalOTA(url,error))return NO;
     // Keep the verified exact bytes, so a later disk change cannot alter a reply.
     NSData *data=[NSData dataWithContentsOfURL:url options:0 error:error];
@@ -95,7 +96,7 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
     CC_MD5(data.bytes,(CC_LONG)data.length,bytes);
 #pragma clang diagnostic pop
     NSMutableString *digest=[NSMutableString new];for(NSUInteger i=0;i<sizeof(bytes);i++)[digest appendFormat:@"%02x",bytes[i]];
-    @synchronized(self){if(!_listener){if(error)*error=FeedError(@"本机服务未启动。");return NO;}
+    @synchronized(self){if(!_listener){if(error)*error=FeedError(TIOText(@"本机服务未启动。"));return NO;}
         _archive=data;_md5=digest;_token=[NSUUID.UUID.UUIDString stringByReplacingOccurrencesOfString:@"-" withString:@""];
         _deadline=NSProcessInfo.processInfo.systemUptime+seconds;return YES;}
 #endif
@@ -192,7 +193,7 @@ static BOOL EnsureFeedListening(void){
     @synchronized(NSProcessInfo.processInfo){
         if(!BootstrapEligible)return NO;
         if([SharedFeed.status[@"running"] boolValue])return YES;
-        if([TIOOTAFlashStatus()[@"stage"] integerValue]>=2){BootstrapFailure=@"已有升级会话，未重建来源或改变发送状态";return NO;}
+        if([TIOOTAFlashStatus()[@"stage"] integerValue]>=2){BootstrapFailure=TIOText(@"已有升级会话，未重建来源或改变发送状态");return NO;}
         if(SharedFeed)[SharedFeed stop];else SharedFeed=[TIOExperimentalOTAFeed new];
         HealthPassed=NO;HealthCheckedAt=0;StartAttempts++;NSError *error=nil;BOOL ok=[SharedFeed startOnPort:18794 error:&error];
         BootstrapFailure=ok?nil:error.localizedDescription;StartErrorCode=ok?0:error.code;return ok;
@@ -204,9 +205,9 @@ NSDictionary *TIOExperimentalOTAFeedStatus(void){
         s[@"reason"]=BootstrapFailure?:@"";s[@"launchID"]=LaunchID?:@"";s[@"processIdentifier"]=@(NSProcessInfo.processInfo.processIdentifier);s[@"healthPassed"]=@(HealthPassed);s[@"healthCheckedAt"]=@(HealthCheckedAt);return s;}
 }
 BOOL TIOBeginExperimentalOTAPreparation(NSError **error){
-    if(!TIOOTAPreparationProtected()&&!TIOOTAFlashProtected()){if(error)*error=FeedError(@"此包没有启用发送保护；未开放下载。");return NO;}
-    if([TIOOTAFlashStatus()[@"stage"] integerValue]!=0){if(error)*error=FeedError(@"已有授权或升级会话，未重建下载来源；不要重启或重复授权。");return NO;}
-    if(!EnsureFeedListening()){if(error)*error=FeedError(BootstrapFailure?:@"本机来源尚未启动，未开放下载。");TIORefreshExperimentalOTAReport();return NO;}
+    if(!TIOOTAPreparationProtected()&&!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"此包没有启用发送保护；未开放下载。"));return NO;}
+    if([TIOOTAFlashStatus()[@"stage"] integerValue]!=0){if(error)*error=FeedError(TIOText(@"已有授权或升级会话，未重建下载来源；不要重启或重复授权。"));return NO;}
+    if(!EnsureFeedListening()){if(error)*error=FeedError(BootstrapFailure?:TIOText(@"本机来源尚未启动，未开放下载。"));TIORefreshExperimentalOTAReport();return NO;}
     ScheduleHealthCheck();
     NSURL *directory=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/ExperimentalOTA"] isDirectory:YES];
     NSURL *archive=[directory URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];
@@ -228,7 +229,7 @@ void TIORefreshExperimentalOTAReport(void){
             NSURL *zip=[directory URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];error=nil;
             report[@"archive"]=TIOReadExperimentalOTA(zip,&error)?:@{@"integrityPassed":@NO};
             NSURL *official=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"] isDirectory:YES];error=nil;
-            report[@"officialDirectory"]=TIOCheckExperimentalOTADirectory(official,&error)?:@{@"integrityPassed":@NO,@"note":error.localizedDescription?:@"尚未读取"};
+            report[@"officialDirectory"]=TIOCheckExperimentalOTADirectory(official,&error)?:@{@"integrityPassed":@NO,@"note":error.localizedDescription?:TIOText(@"尚未读取")};
             NSURL *file=[directory URLByAppendingPathComponent:@"preparation-status.json"];
             NSData *data=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
             [data writeToURL:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil];
@@ -244,9 +245,9 @@ void TIOStartExperimentalOTAFeedIfMarked(void){
         LaunchID=NSUUID.UUID.UUIDString;
         NSBundle *bundle=NSBundle.mainBundle;
         if(!TIOOTAFlashBuild())return;
-        if(!TIOOTA107HostMatches(bundle.infoDictionary)||!TIOHostImageMatches(_dyld_get_image_header(0),bundle.infoDictionary)){BootstrapFailure=@"1.0.7 实验来源宿主版本/UUID/标记不匹配";TIORefreshExperimentalOTAReport();return;}
+        if(!TIOOTA107HostMatches(bundle.infoDictionary)||!TIOHostImageMatches(_dyld_get_image_header(0),bundle.infoDictionary)){BootstrapFailure=TIOText(@"1.0.7 实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
         NSString *file=[bundle.bundlePath stringByAppendingPathComponent:@"Frameworks/App.framework/App"];
-        if(!TIOOTA107RouteFileMatches(file)){BootstrapFailure=@"1.0.7 实验查询路径或对象头不匹配，未启动服务";TIORefreshExperimentalOTAReport();return;}
+        if(!TIOOTA107RouteFileMatches(file)){BootstrapFailure=TIOText(@"1.0.7 实验查询路径或对象头不匹配，未启动服务");TIORefreshExperimentalOTAReport();return;}
         BootstrapEligible=YES;EnsureFeedListening();ScheduleHealthCheck();
         TIORefreshExperimentalOTAReport();
 #if TARGET_OS_IPHONE

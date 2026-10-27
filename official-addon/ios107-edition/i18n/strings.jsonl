@@ -18,6 +18,7 @@
 {"key":"%@ · v%@\n%lu 页 · %@ 字节（解压）\n540 × 180 原生组件预览，字体以镜片为准。\n权限：%@\nZIP SHA-256\n%@","en":"%@ · v%@\n%lu pages · %@ bytes (uncompressed)\n540 × 180 native component preview; check font appearance on the glasses display.\nPermissions: %@\nZIP SHA-256\n%@"}
 {"key":"%@ · 版本 %@\n来源：%@\n仅发布此快照，保留其他卡片，不改变排序。","en":"%@ · Version %@\nSource: %@\nPublishes only this snapshot; preserves other cards and their order."}
 {"key":"%@ · 离线模板\n%@","en":"%@ · Offline template\n%@"}
+{"key":"%@ 与固定 TMG2 不一致或读取期间改变；未发送。","en":"%@ does not match the fixed TMG2 set or has changed during reading; not sent."}
 {"key":"%@，%@","en":"%@, %@"}
 {"key":"%d KiB 灰度像素；等比缩小留黑边。协议 v%d，需匹配本轮 AP。","en":"%d KiB grayscale pixels; scaled to fit with black bars. Protocol v%d; must match this session’s AP."}
 {"key":"%lu 个组件 · 本机草稿 · 点按编辑","en":"%lu components · Phone draft · Tap to edit"}
@@ -29,6 +30,9 @@
 {"key":"1 · 建立临时预览会话","en":"1 · Start temporary preview session"}
 {"key":"1 · 查询眼镜 SID","en":"1 · Query glasses SID"}
 {"key":"1 · 读取仪表盘基线","en":"1 · Read Dashboard baseline"}
+{"key":"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。","en":"Dedicated 1.0.7 OTA host or route marker mismatch; not authorized."}
+{"key":"1.0.7 实验来源宿主版本/UUID/标记不匹配","en":"1.0.7 experimental source host version, UUID, or marker mismatch"}
+{"key":"1.0.7 实验查询路径或对象头不匹配，未启动服务","en":"1.0.7 experimental query path or object header mismatch; service not started"}
 {"key":"10 分钟","en":"10 minutes"}
 {"key":"10 分钟到期 · 本轮结束","en":"10-minute lease expired · Session ended"}
 {"key":"10 分钟后自动关闭，重启 App 不恢复。","en":"Turns off automatically after 10 minutes; does not resume when the app restarts."}
@@ -83,6 +87,7 @@
 {"key":"AI 生成卡片","en":"AI card creator"}
 {"key":"AI只能选择内置图标，照片请在编辑器中添加","en":"AI can only use built-in icons. Add photos in the editor."}
 {"key":"API、Schema、ZIP、测试与 GitHub 分发","en":"API, schema, ZIP, tests, and GitHub distribution"}
+{"key":"APP107-OTA-PHONE-01 · 默认锁定","en":"APP107-OTA-PHONE-01 · Locked by default"}
 {"key":"Apple Watch 遥控","en":"Apple Watch remote"}
 {"key":"Codex App Server · Mac 执行","en":"Codex App Server · Run on Mac"}
 {"key":"DISPLAY PHONE 06 · 诊断","en":"DISPLAY PHONE 06 · Diagnostics"}
@@ -99,17 +104,24 @@
 {"key":"N8W · 传图 FIX 01","en":"N8W · Image transfer FIX 01"}
 {"key":"N8W 大区域版：眼镜页面540×180，图片512×128、64KiB。先选图，再滚动到眼镜第八项 Turbo Image RX，按下进入后输入 SID。仅匹配 N8W 协议v2；最终看镜片 #1 和图片。","en":"N8W large-area version: glasses page 540×180, image 512×128, 64 KiB. Choose an image, scroll to item 8 Turbo Image RX on the glasses, press to open it, then enter the SID. Requires N8W protocol v2; check #1 and the image on the glasses display."}
 {"key":"PHONE 02 · 开启后自动记录 10 分钟，可返回音乐/导航正常使用。每 5 秒本机存盘，无需导出；不保存歌词、对话或密钥。系统挂起可能中断回传，未知原因如实记录；不自动重连或续期。","en":"PHONE 02 · Automatically records for 10 minutes when enabled. You can return to Music or Navigation. Saves locally every 5 seconds; no export needed. Lyrics, conversations, and keys are not saved. System suspension may interrupt reports; unknown causes are recorded as unknown. No automatic reconnect or renewal."}
+{"key":"PREPARE 02 · 禁止刷写","en":"PREPARE 02 · Flashing disabled"}
 {"key":"R4 单张传图验收：先选图，再打开眼镜 Turbo Image RX，点右上角输入 SID。原厂/R3 不支持；没有自动显示 ACK，最终看镜片 #1 和图片。","en":"R4 single-image transfer test: choose an image, open Turbo Image RX on the glasses, tap the top-right corner, and enter the SID. Stock firmware and R3 are unsupported; there is no automatic ACK for image display. Check #1 and the image on the glasses display."}
 {"key":"SDK回调未确认成功，结果未知；不重试，隔离保留","en":"SDK callback did not confirm success; result unknown. No retry; retained in isolation."}
 {"key":"SDK拒绝提交","en":"SDK rejected submission"}
 {"key":"SDK拒绝退出提交，请用实体按钮退出","en":"SDK rejected the exit request. Use the physical button to exit."}
 {"key":"SDK接收了请求，仍需眼镜回执和归档","en":"SDK accepted the request; glasses acknowledgement and archive are still required."}
 {"key":"SDK文字提交8秒无完成回调","en":"SDK text submission had no completion callback after 8 sec"}
+{"key":"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。","en":"SHA-256 mismatch. Unknown, outdated, or modified packages are rejected; not sent."}
 {"key":"SID 无效或设备已改变，未开启。","en":"SID invalid or device changed; not started."}
 {"key":"Server 与发布边界","en":"Server and distribution boundaries"}
+{"key":"Strix OS 1.0.5.5 · TMG2 可选排数菜单\nAP：7408584 字节；其余14个负载与新版原厂包一致（并非与旧系统一致）。完整 OTA 仍会写入其他原厂分区。\nAP MD5：d7e88db2e1ad22651c775ec8f4740d0e\n实验有风险；菜单、断线、抬头与原厂业务仍需实机回归，不保证恢复。","en":"Strix OS 1.0.5.5 · TMG2 menu row options\nAP: 7408584 bytes; the other 14 payloads match the newer factory package (not the old system). Full OTA still writes other factory partitions.\nAP MD5: d7e88db2e1ad22651c775ec8f4740d0e\nThis experiment is risky. Menu behavior, disconnections, raise-to-wake, and stock features still need regression testing on real devices; recovery is not guaranteed."}
 {"key":"TCE1 · 选择模板，拖动组件，裁剪自己的图标。\n最多 8 张本机草稿；仅配置快照，不自动联网。手机预览可用，发送需要配套 TCE1 固件。","en":"TCE1 · Choose a template, drag components, and crop your own icons.\nUp to 8 phone drafts; config snapshots only, with no automatic network access. Preview on phone; sending requires companion TCE1 firmware."}
 {"key":"TDC1 测试卡 · 演示数据，未读取真实账户或 Mac","en":"TDC1 test card · Demo data; no real account or Mac data read"}
 {"key":"TLC1 全天智记共存候选","en":"TLC1 All-day Lifelog coexistence candidate"}
+{"key":"TMG2 · 可选排数菜单 · 默认锁定","en":"TMG2 · Menu row options · Locked by default"}
+{"key":"TMG2 完整文件校验通过，已保存扩展本地副本。\n未向眼镜发送，未开始安装；返回本页不会触发升级。","en":"Full TMG2 file validation passed; the extension saved a local copy.\nNothing was sent to glasses and installation did not start. Returning to this page will not trigger an update."}
+{"key":"TMG2 试刷尚未授权；开始指令未发送。请先在实验固件页完成 TMG2 风险确认。","en":"TMG2 test flash is not authorized; start command not sent. First confirm TMG2 risk on the experimental firmware page."}
+{"key":"TMG2：540×220 菜单，默认三排，可在设置切换两排并保存。保留 TNR3 导航、拍照和全部入口；仅改 AP，其余14个载荷不动。","en":"TMG2: 540×220 menu, three rows by default; you can switch to two rows in Settings and save. Retains TNR3 Navigation, camera, and all entry points. Only the AP payload is customized; the other 14 payloads are unchanged."}
 {"key":"TNV1专用固件：手机开始导航后可自动打开眼镜页面","en":"With TNV1 firmware, phone navigation can automatically open the glasses page"}
 {"key":"TURBO IO · 本机布局示例 7392","en":"TURBO IO · Phone layout sample 7392"}
 {"key":"Token 保存到钥匙串，不写入草稿","en":"Token is saved in Keychain, not in drafts"}
@@ -134,6 +146,8 @@
 {"key":"上一条命令仍在确认，请稍后再操作","en":"The previous command is still awaiting confirmation. Try again shortly."}
 {"key":"上一条尚未回执；本次不排队","en":"Previous command not acknowledged; this one was not queued"}
 {"key":"上一次请求仍在等待回执，最多20秒；不重复发送","en":"Previous request is still awaiting acknowledgement (up to 20 sec); no duplicate is sent."}
+{"key":"下载来源已关闭／到期，请重新开启15分钟","en":"Download source closed or expired; reopen for 15 minutes"}
+{"key":"下载来源已开放，剩余 %@ 秒","en":"Download source open; %@ seconds remaining"}
 {"key":"不主动调整卡片顺序。","en":"Does not actively reorder cards."}
 {"key":"不会删除待办事项或其他卡片。","en":"Does not delete to-dos or other cards."}
 {"key":"不会删除眼镜上的卡片。需要移除眼镜卡片时请先在编辑页操作。","en":"This will not delete cards on glasses. To remove a glasses card, do that in the editor first."}
@@ -157,6 +171,7 @@
 {"key":"仅发送当前图片，不启动 OTA，不上传云端","en":"Sends only the current image; does not start OTA or upload to the cloud."}
 {"key":"仅在你看见7392后测试：标题、分隔线、图标、横竖排","en":"Test only after seeing 7392: title, divider, icon, horizontal/vertical layout."}
 {"key":"仅展示扩展已保存的内容，不冒充历史全量。","en":"Shows only content saved by the extension, not the complete history."}
+{"key":"仅授权本次 TMG2 试刷","en":"Authorize this TMG2 test flash only"}
 {"key":"仅提交一次官方创建回调；等待官方真实列表和ID，未声明成功","en":"Submitted the RayNeo app creation callback once; waiting for the real list and ID; not declared successful"}
 {"key":"仅新增/卸载本工具拥有的测试卡，不发送全量看板覆盖，不启用刷新订阅或传感器，不改固件。安装回执 ≠ 镜片可见。退出页面不会删除测试卡，可回来手动卸载。","en":"Only adds or removes test cards owned by this tool. Does not send a full Dashboard overwrite, enable refresh subscriptions or sensors, or change firmware. Installation acknowledgement ≠ visible on the glasses display. Leaving this page does not remove the test card; you can return and uninstall it manually."}
 {"key":"仅本机日志验收？","en":"Local log validation only?"}
@@ -166,6 +181,7 @@
 {"key":"仅用于新 N8 / N8W 测试固件。必须亲眼看到眼镜 Turbo Image RX 页上的 SID；原厂/R3 不支持。输入当前 SID 后 30 秒内点发送。本轮最多一张，SDK 收到文件不代表镜片显示，需人工验收。不会触发 OTA。","en":"For new N8 / N8W test firmware only. You must see the SID on the glasses Turbo Image RX page; stock firmware / R3 are unsupported. Enter the current SID and tap Send within 30 seconds. One image maximum per session. SDK file receipt does not prove the image appeared on the glasses; verify manually. Does not trigger OTA."}
 {"key":"仅研究日志路径。测试前关闭手机互联网但保留蓝牙，结束其他眼镜任务；不要同时操作官方反馈。已保存且校验通过后，可手动请求新一轮，保留旧归档与隔离记录；不会自动重试。超时或结果未知仍禁止重发。最多保留32轮任务隔离，达到上限由Mac检查。隔离不是全App网络防火墙。","en":"Only the research log path is tested. Before testing, turn off phone internet, keep Bluetooth on, and end other glasses tasks; do not use RayNeo app log feedback at the same time. After saving and validating, you may manually request another run; old archives and isolation records are retained. No automatic retries. Resending is prohibited after a timeout or unknown result. Up to 32 task runs are retained in isolation; at the limit, have them checked on a Mac. Isolation is not an app-wide network firewall."}
 {"key":"今日概览","en":"Today's overview"}
+{"key":"从“文件”导入 · 完整 SHA-256 比对 · 不解压、不发送","en":"Import from Files · Full SHA-256 comparison · No extraction or sending"}
 {"key":"从一句话开始","en":"Start with a sentence"}
 {"key":"从手机导入，眼镜“我的应用”中打开","en":"Import from your phone; open from My Apps on the glasses"}
 {"key":"从文件选择 PNG / JPEG / HEIC","en":"Choose PNG / JPEG / HEIC from Files"}
@@ -183,6 +199,7 @@
 {"key":"任务设备或字段不符，未加载。","en":"Task device or fields do not match; not loaded."}
 {"key":"休息中","en":"On a break"}
 {"key":"会话已变化","en":"Session changed"}
+{"key":"会话已开始，未中断传输；请保持供电和连接","en":"Session started; transfer was not interrupted. Keep power and connection on."}
 {"key":"会话已验证并续租；可以发送测试图","en":"Session verified and renewed; ready to send a test image"}
 {"key":"会话状态已变化，请重新查询和确认。","en":"Session state changed. Query and confirm again."}
 {"key":"会话编号不是持久启动计数","en":"Session ID is not a persistent boot count."}
@@ -216,6 +233,7 @@
 {"key":"停止这个应用","en":"Stop this app"}
 {"key":"像素基线与局部传输状态","en":"Pixel baseline and partial-transfer status"}
 {"key":"像素基线失效；停止更新，请退出眼镜页后重新开启","en":"Pixel baseline invalid; updates stopped. Exit the glasses page, then start again."}
+{"key":"允许一次 TMG2 可选排数菜单试刷","en":"Allow one TMG2 test flash with menu row options"}
 {"key":"允许语音调用只读知识库","en":"Allow voice access to the read-only knowledge base"}
 {"key":"先关闭手机互联网、保留蓝牙，并结束其他眼镜任务。此操作会让眼镜生成日志归档；可能包含私人信息。扩展接收本次任务，不调用上传、不自动解压、不删除原件。未恢复前请勿操作官方日志反馈。","en":"Turn off phone internet, keep Bluetooth on, and end other glasses tasks first. This creates a glasses log archive that may contain private information. The extension receives this task; it makes no upload call, does not unzip automatically, and does not delete originals. Do not use RayNeo app log feedback until recovery is complete."}
 {"key":"先刷新眼镜状态","en":"Refresh glasses status first"}
@@ -250,6 +268,7 @@
 {"key":"其他卡片发生变化，停止排序。请核对眼镜。","en":"Other cards changed; sorting stopped. Check the glasses."}
 {"key":"其他卡片或排序发生变化，已停止置顶；请重新核对","en":"Other cards or their order changed; moving the test card to the top stopped. Check again."}
 {"key":"内存余量","en":"Memory left"}
+{"key":"内置TMG2候选校验通过，已保存本机。未开放下载，未授权刷写。","en":"Built-in TMG2 candidate validated and saved on this phone. Downloads are not enabled and flashing is not authorized."}
 {"key":"内置图标","en":"Built-in icon"}
 {"key":"内置图标编号无效","en":"Invalid built-in icon index"}
 {"key":"再来一轮","en":"One more round"}
@@ -268,6 +287,7 @@
 {"key":"列表%@次 · 新增回调%@次 · 实体回传%@次\n%@\n真实ID：%@；完成：%@","en":"List observations: %@ · New-item callbacks: %@ · Entity returns: %@\n%@\nActual ID: %@; Completed: %@"}
 {"key":"创建一条桥接测试待办","en":"Create a bridge test to-do"}
 {"key":"创建专用测试项？","en":"Create a dedicated test item?"}
+{"key":"创建本机监听器失败。","en":"Could not create local listener."}
 {"key":"创建测试项","en":"Create test item"}
 {"key":"创建第一张卡片","en":"Create your first card"}
 {"key":"初始画布未启动；不自动重试","en":"Initial canvas not started; no automatic retry"}
@@ -281,6 +301,8 @@
 {"key":"刷新最近结果","en":"Refresh recent results"}
 {"key":"刷新眼镜番茄状态","en":"Refresh glasses Focus timer status"}
 {"key":"刷新连接状态","en":"Refresh connection status"}
+{"key":"刷机门禁关闭 · 不能开始升级","en":"Flash gate closed · Cannot start update"}
+{"key":"刷机门禁尚未开放：需先验收官方入口与同版本缓存。","en":"Flash gate is not open: the RayNeo app entry point and same-version cache must pass validation first."}
 {"key":"前方右转 · 测试道路","en":"Ahead: right turn · Test road"}
 {"key":"前方左转 · 测试道路","en":"Ahead: left turn · Test road"}
 {"key":"包","en":"packets"}
@@ -330,14 +352,23 @@
 {"key":"取消本次整理","en":"Cancel this summary"}
 {"key":"取消生成","en":"Cancel generation"}
 {"key":"变化超过32个小区域；本次未发送，请手动选择整图更新","en":"More than 32 regions changed; not sent. Choose a full-image update manually."}
+{"key":"只下载","en":"Download only"}
+{"key":"只下载验收，不刷眼镜","en":"Download-only check, no glasses flashing"}
 {"key":"只保存开启之后官方全天智记收到的音频，不启动麦克风/智记，不恢复历史未保存音频。仅本机，关闭附加事件正文日志。持续开启会占用存储，用完请关闭；不会自动删除文件。App重开后需重新核对开关。","en":"Saves only audio received by All-day Lifelog in the RayNeo app after you enable this. Does not start the microphone or Lifelog, and cannot restore older unsaved audio. Stored on this device only; extra event-body logging is off. Keeping this on uses storage; turn it off when finished. Files are not deleted automatically. Recheck the setting after reopening the app."}
+{"key":"只修改 AP 内容，不保证只写 AP；可能无法启动，原厂 ZIP 不保证能救砖。先关闭官方自动更新。确认当前无录音、提词、导航或对话，电量充足。输入 TMG2 后授权，随后在官方页面手动开始安装。","en":"Only AP contents are modified; this does not guarantee that only AP will be written. The device may fail to boot; the factory ZIP does not guarantee recovery from bricking. Turn off automatic updates in the RayNeo app first. Confirm no recording, teleprompter, Navigation, or conversation is active and there is sufficient battery charge. Enter TMG2 to authorize, then manually start installation on the RayNeo app page."}
 {"key":"只修改手机预览，不自动发送","en":"Phone preview only; does not send automatically"}
 {"key":"只包含在“资料”页开启保存后收到的最终文字，不代表官方历史全量。音频保存与分享请返回资料页直接打开。","en":"Includes only final text received after saving was enabled on the \"Library\" page; not the complete RayNeo app history. For audio saving and sharing, open that feature directly from the Library page."}
 {"key":"只发临时设置，不发字幕录音启动；等待同SID回执后才能发A。4分钟保护；锁屏/离开时请求退出。","en":"Sends only temporary settings, not a command to start caption recording. Wait for the same-SID acknowledgement before sending A. Four-minute safety timer; requests exit when the phone locks or you leave this page."}
 {"key":"只发给当前配对眼镜，不上传云端、不刷固件。真实文件吞吐待验，超时后不会盲目重发。","en":"Only sends to the currently paired glasses. No cloud upload or firmware flashing. Real file throughput is not yet verified; no blind retry after a timeout."}
+{"key":"只向固件查询提供 TMG2；所有发送被隔离，仅允许读取 OS 版本。官方可能提示发送失败，这是准备阶段的预期。","en":"Only provides TMG2 for firmware queries. All sends are isolated; only the OS version can be read. The RayNeo app app may report a send failure, as expected during preparation."}
 {"key":"只安装此预览包，不刷固件。最多四个应用；相同 ID 仅允许更高版本更新。请让眼镜回首页并结束其他任务。","en":"Install this preview package only; does not flash firmware. Up to four apps; the same ID can only be updated to a higher version. Return the glasses to Home and finish other tasks first."}
+{"key":"只接受本地待传目录。","en":"Only a local pending-transfer directory is accepted."}
+{"key":"只接受本地文件。","en":"Only a local file is accepted."}
+{"key":"只接受本地目录。","en":"Only a local directory is accepted."}
+{"key":"只提供固定 TMG2 下载，不授予试刷权限；需另外明确确认。","en":"Only provides the fixed TMG2 download; does not grant test-flash permission. Requires separate explicit confirmation."}
 {"key":"只操作本工具记录的测试 ID，不删除其他卡片。测试可能被当前固件拒绝；失败不自动重试，恢复文字卡可点第2项，清理点第4项。","en":"Operates only on test IDs recorded by this tool; does not delete other cards. The current firmware may reject the test; failures are not retried automatically. Tap item 2 to restore the text card or item 4 to clean up."}
 {"key":"只支持完整的 UTF-8 文本文件（不超过 8 MB / 200 万字符）。未读取官方历史全文。","en":"Only complete UTF-8 text files are supported (up to 8 MB / 2 million characters). The full RayNeo app history has not been read."}
+{"key":"只有未开始时能撤销。开始后不要强停 App、断电或切换版本。","en":"Can be revoked only before it starts. Once started, do not force-quit the app, cut power, or switch versions."}
 {"key":"只查询 Mac 已归档数据，不刷新微信、不读实时数据库。命中片段经 Codex 处理，答案会交给当前自有模型。","en":"Searches only archived data on the Mac; does not refresh WeChat or read the live database. Matching excerpts are processed by Codex, and the answer is sent to the current custom model."}
 {"key":"只查询，不开始计时","en":"Query only; does not start a timer"}
 {"key":"只测试官方持久化创建入口；不发送网页业务待办、不覆盖眼镜列表。一次创建后不自动重试。列表基线仅保留进程内存，文件只记录命名测试项和计数。","en":"Tests only the RayNeo app persistent-creation entry point. Does not send to-do commands through the web channel or overwrite the glasses list. Creates once and never retries automatically. The list baseline stays in process memory; the file records only the named test item and counts."}
@@ -392,6 +423,7 @@
 {"key":"地址或令牌无效，未保存。","en":"Invalid endpoint or token; not saved."}
 {"key":"坐标转换未收敛 · 不显示错位路网","en":"Coordinate conversion did not converge · Misaligned roads hidden"}
 {"key":"垂直居中","en":"Center vertically"}
+{"key":"基于新版原厂包，仅自定义 AP","en":"Based on the newer factory package; only the AP is customized"}
 {"key":"基线%@ · %lu/%lu块 · %.2f秒\n%@","en":"Baseline %@ · %lu/%lu blocks · %.2f sec\n%@"}
 {"key":"声音与文字，保存到自己的文件。","en":"Sound and text, saved to your files."}
 {"key":"声音档案","en":"Audio archive"}
@@ -418,6 +450,7 @@
 {"key":"完整转写文字","en":"Complete transcript text"}
 {"key":"官方列表出现唯一新项，已关联真实ID；仍需镜片验收","en":"A unique new item appeared in the RayNeo app list and was linked to a real ID; the glasses display still needs verification."}
 {"key":"官方包装类型不匹配。","en":"RayNeo app wrapper type mismatch."}
+{"key":"官方升级流程","en":"RayNeo app update procedure"}
 {"key":"官方四项 + TurboIO","en":"Four RayNeo app tabs + TurboIO"}
 {"key":"官方回调调用异常；结果未知，禁止重试","en":"RayNeo app callback raised an exception; result unknown; do not retry."}
 {"key":"官方字幕会话或设备变化，停止本次实验","en":"RayNeo app caption session or device changed; stopping this test"}
@@ -435,6 +468,7 @@
 {"key":"对齐 / 层级","en":"Alignment / layers"}
 {"key":"对齐与图层","en":"Alignment and layers"}
 {"key":"导入 TXT / MD 并分享 Markdown","en":"Import TXT / MD and share as Markdown"}
+{"key":"导入失败，未发送。","en":"Import failed. Not sent."}
 {"key":"导入应用 ZIP","en":"Import app ZIP"}
 {"key":"导入文本","en":"Import text"}
 {"key":"导出失败，未修改眼镜。","en":"Export failed; glasses were not changed."}
@@ -462,8 +496,10 @@
 {"key":"尚未收到回调","en":""}
 {"key":"尚未收到眼镜采样，不能判断资源余量。\n","en":"No glasses samples received yet; resource headroom cannot be determined.\n"}
 {"key":"尚未查询","en":"Not queried yet"}
+{"key":"尚未检查。只读取官方同版本解压目录，不清理、不覆盖。","en":"Not checked yet. Only reads the RayNeo app extracted directory for the same version; does not clean up or overwrite files."}
 {"key":"尚未观察到官方待办列表","en":"No RayNeo app to-do list observed yet"}
 {"key":"尚未请求眼镜日志。请保持官方眼镜连接。","en":"Glasses log not requested yet. Keep the RayNeo app glasses connection active."}
+{"key":"尚未读取","en":"Not read yet"}
 {"key":"尚未连接取景器","en":"Viewfinder not connected yet"}
 {"key":"尚未选图","en":"No image selected yet"}
 {"key":"尚未采集","en":"Not collected yet"}
@@ -496,10 +532,12 @@
 {"key":"已取消，未创建草稿。","en":"Canceled. No draft created."}
 {"key":"已在手机生成像素，无云上传；等待接收模块验收。","en":"Pixels generated on the phone; no cloud upload. Receiver module still needs validation."}
 {"key":"已复制。粘贴给你的 Agent，按提示连接自己的 Server。密钥无需填进提示词。","en":"Copied. Paste into your agent and follow the instructions to connect your own server. Keys are not needed in the prompt."}
+{"key":"已安装","en":"Installed"}
 {"key":"已实际确认","en":"I checked the glasses"}
 {"key":"已导入本机文本，尚未上传。请核对是否为完整转写。","en":"Text imported on this device but not uploaded yet. Check that this is the complete transcript."}
 {"key":"已建立（跨重启保留）","en":"Created (persists across restarts)"}
 {"key":"已开启 10 分钟；请在手表连接雷鸟插件","en":"On for 10 minutes; connect the RayNeo plugin on your Watch"}
+{"key":"已恢复 TMG2 本地副本，完整 SHA-256 复核通过。\n未发送、未安装；不会自动启动升级。","en":"Restored local TMG2 copy; full SHA-256 check passed.\nNot sent or installed; update will not start automatically."}
 {"key":"已恢复本地日志副本，可分享；SHA256核对通过。","en":"Local log copy recovered and ready to share; SHA256 check passed."}
 {"key":"已恢复首次日志副本，可分享；SHA256核对通过。首次隔离失败，这不是重新采集。","en":"Initial log copy recovered and ready to share; SHA256 check passed. Initial isolation failed; this is not a new capture."}
 {"key":"已截获眼镜日志任务回执；等待匹配UUID的归档，不转交Flutter","en":"Glasses log task acknowledgement intercepted; waiting for an archive with the matching UUID; not forwarded to Flutter."}
@@ -518,7 +556,11 @@
 {"key":"已断互联网，开始一次","en":"Internet disconnected; start one run"}
 {"key":"已暂停","en":"Paused"}
 {"key":"已暂停发送与续租；返回后需重新查询，不会永久占用显示","en":"Sending and lease renewal paused. Query again when you return; the display will not be held indefinitely."}
+{"key":"已有副本校验失败，已保留原文件，不会发送或覆盖。","en":"Existing copy failed validation; original file was kept. It will not be sent or overwritten."}
+{"key":"已有升级会话，未重建来源或改变发送状态","en":"An update session already exists; source was not recreated and send state was not changed."}
 {"key":"已有归档恢复凭据，但验证未通过；未重新采集。","en":"Existing archive recovery credential failed validation; not captured again."}
+{"key":"已有授权或升级会话，未重建下载来源；不要重启或重复授权。","en":"Authorization or update session already exists. Download source was not recreated. Do not restart or authorize again."}
+{"key":"已有授权或发送会话，不能作为只下载验收开启；未改变会话。","en":"An authorization or send session already exists. Cannot enable download-only check; session unchanged."}
 {"key":"已本机缩图，没有发送。","en":"Image resized locally; not sent."}
 {"key":"已看到 SID，开启本轮","en":"SID seen; start this session"}
 {"key":"已看到文字基线，继续单项测试？","en":"Seen the text baseline; continue with one test?"}
@@ -536,11 +578,13 @@
 {"key":"应用不在前台","en":"App is not in the foreground"}
 {"key":"应用字段不合法，未执行任何代码。","en":"Invalid app field; no code was run."}
 {"key":"应用广场","en":"App Gallery"}
+{"key":"应用文件仍在传输或结果未知，先查询完成；未开放升级。","en":"App file is still transferring or its result is unknown. Complete a status query first; upgrade remains disabled."}
 {"key":"应用格式、权限或 20 KiB/540×180 预算校验失败。","en":"App format, permissions, or 20 KiB / 540×180 budget validation failed."}
 {"key":"应用级控制，不是全局输入","en":"App-level control, not global input"}
 {"key":"应用级暂停/停止，须已有计时","en":"App-level pause/stop; a timer must already be running"}
 {"key":"开发指南","en":"Developer guide"}
 {"key":"开发者仪表盘 · TDC1","en":"Developer Dashboard · TDC1"}
+{"key":"开启 15 分钟只下载验收","en":"Enable 15-minute download-only check"}
 {"key":"开启保存后使用一次官方全天智记，停止后刷新。","en":"Use All-day Lifelog in the RayNeo app once after enabling saving, then stop it and refresh."}
 {"key":"开启本机音频保存","en":"Enable local audio saving"}
 {"key":"开启相机与眼镜取景","en":"Start camera and glasses viewfinder"}
@@ -552,9 +596,11 @@
 {"key":"开始5分钟短休息","en":"Start 5-minute short break"}
 {"key":"开始专注","en":"Start focus"}
 {"key":"开始新一轮日志（保留旧副本）","en":"Start a new log run (old copy retained)"}
+{"key":"开放 15 分钟本机 TMG2 下载源，只供手机获取、校验和解压，不授予升级发送权限。正常语音和天气不因此禁用。若已单独授权，请先撤销未开始的授权。","en":"For 15 minutes, enables a local TMG2 download source only for phone retrieval, validation, and extraction; grants no upgrade-send permission. This does not disable normal voice or weather. If separate authorization already exists, revoke it first; only authorization for a flash that has not started can be revoked."}
 {"key":"归档事件先于回执：已隔离，等待任务UUID核对","en":"Archive event arrived before acknowledgement; isolated while waiting to verify the task UUID."}
 {"key":"归档或恢复凭据校验失败；保留文件，不允许新一轮，请由Mac检查","en":"Archive or recovery credential verification failed; file retained. A new run is not allowed; have it checked on a Mac."}
 {"key":"归档读取或写入失败；原数据没有删除。","en":"Archive read or write failed; the original data was not deleted."}
+{"key":"当前不是可授权状态或没有有效设备；未开放。","en":"Current state does not permit authorization or no valid device is available; not enabled."}
 {"key":"当前任务不允许操作","en":"Current task does not allow this operation"}
 {"key":"当前区域路网暂缺 · 保留已有道路","en":"Road data temporarily unavailable here · Keeping existing roads"}
 {"key":"当前官方版本或音频接口尚未就绪","en":"Current RayNeo app version or audio interface is not ready yet"}
@@ -571,6 +617,9 @@
 {"key":"录音与智记","en":"Recording and Lifelog"}
 {"key":"录音整理.md","en":"Recording summary.md"}
 {"key":"录音转写","en":"Recording transcript"}
+{"key":"待传文件在冻结时摘要不符；未授权发送。","en":"Pending file digest did not match when freezing; sending is not authorized."}
+{"key":"待传文件在冻结时改变；未授权发送。","en":"Pending file changed during freezing; sending is not authorized."}
+{"key":"待传目录不存在、不可读或为符号链接；未发送。","en":"Pending directory is missing, unreadable, or a symlink; not sent."}
 {"key":"待办协议验收","en":"To-do protocol test"}
 {"key":"待办观察入口未就绪。","en":"To-do observer is not ready."}
 {"key":"待发布与最近状态","en":"Pending publish and recent status"}
@@ -596,6 +645,7 @@
 {"key":"手机离开前台或研究页面关闭","en":"App left the foreground or the Research page closed"}
 {"key":"手机绘图 · 不改变眼镜固件","en":"Phone drawing · Does not change glasses firmware"}
 {"key":"手机草稿保留，不删除天气、待办或其他卡片。","en":"Phone drafts stay. Weather, to-dos, and other cards are not deleted."}
+{"key":"手机解压目录 · 只读复核","en":"Phone extracted directory · Read-only review"}
 {"key":"手机音乐控制已执行；镜片状态以眼镜回执为准","en":"Phone music control was applied; glasses display status follows the glasses acknowledgement"}
 {"key":"手表不可达，需重新连接；不会补发按键","en":"Watch unreachable. Reconnect; button presses will not be resent"}
 {"key":"手表已连接雷鸟插件","en":"Watch connected to the RayNeo plugin"}
@@ -621,6 +671,8 @@
 {"key":"损坏或不兼容的应用包，未解压到磁盘。","en":"App package is corrupt or incompatible; not extracted to disk."}
 {"key":"换图片","en":"Change image"}
 {"key":"授权有效","en":"Authorization valid"}
+{"key":"授权有效期必须在 0 至 900 秒之间。","en":"Authorization lifetime must be greater than 0 and at most 900 seconds."}
+{"key":"授权：%@ · 已开始：%@\n清单匹配：%@ · 已核对分片 %@\n%@ · 固件查询 %@\nHTTP自检：%@\n%@\n%@","en":"Authorized: %@ · Started: %@\nManifest match: %@ · Chunks checked: %@\n%@ · Firmware query %@\nHTTP self-check: %@\n%@\n%@"}
 {"key":"接入你的 Server","en":"Connect your server"}
 {"key":"接口不可用","en":"Interface unavailable"}
 {"key":"接收与显示状态","en":"Reception and display status"}
@@ -641,6 +693,8 @@
 {"key":"提交次数不等于面板 FPS","en":"Submission count is not panel FPS"}
 {"key":"提交状态","en":"Submission status"}
 {"key":"撤销","en":"Undo"}
+{"key":"撤销下载来源","en":"Revoke download source"}
+{"key":"撤销尚未开始的试刷授权","en":"Revoke test-flash authorization before it starts"}
 {"key":"操作事件来自已校验的协议回执，不等于镜片视觉确认；采样静默不能确认为蓝牙断开。关闭/崩溃后最后存盘状态可能为 active，不能视为仍在运行。","en":"Operation events come from validated protocol acknowledgements and do not confirm what appeared on the glasses display. Silent sampling does not confirm Bluetooth disconnection. After app closure or a crash, the last saved state may say active; that does not mean it is still running."}
 {"key":"操作已取消；重新读取眼镜布局，不补发旧设置","en":"Canceled. Read the glasses layout again; old settings will not be resent"}
 {"key":"收到 %@；仅验证手势，眼镜未执行","en":"Received %@; gesture test only, glasses did not act"}
@@ -650,6 +704,7 @@
 {"key":"收到此测试项的眼镜未完成回传","en":"Glasses reported this test item as incomplete"}
 {"key":"收到真实 SID；等待续租回执后才允许绘制","en":"Real SID received; drawing is allowed only after lease renewal is acknowledged"}
 {"key":"收到迟到回执，未恢复发送","en":"Late acknowledgement received; sending not resumed"}
+{"key":"改动与安装范围","en":"Changes and installation scope"}
 {"key":"数值无效","en":"Invalid value"}
 {"key":"数据包超出限制，未发送。","en":"Packet exceeds the limit; not sent."}
 {"key":"数据来源","en":"Data sources"}
@@ -663,9 +718,12 @@
 {"key":"文件不可用或超限：请先在文件 App 下载到本机，限单帧 PNG/JPEG/HEIC、16MP/20MiB。","en":"File unavailable or over limit. Download it to the phone in the Files app first. Limit: one PNG/JPEG/HEIC frame, 16MP/20MiB."}
 {"key":"文件任务已提交，等待发送完成及眼镜回执…","en":"File task submitted; waiting for send completion and glasses acknowledgement…"}
 {"key":"文件发送已完成，等待眼镜处理回执…","en":"File sent; waiting for glasses processing acknowledgement…"}
+{"key":"文件大小不符。只接受本次 TMG2 实验 ZIP，未保存、未发送。","en":"File size mismatch. Only this TMG2 experimental ZIP is accepted; not saved or sent."}
 {"key":"文件成功回执已收到；没有自动显示 ACK，请检查镜片图片和 #1。","en":"File success acknowledgement received; no automatic ACK for image display. Check the image and #1 on the glasses display."}
 {"key":"文件提交失败；停止导航发送","en":"File submission failed; navigation sending stopped"}
+{"key":"文件过大；未保存、未发送。","en":"File too large; not saved or sent."}
 {"key":"文件通道返回失败，已停止；不自动重试修改画面的命令","en":"File channel failed; stopped. The screen-changing command will not be retried automatically."}
+{"key":"文件集合与 TMG2 不符，可能是旧缓存或残缺目录；未发送。","en":"File set does not match TMG2. It may be an old cache or incomplete directory; not sent."}
 {"key":"文字","en":"Text"}
 {"key":"文字为空、过长或含控制字符","en":"Text is empty, too long, or contains control characters"}
 {"key":"文字仅含扩展明确开启后保存的最终文字；官方历史全文仍待接通。音频使用官方本机保存接口，需先明确开启，仅覆盖之后的智记，不代表历史全量。","en":"Text includes only final text saved by the extension after explicitly enabling saving; full RayNeo app history is not available yet. Audio uses the RayNeo app local saving interface and requires explicit enabling; it includes only Lifelog audio received afterward, not the full history."}
@@ -698,6 +756,7 @@
 {"key":"无法构造官方包装，未调用。","en":"Could not construct the RayNeo app wrapper; not called."}
 {"key":"无法生成稳定的智记音频副本。请先停止本次全天智记，再刷新重试；原文件未改。","en":"Could not create a stable copy of Lifelog audio. Stop the current All-day Lifelog session, refresh, and try again; the original file was not changed."}
 {"key":"无法继续成帧；已停止，不重复提交","en":"Cannot continue building the frame; stopped without resubmitting."}
+{"key":"无法读取文件","en":"Could not read file"}
 {"key":"无网络、麦克风或定位权限","en":"No network, microphone, or location permissions"}
 {"key":"无路口图","en":"No map"}
 {"key":"无错误说明","en":"No error details"}
@@ -711,6 +770,7 @@
 {"key":"是","en":"Yes"}
 {"key":"显示兼容性","en":"Display compatibility"}
 {"key":"显示排数","en":"Menu rows"}
+{"key":"显示文件仍在传输或结果未知，请等待终态；未开放升级。若任务无法收尾，先退出显示页并重启 App 重新检查。","en":"Display file is still transferring or its result is unknown. Wait for a terminal state; upgrade remains disabled. If the task cannot finish, leave the display page and restart the app to check again."}
 {"key":"智记调试音频（来源待核对）","en":"Lifelog debug audio (source unverified)"}
 {"key":"暂不能应用","en":"Cannot apply yet"}
 {"key":"暂停","en":"Pause"}
@@ -752,9 +812,11 @@
 {"key":"未发送：请保持连接、App 前台，并先结束升级会话（刷完后重开 App）。","en":"Not sent: keep connected, keep the app in the foreground, and end the update session first (reopen the app after flashing)."}
 {"key":"未发送：请保持连接并停留前台，等待上一条回执","en":"Not sent: keep the connection active and the app in the foreground; wait for the previous acknowledgement."}
 {"key":"未发送：请先连接并进入眼镜 Turbo Display 页面，再查询 SID。","en":"Not sent: connect, open Turbo Display on the glasses, then query the SID."}
+{"key":"未安装","en":"Not installed"}
 {"key":"未完成","en":"Incomplete"}
 {"key":"未建立","en":"Not created"}
 {"key":"未开始","en":"Not started"}
+{"key":"未开始的授权已撤销","en":"Authorization revoked before start"}
 {"key":"未授权周边道路 · 仅显示已有道路","en":"Loading nearby roads not authorized · Showing existing roads only"}
 {"key":"未查询","en":"Not queried"}
 {"key":"未检测到配对手表","en":"No paired Watch found"}
@@ -763,22 +825,33 @@
 {"key":"未知","en":"Unknown"}
 {"key":"未知状态","en":"Unknown status"}
 {"key":"未知组件类型","en":"Unknown component type"}
+{"key":"未确认发送保护，拒绝提供实验包。","en":"Send protection not confirmed; experimental package will not be provided."}
+{"key":"未确认本机下载来源与健康检查，未授权。","en":"Local download source and health check not confirmed; not authorized."}
 {"key":"未获得相机权限，请在系统设置中开启。","en":"Camera permission not granted. Enable it in Settings."}
 {"key":"未读取","en":"Not read"}
 {"key":"未连接执行器","en":"No executor connected"}
 {"key":"本卡已移除，其他卡片及原顺序保留。","en":"This card was removed; other cards and their original order are preserved."}
 {"key":"本卡置顶，其他卡片顺延。","en":"Moves this card to the top; other cards move down."}
 {"key":"本周专注","en":"Focus this week"}
+{"key":"本地包","en":"Local package"}
 {"key":"本地数据校验失败，未发送。","en":"Local data validation failed; not sent."}
+{"key":"本地校验状态","en":"Local validation status"}
 {"key":"本地翻译未加载","en":"Local translation not loaded"}
 {"key":"本实验每次 App 启动仅提交一张。已有任务不自动重发；先确认结束并退出眼镜页面，再重启 App 做下一轮。","en":"This experiment allows at most one image submission per app launch. Existing tasks are not automatically resent; confirm they have ended and exit the glasses page before restarting the app for another run."}
+{"key":"本机升级来源已启动，仅返回“无更新”。已收到 %@ 次查询。\n同版本缓存及官方宿主尚待验收；编译门禁禁止提供实验包。没有发送到眼镜。","en":"Local update source is running and returns only \"No update\". Queries received: %@.\nSame-version cache and the RayNeo app host still await validation; the compile-time gate prevents serving experimental packages. Nothing was sent to glasses."}
+{"key":"本机升级来源组件已编译，当前包未启用实验路由。官方调度尚待验收。\n不覆盖官方缓存、不修改同版本升级开关、不向眼镜发送。","en":"Local update-source component is compiled, but experimental routing is not enabled in this build. RayNeo app dispatch still awaits validation.\nDoes not overwrite the RayNeo app cache, change the same-version update setting, or send anything to glasses."}
 {"key":"本机已准备的音频","en":"Prepared audio on this device"}
+{"key":"本机服务已启动，未替换监听器。","en":"Local service is running; listener was not replaced."}
+{"key":"本机服务未启动。","en":"Local service is not running."}
+{"key":"本机来源尚未启动，未开放下载。","en":"Local source has not started; downloads are disabled."}
+{"key":"本机来源端口暂不可用；会重试，未改用其他地址或远程服务。","en":"Local source port is temporarily unavailable; it will retry. No other address or remote service was used."}
 {"key":"本机独立副本 · AirDrop / 存储到文件","en":"Separate local copy · AirDrop / Save to Files"}
 {"key":"本机计时 · 返回或切后台不会重置\n不向眼镜发送，不提供手机后台提醒。","en":"Phone timer · Not reset when you go back or switch apps\nNot sent to glasses; no phone background reminders."}
 {"key":"本次会话的文件额度不足，未启动局部更新","en":"Not enough file quota for this session; partial update not started."}
 {"key":"本次图源请求已达上限 · 仅显示已有道路","en":"Map source request limit reached for this session · Showing existing roads only"}
 {"key":"本次已取消，原录音、转写及之前已保存的整理结果不变。","en":"Canceled. The original recording, transcript, and previously saved summaries are unchanged."}
 {"key":"本次引用来源","en":"Sources cited in this query"}
+{"key":"本次设备的 TMG2 文件已冻结，允许一次正常 Mode 2 会话。请返回官方页，手动点开始安装。","en":"TMG2 files for this device are frozen; one normal Mode 2 session is allowed. Return to the RayNeo app page and tap Start installation manually."}
 {"key":"本次采样耗时（毫秒）","en":"Latest sample duration (ms)"}
 {"key":"本版不包含 TBL1 亮度锁定和平滑补丁，保留 TGR1 的原厂亮度与抬头逻辑。不会更改你当前的设置。","en":"This version does not include the TBL1 brightness lock and smoothing patch. It retains the TGR1 factory brightness and raise-to-wake behavior. Your current settings will not change."}
 {"key":"本轮任务未完成归档核验，或设备不匹配；未重复发送。请保留当前状态，由Mac核对日志。","en":"This run did not complete archive verification or the device did not match; not resent. Preserve the current state and have the logs checked on a Mac."}
@@ -786,6 +859,8 @@
 {"key":"本轮收到 %lu 条 · %@","en":"Received %lu this session · %@"}
 {"key":"本轮未完成或结果未知，正在同步回执；不自动重发。","en":"This attempt did not finish or the result is unknown. Syncing acknowledgement; no automatic resend."}
 {"key":"本进程已提交过一次测试；不会自动重试或重复创建。","en":"This process has already submitted one test; it will not retry automatically or create a duplicate."}
+{"key":"来源已开放。回官方升级页检查并下载；未授予眼镜升级权限。","en":"Source is open. Return to the RayNeo app update page to check and download; glasses update permission was not granted."}
+{"key":"来源未启动，请重新开启只下载验收","en":"Source has not started. Enable the download-only check again."}
 {"key":"查看快照更新、权限和已知限制","en":"View snapshot updates, permissions, and known limits"}
 {"key":"查询","en":"Query"}
 {"key":"查询/命令超时：文件终态%@，AP回执%@；结果未知，已停止。诊断已保存","en":"Query/command timed out: file terminal event %@, AP acknowledgement %@; result unknown; stopped. Diagnostics saved."}
@@ -799,6 +874,7 @@
 {"key":"柱状图","en":"Bar chart"}
 {"key":"柱状图 6111","en":"Bar chart 6111"}
 {"key":"校验通过 · 请检查示例数值及排版","en":"Validation passed · Check sample values and layout"}
+{"key":"核对官方解压目录","en":"Check RayNeo app extracted directory"}
 {"key":"格式或目标错误","en":"Format or target error"}
 {"key":"检查内容与权限后再确认，不自动安装","en":"Review content and permissions before confirming; not installed automatically"}
 {"key":"检测到历史任务，尚无可验证副本。未重发，也不是等待两分钟连接。","en":"Previous task detected, but no verifiable copy is available. Not resent; this is not a two-minute connection wait."}
@@ -831,18 +907,23 @@
 {"key":"正在查询SID；随后自动加载初始画面（约20秒）","en":"Querying SID; then loading the initial canvas automatically (~20 sec)"}
 {"key":"正在校验…","en":"Validating…"}
 {"key":"正在核对 TCM1 取景能力…","en":"Checking TCM1 viewfinder capability…"}
+{"key":"正在核对内置TMG2候选；只保存本机，不开放更新…","en":"Checking built-in TMG2 candidate; saving locally only, with updates disabled…"}
 {"key":"正在等待眼镜…","en":"Waiting for glasses…"}
 {"key":"正在等待眼镜回执，请稍候","en":"Waiting for glasses acknowledgement; please wait."}
 {"key":"正在等待眼镜确认…","en":"Waiting for glasses confirmation…"}
 {"key":"正在请求相机和照片保存权限…","en":"Requesting camera and photo-saving permissions…"}
 {"key":"正在请求自动打开原生导航","en":"Requesting automatic launch of native navigation"}
 {"key":"正在读取…","en":"Reading…"}
+{"key":"正在读取并核对指定 TMG2 的完整 SHA-256…","en":"Reading the specified TMG2 package and checking its full SHA-256…"}
 {"key":"正在读取本机文件…","en":"Reading local file…"}
 {"key":"正在读取眼镜布局…","en":"Reading glasses layout…"}
 {"key":"正在读取选中的图片（iCloud 图片可能需要下载）…","en":"Loading selected image (iCloud photos may need to download)…"}
 {"key":"正在采集 · 可返回使用其他功能","en":"Sampling · You can return to other features"}
+{"key":"正在重新核对已保存的 TMG2 副本…","en":"Rechecking the saved TMG2 copy…"}
 {"key":"正在验证服务身份…","en":"Verifying service identity…"}
 {"key":"正常使用无需此步骤；仅新配置不兼容时点预览并退出，保存通过校验的配置。","en":"Normal use does not require this. Only if a new configuration is incompatible, open Preview and exit to save the validated settings."}
+{"key":"此刻目录中 16 个成员均与 TMG2 一致。\n仅是读取快照，尚未绑定官方传输会话；未发送、仍不能刷写。","en":"At this moment, all 16 directory entries match TMG2.\nThis is only a read snapshot, not bound to a RayNeo app transfer session. Nothing was sent; flashing is still unavailable."}
+{"key":"此包没有启用发送保护；未开放下载。","en":"This build does not have send protection enabled; downloads are disabled."}
 {"key":"此报告不包含完整崩溃转储，也不证明断电后日志可恢复","en":"This report does not contain a complete crash dump and does not prove logs can be recovered after power loss."}
 {"key":"此构建未附带示例包。","en":"No example package is included in this build."}
 {"key":"此设备不支持 WatchConnectivity","en":"This device does not support WatchConnectivity"}
@@ -859,6 +940,7 @@
 {"key":"没有当前官方协议对象。请先在官方设备页确认连接；不会创建第二个蓝牙连接。","en":"No current RayNeo app protocol object. Confirm the connection on the RayNeo app device page; a second Bluetooth connection will not be created."}
 {"key":"没有当前官方连接，或旧任务结果未知。请在官方设备页确认连接，不会创建第二个蓝牙连接。","en":"No current RayNeo app connection, or the previous task result is unknown. Confirm the connection on the RayNeo app device page; a second Bluetooth connection will not be created."}
 {"key":"没有本工具创建的测试卡，不执行卸载","en":"No test card created by this tool; uninstall skipped."}
+{"key":"没有试刷构建与发送保护；未开放。","en":"No test-flash build or send protection; not enabled."}
 {"key":"测试与退出","en":"Tests and exit"}
 {"key":"测试卡属于另一副眼镜，拒绝跨设备操作","en":"Test card belongs to another pair of glasses; cross-device operation rejected."}
 {"key":"添加组件","en":"Add component"}
@@ -893,6 +975,7 @@
 {"key":"番茄命令提交失败；未确认眼镜状态","en":"Focus timer command submission failed; glasses status was not confirmed"}
 {"key":"番茄时钟","en":"Focus timer"}
 {"key":"番茄设置","en":"Focus settings"}
+{"key":"目录快照结果","en":"Directory snapshot result"}
 {"key":"目录校验值不匹配，未加载应用。","en":"Catalog checksum mismatch; app not loaded."}
 {"key":"相机会话已停止，本次没有拍照。","en":"Camera session stopped; no photo was taken this time."}
 {"key":"相机参数被系统拒绝","en":"Camera settings were rejected by the system"}
@@ -973,7 +1056,9 @@
 {"key":"确认安装这个应用","en":"Confirm installation of this app"}
 {"key":"确认已刷入 TCE1？","en":"Confirm TCE1 is flashed?"}
 {"key":"确认整理","en":"Confirm summary"}
+{"key":"确认文字不符，未授权","en":"Confirmation text does not match; not authorized"}
 {"key":"确认眼镜已退出，当前没有任何任务","en":"Confirm the glasses have exited and no task is running"}
+{"key":"确认风险并授权","en":"Confirm risk and authorize"}
 {"key":"示例包未附带","en":"Example package not included"}
 {"key":"示例均为固定数据，音乐示例不播放音频。","en":"Examples use fixed data; the music example does not play audio."}
 {"key":"离开字幕测试页","en":"Leave caption test page"}
@@ -987,6 +1072,7 @@
 {"key":"移除测试卡","en":"Remove test card"}
 {"key":"空结果或无效响应","en":"Empty result or invalid response"}
 {"key":"空闲","en":"Idle"}
+{"key":"立即停止提供元数据和 ZIP。发送隔离保持到退出此进程，不自动恢复。","en":"Immediately stops serving metadata and ZIP. Send isolation stays active until this process exits; normal sending is not restored automatically."}
 {"key":"竖向取景","en":"Portrait view"}
 {"key":"第%lu段已提交（不是镜片回执）；请检查覆盖/追加、loading和常亮","en":"Segment %lu submitted (not a glasses acknowledgement); check replace vs. append, loading, and screen staying on"}
 {"key":"第三行 · 结束 6444","en":"Third row · End 6444"}
@@ -1000,6 +1086,7 @@
 {"key":"等待官方首页建立眼镜通信。","en":"Waiting for the RayNeo app home page to establish glasses communication."}
 {"key":"等待官方首页通信","en":"Waiting for communication with the RayNeo app home page"}
 {"key":"等待已验证的 AP 图片接收会话；当前不会盲发","en":"Waiting for a verified AP image-receive session; will not send blindly"}
+{"key":"等待或失败","en":"Waiting or failed"}
 {"key":"等待文件任务提交确认…","en":"Waiting for file task submission confirmation…"}
 {"key":"等待查询 TDP1；以真实回执判断固件能力","en":"Waiting to query TDP1; determine firmware capability from the actual acknowledgement"}
 {"key":"等待眼镜保存布局…","en":"Waiting for glasses to save the layout…"}
@@ -1071,6 +1158,7 @@
 {"key":"设置 HTTPS 地址与专用令牌","en":"Set HTTPS address and dedicated token"}
 {"key":"设置凭证已过期，请重新读取","en":"Settings credential expired; read again"}
 {"key":"设置未完全通过回读验证，请查看实际开关；可手动关闭。未启动智记。","en":"Settings did not fully pass read-back verification. Check the actual switch; you can turn it off manually. Lifelog was not started."}
+{"key":"设置本机端口重启选项失败。","en":"Could not set the local port reuse option."}
 {"key":"诊断完整性","en":"Diagnostic integrity"}
 {"key":"诊断文件传输失败","en":"Diagnostic file transfer failed"}
 {"key":"试验图源请求中（最多6次/会话，间隔60秒）","en":"Requesting test map source (max 6 per session, 60 sec apart)"}
@@ -1078,9 +1166,11 @@
 {"key":"说说你想看什么\n例如：一张专注卡，显示今天读书30分钟，目标60分钟，带书本图标和进度条。","en":"What would you like to see?\nFor example: A focus card showing 30 minutes of reading today, a 60-minute goal, a book icon, and a progress bar."}
 {"key":"请以实际眼镜状态确认","en":"Confirm based on the actual glasses state"}
 {"key":"请使用 Turbo IO 的 turboio-developer Skill，阅读 https://github.com/Turbo1123/Turbo-IO/blob/main/docs/DEVELOPER_ECOSYSTEM.md 。在我的 Server 连接我授权的 MCP，只读获取我选择的数据，密钥留在 Server。仪表盘使用 TCE1 API 的草稿/发布/手机批准；小应用使用 TAP1 540×180 原生组件、20KiB 解压预算、最多4页，生成 ZIP 并校验/预览。先离线演示，再接真实数据；不要假装联网、自动安装、刷机或执行付款等写操作。交付源码、ZIP、SHA256、测试、部署配置和手机导入步骤。App v1 是数据快照包，自动刷新和按钮后端回流尚未接入。","en":"Use the Turbo IO turboio-developer Skill and read https://github.com/Turbo1123/Turbo-IO/blob/main/docs/DEVELOPER_ECOSYSTEM.md . On my Server, connect to the MCP services I authorize and retrieve only the data I select, read-only; keep keys on the Server. For the Dashboard, use the TCE1 API draft/publish/phone approval flow. For small apps, use TAP1 native components at 540×180, with a 20KiB uncompressed budget and at most 4 pages; generate a ZIP, then validate and preview it. Demonstrate offline first, then connect real data; do not pretend to be online, install automatically, flash firmware, or perform write actions such as payments. Deliver source code, ZIP, SHA256, tests, deployment configuration, and phone import steps. App v1 is a data snapshot package; automatic refresh and button events sent back to the backend are not implemented yet."}
+{"key":"请先从官方固件页重新检查版本；需要两分钟内的 1.0.4.12 或 1.0.5.5 有效回读。","en":"Recheck the version on the RayNeo app firmware page first. A valid readback of 1.0.4.12 or 1.0.5.5 from within the last two minutes is required."}
 {"key":"请先从手机播放音乐并开启眼镜显示；同步忙碌时不执行","en":"Start music on your phone and turn on the glasses display first; no action while sync is busy"}
 {"key":"请先停止官方全天智记，等音频落盘后刷新再分享。","en":"Stop All-day Lifelog in the RayNeo app first. Wait for audio files to finish writing, then refresh before sharing."}
 {"key":"请先关闭上方音频保存开关，让官方写完文件尾，再刷新分享。不会删除原件。","en":"Turn off the audio-saving switch above and let the RayNeo app finish writing the file, then refresh to share. The original will not be deleted."}
+{"key":"请先在官方眼镜软件版本页关闭自动更新；未读到明确关闭状态，不授予试刷权限。","en":"Turn off automatic updates on the RayNeo app glasses software version page first. Without a clear disabled status, test flashing is not authorized."}
 {"key":"请先在官方首页保持眼镜连接，再读取仪表盘基线","en":"Keep the glasses connected on the RayNeo app home page, then read the Dashboard baseline."}
 {"key":"请先在模型与对话里配置自定义模型地址、模型和 Key。无需重复填写。","en":"Set up a custom model URL, model, and API key in Models & Chat. You do not need to enter them again."}
 {"key":"请先在研究菜单配置有效的自有模型接口。","en":"Configure a valid custom model endpoint in the Research menu first."}
@@ -1183,9 +1273,13 @@
 {"key":"选图失败：只支持单帧 PNG/JPEG，最多 16MP、20 MiB。","en":"Image selection failed: single-frame PNG/JPEG only, up to 16MP / 20 MiB."}
 {"key":"选择","en":"Select"}
 {"key":"选择 Agent","en":"Select agent"}
+{"key":"选择 TMG2 实验 ZIP","en":"Select TMG2 experimental ZIP"}
 {"key":"选择模板 · 所见即所得","en":"Choose a template · What you see is what you get"}
+{"key":"逐个比对 15 文件与清单；旧原厂包不会被当作 TMG2","en":"Compares all 15 files with the manifest; an old factory package will not be treated as TMG2"}
+{"key":"逐个读取并核对 SHA-256…","en":"Reading and checking each SHA-256…"}
 {"key":"通信提交被保护门禁拒绝，已停止；没有重试快门","en":"Protected gate rejected communication submission; stopped. Shutter was not retried."}
 {"key":"通用菜单遥控尚未接通；未向眼镜发送按键","en":"General menu remote is not connected; no button press was sent to the glasses"}
+{"key":"通过","en":"Passed"}
 {"key":"通过真实官方模板；不会调用未验证的Dart地址","en":"Uses an actual RayNeo app template; never calls unverified Dart addresses."}
 {"key":"遥控与开启时长","en":"Remote control and enabled duration"}
 {"key":"遥控已关闭，旧命令已失效","en":"Remote control is off; old commands are invalid"}
@@ -1205,10 +1299,12 @@
 {"key":"采集请求提交失败","en":"Sampling request submission failed"}
 {"key":"重做","en":"Redo"}
 {"key":"重复或旧请求","en":"Duplicate or old request"}
+{"key":"重新校验并冻结实际待传文件；限定本次设备、Mode 2、TMG2 清单及每个分片。授权后再点官方“开始安装”。不保证启动或可救砖。","en":"Revalidates and freezes the actual files to be sent, restricted to this device, Mode 2, the TMG2 manifest, and every chunk. After authorization, tap \"Start installation\" on the RayNeo app page. Booting and recovery from bricking are not guaranteed."}
 {"key":"重置","en":"Reset"}
 {"key":"锁屏在途文件未确认完成；结果未知，未重试。请回前台检查并退出旧会话。","en":"In-flight file was not confirmed complete while screen was locked; result unknown; not retried. Return to the foreground, check, and exit the old session."}
 {"key":"长查询保留在 Mac；刷新结果可继续查看。本版未接 APNs，退出后不保证主动通知。","en":"Long queries remain on the Mac; refresh to keep viewing results. APNs is not connected in this version, so notifications after leaving are not guaranteed."}
 {"key":"阅读","en":"Reading"}
+{"key":"隔离钩子：%@；已阻止 %@ 次发送\n来源开放：%@ · 固件查询 %@ · App 查询 %@ · 下载 %@\n这是只下载构建，没有解除发送隔离的入口。","en":"Isolation hook: %@; sends blocked: %@\nSource open: %@ · Firmware query %@ · App query %@ · Download %@\nDownload-only build. No control is available to lift send isolation."}
 {"key":"需 TAP1 实验固件。先查询四槽状态，再导入应用；此页不会刷机。","en":"Requires TAP1 experimental firmware. Query the four slots first, then import the app; this page does not flash firmware."}
 {"key":"需 TGR1 全局遥控固件；未发送按键","en":"Requires TGR1 global remote firmware; no button press sent"}
 {"key":"需先刷入 TDC1 固件。Codex 99%；Claude 5h 90% / Weekly 85%；MacBook Pro · M5 Max，RAM可用37.5/128GB，SSD可用1.4/2TB。这不是账户实时报表。时间、电池不改，待办顺延。","en":"TDC1 firmware required first. Codex 99%; Claude 5h 90% / Weekly 85%; MacBook Pro · M5 Max, available RAM 37.5/128GB, available SSD 1.4/2TB. This is not a live account report. Time and battery are unchanged; to-do cards move down in the order."}
@@ -1218,6 +1314,7 @@
 {"key":"需要允许保存照片后才能拍照，未启动相机。","en":"Allow photo saving before taking a photo. Camera not started."}
 {"key":"需要非空 UTF-8 TXT/MD，最多 30 万字符 / 2 MB；不会悄悄截断全文。","en":"A non-empty UTF-8 TXT/MD file is required (up to 300,000 characters / 2 MB); the full text will not be silently truncated."}
 {"key":"静态格式已核对，镜片未验。替换同一张测试卡；先读基线，一次只测一项。","en":"Static format checked; glasses display unverified. Replaces the same test card. Read the baseline first; test one item at a time."}
+{"key":"非预期设备、会话、清单或分片，发送被拒绝","en":"Unexpected device, session, manifest, or chunk; send rejected."}
 {"key":"靠上","en":"Top"}
 {"key":"靠下","en":"Bottom"}
 {"key":"靠右","en":"Right"}

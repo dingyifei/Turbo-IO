@@ -1,4 +1,5 @@
 #import "ExperimentalOTA.h"
+#import "TIOLanguage.h"
 #import <CommonCrypto/CommonDigest.h>
 #import <TargetConditionals.h>
 #include <sys/stat.h>
@@ -10,10 +11,10 @@
 NSString *TIOExperimentalOTASHA(void){return @"6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473";}
 static id Fail(NSError **error,NSString *message){if(error)*error=[NSError errorWithDomain:@"TurboIO.ExperimentalOTA" code:1 userInfo:@{NSLocalizedDescriptionKey:message}];return nil;}
 NSDictionary *TIOCheckExperimentalOTA(NSData *data,NSError **error){
-    if(data.length!=8842896)return Fail(error,@"文件大小不符。只接受本次 TMG2 实验 ZIP，未保存、未发送。");
+    if(data.length!=8842896)return Fail(error,TIOText(@"文件大小不符。只接受本次 TMG2 实验 ZIP，未保存、未发送。"));
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(data.bytes,(CC_LONG)data.length,digest);
     NSMutableString *hex=[NSMutableString new];for(NSUInteger i=0;i<sizeof(digest);i++)[hex appendFormat:@"%02x",digest[i]];
-    if(![hex isEqual:TIOExperimentalOTASHA()])return Fail(error,@"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。");
+    if(![hex isEqual:TIOExperimentalOTASHA()])return Fail(error,TIOText(@"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。"));
     // The exact archive has independently passed full ZIP/manifest/AP auditing
     // on Mac. This is exact-byte identity, not a generic ZIP manifest parser.
     return @{@"schema":@1,@"candidate":@"Turbo Menu TMG2",@"baseFirmware":@"1.0.5.5",
@@ -22,20 +23,20 @@ NSDictionary *TIOCheckExperimentalOTA(NSData *data,NSError **error){
              @"runtimeValidated":@NO,@"officialDispatchConnected":@NO};
 }
 static NSData *Read(NSURL *source,NSError **error){
-    if(!source.isFileURL)return Fail(error,@"只接受本地文件。");
+    if(!source.isFileURL)return Fail(error,TIOText(@"只接受本地文件。"));
     NSInputStream *stream=[NSInputStream inputStreamWithURL:source];[stream open];
     NSMutableData *data=[NSMutableData new];uint8_t buffer[65536];NSInteger n;
     while((n=[stream read:buffer maxLength:sizeof(buffer)])>0){
-        if(data.length+(NSUInteger)n>8842896){[stream close];return Fail(error,@"文件过大；未保存、未发送。");}
+        if(data.length+(NSUInteger)n>8842896){[stream close];return Fail(error,TIOText(@"文件过大；未保存、未发送。"));}
         [data appendBytes:buffer length:(NSUInteger)n];
     }
     NSError *readError=stream.streamError;[stream close];
-    if(n<0||readError){if(error)*error=readError?:[NSError errorWithDomain:@"TurboIO.ExperimentalOTA" code:2 userInfo:@{NSLocalizedDescriptionKey:@"无法读取文件"}];return nil;}
+    if(n<0||readError){if(error)*error=readError?:[NSError errorWithDomain:@"TurboIO.ExperimentalOTA" code:2 userInfo:@{NSLocalizedDescriptionKey:TIOText(@"无法读取文件")}];return nil;}
     return TIOCheckExperimentalOTA(data,error)?data:nil;
 }
 NSDictionary *TIOReadExperimentalOTA(NSURL *file,NSError **error){NSData *data=Read(file,error);return data?TIOCheckExperimentalOTA(data,error):nil;}
 NSDictionary *TIOImportExperimentalOTA(NSURL *source,NSURL *directory,NSError **error){
-    if(!directory.isFileURL)return Fail(error,@"只接受本地目录。");
+    if(!directory.isFileURL)return Fail(error,TIOText(@"只接受本地目录。"));
     NSData *data=Read(source,error);if(!data)return nil;
     NSDictionary *result=TIOCheckExperimentalOTA(data,error);
     NSFileManager *fm=NSFileManager.defaultManager;
@@ -78,25 +79,25 @@ NSDictionary<NSString *,NSData *> *TIOCopyExperimentalOTAPayloads(NSURL *directo
     NSMutableDictionary *copy=[NSMutableDictionary new];NSDictionary *pins=PayloadPins();
     for(NSString *name in pins){
         NSData *data=[NSData dataWithContentsOfURL:[directory URLByAppendingPathComponent:name] options:0 error:error];
-        if(!data||data.length!=[pins[name][0] unsignedIntegerValue])return Fail(error,@"待传文件在冻结时改变；未授权发送。");
+        if(!data||data.length!=[pins[name][0] unsignedIntegerValue])return Fail(error,TIOText(@"待传文件在冻结时改变；未授权发送。"));
         uint8_t digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(data.bytes,(CC_LONG)data.length,digest);
         NSMutableString *hex=[NSMutableString new];for(NSUInteger i=0;i<sizeof(digest);i++)[hex appendFormat:@"%02x",digest[i]];
-        if(![hex isEqual:pins[name][1]])return Fail(error,@"待传文件在冻结时摘要不符；未授权发送。");
+        if(![hex isEqual:pins[name][1]])return Fail(error,TIOText(@"待传文件在冻结时摘要不符；未授权发送。"));
         copy[name]=data;
     }
     return TIOCheckExperimentalOTADirectory(directory,error)?[copy copy]:nil;
 }
 NSDictionary *TIOCheckExperimentalOTADirectory(NSURL *directory,NSError **error){
-    if(!directory.isFileURL)return Fail(error,@"只接受本地待传目录。");
+    if(!directory.isFileURL)return Fail(error,TIOText(@"只接受本地待传目录。"));
     // Open a directory handle and use openat/O_NOFOLLOW for every member. Never
     // follow a member symlink, FIFO or device. Do not modify old OTA caches.
     int root=open(directory.path.fileSystemRepresentation,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
-    if(root<0)return Fail(error,@"待传目录不存在、不可读或为符号链接；未发送。");
+    if(root<0)return Fail(error,TIOText(@"待传目录不存在、不可读或为符号链接；未发送。"));
     struct stat before,after;BOOL ok=fstat(root,&before)==0;NSDictionary *pins=PayloadPins();NSMutableSet *names=[NSMutableSet new];
     int copy=dup(root);DIR *stream=copy>=0?fdopendir(copy):NULL;if(!stream){if(copy>=0)close(copy);ok=NO;}
     if(stream){struct dirent *item;errno=0;while((item=readdir(stream))){if(!strcmp(item->d_name,".")||!strcmp(item->d_name,".."))continue;NSString *name=[NSString stringWithUTF8String:item->d_name];if(!name||names.count>=16||!pins[name]){ok=NO;break;}[names addObject:name];errno=0;}if(errno)ok=NO;closedir(stream);}
     if(names.count!=pins.count)ok=NO;
-    NSMutableDictionary *identities=[NSMutableDictionary new];NSString *problem=@"文件集合与 TMG2 不符，可能是旧缓存或残缺目录；未发送。";
+    NSMutableDictionary *identities=[NSMutableDictionary new];NSString *problem=TIOText(@"文件集合与 TMG2 不符，可能是旧缓存或残缺目录；未发送。");
     for(NSString *name in [pins.allKeys sortedArrayUsingSelector:@selector(compare:)]){
         if(!ok)break;
         int fd=openat(root,name.fileSystemRepresentation,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
@@ -110,7 +111,7 @@ NSDictionary *TIOCheckExperimentalOTADirectory(NSURL *directory,NSError **error)
             ok=ok&&[hash isEqual:pins[name][1]]&&fstat(fd,&last)==0&&SameStat(first,last);
             if(ok)identities[name]=[NSData dataWithBytes:&last length:sizeof(last)];
         }
-        close(fd);if(!ok)problem=[NSString stringWithFormat:@"%@ 与固定 TMG2 不一致或读取期间改变；未发送。",name];
+        close(fd);if(!ok)problem=[NSString stringWithFormat:TIOText(@"%@ 与固定 TMG2 不一致或读取期间改变；未发送。"),name];
     }
     // A second pass catches names/inodes replaced after an earlier file was read.
     for(NSString *name in identities){struct stat prior,current;[identities[name] getBytes:&prior length:sizeof(prior)];if(fstatat(root,name.fileSystemRepresentation,&current,AT_SYMLINK_NOFOLLOW)||!SameStat(prior,current))ok=NO;}
