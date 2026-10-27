@@ -77,3 +77,59 @@ test('published unsigned original accepted; mutations and mixed input pairs reje
  if(process.env.IOS107_TEST_RUNNER)assert.throws(()=>validateHost(info,fs.readFileSync(process.env.IOS107_TEST_RUNNER),a));
  if(process.env.IOS107_TEST_APP_IMAGE)assert.throws(()=>validateHost(info,r,fs.readFileSync(process.env.IOS107_TEST_APP_IMAGE)));
 });
+
+import {usageDescriptions,applyUsageDescriptions} from './package.mjs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {execFileSync as runFixtureCommand} from 'node:child_process';
+const packageTestDirectory=path.dirname(fileURLToPath(import.meta.url));
+function permissionFixture(){
+ const root=fs.mkdtempSync(path.join(packageTestDirectory,'build','wp1-permission-'));
+ const app=path.join(root,'Runner.app');fs.mkdirSync(app,{recursive:true});
+ const info=path.join(app,'Info.plist');
+ const base={CFBundleIdentifier:'fixture',NSCameraUsageDescription:'Old base camera.',NSPhotoLibraryAddUsageDescription:'Old base photo add.',NSPhotoLibraryUsageDescription:'Host base photo-library access.',NSMicrophoneUsageDescription:'Host microphone remains unchanged.'};
+ const xml='<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>'+Object.entries(base).map(([k,v])=>`<key>${k}</key><string>${v}</string>`).join('')+'</dict></plist>';
+ fs.writeFileSync(info,xml);runFixtureCommand('plutil',['-convert','binary1',info]);
+ const localizedFiles=[];
+ for(const directory of ['zh-Hans-CN.lproj','zh-HK.lproj','zh-TW.lproj']){
+  const lproj=path.join(app,directory);fs.mkdirSync(lproj);const strings=path.join(lproj,'InfoPlist.strings');
+  fs.writeFileSync(strings,'"NSCameraUsageDescription" = "Host avatar camera.";\n"NSMicrophoneUsageDescription" = "Host voice assistant microphone.";\n"NSPhotoLibraryUsageDescription" = "Host photo library access.";\n');
+  runFixtureCommand('plutil',['-convert','binary1',strings]);localizedFiles.push(strings);
+ }
+ return {root,app,info,strings:localizedFiles[0],hant:localizedFiles.slice(1)};
+}
+function plistJSON(file){return JSON.parse(runFixtureCommand('plutil',['-convert','json','-o','-',file],{encoding:'utf8'}));}
+test('permission usage description variants stay in their allowed languages and write lists',()=>{
+ for(const resources of [null,{}]){
+  const values=usageDescriptions(resources);
+  assert.doesNotMatch(Object.values(values.base).join(' '),/[㐀-鿿]/);
+  assert.match(values.zhHans.NSCameraUsageDescription,/[㐀-鿿]/);assert.match(values.zhHans.NSPhotoLibraryAddUsageDescription,/[㐀-鿿]/);
+  assert.match(values.zhHant.NSCameraUsageDescription,/[㐀-鿿]/);assert.match(values.zhHant.NSPhotoLibraryAddUsageDescription,/[㐀-鿿]/);
+  assert.equal(Object.hasOwn(values.base,'NSMicrophoneUsageDescription'),false);
+  assert.deepEqual(values.lproj,['NSCameraUsageDescription','NSPhotoLibraryAddUsageDescription']);
+  assert.equal(values.lproj.includes('NSMicrophoneUsageDescription'),false);assert.equal(values.lproj.includes('NSPhotoLibraryUsageDescription'),false);
+ }
+});
+test('applyUsageDescriptions updates only camera and photo-add keys in binary base and lproj files',()=>{
+ const f=permissionFixture();try{applyUsageDescriptions(f.app,null);
+  const base=plistJSON(f.info),localized=plistJSON(f.strings);
+  assert.equal(base.NSCameraUsageDescription,usageDescriptions(null).base.NSCameraUsageDescription);
+  assert.equal(base.NSPhotoLibraryAddUsageDescription,usageDescriptions(null).base.NSPhotoLibraryAddUsageDescription);
+  assert.equal(base.NSMicrophoneUsageDescription,'Host microphone remains unchanged.');
+  assert.equal(base.NSPhotoLibraryUsageDescription,'Host base photo-library access.');
+  assert.equal(localized.NSCameraUsageDescription,usageDescriptions(null).zhHans.NSCameraUsageDescription);
+  assert.equal(localized.NSPhotoLibraryAddUsageDescription,usageDescriptions(null).zhHans.NSPhotoLibraryAddUsageDescription);
+  assert.equal(localized.NSMicrophoneUsageDescription,'Host voice assistant microphone.');
+  assert.equal(localized.NSPhotoLibraryUsageDescription,'Host photo library access.');
+  for(const file of f.hant){const hant=plistJSON(file);assert.equal(hant.NSCameraUsageDescription,usageDescriptions(null).zhHant.NSCameraUsageDescription);assert.equal(hant.NSPhotoLibraryAddUsageDescription,usageDescriptions(null).zhHant.NSPhotoLibraryAddUsageDescription);assert.equal(hant.NSMicrophoneUsageDescription,'Host voice assistant microphone.');assert.equal(hant.NSPhotoLibraryUsageDescription,'Host photo library access.');}
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});
+test('translationResources argument does not expand the helper write lists or alter host permission values',()=>{
+ const f=permissionFixture();try{applyUsageDescriptions(f.app,{});const base=plistJSON(f.info),localized=plistJSON(f.strings);
+  assert.equal(Object.hasOwn(usageDescriptions({}).base,'NSMicrophoneUsageDescription'),false);
+  assert.equal(base.NSMicrophoneUsageDescription,'Host microphone remains unchanged.');
+  assert.equal(base.NSPhotoLibraryUsageDescription,'Host base photo-library access.');
+  assert.equal(localized.NSMicrophoneUsageDescription,'Host voice assistant microphone.');
+  assert.equal(localized.NSPhotoLibraryUsageDescription,'Host photo library access.');
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});

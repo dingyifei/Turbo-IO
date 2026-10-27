@@ -39,6 +39,38 @@ export function locationUsageFor(symbols){
   if(symbols.includes('OBJC_CLASS_$_TIOMapKitNavigationPanel'))return 'Shows your position and gives turn-by-turn directions on your glasses while navigating.';
   return null;
 }
+export function usageDescriptions(translationResources){
+  return {
+    base:{
+      NSCameraUsageDescription:'Used to set your profile picture, and to show the camera view when you start remote capture from your glasses.',
+      NSPhotoLibraryAddUsageDescription:'Saves photos you take to your library.'
+    },
+    zhHans:{
+      NSCameraUsageDescription:'用于设置头像，以及在你主动开启眼镜遥控拍照时取景。',
+      NSPhotoLibraryAddUsageDescription:'用户拍摄后保存照片。'
+    },
+    zhHant:{
+      NSCameraUsageDescription:'用於設定頭像，以及在你主動開啟眼鏡遙控拍照時取景。',
+      NSPhotoLibraryAddUsageDescription:'拍攝後將照片儲存到相簿。'
+    },
+    lproj:['NSCameraUsageDescription','NSPhotoLibraryAddUsageDescription']
+  };
+}
+export function applyUsageDescriptions(app,translationResources){
+  const descriptions=usageDescriptions(translationResources);
+  const plist=path.join(app,'Info.plist');
+  for(const key of ['NSCameraUsageDescription','NSPhotoLibraryAddUsageDescription'])
+    run('plutil',['-replace',key,'-string',descriptions.base[key],plist]);
+  for(const [directory,localized] of [['zh-Hans-CN.lproj',descriptions.zhHans],['zh-HK.lproj',descriptions.zhHant],['zh-TW.lproj',descriptions.zhHant]]){
+    const file=path.join(app,directory,'InfoPlist.strings');
+    if(!fs.existsSync(file))continue;
+    const values=JSON.parse(run('plutil',['-convert','json','-o','-',file],{encoding:'utf8'}));
+    for(const key of descriptions.lproj){
+      const operation=Object.hasOwn(values,key)?'-replace':'-insert';
+      run('plutil',[operation,key,'-string',localized[key],file]);
+    }
+  }
+}
 export function entitlementsFor(p,o) {
   if(!Array.isArray(p.certs)||!p.certs.includes(o.identity.toUpperCase())||!Array.isArray(p.devices)||!p.devices.includes(o.device)||!(Date.parse(p.expires)>Date.now()))throw Error('profile_identity_device_or_expiry_mismatch');
   const e=structuredClone(p.entitlements), appID=e?.['application-identifier'];
@@ -79,9 +111,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   if(focusEdition){
     fs.cpSync(path.join(here,'TurboIOArt'),path.join(app,'TurboIOArt'),{recursive:true,errorOnExist:true,force:false});
   }
-  for(const [key,value] of Object.entries({NSCameraUsageDescription:'用户主动开启眼镜遥控拍照时取景。',NSPhotoLibraryAddUsageDescription:'用户拍摄后保存照片。'})){
-    const plist=path.join(app,'Info.plist');run('plutil',['-replace',key,'-string',value,plist]);
-  }
+  applyUsageDescriptions(app,translationResources);
   copyTranslationResources(translationResources,app);
   if(translationResources){
     const plist=path.join(app,'Info.plist');
