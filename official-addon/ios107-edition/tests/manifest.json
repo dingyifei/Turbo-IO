@@ -131,7 +131,8 @@
     },
     "ResearchCatalogTests.m": {
       "status": "run",
-      "group": "research-catalog"
+      "group": "research-catalog",
+      "note": "Also exercised by catalog; WP0 research-catalog group retained."
     },
     "SubtitleHUDTests.m": {
       "status": "run",
