@@ -22,12 +22,12 @@
 BOOL TIOIsVoiceExitCommand(NSString *text) {
     if(![text isKindOfClass:NSString.class]||!text.length||text.length>48)return NO;
     NSMutableCharacterSet *trim=[NSCharacterSet.whitespaceAndNewlineCharacterSet mutableCopy];
-    [trim addCharactersInString:@"，。！？,.!?、：:"];
+    [trim addCharactersInString:/*i18n:keep*/@"，。！？,.!?、：:"];
     NSString *s=[text stringByTrimmingCharactersInSet:trim];
-    if([s hasPrefix:@"小雷小雷"])s=[[s substringFromIndex:4] stringByTrimmingCharactersInSet:trim];
+    if([s hasPrefix:/*i18n:keep*/@"小雷小雷"])s=[[s substringFromIndex:4] stringByTrimmingCharactersInSet:trim];
     s=[[s componentsSeparatedByCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] componentsJoinedByString:@""];
     // Exact utterances only. Never use containsString on task or chat content.
-    return [@[@"退下吧",@"退下",@"关闭",@"没事了",@"关闭窗口",@"关闭对话",@"结束对话",@"退出对话",@"不用了",@"就这样吧"] containsObject:s];
+    return [@[/*i18n:keep*/@"退下吧",/*i18n:keep*/@"退下",/*i18n:keep*/@"关闭",/*i18n:keep*/@"没事了",/*i18n:keep*/@"关闭窗口",/*i18n:keep*/@"关闭对话",/*i18n:keep*/@"结束对话",/*i18n:keep*/@"退出对话",/*i18n:keep*/@"不用了",/*i18n:keep*/@"就这样吧"] containsObject:s];
 }
 
 NSString *TIOAppendDelta(NSString *previous, NSString *current) {
@@ -233,7 +233,7 @@ NSDictionary *TIOChatRequestWithHistory(NSString *model, NSString *question, NSA
             for(NSString *line in [row[@"text"] componentsSeparatedByString:@"\n"]) [md appendFormat:@"> %@\n",line];
             [md appendString:@"\n"];
         }
-        NSURL *markdown=[folder URLByAppendingPathComponent:@"全天智记.md"], *json=[folder URLByAppendingPathComponent:@"全天智记.json"];
+        NSURL *markdown=[folder URLByAppendingPathComponent:/*i18n:keep*/@"全天智记.md"], *json=[folder URLByAppendingPathComponent:/*i18n:keep*/@"全天智记.json"];
         NSData *data=[NSJSONSerialization dataWithJSONObject:publicRows options:NSJSONWritingPrettyPrinted error:error];
         if(!data || ![data writeToURL:json options:NSDataWritingAtomic error:error] || ![md writeToURL:markdown atomically:YES encoding:NSUTF8StringEncoding error:error]) return nil;
         for(NSURL *file in @[markdown,json]) [NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file.path error:nil];

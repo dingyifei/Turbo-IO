@@ -61,7 +61,7 @@ static NSString *const Domain=@"io.turboio.official-private-addon";
 static NSUserDefaults *Prefs;
 static TIOTranscriptArchive *Archive;
 static dispatch_queue_t ArchiveQueue;
-static NSString *Diagnostic=@"尚未收到回调";
+static NSString *Diagnostic=/*i18n:id*/@"尚未收到回调";
 static BOOL HooksReady=NO;
 static UIButton *Entry;
 static void (*OriginalAsr)(id,SEL,id,BOOL,id);
@@ -371,7 +371,7 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
         if(ip.row==8)c.detailTextLabel.text=ReadKey(@"https://api.search.tinyfish.ai").length?@"已存手机 Keychain，不回显":@"未配置；不会使用 Mac 凭据";
         if(ip.row==9)c.detailTextLabel.text=@"不携带聊天历史 · 显示实际搜索次数";
     }else if(ip.section==1){c.textLabel.text=ip.row==0?@"旁路保存最终文字":@"导出 Markdown / JSON";if(ip.row==0){UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"captureFinalText"];[s addTarget:self action:@selector(capture:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}}
-    else{c.textLabel.text=HooksReady?@"回调签名检查通过":@"未启用：版本或回调不匹配";c.detailTextLabel.text=[Diagnostic stringByAppendingFormat:@"\n官方完成回调：%lu；语音退出入口：%@",(unsigned long)CompletionEvents,VoiceExitReady?@"已校验":@"不可用"];}
+    else{c.textLabel.text=HooksReady?@"回调签名检查通过":@"未启用：版本或回调不匹配";c.detailTextLabel.text=[TIOText(Diagnostic) stringByAppendingFormat:@"\n官方完成回调：%lu；语音退出入口：%@",(unsigned long)CompletionEvents,VoiceExitReady?@"已校验":@"不可用"];}
     return c;
 }
 - (void)thinking:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"deepseekDisableThinking"];}

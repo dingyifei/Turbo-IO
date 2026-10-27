@@ -29,7 +29,7 @@ NSURL *TIOAOAudioCopy(NSURL *home,NSURL *source,NSError **error){
     if([NSFileManager.defaultManager fileExistsAtPath:base.path]&&!Dir(base)){close(in);if(error)*error=AudioError();return nil;}
     if(![NSFileManager.defaultManager createDirectoryAtURL:folder withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:error]){close(in);return nil;}
     // Keep the actual format extension. Raw PCM is never renamed into fake WAV.
-    NSURL *outURL=[folder URLByAppendingPathComponent:[@"全天智记音频." stringByAppendingString:source.pathExtension.lowercaseString]];
+    NSURL *outURL=[folder URLByAppendingPathComponent:[/*i18n:keep*/@"全天智记音频." stringByAppendingString:source.pathExtension.lowercaseString]];
     int out=open(outURL.fileSystemRepresentation,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW,0600);BOOL ok=out>=0;off_t copied=0;char buffer[65536];
     while(ok){ssize_t n=read(in,buffer,sizeof(buffer));if(!n)break;if(n<0){ok=NO;break;}copied+=n;if(copied>before.st_size){ok=NO;break;}for(ssize_t at=0;at<n;){ssize_t k=write(out,buffer+at,n-at);if(k<=0){ok=NO;break;}at+=k;}}
     ok=ok&&!fstat(in,&after)&&!lstat(source.fileSystemRepresentation,&pathAfter)&&before.st_size==copied&&before.st_size==after.st_size&&before.st_ino==pathAfter.st_ino&&before.st_dev==pathAfter.st_dev&&before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec&&before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec;

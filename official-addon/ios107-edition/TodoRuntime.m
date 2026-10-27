@@ -1,4 +1,5 @@
 #import "TodoRuntime.h"
+#import "TIOLanguage.h"
 #import "TodoProtocol.h"
 #import "GlassesChannelHook.h"
 #import <UIKit/UIKit.h>
@@ -6,7 +7,7 @@
 
 // Only observed public ObjC callbacks. No Dart pointer invocation or cloud tokens.
 static NSDictionary *Snapshot,*Baseline;
-static NSString *Device,*TestTitle,*TestWire,*TestDevice,*State=@"尚未观察到官方待办列表";
+static NSString *Device,*TestTitle,*TestWire,*TestDevice,*State=/*i18n:id*/@"尚未观察到官方待办列表";
 static NSTimeInterval SnapshotAt,TemplateAt;
 static id Template;
 static __weak id Listener;
@@ -27,7 +28,7 @@ static NSString *Text(id o){return [o isKindOfClass:NSString.class]?o:@"";}
 static NSDictionary *Task(id params){if(![params isKindOfClass:NSDictionary.class])return nil;id t=params[@"task"];if([t isKindOfClass:NSString.class]&&[t length]<65536)t=[NSJSONSerialization JSONObjectWithData:[t dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];return [t isKindOfClass:NSDictionary.class]?t:nil;}
 static void SaveEvidence(void){
     // No official transcript or unrelated tasks. Only the named test and metadata.
-    NSMutableDictionary *row=[@{@"state":State?:@"",@"snapshots":@(Snapshots),@"taskEvents":@(TaskEvents),@"physicalEvents":@(PhysicalEvents),@"testTitle":TestTitle?:@"",@"testWireId":TestWire?:@"",@"physicalComplete":@(PhysicalComplete),@"time":@([NSDate.date timeIntervalSince1970])} mutableCopy];
+    NSMutableDictionary *row=[@{@"state":TIOText(State)?:@"",@"snapshots":@(Snapshots),@"taskEvents":@(TaskEvents),@"physicalEvents":@(PhysicalEvents),@"testTitle":TestTitle?:@"",@"testWireId":TestWire?:@"",@"physicalComplete":@(PhysicalComplete),@"time":@([NSDate.date timeIntervalSince1970])} mutableCopy];
     row[@"toolOperation"]=@(ToolOperation);if(ToolOperation){row[@"testTitle"]=@"";row[@"testWireId"]=@"";} // No user task contents/IDs in diagnostic file.
     NSString *dir=[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon"];
     [NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil];
@@ -52,7 +53,7 @@ void TIOTodoObserveNlp(id listener,id response){
     if(![Get(command,@"name") isEqual:@"create_task"]||!TIOTodoCreateIntent(@"task",@"create_task",params)){State=@"已收到官方新增回调，但参数形状不匹配；禁止构造调用";SaveEvidence();return;}
     Template=response;Listener=listener;TemplateAt=[NSDate.date timeIntervalSince1970];State=@"已取得真实官方新增模板；可执行一次命名测试";SaveEvidence();
 }
-NSDictionary *TIOTodoRuntimeStatus(void){return @{@"installed":@(Installed),@"snapshots":@(Snapshots),@"taskEvents":@(TaskEvents),@"physicalEvents":@(PhysicalEvents),@"hasBaseline":@(Snapshot!=nil),@"hasTemplate":@(Template!=nil&&Listener!=nil),@"busy":@(Busy),@"state":State?:@"",@"testTitle":TestTitle?:@"",@"hasWireId":@(TestWire.length>0),@"physicalComplete":@(PhysicalComplete)};}
+NSDictionary *TIOTodoRuntimeStatus(void){return @{@"installed":@(Installed),@"snapshots":@(Snapshots),@"taskEvents":@(TaskEvents),@"physicalEvents":@(PhysicalEvents),@"hasBaseline":@(Snapshot!=nil),@"hasTemplate":@(Template!=nil&&Listener!=nil),@"busy":@(Busy),@"state":TIOText(State)?:@"",@"testTitle":TestTitle?:@"",@"hasWireId":@(TestWire.length>0),@"physicalComplete":@(PhysicalComplete)};}
 void TIOTodoCreateFromTool(NSString *title,void (^completion)(NSDictionary *result)){
     if(!NSThread.isMainThread||!completion)return;
     NSDictionary *valid=TIOTodoCreateIntent(@"task",@"create_task",@{@"task":@{@"content":title?:@""}});
@@ -100,7 +101,7 @@ NSString *TIOTodoCreateTestTask(void){
         NSMutableDictionary *inner=[task mutableCopy];inner[@"content"]=title;NSMutableDictionary *params=[sourceParams mutableCopy];
         params[@"task"]=[sourceParams[@"task"] isKindOfClass:NSString.class]?[[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:inner options:0 error:nil] encoding:NSUTF8StringEncoding]:inner;
         [command setValue:@"create_task" forKey:@"name"];[command setValue:params forKey:@"params"];[command setValue:NSUUID.UUID.UUIDString forKey:@"commandRequestId"];[command setValue:Get(sourceCommand,@"otherState")?:@{} forKey:@"otherState"];
-        [response setValue:command forKey:@"command"];[response setValue:[@"创建待办 " stringByAppendingString:title] forKey:@"query"];[response setValue:@"" forKey:@"answer"];[response setValue:@"" forKey:@"spoken"];
+        [response setValue:command forKey:@"command"];[response setValue:[/*i18n:keep*/@"创建待办 " stringByAppendingString:title] forKey:@"query"];[response setValue:@"" forKey:@"answer"];[response setValue:@"" forKey:@"spoken"];
     }@catch(NSException *e){return @"包装属性不匹配，未调用。";}
     Baseline=Snapshot;TestDevice=Device;TestTitle=title;Busy=YES;State=@"仅提交一次官方创建回调；等待官方真实列表和ID，未声明成功";SaveEvidence();
     // The currently installed listener goes through the existing Addon hook;

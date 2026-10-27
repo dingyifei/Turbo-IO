@@ -51,7 +51,7 @@ NSURL *TIOMarkdownShareFile(NSURL *home,NSString *title,NSString *text,NSError *
     if(![text isKindOfClass:NSString.class]||!text.length||text.length>2000000||![title isKindOfClass:NSString.class]||title.length>200){if(error)*error=Fail();return nil;}
     NSString *clean=[[title componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet] componentsJoinedByString:@" "];
     NSString *md=[NSString stringWithFormat:@"# %@\n\n%@\n",clean.length?clean:@"录音转写",text];
-    NSURL *dir=ExportDirectory(home,error);if(!dir)return nil;NSURL *file=[dir URLByAppendingPathComponent:@"录音转写.md"];
+    NSURL *dir=ExportDirectory(home,error);if(!dir)return nil;NSURL *file=[dir URLByAppendingPathComponent:/*i18n:keep*/@"录音转写.md"];
     if(![md writeToURL:file atomically:YES encoding:NSUTF8StringEncoding error:error])return nil;
     [NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file.path error:nil];return file;
 }

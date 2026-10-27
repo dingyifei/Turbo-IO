@@ -45,6 +45,6 @@ NSDictionary *TCEAIParse(NSString *text,NSString **reason){
 - (void)URLSession:(NSURLSession *)s task:(NSURLSessionTask *)t didCompleteWithError:(NSError *)error{
  if(_ended)return;if(error){[self finish:nil error:[NSString stringWithFormat:@"连接失败（%ld），可以重试；草稿未改。",(long)error.code]];return;}if(_http!=200){[self finish:nil error:[NSString stringWithFormat:@"模型服务返回 HTTP %ld；请检查模型配置及 JSON 输出支持。",(long)_http]];return;}
  id envelope=[NSJSONSerialization JSONObjectWithData:_buffer options:0 error:nil];id choices=[envelope isKindOfClass:NSDictionary.class]?envelope[@"choices"]:nil;id choice=[choices isKindOfClass:NSArray.class]&&[choices count]?[choices firstObject]:nil;id message=[choice isKindOfClass:NSDictionary.class]?choice[@"message"]:nil;id text=[message isKindOfClass:NSDictionary.class]?message[@"content"]:nil;NSString *why=nil;NSDictionary *draft=TCEAIParse(text,&why);
- if(draft){[self finish:draft error:nil];return;}if(_attempt<2){[_messages addObject:@{@"role":@"user",@"content":[NSString stringWithFormat:@"上次结果未通过本地验证：%@。重新生成完整JSON，保持最初需求，减少组件并严格遵守规则。",why?:@"空结果或无效响应"]}];[self next];return;}[self finish:nil error:[@"生成未通过校验，未保存或发送："stringByAppendingString:why?:@"无有效JSON"]];
+ if(draft){[self finish:draft error:nil];return;}if(_attempt<2){[_messages addObject:@{@"role":@"user",@"content":[NSString stringWithFormat:/*i18n:prompt*/@"上次结果未通过本地验证：%@。重新生成完整JSON，保持最初需求，减少组件并严格遵守规则。",why?:@"空结果或无效响应"]}];[self next];return;}[self finish:nil error:[@"生成未通过校验，未保存或发送："stringByAppendingString:why?:@"无有效JSON"]];
 }
 @end

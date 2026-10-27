@@ -1,10 +1,11 @@
 #import "A2UIProbe.h"
+#import "TIOLanguage.h"
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
 // All state transitions run on main. Passive observation never sends a packet.
 static __weak id Plugin;
 static NSDictionary *Route,*Baseline,*BeforeBaseline;
-static NSString *Device,*Owned,*OwnedDevice,*Note=@"请先在官方首页保持眼镜连接，再读取仪表盘基线";
+static NSString *Device,*Owned,*OwnedDevice,*Note=/*i18n:id*/@"请先在官方首页保持眼镜连接，再读取仪表盘基线";
 static NSTimeInterval RouteAt,BaselineAt;
 static uint32_t PendingSequence;
 static NSString *PendingOperation;
@@ -16,7 +17,7 @@ static NSString *Dir(void){NSString *p=[NSHomeDirectory() stringByAppendingPathC
 static void Save(NSString *name,id object){NSData *d=[NSJSONSerialization dataWithJSONObject:object options:NSJSONWritingSortedKeys error:nil];NSString *p=[Dir() stringByAppendingPathComponent:name];[d writeToFile:p options:NSDataWritingAtomic error:nil];[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600,NSFileProtectionKey:NSFileProtectionCompleteUntilFirstUserAuthentication} ofItemAtPath:p error:nil];}
 static void Changed(NSString *event,NSDictionary *values){
     if(!Trace)Trace=[NSMutableArray new];NSMutableDictionary *r=[values mutableCopy]?:[NSMutableDictionary new];r[@"event"]=event;r[@"time"]=@(NSDate.date.timeIntervalSince1970);[Trace addObject:r];if(Trace.count>60)[Trace removeObjectAtIndex:0];
-    Save(@"status.json",@{@"state":Note,@"trace":Trace,@"hasBaseline":@(Baseline!=nil),@"ownedId":Owned?:@"",@"pendingSequence":@(PendingSequence),@"displayVerified":@NO});
+    Save(@"status.json",@{@"state":TIOText(Note),@"trace":Trace,@"hasBaseline":@(Baseline!=nil),@"ownedId":Owned?:@"",@"pendingSequence":@(PendingSequence),@"displayVerified":@NO});
     [NSNotificationCenter.defaultCenter postNotificationName:@"TIOA2UIChanged" object:nil];
 }
 static void LoadOwner(void){if(Owned)return;NSDictionary *o=[NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:[Dir() stringByAppendingPathComponent:@"owner.json"]]?:NSData.data options:0 error:nil];if(TIOA2UIUninstall(o[@"id"])&&[o[@"device"] isKindOfClass:NSString.class]){Owned=o[@"id"];OwnedDevice=o[@"device"];NSDictionary *saved=[NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:[Dir() stringByAppendingPathComponent:@"before-components.json"]]?:NSData.data options:0 error:nil];if([saved[@"device"] isEqual:OwnedDevice]&&[saved[@"id"] isEqual:Owned]&&TIOA2UIBaselinePreservesOthers(saved[@"baseline"],saved[@"baseline"],Owned))BeforeBaseline=saved[@"baseline"];} }
@@ -58,7 +59,7 @@ void TIOA2UIObserveEvent(NSDictionary *event){
             Note=found?@"配置包含测试卡。请在眼镜仪表盘滚动查看；尚需镜片验收":@"仪表盘基线已保存，可安装独立文字测试卡";
             if(BeforeBaseline&&[OwnedDevice isEqual:Device]){
                 BOOL preserved=TIOA2UIBaselinePreservesOthers(BeforeBaseline,body,Owned);
-                Note=[Note stringByAppendingString:preserved?@"；其他卡片配置与测试前一致":@"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复"];
+                Note=[TIOText(Note) stringByAppendingString:preserved?@"；其他卡片配置与测试前一致":@"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复"];
                 Changed(@"other_widgets_check",@{@"preserved":@(preserved),@"containsOwned":@(found)});
             }
             Changed(@"config_snapshot",@{@"count":@([body[@"widgets_v2"] count]),@"containsOwned":@(found)});}return;
@@ -78,7 +79,7 @@ void TIOA2UIObserveEvent(NSDictionary *event){
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return 9;}
 - (NSString *)tableView:(UITableView *)v titleForFooterInSection:(NSInteger)s{return @"仅新增/卸载本工具拥有的测试卡，不发送全量看板覆盖，不启用刷新订阅或传感器，不改固件。安装回执 ≠ 镜片可见。退出页面不会删除测试卡，可回来手动卸载。";}
-- (UITableViewCell *)tableView:(UITableView *)v cellForRowAtIndexPath:(NSIndexPath *)p{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.text=@[@"当前状态 · COMPONENTS 01",@"1 · 读取仪表盘基线",@"2 · 安装文字卡 7392",@"3 · 更新排版卡 8642",@"4 · 卸载本次测试卡",@"5 · 柱状图 6111",@"6 · 折线图 6222",@"7 · 单子项容器 6333",@"8 · 三行列表 6444"][p.row];c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;if(p.row==0)c.detailTextLabel.text=[NSString stringWithFormat:@"%@\n官方发送上下文：%@",Note,Ready()?@"可用":@"等待官方首页通信"];if(p.row==2)c.detailTextLabel.text=@"单行文字，验证动态组件入口";if(p.row==3)c.detailTextLabel.text=@"仅在你看见7392后测试：标题、分隔线、图标、横竖排";if(p.row>=5)c.detailTextLabel.text=@"静态格式已核对，镜片未验。替换同一张测试卡；先读基线，一次只测一项。";c.accessibilityIdentifier=[NSString stringWithFormat:@"a2ui-probe-%ld",(long)p.row];return c;}
+- (UITableViewCell *)tableView:(UITableView *)v cellForRowAtIndexPath:(NSIndexPath *)p{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.text=@[@"当前状态 · COMPONENTS 01",@"1 · 读取仪表盘基线",@"2 · 安装文字卡 7392",@"3 · 更新排版卡 8642",@"4 · 卸载本次测试卡",@"5 · 柱状图 6111",@"6 · 折线图 6222",@"7 · 单子项容器 6333",@"8 · 三行列表 6444"][p.row];c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;if(p.row==0)c.detailTextLabel.text=[NSString stringWithFormat:@"%@\n官方发送上下文：%@",TIOText(Note),Ready()?@"可用":@"等待官方首页通信"];if(p.row==2)c.detailTextLabel.text=@"单行文字，验证动态组件入口";if(p.row==3)c.detailTextLabel.text=@"仅在你看见7392后测试：标题、分隔线、图标、横竖排";if(p.row>=5)c.detailTextLabel.text=@"静态格式已核对，镜片未验。替换同一张测试卡；先读基线，一次只测一项。";c.accessibilityIdentifier=[NSString stringWithFormat:@"a2ui-probe-%ld",(long)p.row];return c;}
 - (void)tableView:(UITableView *)v didSelectRowAtIndexPath:(NSIndexPath *)p{[v deselectRowAtIndexPath:p animated:YES];if(p.row==0){[self refresh];return;}if(p.row==1){if(PendingSequence){Note=@"上一次请求仍在等待回执，最多20秒；不重复发送";[self refresh];return;}ReadRequested=YES;if(!Send(@{@"cmd":@"dashboard_config",@"payload":@{@"version":@1,@"value":@0}},@"query"))ReadRequested=NO;return;}
     LoadOwner();if(!Ready()||PendingSequence){Note=@"请回官方首页确认连接，再读取基线";[self refresh];return;}
     if(OwnedDevice&&![OwnedDevice isEqual:Device]){Note=@"测试卡属于另一副眼镜，拒绝跨设备操作";[self refresh];return;}

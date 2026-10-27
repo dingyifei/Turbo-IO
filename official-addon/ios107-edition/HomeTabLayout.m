@@ -1,14 +1,14 @@
 #import "HomeTabLayout.h"
 #include <math.h>
 static NSArray<NSArray<NSString *> *> *TabNamesBySlot(void){
-    return @[@[@"RayNeo"],@[@"眼镜"],@[@"记忆",@"回忆"],@[@"发现",@"探索"]];
+    return @[@[@"RayNeo"],@[/*i18n:keep*/@"眼镜"],@[/*i18n:keep*/@"记忆",/*i18n:keep*/@"回忆"],@[/*i18n:keep*/@"发现",/*i18n:keep*/@"探索"]];
 }
 NSString *TIOHomeTabName(NSString *label){
     if(![label isKindOfClass:NSString.class]||label.length>100)return nil;
     NSString *s=[label stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    for(NSString *name in @[@"RayNeo",@"眼镜",@"记忆",@"发现",@"回忆",@"探索"]){
+    for(NSString *name in @[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"记忆",/*i18n:keep*/@"发现",/*i18n:keep*/@"回忆",/*i18n:keep*/@"探索"]){
         if([s isEqual:name])return name;
-        for(NSString *separator in @[@"\n",@",",@"，"]){if([s hasPrefix:[name stringByAppendingString:separator]])return name;}
+        for(NSString *separator in @[@"\n",@",",/*i18n:keep*/@"，"]){if([s hasPrefix:[name stringByAppendingString:separator]])return name;}
     }return nil;
 }
 NSArray<NSDictionary *> *TIOHomeTabCandidates(NSArray<NSDictionary *> *hits){
@@ -39,8 +39,8 @@ NSDictionary *TIOHomeTabLayout(NSArray<NSDictionary *> *nodes,double w,double h,
     NSArray *names=[sorted valueForKey:@"name"];
     // Only the two observed complete official layouts, not arbitrary aliases
     // mixed across pages. Retain the actual label for the native button title.
-    if(![names isEqual:@[@"RayNeo",@"眼镜",@"记忆",@"发现"]]&&
-       ![names isEqual:@[@"RayNeo",@"眼镜",@"回忆",@"探索"]])return nil;
+    if(![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"记忆",/*i18n:keep*/@"发现"]]&&
+       ![names isEqual:@[@"RayNeo",/*i18n:keep*/@"眼镜",/*i18n:keep*/@"回忆",/*i18n:keep*/@"探索"]])return nil;
     double previous=-1,minY=INFINITY,maxY=-INFINITY;
     for(NSUInteger i=0;i<4;i++){
         NSDictionary *n=sorted[i];double x=[n[@"x"] doubleValue],y=[n[@"y"] doubleValue],nw=[n[@"width"] doubleValue],nh=[n[@"height"] doubleValue];

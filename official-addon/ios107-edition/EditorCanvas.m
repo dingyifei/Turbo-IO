@@ -6,7 +6,7 @@
 #include "editor.h"
 static CGRect TCEComponentRect(NSDictionary *c){return CGRectMake([c[@"x"]doubleValue],[c[@"y"]doubleValue],[c[@"w"]doubleValue],[c[@"h"]doubleValue]);}
 static NSDictionary *Attrs(NSDictionary *c){NSMutableParagraphStyle *p=[NSMutableParagraphStyle new];p.lineBreakMode=NSLineBreakByClipping;p.alignment=[@[@"left",@"center",@"right"]indexOfObject:c[@"align"]];return @{NSFontAttributeName:[UIFont systemFontOfSize:[c[@"font"]doubleValue]],NSForegroundColorAttributeName:UIColor.greenColor,NSParagraphStyleAttributeName:p};}
-NSString *TCETextWarnings(NSDictionary *d){NSMutableArray *a=[NSMutableArray new];for(NSDictionary *c in d[@"components"])if([c[@"kind"]isEqual:@"text"]&&[c[@"text"]sizeWithAttributes:Attrs(c)].width>[c[@"w"]doubleValue])[a addObject:c[@"id"]];return a.count?[NSString stringWithFormat:@"文字可能裁切：%@。手机字体仅近似预览，请缩短文字或调整字号/区域。",[a componentsJoinedByString:@"、"]]:@"";}
+NSString *TCETextWarnings(NSDictionary *d){NSMutableArray *a=[NSMutableArray new];for(NSDictionary *c in d[@"components"])if([c[@"kind"]isEqual:@"text"]&&[c[@"text"]sizeWithAttributes:Attrs(c)].width>[c[@"w"]doubleValue])[a addObject:c[@"id"]];return a.count?[NSString stringWithFormat:@"文字可能裁切：%@。手机字体仅近似预览，请缩短文字或调整字号/区域。",[a componentsJoinedByString:/*i18n:keep*/@"、"]]:@"";}
 @interface TCECanvas()<UIGestureRecognizerDelegate>
 @property NSDictionary *gestureDraft;
 @property NSDictionary *gestureItem;

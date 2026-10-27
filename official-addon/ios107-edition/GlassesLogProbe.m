@@ -1,4 +1,5 @@
 #import "GlassesLogProbe.h"
+#import "TIOLanguage.h"
 #import "GlassesLogGate.h"
 #import "GlassesLogContract.h"
 #import "A2UIProbe.h"
@@ -7,7 +8,7 @@
 #import <CommonCrypto/CommonDigest.h>
 static __weak id Plugin;
 static NSDictionary *Route;
-static NSString *Device,*Note=@"尚未请求眼镜日志。请保持官方眼镜连接。";
+static NSString *Device,*Note=/*i18n:id*/@"尚未请求眼镜日志。请保持官方眼镜连接。";
 static NSURL *Archive;
 static NSTimeInterval RouteAt,Started;
 static BOOL Copying,Restoring;
@@ -101,7 +102,7 @@ static void Start(void){
 - (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return 3;}
-- (UITableViewCell *)tableView:(UITableView *)v cellForRowAtIndexPath:(NSIndexPath *)p{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.text=@[@"当前状态 · log-local-v3",Archive?@"开始新一轮日志（保留旧副本）":@"请求一次眼镜日志",@"分享已保存副本"][p.row];c.textLabel.numberOfLines=c.detailTextLabel.numberOfLines=0;c.accessibilityIdentifier=[NSString stringWithFormat:@"glasses-log-%ld",(long)p.row];if(p.row==0)c.detailTextLabel.text=[NSString stringWithFormat:@"%@\n发送上下文：%@\n任务记录：%@",Note,Ready()?@"可用":@"不可用",Gate().snapshot.count?@"已建立（跨重启保留）":@"未建立"];return c;}
+- (UITableViewCell *)tableView:(UITableView *)v cellForRowAtIndexPath:(NSIndexPath *)p{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.text=@[@"当前状态 · log-local-v3",Archive?@"开始新一轮日志（保留旧副本）":@"请求一次眼镜日志",@"分享已保存副本"][p.row];c.textLabel.numberOfLines=c.detailTextLabel.numberOfLines=0;c.accessibilityIdentifier=[NSString stringWithFormat:@"glasses-log-%ld",(long)p.row];if(p.row==0)c.detailTextLabel.text=[NSString stringWithFormat:@"%@\n发送上下文：%@\n任务记录：%@",TIOText(Note),Ready()?@"可用":@"不可用",Gate().snapshot.count?@"已建立（跨重启保留）":@"未建立"];return c;}
 - (NSString *)tableView:(UITableView *)v titleForFooterInSection:(NSInteger)s{return @"仅研究日志路径。测试前关闭手机互联网但保留蓝牙，结束其他眼镜任务；不要同时操作官方反馈。已保存且校验通过后，可手动请求新一轮，保留旧归档与隔离记录；不会自动重试。超时或结果未知仍禁止重发。最多保留32轮任务隔离，达到上限由Mac检查。隔离不是全App网络防火墙。";}
 - (void)tableView:(UITableView *)v didSelectRowAtIndexPath:(NSIndexPath *)p{[v deselectRowAtIndexPath:p animated:YES];if(!p.row){[self refresh];return;}if(p.row==2){if(!Archive){Restore();return;}UIActivityViewController *a=[[UIActivityViewController alloc]initWithActivityItems:@[Archive] applicationActivities:nil];a.popoverPresentationController.sourceView=self.view;a.popoverPresentationController.sourceRect=CGRectMake(20,100,1,1);[self presentViewController:a animated:YES completion:nil];return;}
  UIAlertController *a=[UIAlertController alertControllerWithTitle:@"仅本机日志验收？" message:@"先关闭手机互联网、保留蓝牙，并结束其他眼镜任务。此操作会让眼镜生成日志归档；可能包含私人信息。扩展接收本次任务，不调用上传、不自动解压、不删除原件。未恢复前请勿操作官方日志反馈。" preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:@"已断互联网，开始一次" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){Start();}]];[self presentViewController:a animated:YES completion:nil];
