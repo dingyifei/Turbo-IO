@@ -507,7 +507,7 @@
 {"key":"ota.info.title","en":"About firmware install","zh":"关于固件安装"}
 {"key":"ota.install.after","en":"When the glasses restart, close and reopen RayNeo.","zh":"眼镜重启后，请关闭并重新打开 RayNeo。"}
 {"key":"ota.install.authorize","en":"Authorize install","zh":"授权安装"}
-{"key":"ota.install.authorized","en":"Authorized · tap Start install in RayNeo","zh":"已授权 · 请在 RayNeo 点“开始安装”"}
+{"key":"ota.install.authorized","en":"Authorized · tap Start install in RayNeo","zh":"已授权 · 在 RayNeo 点开始安装"}
 {"key":"ota.install.confirm.action","en":"Authorize","zh":"授权"}
 {"key":"ota.install.confirm.message","en":"Allows one firmware transfer. Keep the glasses above 50 percent and connected until RayNeo finishes. Recovery is not guaranteed.","zh":"仅允许一次固件传输。请保持眼镜电量 50％ 以上并保持连接，直到 RayNeo 完成。不保证可恢复。"}
 {"key":"ota.install.confirm.title","en":"Install %@ on these glasses?","zh":"在这副眼镜上安装 %@？"}

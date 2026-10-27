@@ -48,6 +48,14 @@ void TIOStyleResearchCell(UITableViewCell *c){
 @implementation TIOTableTheme
 - (BOOL)respondsToSelector:(SEL)s{return [super respondsToSelector:s]||[self.original respondsToSelector:s];}
 - (id)forwardingTargetForSelector:(SEL)s{return [self.original respondsToSelector:s]?self.original:[super forwardingTargetForSelector:s];}
+- (void)tableView:(UITableView *)t willDisplayHeaderView:(UIView *)view forSection:(NSInteger)section{
+ if([self.original respondsToSelector:_cmd])[self.original tableView:t willDisplayHeaderView:view forSection:section];
+ if([view isKindOfClass:UITableViewHeaderFooterView.class]){
+  UILabel *label=((UITableViewHeaderFooterView *)view).textLabel;
+  label.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+  label.textColor=UIColor.secondaryLabelColor;label.adjustsFontForContentSizeCategory=YES;
+ }
+}
 - (void)tableView:(UITableView *)t willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)p{
  if([self.original respondsToSelector:_cmd])[self.original tableView:t willDisplayCell:c forRowAtIndexPath:p];TIOStyleResearchCell(c);
 }

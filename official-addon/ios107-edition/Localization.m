@@ -513,7 +513,7 @@ static const TIOStringRow Rows[]={
     {"ota.info.title","About firmware install","关于固件安装"},
     {"ota.install.after","When the glasses restart, close and reopen RayNeo.","眼镜重启后，请关闭并重新打开 RayNeo。"},
     {"ota.install.authorize","Authorize install","授权安装"},
-    {"ota.install.authorized","Authorized · tap Start install in RayNeo","已授权 · 请在 RayNeo 点“开始安装”"},
+    {"ota.install.authorized","Authorized · tap Start install in RayNeo","已授权 · 在 RayNeo 点开始安装"},
     {"ota.install.confirm.action","Authorize","授权"},
     {"ota.install.confirm.message","Allows one firmware transfer. Keep the glasses above 50 percent and connected until RayNeo finishes. Recovery is not guaranteed.","仅允许一次固件传输。请保持眼镜电量 50％ 以上并保持连接，直到 RayNeo 完成。不保证可恢复。"},
     {"ota.install.confirm.title","Install %@ on these glasses?","在这副眼镜上安装 %@？"},

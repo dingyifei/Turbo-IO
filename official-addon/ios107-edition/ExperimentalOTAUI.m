@@ -432,6 +432,15 @@ static NSString *ShortStatus(NSString *value) {
     [self configureCell:cell at:path];
     return cell;
 }
+- (void)tableView:(__unused UITableView *)tableView willDisplayHeaderView:(UIView *)view forSection:(__unused NSInteger)section {
+    if ([view isKindOfClass:UITableViewHeaderFooterView.class]) {
+        UILabel *label=((UITableViewHeaderFooterView *)view).textLabel;
+        label.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+        label.textColor=UIColor.secondaryLabelColor;
+        label.adjustsFontForContentSizeCategory=YES;
+    }
+}
+
 - (void)tableView:(__unused UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(__unused NSIndexPath *)path {
     TIOStyleResearchCell(cell);
     [self configureCell:cell at:path];
