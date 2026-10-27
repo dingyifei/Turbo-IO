@@ -26,6 +26,28 @@
 #endif
 #endif
 #endif
+typedef BOOL (*TIOOTAScopedSender)(NSString *,NSDictionary *);
+// one row per module that sends its own scoped rayneonet_sendFile; deleting a module deletes its row and its #import.
+static const TIOOTAScopedSender ScopedFileSenders[]={
+#if TIO_IMAGE_RX_LAB
+ TIOImageUploadIsScopedCall,
+#if TIO_DISPLAY_PHONE
+ TDPPhoneIsScopedCall,
+#if TIO_NATIVE_NAV
+ TDGlassesIsScopedCall,
+ TAPIsScopedCall,
+ TNVIsScopedCall,
+ TMIsScopedCall,
+ TWIsScopedCall,
+ TFIsScopedCall,
+ CEIsScopedCall,
+ DRIsScopedCall,
+ TDIsScopedCall,
+#endif
+#endif
+#endif
+ NULL};
+NSUInteger TIOOTAScopedSenderCount(void){NSUInteger n=0;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s;s++)n++;return n;}
 BOOL TIOOTAFileCallBlocked(NSString *method,BOOL scopedImage,NSUInteger stage){
     if(![method isKindOfClass:NSString.class])return YES;
     if([method isEqual:@"rayneonet_sendFile"]&&scopedImage&&stage==0)return NO;
@@ -158,16 +180,7 @@ BOOL TIOOTAFlashBlockCall(id call){
         return ![Current() allows:data device:args[@"deviceId"] uptime:NSProcessInfo.processInfo.systemUptime];
     }
     // The pinned files path uses business 9 frames, never sendFile / ZIP mode.
-    BOOL scopedImage=NO;
-#if TIO_IMAGE_RX_LAB
-    scopedImage=TIOImageUploadIsScopedCall(method,args);
-#if TIO_DISPLAY_PHONE
-    scopedImage=scopedImage||TDPPhoneIsScopedCall(method,args);
-#if TIO_NATIVE_NAV
-    scopedImage=scopedImage||TDGlassesIsScopedCall(method,args)||TAPIsScopedCall(method,args)||TNVIsScopedCall(method,args)||TMIsScopedCall(method,args)||TWIsScopedCall(method,args)||TFIsScopedCall(method,args)||CEIsScopedCall(method,args)||DRIsScopedCall(method,args)||TDIsScopedCall(method,args);
-#endif
-#endif
-#endif
+    BOOL scopedImage=NO;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s&&!scopedImage;s++)scopedImage=(*s)(method,args);
     return TIOOTAFileCallBlocked(method,scopedImage,[[Current() status][@"stage"] unsignedIntegerValue]);
 }
 void TIOOTAFlashObserveEvent(NSDictionary *event){

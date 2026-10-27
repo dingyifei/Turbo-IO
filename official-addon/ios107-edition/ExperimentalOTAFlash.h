@@ -9,6 +9,7 @@ BOOL TIOOTAAutoUpdateDisabled(NSDictionary *preferences);
 - (BOOL)cancel;
 @end
 BOOL TIOOTAFlashBuild(void);
+NSUInteger TIOOTAScopedSenderCount(void);
 BOOL TIOOTAFlashProtected(void);
 BOOL TIOOTAFlashBlockCall(id call);
 BOOL TIOOTAFileCallBlocked(NSString *method, BOOL scopedImage, NSUInteger stage);
