@@ -1,3 +1,7 @@
+#if TIO_APPLE_AI
+#import "RecordingTranscribe.h"
+#import "AppleAICore.h"
+#endif
 #import <UIKit/UIKit.h>
 #import "TIOLanguage.h"
 #import "ResearchUI.h"
@@ -7,6 +11,9 @@
 @interface TIORecordingExportsPanel:UITableViewController<UIDocumentPickerDelegate>
 @property(nonatomic) NSArray<NSDictionary *> *audio;
 @property(nonatomic) BOOL busy;
+#if TIO_APPLE_AI
+@property(nonatomic) TIORecordingTranscriber *transcriber;
+#endif
 @end
 @implementation TIORecordingExportsPanel
 - (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"录音与文本分享");TIOStyleResearchTable(self);self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refresh)];[self refresh];TIOAttachInfo(self,TIOText(@"留住这一刻"),TIOText(@"声音与文字，保存到自己的文件。"));}
@@ -18,6 +25,31 @@
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];TIOStyleResearchCell(c);c.detailTextLabel.numberOfLines=0;if(ip.section==1){c.textLabel.text=TIOText(@"导入 TXT / MD 并分享 Markdown");c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;}else if(!self.audio.count){c.textLabel.text=self.busy?TIOText(@"正在读取本机文件…"):TIOText(@"暂无已准备音频");c.selectionStyle=UITableViewCellSelectionStyleNone;}else{NSDictionary *row=self.audio[ip.row];c.textLabel.text=row[@"name"];c.textLabel.numberOfLines=2;NSDateFormatter *fmt=[NSDateFormatter new];fmt.dateFormat=@"MM-dd HH:mm";c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",[fmt stringFromDate:row[@"date"]],[NSByteCountFormatter stringFromByteCount:[row[@"bytes"] longLongValue] countStyle:NSByteCountFormatterCountStyleFile]];c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;}return c;}
 - (void)showError:(NSString *)message{TIONotice(self,TIOText(@"common.ui.recordingExports.notice.title"),message);}
 - (void)share:(NSURL *)file{UIActivityViewController *sheet=[[UIActivityViewController alloc]initWithActivityItems:@[file] applicationActivities:nil];sheet.popoverPresentationController.sourceView=self.view;sheet.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);[self presentViewController:sheet animated:YES completion:nil];}
-- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)ip{[t deselectRowAtIndexPath:ip animated:YES];if(self.busy)return;if(ip.section==1){UIDocumentPickerViewController *p=[[UIDocumentPickerViewController alloc]initWithDocumentTypes:@[@"public.plain-text",@"net.daringfireball.markdown"] inMode:UIDocumentPickerModeImport];p.delegate=self;p.allowsMultipleSelection=NO;[self presentViewController:p animated:YES completion:nil];return;}if(ip.row>=self.audio.count)return;NSURL *source=self.audio[ip.row][@"url"];self.busy=YES;dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{NSError *error=nil;NSURL *file=TIOAudioShareCopy([NSURL fileURLWithPath:NSHomeDirectory()],source,&error);dispatch_async(dispatch_get_main_queue(),^{self.busy=NO;if(file)[self share:file];else [self showError:error.localizedDescription];});});}
+- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)ip{[t deselectRowAtIndexPath:ip animated:YES];if(self.busy)return;if(ip.section==1){UIDocumentPickerViewController *p=[[UIDocumentPickerViewController alloc]initWithDocumentTypes:@[@"public.plain-text",@"net.daringfireball.markdown"] inMode:UIDocumentPickerModeImport];p.delegate=self;p.allowsMultipleSelection=NO;[self presentViewController:p animated:YES completion:nil];return;}if(ip.row>=self.audio.count)return;NSURL *source=self.audio[ip.row][@"url"];
+#if TIO_APPLE_AI
+[self audioActions:source];return;
+#endif
+[self shareAudioAt:source];}
+- (void)shareAudioAt:(NSURL *)source{self.busy=YES;dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{NSError *error=nil;NSURL *file=TIOAudioShareCopy([NSURL fileURLWithPath:NSHomeDirectory()],source,&error);dispatch_async(dispatch_get_main_queue(),^{self.busy=NO;if(file)[self share:file];else [self showError:error.localizedDescription];});});}
+#if TIO_APPLE_AI
+- (void)audioActions:(NSURL *)source{
+    NSArray *titles=@[TIOText(@"apple.recording.share"),TIOText(@"apple.recording.auto"),TIOText(@"apple.recording.en"),TIOText(@"apple.recording.zh")];
+    TIOChoose(self,TIOText(@"apple.recording.title"),nil,titles,NSNotFound,nil,^(NSInteger index){if(index==0)[self shareAudioAt:source];else if(index>0&&index<4)[self transcribe:source language:@[@"auto",@"en",@"zh"][index-1]];});
+}
+- (void)transcribe:(NSURL *)source language:(NSString *)language{
+    self.busy=YES;self.transcriber=[TIORecordingTranscriber new];
+    UIAlertController *progress=[UIAlertController alertControllerWithTitle:TIOText(@"apple.recording.progress") message:@"" preferredStyle:UIAlertControllerStyleAlert];
+    [progress addAction:[UIAlertAction actionWithTitle:TIOText(@"common.cancel") style:UIAlertActionStyleCancel handler:^(UIAlertAction *action){[self.transcriber cancel];}]];
+    [self presentViewController:progress animated:YES completion:nil];__weak typeof(self) weak=self;
+    [self.transcriber transcribeFile:source language:language progress:^(NSString *stage,double fraction){progress.message=[NSString stringWithFormat:@"%@ %.0f%%",stage,fraction*100];} completion:^(NSString *markdown,NSString *error){typeof(self) s=weak;if(!s)return;s.busy=NO;s.transcriber=nil;
+        dispatch_block_t show=^{if(error){[s showError:error];return;}
+            TIOChoose(s,TIOText(@"apple.recording.result"),markdown,@[TIOText(@"apple.recording.markdown"),TIOText(@"apple.recording.summarize")],NSNotFound,nil,^(NSInteger index){if(index==0){NSError *fileError=nil;NSURL *file=TIOMarkdownShareFile([NSURL fileURLWithPath:NSHomeDirectory()],source.lastPathComponent.stringByDeletingPathExtension,markdown,&fileError);if(file)[s share:file];else [s showError:fileError.localizedDescription];}
+                else if(index==1){Class cls=NSClassFromString(@"TIORecordingTextPanel");if([cls isSubclassOfClass:UIViewController.class]){UIViewController *panel=[cls new];[panel setValue:markdown forKey:@"initialText"];[s.navigationController pushViewController:panel animated:YES];}}
+            });};
+        if(progress.presentingViewController)[progress dismissViewControllerAnimated:YES completion:show];else show();
+    }];
+}
+- (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];if(self.isMovingFromParentViewController||self.navigationController.isBeingDismissed)[self.transcriber cancel];}
+#endif
 - (void)documentPicker:(UIDocumentPickerViewController *)p didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls{NSURL *url=urls.firstObject;if(!url)return;self.busy=YES;dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{NSError *error=nil;NSNumber *size=nil;[url getResourceValue:&size forKey:NSURLFileSizeKey error:&error];NSString *text=nil;if(size&&size.unsignedLongLongValue<=8*1024*1024)text=[NSString stringWithContentsOfURL:url encoding:NSUTF8StringEncoding error:&error];NSURL *file=text?TIOMarkdownShareFile([NSURL fileURLWithPath:NSHomeDirectory()],url.lastPathComponent.stringByDeletingPathExtension,text,&error):nil;dispatch_async(dispatch_get_main_queue(),^{self.busy=NO;if(file){if(self.presentedViewController)[self dismissViewControllerAnimated:YES completion:^{[self share:file];}];else [self share:file];}else [self showError:TIOText(@"只支持完整的 UTF-8 文本文件（不超过 8 MB / 200 万字符）。未读取官方历史全文。")];});});}
 @end

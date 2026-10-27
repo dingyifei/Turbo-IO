@@ -84,7 +84,7 @@ fi
 apple_options=()
 if [[ ${TIO_APPLE_AI:-0} == 1 ]]; then
   [[ "$mode" == embedded ]] || { echo 'Apple AI bridge is embedded only' >&2; exit 2; }
-  apple_options=(-DTIO_APPLE_AI=1 -framework Speech AppleAICore.m AppleAI.m AppleAIPanel.m)
+  apple_options=(-DTIO_APPLE_AI=1 -framework Speech AppleAICore.m AppleAI.m AppleAIPanel.m RecordingTranscribe.m)
 fi
 echo "TurboIO profile: $([[ ${TIO_IMAGE_RX_LAB:-0} == 1 ]] && echo dev || echo daily)" >&2
 xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-min=16.0 \

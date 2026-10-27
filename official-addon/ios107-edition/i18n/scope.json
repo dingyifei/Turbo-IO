@@ -143,7 +143,8 @@
     "GlassesChannelHook.m",
     "MusicPlayer.m",
     "MusicUI.m",
-    "WebSearch.m"
+    "WebSearch.m",
+    "RecordingExportsUI.m"
   ],
   "virtualIDs": {
     "baseline": "BASE85",

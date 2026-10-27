@@ -1935,3 +1935,12 @@
 {"key":"apple.fallback.title","en":"Use Apple model when my endpoint fails","zh":"自有接口失败时改用 Apple 模型"}
 {"key":"apple.fallback.detail","en":"Applies only to voice questions in custom-endpoint mode. The official voice service must remain reachable.","zh":"仅用于自有接口模式的语音问题，官方语音服务仍须可用。"}
 {"key":"apple.action.test","en":"Test on-device model","zh":"测试本机模型"}
+{"key":"apple.recording.share","en":"Share copy","zh":"分享副本"}
+{"key":"apple.recording.auto","en":"Transcribe on device · Auto","zh":"本机转写 · 自动"}
+{"key":"apple.recording.en","en":"Transcribe on device · English","zh":"本机转写 · 英语"}
+{"key":"apple.recording.zh","en":"Transcribe on device · Chinese","zh":"本机转写 · 中文"}
+{"key":"apple.recording.title","en":"Recording actions","zh":"录音操作"}
+{"key":"apple.recording.progress","en":"Transcribing on device","zh":"正在本机转写"}
+{"key":"apple.recording.result","en":"Transcript","zh":"转写结果"}
+{"key":"apple.recording.markdown","en":"Share Markdown","zh":"分享 Markdown"}
+{"key":"apple.recording.summarize","en":"Summarize","zh":"生成摘要"}
