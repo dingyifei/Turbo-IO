@@ -102,7 +102,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   menu_config.c \
   Brightness.m \
   BrightnessCodec.m \
-  MusicLibrary.m \
   camera-v1/camera.c \
   camera-v1/CameraLink.m \
   camera-v1/CameraImage.m \
@@ -207,14 +206,12 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   SpotifyAPI.m \
   SpotifyCover.m \
   SpotifySignIn.m \
-  MusicAPI.m \
   MusicTransport.m \
   MusicBridge.m \
   MusicPlayer.m \
   MusicUI.m \
   music.c \
   -framework AVFoundation \
-  -framework MediaPlayer \
   -framework AuthenticationServices \
   -framework Network \
   -framework CoreImage \

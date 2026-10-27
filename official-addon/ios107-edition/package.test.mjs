@@ -133,3 +133,6 @@ test('translationResources argument does not expand the helper write lists or al
   assert.equal(localized.NSPhotoLibraryUsageDescription,'Host photo library access.');
  }finally{fs.rmSync(f.root,{recursive:true,force:true});}
 });
+
+test('music packaging has no NetEase leftovers or URL-scheme registration',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/B[e]ans|UIBackgroundModes|const music|CFBundleURLTypes/);});
+test('firmware candidate keeps the shared resource filename',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/TurboNavigationCandidate/);assert.match(s,/path\.join\(app,'TurboWeReadCandidate\.zip'\)/);});
