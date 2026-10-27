@@ -1,0 +1,147 @@
+{
+  "tests": [
+    "*Tests.m",
+    "*Test.m",
+    "*Fixture.m",
+    "tests/**",
+    "i18n/**",
+    "build/**",
+    "TurboIOArt/**",
+    "navigation-runtime-v1/**",
+    "preview/**"
+  ],
+  "removed": [
+    "dots-v1/**",
+    "context-english-v1/**",
+    "enhanced-lifelog-v1/**",
+    "notification-archive-v1/**",
+    "Ride*.m",
+    "RideTool.h",
+    "ride.c",
+    "Reader*.m",
+    "Reader*.inc",
+    "Reading*.m",
+    "WeRead*.m",
+    "reader.c",
+    "News*.m",
+    "MusicAPI.m",
+    "MusicLibrary.m",
+    "NavigationCore.m",
+    "NavigationTeleHUD.m",
+    "NavigationUI.m",
+    "NavigationWorkspace.inc",
+    "SimpleNavigation.inc",
+    "NavigationDisplayHUD.inc",
+    "NavigationRoadMap.inc",
+    "NavigationBackground.inc",
+    "ManualHUD.m",
+    "NavigationPlacePicker.m",
+    "TodoBridgeClient.m"
+  ],
+  "owned": [
+    "MusicUI.m",
+    "MusicPlayer.m"
+  ],
+  "generated": [
+    "Localization.m"
+  ],
+  "generatedRationale": "Localization.m is generated only from i18n/strings.jsonl; it is output, never extraction or collision input. gen --check enforces its bytes.",
+  "batches": {
+    "B1": [
+      "Core.m",
+      "VoiceTTS.m",
+      "MenuLayout.m",
+      "MenuLayoutUI.m",
+      "HomeTabBridge.m",
+      "Brightness.m",
+      "LocalTranslationEntry.m",
+      "WatchRemoteAddon.m",
+      "WatchGlobalBridge.m",
+      "camera-v1/CameraUI.m",
+      "camera-v1/CameraLink.m",
+      "camera-v1/CameraCapture.m",
+      "MusicBridge.m",
+      "FocusBridge.m",
+      "FocusUI.inc"
+    ],
+    "B2": [
+      "RecordingTextUI.m",
+      "RecordingExportsUI.m",
+      "RecordingTextMenu.m",
+      "RecordingExportsMenu.m",
+      "RecordingExports.m",
+      "AlwaysOnAudioUI.m",
+      "AlwaysOnAudioFiles.m",
+      "SubtitleHUD.m",
+      "SubtitleHUDCore.m",
+      "KnowledgeUI.m",
+      "KnowledgeClient.m",
+      "TodoRuntime.m",
+      "WebSearch.m"
+    ],
+    "B3": [
+      "DisplayPhoneSession.m",
+      "DisplayPhoneUI.m",
+      "DisplayNavigation.m",
+      "DisplayHUDRenderer.m",
+      "TDPhoneUI.m",
+      "TDPhoneRun.m",
+      "TDPhoneStore.m",
+      "GlassesLogProbe.m",
+      "ImageUploadUI.m",
+      "RoadMap.m",
+      "NativeNavigation.m",
+      "NativeNavigationUI.m"
+    ],
+    "B4": [
+      "AppUI.m",
+      "AppBridge.m",
+      "AppGallery.inc",
+      "AppPackage.m",
+      "DashboardPhone.m",
+      "DashboardCard.m",
+      "A2UIProbe.m",
+      "A2UIProtocol.m",
+      "EditorTransport.m"
+    ],
+    "B5": [
+      "EditorUI.m",
+      "EditorBackendUI.m",
+      "EditorModel.m",
+      "EditorCodec.m",
+      "EditorAI.m",
+      "EditorBackend.m",
+      "EditorCrop.m",
+      "EditorCanvas.m"
+    ],
+    "B6": [
+      "ExperimentalOTA.m",
+      "ExperimentalOTAFeed.m",
+      "ExperimentalOTAFlash.m",
+      "ExperimentalOTAUI.m"
+    ],
+    "B7": [
+      "Addon.m",
+      "ResearchCatalog.m",
+      "ResearchUI.m",
+      "EditorialShell.inc"
+    ],
+    "B8": [
+      "NavigationTransport.m",
+      "NavigationSubtitleHUD.m",
+      "NavigationModes.m"
+    ]
+  },
+  "unwrapExceptions": [
+    "Core.m",
+    "HomeTabLayout.m",
+    "HomeTabBridge.m",
+    "VoiceTTS.m",
+    "Addon.m",
+    "ResearchCatalog.m",
+    "DisplayPhoneUI.m",
+    "ProtocolContext.m",
+    "ProtocolContext.h",
+    "build.sh"
+  ]
+}
