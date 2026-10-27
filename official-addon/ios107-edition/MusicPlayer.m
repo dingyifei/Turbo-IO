@@ -274,6 +274,18 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
  if(_sentTicket==_ticket)[_bridge reopen];else{_sentTicket=_ticket;[_bridge openWithCover:_gray lyrics:_lyrics];if(!_bridge.active)_sentTicket=0;}
 }
 - (void)hideGlasses{++_viewRevision;_resumePending=NO;[_bridge close];}
+#if TIO_UI_PREVIEW
+- (void)previewState:(NSDictionary *)state cover:(UIImage *)cover{
+ [_timer invalidate];_timer=nil;[self invalidateRequests];++_ticket;_sentTicket=0;
+ _state=[state copy];_trackID=state?TMPlayerTrackKey(state):nil;_fetchedAt=TMPlayerUptime();
+ _sample=(TMClockSample){.playing=[state[@"playing"] boolValue],.position_ms=[state[@"progress_ms"] unsignedIntValue],.duration_ms=[state[@"duration_ms"] unsignedIntValue],.at=_fetchedAt};
+ _cover=cover;_gray=cover.CGImage?TMGrayCover(cover.CGImage):nil;
+ _lyrics=state?@[@{@"ms":@0,@"text":TIOText(@"music.lyrics.none")}]:[self idleLyrics];
+ _glasses=NO;_panelVisible=NO;_request=0;_pollAt=0;
+ _status=state?(_sample.playing?TIOText(@"music.status.playing"):TIOText(@"music.status.paused")):(TMSpotifyAuth.shared.signedIn?TIOText(@"music.nothing"):TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured));
+}
+#endif
+
 - (BOOL)consume:(NSDictionary *)e{return [_bridge consume:e];}
 - (BOOL)watchRemoteAvailable{return _glasses&&_state&&_bridge.active&&!_bridge.busy;}
 - (BOOL)otaIdle{return !_bridge.busy&&!_bridge.active;}
