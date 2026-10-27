@@ -38,9 +38,7 @@
     "NavigationPlacePicker.m",
     "TodoBridgeClient.m"
   ],
-  "owned": [
-    "MusicUI.m"
-  ],
+  "owned": [],
   "generated": [
     "Localization.m"
   ],
@@ -143,7 +141,8 @@
     "ProtocolContext.h",
     "build.sh",
     "GlassesChannelHook.m",
-    "MusicPlayer.m"
+    "MusicPlayer.m",
+    "MusicUI.m"
   ],
   "virtualIDs": {
     "baseline": "BASE85",
