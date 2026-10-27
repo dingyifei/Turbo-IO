@@ -143,5 +143,39 @@
     "ProtocolContext.m",
     "ProtocolContext.h",
     "build.sh"
-  ]
+  ],
+  "virtualIDs": {
+    "baseline": "BASE85",
+    "ruling": "msg_79c8dad542f8",
+    "file": "Addon.m",
+    "signature": "- (void)emitText:(NSString *)text done:(BOOL)done error:(NSString *)error generation:(NSUInteger)gen {",
+    "methodSHA256": "417238292694f8a08d704863ad9a89e9ae42678d97e1724f07c4924f7fca69aa",
+    "spanDefinition": "UTF-8 bytes from method-signature minus through tokenizer-matched closing brace, inclusive; excludes surrounding newline.",
+    "groups": [
+      {
+        "offset": 887,
+        "length": 20,
+        "literalSHA256": "6eba0afcfa784538ec5109a634ee87cacbc9c585bd8f527b21c9d1967e1f575c",
+        "key": "模型输出不是追加流，已提交错误收尾"
+      },
+      {
+        "offset": 1148,
+        "length": 17,
+        "literalSHA256": "203274e436cac1d7b3e2f1f6b6b336ba46b8a7b9022c238f4a2d81630f8a4526",
+        "key": "回复模板复制失败，已提交收尾"
+      },
+      {
+        "offset": 1466,
+        "length": 18,
+        "literalSHA256": "2297f635f598d0d53f008edc778b6836f72bded7e9778a26fbc28fee34296d4e",
+        "key": "自定义回复失败，已提交错误收尾"
+      },
+      {
+        "offset": 1485,
+        "length": 20,
+        "literalSHA256": "b358f3863276abe41d872da43bb31cd2d5b1ee4a3f1ca824a45d1771bba1a6f5",
+        "key": "自定义回复结束，已提交官方收尾回调"
+      }
+    ]
+  }
 }

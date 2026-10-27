@@ -9,6 +9,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 import difflib
 import fnmatch
+import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -47,6 +48,7 @@ class Group:
     reasons: list = field(default_factory=list)
     line: int = 0
     col: int = 0
+    virtual_id: bool = False
 
 
 def has_han(s):
@@ -130,7 +132,15 @@ def literal_groups(source):
         marker='';marker_start=-1
         if first and tokens[first-1].kind=='comment':
             m=MARKER.fullmatch(tokens[first-1].text)
-            if m:marker=m[1];marker_start=tokens[first-1].start
+            if m and (m[1]!='keep' or re.fullmatch(r'[ \t]*',source[tokens[first-1].end:start])):
+                marker=m[1];marker_start=tokens[first-1].start
+        # WP2 compatibility (coordinator ruling): only keep may be postfix,
+        # immediately after the complete literal group on the same line. A
+        # syntax token, another comment or a newline breaks that adjacency.
+        # KEEP adjacency applies on both sides; other prefix marker contracts stay intact.
+        if not marker and j<len(tokens) and tokens[j].text=='/*i18n:keep*/':
+            if re.fullmatch(r'[ \t]*',source[end:tokens[j].start]):
+                marker='keep';marker_start=tokens[j].start
         # Optional comments are legal inside TIOText( ... ).
         p=first-1
         while p>=0 and tokens[p].kind=='comment':p-=1
@@ -255,6 +265,62 @@ def warn_gate(base,new):
     return sum(bool(pat.search(x)) for x in Path(new).read_text().splitlines())<=sum(bool(pat.search(x)) for x in Path(base).read_text().splitlines())
 
 
+def pinned_method_span(source,signature):
+    """Find one real method, from exact signature through its balanced brace.
+
+    Signature-looking strings/comments do not qualify. Braces in literals and
+    comments do not affect the closing brace. Duplicate methods fail closed.
+    """
+    tokens=tokenize(source);candidates=[]
+    for i,token in enumerate(tokens):
+        if token.kind!='punct' or token.text!='-' or not source.startswith(signature,token.start):continue
+        opening=next((j for j in range(i,len(tokens)) if tokens[j].start==token.start+len(signature)-1),None)
+        if opening is None or tokens[opening].text!='{':continue
+        depth=0
+        for current in tokens[opening:]:
+            if current.kind in ('comment','objc','cstring','char'):continue
+            if current.text=='{':depth+=1
+            elif current.text=='}':
+                depth-=1
+                if depth==0:
+                    candidates.append((token.start,current.end));break
+    return candidates[0] if len(candidates)==1 else None
+
+
+def apply_virtual_ids(name,source,groups,config):
+    """Recognize only the approved four raw diagnostics in pinned emitText.
+
+    This is a per-literal annotation, never a source/region exclusion. Any byte
+    change to the complete method invalidates every virtual ID. Surrounding
+    imports and unrelated UI wrapping do not participate in the method hash.
+    """
+    if not config or name!='Addon.m' or config.get('file')!='Addon.m':return groups
+    signature='- (void)emitText:(NSString *)text done:(BOOL)done error:(NSString *)error generation:(NSUInteger)gen {'
+    if config.get('signature')!=signature or config.get('baseline')!='BASE85':return groups
+    if not re.fullmatch(r'[0-9a-f]{64}',config.get('methodSHA256','')):return groups
+    entries=config.get('groups',[])
+    if not isinstance(entries,list) or len(entries)!=4:return groups
+    span=pinned_method_span(source,signature)
+    if span is None:return groups
+    start,end=span;method=source[start:end]
+    if hashlib.sha256(method.encode('utf-8')).hexdigest()!=config['methodSHA256']:return groups
+    by_start={g.start:g for g in groups};targets=[]
+    for entry in entries:
+        if not isinstance(entry,dict) or not isinstance(entry.get('offset'),int) or not isinstance(entry.get('length'),int):return groups
+        group=by_start.get(start+entry['offset'])
+        if group is None or group.end-group.start!=entry['length'] or group.end>end or group.marker or group.wrapped:return groups
+        if group.value!=entry.get('key') or not has_cjk(group.value):return groups
+        if hashlib.sha256(source[group.start:group.end].encode('utf-8')).hexdigest()!=entry.get('literalSHA256'):return groups
+        targets.append(group)
+    if len({g.start for g in targets})!=4:return groups
+    # The pinned method has precisely these four raw CJK groups; no additional
+    # group may inherit a virtual marker even if an entry were malformed.
+    actual={g.start for g in groups if start<=g.start<end and has_cjk(g.value)}
+    if actual!={g.start for g in targets}:return groups
+    for group in targets:group.marker='id';group.virtual_id=True
+    return groups
+
+
 class Tool:
     def __init__(self,root):
         self.root=Path(root).resolve();self.i18n=self.root/'i18n'
@@ -294,8 +360,13 @@ class Tool:
             result.append(name)
         return sorted(set(result))
 
+    def context_groups(self,name,source):
+        groups,tokens,at=context_groups(source)
+        apply_virtual_ids(name,source,groups,self.scope.get('virtualIDs'))
+        return groups,tokens,at
+
     def scan(self):
-        return {name:context_groups(self.read(name))[0] for name in self.sources(collision=True)}
+        return {name:self.context_groups(name,self.read(name))[0] for name in self.sources(collision=True)}
 
     def collision_index(self,scan):
         exact=set();prefixes={}
@@ -316,7 +387,7 @@ class Tool:
     def classify(self,files=None):
         names=self.select(files);scan=self.scan();index=self.collision_index(scan);result={}
         for name in names:
-            source=self.read(name);groups,tokens,at=context_groups(source)
+            source=self.read(name);groups,tokens,at=self.context_groups(name,source)
             depths=conditional_brace_depths(source,tokenize(source))
             for g in groups:
                 if not has_cjk(g.value):continue
@@ -436,7 +507,7 @@ class Tool:
     def used(self,files=None):
         used={}
         for name in self.select(files):
-            for g in literal_groups(self.read(name)):
+            for g in self.context_groups(name,self.read(name))[0]:
                 # ASCII IDs are supported as first-class lookup keys.
                 if g.wrapped or g.marker=='id':used.setdefault(g.value,[]).append((name,g))
         return used

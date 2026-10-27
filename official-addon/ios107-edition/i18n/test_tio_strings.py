@@ -271,4 +271,132 @@ class ToolTests(unittest.TestCase):
         self.assertTrue(t.warn_gate(self.root/'before',self.root/'after'));self.put('after','warning: x [-Wformat]\nwarning: x [-Wformat-extra-args]\n');self.assertFalse(t.warn_gate(self.root/'before',self.root/'after'))
 
 
+
+
+class PostfixKeepTests(unittest.TestCase):
+    def marker(self,source):
+        return [g.marker for g in t.literal_groups(source)]
+
+    def test_prefix_keep_contract_unchanged(self):
+        self.assertEqual(self.marker('/*i18n:keep*/ @"甲";'),['keep'])
+        self.assertEqual(self.marker('/*i18n:keep*/\n @"甲";'),[''])
+        for kind in ('id','prompt','ui'):
+            self.assertEqual(self.marker('/*i18n:'+kind+'*/\n @"甲";'),[kind])
+        self.assertEqual(self.marker('/*i18n:id*/@"甲" /*i18n:keep*/;'),['id'])
+
+    def test_same_line_adjacent_postfix_keep(self):
+        for gap in ('',' ','\t',' \t  '):
+            with self.subTest(gap=gap):
+                groups=t.literal_groups('UIText(@"English",@"中文"'+gap+'/*i18n:keep*/);')
+                self.assertEqual([g.marker for g in groups],['','keep'])
+        groups=t.literal_groups('@"甲" /* ordinary */ "乙" \t/*i18n:keep*/;')
+        self.assertEqual([(g.value,g.marker) for g in groups],[('甲乙','keep')])
+
+    def test_tokens_or_comments_between_literal_and_marker_rejected(self):
+        for gap in (', ','); ',') ', '; ', '+ ', ' /* another comment */ '):
+            with self.subTest(gap=gap):self.assertEqual(self.marker('@"甲"'+gap+'/*i18n:keep*/'),[''])
+
+    def test_next_line_and_other_whitespace_postfix_rejected(self):
+        for gap in ('\n','\r\n','\v','\f',' \n\t'):
+            with self.subTest(gap=gap):self.assertEqual(self.marker('@"甲"'+gap+'/*i18n:keep*/'),[''])
+
+    def test_no_postfix_id_prompt_ui_and_no_double_attribution(self):
+        for kind in ('id','prompt','ui'):
+            with self.subTest(kind=kind):self.assertEqual(self.marker('@"甲" /*i18n:'+kind+'*/;'),[''])
+        self.assertEqual(self.marker('Pair(@"甲" /*i18n:keep*/, @"乙");'),['keep',''])
+        self.assertEqual(self.marker('Pair(@"甲", /*i18n:keep*/ @"乙");'),['','keep'])
+        # A marker inside a concatenated runtime group cannot selectively protect
+        # one fragment. It must precede or follow the complete group.
+        self.assertEqual(self.marker('@"甲" /*i18n:keep*/ @"乙";'),[''])
+        self.assertEqual(self.marker('@"甲" /*i18n:keep*/\n @"乙";'),[''])
+
+    def test_postfix_keep_is_not_wrapped_or_extracted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'i18n').mkdir()
+            (root/'i18n/scope.json').write_text(json.dumps({'tests':['i18n/**'],'removed':[],'owned':[],'batches':{},'unwrapExceptions':[]}))
+            (root/'i18n/strings.jsonl').write_text('')
+            source='#import <Foundation/Foundation.h>\nvoid f(){ UIText(@"English",@"中文" /*i18n:keep*/); }\n'
+            (root/'Main.m').write_text(source);tool=t.Tool(root)
+            self.assertEqual(tool.classify(['Main.m'])['Main.m'][0].kind,'KEEP')
+            tool.wrap(['Main.m']);self.assertEqual((root/'Main.m').read_text(),source)
+            tool.extract();self.assertEqual(tool.load_rows(),{})
+            tool.gen();self.assertEqual(tool.check(['Main.m']),[])
+
+
+
+
+FROZEN_EMIT_TEXT_BASE85 = '- (void)emitText:(NSString *)text done:(BOOL)done error:(NSString *)error generation:(NSUInteger)gen {\n    if(gen!=_generation||!_ownsTurn||_responseDone||!_listener)return;\n    if(error)text=[(_emitted?:@"") stringByAppendingFormat:@"\\n[%@]",error];\n    NSString *delta=TIOAppendDelta(_emitted?:@"",text);\n    if(!delta){\n        // Close an owned turn even if a provider rewrites a previous chunk.\n        // Keep ownership until the next turn so late official chunks stay suppressed.\n        [_request cancel];_request=nil;_responseDone=YES;\n        id failure=CopyResponse(_responseTemplate,TIOWebStatusText(@"stream.rewritten",TIOScriptLanguage(_requestQuestion?:@"",AddonUILanguage())),YES);\n        if(failure)OriginalNlp(_listener,NSSelectorFromString(@"onNlpResult:"),failure);\n        OriginalComplete(_listener,NSSelectorFromString(@"onResponseComplete"));\n        Diagnostic=@"模型输出不是追加流，已提交错误收尾";return;\n    }\n    if(delta.length||done){id wrapper=CopyResponse(_responseTemplate,delta,done);if(!wrapper){[_request cancel];_request=nil;_responseDone=YES;OriginalComplete(_listener,NSSelectorFromString(@"onResponseComplete"));Diagnostic=@"回复模板复制失败，已提交收尾";return;}OriginalNlp(_listener,NSSelectorFromString(@"onNlpResult:"),wrapper);_emitted=[text copy];if(TTSOn()&&!error)[VoiceTTS appendFullText:text finished:done];}\n    if(done){_responseDone=YES;if(!error&&_request&&text.length)[_history appendQuestion:_requestQuestion answer:text];Diagnostic=error?@"自定义回复失败，已提交错误收尾":@"自定义回复结束，已提交官方收尾回调";OriginalComplete(_listener,NSSelectorFromString(@"onResponseComplete"));}\n}'
+
+
+class VirtualFrozenDiagnosticTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
+        (self.root/'i18n').mkdir();self.scope=json.loads((Path(t.__file__).parent/'scope.json').read_text())
+        self.scope['tests']=['i18n/**'];self.scope['removed']=[];self.scope['owned']=[]
+        self.save_scope();(self.root/'i18n/strings.jsonl').write_text('');self.tool=t.Tool(self.root)
+
+    def save_scope(self):
+        (self.root/'i18n/scope.json').write_text(json.dumps(self.scope,ensure_ascii=False))
+
+    def groups(self,method=FROZEN_EMIT_TEXT_BASE85,before='',after='',name='Addon.m'):
+        (self.root/name).write_text(before+method+after)
+        return self.tool.classify([name])[name]
+
+    def test_only_four_pinned_groups_are_virtual_ids(self):
+        groups=self.groups();self.assertEqual(len(groups),4)
+        self.assertTrue(all(g.kind=='ID' and g.virtual_id for g in groups))
+        self.assertEqual({g.value for g in groups},{g['key'] for g in self.scope['virtualIDs']['groups']})
+        self.assertTrue(all(not g.marker for g in t.literal_groups(FROZEN_EMIT_TEXT_BASE85) if t.has_cjk(g.value)))
+
+    def test_complete_method_pin_rejects_body_literal_signature_and_whitespace_changes(self):
+        changed=[FROZEN_EMIT_TEXT_BASE85.replace('if(gen!=_generation','if(gen==_generation',1),
+                 FROZEN_EMIT_TEXT_BASE85.replace('模型输出不是追加流','模型输出已改动',1),
+                 FROZEN_EMIT_TEXT_BASE85.replace('emitText:','emitOtherText:',1),
+                 FROZEN_EMIT_TEXT_BASE85.replace('    if(gen','     if(gen',1)]
+        for method in changed:
+            with self.subTest(method=method[:110]):
+                groups=self.groups(method);self.assertTrue(all(not g.virtual_id for g in groups))
+                self.assertTrue(any(g.kind in ('UNWRAPPED','MANUAL') for g in groups))
+
+    def test_new_cjk_inside_and_outside_method_is_not_virtual(self):
+        changed=FROZEN_EMIT_TEXT_BASE85[:-1]+' Show(@"新增");}'
+        groups=self.groups(changed);self.assertTrue(all(not g.virtual_id for g in groups))
+        groups=self.groups(after='\nvoid other(){ Show(@"新增"); }\n')
+        self.assertEqual(sum(g.virtual_id for g in groups),4)
+        self.assertFalse(next(g for g in groups if g.value=='新增').virtual_id)
+        self.assertTrue(any(g.value=='新增' and g.kind=='UNWRAPPED' for g in groups))
+        groups=self.groups(before='void other(){ Diagnostic=@"模型输出不是追加流，已提交错误收尾"; }\n')
+        self.assertEqual(sum(g.virtual_id for g in groups),4)
+        self.assertFalse(groups[0].virtual_id)
+
+    def test_outer_wrapping_and_imports_preserve_exact_method(self):
+        groups=self.groups(before='#import "TIOLanguage.h"\nvoid other(){Show(TIOText(/*i18n:ui*/@"外部"));}\n',after='\nvoid last(){Show(TIOText(/*i18n:ui*/@"其他"));}')
+        self.assertEqual(sum(g.virtual_id for g in groups),4)
+        self.assertTrue(all(g.kind=='WRAPPED' for g in groups if not g.virtual_id))
+        self.assertTrue(all(not g.virtual_id for g in self.groups(name='Other.m')))
+
+    def test_no_scope_pin_no_virtual_ids_and_mismatched_pin_fail_closed(self):
+        self.scope.pop('virtualIDs');self.save_scope();self.tool=t.Tool(self.root)
+        self.assertTrue(all(not g.virtual_id for g in self.groups()))
+        self.scope['virtualIDs']=json.loads((Path(t.__file__).parent/'scope.json').read_text())['virtualIDs']
+        self.scope['virtualIDs']['methodSHA256']='0'*64;self.save_scope();self.tool=t.Tool(self.root)
+        self.assertTrue(all(not g.virtual_id for g in self.groups()))
+
+    def test_tokenizer_balanced_span_ignores_comments_strings_and_duplicate_methods(self):
+        signature=self.scope['virtualIDs']['signature']
+        body=signature+' id braces=@"}{"; /* }}} */ if(YES){int value=1;} }'
+        self.assertEqual(t.pinned_method_span(body+'\nvoid later(){}',signature),(0,len(body)))
+        # Matching a fake method entirely inside a comment must never qualify.
+        groups=self.groups(method='/* '+FROZEN_EMIT_TEXT_BASE85+' */\nvoid x(){Show(@"未登记");}')
+        self.assertTrue(all(not g.virtual_id for g in groups))
+        groups=self.groups(method=FROZEN_EMIT_TEXT_BASE85+'\n'+FROZEN_EMIT_TEXT_BASE85)
+        self.assertTrue(all(not g.virtual_id for g in groups))
+
+    def test_wrap_preserves_method_and_extract_todo_use_virtual_keys(self):
+        self.groups();before=(self.root/'Addon.m').read_bytes();self.tool.wrap(['Addon.m'])
+        self.assertEqual((self.root/'Addon.m').read_bytes(),before)
+        self.tool.extract();keys={g['key'] for g in self.scope['virtualIDs']['groups']}
+        self.assertEqual(set(self.tool.load_rows()),keys);self.assertEqual(set(self.tool.used(['Addon.m'])),keys)
+        self.assertEqual({r['key'] for r in self.tool.todo(['Addon.m'])},keys)
+
 if __name__=='__main__':unittest.main()
