@@ -20,6 +20,7 @@ static unsigned text_width(const uint8_t *p,unsigned n){
 bool tnr_body_valid(unsigned op,const uint8_t *p,size_t n){
  if(op==TNR_CLEAR)return n==0;
  if(!p)return false;
+ if(op==TNR_POSE2)return n==14&&tnr_body_valid(TNR_POSE,p,12)&&nm_u16(p+12)<=TNR_MAX_SPEED;
  if(op==TNR_POSE)return n==12&&nm_u32(p)&&point_ok(p+4)&&nm_u16(p+8)<360&&nm_u16(p+10)<=4000;
  if((op!=TNR_SCENE&&op!=TNR_SCENE2)||n<16||n>TNR_MAX_BYTES-32||!nm_u32(p)||nm_u16(p+4)<180||nm_u16(p+4)>700||nm_u32(p+12))return false;
  unsigned paths=nm_u16(p+6),points=nm_u16(p+8),labels=nm_u16(p+10),sum=0;
@@ -32,10 +33,19 @@ bool tnr_body_valid(unsigned op,const uint8_t *p,size_t n){
  }return true;
 }
 static int angle(int a,int b){int d=(b-a+540)%360-180;return d;}
-bool tnr_stale(const TNRState *s,uint32_t now){if(!s||!s->located)return true;uint32_t elapsed=now-s->pose_at;return elapsed>=TNR_STALE_MS||s->target.age>=TNR_STALE_MS-elapsed;}
+bool tnr_stale(const TNRState *s,uint32_t now){if(!s||!s->located)return true;uint32_t elapsed=now-s->pose_at,limit=s->target.speed?TNR_STALE_MS2:TNR_STALE_MS;return elapsed>=limit||s->target.age>=limit-elapsed;}
+static int sine(unsigned);
+static int bound_position(int x){return x< -8192?-8192:x>8192?8192:x;}
 bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
- if(!s||!p||!s->valid||!s->located)return false;uint32_t t=now-s->pose_at;if(t>TNR_BLEND_MS)t=TNR_BLEND_MS;*p=s->target;
- p->p.x=(int16_t)(s->from.p.x+(s->target.p.x-s->from.p.x)*(int)t/(int)TNR_BLEND_MS);p->p.y=(int16_t)(s->from.p.y+(s->target.p.y-s->from.p.y)*(int)t/(int)TNR_BLEND_MS);
+ if(!s||!p||!s->valid||!s->located)return false;
+ uint32_t elapsed=now-s->pose_at,tp=elapsed>TNR_PREDICT_MS?TNR_PREDICT_MS:elapsed;
+ int d=(int)s->target.speed*(int)tp/1000;
+ TNRPoint target={
+  (int16_t)bound_position(s->target.p.x+d*sine(s->target.heading)/16384),
+  (int16_t)bound_position(s->target.p.y+d*sine(s->target.heading+90)/16384)};
+ uint32_t t=elapsed>TNR_BLEND_MS?TNR_BLEND_MS:elapsed;*p=s->target;
+ p->p.x=(int16_t)(s->from.p.x+(target.x-s->from.p.x)*(int)t/(int)TNR_BLEND_MS);
+ p->p.y=(int16_t)(s->from.p.y+(target.y-s->from.p.y)*(int)t/(int)TNR_BLEND_MS);
  p->heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)t/(int)TNR_BLEND_MS+360)%360);return true;
 }
 bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now){
@@ -53,13 +63,13 @@ bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now)
  }
  if(s->pending){if(nm_u32(p)!=s->scenes[s->bank^1u].generation)return false;s->bank^=1u;s->valid=true;s->located=false;s->pending=false;}
  if(!s->valid||nm_u32(p)!=s->scenes[s->bank].generation)return false;
- TNRPose q={.generation=nm_u32(p),.p={(int16_t)nm_u16(p+4),(int16_t)nm_u16(p+6)},.heading=(uint16_t)nm_u16(p+8),.age=(uint16_t)nm_u16(p+10)};
+ TNRPose q={.generation=nm_u32(p),.p={(int16_t)nm_u16(p+4),(int16_t)nm_u16(p+6)},.heading=(uint16_t)nm_u16(p+8),.age=(uint16_t)nm_u16(p+10),.speed=op==TNR_POSE2?(uint16_t)nm_u16(p+12):0};
  if(s->located&&!tnr_stale(s,now))tnr_position(s,now,&s->from);else s->from=q;
  /* Never interpolate long discontinuities across a junction or a relocalization. */
  if(ab(q.p.x-s->from.p.x)+ab(q.p.y-s->from.p.y)>400)s->from=q;
  s->target=q;s->pose_at=now;s->located=true;s->dirty=true;return true;
 }
-bool tnr_needs_draw(const TNRState *s,uint32_t now){return s&&(s->dirty||s->was_stale!=tnr_stale(s,now)||(s->valid&&s->located&&(uint32_t)(now-s->pose_at)<TNR_BLEND_MS+40&&(uint32_t)(now-s->last_draw)>=33));}
+bool tnr_needs_draw(const TNRState *s,uint32_t now){return s&&(s->dirty||s->was_stale!=tnr_stale(s,now)||(s->valid&&s->located&&(uint32_t)(now-s->pose_at)<TNR_BLEND_MS+40&&(uint32_t)(now-s->last_draw)>=33)||(s->valid&&s->located&&s->target.speed&&(uint32_t)(now-s->pose_at)<TNR_PREDICT_MS&&(uint32_t)(now-s->last_draw)>=100));}
 void tnr_presented(TNRState *s,uint32_t now){if(s){s->dirty=false;s->last_draw=now;s->was_stale=tnr_stale(s,now);}}
 /* Q14 sine table; no libm, heap allocation or FP ABI assumptions in renderer. */
 static const int16_t sin5[]={0,1428,2845,4240,5604,6924,8192,9397,10531,11585,12551,13421,14189,14849,15396,15826,16135,16322,16384};

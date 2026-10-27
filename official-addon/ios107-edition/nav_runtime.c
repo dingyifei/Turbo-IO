@@ -35,7 +35,7 @@ static bool decode_scene(TNScene *s,const uint8_t *p,size_t n){
 }
 bool tn_packet_valid(const uint8_t *p,size_t n){
  if(!p||n<32||n>TN_PACKET_MAX||memcmp(p,"TNV1",4)||p[4]!=1||p[6]||p[7]||u32(p+24)||u32(p+28)||!u32(p+8)||!u32(p+12)||u32(p+16)!=n-32||u32(p+20)!=wire_crc(p,n))return false;
- unsigned op=p[5];if(op>=TNR_SCENE&&op<=TNR_SCENE2)return tnr_body_valid(op,p+32,n-32);if(op<TN_START||op>TN_QUERY)return false;
+ unsigned op=p[5];if(op>=TNR_SCENE&&op<=TNR_POSE2)return tnr_body_valid(op,p+32,n-32);if(op<TN_START||op>TN_QUERY)return false;
  if(op==TN_START||op==TN_UPDATE){TNScene s;return decode_scene(&s,p+32,n-32);}
  return op==TN_MODE?n==33&&p[32]<=TN_ALWAYS:n==32;
 }
