@@ -233,19 +233,10 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   TDTransport.m \
   diagnostics.c \
   command.c \
-  WeReadAPI.m \
   FocusTransport.m \
   FocusBridge.m \
   focus.c \
-  ReaderTransport.m \
-  ReaderBridge.m \
-  ReadingOverview.m \
-  ReadingContent.m \
-  ReaderUI.m \
-  reader.c \
   -lz \
-  -lxml2 \
-  -I"$(xcrun --sdk iphoneos --show-sdk-path)/usr/include/libxml2" \
   VoiceTTS.m \
   VoiceTTSText.m \
   MusicAPI.m \

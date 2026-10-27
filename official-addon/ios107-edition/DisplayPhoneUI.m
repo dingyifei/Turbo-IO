@@ -3,13 +3,10 @@
 #import "AppBridge.h"
 #import "TodoRuntime.h"
 #import "NewsTeleprompter.h"
-extern BOOL TWReaderAutomaticIdle(void);
 #import "WatchGlobalBridge.h"
 #import "MenuLayout.h"
 #import "MusicPlayer.h"
-#import "ReaderUI.h"
 #import "FocusBridge.h"
-#import "ReaderBridge.h"
 #import "MusicBridge.h"
 #import "TDPhoneBridge.h"
 #import "TDPhoneReply.h"
@@ -33,14 +30,14 @@ static TDPPhoneSession *Session;
 static TDPPhoneTransport *Transport;
 static TDPNavFeed *NavFeed;
 
-// Read-only guards: do not call TWReaderPauseForOTA or stop any user task.
+// Read-only guards: do not stop any user task.
 BOOL TDPPhoneAutomaticIdle(void){
  if(!TCCameraIdleForOTA())return NO;
  if(!NSThread.isMainThread||[TIOOTAFlashStatus()[@"stage"] integerValue]!=0||
 
     !TFFocusIdleForOTA()||
     Session.busy||NavFeed.active||!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||
-    !TMMusicPauseForOTA()||!TWReaderAutomaticIdle()||
+    !TMMusicPauseForOTA()||
     TAPPhoneBridge.shared.busy||TAPPhoneBridge.shared.needsReadback||
     [TIOTodoRuntimeStatus()[@"busy"] boolValue])return NO;
  NSDictionary *tele=TIONewsTeleStatus();
@@ -50,7 +47,7 @@ BOOL TDPPhoneAutomaticIdle(void){
 }
 BOOL TDPPhonePauseForOTA(void){
  if(!TCCameraIdleForOTA())return NO;
- if(!NSThread.isMainThread||!TFFocusIdleForOTA()||Session.busy||NavFeed.active||!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||!TMMusicPauseForOTA()||!TWReaderPauseForOTA())return NO;
+ if(!NSThread.isMainThread||!TFFocusIdleForOTA()||Session.busy||NavFeed.active||!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||!TMMusicPauseForOTA())return NO;
  [Session setForegroundActive:NO];return YES;
 }
 static NSString *Peer;
@@ -65,7 +62,6 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
  if(TIOWatchGlobalConsume(e))return YES;
  if(TDDiagnosticsConsume(e))return YES;
  if(TFFocusConsume(e))return YES;
- if(TWReaderConsume(e))return YES;
  if(TMMusicConsume(e))return YES;
  if(TNVConsume(e))return YES;
  if(LegacyAppReply(e))return YES;
@@ -74,12 +70,12 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
 BOOL TDPPhoneRouteReply(NSDictionary *event,void(^completion)(BOOL)){
  if(![event isKindOfClass:NSDictionary.class]||![event[@"eventType"] isEqual:@"messageReceived"])return NO;
  NSDictionary *m=event[@"message"];if(![m isKindOfClass:NSDictionary.class]||![m[@"businessId"] isEqual:@15]||![m[@"payload"] isKindOfClass:NSData.class])return NO;
- NSData *data=m[@"payload"];TDPReply r;if(!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TWDecodeReply(event,NULL)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!LegacyAppReply(event)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
+ NSData *data=m[@"payload"];TDPReply r;if(!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!LegacyAppReply(event)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
  NSDictionary *snapshot=[event copy];void(^work)(void)=^{completion(TDPPhoneConsumeEvent(snapshot));};
  if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);return YES;
 }
 static BOOL Setup(void){
- if(!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||!TMMusicPauseForOTA()||!TWReaderPauseForOTA())return NO;
+ if(!TNVPauseForOTA()||!TDDiagnosticsPauseForOTA()||!TMMusicPauseForOTA())return NO;
  NSString *device=TIOProtocolDevice();if(!device.length)return NO;
  if(Session&&[Peer isEqual:device]){PeerInvalidated=NO;return YES;}
  if(Session.busy)return NO; // Never discard uncertain native-file ownership.

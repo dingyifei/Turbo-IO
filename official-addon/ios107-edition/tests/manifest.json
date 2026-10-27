@@ -161,18 +161,6 @@
       "group": "protocol-restart",
       "note": "Imports NewsTeleprompter.h; WP3 must rewrite against ProtocolContext alone."
     },
-    "ReaderBridgeTest.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (WeRead)"
-    },
-    "ReadingContentTest.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (WeRead)"
-    },
-    "ReadingOverviewTest.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (WeRead)"
-    },
     "RecordingExportsTests.m": {
       "status": "run",
       "group": "recording-exports"

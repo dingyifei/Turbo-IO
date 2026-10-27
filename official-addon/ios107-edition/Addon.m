@@ -17,7 +17,6 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "TodoProtocol.h"
 #import "NewsReader.h"
 #import "MusicPlayer.h"
-#import "ReaderUI.h"
 #import "TDPhoneBridge.h"
 #import "PrivateBootstrap.h"
 #if TIO_MAPKIT_ENABLED
@@ -281,7 +280,7 @@ static void AsrHook(id self,SEL cmd,id text,BOOL final,id sid) {
     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
 }
 static void AudioStartHook(id self,SEL cmd) {
-    void (^work)(void)=^{TWReaderPauseForVoice();TMMusicPauseForVoice();Controller.voiceExited=NO;[Controller.taskGate beginTurn];OriginalAudioStart(self,cmd);};
+    void (^work)(void)=^{TMMusicPauseForVoice();Controller.voiceExited=NO;[Controller.taskGate beginTurn];OriginalAudioStart(self,cmd);};
     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);
 }
 static void NlpHook(id self,SEL cmd,id value) {
@@ -447,7 +446,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #endif
     if([r[@"key"] isEqual:@"localTranslation"]){TIOOpenLocalTranslation(self);return;}
     if([r[@"key"] isEqual:@"diagnosticsRuntime"]){[self.navigationController pushViewController:TDDiagnosticsController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"weread"]){[self.navigationController pushViewController:TWReaderController() animated:YES];return;}
     if([r[@"key"] isEqual:@"music"]){[self.navigationController pushViewController:TMMusicController() animated:YES];return;}
     if([r[@"key"] isEqual:@"knowledge"]){TIOOpenKnowledge(self);return;}
     if([r[@"key"] isEqual:@"experimentalOTA"]){[self.navigationController pushViewController:TIOExperimentalOTAController() animated:YES];return;}
@@ -542,7 +540,7 @@ __attribute__((constructor)) static void Load(void) {
         @autoreleasepool {
             if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return;
             TIOStartExperimentalOTAFeedIfMarked();
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();TWReaderProbeIfRequested();});
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
             [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];

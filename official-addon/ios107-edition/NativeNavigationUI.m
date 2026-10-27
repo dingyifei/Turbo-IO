@@ -1,7 +1,5 @@
 #import "NativeNavigationUI.h"
 #import "MusicPlayer.h"
-#import "ReaderUI.h"
-#import "ReaderBridge.h"
 #import "NativeNavigation.h"
 #import "TNVTransport.h"
 #import "ProtocolContext.h"
@@ -49,7 +47,7 @@ void TNVPump(void){
  NSString *file=[root stringByAppendingPathComponent:@"native-navigation-status.json"];[[NSJSONSerialization dataWithJSONObject:d options:NSJSONWritingSortedKeys error:nil] writeToFile:file options:NSDataWritingAtomic error:nil];[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }
 BOOL TNVStart(NSDictionary *frame){
- NSCAssert(NSThread.isMainThread,@"main only");if(!TMMusicPauseForOTA()||!TWReaderPauseForOTA()||Session.active||Session.busy||[TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue])return NO;
+ NSCAssert(NSThread.isMainThread,@"main only");if(!TMMusicPauseForOTA()||Session.active||Session.busy||[TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue])return NO;
  NSString *device=TIOProtocolDevice();if(!device.length)return NO;TNScene scene;if(!TNVScene(frame,TNVAlways(),&scene))return NO;
  NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;uint64_t last=[[defaults objectForKey:@"TurboNavigationSessionCounterV1"] unsignedLongLongValue];
  uint64_t epoch=(uint64_t)MAX(1,NSDate.date.timeIntervalSince1970);uint64_t sid=MAX(last+1,epoch);if(sid>UINT32_MAX)return NO;
