@@ -1944,3 +1944,6 @@
 {"key":"apple.recording.result","en":"Transcript","zh":"转写结果"}
 {"key":"apple.recording.markdown","en":"Share Markdown","zh":"分享 Markdown"}
 {"key":"apple.recording.summarize","en":"Summarize","zh":"生成摘要"}
+{"key":"apple.speech.en","en":"Speech assets · English","zh":"语音资源 · 英语"}
+{"key":"apple.speech.zh","en":"Speech assets · Chinese","zh":"语音资源 · 中文"}
+{"key":"apple.speech.prepare","en":"Prepare speech assets","zh":"准备语音资源"}

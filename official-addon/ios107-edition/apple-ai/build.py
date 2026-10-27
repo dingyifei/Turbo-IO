@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-UNITS=['AppleAICore','AppleAIProbe','AppleLLM']
+UNITS=['AppleAICore','AppleAIProbe','AppleLLM','AppleSpeechFile']
 SHARED=[]
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True);a=p.parse_args()

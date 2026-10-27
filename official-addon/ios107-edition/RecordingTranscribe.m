@@ -60,7 +60,21 @@
             AVAudioFramePosition cap=MIN(audio.length,(AVAudioFramePosition)(rate*14400));
             NSString *locale=[language isEqual:@"zh"]?@"zh-CN":@"en-US";
             if([language isEqual:@"auto"]){NSString *probeCode=nil;NSString *probe=[self recognize:audio locale:@"zh-CN" frames:(AVAudioFramePosition)(rate*30) code:&probeCode];if([probeCode isEqual:@"cancelled"]){code=probeCode;break;}locale=probe.length?TIOTranscriptLocaleFromProbe(probe):@"en-US";audio.framePosition=0;}
-            // The preferred SpeechTranscriber path is inserted in step 10.
+            // Prefer installed SpeechTranscriber assets, then retain the on-device SFSpeech path.
+            if(TIOAppleAILoaded()&&audio.length<=cap){
+                dispatch_semaphore_t ready=dispatch_semaphore_create(0);self.waiter=ready;NSObject *lock=[NSObject new];__block BOOL installed=NO,closed=NO;
+                TIOAppleSpeechStatus(locale,^(NSDictionary *status){@synchronized(lock){if(!closed)installed=[status[@"installed"] boolValue];}dispatch_semaphore_signal(ready);});
+                long timeout=dispatch_semaphore_wait(ready,dispatch_time(DISPATCH_TIME_NOW,30*NSEC_PER_SEC));@synchronized(lock){closed=YES;}
+                if(!timeout&&installed&&!self.cancelled){
+                    dispatch_semaphore_t done=dispatch_semaphore_create(0);self.waiter=done;__block NSString *result=nil,*failure=nil;__block BOOL finished=NO;
+                    self.activeTask=TIOAppleSpeechTranscribe(copy,locale,^(double fraction){stage(@"transcribing",fraction);},^(NSString *text,NSString *errorCode){@synchronized(lock){if(!finished){result=text;failure=errorCode;finished=YES;}}dispatch_semaphore_signal(done);});
+                    if(self.activeTask){long expired=dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,(int64_t)(14400+120)*NSEC_PER_SEC));@synchronized(lock){finished=YES;if(!expired&&!self.cancelled&&!failure)markdown=result;}
+                        if(expired||self.cancelled){id task=self.activeTask;SEL cancel=NSSelectorFromString(@"cancel");if([task respondsToSelector:cancel])((void(*)(id,SEL))objc_msgSend)(task,cancel);}
+                    }
+                    self.activeTask=nil;if(markdown)break;
+                }
+                self.waiter=nil;if(self.cancelled){code=@"cancelled";break;}
+            }
             NSMutableArray *segments=[NSMutableArray new];
             while(audio.framePosition<cap&&!self.cancelled){AVAudioFramePosition start=audio.framePosition;NSString *text=[self recognize:audio locale:locale frames:MIN((AVAudioFramePosition)(rate*50),cap-start) code:&code];if(!text)break;[segments addObject:@{@"t":@((double)start/rate),@"text":text}];stage(@"transcribing",MIN(1,(double)audio.framePosition/cap));}
             if(self.cancelled)code=@"cancelled";if(!code)markdown=TIOTranscriptMarkdown(segments);

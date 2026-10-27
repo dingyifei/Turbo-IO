@@ -46,4 +46,16 @@ void TIOAppleAIProbe(void(^completion)(NSDictionary *)) {TAIMain(^{
     else {report[@"fm.available"]=@NO;report[@"fm.reason"]=TIOAppleModelAvailability()[@"reason"];completion([report copy]);}
 });}
 NSString *TIOAppleAIStatusLine(void){NSDictionary *availability=TIOAppleModelAvailability();return [availability[@"available"] boolValue]?TIOText(@"apple.status.ready"):TIOAppleErrorMessage(availability[@"reason"]);}
+void TIOAppleSpeechStatus(NSString *locale,void(^completion)(NSDictionary *)){TAIMain(^{
+    Class cls=TIOAppleAILoaded()?NSClassFromString(@"TIOAppleSpeech"):Nil;SEL selector=NSSelectorFromString(@"statusForLocale:completion:");
+    if([cls respondsToSelector:selector])((void(*)(id,SEL,id,id))objc_msgSend)(cls,selector,locale,[completion copy]);else completion(@{@"installed":@NO,@"assets":@"unsupported",@"reason":@"moduleOld"});
+});}
+void TIOAppleSpeechPrepare(NSString *locale,void(^progress)(double),void(^completion)(NSString *)){TAIMain(^{
+    Class cls=TIOAppleAILoaded()?NSClassFromString(@"TIOAppleSpeech"):Nil;SEL selector=NSSelectorFromString(@"prepareLocale:progress:completion:");
+    if([cls respondsToSelector:selector])((void(*)(id,SEL,id,id,id))objc_msgSend)(cls,selector,locale,[progress copy],[completion copy]);else completion(@"moduleOld");
+});}
+id TIOAppleSpeechTranscribe(NSURL *file,NSString *locale,void(^progress)(double),void(^completion)(NSString *,NSString *)){__block id task=nil;TAIMain(^{
+    Class cls=TIOAppleAILoaded()?NSClassFromString(@"TIOAppleSpeech"):Nil;SEL selector=NSSelectorFromString(@"transcribeFile:locale:progress:completion:");
+    if([cls respondsToSelector:selector])task=((id(*)(id,SEL,id,id,id,id))objc_msgSend)(cls,selector,file,locale,[progress copy],[completion copy]);
+});return task;}
 #endif
