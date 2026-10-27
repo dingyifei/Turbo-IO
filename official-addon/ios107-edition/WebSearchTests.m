@@ -2,6 +2,7 @@
 #include <assert.h>
 static NSString *Event(NSDictionary *d,id reason){NSDictionary *j=@{@"choices":@[@{@"delta":d,@"finish_reason":reason?:NSNull.null}]};return [NSString stringWithFormat:@"data: %@\r\n\r\n",[[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:j options:0 error:nil] encoding:NSUTF8StringEncoding]];}
 static BOOL Parse(NSString *s){TIOWebStream *p=[TIOWebStream new];BOOL ok=[p append:[s dataUsingEncoding:NSUTF8StringEncoding]];return ok&&p.done;}
+static BOOL HasHan(NSString *s){for(NSUInteger i=0;i<s.length;i++){unichar c=[s characterAtIndex:i];if(c>=0x4E00&&c<=0x9FFF)return YES;}return NO;}
 int main(void){@autoreleasepool{
     for(NSNumber *code in @[@(NSURLErrorTimedOut),@(NSURLErrorCannotFindHost),@(NSURLErrorNotConnectedToInternet),@(NSURLErrorSecureConnectionFailed)]){NSString *s=TIOWebNetworkErrorMessage(YES,[NSError errorWithDomain:NSURLErrorDomain code:code.integerValue userInfo:@{NSLocalizedDescriptionKey:[@"sk" stringByAppendingString:@"-private-secret"]}]);assert([s containsString:code.stringValue]);assert(![s containsString:[@"sk" stringByAppendingString:@"-private-secret"]]);}
     assert([TIOWebSearchQuery(@"{\"query\":\"今天新闻\"}") isEqual:@"今天新闻"]);
@@ -24,5 +25,9 @@ int main(void){@autoreleasepool{
     assert(!TIOWebSearchResults([@"{\"results\":null}" dataUsingEncoding:NSUTF8StringEncoding]));
     assert([TIOWebSearchResults([@"{\"results\":[]}" dataUsingEncoding:NSUTF8StringEncoding])[@"results"] count]==0);
     TIOWebChatRequest *req=[TIOWebChatRequest new];__block BOOL called=NO;req.update=^(NSString *t,BOOL d,NSString *e){called=YES;};[req cancel];assert(!called&&req.update==nil);
+    assert([TIOWebNetworkErrorMessage(NO,[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorTimedOut userInfo:nil]) isEqual:@"Model request timed out (-1001); no valid result."]);
+    for(NSString *k in TIOWebStatusKeys()){NSString *en=TIOWebStatusText(k,@"en-US"),*zh=TIOWebStatusText(k,@"zh-Hans");assert(en.length&&zh.length&&![en isEqual:k]&&!HasHan(en)&&HasHan(zh));assert([en containsString:@"{code}"]==[zh containsString:@"{code}"]&&[en containsString:@"{reason}"]==[zh containsString:@"{reason}"]);}
+    assert([TIOWebStatusText(@"progress.search",@"zh") isEqual:@"\n正在联网搜索…\n" /*i18n:keep*/]);assert([TIOWebStatusText(@"progress.search",nil) isEqual:@"\nSearching the web…\n"]);assert([TIOWebStatusText(@"progress.search",@"ZH_CN") isEqual:TIOWebStatusText(@"progress.search",@"zh-Hans")]);assert([TIOWebStatusText(@"no.such.key",@"en") isEqual:@"no.such.key"]);
+    NSError *t=[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorTimedOut userInfo:nil];assert([TIOWebNetworkErrorMessageInLanguage(YES,t,@"zh-Hans") isEqual:@"搜索请求超时（-1001），未获得有效结果。" /*i18n:keep*/]);assert([TIOWebNetworkErrorMessageInLanguage(NO,t,@"en") isEqual:@"Model request timed out (-1001); no valid result."]);
     NSLog(@"PASS: search SSE byte boundaries, tool allowlist, argument validation, finish guards, source filtering, cancel.");
 }return 0;}

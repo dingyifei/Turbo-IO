@@ -29,14 +29,15 @@ static void Run(NSString *name){
     Scenario=name;ModelRequests=0;SearchRequests=0;__block BOOL done=NO,cancelled=NO;__block NSUInteger finals=0;__block NSString *last=@"",*error=nil;
     FakeWebRequest *r=[FakeWebRequest new];__weak FakeWebRequest *weak=r;
     r.newsMode=[name hasPrefix:@"news"];
-    r.update=^(NSString *text,BOOL final,NSString *e){assert(!last.length||[text hasPrefix:last]);last=text;if(final){finals++;done=YES;error=e;}if([name isEqual:@"cancel"]&&[text containsString:@"正在联网"]){[weak cancel];cancelled=YES;done=YES;}};
+    r.language=[name hasSuffix:@"-en"]?nil:@"zh-Hans";
+    r.update=^(NSString *text,BOOL final,NSString *e){assert(!last.length||[text hasPrefix:last]);last=text;if(final){finals++;done=YES;error=e;}if([name hasPrefix:@"cancel"]&&[text containsString:[name hasSuffix:@"-en"]?@"Searching the web":@"正在联网" /*i18n:keep*/]){[weak cancel];cancelled=YES;done=YES;}};
     [r startEndpoint:[NSURL URLWithString:@"https://model.example/chat/completions"] key:@"synthetic-model-key" payload:TIOChatRequest(@"test",@"public query") searchKey:@"synthetic-search-key"];
     NSDate *start=NSDate.date;while(!done&&-[start timeIntervalSinceNow]<3)[NSRunLoop.mainRunLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:.01]];
-    assert(done);if([name isEqual:@"cancel"]){assert(cancelled&&finals==0&&SearchRequests==0);return;}
+    assert(done);if([name hasPrefix:@"cancel"]){assert(cancelled&&finals==0&&SearchRequests==0);return;}
     assert(finals==1);if([name isEqual:@"http-failure"]){assert(error&&SearchRequests==1&&ModelRequests==1);return;}
     if([name hasPrefix:@"network-"]){assert(error&&SearchRequests==1&&ModelRequests==1);assert([error containsString:[name isEqual:@"network-dns"]?@"-1003":@"-1001"]);assert(![error containsString:@"sk-private"]);return;}
     if([name isEqual:@"news-no-search"]){assert(error&&SearchRequests==0&&ModelRequests==1);return;}
     if([name isEqual:@"limit"]){assert(error&&SearchRequests==2&&ModelRequests==3);return;}
     assert(!error&&[last hasSuffix:@"完成"]);if([name isEqual:@"no-search"])assert(SearchRequests==0&&ModelRequests==1);else assert(SearchRequests==1&&ModelRequests==2);
 }
-int main(void){@autoreleasepool{for(NSString *name in @[@"success",@"no-search",@"http-failure",@"network-dns",@"network-timeout",@"cancel",@"limit",@"news",@"news-no-search"])Run(name);NSLog(@"PASS: native model-search-model flow, final callback once, no-search, HTTP/network failure, cancellation, two-search bound, credential separation, news requires actual search. Mock transport only.");}return 0;}
+int main(void){@autoreleasepool{for(NSString *name in @[@"success",@"no-search",@"http-failure",@"network-dns",@"network-timeout",@"cancel",@"cancel-en",@"limit",@"news",@"news-no-search"])Run(name);NSLog(@"PASS: native model-search-model flow, final callback once, no-search, HTTP/network failure, cancellation, two-search bound, credential separation, news requires actual search. Mock transport only.");}return 0;}

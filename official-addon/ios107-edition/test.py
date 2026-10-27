@@ -98,7 +98,7 @@ test('core',['Tests.m', 'Core.m'],argv=[],extra=['-fmodules', '-Wno-unused-param
 test('knowledge-tool-flow',['KnowledgeToolFlowTests.m', 'Core.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
 test('todo-tool-flow',['TodoToolFlowTests.m', 'Core.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
 test('web-search-flow',['WebSearchFlowTests.m', 'Core.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
-test('web-search',['WebSearchTests.m', 'WebSearch.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
+test('web-search',['WebSearchTests.m', 'WebSearch.m', 'Core.m', 'RideTool.m'],argv=[],extra=['-fmodules'])
 test('todo-protocol',['TodoProtocolTests.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules'])
 restart_dir=out/'protocol-restart-dir'
 if only is None or 'protocol-restart' in only:

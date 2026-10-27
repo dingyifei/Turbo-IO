@@ -140,7 +140,7 @@ static void Alert(NSString *title,NSString *message) {
     NSString *endpoint=[Prefs stringForKey:@"endpoint"]?:@"",*model=[Prefs stringForKey:@"model"]?:@"";
     NSURL *url=TIOValidateEndpoint(endpoint); NSString *key=ReadKey(endpoint);
     NSDictionary *payload=TIOChatRequestWithHistory(model,question,_history?:@[]);
-    if(!url||!payload||!key.length){if(self.update)self.update(@"",YES,@"请先配置有效的 HTTPS 接口、模型和 Key。");return;}
+    if(!url||!payload||!key.length){if(self.update)self.update(@"",YES,TIOWebStatusText(@"config.missing",TIOScriptLanguage(question,AddonUILanguage())));return;}
     // Optional provider extension, sent only when explicitly selected by user.
     NSMutableDictionary *body=[payload mutableCopy];if([Prefs boolForKey:@"deepseekDisableThinking"])body[@"thinking"]=@{@"type":@"disabled"};
     NSString *searchKey=([Prefs boolForKey:@"tinyfishEnabled"]||self.newsMode)?ReadKey(@"https://api.search.tinyfish.ai"):@"";
@@ -215,7 +215,7 @@ static id CopyResponse(id source,NSString *answer,BOOL final) {
         // Close an owned turn even if a provider rewrites a previous chunk.
         // Keep ownership until the next turn so late official chunks stay suppressed.
         [_request cancel];_request=nil;_responseDone=YES;
-        id failure=CopyResponse(_responseTemplate,@"\n[回复流格式变化，本轮已停止。]",YES);
+        id failure=CopyResponse(_responseTemplate,TIOWebStatusText(@"stream.rewritten",TIOScriptLanguage(_requestQuestion?:@"",AddonUILanguage())),YES);
         if(failure)OriginalNlp(_listener,NSSelectorFromString(@"onNlpResult:"),failure);
         OriginalComplete(_listener,NSSelectorFromString(@"onResponseComplete"));
         Diagnostic=@"模型输出不是追加流，已提交错误收尾";return;

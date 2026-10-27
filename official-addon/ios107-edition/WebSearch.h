@@ -8,6 +8,9 @@ FOUNDATION_EXPORT NSString * _Nullable TIOTodoToolTitle(NSString *arguments);
 FOUNDATION_EXPORT NSString * _Nullable TIOWebSearchQuery(NSString *arguments);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOWebSearchResults(NSData *data);
 FOUNDATION_EXPORT NSString *TIOWebNetworkErrorMessage(BOOL search,NSError *error);
+FOUNDATION_EXPORT NSString *TIOWebStatusText(NSString *key,NSString * _Nullable language);
+FOUNDATION_EXPORT NSArray<NSString *> *TIOWebStatusKeys(void);
+FOUNDATION_EXPORT NSString *TIOWebNetworkErrorMessageInLanguage(BOOL search,NSError *error,NSString * _Nullable language);
 @interface TIOWebStream : NSObject
 @property(nonatomic,readonly) BOOL done;
 @property(nonatomic,readonly) BOOL failed;
@@ -20,6 +23,7 @@ FOUNDATION_EXPORT NSString *TIOWebNetworkErrorMessage(BOOL search,NSError *error
 @property(nonatomic,copy,nullable) void (^update)(NSString *,BOOL,NSString * _Nullable);
 @property(nonatomic,readonly) NSUInteger searchCount;
 @property(nonatomic) BOOL newsMode;
+@property(nonatomic,copy,nullable) NSString *language;
 // Installed by the phone integration only. Completion is metadata, never an
 // invented success. At most one mutating call per user request; no auto retry.
 @property(nonatomic,copy,nullable) void (^createTodo)(NSString *title, void (^completion)(NSDictionary *result));
