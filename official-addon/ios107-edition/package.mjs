@@ -108,9 +108,6 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   fs.mkdirSync(destination,{mode:0o700});
   const app=path.join(destination,'Payload','Runner.app');
   run(process.execPath,[path.join(here,'macho-embed.mjs'),source,app,o.addon,o.bundle]);
-  if(focusEdition){
-    fs.cpSync(path.join(here,'TurboIOArt'),path.join(app,'TurboIOArt'),{recursive:true,errorOnExist:true,force:false});
-  }
   applyUsageDescriptions(app,translationResources);
   copyTranslationResources(translationResources,app);
   if(translationResources){

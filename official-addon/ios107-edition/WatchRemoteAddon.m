@@ -3,6 +3,7 @@
 #import "WatchRemoteGate.h"
 #import "WatchGlobalBridge.h"
 #import "ResearchUI.h"
+#import "TIOConfirm.h"
 #import "ExperimentalOTAFlash.h"
 #import "ProtocolContext.h"
 #import "MusicPlayer.h"
@@ -130,7 +131,7 @@ static BOOL WatchOTAIdle(void) {
 @property NSTimer *refresh;
 @end
 @implementation TIOWatchSettings
-- (void)viewDidLoad { [super viewDidLoad];self.title=TIOText(@"Apple Watch 遥控");TIOStyleResearchTable(self);self.tableView.tableHeaderView=TIOResearchHeader(TIOText(@"WATCH · 全局遥控"),TIOText(@"表冠翻项，屏幕和手势确认/返回。需 TGR1 固件；未握手不会发送按键。"),TIOAccent());[TIOWatchHost.shared activate]; }
+- (void)viewDidLoad { [super viewDidLoad];self.title=TIOText(@"Apple Watch 遥控");TIOStyleResearchTable(self);[TIOWatchHost.shared activate]; TIOAttachInfo(self,self.title,TIOText(@"表冠翻项，屏幕和手势确认/返回。需 TGR1 固件；未握手不会发送按键。"));}
 - (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated];__weak typeof(self)w=self;self.refresh=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t){[TIOWatchHost.shared publishStatus];[w.tableView reloadSections:[NSIndexSet indexSetWithIndex:2] withRowAnimation:UITableViewRowAnimationNone];}]; }
 - (void)viewWillDisappear:(BOOL)animated { [super viewWillDisappear:animated];[self.refresh invalidate];self.refresh=nil; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t{return 4;}

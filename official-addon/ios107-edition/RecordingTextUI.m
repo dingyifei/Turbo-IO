@@ -5,6 +5,7 @@
 #import <objc/runtime.h>
 #import "RecordingText.h"
 #import "ResearchUI.h"
+#import "TIOConfirm.h"
 
 static NSString *const TextDomain=@"io.turboio.official-private-addon";
 static NSUserDefaults *TextPrefs(void){return [[NSUserDefaults alloc]initWithSuiteName:TextDomain];}
@@ -114,7 +115,7 @@ static NSString *CapturedLifelogText(void){
 @interface TIOLifelogExportsPanel:UITableViewController
 @end
 @implementation TIOLifelogExportsPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"已保存智记文字");TIOStyleResearchTable(self);self.tableView.tableHeaderView=TIOFeatureHeader(TIOText(@"记下的片段"),TIOText(@"仅展示扩展已保存的内容，不冒充历史全量。"),@"reading");}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"已保存智记文字");TIOStyleResearchTable(self);TIOAttachInfo(self,TIOText(@"记下的片段"),TIOText(@"仅展示扩展已保存的内容，不冒充历史全量。"));}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return 2;}
 - (NSString *)tableView:(UITableView *)t titleForFooterInSection:(NSInteger)s{return TIOText(@"只包含在“资料”页开启保存后收到的最终文字，不代表官方历史全量。音频保存与分享请返回资料页直接打开。");}
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];TIOStyleResearchCell(c);c.textLabel.text=@[TIOText(@"导出已保存文字 Markdown"),TIOText(@"用自有模型整理已保存文字"),TIOText(@"原音频导出（尚未接通）")][ip.row];c.detailTextLabel.numberOfLines=0;c.detailTextLabel.text=@[TIOText(@"本机独立副本 · AirDrop / 存储到文件"),TIOText(@"先预览范围，再确认发送文字"),TIOText(@"等待确认官方缓存文件与会话关联")][ip.row];if(ip.row==2){c.textLabel.textColor=UIColor.secondaryLabelColor;c.selectionStyle=UITableViewCellSelectionStyleNone;}else c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return c;}

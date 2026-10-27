@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import "TIOLanguage.h"
 #import "ResearchUI.h"
+#import "TIOConfirm.h"
 #import <objc/runtime.h>
 #import "AlwaysOnAudio.h"
 @interface TIOAlwaysOnAudioPanel:UITableViewController
@@ -9,7 +10,7 @@
 @property(nonatomic) BOOL busy;
 @end
 @implementation TIOAlwaysOnAudioPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"全天智记音频");TIOStyleResearchTable(self);self.tableView.tableHeaderView=TIOFeatureHeader(TIOText(@"声音档案"),TIOText(@"明确开启后才保存，分享前先停止录制。"),@"music");self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refresh)];[self refresh];}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"全天智记音频");TIOStyleResearchTable(self);self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refresh)];[self refresh];TIOAttachInfo(self,TIOText(@"声音档案"),TIOText(@"明确开启后才保存，分享前先停止录制。"));}
 - (void)refresh{if(self.busy)return;self.nativeStatus=TIOAOStatus();self.busy=YES;dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{NSArray *files=TIOAOAudioFiles([NSURL fileURLWithPath:NSHomeDirectory()]);dispatch_async(dispatch_get_main_queue(),^{self.files=files;self.busy=NO;[self.tableView reloadData];});});}
 - (void)message:(NSString *)text{UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"全天智记音频") message:text preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"知道了") style:UIAlertActionStyleCancel handler:nil]];[self presentViewController:a animated:YES completion:nil];}
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t{return 2;}

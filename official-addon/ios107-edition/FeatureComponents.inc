@@ -1,27 +1,3 @@
-// Plugin-local components; no global appearance changes or business callbacks.
-@interface TIOFeatureBanner:UIView
-@property UILabel *heading,*summary;
-@property UIImageView *art;
-@end
-@implementation TIOFeatureBanner
-- (void)layoutSubviews{
- [super layoutSubviews];CGFloat width=self.bounds.size.width;
- BOOL large=UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
- CGFloat artWidth=large?0:MIN(132,width*.33),copyWidth=MAX(120,width-44-artWidth);
- self.art.hidden=large;self.art.frame=CGRectMake(width-artWidth-18,8,artWidth,132);
- CGSize title=[self.heading sizeThatFits:CGSizeMake(copyWidth,CGFLOAT_MAX)];
- CGSize detail=[self.summary sizeThatFits:CGSizeMake(copyWidth,CGFLOAT_MAX)];
- self.heading.frame=CGRectMake(22,22,copyWidth,title.height);self.summary.frame=CGRectMake(22,30+title.height,copyWidth,detail.height);
- CGFloat required=MAX(148,52+title.height+detail.height);
- if(fabs(self.frame.size.height-required)>.5){CGRect f=self.frame;f.size.height=required;self.frame=f;if([self.superview isKindOfClass:UITableView.class])((UITableView *)self.superview).tableHeaderView=self;}
-}
-@end
-UIView *TIOFeatureHeader(NSString *title,NSString *detail,NSString *art){
- TIOFeatureBanner *v=[[TIOFeatureBanner alloc]initWithFrame:CGRectMake(0,0,380,156)];v.autoresizingMask=UIViewAutoresizingFlexibleWidth;
- v.heading=Label(title,25,UIFontWeightSemibold);v.summary=Label(detail,13,UIFontWeightRegular);v.summary.textColor=UIColor.secondaryLabelColor;
- v.art=[[UIImageView alloc]initWithImage:TIOArtwork(art)];v.art.contentMode=UIViewContentModeScaleAspectFill;v.art.clipsToBounds=YES;v.art.layer.cornerRadius=24;v.art.alpha=.82;v.art.isAccessibilityElement=NO;
- [v addSubview:v.art];[v addSubview:v.heading];[v addSubview:v.summary];return v;
-}
 void TIOStyleAction(UIButton *button,BOOL primary,BOOL destructive){
  NSString *title=[button titleForState:UIControlStateNormal];UIButtonConfiguration *c=primary?UIButtonConfiguration.filledButtonConfiguration:UIButtonConfiguration.tintedButtonConfiguration;
  c.title=title;c.cornerStyle=UIButtonConfigurationCornerStyleLarge;c.contentInsets=NSDirectionalEdgeInsetsMake(14,18,14,18);

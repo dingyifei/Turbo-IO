@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import "TIOLanguage.h"
 #import "ResearchUI.h"
+#import "TIOConfirm.h"
 #import <objc/runtime.h>
 #import "RecordingExports.h"
 @interface TIORecordingExportsPanel:UITableViewController<UIDocumentPickerDelegate>
@@ -8,7 +9,7 @@
 @property(nonatomic) BOOL busy;
 @end
 @implementation TIORecordingExportsPanel
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"录音与文本分享");TIOStyleResearchTable(self);self.tableView.tableHeaderView=TIOFeatureHeader(TIOText(@"留住这一刻"),TIOText(@"声音与文字，保存到自己的文件。"),@"music");self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refresh)];[self refresh];}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"录音与文本分享");TIOStyleResearchTable(self);self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refresh)];[self refresh];TIOAttachInfo(self,TIOText(@"留住这一刻"),TIOText(@"声音与文字，保存到自己的文件。"));}
 - (void)refresh{if(self.busy)return;self.busy=YES;dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{NSArray *rows=TIOPreparedAudioFiles([NSURL fileURLWithPath:NSHomeDirectory()]);dispatch_async(dispatch_get_main_queue(),^{self.audio=rows;self.busy=NO;[self.tableView reloadData];});});}
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t{return 2;}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return s==0?MAX(1,self.audio.count):1;}
