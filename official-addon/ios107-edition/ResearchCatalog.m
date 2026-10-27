@@ -18,7 +18,7 @@ NSArray<NSDictionary *> *LegacySections(NSString *page){
     if([page isEqual:@"library"])return @[
 
         @{@"title":TIOText(@"遥控拍照"),@"rows":@[Row(@"camera",TIOText(@"遥控拍照 · TCM1"),@"camera",-2,29)]},
-        @{@"title":TIOText(@"音乐随行"),@"rows":@[Row(@"music",TIOText(@"网易云音乐 · 第十项菜单"),@"music.note",-2,20)]},
+        @{@"title":TIOText(@"music.title"),@"rows":@[Row(@"music",TIOText(@"music.catalog.row"),@"music.note",-2,20)]},
         @{@"title":TIOText(@"录音与整理"),@"rows":@[Row(@"recordings",TIOText(@"录音与文件分享"),@"waveform",-1,0),Row(@"summary",TIOText(@"转写文字整理"),@"text.badge.star",-1,1)]},
         @{@"title":TIOText(@"全天智记"),@"rows":@[Row(@"lifelogText",TIOText(@"已保存文字"),@"doc.text",-1,2),Row(@"lifelogAudio",TIOText(@"音频保存与分享"),@"waveform.circle",-1,3),Row(@"capture",TIOText(@"保存之后的最终文字"),@"square.and.arrow.down",1,0),Row(@"archive",TIOText(@"导出文字归档"),@"square.and.arrow.up",1,1)]},
         @{@"title":TIOText(@"出行"),@"rows":@[Row(@"navigation",NavigationTitle,@"location.north.line",-2,4)]}];
@@ -49,6 +49,6 @@ NSArray<NSDictionary *> *TIOResearchSections(NSString *page){
  if([page isEqual:@"library"])groups=@[@[TIOText(@"遥控拍照"),@"camera"],@[TIOText(@"随身应用"),@"music",@"navigation",@"localTranslation",@"recordings"],@[TIOText(@"文字整理"),@"summary"],@[TIOText(@"全天智记"),@"lifelogText",@"lifelogAudio",@"capture",@"archive"]];
  if([page isEqual:@"diagnostics"])groups=@[@[TIOText(@"运行与日志"),@"diagnosticsRuntime",@"glassesLog",@"status",@"languageStatus"],@[TIOText(@"协议实验"),@"subtitleHUD",@"dashboardCard",@"a2ui",@"apiTest",@"searchTest",@"todoTest"],@[TIOText(@"显示实验"),@"displayPhone",@"imageRXLab"],@[TIOText(@"实验固件 · 有风险"),@"experimentalOTA"]];
  if([page isEqual:@"homeTools"])groups=@[@[TIOText(@"首页工具"),@"dashboardEditor",@"developerApps"]];
- if(!groups)return @[];NSMutableArray *sections=[NSMutableArray new];NSDictionary *names=@{@"dashboardEditor":TIOText(@"仪表盘"),@"developerApps":TIOText(@"应用广场"),@"music":TIOText(@"音乐"),@"navigation":NavigationName,@"localTranslation":TIOText(@"本地翻译与字幕"),@"recordings":TIOText(@"录音与分享")};
+ if(!groups)return @[];NSMutableArray *sections=[NSMutableArray new];NSDictionary *names=@{@"dashboardEditor":TIOText(@"仪表盘"),@"developerApps":TIOText(@"应用广场"),@"music":TIOText(@"music.title"),@"navigation":NavigationName,@"localTranslation":TIOText(@"本地翻译与字幕"),@"recordings":TIOText(@"录音与分享")};
  for(NSArray *group in groups){NSMutableArray *rows=[NSMutableArray new];for(NSUInteger i=1;i<group.count;i++){NSDictionary *r=lookup[group[i]];if(r){NSMutableDictionary *m=[r mutableCopy];if(names[group[i]])m[@"title"]=names[group[i]];[rows addObject:m];}}if(rows.count)[sections addObject:@{@"title":group[0],@"rows":rows}];}return sections;
 }

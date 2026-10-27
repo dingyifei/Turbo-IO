@@ -162,6 +162,7 @@
 {"key":"mode3 / status0：测试同一句文字更新；观察覆盖还是追加、是否闪屏。检测到字幕音频消息立即停止；没有音频包不等于全链路未采音。","en":"mode3 / status0: Test updates to the same line of text; check whether it replaces or appends and whether the display flashes. Stop immediately if a caption audio message is detected; no audio packet does not prove that no audio was captured anywhere in the pipeline."}
 {"key":"music.advanced","en":"Advanced","zh":"高级"}
 {"key":"music.cancel","en":"Cancel","zh":"取消"}
+{"key":"music.catalog.row","en":"Spotify · glasses menu 10","zh":"Spotify · 眼镜第十项菜单"}
 {"key":"music.clientID","en":"Client ID","zh":"Client ID"}
 {"key":"music.clientID.help","en":"Create an app at developer.spotify.com, add this Redirect URI: %@, then enter its Client ID here.","zh":"在 developer.spotify.com 创建应用，添加此 Redirect URI：%@，然后在此输入 Client ID。"}
 {"key":"music.clientID.invalid","en":"A Client ID must contain 32 hexadecimal characters.","zh":"Client ID 必须由 32 位十六进制字符组成。"}
@@ -210,6 +211,7 @@
 {"key":"music.timeout.60","en":"1 min","zh":"1 分钟"}
 {"key":"music.timeout.always","en":"Always","zh":"常亮"}
 {"key":"music.title","en":"Music","zh":"音乐"}
+{"key":"music.watch","en":"Music · Spotify","zh":"音乐 · Spotify"}
 {"key":"projectmanager · 只读查询","en":"projectmanager · Read-only query"}
 {"key":"subtitle-hud-v1.1\n%@ · %@\n预览样本：%@ 退出格式：%@\n已发%lu段 · 字幕音频消息%lu\n建立起计时%ld秒（不是镜片亮屏计时）","en":"subtitle-hud-v1.1\n%@ · %@\nPreview sample: %@ Exit format: %@\nSent %lu segments · Caption audio messages %lu\nSession age %ld sec (not glasses screen-on time)"}
 {"key":"一次导出 Markdown 与 JSON","en":"Export Markdown and JSON together"}
