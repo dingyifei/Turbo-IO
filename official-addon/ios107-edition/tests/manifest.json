@@ -218,6 +218,10 @@
       "status": "run",
       "group": "spotify-auth"
     },
+    "tests/SpotifyCoverTests.m": {
+      "status": "run",
+      "group": "spotify-cover"
+    },
     "tests/SpotifyLyricsTests.m": {
       "status": "run",
       "group": "spotify-lyrics"

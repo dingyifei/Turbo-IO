@@ -205,6 +205,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   SpotifyLyrics.m \
   SpotifyAuth.m \
   SpotifyAPI.m \
+  SpotifyCover.m \
   MusicAPI.m \
   MusicTransport.m \
   MusicBridge.m \
