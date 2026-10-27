@@ -1,4 +1,5 @@
 #include "menu_tiles.h"
+#include "../menu-grid-v2/menu_config.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
 /* 1.0.4.12 ONLY. Experimental native eight-index carousel, not a proven OTA.
@@ -253,7 +254,7 @@ void *m8_hook_ctor(void *app){
   if(slot(app)){slot(app)->music=tm_slot_create(app);slot(app)->focus=tf_slot_create(app);slot(app)->apps=tap_menu_create(app);slot(app)->camera=tc_slot_create(app);}
   return app;
 }
-void m8_hook_show(void *app){retire(app);stock_show(app);m8_hook_label_index(app,(int)*word(app,0x88));fm_show(app);}
+void m8_hook_show(void *app){retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_hook_refresh_label(app,i);m8_hook_label_index(app,(int)*word(app,0x88));fm_show(app);}
 void m8_hook_hide(void *app){tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
 void m8_hook_destroy(void *app){tc_slot_destroy(camera_slot(app));if(slot(app))slot(app)->camera=NULL;fm_destroy(app);
   native_unregister_wheel(app);retire(app);

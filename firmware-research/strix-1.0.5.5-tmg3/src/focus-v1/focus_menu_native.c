@@ -22,7 +22,7 @@ extern bool native_has_flag(void *,uint32_t);
 extern void *nav_monitors(void),*fm_system(void *),*fm_battery_monitor(void *);
 extern int64_t fm_local_time(void *);
 extern int fm_battery_level(void *);
-typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing;} FMControl;
+typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;} FMControl;
 _Static_assert(sizeof(FMControl)<=32768,"nine-cell menu retained storage capped at 32 KiB");
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
@@ -51,10 +51,16 @@ void fm_relayout(unsigned rows){
  for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;if(*(void (**)(void *))((uint8_t *)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->desired_rows=rows;return;}}
  /* No active launcher: the persisted value is loaded when it next opens. */
 }
+extern void m8_hook_refresh_label(void *,int);
+void fm_language_changed(void){
+ void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;
+  if(*(void(**)(void*))((uint8_t*)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->relabel=true;return;}}
+}
 void fm_sync(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad;bool inside=detail(app);void *dots=ptr(app,0x60);
  if(dots)m8_native_api.hidden(dots,inside||(c&&c->view.root&&!c->closing));
  if(c&&c->view.root&&!c->closing)hide_legacy(app);
  if(!c||c->closing||!c->view.root)return;
+ if(c->relabel){c->relabel=false;c->selection=-1;fm_view_suspend(&c->view);for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_hook_refresh_label(app,i);}
  void *parent=ptr(app,4);bool show=c->enabled&&parent&&!native_has_flag(parent,1)&&!inside;
  if(!show){c->view.api.visible(c->view.api.ctx,c->view.root,false);c->selection=-1;fm_view_suspend(&c->view);return;}
  if(!focus_screen_on())return; /* Never repaint or wake a sleeping panel. */

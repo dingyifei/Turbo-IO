@@ -3,6 +3,8 @@
  * Current native input interceptors retain ownership of global input policy.
  */
 #include "remote.h"
+#include "language_state.h"
+extern void fm_language_changed(void);
 #include "../menu-grid-v2/menu_config.c"
 #include "../menu-grid-v2/menu_files.inc"
 #include "../image-upload-test/native_file_bridge.h"
@@ -21,7 +23,7 @@ extern unsigned tgr_indev_type(void *);
 extern bool tgr_intercept(void *);
 extern unsigned tgr_group_send(void *,uint32_t);
 extern void tgr_raw_wheel(const void *),tgr_sim_wheel(int);
-typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;} Control;
+typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;TLGLanguageState language;} Control;
 static void tick(void *);
 static bool allowed(void){
  void *m=nav_monitors(),*i=m?nav_input(m):NULL,*l=m?nav_link(m):NULL;
@@ -38,6 +40,13 @@ static Control *control(void){
  void *t=NULL;for(unsigned j=0;j<512;j++){t=stream_timer_next(t);if(!t)break;if(*(void(**)(void*))((uint8_t*)t+8)==tick){Control *c=*(Control**)((uint8_t*)t+12);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}if(j==511)return NULL;}
  Control *c=stream_memalign(8,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=0x54475231;c->timer=stream_timer_create(tick,1000,c);if(!c->timer){stream_free(c);return NULL;}c->menu.stored=tml_load(&tml_io);return c;
 }
+/* Read-only scan used by label renderers: never create a controller here. */
+static Control *find(void){
+ void *t=NULL;for(unsigned j=0;j<512;j++){t=stream_timer_next(t);if(!t)return NULL;
+  if(*(void(**)(void*))((uint8_t*)t+8)==tick){Control *c=*(Control**)((uint8_t*)t+12);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}}
+ return NULL;
+}
+unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
 unsigned fm_menu_rows(void){Control *c=control();return c?c->menu.stored.rows:3;}
 static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;}}
 static void *device(unsigned type){void *p=NULL;for(unsigned j=0;j<16;j++){p=tgr_indev_next(p);if(!p)return NULL;if(tgr_indev_type(p)==type)return p;}return NULL;}
@@ -77,6 +86,13 @@ void tgr_native_message(const TIONativeMessage *m){
    * but never report success until flush/fsync/readback all passed. */
   fm_relayout(c->menu.stored.rows);
   uint8_t out[74];tml_reply(raw,&c->menu,&layout,r);tml_carrier(out,raw,true);
+  (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
+ }
+ if(tlg_uncarrier(m->data,m->bytes,raw,false)){
+  TLGCommand flag;if(!tlg_decode(raw,sizeof raw,&flag))return;
+  Control *c=control();if(!c)return;TLGReply reply;
+  if(tlg_state_accept(&c->language,&flag,allowed(),&reply))fm_language_changed();
+  uint8_t out[74];tlg_reply_encode(raw,&reply);tlg_carrier(out,raw,true);
   (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
  }
  TGRCommand q;if(!tgr_uncarrier(m->data,m->bytes,raw,false)||!tgr_decode(raw,sizeof raw,&q))return;
