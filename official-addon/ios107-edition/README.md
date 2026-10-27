@@ -84,3 +84,26 @@ Turbo 入口按「眼镜、助手、媒体、开发者」分区显示现有功�
 - 路网首次加载、断网或请求预算耗尽仍可能只显示路线。
 - 本版固定 TMG2，不接受原厂 ZIP 或其他候选；[原厂恢复](../../firmware-research/strix-1.0.5.5/README.md)需要独立匹配的恢复工具链，不能复用本版授权，也不保证救砖。
 - 原厂登录/推送、Apple 登录、长期后台和所有功能均需独立验收。
+
+## No-network answers / 无网络回答（WP7c）
+
+With `TIO_APPLE_AI=1`, Apple on-device mode (3), or endpoint mode (2) with Apple fallback enabled, can answer after the host's final speech result when no official reply arrives. Keep the RayNeo app open in the foreground. The host supplies its bundled bilingual ASR; the addon does not capture glasses audio. Locked-phone recognition and synthetic-card rendering still need device validation.
+
+启用 `TIO_APPLE_AI=1` 后，Apple 本机模式（3），或开启 Apple 回退的接口模式（2），可在官方回复未到达时使用宿主的最终语音识别结果回答。需要在前台打开 RayNeo 应用；扩展不自行采集眼镜音频。锁屏识别与合成回复卡片仍需设备验收。
+
+- After each launch, complete an official Q&A to verify the chat domain, then choose the answer mode again: launch still resets to Official (0).
+- A known unavailable network uses a 0.7 s grace period. An unknown or available network uses the panel's 3–15 s wait (default 6 s). Mode 3 uses Apple directly; mode 2 tries the configured endpoint first and reuses the existing Apple fallback marker on a transport/configuration failure.
+- Official commands or an early official reply cancel the pending takeover. Held NLP, errors and completions replay in arrival order on refusal or cancellation; successful takeover drops them. The existing request, streamed display, TTS, history and tool restrictions remain the shared path.
+- Developer › Apple Intelligence contains status, wait time and a Copy action for the no-network timeline. The 64-event ring contains rounded uptime, fixed event codes and a four-digit session hash, never questions, answers or error messages.
+- Both experimental switches default OFF. Background listening takes effect at the next launch and does not promise locked-phone support. The optional stop-workflow switch waits until the answer has ended and uses the existing idle-exit gate.
+- The held queue is capped at 8 and the owned callback FIFO at 64. Overflow disables new synthetic turns until relaunch, replays callbacks in order and releases interception. Overflow spill to the main queue is bounded by input rather than a hard memory cap; an existing local answer may continue while official errors become visible.
+
+每次启动后，请先完成一次官方问答以确认聊天域，再重新选择回答模式。状态、等待时间和可复制的元数据时间线位于「开发者 › Apple Intelligence」。两个实验开关默认关闭；后台监听不保证锁屏可用。队列溢出时会停止新的合成接管并保序回放，需重新启动应用恢复；时间线不保存问题、答案或错误消息。
+
+Portable regression group (supply the audited firmware archive):
+
+```bash
+python3 test.py --firmware "$FWZIP" --only no-network-turn
+```
+
+The tests inject a clock and scheduler and cover cancellation, duplicates, pre-accept replies, ordered hold/replay, synchronous reentry, stale generations, overflow, wrapper failures and default-OFF options. Build and simulator gates do not establish device acceptance. No entitlements, Info.plist keys or firmware changes are introduced by WP7c.
