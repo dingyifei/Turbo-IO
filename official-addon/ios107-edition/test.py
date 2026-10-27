@@ -22,7 +22,9 @@ for file,entry in manifest.items():
         continue
     raise SystemExit('invalid manifest entry: '+file)
 
-ROOT=P.parents[1];FW=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
+ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
+FW3=ROOT/'firmware-research/strix-1.0.5.5-tmg3'
+FW=FW2
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
 out=P/'build/tests';out.mkdir(parents=True,exist_ok=True)
@@ -57,6 +59,44 @@ def catalyst_test(name,files,argv=(),extra=()):
     home=out/'catalyst-home';(home/'Documents').mkdir(parents=True,exist_ok=True)
     run(name,[out/name,*argv],env={**os.environ,'CFFIXED_USER_HOME':str(home)})
     groups.append(name);print(name+': PASS')
+# Firmware tests live outside the edition manifest's discovery tree.
+def ctest(name,files,inc):
+    run(name+'-build',['xcrun','clang','-std=c11','-O1','-g','-Wall','-Wextra',
+        '-fsanitize=address,undefined','-I',inc,*files,'-o',out/name])
+    run(name,[out/name])
+    if 'PASS' not in (out/(name+'.log')).read_text():
+        raise RuntimeError(name+' did not report PASS')
+seen.add('tmg3-host')
+if only is None or 'tmg3-host' in only:
+    ctest('tmg3-menu-tiles',[FW3/'tests/menu_tiles_test.c'],FW3/'src')
+    ctest('tmg3-menu-lang',[FW3/'tests/menu_lang_test.c',FW3/'src/global-remote-v1/lang_flag.c'],FW3/'src')
+    ctest('tmg3-text',[FW3/'tests/tio_text_test.c',FW3/'src/common-v1/tio_text.c'],FW3/'src')
+    ctest('tmg3-grid',[FW3/'tests/focus_grid_test.c',FW3/'src/focus-v1/focus_menu.c',FW3/'src/common-v1/tio_text.c'],FW3/'src')
+    ctest('tmg3-prediction',[FW3/'tests/pose_prediction_test.c',FW3/'src/navigation-runtime-v1/nav_runtime.c'],FW3/'src')
+    # Preserve an actual TMG2 codec/runtime regression alongside the new tree.
+    ctest('tmg2-navigation',[FW2/'src/navigation-runtime-v1/nav_test.c',FW2/'src/navigation-runtime-v1/nav_runtime.c',FW2/'src/navigation-runtime-v1/nav_visual.c'],FW2/'src/navigation-runtime-v1')
+    run('tmg3-kept',['python3','-I',FW3/'tools/check_kept.py',FW2,FW3])
+    run('tmg3-cjk',['python3','-I',FW3/'tools/check_cjk.py',FW3])
+    groups.append('tmg3-host');print('tmg3-host: PASS')
+else:skip('tmg3-host','not selected by --only')
+seen.add('shared-sources')
+if only is None or 'shared-sources' in only:
+    pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',
+        'navigation-runtime-v1/nav_map.c','navigation-runtime-v1/nav_map.h',
+        'navigation-runtime-v1/nav_runtime.c','navigation-runtime-v1/nav_runtime.h',
+        'music-runtime-v1/music.c','music-runtime-v1/music.h',
+        'focus-v1/focus.c','focus-v1/focus.h','app-runtime-v1/app.c',
+        'global-remote-v1/remote.c','dashboard-v1/card.c','diagnostics-v1/command.c',
+        'display-runtime-v1/display_runtime.c','global-remote-v1/lang_flag.c','global-remote-v1/lang_flag.h']
+    for name in pairs:
+        phone=P/Path(name).name
+        if not phone.exists():
+            print('shared-sources: skip removed phone copy '+phone.name);continue
+        if phone.read_bytes()!=(FW3/'src'/name).read_bytes():
+            raise RuntimeError('shared source mismatch: '+name)
+    groups.append('shared-sources');print('shared-sources: PASS')
+else:skip('shared-sources','not selected by --only')
+
 test('host',['HostCompatibilityTests.m'])
 test('guard',['ExperimentalOTAGuardTests.m','ExperimentalOTAGuard.m'])
 test('language',['tests/TIOLanguageTests.m'])
