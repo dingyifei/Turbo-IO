@@ -243,6 +243,10 @@
     "OTAWizardModelTests.m": {
       "status": "run",
       "group": "wizard"
+    },
+    "AppleAICoreTests.m": {
+      "status": "run",
+      "group": "apple-ai-core"
     }
   }
 }

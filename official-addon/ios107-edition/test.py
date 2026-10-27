@@ -70,6 +70,7 @@ test('tiles',['RoadTiles.m','tests/RoadTilesTests.m'])
 test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c'])
+test('apple-ai-core',['AppleAICoreTests.m','AppleAICore.m'])
 test('catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1'])
 test('music-clock',['tests/MusicClockTests.m'])
 test('spotify-lyrics',['SpotifyHTTP.m','SpotifyLyrics.m','tests/SpotifyLyricsTests.m'],[P/'tests/fixtures/spotify'])
@@ -145,6 +146,9 @@ test('display-frame-pacing',['DisplayFramePacingTests.m', 'DisplayPhoneSession.m
 if only is None:
     missing={v['group'] for v in manifest.values() if v['status']=='run'}-set(groups)-{n for n,_ in skipped}
     if missing:raise SystemExit('manifest groups not executed: '+str(sorted(missing)))
-elif only-seen:
+elif only-seen-{'apple-ai-swift'}:
     raise SystemExit('unknown groups: '+str(sorted(only-seen)))
+seen.add('apple-ai-swift')
+if only is None or 'apple-ai-swift' in only:
+    subprocess.run(['python3',str(P/'apple-ai/test.py')],check=True);groups.append('apple-ai-swift');print('apple-ai-swift: PASS')
 (out/'report.json').write_text(json.dumps({'passed':True,'groups':groups,'deviceIO':False,'hardwareValidated':False,'skipped':skipped,'excluded':sum(v['status']=='excluded' for v in manifest.values())},indent=2)+'\n')
