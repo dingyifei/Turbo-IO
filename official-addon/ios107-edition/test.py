@@ -97,6 +97,12 @@ if only is None or 'shared-sources' in only:
     groups.append('shared-sources');print('shared-sources: PASS')
 else:skip('shared-sources','not selected by --only')
 
+seen.add('pins')
+if only is None or 'pins' in only:
+    run('pins',['python3','-I',FW3/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
+    groups.append('pins');print('pins: PASS')
+else:skip('pins','not selected by --only')
+
 test('host',['HostCompatibilityTests.m'])
 test('guard',['ExperimentalOTAGuardTests.m','ExperimentalOTAGuard.m'])
 test('language',['tests/TIOLanguageTests.m'])

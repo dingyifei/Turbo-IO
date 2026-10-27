@@ -2,7 +2,7 @@
 NS_ASSUME_NONNULL_BEGIN
 // Immutable verified payloads for a single explicitly authorized transfer.
 NSDictionary<NSString *,NSData *> * _Nullable TIOCopyExperimentalOTAPayloads(NSURL *directory,NSError **error);
-// Fixed private TMG2 only. Integrity approval never means authorization to flash.
+// Fixed private TMG3 only. Integrity approval never means authorization to flash.
 FOUNDATION_EXPORT NSString *TIOExperimentalOTASHA(void);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOCheckExperimentalOTA(NSData *data, NSError **error);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOReadExperimentalOTA(NSURL *file, NSError **error);

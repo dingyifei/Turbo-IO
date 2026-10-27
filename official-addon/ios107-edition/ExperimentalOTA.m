@@ -12,13 +12,13 @@
 NSString *TIOExperimentalOTASHA(void){return TIO_FW_ZIP_SHA256;}
 static id Fail(NSError **error,NSString *message){if(error)*error=[NSError errorWithDomain:@"TurboIO.ExperimentalOTA" code:1 userInfo:@{NSLocalizedDescriptionKey:message}];return nil;}
 NSDictionary *TIOCheckExperimentalOTA(NSData *data,NSError **error){
-    if(data.length!=TIO_FW_ZIP_BYTES)return Fail(error,TIOText(@"文件大小不符。只接受本次 TMG2 实验 ZIP，未保存、未发送。"));
+    if(data.length!=TIO_FW_ZIP_BYTES)return Fail(error,[NSString stringWithFormat:TIOText(@"ota.identity.sizeMismatch"),TIO_FW_NAME]);
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(data.bytes,(CC_LONG)data.length,digest);
     NSMutableString *hex=[NSMutableString new];for(NSUInteger i=0;i<sizeof(digest);i++)[hex appendFormat:@"%02x",digest[i]];
     if(![hex isEqual:TIOExperimentalOTASHA()])return Fail(error,TIOText(@"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。"));
     // The exact archive has independently passed full ZIP/manifest/AP auditing
     // on Mac. This is exact-byte identity, not a generic ZIP manifest parser.
-    return @{@"schema":@1,@"candidate":@"Turbo Menu TMG2",@"baseFirmware":@"1.0.5.5",
+    return @{@"schema":@1,@"candidate":[@"Turbo Menu " stringByAppendingString:TIO_FW_NAME],@"baseFirmware":@"1.0.5.5",
              @"archiveSHA256":hex,@"archiveBytes":@(data.length),@"changedPayloads":@[@"nuttx_ap.bin"],
              @"unchangedPayloadCount":@14,@"integrityPassed":@YES,@"sent":@NO,
              @"runtimeValidated":@NO,@"officialDispatchConnected":@NO};
@@ -98,7 +98,7 @@ NSDictionary *TIOCheckExperimentalOTADirectory(NSURL *directory,NSError **error)
     int copy=dup(root);DIR *stream=copy>=0?fdopendir(copy):NULL;if(!stream){if(copy>=0)close(copy);ok=NO;}
     if(stream){struct dirent *item;errno=0;while((item=readdir(stream))){if(!strcmp(item->d_name,".")||!strcmp(item->d_name,".."))continue;NSString *name=[NSString stringWithUTF8String:item->d_name];if(!name||names.count>=16||!pins[name]){ok=NO;break;}[names addObject:name];errno=0;}if(errno)ok=NO;closedir(stream);}
     if(names.count!=pins.count)ok=NO;
-    NSMutableDictionary *identities=[NSMutableDictionary new];NSString *problem=TIOText(@"文件集合与 TMG2 不符，可能是旧缓存或残缺目录；未发送。");
+    NSMutableDictionary *identities=[NSMutableDictionary new];NSString *problem=[NSString stringWithFormat:TIOText(@"ota.identity.fileSetMismatch"),TIO_FW_NAME];
     for(NSString *name in [pins.allKeys sortedArrayUsingSelector:@selector(compare:)]){
         if(!ok)break;
         int fd=openat(root,name.fileSystemRepresentation,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
@@ -112,12 +112,12 @@ NSDictionary *TIOCheckExperimentalOTADirectory(NSURL *directory,NSError **error)
             ok=ok&&[hash isEqual:pins[name][1]]&&fstat(fd,&last)==0&&SameStat(first,last);
             if(ok)identities[name]=[NSData dataWithBytes:&last length:sizeof(last)];
         }
-        close(fd);if(!ok)problem=[NSString stringWithFormat:TIOText(@"%@ 与固定 TMG2 不一致或读取期间改变；未发送。"),name];
+        close(fd);if(!ok)problem=[NSString stringWithFormat:TIOText(@"ota.identity.payloadMismatch"),name,TIO_FW_NAME];
     }
     // A second pass catches names/inodes replaced after an earlier file was read.
     for(NSString *name in identities){struct stat prior,current;[identities[name] getBytes:&prior length:sizeof(prior)];if(fstatat(root,name.fileSystemRepresentation,&current,AT_SYMLINK_NOFOLLOW)||!SameStat(prior,current))ok=NO;}
     ok=ok&&fstat(root,&after)==0&&SameStat(before,after);
     struct stat currentPath;if(lstat(directory.path.fileSystemRepresentation,&currentPath)||!SameStat(before,currentPath))ok=NO;
     close(root);if(!ok)return Fail(error,problem);
-    return @{@"candidate":@"Turbo Menu TMG2",@"checkedMembers":@16,@"integrityPassed":@YES,@"snapshotOnly":@YES,@"transferSessionBound":@NO,@"sent":@NO,@"flashAuthorized":@NO};
+    return @{@"candidate":[@"Turbo Menu " stringByAppendingString:TIO_FW_NAME],@"checkedMembers":@16,@"integrityPassed":@YES,@"snapshotOnly":@YES,@"transferSessionBound":@NO,@"sent":@NO,@"flashAuthorized":@NO};
 }

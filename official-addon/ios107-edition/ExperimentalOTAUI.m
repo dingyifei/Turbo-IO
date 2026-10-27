@@ -1,4 +1,5 @@
 #import "ExperimentalOTAUI.h"
+#import "FirmwarePins.h"
 #import "ExperimentalOTA.h"
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAGuard.h"
@@ -32,7 +33,7 @@ static NSString *FirmwareName(void) {
         NSRegularExpression *pattern=[NSRegularExpression regularExpressionWithPattern:@"^TMG[0-9]+$" options:0 error:NULL];
         if ([pattern numberOfMatchesInString:candidate options:0 range:NSMakeRange(0,[candidate length])]==1) return candidate;
     }
-    return @"TMG3";
+    return TIO_FW_NAME;
 }
 
 static NSString *StepName(NSInteger step) {

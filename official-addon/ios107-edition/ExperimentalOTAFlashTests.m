@@ -47,5 +47,5 @@ int main(int argc,const char **argv){@autoreleasepool{
     }
     NSMutableData *dup=[start mutableCopy];V(dup,16);V(dup,4);assert(!TIOOTAFrame(dup));assert(!TIOOTAFrame([NSData dataWithBytes:"\x08\x81\x00\x10\x04" length:5]));
     assert(!TIOOTAFlashBuild());assert(!TIOOTAFlashProtected());assert(!TIOOTAFlashAuthorize(nil));
-    NSLog(@"PASS: closed by default, 900s grant, device binding, Mode 2 only, version/manifest ordering, all %lu slices (%lu bytes) match frozen TMG2, old AP MD5 and changed chunks rejected; no device IO",(unsigned long)slices,(unsigned long)total);
+    NSLog(@"PASS: closed by default, 900s grant, device binding, Mode 2 only, version/manifest ordering, all %lu slices (%lu bytes) match frozen TMG3, old AP MD5 and changed chunks rejected; no device IO",(unsigned long)slices,(unsigned long)total);
 }return 0;}
