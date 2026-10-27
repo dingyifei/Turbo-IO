@@ -5,6 +5,7 @@ FOUNDATION_EXPORT UIColor *TIOPaper(void);
 FOUNDATION_EXPORT void TIOStyleResearchTable(UITableViewController *controller);
 FOUNDATION_EXPORT void TIOStyleResearchCell(UITableViewCell *cell);
 FOUNDATION_EXPORT UIView *TIOResearchHeader(NSString *eyebrow,NSString *text,UIColor *tint);
+// Three source pages: model, library and diagnostics.
 FOUNDATION_EXPORT UITabBarController *TIOCreateResearchTabs(NSArray<UIViewController *> *pages);
 FOUNDATION_EXPORT void TIOCloseResearch(UIViewController *source);
 FOUNDATION_EXPORT UIView *TIOFoldHeader(NSString *title,BOOL expanded,void(^toggle)(void));

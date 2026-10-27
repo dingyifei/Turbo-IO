@@ -109,22 +109,6 @@
       "status": "run",
       "group": "session"
     },
-    "NewsCoreTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (News)"
-    },
-    "NewsPreferencesTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (News)"
-    },
-    "NewsPresentationTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (News)"
-    },
-    "NewsTeleprompterTests.m": {
-      "status": "excluded",
-      "reason": "module removed in WP3 (News)"
-    },
     "OTAHostTests.m": {
       "status": "run",
       "group": "ota-host"
@@ -135,8 +119,7 @@
     },
     "ProtocolRestartTests.m": {
       "status": "run",
-      "group": "protocol-restart",
-      "note": "Imports NewsTeleprompter.h; WP3 must rewrite against ProtocolContext alone."
+      "group": "protocol-restart"
     },
     "RecordingExportsTests.m": {
       "status": "run",

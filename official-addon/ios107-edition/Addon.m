@@ -15,7 +15,6 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "TodoRuntime.h"
 #import "GlassesChannelHook.h"
 #import "TodoProtocol.h"
-#import "NewsReader.h"
 #import "MusicPlayer.h"
 #import "TDPhoneBridge.h"
 #import "PrivateBootstrap.h"
@@ -131,8 +130,8 @@ static void Alert(NSString *title,NSString *message) {
     if(!url||!payload||!key.length){if(self.update)self.update(@"",YES,TIOWebStatusText(@"config.missing",TIOScriptLanguage(question,AddonUILanguage())));return;}
     // Optional provider extension, sent only when explicitly selected by user.
     NSMutableDictionary *body=[payload mutableCopy];if([Prefs boolForKey:@"deepseekDisableThinking"])body[@"thinking"]=@{@"type":@"disabled"};
-    NSString *searchKey=([Prefs boolForKey:@"tinyfishEnabled"]||self.newsMode)?ReadKey(@"https://api.search.tinyfish.ai"):@"";
-    TIOImportKnowledgeConnection();if(!self.newsMode&&TIOKnowledgeEnabled()){TIOKnowledgeClient *client=[TIOKnowledgeClient new];self.cancelKnowledge=^{[client cancel];};self.knowledgeQuery=^(NSDictionary *input,BOOL statusOnly,void(^done)(NSDictionary *)){void(^completion)(NSDictionary *,NSString *)=^(NSDictionary *j,NSString *e){done(j?:@{@"status":@"failed"});};if(statusOnly)[client refreshLast:completion];else [client query:input completion:completion];};}
+    NSString *searchKey=[Prefs boolForKey:@"tinyfishEnabled"]?ReadKey(@"https://api.search.tinyfish.ai"):@"";
+    TIOImportKnowledgeConnection();if(TIOKnowledgeEnabled()){TIOKnowledgeClient *client=[TIOKnowledgeClient new];self.cancelKnowledge=^{[client cancel];};self.knowledgeQuery=^(NSDictionary *input,BOOL statusOnly,void(^done)(NSDictionary *)){void(^completion)(NSDictionary *,NSString *)=^(NSDictionary *j,NSString *e){done(j?:@{@"status":@"failed"});};if(statusOnly)[client refreshLast:completion];else [client query:input completion:completion];};}
     [self startEndpoint:url key:key payload:body searchKey:searchKey];
 }
 @end
@@ -474,7 +473,6 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     else if(ip.section==0&&ip.row==8)[self configureSearch];
     else if(ip.section==0&&ip.row==9)[self testSearch];
     else if(ip.section==0&&ip.row==10)TIOOpenTodoRuntime(self);
-    else if(ip.section==0&&ip.row==12)TIOOpenNewsReader(self);
     else if(ip.section==0&&ip.row==11)Alert(@"当前语音模型 Tools",[NSString stringWithFormat:@"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。",TIOKnowledgeEnabled()?@"已开启":@"未开启，请在知识库配置连接"]);
     else if(ip.section==0&&ip.row==4){UIAlertController *a=[UIAlertController alertControllerWithTitle:@"清空自有模型上下文？" message:@"仅清空本扩展内存中的聊天历史，不删除官方记录。正在进行的自有请求会取消并恢复官方模式。" preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:@"清空" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){[Controller cancel];[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];}
     else if(ip.section==0&&ip.row==5)Alert(@"当前系统提示词",TIOSystemPrompt([Prefs stringForKey:@"model"]?:@"尚未配置"));
@@ -495,11 +493,8 @@ UITabBarController *TIOCreateResearchPreview(void){
     Controller=[TIOController new];Diagnostic=@"界面预览：未连接眼镜，未加载官方通信库";
     ArchiveQueue=dispatch_queue_create("io.turboio.preview.archive",DISPATCH_QUEUE_SERIAL);
     Archive=[[TIOTranscriptArchive alloc]initWithDirectory:[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"ResearchPreview"]]];
-    TIONewsConfigure(^TIONewsCancel(NSString *prompt,void (^done)(NSString *,NSString *)){
-        __block BOOL cancelled=NO;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(),^{if(!cancelled)done(@"界面预览样稿\n\n这是合成内容，不是真实新闻。本预览不联网、不连接眼镜，也不包含任何私人配置。",nil);});return [^{cancelled=YES;} copy];
-    });
     NSMutableArray *pages=[NSMutableArray new];for(NSString *key in @[@"model",@"library",@"diagnostics"]){TIOPanel *p=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];p.page=key;[pages addObject:p];}
-    return TIOCreateResearchTabs(@[pages[0],TIONewsReaderController(),pages[1],pages[2]]);
+    return TIOCreateResearchTabs(pages);
 }
 #endif
 
@@ -508,7 +503,7 @@ UITabBarController *TIOCreateResearchPreview(void){
 @end
 @implementation TIOEntryTarget
 + (void)show {UIViewController *top=TopController();if(!top||top.tabBarController.view.tag==7920||top.view.tag==7920)return;static UITabBarController *shell;
-    if(!shell){NSMutableArray *pages=[NSMutableArray new];for(NSString *key in @[@"model",@"library",@"diagnostics"]){TIOPanel *p=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];p.page=key;[pages addObject:p];}shell=TIOCreateResearchTabs(@[pages[0],TIONewsReaderController(),pages[1],pages[2]]);}
+    if(!shell){NSMutableArray *pages=[NSMutableArray new];for(NSString *key in @[@"model",@"library",@"diagnostics"]){TIOPanel *p=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];p.page=key;[pages addObject:p];}shell=TIOCreateResearchTabs(pages);}
     for(UINavigationController *nav in shell.viewControllers)[nav popToRootViewControllerAnimated:NO];Entry.hidden=YES;[top presentViewController:shell animated:YES completion:nil];}
 @end
 
@@ -547,14 +542,6 @@ __attribute__((constructor)) static void Load(void) {
             Controller=[TIOController new];
             ImportPrivateBootstrap();
             VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
-            TIONewsConfigure(^TIONewsCancel(NSString *prompt,void (^completion)(NSString *,NSString *)){
-                TIORequest *request=[TIORequest new];request.newsMode=YES;request.history=@[];
-                request.update=^(NSString *text,BOOL done,NSString *error){if(done)completion(text,error);};
-                // Start next turn so even immediate config errors do not race
-                // assignment of the cancellation handle in the news controller.
-                __block BOOL cancelled=NO;dispatch_async(dispatch_get_main_queue(),^{if(!cancelled)[request startQuestion:prompt];});
-                return [^{cancelled=YES;[request cancel];} copy];
-            });
             // Research rows are explicit routes now, not a chain of table hooks.
             [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);

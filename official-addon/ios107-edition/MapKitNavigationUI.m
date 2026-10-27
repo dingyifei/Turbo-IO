@@ -1,7 +1,6 @@
 #import "MapKitNavigationUI.h"
 #import "NavigationGuidance.h"
 #import "NavigationSubtitleHUD.h"
-#import "NewsTeleprompter.h"
 #import "ResearchUI.h"
 #import "RoadMap.h"
 #import "DisplayPhoneUI.h"
@@ -26,7 +25,6 @@ static BOOL BackgroundLocation(void){id m=[NSBundle.mainBundle objectForInfoDict
 static NSString *AppState(void){switch(UIApplication.sharedApplication.applicationState){case UIApplicationStateActive:return @"active";case UIApplicationStateInactive:return @"inactive";default:return @"background";}}
 static NSString *GlassesBusy(void){
     if(![TIOSubtitleNavigationStatus()[@"phase"] isEqual:@"idle"])return @"Caption navigation is still running.";
-    if([TIONewsTeleStatus()[@"active"] boolValue])return @"The teleprompter is still running.";
     return nil;
 }
 static NSArray *Coordinates(MKPolyline *line){

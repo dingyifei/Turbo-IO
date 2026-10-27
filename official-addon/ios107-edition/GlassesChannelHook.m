@@ -10,8 +10,6 @@
 #endif
 #import "ProtocolContext.h"
 #import "TodoProtocol.h"
-#import "NewsReader.h"
-#import "NewsTeleprompter.h"
 #import "A2UIProbe.h"
 #import "DashboardCard.h"
 #import "EditorTransport.h"
@@ -52,13 +50,9 @@ static void MethodHook(id self,SEL cmd,id call,id result){
     if(otaBlocked){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO transfer gate: not authorized or packet mismatch"});return;}
     if(TIOOTABlockPreparationCall(call)){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO OTA preparation only: outbound traffic blocked"});return;}
     if(TIOGlassesLogBlockCall(call)){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"本机日志研究任务隔离中，未重复请求"});return;}
-    {NSString *method=Get(call,@"method");id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIONewsTeleObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
+    {NSString *method=Get(call,@"method");id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
     if([Get(call,@"method") isEqual:@"rayneonet_sendMessage"]){id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]&&[args[@"businessId"] isEqual:@22]){void (^work)(void)=^{TIOTodoObserveSnapshotMessage(args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
-    id args=Get(call,@"arguments");
-    if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&[args isKindOfClass:NSDictionary.class]){
-        void(^original)(id)=result;
-        PriorMethod(self,cmd,call,[^(id response){dispatch_async(dispatch_get_main_queue(),^{TIONewsTeleObserveFileResult(args,response);});if(original)original(response);} copy]);
-    }else PriorMethod(self,cmd,call,result);
+    PriorMethod(self,cmd,call,result);
 }
 static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
     if([channel isKindOfClass:NSString.class]&&[channel.lowercaseString containsString:@"rayneonet"]&&message.length<262144){
@@ -93,14 +87,11 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
                 if(TDPPhoneRouteReply(e,^(BOOL owned){if(owned){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);}))return;
 #endif
                 if([m[@"businessId"] isEqual:@20]){
-                    // Own manuscripts live in TurboIO, not the official Dart
-                    // repository. Let our state machine consume their replies
-                    // before Flutter mistakes the unknown DID for a deleted doc.
-                    // Foreign DID/device, list messages and unknown types pass.
-                    void(^work)(void)=^{BOOL own=TIONewsTeleOwnsEvent(e);TIOProtocolObserveEvent(e);TIOBrightnessObserveEvent(e);TIONewsTeleObserveEvent(e);TIOA2UIObserveEvent(e);TDCObserveEvent(e);TCEObserveEvent(e);TAPObserveEvent(e);TIOSubtitleObserveEvent(e);if(own){if(reply)((void(^)(NSData *))reply)(nil);}else PriorSend(self,cmd,channel,message,reply);};
+                    // Observe on main, then preserve Flutter delivery for business 20.
+                    void(^work)(void)=^{TIOProtocolObserveEvent(e);TIOBrightnessObserveEvent(e);TIOA2UIObserveEvent(e);TDCObserveEvent(e);TCEObserveEvent(e);TAPObserveEvent(e);TIOSubtitleObserveEvent(e);PriorSend(self,cmd,channel,message,reply);};
                     if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);return;
                 }
-                dispatch_async(dispatch_get_main_queue(),^{TIOProtocolObserveEvent(e);TIOBrightnessObserveEvent(e);TIONewsTeleObserveEvent(e);TIOA2UIObserveEvent(e);TDCObserveEvent(e);TCEObserveEvent(e);TAPObserveEvent(e);TIOSubtitleObserveEvent(e);});
+                dispatch_async(dispatch_get_main_queue(),^{TIOProtocolObserveEvent(e);TIOBrightnessObserveEvent(e);TIOA2UIObserveEvent(e);TDCObserveEvent(e);TCEObserveEvent(e);TAPObserveEvent(e);TIOSubtitleObserveEvent(e);});
                 if(physical)dispatch_async(dispatch_get_main_queue(),^{TIOTodoObservePhysical(physical);});
             }
         }}@catch(NSException *e){}

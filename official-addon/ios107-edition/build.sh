@@ -136,7 +136,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   HomeTabBridge.m \
   ResearchCatalog.m \
   ResearchUI.m \
-  NewsPresentation.m \
   PrivateBootstrap.m \
   WebSearch.m \
   GlassesChannelHook.m \
@@ -171,10 +170,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   GlassesLogContract.m \
   GlassesLogGate.m \
   GlassesLogProbe.m \
-  NewsCore.m \
-  NewsArchive.m \
-  NewsReader.m \
-  NewsTeleprompter.m \
   RecordingExports.m \
   RecordingExportsUI.m \
   RecordingExportsMenu.m \

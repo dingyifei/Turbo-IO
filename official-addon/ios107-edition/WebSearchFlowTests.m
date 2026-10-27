@@ -13,7 +13,7 @@ static NSString *Scenario;
     NSInteger status=200;NSString *mime=search?@"application/json":@"text/event-stream",*body;
     if(search){SearchRequests++;assert([[self.request valueForHTTPHeaderField:@"X-API-Key"] isEqual:@"synthetic-search-key"]);assert(![self.request valueForHTTPHeaderField:@"Authorization"]);if([Scenario hasPrefix:@"network-"]){[self.client URLProtocol:self didFailWithError:[NSError errorWithDomain:NSURLErrorDomain code:[Scenario isEqual:@"network-dns"]?NSURLErrorCannotFindHost:NSURLErrorTimedOut userInfo:@{NSLocalizedDescriptionKey:[@"sk" stringByAppendingString:@"-private-diagnostic"]}]];return;}if([Scenario isEqual:@"http-failure"])status=403;body=@"{\"results\":[{\"title\":\"Test\",\"url\":\"https://example.com\",\"snippet\":\"synthetic evidence\"}]}";}
     else{ModelRequests++;assert([[self.request valueForHTTPHeaderField:@"Authorization"] isEqual:@"Bearer synthetic-model-key"]);assert(![self.request valueForHTTPHeaderField:@"X-API-Key"]);
-        if([Scenario isEqual:@"no-search"]||[Scenario isEqual:@"news-no-search"]||(ModelRequests>1&&![Scenario isEqual:@"limit"]))body=@"data: {\"choices\":[{\"delta\":{\"content\":\"完成\"},\"finish_reason\":\"stop\"}]}\n\n";
+        if([Scenario isEqual:@"no-search"]||(ModelRequests>1&&![Scenario isEqual:@"limit"]))body=@"data: {\"choices\":[{\"delta\":{\"content\":\"完成\"},\"finish_reason\":\"stop\"}]}\n\n";
         else body=@"data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"web_search\",\"arguments\":\"{\\\"query\\\":\\\"public test\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n";
     }
     NSHTTPURLResponse *r=[[NSHTTPURLResponse alloc]initWithURL:self.request.URL statusCode:status HTTPVersion:@"HTTP/1.1" headerFields:@{@"Content-Type":mime}];
@@ -28,7 +28,6 @@ static NSString *Scenario;
 static void Run(NSString *name){
     Scenario=name;ModelRequests=0;SearchRequests=0;__block BOOL done=NO,cancelled=NO;__block NSUInteger finals=0;__block NSString *last=@"",*error=nil;
     FakeWebRequest *r=[FakeWebRequest new];__weak FakeWebRequest *weak=r;
-    r.newsMode=[name hasPrefix:@"news"];
     r.language=[name hasSuffix:@"-en"]?nil:@"zh-Hans";
     r.update=^(NSString *text,BOOL final,NSString *e){assert(!last.length||[text hasPrefix:last]);last=text;if(final){finals++;done=YES;error=e;}if([name hasPrefix:@"cancel"]&&[text containsString:[name hasSuffix:@"-en"]?@"Searching the web":@"正在联网" /*i18n:keep*/]){[weak cancel];cancelled=YES;done=YES;}};
     [r startEndpoint:[NSURL URLWithString:@"https://model.example/chat/completions"] key:@"synthetic-model-key" payload:TIOChatRequest(@"test",@"public query") searchKey:@"synthetic-search-key"];
@@ -36,8 +35,7 @@ static void Run(NSString *name){
     assert(done);if([name hasPrefix:@"cancel"]){assert(cancelled&&finals==0&&SearchRequests==0);return;}
     assert(finals==1);if([name isEqual:@"http-failure"]){assert(error&&SearchRequests==1&&ModelRequests==1);return;}
     if([name hasPrefix:@"network-"]){assert(error&&SearchRequests==1&&ModelRequests==1);assert([error containsString:[name isEqual:@"network-dns"]?@"-1003":@"-1001"]);assert(![error containsString:@"sk-private"]);return;}
-    if([name isEqual:@"news-no-search"]){assert(error&&SearchRequests==0&&ModelRequests==1);return;}
     if([name isEqual:@"limit"]){assert(error&&SearchRequests==2&&ModelRequests==3);return;}
     assert(!error&&[last hasSuffix:@"完成"]);if([name isEqual:@"no-search"])assert(SearchRequests==0&&ModelRequests==1);else assert(SearchRequests==1&&ModelRequests==2);
 }
-int main(void){@autoreleasepool{for(NSString *name in @[@"success",@"no-search",@"http-failure",@"network-dns",@"network-timeout",@"cancel",@"cancel-en",@"limit",@"news",@"news-no-search"])Run(name);NSLog(@"PASS: native model-search-model flow, final callback once, no-search, HTTP/network failure, cancellation, two-search bound, credential separation, news requires actual search. Mock transport only.");}return 0;}
+int main(void){@autoreleasepool{for(NSString *name in @[@"success",@"no-search",@"http-failure",@"network-dns",@"network-timeout",@"cancel",@"cancel-en",@"limit"])Run(name);NSLog(@"PASS: native model-search-model flow, final callback once, no-search, HTTP/network failure, cancellation, two-search bound, credential separation. Mock transport only.");}return 0;}

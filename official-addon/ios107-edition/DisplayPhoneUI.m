@@ -2,7 +2,6 @@
 #import "DisplayPhoneUI.h"
 #import "AppBridge.h"
 #import "TodoRuntime.h"
-#import "NewsTeleprompter.h"
 #import "WatchGlobalBridge.h"
 #import "MenuLayout.h"
 #import "MusicPlayer.h"
@@ -40,9 +39,6 @@ BOOL TDPPhoneAutomaticIdle(void){
     !TMMusicPauseForOTA()||
     TAPPhoneBridge.shared.busy||TAPPhoneBridge.shared.needsReadback||
     [TIOTodoRuntimeStatus()[@"busy"] boolValue])return NO;
- NSDictionary *tele=TIONewsTeleStatus();
- for(NSString *k in @[@"active",@"playing",@"started",@"stopping",@"manualPending",@"manualBlocked",@"replacing"])
-    if([tele[k] boolValue])return NO;
  return YES;
 }
 BOOL TDPPhonePauseForOTA(void){
