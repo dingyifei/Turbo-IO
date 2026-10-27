@@ -142,6 +142,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   HomeTabBridge.m \
   ResearchCatalog.m \
   ResearchUI.m \
+  TIOConfirm.m \
   PrivateBootstrap.m \
   WebSearch.m \
   GlassesChannelHook.m \
