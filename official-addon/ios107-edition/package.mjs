@@ -6,6 +6,7 @@ import { execFileSync as exec } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {validateTranslationPair,prepareTranslationResources,copyTranslationResources} from '../local-translation/package-resources.mjs';
+import {prepareAppleAI,copyAppleAI} from './apple-ai/package-resources.mjs';
 import {inspectMachO} from './macho-embed.mjs';
 import {patch as patchOTARoute,verifyRoute} from './patch-route.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
@@ -82,17 +83,19 @@ export function entitlementsFor(p,o) {
 function run(program,args,options={}){return exec(program,args,{stdio:['pipe','pipe','pipe'],...options});}
 function main(){
   if(process.argv.includes('--help'))console.log('iOS 1.0.7/230 APP107: exact TMG2 OTA route included by default. Installation does NOT grant flash permission; manual one-shot authorization required.');
+  if(process.argv.includes('--help'))console.log('Optional Apple AI: --apple-ai-dylib /absolute/TurboAppleAI.dylib (requires TIO_APPLE_AI=1 addon)');
   if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see local-translation/README.md)');
   if(process.argv.includes('--help')){console.log('node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-TMG2-release.zip [--product iPhone18,2] [--amap-sdk-root /absolute/build/amap-sdk]');return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
   if(args.length%2)throw Error('expected_named_arguments');
-  const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','experimental-ota','firmware','translation-module-dir','translation-models'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
+  const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','experimental-ota','firmware','translation-module-dir','translation-models','apple-ai-dylib'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
   validateOptions(o);
   const symbols=run('/usr/bin/nm',['-g',o.addon],{encoding:'utf8',maxBuffer:64*1024*1024});
   // FOCUS has a dynamic optional entry even without the translation module.
   const focusEdition=symbols.includes('_TFFocusConsume');
   validateTranslationPair(focusEdition&&!o['translation-module-dir']&&!o['translation-models']?symbols.replaceAll('_TIOOpenLocalTranslation',''):symbols,o);
   const translationResources=prepareTranslationResources(o);
+  const appleAI=prepareAppleAI(o['apple-ai-dylib'],symbols);
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
   if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=APP107-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
@@ -110,6 +113,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   run(process.execPath,[path.join(here,'macho-embed.mjs'),source,app,o.addon,o.bundle]);
   applyUsageDescriptions(app,translationResources);
   copyTranslationResources(translationResources,app);
+  copyAppleAI(appleAI,app);
   if(translationResources){
     const plist=path.join(app,'Info.plist');
     const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));
@@ -145,7 +149,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   run('/usr/bin/ditto',['-c','-k','--norsrc','--noextattr','--keepParent',path.join(destination,'Payload'),ipa]);fs.chmodSync(ipa,0o600);
   run('/usr/bin/unzip',['-tq',ipa]);
   const names=run('/usr/bin/unzip',['-Z1',ipa],{encoding:'utf8'}).split('\n');if(names.some(n=>n.split('/').some(x=>x==='__MACOSX'||x.startsWith('._'))))throw Error('unexpected_archive_metadata');
-  const report={status:'SIGNED_NOT_DEVICE_ACCEPTED',host:'1.0.7 (230)',signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,firmwareResourceOnly:false,postSigningRouteVerified:true,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']};
+  const report={appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:'1.0.7 (230)',signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,firmwareResourceOnly:false,postSigningRouteVerified:true,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']};
   fs.writeFileSync(path.join(destination,'report.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});console.log(JSON.stringify(report,null,2));
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){try{main();}catch(e){const known=/^[a-z_]+$/.test(e.message);console.error(known?e.message:'Local packaging failed. Check compatible source, profile and signing identity. No subprocess output or credentials are printed.');process.exitCode=1;}}

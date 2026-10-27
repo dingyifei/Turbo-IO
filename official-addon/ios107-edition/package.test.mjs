@@ -137,3 +137,17 @@ test('translationResources argument does not expand the helper write lists or al
 test('music packaging has no NetEase leftovers or URL-scheme registration',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/B[e]ans|UIBackgroundModes|const music|CFBundleURLTypes/);});
 test('firmware candidate keeps the shared resource filename',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/TurboNavigationCandidate/);assert.match(s,/path\.join\(app,'TurboWeReadCandidate\.zip'\)/);});
 test('package does not ship decorative art',()=>{assert.ok(!fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8').includes('TurboIOArt'));});
+
+// WP7 opt-in wrapper contract: no signing, packaging, or device operations.
+import {execFileSync as appleExec} from 'node:child_process';
+test('Apple AI wrapper leaves flag-off package argv unchanged',()=>{
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ assert.match(wrapper,/apple_args=\(\)/);
+ assert.match(wrapper,/if \[\[ -n "\$apple_ai_out" \]\]/);
+ assert.match(wrapper,/TIO_APPLE_AI=1 .*bash "\$ED\/build.sh" embedded/);
+ assert.match(wrapper,/python3 "\$ED\/apple-ai\/build.py" --out "\$apple_ai_out"/);
+ const empty=appleExec('bash',['-c','apple_args=(); set -- existing ${apple_args[@]+"${apple_args[@]}"}; printf "%s\\n" "$@"'],{encoding:'utf8'});
+ assert.equal(empty,'existing\n');
+ const on=appleExec('bash',['-c','apple_args=(--apple-ai-dylib "/synthetic/module dir/TurboAppleAI.dylib"); set -- existing ${apple_args[@]+"${apple_args[@]}"}; printf "%s\\n" "$@"'],{encoding:'utf8'});
+ assert.equal(on,'existing\n--apple-ai-dylib\n/synthetic/module dir/TurboAppleAI.dylib\n');
+});

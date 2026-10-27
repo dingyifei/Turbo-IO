@@ -5,6 +5,13 @@ umask 077
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 ED=$REPO/official-addon/ios107-edition
 TURBO_INPUTS=${TURBO_INPUTS:-"$HOME/projects/personal/turboio-inputs"}
+apple_ai_out=''
+apple_args=()
+if [[ ${1:-} == --apple-ai ]]; then
+  [[ $# == 3 && -n ${2:-} ]] || { echo 'Usage: turbo-package.sh [--apple-ai <new-directory>] <label>' >&2; exit 2; }
+  apple_ai_out=$2
+  shift 2
+fi
 if [[ $# != 1 || ! $1 =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
   printf 'Usage: %s <label>\n' "$0" >&2
   exit 2
@@ -43,6 +50,11 @@ set +a
 for name in TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107; do
   [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
 done
+if [[ -n "$apple_ai_out" ]]; then
+  TIO_APPLE_AI=1 TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1 bash "$ED/build.sh" embedded com.rayneo.venus.pub
+  python3 "$ED/apple-ai/build.py" --out "$apple_ai_out"
+  apple_args=(--apple-ai-dylib "$(cd "$apple_ai_out" && pwd)/TurboAppleAI.dylib")
+fi
 ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
 [[ -f "$ADDON" ]] || { echo 'PACKAGE FAIL: missing addon' >&2; exit 1; }
 [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
@@ -86,7 +98,7 @@ PY
 run_logged signing-preflight codesign --dryrun --force --sign "$TURBO_SIGN_ID" --timestamp=none "$ADDON"
 run_logged package node "$ED/package.mjs" --app "$TURBO_APP107" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
-  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$TURBO_FIRMWARE" --product "$TURBO_PRODUCT"
+  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$TURBO_FIRMWARE" --product "$TURBO_PRODUCT" ${apple_args[@]+"${apple_args[@]}"}
 run_logged codesign codesign --verify --deep --strict "$OUT/Payload/Runner.app"
 run_logged unzip unzip -tq "$OUT/TurboIO-local-only.ipa"
 run_logged plist plutil -extract UISupportedDevices json -o "$LOG_DIR/supported-devices.json" "$OUT/Payload/Runner.app/Info.plist"
