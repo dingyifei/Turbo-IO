@@ -1,7 +1,7 @@
 #import <UIKit/UIKit.h>
 #include <stdio.h>
 
-extern UITabBarController *TIOCreateResearchPreview(void);
+extern UIViewController *TIOCreateTurboPreview(void);
 extern UIViewController *TIOExperimentalOTAController(void);
 extern UIViewController *TMMusicController(void);
 extern NSDictionary *TIOPreviewOTAFixture(NSString *state);
@@ -46,7 +46,7 @@ static NSString *Argument(NSString *name) {
     }
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *page = nil;
-        if ([screen isEqual:@"hub"]) page = TIOCreateResearchPreview();
+        if ([screen isEqual:@"hub"]) page = TIOCreateTurboPreview();
         else if ([screen isEqual:@"ota"]) page = TIOExperimentalOTAController();
         else if ([screen isEqual:@"music"]) page = TMMusicController();
         if (!page) {

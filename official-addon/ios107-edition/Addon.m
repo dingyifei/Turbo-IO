@@ -27,6 +27,13 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAFlash.h"
 #import "ResearchUI.h"
+#import <math.h>
+#import "TIOConfirm.h"
+#import "OTAWizardModel.h"
+#import "ExperimentalOTAGuard.h"
+#import "Brightness.h"
+#import "MenuLayoutUI.h"
+#import "WatchRemoteAddon.h"
 #import "HomeTabBridge.h"
 #import "KnowledgeUI.h"
 #import "KnowledgeClient.h"
@@ -304,79 +311,143 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 @property(nonatomic) TIORequest *testRequest;
 @property(nonatomic,copy) NSString *page;
 @property(nonatomic) NSArray<NSDictionary *> *sections;
-@property NSMutableIndexSet *expanded;
 @end
-@implementation TIOPanel
-- (void)viewDidLoad {[super viewDidLoad];self.page=self.page?:@"model";self.sections=TIOResearchSections(self.page);self.expanded=[NSMutableIndexSet indexSetWithIndex:0];self.title=[@{@"model":TIOText(@"模型与对话"),@"library":TIOText(@"资料与导出"),@"diagnostics":TIOText(@"诊断工具")} objectForKey:self.page];TIOStyleResearchTable(self);self.tableView.tableHeaderView=TIOFeatureHeader(self.title,[self.page isEqual:@"diagnostics"]?TIOText(@"研究操作有风险，请先阅读说明。"):TIOText(@"常用操作在前，更多选项按需展开。"),[self.page isEqual:@"model"]?@"music":@"navigation");}
-- (void)viewWillAppear:(BOOL)animated{[super viewWillAppear:animated];[self.tableView reloadData];}
-- (void)viewDidAppear:(BOOL)animated{[super viewDidAppear:animated];[NSNotificationCenter.defaultCenter removeObserver:self name:@"TIOResearchClosed" object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(cancelPanelTest) name:@"TIOResearchClosed" object:nil];}
-- (void)cancelPanelTest{[_testRequest cancel];_testRequest=nil;}
-- (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];[_testRequest cancel];}
-- (void)close {[_testRequest cancel];[self dismissViewControllerAnimated:YES completion:nil];}
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{return self.sections.count;}
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{return [self.expanded containsIndex:section]?[self.sections[section][@"rows"] count]:0;}
-- (UIView *)tableView:(UITableView *)t viewForHeaderInSection:(NSInteger)s{__weak typeof(self) weak=self;return TIOFoldHeader(self.sections[s][@"title"],[self.expanded containsIndex:s],^{if([weak.expanded containsIndex:s])[weak.expanded removeIndex:s];else [weak.expanded addIndex:s];[weak.tableView reloadSections:[NSIndexSet indexSetWithIndex:s] withRowAnimation:UIAccessibilityIsReduceMotionEnabled()?UITableViewRowAnimationNone:UITableViewRowAnimationFade];});}
-- (CGFloat)tableView:(UITableView *)t heightForHeaderInSection:(NSInteger)s{return 54;}
 
+// Status text is bounded by composed characters so a model name or diagnostic
+// cannot split an emoji or exceed the hub's per-language status budget.
+static NSString *TIOHubBoundStatus(NSString *value) {
+    if (![value isKindOfClass:NSString.class] || !value.length) return nil;
+    NSUInteger limit = [TIOUILanguage() hasPrefix:@"zh"] ? 20 : 40;
+    __block NSUInteger count=0, end=0, beforeLast=0;
+    [value enumerateSubstringsInRange:NSMakeRange(0,value.length)
+                             options:NSStringEnumerationByComposedCharacterSequences
+                          usingBlock:^(NSString *part, NSRange range, NSRange enclosing, BOOL *stop) {
+        if (count == limit) { *stop=YES; return; }
+        beforeLast=end; count++; end=NSMaxRange(range);
+    }];
+    if (end == value.length) return value;
+    // The ellipsis is part of the limit.
+    return [[value substringToIndex:beforeLast] stringByAppendingString:@"…"];
+}
+
+@implementation TIOPanel
+- (NSDictionary *)catalogRowForKey:(NSString *)key {
+    for (NSDictionary *row in TIOHubCatalog()) if ([row[@"key"] isEqual:key]) return row;
+    return nil;
+}
+- (void)refresh {
+    self.sections=TIOHubSections(self.page);
+    self.title=self.page.length ? ([self catalogRowForKey:self.page][@"title"] ?: TIOText(@"hub.title")) : TIOText(@"hub.title");
+    if (!self.page.length) {
+        NSMutableString *body=[TIOText(@"hub.info.body") mutableCopy];
+        [body appendFormat:@"\n\n%@: \n",TIOText(@"hub.info.codes")];
+        for (NSDictionary *row in TIOHubCatalog()) {
+            NSString *code=row[@"code"];
+            if (code.length) [body appendFormat:@"%@ — %@\n",row[@"title"],code];
+        }
+        TIOAttachInfo(self,TIOText(@"hub.info.title"),body);
+    }
+    [self.tableView reloadData];
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];self.page=self.page?:@"";TIOStyleResearchTable(self);
+    self.tableView.tableHeaderView=nil;
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(cancelPanelTest) name:@"TIOResearchClosed" object:nil];
+    for (NSString *name in @[@"TIOHubReload",TIOUILanguageDidChangeNotification,UIApplicationDidBecomeActiveNotification])
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:name object:nil];
+    [self refresh];
+}
+- (void)viewWillAppear:(BOOL)animated {[super viewWillAppear:animated];[self refresh];}
+- (void)cancelPanelTest {[_testRequest cancel];_testRequest=nil;}
+- (void)dealloc {[NSNotificationCenter.defaultCenter removeObserver:self];[_testRequest cancel];}
+- (void)close {[_testRequest cancel];[self dismissViewControllerAnimated:YES completion:nil];}
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {return self.sections.count;}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    NSDictionary *group=self.sections[section];
+    if (!self.page.length && [group[@"section"] integerValue]==TIOHubSectionDeveloper && ![Prefs boolForKey:@"hubDeveloperExpanded"]) return 0;
+    return [group[@"rows"] count];
+}
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+    NSDictionary *group=self.sections[section];
+    if (self.page.length || [group[@"section"] integerValue]!=TIOHubSectionDeveloper) return nil;
+    __weak typeof(self) weak=self;
+    return TIOFoldHeader(group[@"title"],[Prefs boolForKey:@"hubDeveloperExpanded"],^{
+        [Prefs setBool:![Prefs boolForKey:@"hubDeveloperExpanded"] forKey:@"hubDeveloperExpanded"];
+        [weak.tableView reloadSections:[NSIndexSet indexSetWithIndex:section]
+                     withRowAnimation:UIAccessibilityIsReduceMotionEnabled()?UITableViewRowAnimationNone:UITableViewRowAnimationFade];
+    });
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    return !self.page.length && [self.sections[section][@"section"] integerValue]==TIOHubSectionDeveloper ? 40 : UITableViewAutomaticDimension;
+}
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    NSDictionary *group=self.sections[section];
+    return !self.page.length && [group[@"section"] integerValue]==TIOHubSectionDeveloper ? nil : group[@"title"];
+}
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if(![self.expanded containsIndex:section]||section==0)return nil;
-    if(section==0&&[self.page isEqual:@"model"])return [TIOSelectedAgent() isEqual:@"Codex"]?TIOText(@"Codex · 只读知识库查询，连接状态见知识库。"):TIOText(@"当前 Agent 未连接执行器；切换选择不会自动发起任务。");
-    if(section==0)return [@{@"model":TIOText(@"TURBO IO · 选择回答方式，管理自己的模型与搜索服务。"),@"library":TIOText(@"音频、转写集中管理；分享只创建副本，不删除原件。"),@"diagnostics":TIOText(@"手动测试与协议状态，不与日常操作混放。")} objectForKey:self.page];
-    if(section!=self.sections.count-1)return nil;
-    if([self.page isEqual:@"model"])return UIText(@"Official ASR is kept; speech may still pass through the official cloud. Answers are read aloud on this iPhone with an English or Chinese voice chosen per sentence and played through the glasses' Bluetooth audio. History keeps only the latest 50 successful messages of this session.",@"官方 ASR 保留，语音仍可能经过官方云。回答由 iOS 本机按句自动选择中文或英文音色朗读，经眼镜蓝牙音频输出。历史仅保留本次进程最近50条成功消息。" /*i18n:keep*/);
-    if([self.page isEqual:@"library"])return TIOText(@"此处是可选实时文字备份，开关会保留。");
-    return TIOText(@"测试需要手动触发，可能调用已配置的服务。接口成功不等于眼镜显示成功。关闭研究只关闭界面，不改变正在运行的功能。");
+    NSDictionary *group=self.sections[section];
+    return !self.page.length && [group[@"section"] integerValue]==TIOHubSectionDeveloper && [Prefs boolForKey:@"hubDeveloperExpanded"] ? TIOText(@"hub.developer.footer") : nil;
+}
+- (NSString *)statusForKey:(NSString *)key {
+    NSString *status=nil;
+    if ([key isEqual:@"language"]) {
+        NSString *code=TIOUILanguageOverride();
+        status=TIOText([@"hub.status.language." stringByAppendingString:[@[@"auto",@"en",@"zh"] containsObject:code]?code:@"auto"]);
+    } else if ([key isEqual:@"languageStatus"]) status=TIOLanguageFlagStatus()[@"state"];
+    else if ([key isEqual:@"mode"]) {
+        NSInteger mode=[Prefs integerForKey:@"mode"];
+        NSString *kind=mode==1?@"test":mode==2?@"custom":@"official"; // WP7 adds mode 3.
+        status=TIOText([@"hub.status.mode." stringByAppendingString:kind]);
+    } else if ([key isEqual:@"api"]) status=[Prefs stringForKey:@"model"]?:TIOText(@"hub.status.api.unset");
+    else if ([key isEqual:@"tts"]) status=TIOText(TTSOn()?@"hub.status.tts.on":@"hub.status.tts.off");
+    else if ([key isEqual:@"search"]) status=TIOText(ReadKey(@"https://api.search.tinyfish.ai").length?@"hub.status.search.ready":@"hub.status.search.nokey");
+    else if ([key isEqual:@"knowledge"]) status=TIOText([TIOSelectedAgent() isEqual:@"Codex"]?@"hub.status.knowledge.codex":@"hub.status.knowledge.none");
+    else if ([key isEqual:@"assistantMore"]) status=TIOText(@"hub.status.more");
+    else if ([key isEqual:@"exit"]) status=VoiceExitReady?nil:TIOText(@"hub.status.exit.unavailable");
+    else if ([key isEqual:@"history"]) {NSString *format=TIOText(@"hub.status.history");status=[NSString stringWithFormat:format,(unsigned long)[Controller.history snapshot].count];}
+    else if ([key isEqual:@"tools"]) status=TIOText(@"hub.status.tools");
+    else if ([key isEqual:@"navigation"]) status=TIOText(@"hub.status.navigation");
+    else if ([key isEqual:@"focus"]) {
+        NSUserDefaults *focus=[[NSUserDefaults alloc]initWithSuiteName:@"org.turboio.addon.focus"];
+        NSTimeInterval remaining=[focus doubleForKey:@"end"]-NSDate.date.timeIntervalSince1970;
+        if (remaining>0) {NSString *format=TIOText(@"hub.status.focus.running");status=[NSString stringWithFormat:format,TIOOTAFormatClock((NSInteger)ceil(remaining))];}
+        else {NSString *format=TIOText(@"hub.status.focus.idle");status=[NSString stringWithFormat:format,(long)MAX(1,[focus integerForKey:@"minutes"]?:25)];}
+    } else if ([key isEqual:@"recordings"]) status=TIOText(@"hub.status.recordings");
+    else if ([key isEqual:@"lifelog"] || [key isEqual:@"capture"]) status=TIOText([Prefs boolForKey:@"captureFinalText"]?@"hub.status.lifelog.on":@"hub.status.lifelog.off");
+    else if ([key isEqual:@"status"]) status=TIOText(HooksReady?@"hub.status.status.ok":@"hub.status.status.off");
+    else if ([key isEqual:@"experimentalOTA"]) {
+        NSDictionary *snapshot=TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus()?:@{},@"feed":TIOExperimentalOTAFeedStatus()?:@{},@"guard":TIOOTAGuardStatus()?:@{},@"prefs":NSUserDefaults.standardUserDefaults.dictionaryRepresentation?:@{}});
+        NSString *statusKey=TIOOTAWizardHubStatusKey(snapshot);
+        status=[statusKey isEqual:@"ota.hub.download"] ? [NSString stringWithFormat:TIOText(statusKey),TIOOTAFormatClock([snapshot[@"downloadSecondsLeft"] integerValue])] : TIOText(statusKey);
+    } else if ([key isEqual:@"aboutMe"]) status=[Prefs stringForKey:@"aboutMe"];
+    return TIOHubBoundStatus(status);
+}
+- (UIView *)accessoryForKey:(NSString *)key {
+    NSString *pref=nil;SEL action=NULL;BOOL enabled=YES;
+    if ([key isEqual:@"tts"]) {pref=@"ttsEnabled";action=@selector(ttsToggle:);}
+    else if ([key isEqual:@"thinking"]) {pref=@"deepseekDisableThinking";action=@selector(thinking:);}
+    else if ([key isEqual:@"exit"]) {pref=@"voiceExitCommands";action=@selector(voiceExit:);enabled=VoiceExitReady;}
+    else if ([key isEqual:@"search"]) {pref=@"tinyfishEnabled";action=@selector(searchToggle:);}
+    else if ([key isEqual:@"capture"]) {pref=@"captureFinalText";action=@selector(capture:);}
+    if (pref) {UISwitch *control=[UISwitch new];control.on=[Prefs boolForKey:pref];control.enabled=enabled;[control addTarget:self action:action forControlEvents:UIControlEventValueChanged];return control;}
+    if ([key isEqual:@"agent"]) {__weak typeof(self) weak=self;return TIOAgentPicker(^{[weak.tableView reloadData];});}
+    if ([key isEqual:@"ttsTest"]) {
+        UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:TIOText(@"播放") forState:UIControlStateNormal];button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
+        [button addTarget:self action:@selector(testTTS) forControlEvents:UIControlEventTouchUpInside];return button;
+    }
+    return nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)ip {
-    NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];NSInteger section=[r[@"section"] integerValue],row=[r[@"row"] integerValue];
-    UITableViewCell *c=section>=0?[self legacyCell:tableView at:[NSIndexPath indexPathForRow:row inSection:section]]:[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
-    c.textLabel.text=r[@"title"];c.textLabel.numberOfLines=0;c.textLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];c.textLabel.adjustsFontForContentSizeCategory=YES;c.detailTextLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];c.detailTextLabel.adjustsFontForContentSizeCategory=YES;c.detailTextLabel.numberOfLines=0;c.detailTextLabel.textColor=UIColor.secondaryLabelColor;c.imageView.image=[UIImage systemImageNamed:r[@"icon"]];c.imageView.tintColor=TIOAccent();
-    c.accessibilityIdentifier=[@"research-" stringByAppendingString:r[@"key"]];c.contentView.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(15,16,15,16);
-    if([r[@"key"] isEqual:@"agent"]){__weak typeof(self) weak=self;c.accessoryView=TIOAgentPicker(^{[weak.tableView reloadData];});c.detailTextLabel.text=[TIOSelectedAgent() isEqual:@"Codex"]?@"Mac · projectmanager":TIOText(@"未连接执行器");}
-    if([r[@"key"] isEqual:@"knowledge"])c.detailTextLabel.text=TIOText(@"微信归档 · 项目文档 · 学习资料");
-    if([r[@"key"] isEqual:@"a2ui"])c.detailTextLabel.text=TIOText(@"文字7392 → 排版8642 → 单卡卸载；需镜片验收");
-#if TIO_MAPKIT_ENABLED
-    if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"Apple Maps · glasses turn-by-turn";
-#else
-    if([r[@"key"] isEqual:@"navigation"])c.detailTextLabel.text=@"Requires the MapKit build";
-#endif
-    if([r[@"key"] isEqual:@"tts"]){c.detailTextLabel.text=TIOText(@"官方/自有回答 · 眼镜蓝牙音频");
-        UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"ttsEnabled"];[s addTarget:self action:@selector(ttsToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
-    if([r[@"key"] isEqual:@"uiLanguage"]){NSString *override=TIOUILanguageOverride();NSString *label=[override isEqual:@"en"]?@"English":[override isEqual:@"zh"]?/*i18n:keep*/@"中文":TIOText(@"自动（跟随系统/RayNeo）");c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",label,TIOUILanguage()];}
-    if([r[@"key"] isEqual:@"languageStatus"])c.detailTextLabel.text=TIOLanguageFlagStatus()[@"state"];
-    if([r[@"key"] isEqual:@"ttsTest"]){c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",[VoiceTTS voiceSummaryForLanguage:AddonUILanguage()],[VoiceTTS statusForLanguage:AddonUILanguage()]];
-        UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:TIOText(@"播放") forState:UIControlStateNormal];
-        button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
-        [button addTarget:self action:@selector(testTTS) forControlEvents:UIControlEventTouchUpInside];c.accessoryView=button;}
-    if([r[@"key"] isEqual:@"aboutMe"]){NSString *about=[Prefs stringForKey:@"aboutMe"]?:@"";if(about.length>40)about=[[about substringWithRange:[about rangeOfComposedCharacterSequencesForRange:NSMakeRange(0,40)]] stringByAppendingString:@"…"];c.detailTextLabel.text=about.length?about:UIText(@"Not set · optional background for your own model",@"未设置 · 可选，供自有模型参考" /*i18n:keep*/);}
-    if(!c.accessoryView)c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
-    if([r[@"key"] isEqual:@"mode"]){c.detailTextLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleTitle3];c.detailTextLabel.textColor=UIColor.labelColor;}
-    if([r[@"key"] isEqual:@"history"])c.detailTextLabel.text=[c.detailTextLabel.text stringByAppendingString:TIOText(@" · 点此管理清空")];
-    if(section==-1)c.detailTextLabel.text=@[TIOText(@"本机音频 / TXT / Markdown · AirDrop与文件"),TIOText(@"导入或粘贴转写，确认后交给自有模型"),TIOText(@"导出 Markdown 或整理已保存文字"),TIOText(@"明确开启保存后，查看与分享音频副本")][row];
-    if([r[@"key"] isEqual:@"archive"])c.detailTextLabel.text=TIOText(@"一次导出 Markdown 与 JSON");
-    if([r[@"key"] isEqual:@"capture"])c.detailTextLabel.text=TIOText(@"可选实时备份 · 开关保持到手动关闭；学习无需开启");
-    if([r[@"key"] isEqual:@"status"])c.accessoryType=UITableViewCellAccessoryNone;
-    return c;
+    NSDictionary *row=self.sections[ip.section][@"rows"][ip.row];NSString *key=row[@"key"];
+    UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+    cell.textLabel.text=row[@"title"];cell.detailTextLabel.text=[self statusForKey:key];
+    cell.imageView.image=TIOHubIcon(row[@"icon"],[row[@"section"] integerValue]);
+    cell.accessoryView=[self accessoryForKey:key];
+    if (!cell.accessoryView && ![@[@"status",@"prompt",@"tools",@"ttsTest"] containsObject:key]) cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
+    cell.accessibilityIdentifier=[@"hub-" stringByAppendingString:key];
+    return cell;
 }
-- (UITableViewCell *)legacyCell:(UITableView *)tableView at:(NSIndexPath *)ip {
-    UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.detailTextLabel.numberOfLines=0;
-    if(ip.section==0){
-        c.textLabel.text=@[TIOText(@"选择回答模型"),TIOText(@"配置自有 API"),TIOText(@"测试 API（合成问题）"),TIOText(@"DeepSeek：关闭思考扩展参数"),TIOText(@"对话历史（点此清空）"),TIOText(@"查看系统提示词"),TIOText(@"语音退出指令"),TIOText(@"联网搜索 · TinyFish"),TIOText(@"配置 TinyFish Key"),TIOText(@"测试联网搜索（公开问题）"),TIOText(@"待办协议验收"),TIOText(@"模型 Tools"),TIOText(@"AI 新闻订阅")][ip.row];
-        if(ip.row==12)c.detailTextLabel.text=TIOText(@"默认AI · TinyFish · 提词器匀速阅读 · 不启动录音");
-        if(ip.row==11)c.detailTextLabel.text=TIOKnowledgeEnabled()?@"knowledge_query · knowledge_query_status · create_todo · web_search":TIOText(@"create_todo · web_search · 知识库工具需开启");
-        if(ip.row==0){NSInteger m=[Prefs integerForKey:@"mode"];c.detailTextLabel.text=@[TIOText(@"官方默认"),TIOText(@"随机字符串验收"),TIOText(@"自定义 OpenAI 兼容接口")][MAX(0,MIN(m,2))];}
-        if(ip.row==1)c.detailTextLabel.text=[Prefs stringForKey:@"model"]?:TIOText(@"尚未配置，未内置任何 Key");
-        if(ip.row==3){UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"deepseekDisableThinking"];[s addTarget:self action:@selector(thinking:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
-        if(ip.row==4)c.detailTextLabel.text=[NSString stringWithFormat:TIOText(@"%lu / 50 条 · 当前进程内存 · 只含成功问答"),(unsigned long)[Controller.history snapshot].count];
-        if(ip.row==5)c.detailTextLabel.text=UIText(@"Follows your language · About me · model ID",@"跟随提问语言 · 关于我 · 模型 ID" /*i18n:keep*/);
-        if(ip.row==6){c.detailTextLabel.text=VoiceExitReady?TIOText(@"退下吧 / 关闭 / 没事了 / 关闭窗口；完整短句匹配"):TIOText(@"当前版本停止入口未通过校验，未启用");UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"voiceExitCommands"];s.enabled=VoiceExitReady;[s addTarget:self action:@selector(voiceExit:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
-        if(ip.row==7){c.detailTextLabel.text=TIOText(@"模型按需调用 · 只读公开网页 · 最多两次");UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"tinyfishEnabled"];[s addTarget:self action:@selector(searchToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
-        if(ip.row==8)c.detailTextLabel.text=ReadKey(@"https://api.search.tinyfish.ai").length?TIOText(@"已存手机 Keychain，不回显"):TIOText(@"未配置；不会使用 Mac 凭据");
-        if(ip.row==9)c.detailTextLabel.text=TIOText(@"不携带聊天历史 · 显示实际搜索次数");
-    }else if(ip.section==1){c.textLabel.text=ip.row==0?TIOText(@"旁路保存最终文字"):TIOText(@"导出 Markdown / JSON");if(ip.row==0){UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"captureFinalText"];[s addTarget:self action:@selector(capture:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}}
-    else{c.textLabel.text=HooksReady?TIOText(@"回调签名检查通过"):TIOText(@"未启用：版本或回调不匹配");c.detailTextLabel.text=[TIOText(Diagnostic) stringByAppendingFormat:TIOText(@"\n官方完成回调：%lu；语音退出入口：%@"),(unsigned long)CompletionEvents,VoiceExitReady?TIOText(@"已校验"):TIOText(@"不可用")];}
-    return c;
-}
+
 - (void)thinking:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"deepseekDisableThinking"];}
 - (void)ttsToggle:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"ttsEnabled"];if(!sender.on)[VoiceTTS cancel];[self.tableView reloadData];}
 - (void)testTTS {
@@ -429,96 +500,123 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
     [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"保存") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){NSString *url=a.textFields[0].text?:@"",*model=a.textFields[1].text?:@"",*key=a.textFields[2].text?:@"";NSURL *valid=TIOValidateEndpoint(url);if(!valid||!TIOChatRequest(model,TIOText(@"测试"))){Alert(TIOText(@"未保存"),TIOText(@"需要有效的 HTTPS chat/completions 地址和模型名称。"));return;}url=valid.absoluteString;if(key.length&&!StoreKey(url,key)){Alert(TIOText(@"未保存"),TIOText(@"钥匙串写入失败。"));return;}[Controller cancel];if(![[Prefs stringForKey:@"endpoint"] isEqual:url]||![[Prefs stringForKey:@"model"] isEqual:model])[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[Prefs setObject:url forKey:@"endpoint"];[Prefs setObject:model forKey:@"model"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];
 }
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
-    NSDictionary *r=self.sections[ip.section][@"rows"][ip.row];[tableView deselectRowAtIndexPath:ip animated:YES];
-    if([r[@"key"] isEqual:@"camera"]){[self.navigationController pushViewController:TCCameraController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"dashboardCard"]){[self.navigationController pushViewController:TDCDashboardController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"dashboardEditor"]){TCEAIConfigure(^NSDictionary *{NSString *e=[Prefs stringForKey:@"endpoint"]?:@"";return @{@"endpoint":e,@"model":[Prefs stringForKey:@"model"]?:@"",@"key":ReadKey(e)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};});[self.navigationController pushViewController:TCEEditorController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"developerApps"]){[self.navigationController pushViewController:TAPAppsController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"agent"])return;
-#if TIO_IMAGE_RX_LAB
-    if([r[@"key"] isEqual:@"imageRXLab"]){[self.navigationController pushViewController:TIOImageUploadLabController() animated:YES];return;}
-#endif
-#if TIO_DISPLAY_PHONE
-    if([r[@"key"] isEqual:@"displayPhone"]){[self.navigationController pushViewController:TDPPhoneController() animated:YES];return;}
-#if !TIO_DISPLAY_FLASH
-    if([r[@"key"] isEqual:@"experimentalOTA"]){Alert(TIOText(@"PHONE 01 禁止刷机"),TIOText(@"本包仅测试手机显示链路。OTA 更新已锁定；未生成、安装新眼镜固件。"));return;}
-#endif
-#endif
-    if([r[@"key"] isEqual:@"localTranslation"]){TIOOpenLocalTranslation(self);return;}
-    if([r[@"key"] isEqual:@"diagnosticsRuntime"]){[self.navigationController pushViewController:TDDiagnosticsController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"music"]){[self.navigationController pushViewController:TMMusicController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"knowledge"]){TIOOpenKnowledge(self);return;}
-    if([r[@"key"] isEqual:@"experimentalOTA"]){[self.navigationController pushViewController:TIOExperimentalOTAController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"a2ui"]){[self.navigationController pushViewController:TIOA2UIController() animated:YES];return;}
-    if([r[@"key"] isEqual:@"subtitleHUD"]){[self.navigationController pushViewController:TIOSubtitleHUDController() animated:YES];return;}
-#if TIO_MAPKIT_ENABLED
-    if([r[@"key"] isEqual:@"navigation"]){[self.navigationController pushViewController:TIOMapKitNavigationController() animated:YES];return;}
-#else
-    if([r[@"key"] isEqual:@"navigation"]){Alert(@"Navigation",@"Navigation needs the MapKit build (TIO_MAPKIT_ENABLED=1).");return;}
-#endif
-    if([r[@"key"] isEqual:@"uiLanguage"]){
-        UIAlertController *sheet=[UIAlertController alertControllerWithTitle:TIOText(@"界面语言") message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-        NSArray *choices=@[@[TIOText(@"自动（跟随系统/RayNeo）"),@"auto"],@[@"English",@"en"],@[/*i18n:keep*/@"中文",@"zh"]];
-        for(NSArray *choice in choices)[sheet addAction:[UIAlertAction actionWithTitle:choice[0] style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){TIOSetUILanguageOverride(choice[1]);[self.tableView reloadData];}]];
-        [sheet addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];
-        sheet.popoverPresentationController.sourceView=self.view;sheet.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);
-        [self presentViewController:sheet animated:YES completion:nil];return;
-    }
-    if([r[@"key"] isEqual:@"languageStatus"]){NSDictionary *diagnostics=@{@"ui":TIOLanguageDiagnostics(),@"glasses":TIOLanguageFlagStatus()};NSData *data=[NSJSONSerialization dataWithJSONObject:diagnostics options:NSJSONWritingPrettyPrinted error:nil];NSString *message=[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding]?:@"{}";Alert(TIOText(@"语言与眼镜标签"),message);return;}
-    if([r[@"key"] isEqual:@"ttsTest"]){[self testTTS];return;}
-    if([r[@"key"] isEqual:@"aboutMe"]){[self configureAboutMe];return;}
-    if([r[@"key"] isEqual:@"glassesLog"]){[self.navigationController pushViewController:TIOGlassesLogController() animated:YES];return;}
-    if([@[@"thinking",@"search",@"exit",@"capture",@"tts"] containsObject:r[@"key"]])return;
-    NSInteger section=[r[@"section"] integerValue],row=[r[@"row"] integerValue];
-    if(section>=0){[self legacySelect:tableView at:[NSIndexPath indexPathForRow:row inSection:section]];return;}
-    Class cls=NSClassFromString(@[@"TIORecordingExportsPanel",@"TIORecordingTextPanel",@"TIOLifelogExportsPanel",@"TIOAlwaysOnAudioPanel"][row]);
-    UIViewController *p=[cls isSubclassOfClass:UITableViewController.class]?[(UITableViewController *)[cls alloc]initWithStyle:UITableViewStyleInsetGrouped]:[cls new];if(p)[self.navigationController pushViewController:p animated:YES];
+    NSDictionary *row=self.sections[ip.section][@"rows"][ip.row];NSString *key=row[@"key"];
+    [tableView deselectRowAtIndexPath:ip animated:YES];
+    if ([TIOHubSections(key) count]) {TIOPanel *child=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];child.page=key;[self.navigationController pushViewController:child animated:YES];return;}
+    [self openKey:key];
 }
-- (void)legacySelect:(UITableView *)tableView at:(NSIndexPath *)ip {
-    if(ip.section==0&&ip.row==0){
-        UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"回答模型") message:TIOText(@"选择实验接管会将识别后的问题发给你配置的服务。未知业务仍走官方；无已验证聊天模板时只保留选择、不接管。") preferredStyle:UIAlertControllerStyleActionSheet];
-        NSArray *titles=@[TIOText(@"官方默认"),TIOText(@"随机字符串验收（不调自有 API）"),TIOText(@"自定义模型（实验）")];
-        for(NSInteger i=0;i<3;i++){[a addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(UIAlertAction *x){[Controller cancel];[Prefs setInteger:i forKey:@"mode"];[self.tableView reloadData];if(i&&![Prefs stringForKey:@"verifiedChatDomain"])Alert(TIOText(@"尚未接管"),TIOText(@"需要先确认当前版本的聊天回包 domain。请先用官方模式完成一次问答，开发者核对后才开启接管。"));}]];}
-        [a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];a.popoverPresentationController.sourceView=self.view;a.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);[self presentViewController:a animated:YES completion:nil];
-    }else if(ip.section==0&&ip.row==1)[self configure];
-    else if(ip.section==0&&ip.row==8)[self configureSearch];
-    else if(ip.section==0&&ip.row==9)[self testSearch];
-    else if(ip.section==0&&ip.row==10)TIOOpenTodoRuntime(self);
-    else if(ip.section==0&&ip.row==11)Alert(TIOText(@"当前语音模型 Tools"),[NSString stringWithFormat:TIOText(@"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。"),TIOKnowledgeEnabled()?TIOText(@"已开启"):TIOText(@"未开启，请在知识库配置连接")]);
-    else if(ip.section==0&&ip.row==4){UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"清空自有模型上下文？") message:TIOText(@"仅清空本扩展内存中的聊天历史，不删除官方记录。正在进行的自有请求会取消并恢复官方模式。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"清空") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){[Controller cancel];[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];}
-    else if(ip.section==0&&ip.row==5)Alert(TIOText(@"当前系统提示词"),TIOSystemPrompt([Prefs stringForKey:@"model"]?:TIOText(@"尚未配置")));
-    else if(ip.section==0&&ip.row==2){[_testRequest cancel];_testRequest=[TIORequest new];__weak typeof(self) weakSelf=self;_testRequest.update=^(NSString *text,BOOL done,NSString *error){if(done){Alert(error?TIOText(@"API 测试失败"):TIOText(@"API 测试结果"),error?:text);weakSelf.testRequest=nil;}};[_testRequest startQuestion:@"Reply with exactly: API test passed."];
-    }else if(ip.section==1&&ip.row==1){dispatch_async(ArchiveQueue,^{NSError *error=nil;NSArray *urls=[Archive exportAt:NSDate.date error:&error];dispatch_async(dispatch_get_main_queue(),^{if(!urls){Alert(TIOText(@"暂无可分享文件"),error.localizedDescription?:TIOText(@"导出失败，原件未改。"));return;}UIActivityViewController *sheet=[[UIActivityViewController alloc]initWithActivityItems:urls applicationActivities:nil];sheet.popoverPresentationController.sourceView=self.view;sheet.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);[self presentViewController:sheet animated:YES completion:nil];});});}
-    else if(ip.section==2)[self.tableView reloadData];
+- (void)openKey:(NSString *)key {
+    UIViewController *screen=nil;
+    if ([key isEqual:@"experimentalOTA"]) screen=TIOExperimentalOTAController();
+#if TIO_MAPKIT_ENABLED
+    else if ([key isEqual:@"navigation"]) screen=TIOMapKitNavigationController();
+#endif
+    else if ([key isEqual:@"camera"]) screen=TCCameraController();
+    else if ([key isEqual:@"focus"]) screen=TIOFocusController();
+    else if ([key isEqual:@"menuLayout"]) screen=TIOMenuLayoutController();
+    else if ([key isEqual:@"brightness"]) screen=TIOBrightnessController();
+    else if ([key isEqual:@"watchRemote"]) screen=TIOWatchRemoteController();
+    else if ([key isEqual:@"developerApps"]) screen=TAPAppsController();
+    else if ([key isEqual:@"dashboardEditor"]) {
+        TCEAIConfigure(^NSDictionary *{NSString *e=[Prefs stringForKey:@"endpoint"]?:@"";return @{@"endpoint":e,@"model":[Prefs stringForKey:@"model"]?:@"",@"key":ReadKey(e)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};});
+        screen=TCEEditorController();
+    } else if ([key isEqual:@"language"]) {
+        NSArray *values=@[@"auto",@"en",@"zh"];
+        NSUInteger found=[values indexOfObject:TIOUILanguageOverride()];NSInteger selected=found==NSNotFound?0:(NSInteger)found;
+        TIOChoose(self,TIOText(@"hub.row.language"),nil,@[TIOText(@"hub.language.auto"),TIOText(@"hub.language.en"),TIOText(@"hub.language.zh")],selected,nil,^(NSInteger index){
+            if (index<0 || index>=values.count) return;
+            TIOSetUILanguageOverride(values[index]);
+            // WP1's setter invalidates its cache but does not post here.
+            TIOUILanguage();
+            [NSNotificationCenter.defaultCenter postNotificationName:TIOUILanguageDidChangeNotification object:nil];
+            TIOHubReload();
+        });return;
+    } else if ([key isEqual:@"knowledge"]) {TIOOpenKnowledge(self);return;}
+    else if ([key isEqual:@"music"]) screen=TMMusicController();
+    else if ([key isEqual:@"localTranslation"]) {TIOOpenLocalTranslation(self);return;}
+    else if ([key isEqual:@"diagnosticsRuntime"]) screen=TDDiagnosticsController();
+    else if ([key isEqual:@"glassesLog"]) screen=TIOGlassesLogController();
+#if TIO_IMAGE_RX_LAB && TIO_DISPLAY_PHONE
+    else if ([key isEqual:@"displayPhone"]) screen=TDPPhoneController();
+#endif
+#if TIO_IMAGE_RX_LAB
+    else if ([key isEqual:@"imageRXLab"]) screen=TIOImageUploadLabController();
+#endif
+    else if ([key isEqual:@"dashboardCard"]) screen=TDCDashboardController();
+    else if ([key isEqual:@"a2ui"]) screen=TIOA2UIController();
+    else if ([key isEqual:@"subtitleHUD"]) screen=TIOSubtitleHUDController();
+    else if ([key isEqual:@"ttsTest"]) {[self testTTS];return;}
+    else if ([key isEqual:@"aboutMe"]) {[self configureAboutMe];return;}
+    else if ([key isEqual:@"languageStatus"]) {
+        NSDictionary *diagnostics=@{@"ui":TIOLanguageDiagnostics(),@"glasses":TIOLanguageFlagStatus()};
+        NSData *data=[NSJSONSerialization dataWithJSONObject:diagnostics options:NSJSONWritingPrettyPrinted error:nil];
+        TIONotice(self,TIOText(@"hub.row.languageStatus"),[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding]?:@"{}");return;
+    } else if ([@[@"tts",@"thinking",@"exit",@"capture",@"agent"] containsObject:key]) return;
+    else if ([@[@"recordings",@"summary",@"lifelogText",@"lifelogAudio"] containsObject:key]) {
+        NSUInteger index=[@[@"recordings",@"summary",@"lifelogText",@"lifelogAudio"] indexOfObject:key];
+        Class cls=NSClassFromString(@[@"TIORecordingExportsPanel",@"TIORecordingTextPanel",@"TIOLifelogExportsPanel",@"TIOAlwaysOnAudioPanel"][index]);
+        screen=[cls isSubclassOfClass:UITableViewController.class]?[(UITableViewController *)[cls alloc]initWithStyle:UITableViewStyleInsetGrouped]:[cls new];
+    } else {[self performKey:key];return;}
+    if (screen) [self.navigationController pushViewController:screen animated:YES];
+}
+- (void)performKey:(NSString *)key {
+    if ([key isEqual:@"mode"]) {
+        NSArray *titles=@[TIOText(@"官方默认"),TIOText(@"随机字符串验收（不调自有 API）"),TIOText(@"自定义模型（实验）")]; // WP7 appends option 4.
+        TIOChoose(self,TIOText(@"回答模型"),TIOText(@"选择实验接管会将识别后的问题发给你配置的服务。未知业务仍走官方；无已验证聊天模板时只保留选择、不接管。"),titles,[Prefs integerForKey:@"mode"],nil,^(NSInteger i){
+            [Controller cancel];[Prefs setInteger:i forKey:@"mode"];[self.tableView reloadData];if(i&&![Prefs stringForKey:@"verifiedChatDomain"])Alert(TIOText(@"尚未接管"),TIOText(@"需要先确认当前版本的聊天回包 domain。请先用官方模式完成一次问答，开发者核对后才开启接管。"));
+        });return;
+    }
+    if ([key isEqual:@"api"]) {[self configure];return;}
+    if ([key isEqual:@"search"]) {[self configureSearch];return;}
+    if ([key isEqual:@"searchTest"]) {[self testSearch];return;}
+    if ([key isEqual:@"todoTest"]) {TIOOpenTodoRuntime(self);return;}
+    if ([key isEqual:@"tools"]) {Alert(TIOText(@"当前语音模型 Tools"),[NSString stringWithFormat:TIOText(@"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。"),TIOKnowledgeEnabled()?TIOText(@"已开启"):TIOText(@"未开启，请在知识库配置连接")]);return;}
+    if ([key isEqual:@"history"]) {UIAlertController *a=[UIAlertController alertControllerWithTitle:TIOText(@"清空自有模型上下文？") message:TIOText(@"仅清空本扩展内存中的聊天历史，不删除官方记录。正在进行的自有请求会取消并恢复官方模式。") preferredStyle:UIAlertControllerStyleAlert];[a addAction:[UIAlertAction actionWithTitle:TIOText(/*i18n:ui*/@"取消") style:UIAlertActionStyleCancel handler:nil]];[a addAction:[UIAlertAction actionWithTitle:TIOText(@"清空") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x){[Controller cancel];[Controller.history clear];[Prefs setInteger:0 forKey:@"mode"];[self.tableView reloadData];}]];[self presentViewController:a animated:YES completion:nil];return;}
+    if ([key isEqual:@"prompt"]) {Alert(TIOText(@"当前系统提示词"),TIOSystemPrompt([Prefs stringForKey:@"model"]?:TIOText(@"尚未配置")));return;}
+    if ([key isEqual:@"apiTest"]) {[_testRequest cancel];_testRequest=[TIORequest new];__weak typeof(self) weakSelf=self;_testRequest.update=^(NSString *text,BOOL done,NSString *error){if(done){Alert(error?TIOText(@"API 测试失败"):TIOText(@"API 测试结果"),error?:text);weakSelf.testRequest=nil;}};[_testRequest startQuestion:@"Reply with exactly: API test passed."];return;}
+    if ([key isEqual:@"archive"]) {dispatch_async(ArchiveQueue,^{NSError *error=nil;NSArray *urls=[Archive exportAt:NSDate.date error:&error];dispatch_async(dispatch_get_main_queue(),^{if(!urls){Alert(TIOText(@"暂无可分享文件"),error.localizedDescription?:TIOText(@"导出失败，原件未改。"));return;}UIActivityViewController *sheet=[[UIActivityViewController alloc]initWithActivityItems:urls applicationActivities:nil];sheet.popoverPresentationController.sourceView=self.view;sheet.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);[self presentViewController:sheet animated:YES completion:nil];});});return;}
+    if ([key isEqual:@"status"]) {NSString *message=[[TIOText(Diagnostic) stringByAppendingFormat:TIOText(@"\n官方完成回调：%lu；语音退出入口：%@"),(unsigned long)CompletionEvents,VoiceExitReady?TIOText(@"已校验"):TIOText(@"不可用")] copy];TIONotice(self,TIOText(@"hub.row.status"),message);[self.tableView reloadData];return;}
 }
 @end
+
 
 // Simulator-only host uses these same UIKit controllers, no official binary,
 // credentials, hardware hooks or network-backed model service.
 #if TIO_UI_PREVIEW
-UITabBarController *TIOCreateResearchPreview(void){
+UIViewController *TIOCreateTurboPreview(void){
     Prefs=[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.research.preview"];
-    [Prefs registerDefaults:@{@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+    [Prefs registerDefaults:@{@"mode":@0,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
     TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
     VoiceTTS=[TIOVoiceTTS new];VoiceTTS.fallbackLanguage=AddonUILanguage();VoiceTTS.willBeginTurn=^{TMMusicPauseForVoice();};
     Controller=[TIOController new];Diagnostic=TIOText(@"界面预览：未连接眼镜，未加载官方通信库");
     ArchiveQueue=dispatch_queue_create("io.turboio.preview.archive",DISPATCH_QUEUE_SERIAL);
     Archive=[[TIOTranscriptArchive alloc]initWithDirectory:[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"ResearchPreview"]]];
-    NSMutableArray *pages=[NSMutableArray new];for(NSString *key in @[@"model",@"library",@"diagnostics"]){TIOPanel *p=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];p.page=key;[pages addObject:p];}
-    return TIOCreateResearchTabs(pages);
+    TIOPanel *root=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];root.page=@"";
+    return TIOCreateTurboHub(root);
 }
 #endif
+
+static BOOL TIOInsideTurboHub(UIViewController *top) {
+    for(UIViewController *current=top;current;current=current.presentingViewController) {
+        if(current.view.tag==7920||current.navigationController.view.tag==7920)return YES;
+    }
+    return NO;
+}
 
 @interface TIOEntryTarget : NSObject
 + (void)show;
 @end
 @implementation TIOEntryTarget
-+ (void)show {UIViewController *top=TopController();if(!top||top.tabBarController.view.tag==7920||top.view.tag==7920)return;static UITabBarController *shell;
-    if(!shell){NSMutableArray *pages=[NSMutableArray new];for(NSString *key in @[@"model",@"library",@"diagnostics"]){TIOPanel *p=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];p.page=key;[pages addObject:p];}shell=TIOCreateResearchTabs(pages);}
-    for(UINavigationController *nav in shell.viewControllers)[nav popToRootViewControllerAnimated:NO];Entry.hidden=YES;[top presentViewController:shell animated:YES completion:nil];}
++ (void)show {
+    UIViewController *top=TopController();
+    if(!top||TIOInsideTurboHub(top))return;
+    static UINavigationController *hub;
+    if(!hub){TIOPanel *root=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];root.page=@"";hub=TIOCreateTurboHub(root);}
+    [hub popToRootViewControllerAnimated:NO];Entry.hidden=YES;[top presentViewController:hub animated:YES completion:nil];
+}
 @end
-
 static BOOL Signature(Class cls,NSString *name,NSUInteger argc,const char *returnType,NSArray<NSString *> *types) {
     Method m=class_getInstanceMethod(cls,NSSelectorFromString(name));if(!m||method_getNumberOfArguments(m)!=argc)return NO;
     char *r=method_copyReturnType(m);BOOL ok=r&&r[0]==returnType[0];free(r);
@@ -534,8 +632,8 @@ static BOOL VersionMatches(void) {
 }
 static void AddEntry(void) {
     UIViewController *top=TopController();UIWindow *window=top.view.window;if(!window)return;
-    if(top.tabBarController.view.tag==7920||top.view.tag==7920){Entry.hidden=YES;return;}
-    if(!Entry){Entry=[UIButton buttonWithType:UIButtonTypeSystem];[Entry setTitle:TIOText(@"研究") forState:UIControlStateNormal];Entry.accessibilityLabel=TIOText(@"Turbo IO 私用研究扩展");Entry.backgroundColor=UIColor.systemIndigoColor;[Entry setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];Entry.layer.cornerRadius=20;[Entry addTarget:TIOEntryTarget.class action:@selector(show) forControlEvents:UIControlEventTouchUpInside];}
+    if(TIOInsideTurboHub(top)){Entry.hidden=YES;return;}
+    if(!Entry){Entry=[UIButton buttonWithType:UIButtonTypeSystem];[Entry setTitle:TIOText(@"hub.entry") forState:UIControlStateNormal];Entry.accessibilityLabel=TIOText(@"hub.title");Entry.backgroundColor=UIColor.systemIndigoColor;[Entry setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];Entry.layer.cornerRadius=20;[Entry addTarget:TIOEntryTarget.class action:@selector(show) forControlEvents:UIControlEventTouchUpInside];}
     Entry.hidden=NO;Entry.frame=CGRectMake(window.bounds.size.width-66,window.safeAreaInsets.top+80,54,40);[window addSubview:Entry];
     if(VersionMatches())TIOStartHomeTabBridge(Entry,^{[TIOEntryTarget show];});
 }
@@ -550,7 +648,7 @@ __attribute__((constructor)) static void Load(void) {
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
             TIOLanguageFlagStart();
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
-            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
+            [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
             Controller=[TIOController new];
             ImportPrivateBootstrap();

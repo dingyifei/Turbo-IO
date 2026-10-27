@@ -11,6 +11,3 @@ typedef NS_ENUM(NSInteger, TIOHubSection) {
 FOUNDATION_EXPORT NSArray<NSDictionary *> *TIOHubCatalog(void);
 FOUNDATION_EXPORT NSArray<NSDictionary *> *TIOHubSections(NSString *parent);
 FOUNDATION_EXPORT NSString *TIOHubSectionTitle(TIOHubSection section);
-
-// Temporary compatibility for Addon.m and EditorialShell.inc; WP5 step 9 removes it.
-FOUNDATION_EXPORT NSArray<NSDictionary *> *TIOResearchSections(NSString *page);

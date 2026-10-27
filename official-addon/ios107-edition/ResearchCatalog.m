@@ -114,7 +114,3 @@ NSArray<NSDictionary *> *TIOHubSections(NSString *parent) {
     }
     return sections;
 }
-
-NSArray<NSDictionary *> *TIOResearchSections(NSString *page) {
-    return [page isEqualToString:@"unknown"] ? @[] : TIOHubSections(@"");
-}
