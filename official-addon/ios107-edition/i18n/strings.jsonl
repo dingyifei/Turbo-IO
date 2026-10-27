@@ -1947,3 +1947,6 @@
 {"key":"apple.speech.en","en":"Speech assets · English","zh":"语音资源 · 英语"}
 {"key":"apple.speech.zh","en":"Speech assets · Chinese","zh":"语音资源 · 中文"}
 {"key":"apple.speech.prepare","en":"Prepare speech assets","zh":"准备语音资源"}
+{"key":"apple.captions.title","en":"Live captions (on-device)","zh":"实时字幕（本机）"}
+{"key":"apple.captions.unavailable.title","en":"On-device captions unavailable","zh":"本机字幕不可用"}
+{"key":"apple.captions.unavailable.message","en":"Requires iOS 26+ and the packaged TurboAppleAI module. The Hy-MT2 module is optional. Prepare speech and translation packs from the caption page.","zh":"需要 iOS 26 或更新版本，并已打包 TurboAppleAI 模块。Hy-MT2 模块可选。请在字幕页准备语音和翻译资源。"}

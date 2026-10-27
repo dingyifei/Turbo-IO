@@ -32,6 +32,9 @@ static void CheckTitles(NSArray<NSDictionary *> *catalog, NSUInteger maxLength) 
         assert([title rangeOfString:@"·"].location == NSNotFound);
         assert([code numberOfMatchesInString:title options:0 range:NSMakeRange(0,title.length)] == 0);
         NSString *stringKey = [@"hub.row." stringByAppendingString:row[@"key"]];
+#if TIO_APPLE_AI
+        if([row[@"key"] isEqual:@"localTranslation"])stringKey=@"apple.captions.title";
+#endif
         assert([title isEqualToString:TIOText(stringKey)]);
         assert(![title isEqualToString:stringKey]);
     }

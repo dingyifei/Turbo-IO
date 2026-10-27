@@ -144,7 +144,8 @@
     "MusicPlayer.m",
     "MusicUI.m",
     "WebSearch.m",
-    "RecordingExportsUI.m"
+    "RecordingExportsUI.m",
+    "LocalTranslationEntry.m"
   ],
   "virtualIDs": {
     "baseline": "BASE85",

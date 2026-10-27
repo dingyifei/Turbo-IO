@@ -85,7 +85,11 @@ NSArray<NSDictionary *> *TIOHubCatalog(void) {
         const TIOHubRowDefinition *row = &Rows[index];
         NSString *code = [row->key isEqualToString:@"experimentalOTA"] ? FirmwareCode() : row->code;
         [catalog addObject:@{@"key":row->key,
+#if TIO_APPLE_AI
+                             @"title":TIOText([row->key isEqual:@"localTranslation"]?@"apple.captions.title":[@"hub.row." stringByAppendingString:row->key]),
+#else
                              @"title":TIOText([@"hub.row." stringByAppendingString:row->key]),
+#endif
                              @"icon":row->icon,
                              @"section":@(row->section),
                              @"parent":row->parent,
