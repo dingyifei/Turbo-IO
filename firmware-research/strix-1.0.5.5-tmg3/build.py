@@ -51,6 +51,13 @@ def pin(spec, field, value, repin):
         raise AssertionError('pin mismatch: ' + field)
     spec[field] = value
 
+def animation_asset():
+    # Shared immutable build input: avoid duplicating the reviewed stock asset.
+    asset = HERE.parent/'strix-1.0.5.5-tmg2'/'assets'/'animation-frames.l8'
+    assert sha(asset.read_bytes()) == 'f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d', 'pin mismatch: animation asset'
+    return asset
+
+
 def safe_zip(path, expected):
     assert sha(path.read_bytes()) == expected, 'Wrong input archive'
     with zipfile.ZipFile(path) as z:
@@ -140,8 +147,7 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
             pin(row, 'sha256', sha(p.read_bytes()), repin)
         obj = out / ('extra-'+str(i)+'-'+p.stem+'.o')
         run([llvm/'clang',*flags,'-c',p,'-o',obj]); objects.append(obj)
-    animation = HERE/'assets/animation-frames.l8'
-    assert sha(animation.read_bytes()) == 'f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d'
+    animation = animation_asset()
     asm = out/'animation-asset.S'
     asm.write_text('.section .rodata.ta_asset,"a",%progbits\n.balign 64\n.global ta_asset\n.type ta_asset,%object\nta_asset:\n.incbin "'+str(animation)+'", 0, 33792\n.size ta_asset, .-ta_asset\n')
     obj = out/'animation-asset.o'

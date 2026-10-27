@@ -5,9 +5,9 @@
 #include "focus_menu.h"
 #include "focus_menu_icons.h"
 #include <string.h>
-static const char *const names[]={"录音","实时字幕","实时提示","待办","提词器","全天智记","勿扰模式","显示测试","导航","网易云音乐","微信读书","番茄时钟","滴滴出行","我的应用","情境英语","Dots","遥控拍照"};
+static const char *const names[]={"录音","实时字幕","实时提示","待办","提词器","全天智记","勿扰模式","显示测试","导航","音乐","番茄时钟","我的应用","遥控拍照"};
 _Static_assert(sizeof names/sizeof *names==FM_ITEMS,"labels match stock item count");
-_Static_assert(sizeof fm_icon4==19584,"artwork budget");
+_Static_assert(sizeof fm_icon4==14976,"artwork budget");
 static unsigned per(const FMView *v){return v->rows*3;}
 static unsigned icon_size(const FMView *v){return v->rows==3?32:40;}
 static int center(unsigned cell){return 92+178*(int)(cell%3);}

@@ -56,3 +56,7 @@ python3 firmware-research/strix-1.0.5.5-tmg2/build.py \
 **手机锁屏后导航停止/卡住仍未闭环，不要用于驾驶或依赖它进行安全导航。** 周边道路受图源覆盖、网络及每会话请求上限影响；路名不保证始终可见。NAVS3 路网稳定性修正已离线回归并安装加载，持续实机导航仍待验收。
 
 公开手机版不含微信读书网页正文适配、个人 Cookie / Key、签名信息、私用 IPA、通知或智记正文。自行配置服务与登录，Dots 未完成。固件可能无法启动、失去 OTA 或损坏设备，不承诺回滚、救砖或售后。原厂权利不变；原创代码沿用仓库非商业许可。
+
+## Shared immutable animation input
+
+TMG3 reads `../strix-1.0.5.5-tmg2/assets/animation-frames.l8` without modifying it. The builder checks SHA-256 `f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d` before compiling it, and fails closed on any mismatch. No duplicate binary asset is tracked in this tree.

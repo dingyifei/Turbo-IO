@@ -59,7 +59,7 @@ void fm_sync(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
  if(!show){c->view.api.visible(c->view.api.ctx,c->view.root,false);c->selection=-1;fm_view_suspend(&c->view);return;}
  if(!focus_screen_on())return; /* Never repaint or wake a sleeping panel. */
  if(c->view.rows!=c->desired_rows){if(!fm_view_rows(&c->view,c->desired_rows))return;c->selection=-1;}
- int index=(int)*(uint32_t *)((uint8_t *)app+0x88);if(index<0||index>=17)return;uint32_t now=stream_tick();
+ int index=(int)*(uint32_t *)((uint8_t *)app+0x88);if(index<0||index>=TIO_MENU_ITEMS)return;uint32_t now=stream_tick();
  if(index==c->selection&&(uint32_t)(now-c->refreshed)<1000){(void)fm_view_step(&c->view,now);return;}
  void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*battery=mon?fm_battery_monitor(mon):NULL;
  int64_t local=sys?fm_local_time(sys):0;int level=battery?fm_battery_level(battery):-1;
