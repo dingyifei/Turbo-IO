@@ -115,6 +115,11 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
 - (BOOL)validTicket:(NSUInteger)ticket revision:(NSUInteger)revision client:(NSString *)client{
  return ticket==_ticket&&revision==_revision&&TMSpotifyAuth.shared.signedIn&&[client isEqual:TMSpotifyAuth.shared.clientID];
 }
+// Explicit phone recovery follows command intent across player polls, including
+// 204. Track assets and ordinary old-track command errors retain validTicket:.
+- (BOOL)validIntentRevision:(NSUInteger)revision client:(NSString *)client{
+ return revision==_revision&&TMSpotifyAuth.shared.signedIn&&[client isEqual:TMSpotifyAuth.shared.clientID];
+}
 - (void)foreground:(NSNotification *)notification{__weak typeof(self) weak=self;TMPlayerOnMain(^{[weak refreshNow];});}
 - (void)authChanged:(NSNotification *)notification{
  __weak typeof(self) weak=self;TMPlayerOnMain(^{
@@ -146,6 +151,7 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
 - (BOOL)finishResume{
  if(!_resumePending)return NO;_resumePending=NO;
  if(_resumeRevision!=_revision||_resumeViewRevision!=_viewRevision)return NO;
+ _glasses=YES;[NSUserDefaults.standardUserDefaults setBool:YES forKey:@"TurboMusicGlassesV1"];
  [self showOnGlasses];return YES;
 }
 - (void)poll{
@@ -232,19 +238,19 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
  NSUInteger ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];__weak typeof(self) weak=self;
  [self followUpForTicket:ticket revision:revision client:client];
  void(^done)(TMSpotifyErrorKind,NSTimeInterval)=^(TMSpotifyErrorKind kind,NSTimeInterval retry){TMPlayerOnMain(^{
-  TMPlayer *s=weak;if(!s||![s validTicket:ticket revision:revision client:client])return;
+  TMPlayer *s=weak;if(!s||![s validIntentRevision:revision client:client])return;
   if(kind==TMSpotifyNoActiveDevice&&value&&allowTransfer){
    [TMSpotifyAPI.shared devices:^(NSArray *devices,TMSpotifyErrorKind deviceKind){TMPlayerOnMain(^{
-    TMPlayer *current=weak;if(!current||![current validTicket:ticket revision:revision client:client])return;
+    TMPlayer *current=weak;if(!current||![current validIntentRevision:revision client:client])return;
     if(deviceKind!=TMSpotifyOK){current->_status=TMPlayerStatus(deviceKind);return;}
     NSString *device=TMSpotifyPickDevice(devices);if(!device.length){current->_status=TIOText(@"music.status.noDevice");return;}
     [TMSpotifyAPI.shared transfer:device play:YES done:^(TMSpotifyErrorKind transferKind,NSTimeInterval transferRetry){TMPlayerOnMain(^{
-     TMPlayer *latest=weak;if(!latest||![latest validTicket:ticket revision:revision client:client])return;
+     TMPlayer *latest=weak;if(!latest||![latest validIntentRevision:revision client:client])return;
      if(transferKind!=TMSpotifyOK)latest->_status=TMPlayerStatus(transferKind);
-     [latest followUpForTicket:ticket revision:revision client:client];
+     [latest followUpForTicket:latest->_ticket revision:revision client:client];
     });}];
    });}];
-  }else if(kind!=TMSpotifyOK)s->_status=TMPlayerStatus(kind);
+  }else if(kind!=TMSpotifyOK&&[s validTicket:ticket revision:revision client:client])s->_status=TMPlayerStatus(kind);
  });};
  if(value)[TMSpotifyAPI.shared play:done];else [TMSpotifyAPI.shared pause:done];
 }
