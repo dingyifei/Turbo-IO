@@ -1,7 +1,9 @@
 #import "ProtocolContext.h"
 #import "HostCompatibility.h"
+#import <objc/message.h>
 #import <CommonCrypto/CommonDigest.h>
 #include <math.h>
+NSString *const TIOProtocolDeviceDidChangeNotification=@"TIOProtocolDeviceDidChange";
 static __weak id CurrentPlugin;
 static NSString *CurrentDevice;
 static BOOL Text(id v){return [v isKindOfClass:NSString.class]&&[v length]>0&&[v length]<=200;}
@@ -9,7 +11,11 @@ void TIOProtocolObserveCall(id plugin,NSString *method,NSDictionary *args){
     if(![args isKindOfClass:NSDictionary.class])return;
     if([method hasPrefix:@"rayneonet_"]&&([method.lowercaseString containsString:@"disconnect"]||[method.lowercaseString containsString:@"unbind"]||[method.lowercaseString containsString:@"unpair"])){if(!args[@"deviceId"]||[args[@"deviceId"] isEqual:CurrentDevice]){CurrentPlugin=nil;CurrentDevice=nil;}return;}
     if(![@[@"rayneonet_sendMessage",@"rayneonet_sendFile"] containsObject:method]||!plugin||!Text(args[@"deviceId"]))return;
+    NSString *previous=CurrentDevice;
     CurrentPlugin=plugin;CurrentDevice=[args[@"deviceId"] copy];
+    if(CurrentDevice&&![CurrentDevice isEqual:previous])dispatch_async(dispatch_get_main_queue(),^{
+        [NSNotificationCenter.defaultCenter postNotificationName:TIOProtocolDeviceDidChangeNotification object:nil];
+    });
 }
 void TIOProtocolObserveEvent(NSDictionary *e){
     // Unknown events cannot establish a target or resurrect a dead plugin.
@@ -19,6 +25,17 @@ void TIOProtocolObserveEvent(NSDictionary *e){
 id TIOProtocolPlugin(void){return CurrentPlugin;}
 NSString *TIOProtocolDevice(void){return CurrentPlugin?CurrentDevice:nil;}
 NSDictionary *TIOProtocolRoute(NSInteger business){return TIOProtocolDevice()?@{@"deviceId":CurrentDevice,@"businessId":@(business)}:nil;}
+BOOL TIOProtocolSendBusiness(NSInteger business,NSData *payload){
+    if(!NSThread.isMainThread||![payload isKindOfClass:NSData.class])return NO;
+    id plugin=TIOProtocolPlugin();Class td=NSClassFromString(@"FlutterStandardTypedData"),mc=NSClassFromString(@"FlutterMethodCall");SEL wrap=NSSelectorFromString(@"typedDataWithBytes:"),make=NSSelectorFromString(@"methodCallWithMethodName:arguments:"),handle=NSSelectorFromString(@"handleMethodCall:result:");
+    if(!plugin||![plugin respondsToSelector:handle]||![td respondsToSelector:wrap]||![mc respondsToSelector:make])return NO;
+    NSMutableDictionary *args=[TIOProtocolRoute(business)mutableCopy];if(![args[@"deviceId"]isEqual:TIOProtocolDevice()])return NO;
+    @try{
+        args[@"payload"]=((id(*)(id,SEL,id))objc_msgSend)(td,wrap,payload);
+        id call=((id(*)(id,SEL,id,id))objc_msgSend)(mc,make,@"rayneonet_sendMessage",args);
+        ((void(*)(id,SEL,id,id))objc_msgSend)(plugin,handle,call,[^(id result){/* submission is not an ACK */} copy]);return YES;
+    }@catch(NSException *e){return NO;}
+}
 static BOOL Number(id v){return [v isKindOfClass:NSNumber.class]&&isfinite([v doubleValue])&&fabs([v doubleValue])<=100000;}
 NSDictionary *TIOProtocolSanitize(NSString *kind,NSDictionary *v){
     if(![v isKindOfClass:NSDictionary.class])return nil;

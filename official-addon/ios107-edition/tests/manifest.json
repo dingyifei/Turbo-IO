@@ -101,6 +101,10 @@
       "status": "run",
       "group": "knowledge-tool-flow"
     },
+    "tests/LanguageFlagTests.m": {
+      "status": "run",
+      "group": "language-flag"
+    },
     "MenuLayoutTests.m": {
       "status": "run",
       "group": "menu-layout"

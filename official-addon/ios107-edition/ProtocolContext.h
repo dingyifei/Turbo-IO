@@ -6,6 +6,8 @@ void TIOProtocolObserveEvent(NSDictionary *event);
 id TIOProtocolPlugin(void);
 NSString *TIOProtocolDevice(void);
 NSDictionary *TIOProtocolRoute(NSInteger business);
+extern NSString *const TIOProtocolDeviceDidChangeNotification;
+BOOL TIOProtocolSendBusiness(NSInteger business,NSData *payload);
 // Version/device scoped, sanitized templates only. No payload text, paths,
 // device identifiers, credentials, old session IDs or live-ready flags on disk.
 NSDictionary *TIOProtocolTemplate(NSString *kind,NSString *device);

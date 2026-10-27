@@ -7,6 +7,7 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import <mach-o/dyld.h>
 #import <mach-o/loader.h>
 #import "Core.h"
+#import "LanguageFlag.h"
 #import "LocalTranslationEntry.h"
 #import "RecordingExports.h"
 #import "RecordingText.h"
@@ -536,6 +537,7 @@ __attribute__((constructor)) static void Load(void) {
             TIOStartExperimentalOTAFeedIfMarked();
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
+            TIOLanguageFlagStart();
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
             [Prefs registerDefaults:@{@"voiceExitCommands":@YES,@"ttsEnabled":@YES}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
