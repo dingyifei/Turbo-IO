@@ -342,6 +342,8 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #endif
     if([r[@"key"] isEqual:@"tts"]){c.detailTextLabel.text=@"官方/自有回答 · 眼镜蓝牙音频";
         UISwitch *s=[UISwitch new];s.on=[Prefs boolForKey:@"ttsEnabled"];[s addTarget:self action:@selector(ttsToggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=s;}
+    if([r[@"key"] isEqual:@"uiLanguage"]){NSString *override=TIOUILanguageOverride();NSString *label=[override isEqual:@"en"]?@"English":[override isEqual:@"zh"]?/*i18n:keep*/@"中文":@"自动（跟随系统/RayNeo）";c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",label,TIOUILanguage()];}
+    if([r[@"key"] isEqual:@"languageStatus"])c.detailTextLabel.text=TIOLanguageFlagStatus()[@"state"];
     if([r[@"key"] isEqual:@"ttsTest"]){c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",[VoiceTTS voiceSummaryForLanguage:AddonUILanguage()],[VoiceTTS statusForLanguage:AddonUILanguage()]];
         UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:@"播放" forState:UIControlStateNormal];
         button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
@@ -455,6 +457,15 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
 #else
     if([r[@"key"] isEqual:@"navigation"]){Alert(@"Navigation",@"Navigation needs the MapKit build (TIO_MAPKIT_ENABLED=1).");return;}
 #endif
+    if([r[@"key"] isEqual:@"uiLanguage"]){
+        UIAlertController *sheet=[UIAlertController alertControllerWithTitle:@"界面语言" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+        NSArray *choices=@[@[@"自动（跟随系统/RayNeo）",@"auto"],@[@"English",@"en"],@[/*i18n:keep*/@"中文",@"zh"]];
+        for(NSArray *choice in choices)[sheet addAction:[UIAlertAction actionWithTitle:choice[0] style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){TIOSetUILanguageOverride(choice[1]);[self.tableView reloadData];}]];
+        [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+        sheet.popoverPresentationController.sourceView=self.view;sheet.popoverPresentationController.sourceRect=CGRectMake(self.view.bounds.size.width/2,100,1,1);
+        [self presentViewController:sheet animated:YES completion:nil];return;
+    }
+    if([r[@"key"] isEqual:@"languageStatus"]){NSDictionary *diagnostics=@{@"ui":TIOLanguageDiagnostics(),@"glasses":TIOLanguageFlagStatus()};NSData *data=[NSJSONSerialization dataWithJSONObject:diagnostics options:NSJSONWritingPrettyPrinted error:nil];NSString *message=[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding]?:@"{}";Alert(@"语言与眼镜标签",message);return;}
     if([r[@"key"] isEqual:@"ttsTest"]){[self testTTS];return;}
     if([r[@"key"] isEqual:@"aboutMe"]){[self configureAboutMe];return;}
     if([r[@"key"] isEqual:@"glassesLog"]){[self.navigationController pushViewController:TIOGlassesLogController() animated:YES];return;}
