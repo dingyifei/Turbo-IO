@@ -365,6 +365,7 @@ static const TIOStringRow Rows[]={
     {"ota.source.fail","Not running · reopen RayNeo","未运行，请重开 RayNeo"},
     {"ota.source.ok","Running","运行中"},
     {"ota.source.pending","Starting…","正在启动…"},
+    {"ota.step.accessibility","Step %ld of 3, %@","第 %ld 步，共 3 步：%@"},
     {"ota.step.check","Check","检查"},
     {"ota.step.download","Download","下载"},
     {"ota.step.install","Install","安装"},

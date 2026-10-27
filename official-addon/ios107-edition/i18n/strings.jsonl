@@ -359,6 +359,7 @@
 {"key":"ota.source.fail","en":"Not running · reopen RayNeo","zh":"未运行，请重开 RayNeo"}
 {"key":"ota.source.ok","en":"Running","zh":"运行中"}
 {"key":"ota.source.pending","en":"Starting…","zh":"正在启动…"}
+{"key":"ota.step.accessibility","en":"Step %ld of 3, %@","zh":"第 %ld 步，共 3 步：%@"}
 {"key":"ota.step.check","en":"Check","zh":"检查"}
 {"key":"ota.step.download","en":"Download","zh":"下载"}
 {"key":"ota.step.install","en":"Install","zh":"安装"}
