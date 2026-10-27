@@ -4,7 +4,7 @@
       "offset": "0x4da940",
       "address": "0x1066a940",
       "before": "90b583b0",
-      "after": "1bf2c7bf",
+      "after": "10f215be",
       "role": "Entry trampoline show",
       "kind": "bw",
       "target": "m8_hook_show",
@@ -14,7 +14,7 @@
       "offset": "0x4da974",
       "address": "0x1066a974",
       "before": "b0b582b0",
-      "after": "1bf2c8bf",
+      "after": "10f220be",
       "role": "Entry trampoline hide",
       "kind": "bw",
       "target": "m8_hook_hide",
@@ -24,7 +24,7 @@
       "offset": "0x4d99fc",
       "address": "0x106699fc",
       "before": "f0b50446",
-      "after": "1cf2d7bf",
+      "after": "11f20ebe",
       "role": "Entry trampoline destroy",
       "kind": "bw",
       "target": "m8_hook_destroy",
@@ -34,7 +34,7 @@
       "offset": "0x4da6ae",
       "address": "0x1066a6ae",
       "before": "2de9f041",
-      "after": "1cf2ebb9",
+      "after": "11f201b8",
       "role": "Entry trampoline wheel",
       "kind": "bw",
       "target": "m8_hook_wheel",
@@ -44,7 +44,7 @@
       "offset": "0x4daa40",
       "address": "0x1066aa40",
       "before": "b0b582b0",
-      "after": "1cf2a2b8",
+      "after": "10f284be",
       "role": "Entry trampoline event",
       "kind": "bw",
       "target": "m8_hook_event",
@@ -54,7 +54,7 @@
       "offset": "0x3ec04c",
       "address": "0x1057c04c",
       "before": "b0b50c46",
-      "after": "0af33abf",
+      "after": "fff29fbc",
       "role": "Entry trampoline message",
       "kind": "bw",
       "target": "m8_hook_message",
@@ -64,7 +64,7 @@
       "offset": "0x5a12b0",
       "address": "0x107312b0",
       "before": "f0b5c3b0",
-      "after": "48f1e6bc",
+      "after": "42f1c8be",
       "role": "Entry trampoline dc_text",
       "kind": "bw",
       "target": "m8_hook_dc_text",
@@ -74,7 +74,7 @@
       "offset": "0x4da1fc",
       "address": "0x1066a1fc",
       "before": "2de9f04f",
-      "after": "1bf216b9",
+      "after": "10f2aebb",
       "role": "Entry trampoline names",
       "kind": "bw",
       "target": "m8_hook_names",
@@ -84,7 +84,7 @@
       "offset": "0x4d9cc8",
       "address": "0x10669cc8",
       "before": "2de9f047",
-      "after": "1cf232b8",
+      "after": "11f20ab9",
       "role": "Entry trampoline dots",
       "kind": "bw",
       "target": "m8_hook_dots",
@@ -94,7 +94,7 @@
       "offset": "0x4d9ca6",
       "address": "0x10669ca6",
       "before": "98b50446",
-      "after": "1cf217b8",
+      "after": "11f2fbb8",
       "role": "Entry trampoline delete_dots",
       "kind": "bw",
       "target": "m8_hook_delete_dots",
@@ -104,7 +104,7 @@
       "offset": "0x4da068",
       "address": "0x1066a068",
       "before": "b0b584b0",
-      "after": "1bf2d8bf",
+      "after": "10f2bcbf",
       "role": "Entry trampoline lottie",
       "kind": "bw",
       "target": "m8_hook_lottie",
@@ -114,7 +114,7 @@
       "offset": "0x4d9c48",
       "address": "0x10669c48",
       "before": "80b500af",
-      "after": "1bf2e4bb",
+      "after": "10f273be",
       "role": "Entry trampoline app_id",
       "kind": "bw",
       "target": "m8_hook_app_id",
@@ -124,7 +124,7 @@
       "offset": "0x4da02a",
       "address": "0x1066a02a",
       "before": "2de9f041",
-      "after": "1bf2b5bd",
+      "after": "10f2ebbe",
       "role": "Entry trampoline refresh_label",
       "kind": "bw",
       "target": "m8_hook_refresh_label",
@@ -134,7 +134,7 @@
       "offset": "0x4d8d8c",
       "address": "0x10668d8c",
       "before": "f0b585b0",
-      "after": "22f2f4bc",
+      "after": "16f2cabe",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "27f2c5b9",
+      "after": "19f27db9",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "27f2beb900bf",
+      "after": "19f276b900bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -164,7 +164,7 @@
       "offset": "0x4da42c",
       "address": "0x1066a42c",
       "before": "2de9f04f",
-      "after": "1cf2beb8",
+      "after": "10f26abf",
       "role": "Menu replacement label_frame",
       "kind": "bw",
       "target": "m8_hook_label_frame",
@@ -174,7 +174,7 @@
       "offset": "0x4da780",
       "address": "0x1066a780",
       "before": "0629a8bf",
-      "after": "1bf2c6bf",
+      "after": "10f249be",
       "role": "Menu replacement label_index",
       "kind": "bw",
       "target": "m8_hook_label_index",
@@ -184,7 +184,7 @@
       "offset": "0x4d9e54",
       "address": "0x10669e54",
       "before": "2de9f04f",
-      "after": "1cf268bc",
+      "after": "11f2eaba",
       "role": "Menu replacement indicator",
       "kind": "bw",
       "target": "m8_hook_indicator",
@@ -194,7 +194,7 @@
       "offset": "0x4da148",
       "address": "0x1066a148",
       "before": "b0b50446",
-      "after": "1af262be",
+      "after": "10f225bb",
       "role": "Menu replacement frame",
       "kind": "bw",
       "target": "m8_hook_frame",
@@ -204,7 +204,7 @@
       "offset": "0x4da17e",
       "address": "0x1066a17e",
       "before": "80b5b3ee0e7a",
-      "after": "1af224be00bf",
+      "after": "10f2e3ba00bf",
       "role": "Menu replacement render_slide",
       "kind": "bw",
       "target": "m8_hook_render_slide",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "29f232ff00bf",
+      "after": "1bf2eafe00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -224,7 +224,7 @@
       "offset": "0x4d6d06",
       "address": "0x10666d06",
       "before": "02f04dff",
-      "after": "1ff29ffd",
+      "after": "14f206fc",
       "role": "Initialize tail after new stock constructor",
       "kind": "bl",
       "target": "m8_hook_ctor",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "26f319fd00bf00bf00bf",
+      "after": "18f3d1fc00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 199936,
+  "moduleBytes": 135424,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "08f18d4d25e842849b3a84a85f332e64dd27e136a771f8ec34607f21e1890ecb",
+  "moduleSHA256": "0c20da855e3c96df5104141b24bd60ab20bda4b317d7672e87d0ee9635bbcb7a",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7408584,
+  "APBytes": 7344072,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG3-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8842896,
-    "sha256": "6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473",
-    "md5": "14a8454e6997a92bdde97459011aed56"
+    "bytes": 8803177,
+    "sha256": "45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274",
+    "md5": "20547ed2ee0d4ceaee41a64ac46d19c6"
   },
   "sources": [
     {
@@ -293,11 +293,11 @@
     },
     {
       "source": "app-runtime-v1/app_service.c",
-      "sha256": "9b98c9140e2735b8c32572fa136213c854b7d97c4cfdf66e31d16c8b23ad4ba9"
+      "sha256": "3b513041ea38ab2fcedb9faa079e9e69d7ff9a5379864d63deaf79c93ae40c36"
     },
     {
       "source": "app-runtime-v1/app_shelf.c",
-      "sha256": "3a5a0972ee13faeee8aabc3f6015d9bebc47b46481d921de27b79119676df698"
+      "sha256": "7e6f99d125be8f527a9cfde93c59a0cdae325cc91e3e64cf79f1dffc81732db1"
     },
     {
       "source": "app-runtime-v1/app_store.c",
@@ -361,19 +361,19 @@
     },
     {
       "source": "focus-v1/focus_menu.c",
-      "sha256": "7ee69afb134de8a320cefdfc055b75aca0d32b3f7c0f3068985840b4331003b5"
+      "sha256": "02362a1a8e136146e0921e44d59c92bcd9efc023339c761fd4dac911e839791d"
     },
     {
       "source": "focus-v1/focus_menu_native.c",
-      "sha256": "b90f5b71c8f8abd516320b021a7a809ab88ce6faaeaf2ad4a0bd6765833b4ab2"
+      "sha256": "cc750a1355150abafe98a253eaf2f818ef44951b941811a3351d3c3ca3ff392d"
     },
     {
       "source": "focus-v1/focus_service.c",
-      "sha256": "249d24ee99e9d38d451b47203f7b30b2520e21612bcee5f4e52eb1646d9b366e"
+      "sha256": "edb98f78e82fdc8554895b64084d6d21d5ce39d56e51a2e1828ff70c0f0e9a29"
     },
     {
       "source": "focus-v1/focus_view.c",
-      "sha256": "b5a0ac5440d2aa4058bceaf9ebf6efa3fbebd70f8bb1604437bbf8782cf49179"
+      "sha256": "a5a2d2c53019158abce687a1e442ea3b7deedd4bed4f15acb67b76cd291eaa96"
     },
     {
       "source": "global-remote-v1/remote.c",
@@ -381,7 +381,7 @@
     },
     {
       "source": "global-remote-v1/remote_native.c",
-      "sha256": "14d003a0682e26459eabb9cace28d63bb3b5e4ad8f18eba2758f33ff1634d6d0"
+      "sha256": "768ae44465a6aee158b1a5fb95ca24962fedbed895ca6df1289e50e52184a20b"
     },
     {
       "source": "image-upload-test/render_idle.c",
@@ -397,7 +397,7 @@
     },
     {
       "source": "music-runtime-v1/menu10.c",
-      "sha256": "b63c8a56bd00392daecbc2f6389075b5a241a357b19aadd105b216ac25aa81ce"
+      "sha256": "4457be68c3c980eb9237fd25cb95206f3c6db6b6b1a349d8e5260ac65c7e4fd3"
     },
     {
       "source": "music-runtime-v1/music.c",
@@ -405,7 +405,7 @@
     },
     {
       "source": "music-runtime-v1/music_service.c",
-      "sha256": "ffd1d9b9632350b2faf59d48da704829ecc245d74fb60cf753f0940cc11247e6"
+      "sha256": "a32fe3cbef91f82de6ecdb17057611809acdc9d26fd993b4d85d1ce636e7e410"
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
@@ -413,11 +413,11 @@
     },
     {
       "source": "navigation-runtime-v1/nav_runtime.c",
-      "sha256": "cc449f6f8c4491874bb836c0dfd9d111e8d503a75b894692d403c68a369e08a9"
+      "sha256": "a980efeeff0d4442d13b45fa1e817adaf5eb25b381e05e864bb5791f31396f59"
     },
     {
       "source": "navigation-runtime-v1/nav_service.c",
-      "sha256": "f4965f593035e90c94b25b174848bb5fac051e6dc02adbfc9f0673e3a0924895"
+      "sha256": "4ddbc41dc3f0e0261ad5150e96a69aae81ad889eeb2c7576c7c3cd1d78f14939"
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
@@ -425,7 +425,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_visual.c",
-      "sha256": "ac5ecd7bd52f0c4dd3107065996f31db8ff1945cce7cc892e1ec79cc0f4ecd27"
+      "sha256": "db18b80dd8f91182e343e165902424df13cc820fde2673221bd0c20d4777b222"
     },
     {
       "source": "camera-v1/camera.c",
@@ -433,43 +433,43 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "bfd3f2c2fa193d1f19e58d5ae4d760ca095aa68dc82d87311d0ac126d42bb9c9"
+      "sha256": "e62e4dfa7f42eb497671b1b2e4e963c0a3cc90fd542ce2fc7d142cd7e7a0bbbb"
     },
     {
       "source": "common-v1/business_idle.c",
-      "sha256": ""
+      "sha256": "1c5f4b69e8dc9c980b9b24affcc06283997da6b1c242d14085847fd79c566b62"
     },
     {
       "source": "global-remote-v1/lang_flag.c",
-      "sha256": ""
+      "sha256": "c2edbc99f671e844bda802849c83fac373fdc2f1a9fe1f86a3af32939bbad6d0"
     },
     {
       "source": "common-v1/tio_text.c",
-      "sha256": ""
+      "sha256": "a233c5df028125e4a5886096d5495570a9e5d791ffa6f12a30515be5791fdcc8"
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "13c1b953ac50b91c87ebbf039b3795eb82e6c47912e7e7d2bfd911f989c14261",
+  "APSHA256": "b54a28a628112c2b548393328528c2f7a19e727741f1fd6ede35cfbee4290c52",
   "toolchain": {
-    "clang": "",
-    "lld": ""
+    "clang": "Homebrew clang version 23.1.4",
+    "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"
   },
   "extras": [
     {
       "path": "src/port_allocate.c",
-      "sha256": ""
+      "sha256": "e4389cfcaf644b45581fe97f706315035bb902287fdd996a7fe49489a163d67b"
     },
     {
       "path": "trampolines.S",
-      "sha256": ""
+      "sha256": "81cef0444d490eb02b44b086298e3f404023677d2d8d2493aea2aace8ac7cbae"
     },
     {
       "path": "src/app-runtime-v1/app_abi.S",
-      "sha256": ""
+      "sha256": "4e33a6c6f27284f2149c27279edff139911b68eefa7acfa00f6577be901ae794"
     },
     {
       "path": "src/common-v1/coexist.S",
-      "sha256": ""
+      "sha256": "df4fcf7426a34f660c99017333baf8649940f2c0a960ba6cec4667d85042c69c"
     }
   ]
 }
