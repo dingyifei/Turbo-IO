@@ -5,238 +5,250 @@
       "address": "0x1066a940",
       "before": "90b583b0",
       "after": "1bf2c7bf",
-      "role": "Entry trampoline show"
+      "role": "Entry trampoline show",
+      "kind": "bw",
+      "target": "m8_hook_show",
+      "pad": 0
     },
     {
       "offset": "0x4da974",
       "address": "0x1066a974",
       "before": "b0b582b0",
       "after": "1bf2c8bf",
-      "role": "Entry trampoline hide"
+      "role": "Entry trampoline hide",
+      "kind": "bw",
+      "target": "m8_hook_hide",
+      "pad": 0
     },
     {
       "offset": "0x4d99fc",
       "address": "0x106699fc",
       "before": "f0b50446",
       "after": "1cf2d7bf",
-      "role": "Entry trampoline destroy"
+      "role": "Entry trampoline destroy",
+      "kind": "bw",
+      "target": "m8_hook_destroy",
+      "pad": 0
     },
     {
       "offset": "0x4da6ae",
       "address": "0x1066a6ae",
       "before": "2de9f041",
       "after": "1cf2ebb9",
-      "role": "Entry trampoline wheel"
+      "role": "Entry trampoline wheel",
+      "kind": "bw",
+      "target": "m8_hook_wheel",
+      "pad": 0
     },
     {
       "offset": "0x4daa40",
       "address": "0x1066aa40",
       "before": "b0b582b0",
       "after": "1cf2a2b8",
-      "role": "Entry trampoline event"
+      "role": "Entry trampoline event",
+      "kind": "bw",
+      "target": "m8_hook_event",
+      "pad": 0
     },
     {
       "offset": "0x3ec04c",
       "address": "0x1057c04c",
       "before": "b0b50c46",
       "after": "0af33abf",
-      "role": "Entry trampoline message"
+      "role": "Entry trampoline message",
+      "kind": "bw",
+      "target": "m8_hook_message",
+      "pad": 0
     },
     {
       "offset": "0x5a12b0",
       "address": "0x107312b0",
       "before": "f0b5c3b0",
       "after": "48f1e6bc",
-      "role": "Entry trampoline dc_text"
+      "role": "Entry trampoline dc_text",
+      "kind": "bw",
+      "target": "m8_hook_dc_text",
+      "pad": 0
     },
     {
       "offset": "0x4da1fc",
       "address": "0x1066a1fc",
       "before": "2de9f04f",
       "after": "1bf216b9",
-      "role": "Entry trampoline names"
+      "role": "Entry trampoline names",
+      "kind": "bw",
+      "target": "m8_hook_names",
+      "pad": 0
     },
     {
       "offset": "0x4d9cc8",
       "address": "0x10669cc8",
       "before": "2de9f047",
       "after": "1cf232b8",
-      "role": "Entry trampoline dots"
+      "role": "Entry trampoline dots",
+      "kind": "bw",
+      "target": "m8_hook_dots",
+      "pad": 0
     },
     {
       "offset": "0x4d9ca6",
       "address": "0x10669ca6",
       "before": "98b50446",
       "after": "1cf217b8",
-      "role": "Entry trampoline delete_dots"
+      "role": "Entry trampoline delete_dots",
+      "kind": "bw",
+      "target": "m8_hook_delete_dots",
+      "pad": 0
     },
     {
       "offset": "0x4da068",
       "address": "0x1066a068",
       "before": "b0b584b0",
       "after": "1bf2d8bf",
-      "role": "Entry trampoline lottie"
+      "role": "Entry trampoline lottie",
+      "kind": "bw",
+      "target": "m8_hook_lottie",
+      "pad": 0
     },
     {
       "offset": "0x4d9c48",
       "address": "0x10669c48",
       "before": "80b500af",
       "after": "1bf2e4bb",
-      "role": "Entry trampoline app_id"
+      "role": "Entry trampoline app_id",
+      "kind": "bw",
+      "target": "m8_hook_app_id",
+      "pad": 0
     },
     {
       "offset": "0x4da02a",
       "address": "0x1066a02a",
       "before": "2de9f041",
       "after": "1bf2b5bd",
-      "role": "Entry trampoline refresh_label"
+      "role": "Entry trampoline refresh_label",
+      "kind": "bw",
+      "target": "m8_hook_refresh_label",
+      "pad": 0
     },
     {
       "offset": "0x4d8d8c",
       "address": "0x10668d8c",
       "before": "f0b585b0",
       "after": "22f2f4bc",
-      "role": "Entry trampoline vm_event"
+      "role": "Entry trampoline vm_event",
+      "kind": "bw",
+      "target": "m8_hook_vm_event",
+      "pad": 0
     },
     {
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
       "after": "27f2c5b9",
-      "role": "Menu replacement frame_start"
+      "role": "Menu replacement frame_start",
+      "kind": "bw",
+      "target": "m8_hook_frame_start",
+      "pad": 0
     },
     {
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
       "after": "27f2beb900bf",
-      "role": "Menu replacement frame_index"
+      "role": "Menu replacement frame_index",
+      "kind": "bw",
+      "target": "m8_hook_frame_index",
+      "pad": 1
     },
     {
       "offset": "0x4da42c",
       "address": "0x1066a42c",
       "before": "2de9f04f",
       "after": "1cf2beb8",
-      "role": "Menu replacement label_frame"
+      "role": "Menu replacement label_frame",
+      "kind": "bw",
+      "target": "m8_hook_label_frame",
+      "pad": 0
     },
     {
       "offset": "0x4da780",
       "address": "0x1066a780",
       "before": "0629a8bf",
       "after": "1bf2c6bf",
-      "role": "Menu replacement label_index"
+      "role": "Menu replacement label_index",
+      "kind": "bw",
+      "target": "m8_hook_label_index",
+      "pad": 0
     },
     {
       "offset": "0x4d9e54",
       "address": "0x10669e54",
       "before": "2de9f04f",
       "after": "1cf268bc",
-      "role": "Menu replacement indicator"
+      "role": "Menu replacement indicator",
+      "kind": "bw",
+      "target": "m8_hook_indicator",
+      "pad": 0
     },
     {
       "offset": "0x4da148",
       "address": "0x1066a148",
       "before": "b0b50446",
       "after": "1af262be",
-      "role": "Menu replacement frame"
+      "role": "Menu replacement frame",
+      "kind": "bw",
+      "target": "m8_hook_frame",
+      "pad": 0
     },
     {
       "offset": "0x4da17e",
       "address": "0x1066a17e",
       "before": "80b5b3ee0e7a",
       "after": "1af224be00bf",
-      "role": "Menu replacement render_slide"
+      "role": "Menu replacement render_slide",
+      "kind": "bw",
+      "target": "m8_hook_render_slide",
+      "pad": 1
     },
     {
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
       "after": "29f232ff00bf",
-      "role": "284-byte menu allocation"
+      "role": "284-byte menu allocation",
+      "kind": "bl",
+      "target": "port_allocate_menu",
+      "pad": 1
     },
     {
       "offset": "0x4d6d06",
       "address": "0x10666d06",
       "before": "02f04dff",
       "after": "1ff29ffd",
-      "role": "Initialize tail after new stock constructor"
+      "role": "Initialize tail after new stock constructor",
+      "kind": "bl",
+      "target": "m8_hook_ctor",
+      "pad": 0
     },
     {
       "offset": "0x4d9bec",
       "address": "0x10669bec",
       "before": "0721",
-      "after": "1121",
-      "role": "New stock carousel item count 7 to 16"
+      "after": "0d21",
+      "role": "Carousel item count 7 to 13",
+      "kind": "raw",
+      "target": "",
+      "pad": 0
     },
     {
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
       "after": "26f319fd00bf00bf00bf",
-      "role": "File callback registration"
-    },
-    {
-      "offset": "0x3e8e34",
-      "address": "0x10578e34",
-      "before": "6820",
-      "after": "8820",
-      "role": "Head state 104 to 136 bytes"
-    },
-    {
-      "offset": "0x3e8e3e",
-      "address": "0x10578e3e",
-      "before": "f4f7a7f9",
-      "after": "fff22bf8",
-      "role": "Head state constructor"
-    },
-    {
-      "offset": "0x3dc59c",
-      "address": "0x1056c59c",
-      "before": "98b50b4b",
-      "after": "24f376bb",
-      "role": "ce_serial_destroy_entry"
-    },
-    {
-      "offset": "0x3dd9bc",
-      "address": "0x1056d9bc",
-      "before": "2de9f043",
-      "after": "23f382b9",
-      "role": "ce_head_notify_entry"
-    },
-    {
-      "offset": "0x358d74",
-      "address": "0x104e8d74",
-      "before": "b0b5204a",
-      "after": "a7f33ebf",
-      "role": "ce_serial_start_entry"
-    },
-    {
-      "offset": "0x358e18",
-      "address": "0x104e8e18",
-      "before": "b0b5204a",
-      "after": "a7f3f2be",
-      "role": "ce_serial_stop_entry"
-    },
-    {
-      "offset": "0x3e8e42",
-      "address": "0x10578e42",
-      "before": "a069a661",
-      "after": "17f3effe",
-      "role": "ce_serial_publish_entry"
-    },
-    {
-      "offset": "0x3e8904",
-      "address": "0x10578904",
-      "before": "a069a361",
-      "after": "18f3a8f9",
-      "role": "ce_serial_retire_entry"
-    },
-    {
-      "offset": "0x3eb452",
-      "address": "0x1057b452",
-      "before": "eff7b7fa",
-      "after": "03f373fa",
-      "role": "dots_link_notify"
+      "role": "File callback registration",
+      "kind": "bl",
+      "target": "stream_register_shim",
+      "pad": 3
     }
   ],
   "moduleBytes": 199936,
@@ -245,7 +257,7 @@
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
   "APBytes": 7408584,
   "archive": {
-    "name": "StrixOS-1.0.5.5-TurboIO-TMG2-CANDIDATE-NOT-APPROVED.zip",
+    "name": "StrixOS-1.0.5.5-TurboIO-TMG3-CANDIDATE-NOT-APPROVED.zip",
     "bytes": 8842896,
     "sha256": "6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473",
     "md5": "14a8454e6997a92bdde97459011aed56"
@@ -537,5 +549,35 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "13c1b953ac50b91c87ebbf039b3795eb82e6c47912e7e7d2bfd911f989c14261"
+  "APSHA256": "13c1b953ac50b91c87ebbf039b3795eb82e6c47912e7e7d2bfd911f989c14261",
+  "toolchain": {
+    "clang": "",
+    "lld": ""
+  },
+  "extras": [
+    {
+      "path": "src/port_allocate.c",
+      "sha256": ""
+    },
+    {
+      "path": "trampolines.S",
+      "sha256": ""
+    },
+    {
+      "path": "src/app-runtime-v1/app_abi.S",
+      "sha256": ""
+    },
+    {
+      "path": "src/context-english-v1/head_serial.S",
+      "sha256": ""
+    },
+    {
+      "path": "src/context-english-v1/head_observer.S",
+      "sha256": ""
+    },
+    {
+      "path": "src/context-english-v1/coexist.S",
+      "sha256": ""
+    }
+  ]
 }

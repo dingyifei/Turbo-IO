@@ -1,4 +1,4 @@
-"""Reproduce pinned TMG2 from the exact official ZIP. Never connects to a device."""
+"""Reproduce pinned TMG3 from the exact official ZIP. Never connects to a device."""
 import argparse
 import hashlib
 import json
@@ -22,6 +22,35 @@ def run(arguments):
     return r.stdout
 
 
+def branch(site,target,link=False):
+    delta=(target&~1)-(site+4)
+    assert delta%2==0 and -(1<<24)<=delta<(1<<24),'Branch out of range'
+    bits=delta&0x1ffffff;s=(bits>>24)&1;i1=(bits>>23)&1;i2=(bits>>22)&1
+    j1=1^(i1^s);j2=1^(i2^s)
+    return struct.pack('<HH',0xf000|(s<<10)|((bits>>12)&0x3ff),
+      (0xd000 if link else 0x9000)|(j1<<13)|(j2<<11)|((bits>>1)&0x7ff))
+
+
+def decode(site, encoded):
+    if len(encoded) != 4:
+        raise ValueError('A Thumb branch is four bytes')
+    a, b = struct.unpack('<HH', encoded)
+    if a & 0xf800 != 0xf000 or b & 0xd000 not in (0x9000, 0xd000):
+        raise ValueError('Expected Thumb T4 B.W or BL')
+    s = (a >> 10) & 1
+    i1 = 1 ^ (((b >> 13) & 1) ^ s)
+    i2 = 1 ^ (((b >> 11) & 1) ^ s)
+    delta = (s << 24) | (i1 << 23) | (i2 << 22) | ((a & 0x3ff) << 12) | ((b & 0x7ff) << 1)
+    if s:
+        delta -= 1 << 25
+    return ('bl' if b & 0x4000 else 'bw', site + 4 + delta)
+
+
+def pin(spec, field, value, repin):
+    if not repin and spec[field] != value:
+        raise AssertionError('pin mismatch: ' + field)
+    spec[field] = value
+
 def safe_zip(path, expected):
     assert sha(path.read_bytes()) == expected, 'Wrong input archive'
     with zipfile.ZipFile(path) as z:
@@ -42,8 +71,7 @@ def safe_zip(path, expected):
     return files, rows
 
 
-def audit(stock_path, candidate_path):
-    spec = json.loads((HERE / 'build-inputs.json').read_text())
+def audit(stock_path, candidate_path, spec):
     stock, before = safe_zip(stock_path, spec['stockZIP'])
     files, after = safe_zip(candidate_path, spec['archive']['sha256'])
     ap = files['nuttx_ap.bin']
@@ -66,7 +94,7 @@ def audit(stock_path, candidate_path):
         assert len(a) == len(b) and base[at:at+len(a)] == a and ap[at:at+len(b)] == b
         assert not allowed.intersection(range(at, at+len(b)))
         allowed.update(range(at, at+len(b)))
-    assert len(spec['edits']) == 34
+    assert len(spec['edits']) == 25
     assert all(x == y or i in allowed for i, (x,y) in enumerate(zip(base[:-8],ap)))
     at = int(spec['moduleVA'], 16) - FLASH
     assert not any(ap[len(base)-8:at])
@@ -76,13 +104,14 @@ def audit(stock_path, candidate_path):
         'unchangedNewStockPayloads':14,'manifestPayloads':15,'archiveEntries':16,
         'APBytes':len(ap),'APSHA256':sha(ap),'APMD5':sha(ap,'md5'),
         'archiveSHA256':sha(candidate_path.read_bytes()),'archiveMD5':sha(candidate_path.read_bytes(),'md5'),
-        'whitelistedPatches':34,'startupDescriptorsPreserved':7,'deviceIO':False}
+        'whitelistedPatches':len(spec['edits']),'startupDescriptorsPreserved':7,'deviceIO':False}
 
 
-def build(stock_path, llvm, out):
+def build(stock_path, llvm, out, repin=False, compile_only=False):
     spec = json.loads((HERE / 'build-inputs.json').read_text())
+    # The immutable stock baseline is required in every mode.
     stock, rows = safe_zip(stock_path, spec['stockZIP'])
-    assert sha(stock['nuttx_ap.bin']) == spec['stockAP']
+    assert sha(stock['nuttx_ap.bin']) == spec['stockAP'], 'pin mismatch: stockAP'
     assert not out.exists(), 'Choose a fresh output directory'
     out.mkdir(parents=True)
     src = HERE / 'src'
@@ -94,34 +123,76 @@ def build(stock_path, llvm, out):
         '-DTIO_DISPLAY_RUNTIME=1','-DTDP_FREESTANDING','-DTIO_ANIMATION_EXPERIMENT=1',
         '-DTIO_MUSIC_RUNTIME=1','-DTD_DIAGNOSTICS_RUNTIME=1','-DTD_FREESTANDING=1',
         '-DTD_STOCK_10412=0','-DTD_STOCK_1055=1']
+    if not compile_only:
+        versions = {'clang':run([llvm/'clang','--version']).splitlines()[0],
+                    'lld':run([llvm/'ld.lld','--version']).splitlines()[0]}
+        pin(spec, 'toolchain', versions, repin)
     objects = []
-    for row in spec['sources']:
+    for i, row in enumerate(spec['sources']):
         p = src / row['source']
-        assert sha(p.read_bytes()) == row['sha256'], 'Edited source: '+row['source']
-        obj = out / (p.parent.name+'-'+p.stem+'.o')
+        if not compile_only:
+            pin(row, 'sha256', sha(p.read_bytes()), repin)
+        obj = out / (str(i)+'-'+p.parent.name+'-'+p.stem+'.o')
+        run([llvm/'clang',*flags,'-c',p,'-o',obj]); objects.append(obj)
+    for i, row in enumerate(spec['extras']):
+        p = HERE / row['path']
+        if not compile_only:
+            pin(row, 'sha256', sha(p.read_bytes()), repin)
+        obj = out / ('extra-'+str(i)+'-'+p.stem+'.o')
         run([llvm/'clang',*flags,'-c',p,'-o',obj]); objects.append(obj)
     animation = HERE/'assets/animation-frames.l8'
     assert sha(animation.read_bytes()) == 'f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d'
     asm = out/'animation-asset.S'
     asm.write_text('.section .rodata.ta_asset,"a",%progbits\n.balign 64\n.global ta_asset\n.type ta_asset,%object\nta_asset:\n.incbin "'+str(animation)+'", 0, 33792\n.size ta_asset, .-ta_asset\n')
-    extra = [src/'port_allocate.c',HERE/'trampolines.S',src/'app-runtime-v1/app_abi.S',
-        *[src/'context-english-v1'/n for n in ('head_serial.S','head_observer.S','coexist.S')],asm]
-    for p in extra:
-        obj = out/(p.stem+'.o');run([llvm/'clang',*flags,'-c',p,'-o',obj]);objects.append(obj)
+    obj = out/'animation-asset.o'
+    run([llvm/'clang',*flags,'-c',asm,'-o',obj]); objects.append(obj)
+    if compile_only:
+        return {'compiled':len(objects), 'deviceIO':False}
     elf = out/'module.elf'
     run([llvm/'ld.lld','-T',HERE/'link.ld','--entry=m8_hook_ctor',*objects,'-o',elf])
-    assert not run([llvm/'llvm-nm','-u',elf]).strip()
+    assert not run([llvm/'llvm-nm','-u',elf]).strip(), 'Undefined module symbols'
+    symbols = {}
+    for line in run([llvm/'llvm-nm','--defined-only','--format=posix',elf]).splitlines():
+        fields = line.split()
+        if len(fields) >= 3:
+            symbols[fields[0]] = int(fields[2],16)
+    (out/'symbols.json').write_text(json.dumps(symbols,indent=2)+'\n')
     run([llvm/'llvm-objcopy','-O','binary',elf,out/'module.bin'])
     module = (out/'module.bin').read_bytes()
-    assert sha(module) == spec['moduleSHA256'], 'Toolchain/source differs from tested module; STOP'
-    base = stock['nuttx_ap.bin']; at = int(spec['moduleVA'],16)-FLASH
+    module_va = int(spec['moduleVA'],16)
+    assert symbols['__module_start'] == module_va, 'pin mismatch: moduleVA'
+    assert symbols['__module_end'] - module_va == len(module)
+    pin(spec,'moduleBytes',len(module),repin)
+    pin(spec,'moduleSHA256',sha(module),repin)
+    base = stock['nuttx_ap.bin']; at = module_va-FLASH
+    assert at >= len(base)-8
     ap = bytearray(base[:-8]) + bytearray(at-(len(base)-8)) + module
     ap += bytearray((-len(ap))%4) + base[-8:]
+    assert len(spec['edits']) == 25
     for e in spec['edits']:
-        offset = int(e['offset'],16); old, new = bytes.fromhex(e['before']),bytes.fromhex(e['after'])
-        assert ap[offset:offset+len(old)] == old
+        offset = int(e['offset'],16); address = int(e['address'],16)
+        assert offset == address-FLASH
+        old = bytes.fromhex(e['before'])
+        assert base[offset:offset+len(old)] == old
+        if e['kind'] == 'raw':
+            new = bytes.fromhex(e['after'])
+        else:
+            target = symbols[e['target']]
+            new = branch(address,target,e['kind']=='bl') + bytes.fromhex('00bf')*e['pad']
+            assert decode(address,new[:4]) == (e['kind'],target&~1)
+            if e['role'].startswith('Entry trampoline '):
+                name = e['role'].removeprefix('Entry trampoline ')
+                trampoline = symbols['stock_'+name]&~1
+                off = trampoline-module_va
+                assert 0 <= off <= len(module)-len(old)-4
+                assert module[off:off+len(old)] == old
+                assert decode(trampoline+len(old),module[off+len(old):off+len(old)+4]) == ('bw',address+len(old))
+        assert len(new) == len(old)
+        pin(e,'after',new.hex(),repin)
         ap[offset:offset+len(new)] = new
-    assert len(ap) == spec['APBytes'] and sha(ap) == spec['APSHA256']
+    assert len(ap) < 9_600_000
+    pin(spec,'APBytes',len(ap),repin)
+    pin(spec,'APSHA256',sha(ap),repin)
     stock['nuttx_ap.bin'] = bytes(ap)
     for row in rows:
         if row['Name'] == 'nuttx_ap.bin': row.update(Size=len(ap),Md5=sha(ap,'md5'))
@@ -129,21 +200,29 @@ def build(stock_path, llvm, out):
     archive = out/spec['archive']['name']
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         for name,data in sorted(stock.items()):
-            info = zipfile.ZipInfo(name,(2026,10,16,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
+            info = zipfile.ZipInfo(name,(2026,10,27,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
             info.external_attr=0o100600<<16;z.writestr(info,data,compresslevel=9)
-    result = audit(stock_path,archive)
+    content = archive.read_bytes()
+    for key,value in [('bytes',len(content)),('sha256',sha(content)),('md5',sha(content,'md5'))]:
+        pin(spec['archive'],key,value,repin)
+    result = audit(stock_path,archive,spec)
     (out/'audit.json').write_text(json.dumps(result,indent=2)+'\n')
+    if repin:
+        (out/'build-inputs.pinned.json').write_text(json.dumps(spec,indent=2)+'\n')
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('--stock',type=Path,required=True)
     parser.add_argument('--audit',type=Path);parser.add_argument('--llvm-bin',type=Path);parser.add_argument('--out',type=Path)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--repin',action='store_true');mode.add_argument('--compile-only',action='store_true')
     args = parser.parse_args()
-    if args.audit: result = audit(args.stock,args.audit)
+    spec = json.loads((HERE/'build-inputs.json').read_text())
+    if args.audit: result = audit(args.stock,args.audit,spec)
     else:
         assert args.llvm_bin and args.out
-        result = build(args.stock.resolve(),args.llvm_bin.resolve(),args.out.resolve())
+        result = build(args.stock.resolve(),args.llvm_bin.resolve(),args.out.resolve(),args.repin,args.compile_only)
     print(json.dumps(result,indent=2))
 
 
