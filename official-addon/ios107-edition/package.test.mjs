@@ -151,3 +151,27 @@ test('Apple AI wrapper leaves flag-off package argv unchanged',()=>{
  const on=appleExec('bash',['-c','apple_args=(--apple-ai-dylib "/synthetic/module dir/TurboAppleAI.dylib"); set -- existing ${apple_args[@]+"${apple_args[@]}"}; printf "%s\\n" "$@"'],{encoding:'utf8'});
  assert.equal(on,'existing\n--apple-ai-dylib\n/synthetic/module dir/TurboAppleAI.dylib\n');
 });
+
+import * as leakGuard from './package.mjs';
+import os from 'node:os';
+test('private files are rejected by name pattern',()=>{
+ assert.equal(typeof leakGuard.privateBundleNames,'function');
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'turbo-leak-guard-'));
+ try{
+  for(const name of ['TurboIOPrivateTTSBootstrap.json','TurboRideSandboxPrivate.plist','TurboIOPrivateBootstrap.json','TIOAMapPrivate.json','TurboMusicCookieImport.txt','TurboIOKnowledgeConnection.json']){
+   fs.writeFileSync(path.join(root,name),'fixture');
+   assert.deepEqual(leakGuard.privateBundleNames(root),[name]);
+   fs.unlinkSync(path.join(root,name));
+  }
+  for(const name of ['PrivacyInfo.xcprivacy','Info.plist'])fs.writeFileSync(path.join(root,name),'fixture');
+  fs.mkdirSync(path.join(root,'permission_handler_apple_privacy.bundle'));
+  assert.deepEqual(leakGuard.privateBundleNames(root),[]);
+  fs.writeFileSync(path.join(root,'TurboIOPrivatePreparation.json'),'fixture');
+  assert.deepEqual(leakGuard.privateBundleNames(root),['TurboIOPrivatePreparation.json']);
+  assert.deepEqual(leakGuard.privateBundleNames(root,leakGuard.ALLOWED_BUNDLE_PRIVATE),[]);
+  assert.deepEqual(leakGuard.privateArchiveNames(['Payload/Runner.app/Frameworks/TurboIOPrivateAddon.dylib','Payload/Runner.app/TurboIOPrivatePreparation.json','Payload/Runner.app/']),[]);
+  assert.deepEqual(leakGuard.privateArchiveNames(['Payload/Runner.app/TurboRideSandboxPrivate.plist']),['Payload/Runner.app/TurboRideSandboxPrivate.plist']);
+  assert.deepEqual(leakGuard.privateArchiveNames(['Payload/Runner.app/Frameworks/TurboIOPrivateTTSBootstrap.json']),['Payload/Runner.app/Frameworks/TurboIOPrivateTTSBootstrap.json']);
+  assert.ok(!fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8').includes('TurboIOPrivateTTS.json'));
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
