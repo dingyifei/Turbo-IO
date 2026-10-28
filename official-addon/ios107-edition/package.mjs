@@ -11,8 +11,18 @@ import {inspectMachO} from './macho-embed.mjs';
 import {patch as patchOTARoute,verifyRoute} from './patch-route.mjs';
 export const CANDIDATE_RESOURCE='TurboWeReadCandidate.zip';
 export const PRIVATE_NAME=/Private|CookieImport|KnowledgeConnection/;
-export const ALLOWED_BUNDLE_PRIVATE=new Set(['TurboIOPrivatePreparation.json']);
-export function privateBundleNames(dir,allowed=new Set()){return fs.readdirSync(dir).filter(n=>PRIVATE_NAME.test(n)&&!allowed.has(n)).sort();}
+export const ALLOWED_BUNDLE_PRIVATE=new Set(['TurboIOPrivatePreparation.json','Frameworks/TurboIOPrivateAddon.dylib']);
+export function privateBundleNames(dir,allowed=new Set()){
+  const names=[];
+  function visit(relative=''){
+    for(const entry of fs.readdirSync(path.join(dir,relative),{withFileTypes:true})){
+      const name=relative?`${relative}/${entry.name}`:entry.name;
+      if(PRIVATE_NAME.test(name)&&(!allowed.has(name)||!entry.isFile()))names.push(name);
+      if(entry.isDirectory())visit(name);
+    }
+  }
+  visit();return names.sort();
+}
 export function privateArchiveNames(names){const ok=new Set(['Payload/Runner.app/TurboIOPrivatePreparation.json','Payload/Runner.app/Frameworks/TurboIOPrivateAddon.dylib']);return names.filter(n=>n&&!n.endsWith('/')&&PRIVATE_NAME.test(n)&&!ok.has(n));}
 const here=path.dirname(fileURLToPath(import.meta.url));
 const pins=JSON.parse(fs.readFileSync(new URL('./firmware-pins.json',import.meta.url),'utf8'));

@@ -19,6 +19,11 @@ static void ScopeCases(Scoped check,NSString *method,NSDictionary *args){
  NSMutableDictionary *extra=[args mutableCopy];extra[@"extra"]=@1;
  NSMutableDictionary *malformed=[args mutableCopy];malformed[@"filePath"]=@12;
  for(id a in @[[args mutableCopy],@{},missing,extra,malformed,@[],NSNull.null,@"invalid"])assert(!check(method,a));
+ // Other live transports must never borrow a Focus/Music/TD scoped grant.
+ for(NSString *file in @[@"turbo-navigation.tnv",@"turbo-app.tax",@"turbo-photo.timg",@"turbo-display.tdp"]){
+  NSDictionary *other=@{@"deviceId":args[@"deviceId"],@"filePath":[@"/fixture" stringByAppendingPathComponent:file],@"taskId":args[@"taskId"]};
+  assert(!check(@"rayneonet_sendFile",other));
+ }
  __block BOOL background=YES;dispatch_semaphore_t signal=dispatch_semaphore_create(0);dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT,0),^{background=check(method,args);dispatch_semaphore_signal(signal);});assert(dispatch_semaphore_wait(signal,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);assert(!background);
 }
 static NSData *Packet(unsigned kind){

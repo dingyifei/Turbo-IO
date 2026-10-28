@@ -188,3 +188,29 @@ test('ios107 packaging is self-contained',()=>{
  assert.equal([...source.matchAll(/fs\.writeFileSync\(path\.join\(app,CANDIDATE_RESOURCE\),firmware/g)].length,1);
  assert.doesNotMatch(source,/path\.join\(app,["\x27][^"\x27]*Candidate\.zip/);
 });
+
+
+test('nested private resources are rejected before signing',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'turbo-nested-leak-'));
+ try{
+  const forbidden=['Frameworks/TurboIOPrivateTTSBootstrap.json','Resources/TurboRideSandboxPrivate.plist','TurboCaptionLicenses/LicensePrivate.txt','Resources/TurboMusicCookieImport.txt','Resources/TurboIOKnowledgeConnection.json','Resources/TurboIOPrivatePreparation.json','Resources/TurboIOPrivateAddon.dylib'];
+  for(const name of forbidden){fs.mkdirSync(path.dirname(path.join(root,name)),{recursive:true});fs.writeFileSync(path.join(root,name),'harmless fixture');}
+  assert.deepEqual(leakGuard.privateBundleNames(root),[...forbidden].sort());
+  assert.deepEqual(leakGuard.privateBundleNames(root,leakGuard.ALLOWED_BUNDLE_PRIVATE),[...forbidden].sort());
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('bundle private allowances match exact regular-file paths',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'turbo-private-allowance-'));
+ try{
+  fs.mkdirSync(path.join(root,'Frameworks'));
+  fs.writeFileSync(path.join(root,'Frameworks/TurboIOPrivateAddon.dylib'),'fixture');
+  fs.writeFileSync(path.join(root,'TurboIOPrivatePreparation.json'),'fixture');
+  assert.deepEqual(leakGuard.privateBundleNames(root),['Frameworks/TurboIOPrivateAddon.dylib','TurboIOPrivatePreparation.json']);
+  assert.deepEqual(leakGuard.privateBundleNames(root,leakGuard.ALLOWED_BUNDLE_PRIVATE),[]);
+  fs.unlinkSync(path.join(root,'Frameworks/TurboIOPrivateAddon.dylib'));
+  fs.mkdirSync(path.join(root,'Frameworks/TurboIOPrivateAddon.dylib'));
+  fs.writeFileSync(path.join(root,'Frameworks/TurboIOPrivateAddon.dylib/secret.json'),'fixture');
+  assert.deepEqual(leakGuard.privateBundleNames(root,leakGuard.ALLOWED_BUNDLE_PRIVATE),['Frameworks/TurboIOPrivateAddon.dylib','Frameworks/TurboIOPrivateAddon.dylib/secret.json']);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
