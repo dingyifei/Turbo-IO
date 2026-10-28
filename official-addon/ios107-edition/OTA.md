@@ -1,5 +1,22 @@
 # iOS 1.0.7（230）固件向导与 WP6 TMG3 候选
 
+## TMG5 candidate — current development branch
+
+TMG5 supersedes the historical candidate sections below. The exact candidate ZIP SHA256 is `9f1e327c42c859d37e035bcfe83554c137e9fed05dfbaa8c5ed938bb65d19ebb`; AP size is 7,354,696 bytes and AP MD5 is `a8d0322d5c8f0929109efe7ddac50279`. Two clean builds match byte for byte, with 25 existing patch sites and 14 unchanged stock payloads. This is build/host evidence; physical acceptance remains unrun.
+
+The phone remains compatible with TMG4 glasses. Tile actions now work during reordering and display acknowledgement/failure feedback; Reset also saves. Read-only status accepts safe supported app states, while knob calibration explains the main-menu prerequisite and releases a refused lease. Initial navigation geometry precedes turn updates; TMG5 advertises bounded correction/heading smoothing, a six-pixel route, and static square music artwork with wheel/tap control hints. Background roads are filtered on the phone. The existing music commands still invoke the phone's Spotify controls. Speech defaults to 1.2× with five persisted choices for both English and Chinese, and explicitly confirmed idle captions no longer block microphone selection because of a missing template or stopped session.
+
+**Human-only TMG4 → TMG5 checklist:**
+
+1. Install the C9 phone package only after its signing/build review. Turn RayNeo Auto Update on and then off once.
+2. Download the bundled exact TMG5 candidate in RayNeo and stop at **Ready to install**.
+3. Obtain a version read within two minutes, then use the existing single confirmation. This worker never flashes or talks to glasses.
+4. After reboot, restart the phone app. Check all 13 tiles and Camera, reorder/hide/save/reset feedback and persistence, language, read-only status, main-menu knob guidance, and one-turn measurement.
+5. Check simulated and real-GPS initial map timing, backward/forward corrections, turns and route contrast; check music artwork and wheel/tap controls, both speech languages at each speed, and caption source changes after stopping. Verify active navigation, display and OTA still block conflicting caption changes.
+6. Roll back with **C8 plus ZIP4**, or **C5 plus ZIP2**, using the matching old phone package and manual flash flow. C9 accepts only ZIP5; rollback and hardware recovery are not verified here.
+
+The firmware's source/input identity is separate from the ZIP hash. Runtime capabilities are accepted only for the matching TMG4/TMG5 family. OTA host guards, hash/freshness policy and single-confirmation behavior are unchanged. The sole preservation-check exception is the user-approved removal of `tm_rotate`, applied and committed by the coordinator in FW5 only; earlier firmware trees remain frozen.
+
 ## TMG4 candidate — current development branch
 
 This branch offers only **TMG4 CANDIDATE-NOT-APPROVED**, bundled as `TurboWeReadCandidate.zip`. It includes the unflashed TMG3+TMG4 delta; deviceIO=false and physical acceptance is unrun. [Firmware source, formats and rebuild](../../firmware-research/strix-1.0.5.5-tmg4/README.md).

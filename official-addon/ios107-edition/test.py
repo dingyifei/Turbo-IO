@@ -115,7 +115,7 @@ else:skip('shared-sources','not selected by --only')
 
 seen.add('pins')
 if only is None or 'pins' in only:
-    run('pins',['python3','-I',ROOT/'firmware-research/strix-1.0.5.5-tmg4/tools/phone_pins.py','--zip',args.firmware,'--check',P])
+    run('pins',['python3','-I',FW4/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
     groups.append('pins');print('pins: PASS')
 else:skip('pins','not selected by --only')
 
