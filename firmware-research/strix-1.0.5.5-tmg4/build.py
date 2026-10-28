@@ -121,7 +121,7 @@ def build_input_identity(spec, versions, flags, asset_sha):
             if (path.is_file() and path.suffix in ('.c','.h','.inc','.S')
                     and not path.name.endswith(('_test.c','.test.c'))):
                 entries.append([path.relative_to(HERE).as_posix(), sha(path.read_bytes())])
-    for name in ('build.py','link.ld','trampolines.S'):
+    for name in ('build.py','link.ld','trampolines.S','ImageWireFormat.h'):
         entries.append([name, sha((HERE/name).read_bytes())])
     descriptors = []
     for edit in spec['edits']:

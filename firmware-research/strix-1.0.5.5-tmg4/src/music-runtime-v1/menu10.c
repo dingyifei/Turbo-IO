@@ -262,8 +262,8 @@ void *m8_hook_ctor(void *app){
   return app;
 }
 void m8_hook_show(void *app){retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);m8_hook_label_index(app,(int)*word(app,0x88));fm_show(app);}
-void m8_hook_hide(void *app){tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
-void m8_hook_destroy(void *app){tc_slot_destroy(camera_slot(app));if(slot(app))slot(app)->camera=NULL;fm_destroy(app);
+void m8_hook_hide(void *app){tgr_knob_cancel(app,stream_tick());tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
+void m8_hook_destroy(void *app){tgr_knob_cancel(app,stream_tick());tc_slot_destroy(camera_slot(app));if(slot(app))slot(app)->camera=NULL;fm_destroy(app);
   native_unregister_wheel(app);retire(app);
   tap_menu_destroy(apps(app));if(slot(app))slot(app)->apps=NULL;
 
@@ -287,6 +287,7 @@ void m8_hook_wheel(void *app,int delta){
 }
 bool m8_hook_event(void *app,void *event){
   if(native_event_code(event)!=0xe || native_event_key(event)!=0x3a)return stock_event(app,event);
+  tgr_knob_cancel(app,stream_tick());
   if(tc_native_visible(app))return true;
   if(tf_back_blocked(slot(app),stream_tick()))return true;
   if(tap_service_visible(app)||tail(app)->page)return true;

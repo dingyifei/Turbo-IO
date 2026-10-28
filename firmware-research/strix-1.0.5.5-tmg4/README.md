@@ -16,7 +16,7 @@ State is owned by the existing heap Control and bounded timer lookup. New NAND r
 
 `TDG1` v2 uses256 bytes and the existing571-byte protobuf/JSON transport. It reports TMG4, the source/build-input SHA, caps`0x3f`, optional NAND total/available and existing RAM metrics, language/source, tile generation/pending map, and the unchanged600 raw units per detent heuristic. Unknown metrics remain unmeasured. `STATUS` is request-only; it does not create the launcher or a periodic collection timer. Only an explicit status or periodic-start request probes NAND statistics.
 
-Build identity is SHA-256 over canonical source hashes, source order, toolchain versions, normalized build flags, stock/asset inputs and patch descriptors. It is neither a Git commit nor the ZIP hash. This candidate's identity is `099ad0f9e623373ad13a5332f62e238dea6efdec1637de478ae53fff0b403433`. Generated pins and output paths are excluded to avoid a circular or machine-specific identity.
+Build identity is SHA-256 over canonical source hashes, source order, toolchain versions, normalized build flags, stock/asset inputs and patch descriptors. It is neither a Git commit nor the ZIP hash. This candidate's identity is `71d7fb8798f77f029a694722e3ef612b63d180f1f58a5ab7eda986d190998cb1`. Generated pins and output paths are excluded to avoid a circular or machine-specific identity.
 
 Knob calibration is a volatile, bounded30-second window: rotate exactly one turn in one direction, then Finish. It counts raw physical wheel deltas, stores net and absolute movement, and cancels before synthetic remote dispatch or when launcher/gates are lost. Replayed START cannot renew a window. Canceled/expired/overflowed/zero or substantially reversed motion yields no estimate. Nothing is saved or recalibrated;600 stays unchanged. The phone requires matching peer/window/sequence/kind and both ACK and file-terminal ownership before another command. No uncertain retry is sent.
 
@@ -44,8 +44,8 @@ The shared immutable animation is read from `../strix-1.0.5.5-tmg2/assets/animat
 
 | Payload | Bytes | SHA-256 | MD5 |
 | --- | ---: | --- | --- |
-| ZIP | 8808959 | `47f3f639400173acf57916c5e24c35b307ab2146a2030a2a2b6980b31ce4ab03` | `fe614ff2f325850e08484536a7d0cba2` |
-| AP | 7353672 | `aec2e79083dac92c55f6387b2ee5f7cf67201ba99011ecca9b70f0aaa3406efd` | `a3b5de9cfdee8341ccc4233ce4e0fc52` |
+| ZIP | 8809015 | `aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126` | `f72c9a3a79ab02d968dc1415ee117509` |
+| AP | 7353800 | `0d6a3ec1d4aac08351afa6b60031c96f4e3904887a61a62def3da561f6c0c02b` | `ea89c1d953fff0b0ffe932c2ed2b5c46` |
 
 The audit enforces25 patch sites,14 unchanged stock payloads,7 startup descriptors, stock header/tail and AP below9.6MB. Host ASan/UBSan tests cover every new codec/file, malformed inputs, A/B faults and generation wrap, exhaustive720×32 maps, renderer rows/pages, timer wrap, and native adapter fault/ownership cases. These checks do not establish physical boot or flash acceptance.
 

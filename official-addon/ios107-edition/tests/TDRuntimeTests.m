@@ -10,7 +10,20 @@ static NSData *Packet(TDCommand q,unsigned kind,unsigned state,int64_t net,uint6
 static NSDictionary *Status(TDRuntimeSession *s){return s.status;}
 static NSData *Carrier(NSData *raw){NSMutableString *hex=[NSMutableString new];const uint8_t *p=raw.bytes;for(NSUInteger i=0;i<raw.length;i++)[hex appendFormat:@"%02x",p[i]];NSData *json=[[NSString stringWithFormat:@"{\"cmd\":\"turbo_diagnostics_v1\",\"payload\":{\"data\":\"%@\"}}",hex]dataUsingEncoding:NSUTF8StringEncoding];assert(json.length==564);uint8_t head[]={8,1,16,6,26,0xb4,4};NSMutableData *out=[NSMutableData dataWithBytes:head length:7];[out appendData:json];return out;}
 static NSDictionary *Event(NSData *raw){return @{@"eventType":@"messageReceived",@"message":@{@"businessId":@15,@"deviceId":@"peer-one",@"payload":Carrier(raw)}};}
+static void LeaseOrdering(void){
+ for(unsigned order=0;order<3;order++){
+  __block double now=100;__block TDCommand command;__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
+  TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return @"lease";} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){command=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;assert([r beginCalibration]);TDCommand start=command;
+  if(order==1){now=101;r.fileBusy=NO;}
+  if(order<2){now=102;assert([r receive:Packet(start,TD_CALIBRATION,TK_ACTIVE,600,600) device:@"lease"]);if(order==0){now=110;r.fileBusy=NO;}now=130;assert(r.idleForOTA);[r finishCalibration];assert(!r.holdsLease&&sends==1&&[r.status[@"state"]isEqual:@"expired"]);}
+  else{now=131;[r poll];assert(!r.holdsLease&&!r.idleForOTA&&r.fileBusy);r.fileBusy=NO;assert(r.holdsLease&&!r.idleForOTA&&sends==1);now=160.999;assert(!r.idleForOTA);now=161;assert(r.idleForOTA);[r finishCalibration];assert(!r.holdsLease&&sends==1);}
+ }
+ // A queued Finish must not be dispatched by a late terminal after known expiry.
+ __block double now=100;__block TDCommand command;__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
+ TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return @"queue";} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){command=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;assert([r beginCalibration]);now=102;assert([r receive:Packet(command,TD_CALIBRATION,TK_ACTIVE,600,600) device:@"queue"]);now=129;[r finishCalibration];assert(sends==1);now=131;r.fileBusy=NO;assert(sends==1&&r.idleForOTA&&!r.holdsLease);
+}
 int main(void){@autoreleasepool{
+ LeaseOrdering();
  __block NSString *peer=@"peer-one";__block BOOL allowed=YES;__block double now=100;__block TDCommand sent={0};__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
  TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return peer;} allowed:^BOOL{return allowed;} clock:^{return now;} send:^BOOL(TDCommand q){sent=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;
  assert([r query]&&r.pending&&r.fileBusy&&sent.op==TDQ_STATUS);unsigned pure_sends=sends;assert(![r idleForOTA]&&sends==pure_sends);TDCommand query=sent;TDCommand wrong=sent;wrong.sequence++;assert(![r receive:Packet(wrong,TD_STATUS,0,0,0) device:peer]);assert(![r receive:Packet(query,TD_STATUS,0,0,0) device:@"other"]);assert(![r receive:Packet(query,TD_SAMPLE,0,0,0) device:peer]);assert([r receive:Packet(query,TD_STATUS,0,0,0) device:peer]&&!r.pending&&!r.holdsLease);assert([Status(r)[@"sample"][@"nand_available"]unsignedLongLongValue]==64000);assert(![r query]&&sends==1);r.fileBusy=NO;

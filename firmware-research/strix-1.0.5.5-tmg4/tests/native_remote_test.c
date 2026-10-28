@@ -72,7 +72,7 @@ static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};mems
 static TTReply request(TTCommand q){uint8_t raw[32],wire[74];tt_encode(raw,&q);tt_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TTReply r;assert(tt_uncarrier(reply_wire,74,raw,true)&&tt_reply_decode(raw,32,&r));return r;}
 static TLGReply language_request(TLGCommand q){uint8_t raw[32],wire[74];tlg_encode(raw,&q);tlg_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TLGReply r;assert(tlg_uncarrier(reply_wire,74,raw,true)&&tlg_reply_decode(raw,32,&r));return r;}
 int main(void){
- reset();TTVisible map;fm_tile_snapshot(&map);assert(map.count==13&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
+ reset();tgr_knob_cancel(app,now_ms);assert(allocations==0&&reads==0);TTVisible map;fm_tile_snapshot(&map);assert(map.count==13&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
  TLGReply lr=language_request((TLGCommand){10,TLG_SET,TLG_ZH});assert(lr.result==TLG_UNAVAILABLE&&lr.source==0&&reads==0&&writes==0&&tio_lang()==TLG_EN);
  assert(fm_menu_rows()==3&&reads==6);unsigned before=reads;assert(fm_menu_rows()==3&&reads==before);*(uint32_t *)(app+0x88)=12;assert(fm_tiles_apply(app)&&snaps==2&&snap_count[0]==13&&snap_count[1]==13);assert(!fm_tiles_apply(app));
  r=request((TTCommand){.op=TT_QUERY,.request=2,.client=2});assert(r.result==TT_OK&&r.token==77&&reads==before+2);snaps=0;detail_open=true;
@@ -80,7 +80,12 @@ int main(void){
  fm_tiles_forget(app);assert(fm_tile_count()==13);assert(fm_tiles_apply(app)&&fm_tile_count()==8);before=reads;fm_tile_snapshot(&map);assert(reads==before&&map.count==8);
  blocked=true;before=reads;r=request((TTCommand){.op=TT_QUERY,.request=4,.client=2});assert(r.result==TT_BLOCKED&&reads==before);blocked=false;
  // Existing file adapter handles progress and every durability failure.
- before=reads;TDCommand kq={TDQ_KNOB_START,101,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,1200,now_ms);assert(find()->knob.net==1200&&find()->knob.samples==1);
+ before=reads;unsigned allocated=allocations;TDCommand lifecycle={TDQ_KNOB_START,100,1,30000};
+ assert(tgr_knob_command(app,&lifecycle,now_ms)==TK_OK);tgr_knob_observe(app,600,now_ms);
+ tgr_knob_cancel(app+4,now_ms);assert(find()->knob.state==TK_ACTIVE);
+ tgr_knob_cancel(app,now_ms);assert(find()->knob.state==TK_CANCELED&&find()->knob.net==600&&reads==before&&allocations==allocated);
+ tgr_knob_observe(app,600,now_ms);assert(find()->knob.net==600);
+ TDCommand kq={TDQ_KNOB_START,101,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,1200,now_ms);assert(find()->knob.net==1200&&find()->knob.samples==1);
  assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==1&&simulated_steps==1&&find()->knob.state==TK_CANCELED&&find()->knob.net==1200&&find()->synthetic_depth==0);
  kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
  TDSample snapshot={.build=TD_BUILD_TMG4,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);

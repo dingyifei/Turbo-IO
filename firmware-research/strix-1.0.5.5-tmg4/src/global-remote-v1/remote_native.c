@@ -70,7 +70,7 @@ bool fm_tiles_apply(void *app){
  *(uint32_t *)((uint8_t *)app+0xa0)=next.count;*(uint32_t *)((uint8_t *)app+0x88)=rank;*(uint32_t *)((uint8_t *)app+0x90)=UINT32_MAX;
  native_snap(app);c->applying=false;return true;
 }
-void fm_tiles_forget(void *app){Control *c=find();if(c&&c->menu_app==app){c->menu_app=NULL;c->pending=true;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&c->active);}}
+void fm_tiles_forget(void *app){Control *c=find();if(c&&c->menu_app==app){tk_cancel(&c->knob,stream_tick());c->menu_app=NULL;c->pending=true;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&c->active);}}
 
 extern bool fm_menu_plain(void *);
 bool tgr_runtime_allowed(void){return allowed();}
@@ -80,6 +80,8 @@ unsigned tgr_knob_command(void *app,const TDCommand *q,uint32_t now){
  if(q->op==TDQ_KNOB_START)return tk_start(&c->knob,q->session,q->sequence,q->lease_ms,now,true);
  if(q->op==TDQ_KNOB_STOP)return tk_stop(&c->knob,q->session,q->sequence,now,true);return TK_UNAVAILABLE;
 }
+/* Lifecycle hooks must not allocate or load settings before first show. */
+void tgr_knob_cancel(void *app,uint32_t now){Control *c=find();if(c&&app&&c->menu_app==app)tk_cancel(&c->knob,now);}
 void tgr_knob_observe(void *app,int32_t delta,uint32_t now){Control *c=find();if(!c||c->knob.state!=TK_ACTIVE)return;bool ok=c->menu_app==app&&allowed()&&fm_menu_plain(app);tk_observe(&c->knob,delta,now,ok,c->synthetic_depth!=0);}
 void tgr_runtime_snapshot(TDSample *s){
  if(!s)return;s->caps=TD_CAPS_ALL;s->detent=TK_DETENT_RAW;s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;

@@ -6,8 +6,8 @@ This branch offers only **TMG4 CANDIDATE-NOT-APPROVED**, bundled as `TurboWeRead
 
 | Payload | Bytes | SHA-256 | MD5 |
 | --- | ---: | --- | --- |
-| ZIP | 8808959 | `47f3f639400173acf57916c5e24c35b307ab2146a2030a2a2b6980b31ce4ab03` | `fe614ff2f325850e08484536a7d0cba2` |
-| AP | 7353672 | `aec2e79083dac92c55f6387b2ee5f7cf67201ba99011ecca9b70f0aaa3406efd` | `a3b5de9cfdee8341ccc4233ce4e0fc52` |
+| ZIP | 8809015 | `aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126` | `f72c9a3a79ab02d968dc1415ee117509` |
+| AP | 7353800 | `0d6a3ec1d4aac08351afa6b60031c96f4e3904887a61a62def3da561f6c0c02b` | `ea89c1d953fff0b0ffe932c2ed2b5c46` |
 
 TMG4 adds persistent custom tile order/visibility (stock0–6 fixed, Camera always visible,8–13 active entries), reboot-persistent language with source2 confirmation, read-only runtime status and a30-second one-turn knob estimate. The600-unit detent heuristic is unchanged. Legacy removed-app replies and the outbound legacy POSE fallback are dropped; this phone build does not fully drive TMG2. The existing flash wizard still accepts a fresh validated TMG2-era version reply and uses exactly the TMG4 ZIP; the host/freshness/hash/slice policy and single confirmation remain unchanged.
 

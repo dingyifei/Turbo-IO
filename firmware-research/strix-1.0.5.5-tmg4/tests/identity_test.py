@@ -10,7 +10,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='tmg4-identity-') as tmp:
         target=Path(tmp)/'different-checkout';target.mkdir()
         for name in ('src','include'):shutil.copytree(FW/name,target/name)
-        for name in ('build.py','link.ld','trampolines.S'):shutil.copyfile(FW/name,target/name)
+        for name in ('build.py','link.ld','trampolines.S','ImageWireFormat.h'):shutil.copyfile(FW/name,target/name)
         build.HERE=target
         assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original
         changed=copy.deepcopy(inputs);changed['APSHA256']='0'*64;changed['archive']['sha256']='1'*64
@@ -19,6 +19,7 @@ def main():
         assert build.build_input_identity(changed,versions,flags(target),asset)[1]==original
         changed=copy.deepcopy(inputs);changed['sources'].reverse();assert build.build_input_identity(changed,versions,flags(target),asset)[1]!=original
         modified=target/'src/firmware_profile.h';old=modified.read_bytes();modified.write_bytes(old+b'\n/* changed source input */\n');assert build.build_input_identity(inputs,versions,flags(target),asset)[1]!=original;modified.write_bytes(old)
+        root_header=target/'ImageWireFormat.h';old_header=root_header.read_bytes();root_header.write_bytes(old_header+b'\n/* changed consumed header */\n');assert build.build_input_identity(inputs,versions,flags(target),asset)[1]!=original;root_header.write_bytes(old_header)
         (target/'src/identity_test.c').write_text('test fixture must not affect firmware identity\n');assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original
         changed=copy.deepcopy(versions);changed['clang']+=' changed';assert build.build_input_identity(inputs,changed,flags(target),asset)[1]!=original
         assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original

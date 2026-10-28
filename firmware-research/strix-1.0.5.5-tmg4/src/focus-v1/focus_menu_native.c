@@ -63,7 +63,7 @@ void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMContr
  if(c&&c->view.root&&!c->closing)hide_legacy(app);
  void *visible_parent=ptr(app,4);TNWidgets widgets=tn_lvgl_widgets();
  bool safe=visible_parent&&!native_has_flag(visible_parent,1)&&!inside&&focus_screen_on()&&widgets.idle(widgets.ctx);
- if(safe){(void)fm_tiles_apply(app);if(c&&!c->closing&&c->view.root){TTVisible active;fm_tile_snapshot(&active);if(!fm_view_tiles(&c->view,&active))return;}}
+ if(safe){(void)fm_tiles_apply(app);if(c&&!c->closing&&c->view.root){TTVisible active;fm_tile_snapshot(&active);if(!fm_view_tiles(&c->view,&active))return;if(c->view.selected<0)c->selection=-1;}}
  if(!c||c->closing||!c->view.root)return;
  if(c->relabel){c->relabel=false;c->selection=-1;fm_view_suspend(&c->view);for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);}
  void *parent=ptr(app,4);bool show=c->enabled&&parent&&!native_has_flag(parent,1)&&!inside;
