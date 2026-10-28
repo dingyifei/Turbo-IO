@@ -1,21 +1,22 @@
-#import "TDTransport.h"
-#import "command.h"
+// WP8 legacy reference: baseline transport, with test-only symbol names.
+#import "LegacyMusicTransport.h"
+#import "music.h"
 #import "display_carrier.h"
 #import "DisplayDiagnostics.h"
 static NSDictionary *ScopedArgs;
-BOOL TDIsScopedCall(NSString *method,NSDictionary *args){return NSThread.isMainThread&&ScopedArgs&&args==ScopedArgs&&[method isEqual:@"rayneonet_sendFile"];}
+BOOL TIOLegacyTMIsScopedCall(NSString *method,NSDictionary *args){return NSThread.isMainThread&&ScopedArgs&&args==ScopedArgs&&[method isEqual:@"rayneonet_sendFile"];}
 // Canonically rebuild every supported packet, rejecting mismatched lengths,
 // reserved fields, CRCs, geometry and op-specific fields before SDK access.
 static uint32_t U32(const uint8_t *p){return p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 static unsigned U16(const uint8_t *p){return p[0]|((unsigned)p[1]<<8);}
-static BOOL Valid(NSData *d){TDCommand p;return [d isKindOfClass:NSData.class]&&td_command_decode(d.bytes,d.length,&p);}
-@implementation TDTransport {
+static BOOL Valid(NSData *d){TMPacket p;return [d isKindOfClass:NSData.class]&&tm_decode(d.bytes,d.length,&p);}
+@implementation TIOLegacyTMTransport {
  NSURL *_root;NSString *_device;NSString *(^_current)(void);BOOL(^_call)(NSString *,NSDictionary *,void(^)(id));
 }
 - (instancetype)initWithRoot:(NSURL *)root device:(NSString *)device currentDevice:(NSString *(^)(void))current call:(BOOL(^)(NSString *,NSDictionary *,void(^)(id)))call{
  if((self=[super init])){_root=root;_device=[device copy];_current=[current copy];_call=[call copy];}return self;
 }
-- (void)send:(NSData *)packet task:(NSString *)task submitted:(TDSubmitted)done{
+- (void)send:(NSData *)packet task:(NSString *)task submitted:(TIOLegacyTMSubmitted)done{
  NSAssert(NSThread.isMainThread,@"main only");if(!done)return;
  if(!Valid(packet)||!_root.isFileURL||!_device.length||!_current||![_current() isEqual:_device]||!_call||ScopedArgs||![task isKindOfClass:NSString.class]||![[NSUUID alloc]initWithUUIDString:task]){done(NO,nil);return;}
  NSFileManager *fm=NSFileManager.defaultManager;NSError *err=nil;
@@ -24,12 +25,12 @@ static BOOL Valid(NSData *d){TDCommand p;return [d isKindOfClass:NSData.class]&&
  if(err||![attr[NSFileType] isEqual:NSFileTypeDirectory]||!items||items.count>=512){done(NO,nil);return;}
  NSURL *dir=[_root URLByAppendingPathComponent:task isDirectory:YES];
  if(![fm createDirectoryAtURL:dir withIntermediateDirectories:NO attributes:@{NSFilePosixPermissions:@0700} error:&err]){done(NO,nil);return;}
- NSURL *url=[dir URLByAppendingPathComponent:@"turbo-diagnostics.tdg"];
+ NSURL *url=[dir URLByAppendingPathComponent:@"turbo-music.tmu"];
  if(![packet writeToURL:url options:NSDataWritingWithoutOverwriting error:&err]){done(NO,nil);return;}
  [fm setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:url.path error:nil];
  NSDictionary *args=@{@"deviceId":_device,@"filePath":url.path,@"taskId":task};
  __block BOOL completed=NO;
- TDSubmitted finish=^(BOOL ok,NSString *nativeTask){NSString *pinned=[nativeTask copy];dispatch_async(dispatch_get_main_queue(),^{if(completed)return;completed=YES;done(ok,pinned);});};
+ TIOLegacyTMSubmitted finish=^(BOOL ok,NSString *nativeTask){NSString *pinned=[nativeTask copy];dispatch_async(dispatch_get_main_queue(),^{if(completed)return;completed=YES;done(ok,pinned);});};
  BOOL invoked=NO;ScopedArgs=args;
  TDPDiagRecord(@"native_before",@{@"bytes":@(packet.length),@"op":@(((const uint8_t *)packet.bytes)[5]),@"request":@(U32((const uint8_t *)packet.bytes+12))});
  @try{invoked=_call(@"rayneonet_sendFile",args,^(id result){

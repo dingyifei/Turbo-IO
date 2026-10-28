@@ -1,7 +1,7 @@
 #import "TDPhoneBridge.h"
 #import "TDPhoneUI.h"
 #import "TDPhoneReply.h"
-#import "TDTransport.h"
+#import "TIOGlassesFileTransport.h"
 #import "ProtocolContext.h"
 #import "ExperimentalOTAFlash.h"
 #import "command.h"
@@ -14,7 +14,7 @@
 @property(nonatomic,strong) NSTimer *timer;
 @property(nonatomic,strong) id backgroundObserver,foregroundObserver;
 @property(nonatomic,copy) NSDictionary *lastMusic,*lastNavigation;
-@property(nonatomic,strong) TDTransport *transport;
+@property(nonatomic,strong) TIOGlassesFileTransport *transport;
 @property(nonatomic,copy) NSString *peer,*task,*nativeTask;
 @property(nonatomic,strong) NSMutableArray *early;
 @property(nonatomic) uint32_t sid;
@@ -28,12 +28,12 @@
 - (instancetype)init{if((self=[super init])){
  _peer=[TIOProtocolDevice() copy]?:@"";_store=[[TDPhoneStore alloc]initWithBuild:0x01000001 device:_peer];NSString *peer=_peer;
  NSURL *root=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/DiagnosticsTDG1"]];
- _transport=[[TDTransport alloc]initWithRoot:root device:peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){
+ _transport=[[TIOGlassesFileTransport alloc]initWithRoot:root device:peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){
   if(!peer.length||![peer isEqual:TIOProtocolDevice()]||[TIOOTAFlashStatus()[@"stage"]unsignedIntegerValue]!=0)return NO;
   id plugin=TIOProtocolPlugin();Class cls=NSClassFromString(@"FlutterMethodCall");SEL make=NSSelectorFromString(@"methodCallWithMethodName:arguments:"),handle=NSSelectorFromString(@"handleMethodCall:result:");
   if(!plugin||![cls respondsToSelector:make]||![plugin respondsToSelector:handle])return NO;
   @try{id c=((id(*)(id,SEL,id,id))objc_msgSend)(cls,make,method,args);((void(*)(id,SEL,id,id))objc_msgSend)(plugin,handle,c,[done copy]);return YES;}@catch(NSException *e){return NO;}
- }];
+ } fileName:@"turbo-diagnostics.tdg" validator:^BOOL(NSData *d){TDCommand p;return td_command_decode(d.bytes,d.length,&p);}];
  __weak typeof(self) weak=self;
  NSURL *reports=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/DiagnosticsReports-v2"] isDirectory:YES];
  _run=[[TDPhoneRun alloc]initWithStore:_store root:reports clock:^{return NSProcessInfo.processInfo.systemUptime;} sendStart:^BOOL(uint32_t sid,uint32_t lease){return [weak start:sid lease:lease];} sendStop:^{[weak stop];}];

@@ -195,10 +195,9 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   TDPhoneUI.m \
   TDPhoneReply.m \
   TDPhoneBridge.m \
-  TDTransport.m \
+  TIOGlassesFileTransport.m \
   diagnostics.c \
   command.c \
-  FocusTransport.m \
   FocusBridge.m \
   focus.c \
   -lz \
@@ -210,7 +209,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   SpotifyAPI.m \
   SpotifyCover.m \
   SpotifySignIn.m \
-  MusicTransport.m \
   MusicBridge.m \
   MusicPlayer.m \
   MusicUI.m \

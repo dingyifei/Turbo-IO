@@ -1,6 +1,6 @@
 #import "MusicBridge.h"
 #import "TIOLanguage.h"
-#import "MusicTransport.h"
+#import "TIOGlassesFileTransport.h"
 #import "ProtocolContext.h"
 #import "music.h"
 #import "MusicClock.h"
@@ -18,7 +18,7 @@ BOOL TMMusicReply(NSDictionary *e,NSDictionary **out){if(![e isKindOfClass:NSDic
 }
 static NSData *Clip(NSString *s,NSUInteger max){if(![s isKindOfClass:NSString.class])s=@"";s=[[s componentsSeparatedByCharactersInSet:NSCharacterSet.controlCharacterSet]componentsJoinedByString:@" "];NSMutableData *d=[NSMutableData new];[s enumerateSubstringsInRange:NSMakeRange(0,s.length) options:NSStringEnumerationByComposedCharacterSequences usingBlock:^(NSString *a,NSRange r,NSRange all,BOOL *stop){NSData *b=[a dataUsingEncoding:NSUTF8StringEncoding];if(d.length+b.length>max){*stop=YES;return;}[d appendData:b];}];return d;}
 @implementation TMMusicBridge{
- TMTransport *_transport;NSString *_peer,*_task,*_nativeTask,*_note;NSData *_packet,*_cover,*_lyrics;NSArray *_rows;NSMutableArray *_early;
+ TIOGlassesFileTransport *_transport;NSString *_peer,*_task,*_nativeTask,*_note;NSData *_packet,*_cover,*_lyrics;NSArray *_rows;NSMutableArray *_early;
  uint32_t _sid,_gen,_seq,_sendingGen;NSUInteger _coverAt,_lyricsAt,_chunk;unsigned _op;BOOL _ack,_fileDone,_submitted,_active,_needOpen,_needClose,_failed;
  NSTimeInterval _deadline,_lastClock,_next;NSUInteger _count;NSMutableOrderedSet *_commands;
 }
@@ -31,10 +31,10 @@ static NSData *Clip(NSString *s,NSUInteger max){if(![s isKindOfClass:NSString.cl
 - (BOOL)setup{NSString *peer=TIOProtocolDevice();if(!peer.length){_note=TIOText(@"眼镜未连接");return NO;}if(_transport&&[_peer isEqual:peer])return !_failed;if(self.busy)return NO;
  _peer=[peer copy];_failed=NO;_commands=[NSMutableOrderedSet new];uint64_t last=[[NSUserDefaults.standardUserDefaults objectForKey:@"TurboMusicSIDV1"]unsignedLongLongValue];uint64_t sid=MAX(last+1,(uint64_t)NSDate.date.timeIntervalSince1970);if(sid>UINT32_MAX)return NO;_sid=(uint32_t)sid;_seq=0;[NSUserDefaults.standardUserDefaults setObject:@(sid) forKey:@"TurboMusicSIDV1"];
  NSString *pinned=_peer;NSURL *root=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/MusicTMU1"]];
- _transport=[[TMTransport alloc]initWithRoot:root device:_peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){
+ _transport=[[TIOGlassesFileTransport alloc]initWithRoot:root device:_peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){
   if(![pinned isEqual:TIOProtocolDevice()])return NO;id plugin=TIOProtocolPlugin();Class cls=NSClassFromString(@"FlutterMethodCall");SEL make=NSSelectorFromString(@"methodCallWithMethodName:arguments:"),handle=NSSelectorFromString(@"handleMethodCall:result:");if(!plugin||![cls respondsToSelector:make]||![plugin respondsToSelector:handle])return NO;
   @try{id c=((id(*)(id,SEL,id,id))objc_msgSend)(cls,make,method,args);((void(*)(id,SEL,id,id))objc_msgSend)(plugin,handle,c,[done copy]);return YES;}@catch(NSException *e){return NO;}
- }];return YES;
+ } fileName:@"turbo-music.tmu" validator:^BOOL(NSData *d){TMPacket p;return tm_decode(d.bytes,d.length,&p);}];return YES;
 }
 - (void)assetsCover:(NSData *)cover lyrics:(NSArray *)rows{if(cover.length==TM_COVER_BYTES&&!_cover)_cover=[cover copy];if(rows.count&&!_lyrics){NSMutableData *d=[NSMutableData new];for(NSDictionary *r in rows){NSData *s=Clip(r[@"text"],240);if(!s.length)continue;if(d.length+6+s.length>TM_LYRIC_BYTES)break;uint8_t h[6];Put(h,[r[@"ms"]unsignedIntValue]);h[4]=s.length&255;h[5]=s.length>>8;[d appendBytes:h length:6];[d appendData:s];}_lyrics=d;}}
 - (void)openWithCover:(NSData *)cover lyrics:(NSArray *)lyrics{if(![self setup])return;if(++_gen==0){_failed=YES;_note=TIOText(@"会话计数耗尽，请重启");return;}_cover=_lyrics=nil;_coverAt=_lyricsAt=0;_needOpen=_active=YES;_needClose=NO;[self assetsCover:cover lyrics:lyrics];_note=TIOText(@"请求打开眼镜音乐页");[self pump];}

@@ -115,6 +115,7 @@ test('labels',['RoadMap.m','NavigationGuidance.m','RoadTiles.m','nav_runtime.c',
 test('tiles',['RoadTiles.m','tests/RoadTilesTests.m'])
 test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
+test('glasses-file',['tests/GlassesFileTransportTests.m','TIOGlassesFileTransport.m','tests/diagnostic_stub.m','tests/fixtures/wp8/LegacyFocusTransport.m','tests/fixtures/wp8/LegacyMusicTransport.m','tests/fixtures/wp8/LegacyTDTransport.m','focus.c','music.c','command.c','diagnostics.c'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c'])
 test('apple-ai-core',['AppleAICoreTests.m','AppleAICore.m'])
 test('no-network-turn',['tests/NoNetworkTurnTests.m','NoNetworkTurn.m','NoNetworkTurnHost.m','Core.m'],extra=['-framework','Network','-DTIO_NO_NETWORK_TESTING=1'])

@@ -2,11 +2,9 @@
 #import "TIOLanguage.h"
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAFlash.h"
-#import "MusicTransport.h"
+#import "TIOGlassesFileTransport.h"
 #import "AppTransport.h"
 #import "AppBridge.h"
-#import "FocusTransport.h"
-#import "TDTransport.h"
 #import "ExperimentalOTA.h"
 #import "FirmwarePins.h"
 #import "ExperimentalOTAGuard.h"
@@ -36,9 +34,7 @@ static const TIOOTAScopedSender ScopedFileSenders[]={
 #if TIO_DISPLAY_PHONE && TIO_NATIVE_NAV
  TAPIsScopedCall,
  TNVIsScopedCall,
- TMIsScopedCall,
- TFIsScopedCall,
- TDIsScopedCall,
+ TIOGlassesFileIsScopedCall,
 #endif
  NULL};
 NSUInteger TIOOTAScopedSenderCount(void){NSUInteger n=0;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s;s++)n++;return n;}

@@ -255,6 +255,10 @@
     "local-translation/SubtitleHUDTests.m": {
       "status": "excluded",
       "reason": "Run separately by local-translation/test.py; standalone translation dependency closure."
+    },
+    "tests/GlassesFileTransportTests.m": {
+      "status": "run",
+      "group": "glasses-file"
     }
   }
 }

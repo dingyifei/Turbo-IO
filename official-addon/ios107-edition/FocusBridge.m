@@ -1,6 +1,6 @@
 #import "FocusBridge.h"
 #import "TIOLanguage.h"
-#import "FocusTransport.h"
+#import "TIOGlassesFileTransport.h"
 #import "ProtocolContext.h"
 #import "focus.h"
 #import <objc/message.h>
@@ -11,7 +11,7 @@ NSDictionary *TFDecodeReply(NSDictionary *e){if(![e isKindOfClass:NSDictionary.c
  return @{@"result":@(raw[5]),@"status":@(raw[6]),@"pending":@((raw[7]&1)!=0),@"peek":@((raw[7]&2)!=0),@"sid":@(tf_u32(raw+8)),@"seq":@(tf_u32(raw+12)),@"revision":@(tf_u32(raw+16)),@"remainingMS":@(tf_u32(raw+20)),@"duration":@(tf_u32(raw+24)),@"phase":@(tf_u32(raw+28)),@"completed":@(tf_u32(raw+32)),@"completion":@(tf_u32(raw+36)),@"requestSID":@(tf_u32(raw+40)),@"notified":@(tf_u32(raw+44))};
 }
 @implementation TFFocusBridge{
- TFTransport *_transport;NSString *_peer,*_task,*_native,*_note;NSData *_packet;NSDictionary *_snapshot;NSMutableArray *_early;
+ TIOGlassesFileTransport *_transport;NSString *_peer,*_task,*_native,*_note;NSData *_packet;NSDictionary *_snapshot;NSMutableArray *_early;
  uint32_t _sequence,_requestSID,_op,_result,_pendingOp,_pendingSID;BOOL _submitted,_ack,_fileDone;NSTimeInterval _deadline,_received,_queried;NSTimer *_timer;
 }
 + (instancetype)shared{static TFFocusBridge *b;static dispatch_once_t once;dispatch_once(&once,^{b=[self new];});return b;}
@@ -23,7 +23,7 @@ NSDictionary *TFDecodeReply(NSDictionary *e){if(![e isKindOfClass:NSDictionary.c
 - (void)fail:(NSString *)reason{_pendingOp=_pendingSID=0;_packet=nil;_task=_native=nil;_early=nil;_transport=nil;_snapshot=nil;_note=reason;/* Uncertain native spool ownership: do not unlink. */}
 - (BOOL)setup{NSString *peer=TIOProtocolDevice();if(!peer.length){_note=TIOText(@"眼镜未连接；已开始的眼镜计时不受影响");return NO;}if(_transport&&[_peer isEqual:peer])return YES;
  _peer=[peer copy];_snapshot=nil;NSString *pinned=_peer;NSURL *root=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/FocusTFP1"]];
- _transport=[[TFTransport alloc]initWithRoot:root device:_peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){if(![pinned isEqual:TIOProtocolDevice()])return NO;id plugin=TIOProtocolPlugin();Class cls=NSClassFromString(@"FlutterMethodCall");SEL make=NSSelectorFromString(@"methodCallWithMethodName:arguments:"),handle=NSSelectorFromString(@"handleMethodCall:result:");if(!plugin||![cls respondsToSelector:make]||![plugin respondsToSelector:handle])return NO;@try{id call=((id(*)(id,SEL,id,id))objc_msgSend)(cls,make,method,args);((void(*)(id,SEL,id,id))objc_msgSend)(plugin,handle,call,[done copy]);return YES;}@catch(NSException *e){return NO;}}];
+ _transport=[[TIOGlassesFileTransport alloc]initWithRoot:root device:_peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){if(![pinned isEqual:TIOProtocolDevice()])return NO;id plugin=TIOProtocolPlugin();Class cls=NSClassFromString(@"FlutterMethodCall");SEL make=NSSelectorFromString(@"methodCallWithMethodName:arguments:"),handle=NSSelectorFromString(@"handleMethodCall:result:");if(!plugin||![cls respondsToSelector:make]||![plugin respondsToSelector:handle])return NO;@try{id call=((id(*)(id,SEL,id,id))objc_msgSend)(cls,make,method,args);((void(*)(id,SEL,id,id))objc_msgSend)(plugin,handle,call,[done copy]);return YES;}@catch(NSException *e){return NO;}} fileName:@"turbo-focus.tfp" validator:^BOOL(NSData *d){TFCommand p;return tf_decode(d.bytes,d.length,&p);}];
  if(!_timer){__weak typeof(self) w=self;_timer=[NSTimer timerWithTimeInterval:1 repeats:YES block:^(NSTimer *t){[w pump];}];[NSRunLoop.mainRunLoop addTimer:_timer forMode:NSRunLoopCommonModes];}return YES;
 }
 - (void)query{[self perform:TF_QUERY seconds:0 phase:0];}
