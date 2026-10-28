@@ -65,7 +65,7 @@ static void CheckAsyncMirror(unsigned caps,BOOL scene2,NSTimeInterval initialTim
  unsigned sceneOp=scene2?TNR_SCENE2:TNR_SCENE;
  Caps=caps;__block double now=initialTime;__block NSData *wire=nil;__block TNVSubmitted submitted=nil;
  TNVSession *s=[[TNVSession alloc]initWithDevice:@"peer" session:11 clock:^{return now;} sender:^(NSData *p,NSString *task,TNVSubmitted done){(void)task;assert(!wire);wire=[p copy];submitted=[done copy];} cleanup:nil];
- __block unsigned transfer=0;__block TNRState expected={0};
+ __block unsigned transfer=0;__block TNRState expected={0};expected.smooth=!!(caps&4);
  void (^finish)(unsigned)=^(unsigned order){
   NSData *packet=wire;assert(packet);unsigned op=((const uint8_t *)packet.bytes)[5];NSString *native=[NSString stringWithFormat:@"async%u",++transfer];
   // Alternating orders cover ACK before native submission, early queued file
@@ -85,7 +85,7 @@ static void CheckAsyncMirror(unsigned caps,BOOL scene2,NSTimeInterval initialTim
  // A newer speed arrives without a position jump while the first correction is in flight.
  // Committing must still use speed 6 and x=0 from the exact packet body.
  now+=0.30;[s offer:MirrorFrame(now,1,0,20,scene2)];finish(0);
- if(caps&2){assert(Mirror(s)->target.speed==6&&Mirror(s)->target.p.x==0);now+=0.21;[s pump];assert(wire&&((const uint8_t *)wire.bytes)[5]==TNR_POSE2);finish(1);assert(Mirror(s)->target.speed==20&&Mirror(s)->target.p.x==0);}
+ if(caps&2){assert(Mirror(s)->target.speed==6&&Mirror(s)->target.p.x==0);now+=0.21;[s pump];assert(wire&&((const uint8_t *)wire.bytes)[5]==TNR_POSE2);finish(1);assert(Mirror(s)->target.speed==20&&Mirror(s)->target.p.x==((caps&4)?4:0));}
  // A new generation offered during a geometry transfer must not leak into its
  // committed mirror. The following geometry and pose then advance in order.
  now+=0.6;[s offer:MirrorFrame(now,2,30,8,scene2)];[s pump];assert(wire&&((const uint8_t *)wire.bytes)[5]==sceneOp);
@@ -118,7 +118,7 @@ int main(void){@autoreleasepool{
  // Binding stress fixture: heading 180 while +y motion opposes the predictor; still require prompt correction.
  assert(!turn.failed&&turn.turnPoseAt>=30&&turn.turnPoseAt<=30.25);
  assert(!still.failed&&still.pose2>=1&&still.maxPoseGap<=2.75);
- Walk bg=Run(3,YES,0,6,-1),slow=Run(3,NO,1.5,6,-1),future=Run(7,NO,0,6,-1);
+ Walk bg=Run(3,YES,0,6,-1),slow=Run(3,NO,1.5,6,-1),future=Run(11,NO,0,6,-1);
  assert(!bg.failed&&!slow.failed&&!future.failed&&bg.minPoseGap>=1-1e-6&&slow.minPoseGap>=1-1e-6&&slow.maxPoseGap<=8&&future.pose2==p2.pose2);
  printf("POSE2 background gap=%.2f slow gap=%.2f\n",bg.maxPoseGap,slow.maxPoseGap);
  printf("POSE2 straight=%u updates=%u maxGap=%.2f maxError=%.2f turnAt=%.2f stationaryGap=%.2f\n",p2.pose2,p2.updates,p2.maxPoseGap,p2.maxError,turn.turnPoseAt,still.maxPoseGap);

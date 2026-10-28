@@ -39,6 +39,17 @@ static int bound_position(int x){return x< -8192?-8192:x>8192?8192:x;}
 bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
  if(!s||!p||!s->valid||!s->located)return false;
  uint32_t elapsed=now-s->pose_at,tp=elapsed>TNR_PREDICT_MS?TNR_PREDICT_MS:elapsed;
+ if(s->smooth){
+  /* Constant velocity plus a bounded correction, not a moving-target lerp.
+   * Backward corrections can slow forward travel to zero, never reverse it. */
+  uint32_t horizon=TNR_PREDICT_MS-s->target.age;if(tp>horizon)tp=horizon;
+  uint32_t duration=s->blend_ms?s->blend_ms:TNR_SMOOTH_MS,t=tp<duration?tp:duration;
+  int64_t travel=(int64_t)s->target.speed*tp;*p=s->target;
+  p->p.x=(int16_t)bound_position(s->from.p.x+(int)((travel*sine(s->target.heading)/1000+(int64_t)(s->target.p.x-s->from.p.x)*t*16384/duration)/16384));
+  p->p.y=(int16_t)bound_position(s->from.p.y+(int)((travel*sine(s->target.heading+90)/1000+(int64_t)(s->target.p.y-s->from.p.y)*t*16384/duration)/16384));
+  uint32_t turn=(uint32_t)ab(angle(s->from.heading,s->target.heading))*1000/90;if(turn<TNR_SMOOTH_MS)turn=TNR_SMOOTH_MS;
+  uint32_t ht=elapsed<turn?elapsed:turn;p->heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)ht/(int)turn+360)%360);return true;
+ }
  int d=(int)s->target.speed*(int)tp/1000;
  TNRPoint target={
   (int16_t)bound_position(s->target.p.x+d*sine(s->target.heading)/16384),
@@ -50,7 +61,7 @@ bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
 }
 bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now){
  if(!s||!tnr_body_valid(op,p,n))return false;
- if(op==TNR_CLEAR){memset(s,0,sizeof *s);s->dirty=true;return true;}
+ if(op==TNR_CLEAR){bool smooth=s->smooth;memset(s,0,sizeof *s);s->smooth=smooth;s->dirty=true;return true;}
  if(op==TNR_SCENE||op==TNR_SCENE2){
   if((s->valid&&nm_u32(p)<=s->scenes[s->bank].generation)||(s->pending&&nm_u32(p)<=s->scenes[s->bank^1u].generation))return false;
   unsigned bank=s->bank^1u;TNRScene *d=&s->scenes[bank];memset(d,0,sizeof *d);d->generation=nm_u32(p);d->range=(uint16_t)nm_u16(p+4);d->path_count=(uint16_t)nm_u16(p+6);d->point_count=(uint16_t)nm_u16(p+8);unsigned first=0;
@@ -64,9 +75,17 @@ bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now)
  if(s->pending){if(nm_u32(p)!=s->scenes[s->bank^1u].generation)return false;s->bank^=1u;s->valid=true;s->located=false;s->pending=false;}
  if(!s->valid||nm_u32(p)!=s->scenes[s->bank].generation)return false;
  TNRPose q={.generation=nm_u32(p),.p={(int16_t)nm_u16(p+4),(int16_t)nm_u16(p+6)},.heading=(uint16_t)nm_u16(p+8),.age=(uint16_t)nm_u16(p+10),.speed=op==TNR_POSE2?(uint16_t)nm_u16(p+12):0};
- if(s->located&&!tnr_stale(s,now))tnr_position(s,now,&s->from);else s->from=q;
- /* Never interpolate long discontinuities across a junction or a relocalization. */
- if(ab(q.p.x-s->from.p.x)+ab(q.p.y-s->from.p.y)>400)s->from=q;
+ if(s->smooth){int advance=(int)q.speed*q.age/1000;q.p.x=(int16_t)bound_position(q.p.x+advance*sine(q.heading)/16384);q.p.y=(int16_t)bound_position(q.p.y+advance*sine(q.heading+90)/16384);}
+ if(s->located&&(!tnr_stale(s,now)||s->smooth))tnr_position(s,now,&s->from);else s->from=q;
+ if(s->smooth){
+  int dx=q.p.x-s->from.p.x,dy=q.p.y-s->from.p.y,sy=sine(q.heading),cy=sine(q.heading+90);
+  int behind=-(dx*sy+dy*cy)/16384;
+  if(behind>0&&!q.speed){q.p=s->from.p;dx=q.p.x-s->from.p.x;dy=q.p.y-s->from.p.y;}
+  uint32_t duration=(uint32_t)(ab(dx)+ab(dy))*1000/TNR_CORRECTION_QM_S;
+  /* Leave rounding headroom: at most half the forward velocity is removed. */
+  if(behind>0&&q.speed){uint32_t braking=(uint32_t)behind*2000/q.speed;if(duration<braking)duration=braking;}
+  s->blend_ms=duration<TNR_SMOOTH_MS?TNR_SMOOTH_MS:duration;
+ }else if(ab(q.p.x-s->from.p.x)+ab(q.p.y-s->from.p.y)>400)s->from=q;
  s->target=q;s->pose_at=now;s->located=true;s->dirty=true;return true;
 }
 bool tnr_needs_draw(const TNRState *s,uint32_t now){return s&&(s->dirty||s->was_stale!=tnr_stale(s,now)||(s->valid&&s->located&&(uint32_t)(now-s->pose_at)<TNR_BLEND_MS+40&&(uint32_t)(now-s->last_draw)>=33)||(s->valid&&s->located&&s->target.speed&&(uint32_t)(now-s->pose_at)<TNR_PREDICT_MS&&(uint32_t)(now-s->last_draw)>=100));}
@@ -91,7 +110,7 @@ static void line(uint8_t *out,TNRPoint a,TNRPoint b,unsigned gray,unsigned width
  int x=a.x,y=a.y,xx=b.x,yy=b.y;if(!clip(&x,&y,&xx,&yy))return;int dx=xx-x,dy=yy-y,n=ab(dx)>ab(dy)?ab(dx):ab(dy);if(!n)n=1;
  if((unsigned)n+1>*budget)return;*budget-=(unsigned)n+1;
  for(int i=0;i<=n;i++){if(dash&&(i/4)%2)continue;int fx=x*256+dx*256*i/n,fy=y*256+dy*256*i/n,px=fx/256,py=fy/256;unsigned alpha=(unsigned)(ab(dx)>=ab(dy)?fy%256:fx%256);
-  for(unsigned w=0;w<width;w++){dot(out,px,py+(int)w,gray,255-alpha,erase);if(ab(dx)>=ab(dy))dot(out,px,py+1+(int)w,gray,alpha,erase);else dot(out,px+1,py+(int)w,gray,alpha,erase);}
+  for(unsigned w=0;w<width;w++){int offset=(int)w-(int)width/2;if(ab(dx)>=ab(dy)){dot(out,px,py+offset,gray,255-alpha,erase);dot(out,px,py+offset+1,gray,alpha,erase);}else{dot(out,px+offset,py,gray,255-alpha,erase);dot(out,px+offset+1,py,gray,alpha,erase);}}
  }
 }
 bool tnr_scale(unsigned range,unsigned *metres,unsigned *pixels){
@@ -123,7 +142,7 @@ void tnr_draw(const TNRState *s,uint32_t now,uint8_t out[TNR_W*TNR_H]){
  /* Hard raster work caps even for a syntactically valid pathological scene.
   * Keep a separate route allowance so background roads cannot starve it. */
  for(unsigned pass=0;pass<2;pass++){unsigned budget=pass?4000:8000;
-  for(unsigned i=0;i<d->path_count;i++){const TNRPath *r=&d->paths[i];if((r->style==6)!=!!pass)continue;unsigned g=stale?gray[r->style]/3:gray[r->style],w=r->style==6?3:r->style<2?2:1;
+  for(unsigned i=0;i<d->path_count;i++){const TNRPath *r=&d->paths[i];if((r->style==6)!=!!pass)continue;unsigned g=stale?gray[r->style]/3:gray[r->style],w=r->style==6?6:r->style<2?2:1;
    for(unsigned j=1;j<r->count;j++){TNRPoint a=screen(d->points[r->first+j-1],&p,d->range),b=screen(d->points[r->first+j],&p,d->range);if(r->flags&1||r->style==6)line(out,a,b,0,w+2,false,true,&budget);line(out,a,b,g,w,!!(r->flags&2),false,&budget);}
   }
  }

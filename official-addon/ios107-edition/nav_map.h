@@ -15,6 +15,8 @@
 #define TNR_MAX_LABELS 4u
 #define TNR_LABEL_BYTES 32u
 #define TNR_BLEND_MS 180u
+#define TNR_SMOOTH_MS 1000u
+#define TNR_CORRECTION_QM_S 16u
 enum {TNR_SCENE=7,TNR_POSE=8,TNR_CLEAR=9,TNR_SCENE2=10,TNR_POSE2=11};
 typedef struct {int16_t x,y;} TNRPoint; /* quarter metres, east/north */
 typedef struct {uint16_t first,count;uint8_t style,flags;int8_t layer;uint8_t reserved;} TNRPath;
@@ -24,7 +26,7 @@ typedef struct {uint32_t generation;uint16_t range,path_count,point_count,label_
 typedef struct {TNRPoint p;uint16_t heading,age;uint32_t generation;uint16_t speed;} TNRPose;
 typedef struct {
  TNRScene scenes[2];TNRPose from,target;
- uint32_t pose_at,last_draw;unsigned bank;bool valid,located,dirty,was_stale,pending;
+ uint32_t pose_at,last_draw,blend_ms;unsigned bank;bool valid,located,dirty,was_stale,pending,smooth;
 } TNRState;
 bool tnr_body_valid(unsigned op,const uint8_t *,size_t);
 bool tnr_receive(TNRState *,unsigned op,const uint8_t *,size_t,uint32_t now);

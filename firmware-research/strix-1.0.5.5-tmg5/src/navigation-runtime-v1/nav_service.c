@@ -76,7 +76,7 @@ static void leave(void *ctx){Control *c=ctx;c->waiting=false;if(c->view)(void)tn
 static TNUI api(Control *c){return (TNUI){c,available,enter,render,power,leave};}
 static void emit_caps(TNReply reply,bool capabilities){
  uint8_t raw[32],out[180];if(!tn_reply_encode(raw,sizeof raw,reply))return;
- if(capabilities&&reply.result==TN_OK){raw[24]=3;uint32_t crc=tn_crc(raw,28);for(unsigned i=0;i<4;i++)raw[28+i]=(uint8_t)(crc>>(8*i));}
+ if(capabilities&&reply.result==TN_OK){raw[24]=7;uint32_t crc=tn_crc(raw,28);for(unsigned i=0;i<4;i++)raw[28+i]=(uint8_t)(crc>>(8*i));}
  static const char prefix[]="{\"cmd\":\"turbo_nav_v1\",\"payload\":{\"value\":0,\"mode\":0,\"data\":\"",suffix[]="\"}}",hex[]="0123456789abcdef";
  enum{len=sizeof prefix-1+64+sizeof suffix-1};_Static_assert(len<128,"PB length width");
  const uint8_t head[]={8,1,16,6,26,len};memcpy(out,head,sizeof head);memcpy(out+sizeof head,prefix,sizeof prefix-1);

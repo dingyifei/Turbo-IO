@@ -49,6 +49,20 @@ static NSData *NameData(id value){
  }];return [s dataUsingEncoding:NSUTF8StringEncoding];
 }
 static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_link",@"trunk_link"] containsObject:h])return 0;if([h hasPrefix:@"primary"])return 1;if([h hasPrefix:@"secondary"])return 2;if([h hasPrefix:@"tertiary"])return 3;if([@[@"residential",@"unclassified",@"living_street"] containsObject:h])return 4;return 5;}
+// Route proximity is a render-time filter: existing saved tiles stay readable.
+static double SegmentDistance(double x,double y,double ax,double ay,double bx,double by){double dx=bx-ax,dy=by-ay,t=MAX(0,MIN(1,((x-ax)*dx+(y-ay)*dy)/MAX(1,dx*dx+dy*dy)));return hypot(x-ax-t*dx,y-ay-t*dy);}
+static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
+ for(NSUInteger i=1;i<part.count;i++){double ax=[part[i-1][0]doubleValue],ay=[part[i-1][1]doubleValue],bx=[part[i][0]doubleValue],by=[part[i][1]doubleValue];
+  for(NSArray *route in routes)for(NSUInteger j=1;j<route.count;j++){
+   if(!*budget)return NO;--*budget;
+   double cx=[route[j-1][0]doubleValue],cy=[route[j-1][1]doubleValue],dx=[route[j][0]doubleValue],dy=[route[j][1]doubleValue];
+   if(MAX(ax,bx)+160<MIN(cx,dx)||MAX(cx,dx)+160<MIN(ax,bx)||MAX(ay,by)+160<MIN(cy,dy)||MAX(cy,dy)+160<MIN(ay,by))continue;
+   double cross1=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax),cross2=(bx-ax)*(dy-ay)-(by-ay)*(dx-ax),cross3=(dx-cx)*(ay-cy)-(dy-cy)*(ax-cx),cross4=(dx-cx)*(by-cy)-(dy-cy)*(bx-cx);
+   if(cross1*cross2<=0&&cross3*cross4<=0&&MAX(ax,bx)>=MIN(cx,dx)&&MAX(cx,dx)>=MIN(ax,bx)&&MAX(ay,by)>=MIN(cy,dy)&&MAX(cy,dy)>=MIN(ay,by))return YES;
+   if(MIN(MIN(SegmentDistance(ax,ay,cx,cy,dx,dy),SegmentDistance(bx,by,cx,cy,dx,dy)),MIN(SegmentDistance(cx,cy,ax,ay,bx,by),SegmentDistance(dx,dy,ax,ay,bx,by)))<=160)return YES;
+  }
+ }return NO;
+}
 @implementation TIORoadMap{
  NSArray *(^_convert)(double,double);NSArray *_features,*_bbox,*_origin,*_regions;double _labelHeading,_sceneAt;NSData *_scene,*_scene2;uint32_t _generation;id _segment;NSString *_note;
  NSURLSession *_session;NSURLSessionDataTask *_task;NSMutableData *_received;NSTimeInterval _lastRequest;NSUInteger _requests,_epoch;BOOL _httpOK,_tileBusy,_partial,_retile;
@@ -172,13 +186,13 @@ static unsigned RoadStyle(NSString *h){if([@[@"motorway",@"trunk",@"motorway_lin
  });
 }
 - (NSData *)scene:(NSArray *)coords origin:(NSArray *)origin{
- NSMutableArray *items=[NSMutableArray new],*nameLines=[NSMutableArray new];NSUInteger visited=0; // name lines label drawn roads, never drawn themselves
+ NSArray *routeParts=Pieces(coords,origin,nil,NO);NSUInteger proximityBudget=200000;NSMutableArray *items=[NSMutableArray new],*nameLines=[NSMutableArray new];NSUInteger visited=0; // name lines label drawn roads, never drawn themselves
  for(NSDictionary *f in _features){if(++visited>10000)break;NSDictionary *p=f[@"properties"],*g=f[@"geometry"];if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"]||![g[@"coordinates"] isKindOfClass:NSArray.class])continue;
   if([Text(p[@"area"]) isEqual:@"yes"])continue;BOOL labelOnly=[p[@"labelOnly"] isEqual:@YES];
-  unsigned style=RoadStyle(Text(p[@"highway"]));for(NSArray *part in Pieces(g[@"coordinates"],origin,_convert,YES)){if(part.count<2)continue;double rank=DBL_MAX;for(NSUInteger i=1;i<part.count;i++){double x=[part[i-1][0] doubleValue],y=[part[i-1][1] doubleValue],dx=[part[i][0] doubleValue]-x,dy=[part[i][1] doubleValue]-y,t=MAX(0,MIN(1,-(x*dx+y*dy)/MAX(1,dx*dx+dy*dy)));rank=MIN(rank,hypot(x+dx*t,y+dy*t)/4);}NSString *bridge=Text(p[@"bridge"]),*tunnel=Text(p[@"tunnel"]);unsigned flags=(bridge.length&&![bridge isEqual:@"no"]?1:0)|(tunnel.length&&![tunnel isEqual:@"no"]?2:0);[items addObject:@{@"points":part,@"style":@(style),@"flags":@(flags),@"layer":@(MAX(-8,MIN(8,[Text(p[@"layer"]) intValue]))),@"name":LabelName(p),@"rank":@(rank+style*18)}];if(labelOnly){[nameLines addObject:items.lastObject];[items removeLastObject];}if(items.count>4096)break;}if(items.count>4096)break;
+  unsigned style=RoadStyle(Text(p[@"highway"]));if(style==5)continue;for(NSArray *part in Pieces(g[@"coordinates"],origin,_convert,YES)){if(part.count<2||(style==4&&!NearRoute(part,routeParts,&proximityBudget)))continue;double rank=DBL_MAX;for(NSUInteger i=1;i<part.count;i++){double x=[part[i-1][0] doubleValue],y=[part[i-1][1] doubleValue],dx=[part[i][0] doubleValue]-x,dy=[part[i][1] doubleValue]-y,t=MAX(0,MIN(1,-(x*dx+y*dy)/MAX(1,dx*dx+dy*dy)));rank=MIN(rank,hypot(x+dx*t,y+dy*t)/4);}NSString *bridge=Text(p[@"bridge"]),*tunnel=Text(p[@"tunnel"]);unsigned flags=(bridge.length&&![bridge isEqual:@"no"]?1:0)|(tunnel.length&&![tunnel isEqual:@"no"]?2:0);[items addObject:@{@"points":part,@"style":@(style),@"flags":@(flags),@"layer":@(MAX(-8,MIN(8,[Text(p[@"layer"]) intValue]))),@"name":LabelName(p),@"rank":@(rank+style*18)}];if(labelOnly){[nameLines addObject:items.lastObject];[items removeLastObject];}if(items.count>4096)break;}if(items.count>4096)break;
  }
  [items sortUsingComparator:^NSComparisonResult(id a,id b){return [a[@"rank"] compare:b[@"rank"]];}];
- NSMutableArray *route=[NSMutableArray new];for(NSArray *part in Pieces(coords,origin,nil,NO))if(part.count>=2)[route addObject:@{@"points":part,@"style":@6,@"flags":@0,@"layer":@8,@"rank":@0}];
+ NSMutableArray *route=[NSMutableArray new];for(NSArray *part in routeParts)if(part.count>=2)[route addObject:@{@"points":part,@"style":@6,@"flags":@0,@"layer":@8,@"rank":@0}];
  NSMutableArray *selected=[NSMutableArray new];NSUInteger points=0;for(NSDictionary *item in [route arrayByAddingObjectsFromArray:items]){NSArray *part=Simplify(item[@"points"]);if(selected.count>=TNR_MAX_PATHS||points+part.count>TNR_MAX_POINTS||16+8*(selected.count+1)+4*(points+part.count)+40*TNR_MAX_LABELS+12>TNR_MAX_BYTES-32)continue;points+=part.count;NSMutableDictionary *simple=[item mutableCopy];simple[@"points"]=part;[selected addObject:simple];}
  [selected sortUsingComparator:^NSComparisonResult(id a,id b){if([a[@"style"] intValue]==6||[b[@"style"] intValue]==6)return [a[@"style"] intValue]==[b[@"style"] intValue]?NSOrderedSame:[a[@"style"] intValue]==6?NSOrderedDescending:NSOrderedAscending;return [a[@"layer"] compare:b[@"layer"]];}];
  if(!selected.count||!points||_generation==UINT32_MAX)return nil;NSMutableData *out=[NSMutableData dataWithLength:16+8*selected.count+4*points];uint8_t *b=out.mutableBytes;W32(b,++_generation);W16(b+4,320);W16(b+6,(unsigned)selected.count);W16(b+8,(unsigned)points);NSUInteger at=16+8*selected.count;

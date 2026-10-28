@@ -67,7 +67,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 - (void)fail:(NSString *)note{[self trace:@"failed"];_active=NO;_failed=YES;_packet=nil;_note=note;/* preserve uncertain native file ownership */}
 - (void)finish{if(!_packet||!_ack||_fileBusy||!_submitted)return;unsigned op=_op;_commitMs=(_clock()-_lastWire)*1000;_packet=nil;_nativeTask=nil;_early=nil;if(_cleanup)_cleanup(_task);_task=nil;_next=_clock()+(_extended?0:1);
  if(_pose2&&_mirror&&op>=TNR_SCENE&&op<=TNR_POSE2){
-  (void)tnr_receive(_mirror,op,_sending.bytes,_sending.length,MirrorMilliseconds(_clock()));
+  (void)tnr_receive(_mirror,op,_sending.bytes,_sending.length,MirrorMilliseconds(_lastWire+_ackMs/1000.0));
   if(op==TNR_SCENE||op==TNR_SCENE2)_sceneSinceCorrection=YES;
  }
  if(op==TN_START||op==TN_UPDATE){_committed=_sending;_lastCommit=_clock();_count++;}
@@ -133,7 +133,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
   correctionDue=correctionDue&&now-_lastPose>=(self.backoff?1:0.2);
  }
  BOOL poseDue=_extended&&_mapCommitted&&_poseLatest&&(_pose2?correctionDue:now-_lastPose>=0.9);
- if(fresh&&(urgent||(!poseDue&&(now-_lastCommit>=10||(changed&&now-_lastCommit>=1))))){[self send:TN_UPDATE scene:_latest];return;}
+ if((_mapCommitted||!_extended||!_mapLatest)&&fresh&&(urgent||(!poseDue&&(now-_lastCommit>=10||(changed&&now-_lastCommit>=1))))){[self send:TN_UPDATE scene:_latest];return;}
  if(_extended&&fresh&&_poseLatest&&now-_poseAt<=4&&now>=_poseAt){
   NSData *map=_mapV2&&_map2Latest?_map2Latest:_mapLatest;
   if(map&&![map isEqual:_mapCommitted]){
@@ -164,6 +164,6 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(!_packet||q.sid!=_sid||q.sequence!=_seq)return YES;
  if(_clock()>=_deadline){[self fail:TIOText(@"收到迟到回执，未恢复发送")];return YES;}
  if(q.result!=TN_OK||(_op!=TN_STOP&&!q.active)){[self fail:[NSString stringWithFormat:TIOText(@"眼镜拒绝导航（%u）；先退出其他任务后重新开启"),q.result]];return YES;}
- if(_op==TN_QUERY){if(!(caps&2)){[self fail:TIOText(@"tmg4.nav.requiresPose2")];return YES;}_mapV2=!!(caps&1);if(!_mirror)_mirror=calloc(1,sizeof *_mirror);if(!_mirror){[self fail:TIOText(@"tmg4.nav.noMirror")];return YES;}_pose2=YES;}_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
+ if(_op==TN_QUERY){if(!(caps&2)){[self fail:TIOText(@"tmg4.nav.requiresPose2")];return YES;}_mapV2=!!(caps&1);if(!_mirror)_mirror=calloc(1,sizeof *_mirror);if(!_mirror){[self fail:TIOText(@"tmg4.nav.noMirror")];return YES;}_mirror->smooth=!!(caps&4);_pose2=YES;}if(!_ack)_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
 }
 @end

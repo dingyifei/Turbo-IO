@@ -92,7 +92,7 @@ bool tn_view_clock(TNView *v,int64_t local_epoch,int64_t eta_epoch,bool stale){
 
 bool tn_view_map(TNView *v,unsigned op,const uint8_t *body,size_t n,uint32_t now){
  if(!v||!v->open||v->retiring)return false;
- return tnr_receive(&v->map_state,op,body,n,now);
+ v->map_state.smooth=true;return tnr_receive(&v->map_state,op,body,n,now);
 }
 bool tn_view_map_tick(TNView *v,uint32_t now){
  if(!v||!v->open||v->retiring)return false;v->map_now=now;

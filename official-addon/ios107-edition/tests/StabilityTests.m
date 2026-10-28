@@ -14,7 +14,7 @@
 - (void)request:(NSArray *)ll{self.attempts++;} // No network; emulate delayed/unavailable next tile.
 @end
 static NSArray *TestCoordinate(double x,double y){return @[@(51.5+y/111319.49),@(.1+x/(111319.49*cos(51.5*M_PI/180)))];}
-static NSDictionary *Road(NSString *name,double x,double y,double xx,double yy){NSArray *a=TestCoordinate(x,y),*b=TestCoordinate(xx,yy);return @{@"properties":@{@"kind":@"road",@"highway":@"residential",@"name":name},@"geometry":@{@"type":@"LineString",@"coordinates":@[@[a[1],a[0]],@[b[1],b[0]]]}};}
+static NSDictionary *Road(NSString *name,double x,double y,double xx,double yy){NSArray *a=TestCoordinate(x,y),*b=TestCoordinate(xx,yy);return @{@"properties":@{@"kind":@"road",@"highway":@"tertiary",@"name":name},@"geometry":@{@"type":@"LineString",@"coordinates":@[@[a[1],a[0]],@[b[1],b[0]]]}};}
 static NSDictionary *Frame(NSArray *p,int heading){return @{@"phase":@"navigating",@"segment":@1,@"tnrLocation":p,@"tnrLocationAt":@(NSProcessInfo.processInfo.systemUptime),@"navHeading":@(heading)};}
 static unsigned Field(NSData *d,unsigned offset){const uint8_t *b=d.bytes;return b[offset]|b[offset+1]<<8;}
 int main(void){@autoreleasepool{

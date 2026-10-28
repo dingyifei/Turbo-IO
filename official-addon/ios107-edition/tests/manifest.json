@@ -275,6 +275,14 @@
     "tests/TileRoundTripTests.m": {
       "status": "run",
       "group": "tile-layout"
+    },
+    "tests/TMG5NavigationTests.m": {
+      "status": "run",
+      "group": "tmg5-navigation"
+    },
+    "tests/TMG5RoadFilterTests.m": {
+      "status": "run",
+      "group": "tmg5-roads"
     }
   }
 }

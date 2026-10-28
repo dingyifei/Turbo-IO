@@ -23,7 +23,7 @@ for file,entry in manifest.items():
     raise SystemExit('invalid manifest entry: '+file)
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
-FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg4'
+FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg5'
 FW=FW4
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
@@ -80,6 +80,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-lang-store',[FW4/'tests/lang_store_test.c',FW4/'src/global-remote-v1/lang_store.c'],FW4/'src')
     ctest('tmg4-text',[FW4/'tests/tio_text_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
     ctest('tmg4-grid',[FW4/'tests/focus_grid_test.c',FW4/'src/focus-v1/focus_menu.c',FW4/'src/common-v1/tio_text.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
+    ctest('tmg5-smoothing',[FW4/'tests/smoothing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-prediction',[FW4/'tests/pose_prediction_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     run('tmg4-native-ui',['python3','-I',FW4/'tests/native_ui_host_test.py','--out',out/'tmg4-native-ui-host'])
     run('tmg4-native-status',['python3','-I',FW4/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
@@ -113,7 +114,7 @@ else:skip('shared-sources','not selected by --only')
 
 seen.add('pins')
 if only is None or 'pins' in only:
-    run('pins',['python3','-I',FW4/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
+    run('pins',['python3','-I',ROOT/'firmware-research/strix-1.0.5.5-tmg4/tools/phone_pins.py','--zip',args.firmware,'--check',P])
     groups.append('pins');print('pins: PASS')
 else:skip('pins','not selected by --only')
 
@@ -128,6 +129,8 @@ test('guidance',['NavigationGuidance.m','tests/NavigationGuidanceTests.m'])
 test('labels',['RoadMap.m','NavigationGuidance.m','RoadTiles.m','nav_runtime.c','tests/RoadMapLabelTests.m'],[],['-DTIO_MAPKIT_ENABLED=1'])
 test('tiles',['RoadTiles.m','tests/RoadTilesTests.m'])
 test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'],extra=['-Dcalloc=TNVTestCalloc'])
+test('tmg5-navigation',['NativeNavigation.m','nav_runtime.c','NavigationGuidance.m','tests/TMG5NavigationTests.m'],extra=['-Dcalloc=TNVTestCalloc'])
+test('tmg5-roads',['RoadMap.m','nav_runtime.c','tests/TMG5RoadFilterTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('glasses-file',['tests/GlassesFileTransportTests.m','TIOGlassesFileTransport.m','tests/diagnostic_stub.m','tests/fixtures/wp8/LegacyFocusTransport.m','tests/fixtures/wp8/LegacyMusicTransport.m','tests/fixtures/wp8/LegacyTDTransport.m','focus.c','music.c','command.c','diagnostics.c'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])

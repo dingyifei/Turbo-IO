@@ -265,7 +265,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
 - (void)tick{
     TDPPhoneNavigationPump();NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;
     if(self.navigating&&self.simulated&&!self.simPaused&&!self.arrived&&self.guide){
-        self.simElapsed+=MIN(1,now-self.simLastTick);self.simLastTick=now;
+        self.simElapsed+=MAX(0,now-self.simLastTick);self.simLastTick=now;
         if(now-self.lastOffer>=0.2){TIOGuidePose p=TIOGuideSimulate(self.guide,self.simElapsed,SimSpeed(self.mode));self.simMarker.coordinate=CLLocationCoordinate2DMake(p.lat,p.lon);
             if(now-self.lastFollow>=1){self.lastFollow=now;[self.map setCenterCoordinate:self.simMarker.coordinate animated:YES];}
             [self updateAt:p.lat lon:p.lon course:p.heading speed:SimSpeed(self.mode) now:now];}
@@ -292,7 +292,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
     NSMutableDictionary *f=[@{@"phase":@"navigating",@"icon":@(icon),@"meters":@(arrive?0:TIOGuideRoundMeters(p.toManeuver)),@"turn":turn,@"road":road,@"remainingMeters":@(arrive?0:TIOGuideRoundMeters(p.remainingMeters)),@"remainingSeconds":@(arrive?0:60*(long)ceil(p.remainingSeconds/60)),
         @"simulated":@(self.simulated),@"segment":@(s.step),@"observedAt":@(NSDate.date.timeIntervalSince1970),@"tnrSource":self.simulated?@"mapkit-simulation":@"mapkit-realtime"} mutableCopy];
     [f addEntriesFromDictionary:TNVNormalizeCoordinates(ahead)];
-    f[@"navSpeed"]=@(isfinite(speed)&&speed>=0?speed:0);f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(now);f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
+    f[@"navSpeed"]=@(isfinite(speed)&&speed>=0?speed:0);f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(self.simulated?now:now-MAX(0,-self.fix.timestamp.timeIntervalSinceNow));f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
     NSDictionary *frame=[self.roadMap decorate:f coordinates:ahead];self.display=frame;
     if(!self.firstFrameAt)self.firstFrameAt=now;
     if(self.glassesStarted){TDPPhoneNavigationOffer(frame);self.offers++;}
