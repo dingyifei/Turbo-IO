@@ -1,5 +1,7 @@
 # iOS 1.0.7（230）· APP107 兼容适配
 
+Layout (2026-10): this directory is self-contained — build.sh, package.mjs, test.py, local-translation/ and tests/ live here. Older editions are in git tag `archive/editions-2026-10`. Ignored parser copies and signing inputs remain external; see the build instructions.
+
 ## WP6 candidate status (current development branch)
 
 This branch bundles the unflashed **TMG3 CANDIDATE-NOT-APPROVED** as `TurboWeReadCandidate.zip`. ZIP SHA-256: `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` (8803177 bytes). AP: 7344072 bytes, MD5 `28d26bb9965e2648ab514e02d4708957`. [TMG3 source, tile map and rebuild](../../firmware-research/strix-1.0.5.5-tmg3/README.md). TMG2 glasses remain supported and do not need to be flashed for the phone update. The wizard offers TMG3 only after the existing checks and single human confirmation; no package automatically flashes. The 2026-10-19 TMG2 device results below are historical and do not establish TMG3 device acceptance.

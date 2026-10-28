@@ -43,3 +43,11 @@ Open **Turbo › Glasses › Glasses firmware**. The wizard shows the firmware n
 - 刷后新手机进程回读：授权 0、已开始 0、下载窗口关闭。
 - 本轮使用逐字节校验一致的官方缓存，未另做网络重新下载实测。公开脱敏源独立编译、回归和本地签名检查，与私用实测 IPA 不逐字节相同。
 - 私人日志、Cookie、Key、签名材料和 IPA 不公开；其他机型、账号与所有后台场景未逐一验证。
+
+## Why official updates stay redirected (decision 2026-10)
+
+- package.mjs patches two inspected App.framework route records through patch-route.mjs, and ExperimentalOTAFeed.m answers on 127.0.0.1. For packageType=app, and for firmware unless a pinned TMG archive is armed, it returns no update. This prevents the official app from offering stock Strix OS, which would overwrite TMG2/TMG3 and remove the Turbo glasses features.
+- A build without the route marker fails TIOOTA107HostMatches in OTAHost.h. The flash gate then refuses every business-9 frame, and the flash wizard cannot install Turbo firmware updates.
+- Official app updates do not apply to this re-signed build. The App Store does not update it, and validateHost in package.mjs pins 1.0.7/230 exactly; a new RayNeo version therefore needs a new addon port.
+
+To return to stock: delete the Turbo build, reinstall RayNeo AI from the App Store, and accept the official firmware update there. No separate un-redirected build is shipped.
