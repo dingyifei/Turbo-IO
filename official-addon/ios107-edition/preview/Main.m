@@ -7,6 +7,13 @@
 #import "TDPhoneUI.h"
 #import "ResearchUI.h"
 #include <stdio.h>
+#import "nav_map.h"
+static UIViewController *NavigationSample(void){
+ TNRState s={.valid=true,.located=true,.smooth=true};TNRScene *d=&s.scenes[0];d->range=320;d->generation=1;d->path_count=4;d->point_count=10;
+ TNRPoint points[]={{-280,-200},{-280,300},{-400,240},{400,240},{-400,-80},{400,-80},{0,-200},{0,80},{180,80},{180,300}};memcpy(d->points,points,sizeof points);d->paths[0]=(TNRPath){0,2,2,0,0,0};d->paths[1]=(TNRPath){2,2,3,0,0,0};d->paths[2]=(TNRPath){4,2,4,0,0,0};d->paths[3]=(TNRPath){6,4,6,0,0,0};
+ uint8_t pixels[TNR_W*TNR_H];tnr_draw(&s,0,pixels);CGColorSpaceRef color=CGColorSpaceCreateDeviceGray();CGDataProviderRef provider=CGDataProviderCreateWithCFData((__bridge CFDataRef)[NSData dataWithBytes:pixels length:sizeof pixels]);CGImageRef image=CGImageCreate(TNR_W,TNR_H,8,8,TNR_W,color,kCGImageAlphaNone,provider,NULL,false,kCGRenderingIntentDefault);
+ UIViewController *page=[UIViewController new];page.title=TIOText(@"hub.row.navigation");page.view.backgroundColor=UIColor.systemBackgroundColor;UIImageView *view=[[UIImageView alloc]initWithImage:[UIImage imageWithCGImage:image]];view.translatesAutoresizingMaskIntoConstraints=NO;view.layer.magnificationFilter=kCAFilterNearest;[page.view addSubview:view];[NSLayoutConstraint activateConstraints:@[[view.centerXAnchor constraintEqualToAnchor:page.view.centerXAnchor],[view.centerYAnchor constraintEqualToAnchor:page.view.centerYAnchor],[view.widthAnchor constraintEqualToAnchor:page.view.widthAnchor constant:-32],[view.heightAnchor constraintEqualToAnchor:view.widthAnchor multiplier:.75]]];CGImageRelease(image);CGDataProviderRelease(provider);CGColorSpaceRelease(color);return page;
+}
 
 extern UIViewController *TIOCreateTurboPreview(void);
 extern UIViewController *TMMusicController(void);
@@ -78,6 +85,7 @@ static NSDictionary *ReportFor(UIViewController *controller) {
                                   @"status":cell.detailTextLabel.text?:@"",
                                   @"enabled":@(cell.userInteractionEnabled),
                                   @"movable":@([dataSource respondsToSelector:@selector(tableView:canMoveRowAtIndexPath:)]&&[dataSource tableView:table canMoveRowAtIndexPath:path]),
+                                  @"speedStep":[cell.accessoryView isKindOfClass:UISegmentedControl.class]?@(((UISegmentedControl *)cell.accessoryView).selectedSegmentIndex):NSNull.null,
                                   @"switchOn":[cell.accessoryView isKindOfClass:UISwitch.class]?@(((UISwitch *)cell.accessoryView).on):NSNull.null,
                                   @"accessory":@(table.editing?cell.editingAccessoryType:cell.accessoryType),
                                   @"editingSwitch":@([cell.editingAccessoryView isKindOfClass:UISwitch.class]),
@@ -277,13 +285,14 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
     dispatch_async(dispatch_get_main_queue(),^{
         UIViewController *presented=nil;
         UINavigationController *navigation=nil;
-        if (wizard || HasArgument(@"--hub") || [screen isEqual:@"hub"]) {
+        if (wizard || HasArgument(@"--hub") || ([screen isEqual:@"hub"]||[screen isEqual:@"voice"])) {
             if (wizard) TIOOTAWizardUseFixture(fixture?:@"ready-authorize");
             UIViewController *hub=TIOCreateTurboPreview();
             if ([hub isKindOfClass:UINavigationController.class]) {
                 navigation=(UINavigationController *)hub;
                 presented=hub;
             }
+        } else if ([screen isEqual:@"nav"]) {navigation=[[UINavigationController alloc]initWithRootViewController:NavigationSample()];presented=navigation;
         } else if ([screen isEqual:@"ota"]) {
             UIViewController *page=TIOExperimentalOTAController();
             if (page) navigation=[[UINavigationController alloc] initWithRootViewController:page];
@@ -317,6 +326,8 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
                 if (key) SelectHubKey(navigation,key);
             }
             if([screen isEqual:@"tiles"]||[screen isEqual:@"knob"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);if(table){[table scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1] atScrollPosition:UITableViewScrollPositionTop animated:NO];CGPoint offset=table.contentOffset;offset.y=MAX(-table.adjustedContentInset.top,offset.y-36);[table setContentOffset:offset animated:NO];}});
+            if([screen isEqual:@"tiles"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.7*NSEC_PER_SEC)),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);[table.delegate tableView:table didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:2]];});
+            if([screen isEqual:@"voice"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);id<UITableViewDataSource> ds=table.dataSource;for(NSInteger section=0;section<[ds numberOfSectionsInTableView:table];section++)for(NSInteger row=0;row<[ds tableView:table numberOfRowsInSection:section];row++){NSIndexPath *ip=[NSIndexPath indexPathForRow:row inSection:section];if([[[ds tableView:table cellForRowAtIndexPath:ip] accessibilityIdentifier] isEqual:@"hub-ttsSpeed"])[table scrollToRowAtIndexPath:ip atScrollPosition:UITableViewScrollPositionMiddle animated:NO];}});
             if (HasArgument(@"--scroll-bottom")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{ScrollHubBottom(navigation);});
             if (HasArgument(@"--report")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{WriteReport(navigation,presented);});
         }];

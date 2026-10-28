@@ -542,7 +542,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"search"]) {pref=@"tinyfishEnabled";action=@selector(searchToggle:);}
     else if ([key isEqual:@"capture"]) {pref=@"captureFinalText";action=@selector(capture:);}
     if (pref) {UISwitch *control=[UISwitch new];control.on=[Prefs boolForKey:pref];control.enabled=enabled;[control addTarget:self action:action forControlEvents:UIControlEventValueChanged];return control;}
-    if ([key isEqual:@"ttsSpeed"]) {UISegmentedControl *control=[[UISegmentedControl alloc]initWithItems:@[@"0.9×",@"1.0×",@"1.2×",@"1.35×",@"1.5×"]];control.frame=CGRectMake(0,0,220,32);control.selectedSegmentIndex=TIOVoiceTTSSpeedStep(Prefs);control.accessibilityIdentifier=@"tts-speed";[control addTarget:self action:@selector(ttsSpeed:) forControlEvents:UIControlEventValueChanged];return control;}
+    if ([key isEqual:@"ttsSpeed"]) {UIButton *control=[UIButton buttonWithType:UIButtonTypeSystem];control.frame=CGRectMake(0,0,64,32);[control setTitle:[NSString stringWithFormat:@"%.2g×",TIOVoiceTTSSpeedMultiplier(Prefs)] forState:UIControlStateNormal];control.accessibilityIdentifier=@"tts-speed";[control addTarget:self action:@selector(ttsSpeed) forControlEvents:UIControlEventTouchUpInside];return control;}
     if ([key isEqual:@"agent"]) {__weak typeof(self) weak=self;return TIOAgentPicker(^{[weak.tableView reloadData];});}
     if ([key isEqual:@"ttsTest"]) {
         UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:TIOText(@"播放") forState:UIControlStateNormal];button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
@@ -562,7 +562,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 }
 
 - (void)thinking:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"deepseekDisableThinking"];}
-- (void)ttsSpeed:(UISegmentedControl *)sender {if(sender.selectedSegmentIndex<0||sender.selectedSegmentIndex>4)return;[Prefs setInteger:sender.selectedSegmentIndex forKey:@"ttsSpeedStep"];[self.tableView reloadData];}
+- (void)ttsSpeed {UIAlertController *alert=[UIAlertController alertControllerWithTitle:TIOText(@"hub.row.ttsSpeed") message:nil preferredStyle:UIAlertControllerStyleAlert];NSArray *titles=@[@"0.9×",@"1.0×",@"1.2×",@"1.35×",@"1.5×"];__weak typeof(self) weak=self;for(NSInteger step=0;step<5;step++)[alert addAction:[UIAlertAction actionWithTitle:titles[step] style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){(void)action;[Prefs setInteger:step forKey:@"ttsSpeedStep"];[weak.tableView reloadData];}]];[alert addAction:[UIAlertAction actionWithTitle:TIOText(@"取消") style:UIAlertActionStyleCancel handler:nil]];[self presentViewController:alert animated:YES completion:nil];}
 - (void)ttsToggle:(UISwitch *)sender {[Prefs setBool:sender.on forKey:@"ttsEnabled"];if(!sender.on)[VoiceTTS cancel];[self.tableView reloadData];}
 - (void)testTTS {
     [Prefs setObject:TIOText(@"已触发固定短句测试") forKey:@"ttsTestDiagnostic"];
@@ -662,6 +662,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"dashboardCard"]) screen=TDCDashboardController();
     else if ([key isEqual:@"a2ui"]) screen=TIOA2UIController();
     else if ([key isEqual:@"subtitleHUD"]) screen=TIOSubtitleHUDController();
+    else if ([key isEqual:@"ttsSpeed"]) {[self ttsSpeed];return;}
     else if ([key isEqual:@"ttsTest"]) {[self testTTS];return;}
     else if ([key isEqual:@"aboutMe"]) {[self configureAboutMe];return;}
     else if ([key isEqual:@"languageStatus"]) {
