@@ -10,7 +10,7 @@ static BOOL V2;
 - (NSString *)fixturePath:(NSString *)name{return [Fixtures stringByAppendingPathComponent:[name stringByAppendingString:@".json"]];}
 @end
 static uint32_t U32(const uint8_t *p){uint32_t n;memcpy(&n,p,4);return n;}
-static NSDictionary *Ack(NSData *packet){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=TN_OK,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});if(V2&&p[5]==TN_QUERY){raw[24]=1;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"data":hex}} options:0 error:nil];assert(json.length<128);uint8_t head[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:head length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"businessId":@15,@"deviceId":@"peer",@"payload":pb}};}
+static NSDictionary *Ack(NSData *packet){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=TN_OK,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});if(p[5]==TN_QUERY){raw[24]=V2?3:2;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"data":hex}} options:0 error:nil];assert(json.length<128);uint8_t head[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:head length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"businessId":@15,@"deviceId":@"peer",@"payload":pb}};}
 static NSDictionary *File(void){return @{@"eventType":@"fileShareSuccess",@"device":@{@"id":@"peer"},@"role":@"sender",@"fileName":@"turbo-navigation.tnv",@"taskId":@"native"};}
 int main(int argc,char **argv){@autoreleasepool{
  assert(argc==4);V2=!strcmp(argv[3],"v2");Fixtures=@(argv[1]);NSString *out=@(argv[2]);NSArray *samples=[NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:[Fixtures stringByAppendingPathComponent:@"replay.json"]] options:0 error:nil];assert(samples.count==180);
@@ -24,7 +24,7 @@ int main(int argc,char **argv){@autoreleasepool{
   if(!i)assert([session start:frame always:NO]);else [session offer:frame];
   for(unsigned step=0;step<10;step++){
    [session pump];if(wire){NSData *p=wire;wire=nil;const uint8_t *b=p.bytes;[trace addObject:[p base64EncodedStringWithOptions:0]];bytes+=p.length;max=MAX(max,(unsigned)p.length);
-    if(b[5]>=7){assert(tnr_receive(&state,b[5],b+32,p.length-32,(uint32_t)(now*1000)));if(b[5]==7||b[5]==10)maps++;if(b[5]==8||b[5]==10)poses++;assert(V2||b[5]!=10);}
+    if(b[5]>=7){assert(tnr_receive(&state,b[5],b+32,p.length-32,(uint32_t)(now*1000)));if(b[5]==7||b[5]==10)maps++;assert(b[5]!=8);if(b[5]==11||b[5]==10)poses++;assert(V2||b[5]!=10);}
     // Exercise ACK-before-submission and file-before-submission ordering.
     [session consume:Ack(p)];[session consume:File()];assert(session.busy);submitted(YES,@"native");assert(!session.busy&&session.active);
    }now+=.1;

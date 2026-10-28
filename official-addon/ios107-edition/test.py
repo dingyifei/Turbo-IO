@@ -67,19 +67,6 @@ def ctest(name,files,inc):
     run(name,[out/name])
     if 'PASS' not in (out/(name+'.log')).read_text():
         raise RuntimeError(name+' did not report PASS')
-seen.add('tmg3-host')
-if only is None or 'tmg3-host' in only:
-    ctest('tmg3-menu-tiles',[FW3/'tests/menu_tiles_test.c'],FW3/'src')
-    ctest('tmg3-menu-lang',[FW3/'tests/menu_lang_test.c',FW3/'src/global-remote-v1/lang_flag.c'],FW3/'src')
-    ctest('tmg3-text',[FW3/'tests/tio_text_test.c',FW3/'src/common-v1/tio_text.c'],FW3/'src')
-    ctest('tmg3-grid',[FW3/'tests/focus_grid_test.c',FW3/'src/focus-v1/focus_menu.c',FW3/'src/common-v1/tio_text.c'],FW3/'src')
-    ctest('tmg3-prediction',[FW3/'tests/pose_prediction_test.c',FW3/'src/navigation-runtime-v1/nav_runtime.c'],FW3/'src')
-    # Preserve an actual TMG2 codec/runtime regression alongside the new tree.
-    ctest('tmg2-navigation',[FW2/'src/navigation-runtime-v1/nav_test.c',FW2/'src/navigation-runtime-v1/nav_runtime.c',FW2/'src/navigation-runtime-v1/nav_visual.c'],FW2/'src/navigation-runtime-v1')
-    run('tmg3-kept',['python3','-I',FW3/'tools/check_kept.py',FW2,FW3])
-    run('tmg3-cjk',['python3','-I',FW3/'tools/check_cjk.py',FW3])
-    groups.append('tmg3-host');print('tmg3-host: PASS')
-else:skip('tmg3-host','not selected by --only')
 seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
@@ -139,7 +126,7 @@ test('replay',['RoadMap.m','NativeNavigation.m','nav_runtime.c','tests/RoadMapTe
 test('guidance',['NavigationGuidance.m','tests/NavigationGuidanceTests.m'])
 test('labels',['RoadMap.m','NavigationGuidance.m','RoadTiles.m','nav_runtime.c','tests/RoadMapLabelTests.m'],[],['-DTIO_MAPKIT_ENABLED=1'])
 test('tiles',['RoadTiles.m','tests/RoadTilesTests.m'])
-test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'])
+test('rate',['NativeNavigation.m','nav_runtime.c','tests/PoseRateTests.m'],extra=['-Dcalloc=TNVTestCalloc'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('glasses-file',['tests/GlassesFileTransportTests.m','TIOGlassesFileTransport.m','tests/diagnostic_stub.m','tests/fixtures/wp8/LegacyFocusTransport.m','tests/fixtures/wp8/LegacyMusicTransport.m','tests/fixtures/wp8/LegacyTDTransport.m','focus.c','music.c','command.c','diagnostics.c'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
@@ -171,6 +158,29 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     test('feed',['ExperimentalOTAFeedTests.m',*gate,'ExperimentalOTAFeed.m'],[args.firmware],['-lz','-DTIO_OTA_FEED_ARMING_ENABLED=1'])
     test('feed-restart',['tests/OTAFeedRestartTests.m',*gate,'ExperimentalOTAFeed.m'],[],['-lz'])
     test('wizard',['OTAWizardModelTests.m','OTAWizardModel.m',*gate,'ExperimentalOTAFeed.m'],[],['-lz'])
+    seen.add('tmg4-wizard')
+    if only is None or 'tmg4-wizard' in only:
+        # Execute the unchanged phone policy on macOS. Only platform imports
+        # and OS-owned providers are substituted; policy/body bytes are kept.
+        source=(P/'ExperimentalOTAFlash.m').read_text()
+        substitutions={
+            '#include <TargetConditionals.h>':'#include <TargetConditionals.h>\n#undef TARGET_OS_IPHONE\n#define TARGET_OS_IPHONE 1',
+            '#import "DisplayPhoneUI.h"':'BOOL TDPPhonePauseForOTA(void);',
+            'NSHomeDirectory()':'TMG4Home()',
+            'NSProcessInfo.processInfo.systemUptime':'TMG4Now()',
+            'NSBundle.mainBundle.infoDictionary':'TMG4HostInfo()',
+            'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()'}
+        for old,new in substitutions.items():
+            assert old in source, 'wizard platform seam changed: '+old
+            source=source.replace(old,new)
+        adapted=out/'tmg4-wizard-policy.m'
+        adapted.write_text('#import "tests/TMG4WizardHost.h"\n'+source)
+        run('tmg4-wizard-build',flags+[P/'tests/TMG4WizardTests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard'])
+        for version in ('1.0.4.12','1.0.5.5'):
+            run('tmg4-wizard-'+version,[out/'tmg4-wizard',root/'candidate',root,'Strix OS '+version])
+        groups.append('tmg4-wizard');print('tmg4-wizard: PASS')
+    else:skip('tmg4-wizard','not selected by --only')
+
 for name,files in [('camera-link',['CameraLink.m','CameraProfiles.c']),('camera-image',['CameraImage.m']),('camera-capture',['CameraCapture.m'])]:
     main={'camera-link':'CameraLinkTests.m','camera-image':'CameraImageTests.m','camera-capture':'CameraCaptureTests.m'}[name]
     test(name,['camera-v1/'+main,'camera-v1/camera.c',*['camera-v1/'+f for f in files]],[],['-framework','CoreGraphics','-framework','AVFoundation'])

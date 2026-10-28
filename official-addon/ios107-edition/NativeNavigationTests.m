@@ -4,7 +4,7 @@
 #include <assert.h>
 static uint32_t U32(const uint8_t *p){uint32_t v;memcpy(&v,p,4);return v;}
 static NSDictionary *Frame(unsigned n){return @{@"phase":@"navigating",@"icon":@3,@"meters":@(n),@"remainingMeters":@1200,@"remainingSeconds":@600,@"road":@"测试路",@"turn":@"前方右转",@"navPoints":@[@[@100,@900],@[@100,@500],@[@900,@500]],@"navHeading":@90};}
-static NSDictionary *Ack(NSData *packet,unsigned result){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=result,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"value":@0,@"mode":@0,@"data":hex}} options:0 error:nil];assert(json.length<128);uint8_t header[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:header length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"deviceId":@"test-peer",@"businessId":@15,@"payload":pb}};}
+static NSDictionary *Ack(NSData *packet,unsigned result){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=result,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});if(p[5]==TN_QUERY){raw[24]=3;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"value":@0,@"mode":@0,@"data":hex}} options:0 error:nil];assert(json.length<128);uint8_t header[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:header length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"deviceId":@"test-peer",@"businessId":@15,@"payload":pb}};}
 static NSDictionary *File(NSString *task){return @{@"eventType":@"fileShareSuccess",@"device":@{@"id":@"test-peer"},@"taskId":task,@"fileName":@"turbo-navigation.tnv",@"role":@"sender"};}
 int main(int argc,char **argv){@autoreleasepool{
  TNScene scene;assert(TNVScene(Frame(80),NO,&scene));assert(scene.icon==TN_RIGHT&&scene.point_count==3);uint8_t bytes[512];size_t n=tn_encode(bytes,512,TN_START,10,1,&scene);assert(n&&n<=328&&tn_packet_valid(bytes,n));bytes[n-1]^=1;assert(!tn_packet_valid(bytes,n));
@@ -34,8 +34,8 @@ int main(int argc,char **argv){@autoreleasepool{
   __block unsigned n=0;s=[[TNVSession alloc]initWithDevice:@"test-peer" session:12 clock:^{return now;} sender:^(NSData *b,NSString *t,TNVSubmitted done){wire=b;task=t;submit=done;n++;} cleanup:nil];
   void(^Settle)(void)=^{NSString *native=[NSString stringWithFormat:@"pose-%u",n];submit(YES,native);[s consume:Ack(wire,0)];[s consume:File(native)];assert(!s.busy);};
   assert([s start:MapFrame() always:NO]);Settle();
-  for(int i=0;i<6&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE;i++){now+=0.3;[s offer:MapFrame()];pose[4]++;[s pump];if(s.busy&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE)Settle();}
-  assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TNR_POSE);
+  for(int i=0;i<6&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE2;i++){now+=0.3;[s offer:MapFrame()];pose[4]++;[s pump];if(s.busy&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE2)Settle();}
+  assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TNR_POSE2);
   now+=4;[s pump];assert(s.active&&![s.status[@"failed"] boolValue]);Settle();assert(s.active&&[s.status[@"poses"] unsignedIntValue]==1);}
  // Sender rejects wrong-peer / malformed data before touching SDK; cleanup is scoped.
  NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] isDirectory:YES];

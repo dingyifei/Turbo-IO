@@ -267,6 +267,10 @@
     "tests/TDRuntimeTests.m": {
       "status": "run",
       "group": "runtime-status"
+    },
+    "tests/TMG4WizardTests.m": {
+      "status": "run",
+      "group": "tmg4-wizard"
     }
   }
 }

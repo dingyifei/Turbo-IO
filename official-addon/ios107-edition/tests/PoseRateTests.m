@@ -6,6 +6,9 @@
 // A minute of MapKit-style walking (offers every 0.2 s at 1.4 m/s) over an instant link: count files by op.
 static uint32_t U32(const uint8_t *p){uint32_t v;memcpy(&v,p,4);return v;}
 static unsigned Caps;
+static BOOL FailMirrorAllocation;
+void *TNVTestCalloc(size_t count,size_t size){if(FailMirrorAllocation)return NULL;if(size&&count>SIZE_MAX/size)return NULL;void *p=malloc(count*size);if(p)memset(p,0,count*size);return p;}
+
 // Independent expected clock: integer narrowing is defined modulo 2^32.
 static uint32_t Milliseconds(double seconds){return (uint32_t)(uint64_t)(seconds*1000);}
 static NSDictionary *Ack(NSData *packet){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=TN_OK,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});if(p[5]==TN_QUERY){raw[24]=Caps;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"data":hex}} options:0 error:nil];uint8_t head[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:head length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"businessId":@15,@"deviceId":@"peer",@"payload":pb}};}
@@ -29,6 +32,7 @@ static Walk Run(unsigned caps,BOOL background,double fileSeconds,unsigned speedQ
    NSMutableDictionary *f=[@{@"phase":@"navigating",@"icon":@3,@"meters":@(meters),@"remainingMeters":@(meters+200),@"remainingSeconds":@(60*(long)ceil((meters+200)/1.4/60)),@"road":@"Main St",@"turn":@"Turn right",
     @"navPoints":@[@[@512,@(1023-(int)lround(along))],@[@512,@0]],@"navHeading":@90,@"tnrScene":[NSData dataWithBytes:map length:32],@"tnrPose":[NSData dataWithBytes:pose length:12],@"tnrPoseAt":@(now)} mutableCopy];if(caps&2)f[@"tnrSpeed"]=@(speedQ);
    if(!tick)assert([s start:f always:NO]);else [s offer:f];}
+  if(wire)assert(((const uint8_t *)wire.bytes)[5]!=TNR_POSE);
   if(wire&&settleAt<0)settleAt=now+fileSeconds;
   if(wire&&now>=settleAt){const uint8_t op=((const uint8_t *)wire.bytes)[5];unsigned bodyBytes=(unsigned)wire.length-32;NSString *native=[NSString stringWithFormat:@"n%u",n];submit(YES,native);[s consume:Ack(wire)];[s consume:File(native)];wire=nil;settleAt=-1;
    if(op==TN_UPDATE)w.updates++;else if(op==TNR_POSE||op==TNR_SCENE2||op==TNR_POSE2){if(op==TNR_POSE2){w.pose2++;unsigned body=bodyBytes;w.maxPose2Body=MAX(w.maxPose2Body,body);w.minPose2Body=MIN(w.minPose2Body,body);if(turnAt>=0&&t>=turnAt&&w.turnPoseAt<0)w.turnPoseAt=t;}if(lastPose>=0){w.maxPoseGap=MAX(w.maxPoseGap,now-lastPose);w.minPoseGap=MIN(w.minPoseGap,now-lastPose);}lastPose=now;w.poses++;}else w.other++;}
@@ -77,7 +81,7 @@ static void CheckAsyncMirror(unsigned caps,BOOL scene2,NSTimeInterval initialTim
  submitted(YES,@"start");[s consume:Ack(wire)];[s consume:File(@"start")];wire=nil;submitted=nil;
  [s pump];assert(wire&&((const uint8_t *)wire.bytes)[5]==TN_QUERY);finish(0);
  [s pump];assert(wire&&((const uint8_t *)wire.bytes)[5]==sceneOp);finish(1);
- now+=0.25;[s offer:MirrorFrame(now,1,0,6,scene2)];[s pump];unsigned poseOp=(caps&2)?TNR_POSE2:TNR_POSE;assert(wire&&((const uint8_t *)wire.bytes)[5]==poseOp);
+ now+=0.25;[s offer:MirrorFrame(now,1,0,6,scene2)];[s pump];unsigned poseOp=TNR_POSE2;assert(wire&&((const uint8_t *)wire.bytes)[5]==poseOp);
  // A newer speed arrives without a position jump while the first correction is in flight.
  // Committing must still use speed 6 and x=0 from the exact packet body.
  now+=0.30;[s offer:MirrorFrame(now,1,0,20,scene2)];finish(0);
@@ -93,38 +97,31 @@ static void CheckAsyncMirror(unsigned caps,BOOL scene2,NSTimeInterval initialTim
  assert(![s.status[@"failed"] boolValue]);
 }
 
+static void CheckUnsupported(unsigned caps,BOOL allocationFailure){
+ Caps=caps;FailMirrorAllocation=allocationFailure;__block double now=100;__block NSData *wire=nil;__block TNVSubmitted submitted=nil;__block unsigned sent=0;
+ TNVSession *s=[[TNVSession alloc]initWithDevice:@"peer" session:21 clock:^{return now;} sender:^(NSData *p,NSString *task,TNVSubmitted done){(void)task;assert(((const uint8_t *)p.bytes)[5]!=TNR_POSE);wire=p;submitted=done;sent++;} cleanup:nil];
+ assert([s start:MirrorFrame(now,1,0,6,YES) always:NO]);submitted(YES,@"start");[s consume:Ack(wire)];[s consume:File(@"start")];
+ [s pump];assert(((const uint8_t *)wire.bytes)[5]==TN_QUERY);submitted(YES,@"query");[s consume:Ack(wire)];assert(!s.active&&[s.status[@"failed"]boolValue]&&s.busy);[s consume:File(@"query")];assert(!s.busy&&[s.status[@"note"]length]);
+ for(unsigned i=0;i<50;i++){now+=.25;[s offer:MirrorFrame(now,1,i,6,YES)];[s pump];}assert(sent==2);FailMirrorAllocation=NO;
+}
+
 int main(void){@autoreleasepool{
- CheckAsyncMirror(1,NO,200);CheckAsyncMirror(5,NO,200);CheckAsyncMirror(3,NO,200);CheckAsyncMirror(3,YES,200);
+ CheckUnsupported(0,NO);CheckUnsupported(1,NO);CheckUnsupported(5,NO);CheckUnsupported(3,YES);
+ CheckAsyncMirror(2,NO,200);CheckAsyncMirror(7,NO,200);CheckAsyncMirror(3,NO,200);CheckAsyncMirror(3,YES,200);
  // A real session must commit and predict correctly on both sides of the
  // 49.7-day millisecond wrap, including a transfer that crosses the boundary.
  double wrap=(double)(UINT64_C(1)<<32)/1000;
  CheckAsyncMirror(3,NO,wrap-0.125);CheckAsyncMirror(3,YES,wrap+0.125);
- Walk fg=Run(1,NO,0,0,-1),bg=Run(1,NO,0,0,-1),slow=Run(1,NO,1.5,0,-1),future=Run(5,NO,0,0,-1);
-#ifndef TIO_BASELINE
- bg=Run(1,YES,0,0,-1);
-#endif
- printf("foreground: updates=%u poses=%u other=%u poseGap=%.2f-%.2fs\n",fg.updates,fg.poses,fg.other,fg.minPoseGap,fg.maxPoseGap);
- printf("background: updates=%u poses=%u poseGap=%.2f-%.2fs\n",bg.updates,bg.poses,bg.minPoseGap,bg.maxPoseGap);
- printf("slow link (1.5 s files): updates=%u poses=%u poseGap=%.2f-%.2fs failed=%d\n",slow.updates,slow.poses,slow.minPoseGap,slow.maxPoseGap,slow.failed);
-#ifndef TIO_BASELINE
- assert(!fg.failed&&!bg.failed&&!slow.failed);
- // Text and numbers only when the display changes: 5 m steps at 1.4 m/s, plus the 10 s refresh.
- assert(fg.updates<=20);
- // ~2 Hz poses while walking, never close to the 5 s glasses stale limit.
- assert(fg.poses>=50&&fg.poses<=125&&fg.minPoseGap>=0.5-1e-6&&fg.maxPoseGap<=1.1);
- assert(bg.poses<=62&&bg.minPoseGap>=1-1e-6&&bg.maxPoseGap<=1.1);
- assert(slow.minPoseGap>=1-1e-6&&slow.maxPoseGap<=3.5); // old code: 3.2 s with twice the UPDATEs; glasses grey at 5 s
- // Firmware advertising a future capability bit must not break acks.
- assert(!future.failed&&future.poses==fg.poses);
- assert(fg.pose2==0&&bg.pose2==0&&slow.pose2==0&&future.pose2==0);
  Walk p2=Run(3,NO,0,6,-1),turn=Run(3,NO,0,6,30),still=Run(3,NO,0,0,-1);
  assert(!p2.failed&&p2.minPose2Body==14&&p2.maxPose2Body==14&&p2.pose2>=1);
  assert(p2.poses<=3*8+2&&p2.maxPoseGap<=4.25&&p2.updates<=20&&p2.maxError<=16);
  // Binding stress fixture: heading 180 while +y motion opposes the predictor; still require prompt correction.
  assert(!turn.failed&&turn.turnPoseAt>=30&&turn.turnPoseAt<=30.25);
  assert(!still.failed&&still.pose2>=1&&still.maxPoseGap<=2.75);
+ Walk bg=Run(3,YES,0,6,-1),slow=Run(3,NO,1.5,6,-1),future=Run(7,NO,0,6,-1);
+ assert(!bg.failed&&!slow.failed&&!future.failed&&bg.minPoseGap>=1-1e-6&&slow.minPoseGap>=1-1e-6&&slow.maxPoseGap<=8&&future.pose2==p2.pose2);
+ printf("POSE2 background gap=%.2f slow gap=%.2f\n",bg.maxPoseGap,slow.maxPoseGap);
  printf("POSE2 straight=%u updates=%u maxGap=%.2f maxError=%.2f turnAt=%.2f stationaryGap=%.2f\n",p2.pose2,p2.updates,p2.maxPoseGap,p2.maxError,turn.turnPoseAt,still.maxPoseGap);
 
-#endif
- puts("PASS pose rate: display-step UPDATEs, 2 Hz moving poses, 1 Hz in background or on slow links, future caps accepted; POSE2 gated and bounded");
+ puts("PASS pose rate: display-step UPDATEs, bounded POSE2 mirror/corrections, future bits accepted, missing capability/allocation fails closed without op8");
 }return 0;}

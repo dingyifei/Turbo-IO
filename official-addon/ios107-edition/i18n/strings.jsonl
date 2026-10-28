@@ -580,6 +580,8 @@
 {"key":"tmg4.knob.start","en":"Start one-turn measurement","zh":"开始测量一圈"}
 {"key":"tmg4.knob.state","en":"Calibration window","zh":"校准窗口"}
 {"key":"tmg4.knob.title","en":"Knob calibration","zh":"旋钮校准"}
+{"key":"tmg4.nav.noMirror","zh":"导航预测状态无法分配；已停止发送，请重启 App。","en":"Navigation prediction state is unavailable. Sending stopped; restart the app."}
+{"key":"tmg4.nav.requiresPose2","zh":"眼镜不支持 POSE2；请先升级 TMG4，导航已停止。","en":"Glasses lack POSE2. Upgrade to TMG4 before navigation."}
 {"key":"tmg4.runtime.applied","en":"Menu applied","zh":"菜单已应用"}
 {"key":"tmg4.runtime.caps","en":"Capabilities","zh":"能力"}
 {"key":"tmg4.runtime.caps.format","en":"0x%02x · Tiles / saved language / status / calibration / POSE2","zh":"0x%02x · 入口 / 语言保存 / 状态 / 校准 / POSE2"}

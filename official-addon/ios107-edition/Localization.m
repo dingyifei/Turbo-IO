@@ -586,6 +586,8 @@ static const TIOStringRow Rows[]={
     {"tmg4.knob.start","Start one-turn measurement","开始测量一圈"},
     {"tmg4.knob.state","Calibration window","校准窗口"},
     {"tmg4.knob.title","Knob calibration","旋钮校准"},
+    {"tmg4.nav.noMirror","Navigation prediction state is unavailable. Sending stopped; restart the app.","导航预测状态无法分配；已停止发送，请重启 App。"},
+    {"tmg4.nav.requiresPose2","Glasses lack POSE2. Upgrade to TMG4 before navigation.","眼镜不支持 POSE2；请先升级 TMG4，导航已停止。"},
     {"tmg4.runtime.applied","Menu applied","菜单已应用"},
     {"tmg4.runtime.caps","Capabilities","能力"},
     {"tmg4.runtime.caps.format","0x%02x · Tiles / saved language / status / calibration / POSE2","0x%02x · 入口 / 语言保存 / 状态 / 校准 / POSE2"},

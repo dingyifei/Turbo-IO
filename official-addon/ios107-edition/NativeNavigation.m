@@ -31,7 +31,6 @@ static void Clip(char *out,NSUInteger cap,id value){
   if([s lengthOfBytesUsingEncoding:NSUTF8StringEncoding]+[c lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>=cap){*stop=YES;return;}[s appendString:c];}];
  NSData *d=[s dataUsingEncoding:NSUTF8StringEncoding];memcpy(out,d.bytes,d.length);
 }
-static BOOL Moved(const uint8_t *a,const uint8_t *b){if(U32(a)!=U32(b))return YES;int dx=(int16_t)U16(a+4)-(int16_t)U16(b+4),dy=(int16_t)U16(a+6)-(int16_t)U16(b+6),dh=((int)U16(a+8)-(int)U16(b+8)+540)%360-180;return dx*dx+dy*dy>=16||abs(dh)>=3;}
 static BOOL Number(id v,double max){return [v isKindOfClass:NSNumber.class]&&isfinite([v doubleValue])&&[v doubleValue]>=0&&[v doubleValue]<=max;}
 NSDictionary *TNVNormalizeCoordinates(NSArray *coords){
  if(![coords isKindOfClass:NSArray.class]||coords.count<2||coords.count>512)return @{};
@@ -75,7 +74,6 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(op==TNR_SCENE){_mapCommitted=_sending;_poseCommitted=nil;_maps++;}
  if(op==TNR_SCENE2){_mapCommitted=_mapSending;_mapSending=nil;_poseCommitted=[_sending subdataWithRange:NSMakeRange(_sending.length-12,12)];_lastPose=_clock();_maps++;_poses++;}
  if(op==TN_QUERY)_probed=YES;
- if(op==TNR_POSE){_poseCommitted=_sending;_lastPose=_clock();_poses++;}
  if(op==TNR_POSE2){_lastCorrection=_clock();_speedCommitted=U16((const uint8_t *)_sending.bytes+12);_poseCommitted=_sending;_lastPose=_clock();_poses++;_sceneSinceCorrection=NO;}
  if(op==TNR_CLEAR){_mapCommitted=nil;_poseCommitted=nil;_sceneSinceCorrection=NO;}
  _sending=nil;[self trace:@"committed"];
@@ -146,7 +144,6 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
   if(_mapCommitted&&(_pose2?correctionDue:now-_lastPose>=(self.backoff?1:0.5))){
    NSMutableData *pose=[_poseLatest mutableCopy];uint8_t *p=pose.mutableBytes;unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;
    if(_pose2){[pose setLength:14];p=pose.mutableBytes;p[12]=(uint8_t)_speedLatest;p[13]=(uint8_t)(_speedLatest>>8);_poseAgeMs=age;[self send:(enum TNOp)TNR_POSE2 scene:pose];return;}
-   if(!_poseCommitted||Moved(_poseLatest.bytes,_poseCommitted.bytes)||now-_lastPose>=1){_poseAgeMs=age;[self send:(enum TNOp)TNR_POSE scene:pose];return;}
   }
  }
  if(!_extended&&fresh&&changed){[self send:TN_UPDATE scene:_latest];return;}
@@ -167,6 +164,6 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(!_packet||q.sid!=_sid||q.sequence!=_seq)return YES;
  if(_clock()>=_deadline){[self fail:TIOText(@"收到迟到回执，未恢复发送")];return YES;}
  if(q.result!=TN_OK||(_op!=TN_STOP&&!q.active)){[self fail:[NSString stringWithFormat:TIOText(@"眼镜拒绝导航（%u）；先退出其他任务后重新开启"),q.result]];return YES;}
- if(_op==TN_QUERY){_mapV2=!!(caps&1);_pose2=!!(caps&2);if(_pose2&&!_mirror)_mirror=calloc(1,sizeof *_mirror);if(!_mirror)_pose2=NO;}_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
+ if(_op==TN_QUERY){if(!(caps&2)){[self fail:TIOText(@"tmg4.nav.requiresPose2")];return YES;}_mapV2=!!(caps&1);if(!_mirror)_mirror=calloc(1,sizeof *_mirror);if(!_mirror){[self fail:TIOText(@"tmg4.nav.noMirror")];return YES;}_pose2=YES;}_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
 }
 @end
