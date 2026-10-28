@@ -4,7 +4,7 @@
       "offset": "0x4da940",
       "address": "0x1066a940",
       "before": "90b583b0",
-      "after": "11f239ba",
+      "after": "11f243bf",
       "role": "Entry trampoline show",
       "kind": "bw",
       "target": "m8_hook_show",
@@ -14,7 +14,7 @@
       "offset": "0x4da974",
       "address": "0x1066a974",
       "before": "b0b582b0",
-      "after": "11f244ba",
+      "after": "11f24ebf",
       "role": "Entry trampoline hide",
       "kind": "bw",
       "target": "m8_hook_hide",
@@ -24,7 +24,7 @@
       "offset": "0x4d99fc",
       "address": "0x106699fc",
       "before": "f0b50446",
-      "after": "12f232ba",
+      "after": "12f23cbf",
       "role": "Entry trampoline destroy",
       "kind": "bw",
       "target": "m8_hook_destroy",
@@ -34,7 +34,7 @@
       "offset": "0x4da6ae",
       "address": "0x1066a6ae",
       "before": "2de9f041",
-      "after": "11f226bc",
+      "after": "12f230b9",
       "role": "Entry trampoline wheel",
       "kind": "bw",
       "target": "m8_hook_wheel",
@@ -44,7 +44,7 @@
       "offset": "0x4daa40",
       "address": "0x1066aa40",
       "before": "b0b582b0",
-      "after": "11f2a8ba",
+      "after": "11f2babf",
       "role": "Entry trampoline event",
       "kind": "bw",
       "target": "m8_hook_event",
@@ -54,7 +54,7 @@
       "offset": "0x3ec04c",
       "address": "0x1057c04c",
       "before": "b0b50c46",
-      "after": "00f3d3b8",
+      "after": "00f3e5bd",
       "role": "Entry trampoline message",
       "kind": "bw",
       "target": "m8_hook_message",
@@ -74,7 +74,7 @@
       "offset": "0x4da1fc",
       "address": "0x1066a1fc",
       "before": "2de9f04f",
-      "after": "10f297bf",
+      "after": "11f2a1bc",
       "role": "Entry trampoline names",
       "kind": "bw",
       "target": "m8_hook_names",
@@ -84,7 +84,7 @@
       "offset": "0x4d9cc8",
       "address": "0x10669cc8",
       "before": "2de9f047",
-      "after": "11f202bd",
+      "after": "12f20cba",
       "role": "Entry trampoline dots",
       "kind": "bw",
       "target": "m8_hook_dots",
@@ -94,7 +94,7 @@
       "offset": "0x4d9ca6",
       "address": "0x10669ca6",
       "before": "98b50446",
-      "after": "11f2f3bc",
+      "after": "12f2fdb9",
       "role": "Entry trampoline delete_dots",
       "kind": "bw",
       "target": "m8_hook_delete_dots",
@@ -104,7 +104,7 @@
       "offset": "0x4da068",
       "address": "0x1066a068",
       "before": "b0b584b0",
-      "after": "11f2b4bb",
+      "after": "12f2beb8",
       "role": "Entry trampoline lottie",
       "kind": "bw",
       "target": "m8_hook_lottie",
@@ -114,7 +114,7 @@
       "offset": "0x4d9c48",
       "address": "0x10669c48",
       "before": "80b500af",
-      "after": "11f255ba",
+      "after": "11f25fbf",
       "role": "Entry trampoline app_id",
       "kind": "bw",
       "target": "m8_hook_app_id",
@@ -124,7 +124,7 @@
       "offset": "0x4da02a",
       "address": "0x1066a02a",
       "before": "2de9f041",
-      "after": "11f223bb",
+      "after": "12f22db8",
       "role": "Entry trampoline refresh_label",
       "kind": "bw",
       "target": "m8_hook_refresh_label",
@@ -134,7 +134,7 @@
       "offset": "0x4d8d8c",
       "address": "0x10668d8c",
       "before": "f0b585b0",
-      "after": "17f2feba",
+      "after": "18f210b8",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1af2fbbc",
+      "after": "1bf29bbb",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1af2f4bc00bf",
+      "after": "1bf294bb00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -164,7 +164,7 @@
       "offset": "0x4da42c",
       "address": "0x1066a42c",
       "before": "2de9f04f",
-      "after": "11f262bb",
+      "after": "12f26cb8",
       "role": "Menu replacement label_frame",
       "kind": "bw",
       "target": "m8_hook_label_frame",
@@ -174,7 +174,7 @@
       "offset": "0x4da780",
       "address": "0x1066a780",
       "before": "0629a8bf",
-      "after": "11f24eba",
+      "after": "11f258bf",
       "role": "Menu replacement label_index",
       "kind": "bw",
       "target": "m8_hook_label_index",
@@ -184,7 +184,7 @@
       "offset": "0x4d9e54",
       "address": "0x10669e54",
       "before": "2de9f04f",
-      "after": "11f2f0be",
+      "after": "12f2fabb",
       "role": "Menu replacement indicator",
       "kind": "bw",
       "target": "m8_hook_indicator",
@@ -194,7 +194,7 @@
       "offset": "0x4da148",
       "address": "0x1066a148",
       "before": "b0b50446",
-      "after": "10f2dcbe",
+      "after": "11f2e6bb",
       "role": "Menu replacement frame",
       "kind": "bw",
       "target": "m8_hook_frame",
@@ -204,7 +204,7 @@
       "offset": "0x4da17e",
       "address": "0x1066a17e",
       "before": "80b5b3ee0e7a",
-      "after": "10f281be00bf",
+      "after": "11f28bbb00bf",
       "role": "Menu replacement render_slide",
       "kind": "bw",
       "target": "m8_hook_render_slide",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1df268fa00bf",
+      "after": "1ef208f900bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -224,7 +224,7 @@
       "offset": "0x4d6d06",
       "address": "0x10666d06",
       "before": "02f04dff",
-      "after": "15f22bf8",
+      "after": "15f235fd",
       "role": "Initialize tail after new stock constructor",
       "kind": "bl",
       "target": "m8_hook_ctor",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1af34ff800bf00bf00bf",
+      "after": "1af3effe00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 141632,
+  "moduleBytes": 145088,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "4de17c31599fa12ffa77d73006802add14e4a63161931d42e4f9f460859fd43a",
+  "moduleSHA256": "9337d22fb5f1bbb30f0b1f05e1c2d28b2a7c50773d822556d94391f8d1211bab",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7350280,
+  "APBytes": 7353736,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG4-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8806690,
-    "sha256": "100201cfa8dc3c254971bc90ba2504089cf551a84348618e4d4360d3de00807f",
-    "md5": "914e09c0ef80724063b94115dcb509d4"
+    "bytes": 8808945,
+    "sha256": "61ec93040ba8b38d4b3778690d1b23cec27aa8acb87359d14463657c181d1315",
+    "md5": "a576d724b6a37590416631e1c653f7b6"
   },
   "sources": [
     {
@@ -325,15 +325,15 @@
     },
     {
       "source": "diagnostics-v1/command.c",
-      "sha256": "f518084202f2f0d95ea74c8fc26ab2c840a73fe4d9908fddfad3c96a9c2e95e8"
+      "sha256": "3bc827d0ad0855b02311c69a286ebdb9dad146b1b216fa2a29c571c2435b49c9"
     },
     {
       "source": "diagnostics-v1/diagnostics.c",
-      "sha256": "6c5db8ea337099dc3e14f624e6fa09c5081a40689124a9e57ac5b3cee567f70d"
+      "sha256": "2a8c0af6d465a11fca3792918ad9d8cfa5f454888c12de5b46859962a82c0e89"
     },
     {
       "source": "diagnostics-v1/diagnostics_service.c",
-      "sha256": "b48c7c0a0960ed07481b52a981bf735aa792858b1c8ae358f5e3c5e42216d79b"
+      "sha256": "a4ce6e09e8820ac09d393c4511325edacd9c69636c8a0dd0a7c1213fd66fffa2"
     },
     {
       "source": "diagnostics-v1/native_light.c",
@@ -365,7 +365,7 @@
     },
     {
       "source": "focus-v1/focus_menu_native.c",
-      "sha256": "176fa7c557af5f1a066684d474b50b67db5b3d1e35cf6b192759254721e9d0f4"
+      "sha256": "d55a4874f77e902d4593daf67366d1c94549164508ff59469d8fb81fb4837022"
     },
     {
       "source": "focus-v1/focus_service.c",
@@ -381,7 +381,7 @@
     },
     {
       "source": "global-remote-v1/remote_native.c",
-      "sha256": "4da988e25e623da01eabd27521f741edb3f3a8ad8ccffaf2d49b34818f0a2552"
+      "sha256": "10b76951a906a67ce1a9ca832445652cee2ef594021343e388cb791524933f8a"
     },
     {
       "source": "image-upload-test/render_idle.c",
@@ -397,7 +397,7 @@
     },
     {
       "source": "music-runtime-v1/menu10.c",
-      "sha256": "93d0ad7fbd5b66b7366425264f8a5b2b26313111c9e30ae0ed6d117e1c1f53ae"
+      "sha256": "48183cc65d4d59822a4e267264787955b0687b1159212fb2f0a2a9ab708be249"
     },
     {
       "source": "music-runtime-v1/music.c",
@@ -454,10 +454,14 @@
     {
       "source": "global-remote-v1/lang_store.c",
       "sha256": "559aaa234a1b7cbf1120d450cb85afad24fd96b575f102abcd5b713fc142d8ec"
+    },
+    {
+      "source": "diagnostics-v1/knob_calibration.c",
+      "sha256": "5c4737328a9e69166efd177724e48bcb4161d882ee961b5b68c8858151e26de4"
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "86dbeb9528ea365256ed00fbb9c49e0841244b9e910d41495ad13256093534ad",
+  "APSHA256": "563d7d985c78015b174e36146f02f1940d8de272fbc6ad9187a5ddd16bdec86b",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

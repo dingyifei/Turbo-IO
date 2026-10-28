@@ -15,6 +15,6 @@ int main(void){
  q.lease_ms++;assert(!td_command_encode(q,raw,24));q.lease_ms=0;assert(!td_command_encode(q,raw,24));
  q=(TDCommand){TDQ_STOP,17,2,0};assert(td_command_encode(q,raw,24)&&td_command_decode(raw,24,&got));
  q.lease_ms=1;assert(!td_command_encode(q,raw,24));q.lease_ms=0;q.session=0;assert(!td_command_encode(q,raw,24));
- q.session=17;q.sequence=0;assert(!td_command_encode(q,raw,24));q.sequence=1;q.op=3;assert(!td_command_encode(q,raw,24));
+ q.session=17;q.sequence=0;assert(!td_command_encode(q,raw,24));q.sequence=1;q.op=6;assert(!td_command_encode(q,raw,24));
  puts("TD command PASS: roundtrip, bit corruption, lengths, lease and operation bounds");return 0;
 }

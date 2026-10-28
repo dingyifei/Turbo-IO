@@ -3,11 +3,16 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "knob_calibration.h"
 
 /* All access MUST use the same existing UI executor. Not an ISR/BT-thread API.
  * No allocator, timer, storage, Bluetooth or sleep-lock ownership in this core. */
 #define TD_RING 64u
-#define TD_WIRE_BYTES 128u
+#define TD_WIRE_BYTES 256u
+#define TD_BUILD_TMG4 0x00040001u
+#define TD_CAPS_ALL 0x3fu
+enum {TD_SAMPLE=0,TD_STATUS=1,TD_CALIBRATION=2};
+enum {TD_EXT_NAND=1,TD_EXT_TILES=2,TD_EXT_LANGUAGE=4,TD_EXT_CALIBRATION=8};
 #define TD_MAX_LEASE_MS 600000u
 enum TDMetric {
  TD_LV_TOTAL, TD_LV_USED, TD_LV_PEAK, TD_LV_FREE, TD_LV_MAX_BLOCK,
@@ -22,6 +27,12 @@ typedef struct {uint32_t sequence,tick_ms,code,a,b,c;} TDEvent;
 typedef struct {
  uint32_t session,sequence,tick_ms,probe_ms,valid,build;
  uint32_t values[TD_METRICS],event_count,events_lost,flags;
+ uint8_t kind,build_sha[32];uint32_t caps,extension_valid;
+ uint64_t nand_total,nand_available;uint32_t tile_generation,detent;
+ uint8_t language,language_source,calibration_state,calibration_result;
+ uint32_t calibration_window,calibration_elapsed,calibration_samples;
+ int64_t calibration_net;uint64_t calibration_absolute;
+ uint32_t calibration_sequence,settings_flags;
 } TDSample;
 typedef struct {
  uint32_t build,session,started,lease_ms,last_sample,sample_seq,event_seq;
@@ -48,4 +59,5 @@ size_t td_events(const TDDiagnostics *,TDEvent *,size_t capacity);
 bool td_encode(const TDSample *,uint8_t *,size_t);
 bool td_decode(const uint8_t *,size_t,TDSample *);
 uint32_t td_crc(const void *,size_t);
+bool td_nand_metrics(const void *,size_t,uint64_t *,uint64_t *);
 #endif

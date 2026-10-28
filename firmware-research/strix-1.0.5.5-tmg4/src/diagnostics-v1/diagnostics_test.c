@@ -7,10 +7,10 @@
 typedef struct {uint32_t now,delay,calls;} Probe;
 static uint32_t clock_ms(void *p){return ((Probe *)p)->now;}
 static void probe(void *p,TDDiagnostics *d){Probe *q=p;q->calls++;q->now+=q->delay;td_metric(d,TD_LV_USED,123,true);}
-static void fix_crc(uint8_t *p){uint32_t c=td_crc(p,124);for(unsigned i=0;i<4;i++)p[124+i]=(uint8_t)(c>>(i*8));}
+static void fix_crc(uint8_t *p){uint32_t c=td_crc(p,252);for(unsigned i=0;i<4;i++)p[252+i]=(uint8_t)(c>>(i*8));}
 int main(void){
- TDDiagnostics d;TDSample s,out;Probe p={0};uint8_t wire[128];
- td_init(&d,0x01000001);assert(!d.enabled&&sizeof d<=2048);
+ TDDiagnostics d;TDSample s,out;Probe p={0};uint8_t wire[TD_WIRE_BYTES];
+ td_init(&d,TD_BUILD_TMG4);assert(!d.enabled&&sizeof d<=2048);
  assert(!td_sample(&d,0,true,probe,clock_ms,&p,&s)&&!p.calls);
  assert(!td_start(&d,0,0,10000));assert(!td_start(&d,1,0,0));assert(!td_start(&d,1,0,600001));
  assert(td_start(&d,1,0,10000));assert(!td_start(&d,2,1,10000));
@@ -21,11 +21,11 @@ int main(void){
  assert(!td_sample(&d,999,true,probe,clock_ms,&p,&s));
  p.now=1002;assert(td_sample(&d,1002,true,probe,clock_ms,&p,&s));assert(p.calls==2);
  assert(td_encode(&s,wire,sizeof wire));assert(td_decode(wire,sizeof wire,&out));assert(out.sequence==2&&out.values[TD_LV_USED]==123);
- assert(!td_decode(wire,127,&out)&&!td_encode(&s,wire,127));
- for(unsigned i=0;i<128;i++){wire[i]^=1;assert(!td_decode(wire,128,&out));wire[i]^=1;}
- wire[32+TD_SYS_FREE*4]=1;fix_crc(wire);assert(!td_decode(wire,128,&out));
- assert(td_encode(&s,wire,128));wire[24+2]|=0x08;fix_crc(wire);assert(!td_decode(wire,128,&out));
- assert(td_encode(&s,wire,128));wire[112]=65;fix_crc(wire);assert(!td_decode(wire,128,&out));
+ assert(!td_decode(wire,(TD_WIRE_BYTES-1),&out)&&!td_encode(&s,wire,(TD_WIRE_BYTES-1)));
+ for(unsigned i=0;i<TD_WIRE_BYTES;i++){wire[i]^=1;assert(!td_decode(wire,TD_WIRE_BYTES,&out));wire[i]^=1;}
+ wire[32+TD_SYS_FREE*4]=1;fix_crc(wire);assert(!td_decode(wire,TD_WIRE_BYTES,&out));
+ assert(td_encode(&s,wire,TD_WIRE_BYTES));wire[24+2]|=0x08;fix_crc(wire);assert(!td_decode(wire,TD_WIRE_BYTES,&out));
+ assert(td_encode(&s,wire,TD_WIRE_BYTES));wire[112]=65;fix_crc(wire);assert(!td_decode(wire,TD_WIRE_BYTES,&out));
  assert(!td_sample(&d,1100,false,probe,clock_ms,&p,&s));assert(!d.enabled&&p.calls==2);
  assert(td_start(&d,3,2000,2000));assert(!td_active(&d,4000));
  assert(td_start(&d,4,UINT32_MAX-500,2000));assert(td_active(&d,400));assert(!td_active(&d,1600));
@@ -44,7 +44,7 @@ int main(void){
  assert(!td_sample(&d,2001,true,probe,clock_ms,&p,&s));
  /* Malformed-input fuzz: bounded parse must neither overrun nor accept noise. */
  uint32_t random=42;
- for(unsigned n=0;n<10000;n++){for(unsigned i=0;i<128;i++){random=random*1664525u+1013904223u;wire[i]=(uint8_t)(random>>24);}assert(!td_decode(wire,n%129,&out));}
+ for(unsigned n=0;n<10000;n++){for(unsigned i=0;i<TD_WIRE_BYTES;i++){random=random*1664525u+1013904223u;wire[i]=(uint8_t)(random>>24);}assert(!td_decode(wire,n%(TD_WIRE_BYTES+1),&out));}
  printf("diagnostics core PASS; state=%zu ring=%zu wire=%u; no device I/O\n",sizeof d,sizeof d.events,TD_WIRE_BYTES);
  return 0;
 }

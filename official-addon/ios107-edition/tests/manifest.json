@@ -263,6 +263,10 @@
     "tests/TileLayoutTests.m": {
       "status": "run",
       "group": "tile-layout"
+    },
+    "tests/TDRuntimeTests.m": {
+      "status": "run",
+      "group": "runtime-status"
     }
   }
 }

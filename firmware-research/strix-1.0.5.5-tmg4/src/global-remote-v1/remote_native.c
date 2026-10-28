@@ -4,6 +4,7 @@
  */
 #include "remote.h"
 #include "language_state.h"
+#include "../diagnostics-v1/runtime_native.h"
 extern void fm_language_changed(void),fm_sync(void *);
 #include "../menu-grid-v2/menu_config.c"
 #include "../menu-grid-v2/menu_files.inc"
@@ -26,7 +27,7 @@ extern unsigned tgr_indev_type(void *);
 extern bool tgr_intercept(void *);
 extern unsigned tgr_group_send(void *,uint32_t);
 extern void tgr_raw_wheel(const void *),tgr_sim_wheel(int);
-typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;TLGLanguageState language;TTState tiles;TTVisible active;void *menu_app;bool settings_loaded,pending,applying;} Control;
+typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;TLGLanguageState language;TTState tiles;TTVisible active;void *menu_app;bool settings_loaded,pending,applying;TKState knob;unsigned synthetic_depth;} Control;
 static void tick(void *);
 static bool allowed(void){
  void *m=nav_monitors(),*i=m?nav_input(m):NULL,*l=m?nav_link(m):NULL;
@@ -71,10 +72,28 @@ bool fm_tiles_apply(void *app){
 }
 void fm_tiles_forget(void *app){Control *c=find();if(c&&c->menu_app==app){c->menu_app=NULL;c->pending=true;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&c->active);}}
 
-static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
+extern bool fm_menu_plain(void *);
+bool tgr_runtime_allowed(void){return allowed();}
+unsigned tgr_knob_command(void *app,const TDCommand *q,uint32_t now){
+ if(!q)return TK_UNAVAILABLE;bool ok=allowed()&&app&&fm_menu_plain(app);Control *c=control();if(!c)return TK_UNAVAILABLE;
+ if(!ok){tk_cancel(&c->knob,now);return TK_BLOCKED;}if(c->menu_app!=app||!c->settings_loaded)return TK_UNAVAILABLE;
+ if(q->op==TDQ_KNOB_START)return tk_start(&c->knob,q->session,q->sequence,q->lease_ms,now,true);
+ if(q->op==TDQ_KNOB_STOP)return tk_stop(&c->knob,q->session,q->sequence,now,true);return TK_UNAVAILABLE;
+}
+void tgr_knob_observe(void *app,int32_t delta,uint32_t now){Control *c=find();if(!c||c->knob.state!=TK_ACTIVE)return;bool ok=c->menu_app==app&&allowed()&&fm_menu_plain(app);tk_observe(&c->knob,delta,now,ok,c->synthetic_depth!=0);}
+void tgr_runtime_snapshot(TDSample *s){
+ if(!s)return;s->caps=TD_CAPS_ALL;s->detent=TK_DETENT_RAW;s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;
+ s->calibration_state=0;s->calibration_window=s->calibration_elapsed=s->calibration_samples=s->calibration_sequence=0;s->calibration_net=0;s->calibration_absolute=0;
+ Control *c=find();if(!c)return;
+ if(c->settings_loaded){s->extension_valid|=TD_EXT_TILES|TD_EXT_LANGUAGE;s->tile_generation=c->tiles.stored.generation;s->language=c->language.lang;s->language_source=c->language.source;s->settings_flags=(c->tiles.stored.readable?1u:0u)|(c->language.stored.readable?2u:0u)|(c->pending?4u:0u);}
+ tk_poll(&c->knob,stream_tick(),allowed()&&c->menu_app&&fm_menu_plain(c->menu_app));
+ if(c->knob.window){s->extension_valid|=TD_EXT_CALIBRATION;s->calibration_state=c->knob.state;s->calibration_window=c->knob.window;s->calibration_elapsed=c->knob.elapsed;s->calibration_samples=c->knob.samples;s->calibration_net=c->knob.net;s->calibration_absolute=c->knob.absolute;s->calibration_sequence=c->knob.sequence;}
+}
+static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();tk_poll(&c->knob,stream_tick(),ok&&c->menu_app&&fm_menu_plain(c->menu_app));if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
 static void *device(unsigned type){void *p=NULL;for(unsigned j=0;j<16;j++){p=tgr_indev_next(p);if(!p)return NULL;if(tgr_indev_type(p)==type)return p;}return NULL;}
 static unsigned inject(unsigned op){
  if(!allowed())return TGR_BLOCKED;
+ Control *c=find();if(c)tk_cancel(&c->knob,stream_tick());
  if(!focus_screen_on()){native_report_activity();nav_screen_on(true);return TGR_WAKE_ONLY;}
  if(op==TGR_PREVIOUS||op==TGR_NEXT){
   void *d=device(4);if(!d)return TGR_UNAVAILABLE;uint8_t *driver=tgr_indev_driver(d);if(!driver)return TGR_UNAVAILABLE;
@@ -82,8 +101,8 @@ static unsigned inject(unsigned op){
   int step=op==TGR_NEXT?1:-1;
   /* Mirror hardware: raw listener first, then LVGL detent. Native raw input
    * struct is {int32 x,y; uint64 time_us}, seen in rayneo_wheel_read. */
-  struct {int32_t x,y;uint64_t time;} raw={driver[9]?step*600:-step*600,0,(uint64_t)stream_tick()*1000};
-  native_report_activity();tgr_raw_wheel(&raw);tgr_sim_wheel(step);return TGR_OK;
+  struct {int32_t x,y;uint64_t time;} raw={driver[9]?step*(int)TK_DETENT_RAW:-step*(int)TK_DETENT_RAW,0,(uint64_t)stream_tick()*1000};
+  native_report_activity();if(c)c->synthetic_depth++;tgr_raw_wheel(&raw);tgr_sim_wheel(step);if(c)c->synthetic_depth--;return TGR_OK;
  }
  void *d=device(2),*group=d?tgr_indev_group(d):NULL;if(!group)return TGR_UNAVAILABLE;
  uint32_t key=op==TGR_PRESS?0x3a:0x3b;

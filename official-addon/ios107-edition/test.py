@@ -82,6 +82,11 @@ if only is None or 'tmg3-host' in only:
 else:skip('tmg3-host','not selected by --only')
 seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
+    ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
+    ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
+    ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
+    ctest('tmg4-knob',[FW4/'tests/knob_test.c',FW4/'src/diagnostics-v1/knob_calibration.c'],FW4/'src')
+    run('tmg4-identity',['python3','-I',FW4/'tests/identity_test.py'])
     ctest('tmg4-tile-config',[FW4/'tests/tile_config_test.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
     ctest('tmg4-menu-tiles',[FW4/'tests/menu_tiles_test.c'],FW4/'src')
     ctest('tmg4-menu-lang',[FW4/'tests/menu_lang_test.c',FW4/'src/global-remote-v1/lang_flag.c',FW4/'src/global-remote-v1/lang_store.c'],FW4/'src')
@@ -89,6 +94,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-text',[FW4/'tests/tio_text_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
     ctest('tmg4-grid',[FW4/'tests/focus_grid_test.c',FW4/'src/focus-v1/focus_menu.c',FW4/'src/common-v1/tio_text.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
     ctest('tmg4-prediction',[FW4/'tests/pose_prediction_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
+    run('tmg4-native-status',['python3','-I',FW4/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
     run('tmg4-native',['python3','-I',FW4/'tests/native_host_test.py','--out',out/'tmg4-native-host'])
     run('tmg4-stock-abi',['python3','-I',FW4/'tests/stock_abi_test.py','--stock',stock])
     run('tmg4-kept',['python3','-I',FW4/'tools/check_kept.py',FW2,FW4])
@@ -110,7 +116,7 @@ if only is None or 'shared-sources' in only:
             print('shared-sources: skip removed phone copy '+phone.name);continue
         if phone.read_bytes()!=(FW4/'src'/name).read_bytes():
             raise RuntimeError('shared source mismatch: '+name)
-    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h']:
+    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h','diagnostics-v1/diagnostics.c','diagnostics-v1/diagnostics.h','diagnostics-v1/command.h','diagnostics-v1/knob_calibration.c','diagnostics-v1/knob_calibration.h']:
         phone=P/Path(name).name
         if not phone.is_file() or phone.read_bytes()!=(FW4/'src'/name).read_bytes():
             raise RuntimeError('TMG4 shared source missing/mismatch: '+name)
@@ -148,6 +154,7 @@ test('spotify-auth',['SpotifyHTTP.m','SpotifyAuth.m','tests/SpotifyAuthTests.m']
 test('spotify-api',['SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','tests/SpotifyAPITests.m'],[P/'tests/fixtures/spotify'],['-framework','Security'])
 test('spotify-cover',['SpotifyCover.m','tests/SpotifyCoverTests.m'],[],['-framework','CoreGraphics','-framework','ImageIO'])
 test('language-flag',['tests/LanguageFlagTests.m','LanguageFlag.m','lang_flag.c'])
+test('runtime-status',['tests/TDRuntimeTests.m','TDPhoneRun.m','TDPhoneStore.m','TDPhoneReply.m','command.c','diagnostics.c','knob_calibration.c'])
 test('voice-tts',['VoiceTTSTests.m','VoiceTTSText.m'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     root=Path(tmp)

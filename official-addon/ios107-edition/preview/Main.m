@@ -3,6 +3,9 @@
 #import "OTAWizardModel.h"
 #import "TIOLanguage.h"
 #import "TIOConfirm.h"
+#import "MenuLayoutUI.h"
+#import "TDPhoneUI.h"
+#import "ResearchUI.h"
 #include <stdio.h>
 
 extern UIViewController *TIOCreateTurboPreview(void);
@@ -69,10 +72,16 @@ static NSDictionary *ReportFor(UIViewController *controller) {
             NSInteger count=[dataSource tableView:table numberOfRowsInSection:section];
             for (NSInteger row=0;row<count;row++) {
                 NSIndexPath *path=[NSIndexPath indexPathForRow:row inSection:section];
-                UITableViewCell *cell=[dataSource tableView:table cellForRowAtIndexPath:path];
+                UITableViewCell *cell=[table cellForRowAtIndexPath:path]?:[dataSource tableView:table cellForRowAtIndexPath:path];
                 [rows addObject:@{@"id":cell.accessibilityIdentifier?:@"",
                                   @"title":cell.textLabel.text?:@"",
-                                  @"status":cell.detailTextLabel.text?:@""}];
+                                  @"status":cell.detailTextLabel.text?:@"",
+                                  @"enabled":@(cell.userInteractionEnabled),
+                                  @"movable":@([dataSource respondsToSelector:@selector(tableView:canMoveRowAtIndexPath:)]&&[dataSource tableView:table canMoveRowAtIndexPath:path]),
+                                  @"switchOn":[cell.accessoryView isKindOfClass:UISwitch.class]?@(((UISwitch *)cell.accessoryView).on):NSNull.null,
+                                  @"accessory":@(table.editing?cell.editingAccessoryType:cell.accessoryType),
+                                  @"editingSwitch":@([cell.editingAccessoryView isKindOfClass:UISwitch.class]),
+                                  @"rendered":@([table cellForRowAtIndexPath:path]!=nil)}];
             }
             [sections addObject:@{@"title":HeaderTitle(table,section),@"rows":rows}];
         }
@@ -96,7 +105,7 @@ static NSDictionary *ReportFor(UIViewController *controller) {
     });
     NSString *screen=controller.navigationItem.title?:controller.title?:@"";
     return @{@"screen":screen,@"subtitle":subtitle,
-             @"preferredLanguage":NSLocale.preferredLanguages.firstObject?:@"",
+             @"preferredLanguage":NSLocale.preferredLanguages.firstObject?:@"",@"deviceIO":@NO,@"hardwareValidated":@NO,
              @"sections":sections,@"buttons":buttons,@"steps":steps};
 }
 
@@ -279,6 +288,13 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             UIViewController *page=TIOExperimentalOTAController();
             if (page) navigation=[[UINavigationController alloc] initWithRootViewController:page];
             presented=navigation;
+        } else if ([screen isEqual:@"tiles"]) {
+            UIViewController *page=TIOTileEditorPreviewController();
+            if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
+        } else if ([screen isEqual:@"runtime"] || [screen isEqual:@"knob"]) {
+            NSString *runtimeFixture=Argument(@"--runtime-fixture")?:([screen isEqual:@"knob"]?@"completed":@"normal");
+            UIViewController *page=TDPhonePreviewController(runtimeFixture);
+            if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"music"]) {
             UIViewController *page=TMMusicController();
             if (page) navigation=[[UINavigationController alloc] initWithRootViewController:page];
@@ -300,6 +316,7 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
                 NSString *key=Argument(@"--push");
                 if (key) SelectHubKey(navigation,key);
             }
+            if([screen isEqual:@"tiles"]||[screen isEqual:@"knob"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);if(table){[table scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1] atScrollPosition:UITableViewScrollPositionTop animated:NO];CGPoint offset=table.contentOffset;offset.y=MAX(-table.adjustedContentInset.top,offset.y-36);[table setContentOffset:offset animated:NO];}});
             if (HasArgument(@"--scroll-bottom")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{ScrollHubBottom(navigation);});
             if (HasArgument(@"--report")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{WriteReport(navigation,presented);});
         }];

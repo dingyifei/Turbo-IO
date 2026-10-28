@@ -114,6 +114,30 @@ def audit(stock_path, candidate_path, spec):
         'whitelistedPatches':len(spec['edits']),'startupDescriptorsPreserved':7,'deviceIO':False}
 
 
+def build_input_identity(spec, versions, flags, asset_sha):
+    entries = []
+    for directory in ('src', 'include'):
+        for path in sorted((HERE/directory).rglob('*')):
+            if (path.is_file() and path.suffix in ('.c','.h','.inc','.S')
+                    and not path.name.endswith(('_test.c','.test.c'))):
+                entries.append([path.relative_to(HERE).as_posix(), sha(path.read_bytes())])
+    for name in ('build.py','link.ld','trampolines.S'):
+        entries.append([name, sha((HERE/name).read_bytes())])
+    descriptors = []
+    for edit in spec['edits']:
+        row = {key:edit.get(key) for key in ('offset','address','before','kind','target','pad')}
+        if edit['kind'] == 'raw': row['after'] = edit['after']
+        descriptors.append(row)
+    manifest = {'format':'TMG4-build-inputs-1','files':sorted(entries),
+        'sources':[row['source'] for row in spec['sources']],
+        'extras':[row['path'] for row in spec['extras']],
+        'toolchain':versions,'flags':[str(flag).replace(str(HERE),'$FW4') for flag in flags]+['-include','$BUILD/tmg4-identity.h'],
+        'stockZIP':spec['stockZIP'],'stockAP':spec['stockAP'],
+        'assetSHA256':asset_sha,'moduleVA':spec['moduleVA'],'edits':descriptors}
+    canonical = (json.dumps(manifest,sort_keys=True,separators=(',',':'))+'\n').encode('utf-8')
+    return manifest, sha(canonical)
+
+
 def build(stock_path, llvm, out, repin=False, compile_only=False):
     spec = json.loads((HERE / 'build-inputs.json').read_text())
     # The immutable stock baseline is required in every mode.
@@ -130,10 +154,17 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
         '-DTIO_DISPLAY_RUNTIME=1','-DTDP_FREESTANDING','-DTIO_ANIMATION_EXPERIMENT=1',
         '-DTIO_MUSIC_RUNTIME=1','-DTD_DIAGNOSTICS_RUNTIME=1','-DTD_FREESTANDING=1',
         '-DTD_STOCK_10412=0','-DTD_STOCK_1055=1']
+    versions = {'clang':run([llvm/'clang','--version']).splitlines()[0],
+                'lld':run([llvm/'ld.lld','--version']).splitlines()[0]}
     if not compile_only:
-        versions = {'clang':run([llvm/'clang','--version']).splitlines()[0],
-                    'lld':run([llvm/'ld.lld','--version']).splitlines()[0]}
         pin(spec, 'toolchain', versions, repin)
+    animation = animation_asset()
+    identity, identity_sha = build_input_identity(spec, versions, flags, sha(animation.read_bytes()))
+    (out/'identity-inputs.json').write_text(json.dumps(identity,indent=2)+'\n')
+    (out/'identity.sha256').write_text(identity_sha+'\n')
+    stamp = out/'tmg4-identity.h'
+    stamp.write_text('#define TMG4_INPUT_SHA_BYTES {'+','.join('0x'+identity_sha[i:i+2] for i in range(0,64,2))+'}\n')
+    flags += ['-include',str(stamp)]
     objects = []
     for i, row in enumerate(spec['sources']):
         p = src / row['source']

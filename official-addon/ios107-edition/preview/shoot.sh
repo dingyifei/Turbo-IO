@@ -16,9 +16,9 @@ shots="$PWD/build/preview-shots"
 [[ -x "$app/TurboPreview" ]] || { echo 'PREVIEW SHOOT FAIL: build preview first' >&2; exit 1; }
 mkdir -p "$shots"
 screens=("$@")
-[[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music)
+[[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles runtime knob)
 for screen in "${screens[@]}"; do
-  case "$screen" in hub|ota|music) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
+  case "$screen" in hub|ota|music|tiles|runtime|knob) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
 done
 
 udid_file="$inputs/preview-sim.udid"
@@ -31,6 +31,7 @@ xcrun simctl bootstatus "$udid" -b
 printf 'preview-first-boot real %s\n' "$((SECONDS-boot_started))" >> "$inputs/baseline/timings.txt"
 xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --batteryLevel 100
 xcrun simctl install "$udid" "$app"
+container=$(xcrun simctl get_app_container "$udid" "$bundle" data)
 
 for screen in "${screens[@]}"; do
   for lang in en zh-Hans; do
@@ -42,11 +43,13 @@ for screen in "${screens[@]}"; do
     if [[ -e "$stem.png" ]]; then
       mv -f "$stem.png" "$stem.previous.png"
     fi
+    rm -f "$container/Documents/ui-report.json"
     xcrun simctl launch --terminate-running-process \
       --stdout="$stem.out" --stderr="$stem.err" "$udid" "$bundle" \
-      --screen "$screen" -AppleLanguages "($lang)" -AppleLocale "$locale"
+      --screen "$screen" --report -AppleLanguages "($lang)" -AppleLocale "$locale"
     sleep 4
     xcrun simctl io "$udid" screenshot "$stem.png"
+    cp "$container/Documents/ui-report.json" "$stem.json"
     if [[ ! -f "$stem.png" ]] || [[ $(stat -f %z "$stem.png") -le 20000 ]]; then
       echo "BAD_SCREENSHOT $screen $lang" >&2; exit 1
     fi
@@ -60,6 +63,7 @@ for screen in "${screens[@]}"; do
     fi
   done
 done
+python3 preview/tmg4-check.py "$shots" "${screens[@]}"
 xcrun simctl terminate "$udid" "$bundle"
 # The lifecycle regression acquires the same lock for its own simulator calls.
 rmdir "$lock"

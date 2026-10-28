@@ -15,7 +15,8 @@ static HostTimer timer,decoy;
 static unsigned allocations,frees,reads,writes,snaps,nexts;
 static bool fail_alloc,fail_timer,cycle,blocked,render_idle=true,awake=true,detail_open;
 static uint32_t now_ms;
-static uint8_t app[256],reply_wire[74];
+static uint8_t app[256],reply_wire[74],encoder[16];
+static unsigned raw_callbacks,simulated_steps;
 static unsigned snap_count[4],snap_selected[4];
 typedef struct {uint8_t bytes[40];int len;size_t pos;bool writing;} File;
 static File files[3][2];static int file_error,io_fail;static size_t chunk;
@@ -36,18 +37,19 @@ unsigned tgr_ota_status(void *p){(void)p;return blocked?1:0;}
 bool nav_bonded(void *p){return p!=NULL;}
 bool nav_folded(void *p){(void)p;return false;}
 bool focus_screen_on(void){return awake;}
+bool fm_menu_plain(void *p){return p==app&&awake&&!detail_open;}
 int nav_connection(unsigned n){assert(n==0x80);return 1;}
 const char *nav_top_app(void){return "com.rayneo.liteos.launcher";}
 void nav_screen_on(bool b){(void)b;}
 void native_report_activity(void){}
-void *tgr_indev_next(void *p){(void)p;return NULL;}
+void *tgr_indev_next(void *p){return p?NULL:encoder;}
 void *tgr_indev_group(void *p){return p;}
 void *tgr_indev_driver(void *p){return p;}
-unsigned tgr_indev_type(void *p){(void)p;return 0;}
+unsigned tgr_indev_type(void *p){assert(p==encoder);return 4;}
 bool tgr_intercept(void *p){(void)p;return true;}
 unsigned tgr_group_send(void *p,uint32_t key){(void)p;(void)key;return 0;}
-void tgr_raw_wheel(const void *p){(void)p;}
-void tgr_sim_wheel(int delta){(void)delta;}
+void tgr_raw_wheel(const void *p){int32_t delta;memcpy(&delta,p,sizeof delta);raw_callbacks++;assert(find()->knob.state==TK_CANCELED&&find()->synthetic_depth);tgr_knob_observe(app,delta,now_ms);}
+void tgr_sim_wheel(int delta){assert(delta==1||delta==-1);simulated_steps++;}
 void fm_language_changed(void){}
 void fm_relayout(unsigned rows){assert(rows==2||rows==3);}
 void fm_sync(void *p){if(!fm_tiles_busy()&&render_idle&&awake&&!detail_open)(void)fm_tiles_apply(p);}
@@ -66,7 +68,7 @@ int tap_fs_fileno(void *p){(void)p;return io_fail==FAIL_FILENO?-1:5;}
 int tap_fs_fsync(int fd){assert(fd==5);return io_fail==FAIL_SYNC?-1:0;}
 int tap_fs_fclose(void *p){(void)p;return io_fail==FAIL_CLOSE?-1:0;}
 int *tap_fs_errno(void){return &file_error;}
-static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+0xa0)=13;for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=0;fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
+static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+0xa0)=13;for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=raw_callbacks=simulated_steps=0;memset(encoder,0,sizeof encoder);fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
 static TTReply request(TTCommand q){uint8_t raw[32],wire[74];tt_encode(raw,&q);tt_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TTReply r;assert(tt_uncarrier(reply_wire,74,raw,true)&&tt_reply_decode(raw,32,&r));return r;}
 static TLGReply language_request(TLGCommand q){uint8_t raw[32],wire[74];tlg_encode(raw,&q);tlg_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TLGReply r;assert(tlg_uncarrier(reply_wire,74,raw,true)&&tlg_reply_decode(raw,32,&r));return r;}
 int main(void){
@@ -78,6 +80,11 @@ int main(void){
  fm_tiles_forget(app);assert(fm_tile_count()==13);assert(fm_tiles_apply(app)&&fm_tile_count()==8);before=reads;fm_tile_snapshot(&map);assert(reads==before&&map.count==8);
  blocked=true;before=reads;r=request((TTCommand){.op=TT_QUERY,.request=4,.client=2});assert(r.result==TT_BLOCKED&&reads==before);blocked=false;
  // Existing file adapter handles progress and every durability failure.
+ before=reads;TDCommand kq={TDQ_KNOB_START,101,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,1200,now_ms);assert(find()->knob.net==1200&&find()->knob.samples==1);
+ assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==1&&simulated_steps==1&&find()->knob.state==TK_CANCELED&&find()->knob.net==1200&&find()->synthetic_depth==0);
+ kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
+ TDSample snapshot={.build=TD_BUILD_TMG4,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
+ kq=(TDCommand){TDQ_KNOB_START,103,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);blocked=true;timer.callback(&timer);assert(find()->knob.state==TK_CANCELED&&reads==before);blocked=false;kq.session=104;assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);detail_open=true;tgr_knob_observe(app,600,now_ms);assert(find()->knob.state==TK_CANCELED&&find()->knob.samples==0);detail_open=false;
  uint8_t raw[32];TTConfig c;tt_default(&c);tt_file_encode(raw,&c,9);chunk=3;assert(tt_file_write(NULL,0,raw,32));uint8_t reread[33];assert(tt_file_read(NULL,0,reread,33)==32&&!memcmp(raw,reread,32));chunk=0;
  const int write_failures[]={FAIL_OPEN,FAIL_ERROR,FAIL_CLOSE,FAIL_WRITE,FAIL_WRITE_ZERO,FAIL_FLUSH,FAIL_FILENO,FAIL_SYNC,FAIL_WRITE_BIG};
  for(unsigned i=0;i<sizeof write_failures/sizeof *write_failures;i++){io_fail=write_failures[i];assert(!tt_file_write(NULL,1,raw,32));}

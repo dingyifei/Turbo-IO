@@ -11,6 +11,7 @@
 @interface TDDriver:NSObject
 @property(nonatomic,strong) TDPhoneStore *store;
 @property(nonatomic,strong) TDPhoneRun *run;
+@property(nonatomic,strong) TDRuntimeSession *runtime;
 @property(nonatomic,strong) NSTimer *timer;
 @property(nonatomic,strong) id backgroundObserver,foregroundObserver;
 @property(nonatomic,copy) NSDictionary *lastMusic,*lastNavigation;
@@ -26,7 +27,7 @@
 @end
 @implementation TDDriver
 - (instancetype)init{if((self=[super init])){
- _peer=[TIOProtocolDevice() copy]?:@"";_store=[[TDPhoneStore alloc]initWithBuild:0x01000001 device:_peer];NSString *peer=_peer;
+ _peer=[TIOProtocolDevice() copy]?:@"";_store=[[TDPhoneStore alloc]initWithBuild:TD_BUILD_TMG4 device:_peer];NSString *peer=_peer;
  NSURL *root=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/DiagnosticsTDG1"]];
  _transport=[[TIOGlassesFileTransport alloc]initWithRoot:root device:peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){
   if(!peer.length||![peer isEqual:TIOProtocolDevice()]||[TIOOTAFlashStatus()[@"stage"]unsignedIntegerValue]!=0)return NO;
@@ -37,18 +38,19 @@
  __weak typeof(self) weak=self;
  NSURL *reports=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/DiagnosticsReports-v2"] isDirectory:YES];
  _run=[[TDPhoneRun alloc]initWithStore:_store root:reports clock:^{return NSProcessInfo.processInfo.systemUptime;} sendStart:^BOOL(uint32_t sid,uint32_t lease){return [weak start:sid lease:lease];} sendStop:^{[weak stop];}];
- _timer=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *timer){(void)timer;TDDriver *s=weak;if(!s)return;if(s.run.active&&![s.peer isEqual:TIOProtocolDevice()])[s.run stop:@"peer_context_changed"];[s.run poll];}];
- _backgroundObserver=[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;[weak.run event:@"app_background" fields:@{}];[weak.run checkpoint];}];
- _foregroundObserver=[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;[weak.run poll];[weak.run event:@"app_foreground" fields:@{}];[weak.run checkpoint];}];
+ _runtime=[[TDRuntimeSession alloc]initWithPeer:^{return TIOProtocolDevice();} allowed:^BOOL{return UIApplication.sharedApplication.applicationState==UIApplicationStateActive&&[TIOOTAFlashStatus()[@"stage"]unsignedIntegerValue]==0;} clock:^{return NSProcessInfo.processInfo.systemUptime;} send:^BOOL(TDCommand q){return [weak send:q];}];
+ _timer=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *timer){(void)timer;TDDriver *s=weak;if(!s)return;if(s.run.active&&![s.peer isEqual:TIOProtocolDevice()])[s.run stop:@"peer_context_changed"];[s.run poll];[s.runtime poll];}];
+ _backgroundObserver=[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;[weak.run event:@"app_background" fields:@{}];[weak.run checkpoint];[weak.runtime invalidate];}];
+ _foregroundObserver=[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;[weak.run poll];[weak.runtime poll];[weak.run event:@"app_foreground" fields:@{}];[weak.run checkpoint];}];
  }return self;}
 - (void)dealloc{[_timer invalidate];if(_backgroundObserver)[NSNotificationCenter.defaultCenter removeObserver:_backgroundObserver];if(_foregroundObserver)[NSNotificationCenter.defaultCenter removeObserver:_foregroundObserver];}
 - (BOOL)send:(TDCommand)q{
  if(self.task||![self.peer isEqual:TIOProtocolDevice()]||[TIOOTAFlashStatus()[@"stage"]unsignedIntegerValue]!=0)return NO;
  uint8_t raw[24];if(!td_command_encode(q,raw,24))return NO;
- NSString *task=NSUUID.UUID.UUIDString;self.task=task;self.nativeTask=nil;self.early=[NSMutableArray new];__weak typeof(self) weak=self;
+ NSString *task=NSUUID.UUID.UUIDString;self.task=task;self.nativeTask=nil;self.early=[NSMutableArray new];self.runtime.fileBusy=YES;__weak typeof(self) weak=self;
  [self.transport send:[NSData dataWithBytes:raw length:24] task:task submitted:^(BOOL ok,NSString *native){TDDriver *s=weak;if(!s||![s.task isEqual:task])return;
   [s.run event:@"file_submitted" fields:@{@"success":@(ok)}];
-  if(!ok){[s.run stop:@"submit_failed"];return;} // uncertain native ownership: keep file and block new transfers
+  if(!ok){[s.runtime transportFailed];[s.run stop:@"submit_failed"];return;} // uncertain native ownership: keep file and block new transfers
   s.nativeTask=native;NSArray *events=[s.early copy];[s.early removeAllObjects];for(NSDictionary *e in events)[s consume:e];
  }];return YES;
 }
@@ -56,7 +58,7 @@
 - (void)stop{if(!self.sid)return;if(self.task){self.pendingStop=YES;return;}(void)[self send:(TDCommand){TDQ_STOP,self.sid,2,0}];}
 - (BOOL)consume:(NSDictionary *)e{
  if(![e isKindOfClass:NSDictionary.class])return NO;
- NSData *raw=TDPhoneReply(e);if(raw){NSString *peer=e[@"message"][@"deviceId"];if(![self.run receive:raw device:peer])[self.run event:@"reply_rejected" fields:@{}];return YES;}
+ NSData *raw=TDPhoneReply(e);if(raw){NSString *peer=e[@"message"][@"deviceId"];TDSample sample;BOOL accepted=td_decode(raw.bytes,raw.length,&sample)&&(sample.kind==TD_SAMPLE?[self.run receive:raw device:peer]:[self.runtime receive:raw device:peer]);if(!accepted)[self.run event:@"reply_rejected" fields:@{}];return YES;}
  // Passive, validated metadata only. Do not consume business replies or save titles/lyrics/roads.
  if(self.run.active&&[e[@"message"]isKindOfClass:NSDictionary.class]&&[e[@"message"][@"deviceId"]isEqual:self.peer]){
   NSDictionary *music=nil;TNReply nav={0};
@@ -72,16 +74,16 @@
  if(!self.nativeTask){if(self.early.count<8)[self.early addObject:e];return NO;}
  if(![e[@"taskId"]isEqual:self.nativeTask]||![e[@"fileName"]isEqual:@"turbo-diagnostics.tdg"])return NO;
  [self.run event:[type isEqual:@"fileShareFailed"]?@"file_failed":@"file_finished" fields:@{}];
- if([type isEqual:@"fileShareFailed"])[self.run stop:@"transfer_failed"];
+ if([type isEqual:@"fileShareFailed"]){[self.runtime transportFailed];[self.run stop:@"transfer_failed"];}
  [self.transport cleanup:self.task];self.task=self.nativeTask=nil;
- if(self.pendingStop){self.pendingStop=NO;[self stop];}return YES;
+ if(self.pendingStop){self.pendingStop=NO;[self stop];}self.runtime.fileBusy=self.task!=nil;return YES;
 }
 @end
 static TDDriver *Driver;
 UIViewController *TDDiagnosticsController(void){
- if(Driver.task)return TDPhoneController(Driver.run);
+ if(Driver.task)return TDPhoneController(Driver.run,Driver.runtime);
  if(!Driver||![Driver.peer isEqual:TIOProtocolDevice()]){[Driver.run stop:@"peer_context_changed"];Driver=[TDDriver new];}
- return TDPhoneController(Driver.run);
+ return TDPhoneController(Driver.run,Driver.runtime);
 }
 BOOL TDDiagnosticsConsume(NSDictionary *e){return Driver?[Driver consume:e]:TDPhoneReply(e)!=nil;}
-BOOL TDDiagnosticsPauseForOTA(void){return !Driver||(!Driver.task&&!Driver.run.active);}
+BOOL TDDiagnosticsPauseForOTA(void){if(!NSThread.isMainThread)return NO;return !Driver||(!Driver.task&&!Driver.run.active&&[Driver.runtime idleForOTA]);}

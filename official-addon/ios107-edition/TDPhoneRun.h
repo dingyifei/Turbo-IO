@@ -23,3 +23,22 @@
 /* Test/offline verification only; do not block the UI with this. */
 - (void)waitForWrites;
 @end
+
+#include "command.h"
+// One-shot metadata and calibration ownership, independent of periodic samples.
+@interface TDRuntimeSession:NSObject
+- (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(NSTimeInterval(^)(void))clock send:(BOOL(^)(TDCommand))send;
+- (BOOL)query;
+- (BOOL)beginCalibration;
+- (void)finishCalibration;
+- (void)cancelCalibration;
+- (void)invalidate;
+- (void)poll;
+- (void)transportFailed;
+// Passive guard: never polls, cancels, or sends a queued command.
+- (BOOL)idleForOTA;
+- (BOOL)receive:(NSData *)packet device:(NSString *)device;
+@property(nonatomic) BOOL fileBusy;
+@property(nonatomic,readonly) BOOL pending,holdsLease;
+@property(nonatomic,readonly) NSDictionary *status;
+@end

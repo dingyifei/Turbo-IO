@@ -100,3 +100,80 @@ static BOOL Directory(NSURL *url){struct stat s;return url.isFileURL&&lstat(url.
 }
 - (void)waitForWrites{dispatch_sync(_writer,^{});}
 @end
+
+static NSDictionary *RuntimeSample(const TDSample *s){
+ NSMutableString *hash=[NSMutableString new];for(unsigned i=0;i<32;i++)[hash appendFormat:@"%02x",s->build_sha[i]];
+ NSArray *names=@[@"lv_configured_bytes",@"lv_used_bytes",@"lv_peak_bytes",@"lv_free_bytes",@"lv_largest_free_bytes",@"system_arena_bytes",@"system_used_bytes",@"system_peak_bytes",@"system_free_bytes",@"system_largest_free_bytes",@"instrumented_owned_bytes",@"instrumented_owned_peak_bytes",@"allocation_failures",@"rx_packets",@"rx_bytes",@"rx_max_ms",@"render_submissions",@"render_max_ms",@"errors"];
+ NSMutableDictionary *metrics=[NSMutableDictionary new];for(NSUInteger i=0;i<names.count;i++)metrics[names[i]]=(s->valid&(1u<<i))?@(s->values[i]):NSNull.null;
+ return @{@"firmware":@"TMG4",@"build":hash,@"caps":@(s->caps),@"nand_total":(s->extension_valid&TD_EXT_NAND)?@(s->nand_total):NSNull.null,@"nand_available":(s->extension_valid&TD_EXT_NAND)?@(s->nand_available):NSNull.null,@"language":(s->extension_valid&TD_EXT_LANGUAGE)?@(s->language):NSNull.null,@"language_source":(s->extension_valid&TD_EXT_LANGUAGE)?@(s->language_source):NSNull.null,@"tile_generation":(s->extension_valid&TD_EXT_TILES)?@(s->tile_generation):NSNull.null,@"detent":@(s->detent),@"settings_flags":@(s->settings_flags),@"metrics":metrics};
+}
+static NSDictionary *RuntimeCalibration(const TDSample *s){
+ if(!(s->extension_valid&TD_EXT_CALIBRATION))return @{};
+ return @{@"window":@(s->calibration_window),@"state":@(s->calibration_state),@"elapsed_ms":@(s->calibration_elapsed),@"samples":@(s->calibration_samples),@"net":@(s->calibration_net),@"absolute":@(s->calibration_absolute),@"sequence":@(s->calibration_sequence)};
+}
+@implementation TDRuntimeSession {
+ NSString *(^_peerNow)(void);BOOL(^_allowed)(void);NSTimeInterval(^_clock)(void);BOOL(^_send)(TDCommand);
+ NSString *_peer,*_state;NSDictionary *_sample,*_calibration;NSNumber *_estimate;
+ BOOL _fileBusy,_pending,_holdsLease,_finishRequested,_cancelRequested;TDCommand _command;
+ uint32_t _window;NSUInteger _epoch;NSTimeInterval _sentAt,_deadline,_leaseDeadline,_sampleAt;
+}
+- (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(NSTimeInterval(^)(void))clock send:(BOOL(^)(TDCommand))send{
+ if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_send=[send copy];_peer=[peer()copy]?:@"";_state=@"idle";_sample=_calibration=@{};}return self;
+}
+- (void)invalidate{
+ _pending=NO;_finishRequested=_cancelRequested=NO;_estimate=nil;_state=@"canceled";_calibration=@{};_epoch++;
+ if(![_peer isEqual:_peerNow()]){_holdsLease=NO;_sample=@{};_sampleAt=0;}
+}
+- (BOOL)context{return _peer.length&&[_peer isEqual:_peerNow()]&&_allowed()&&isfinite(_clock());}
+- (BOOL)sendCommand:(TDCommand)q{
+ if(![self context]||_pending||_fileBusy)return NO;NSTimeInterval now=_clock();_command=q;_pending=YES;_sentAt=now;_deadline=now+3;NSUInteger epoch=++_epoch;
+ _state=q.op==TDQ_STATUS?@"querying":q.op==TDQ_KNOB_START?@"starting":_cancelRequested?@"canceling":@"finishing";
+ BOOL sent=_send(q);if(!sent&&_epoch==epoch&&_pending){_pending=NO;_state=@"unavailable";_finishRequested=NO;if(q.op==TDQ_KNOB_START&&!_fileBusy)_holdsLease=NO;}
+ return sent;
+}
+- (void)pumpFinish{
+ if(!_finishRequested||!_holdsLease||_pending||_fileBusy||![self context])return;_finishRequested=NO;(void)[self sendCommand:(TDCommand){TDQ_KNOB_STOP,_window,2,0}];
+}
+- (void)poll{
+ NSAssert(NSThread.isMainThread,@"main only");NSTimeInterval now=_clock();if(!isfinite(now)||![_peer isEqual:_peerNow()]||!_allowed()){[self invalidate];return;}
+ if(_holdsLease&&now>=_leaseDeadline){_holdsLease=NO;_finishRequested=NO;_estimate=nil;if([@[@"starting",@"rotating",@"finishing",@"canceling"]containsObject:_state])_state=@"expired";}
+ if(_pending&&(now<_sentAt||now>=_deadline)){_pending=NO;_finishRequested=NO;_estimate=nil;_state=@"unavailable";_epoch++;}
+ [self pumpFinish];
+}
+- (BOOL)idleForOTA{NSTimeInterval now=_clock();if(!isfinite(now))return NO;BOOL lease=_holdsLease&&now<_leaseDeadline,request=_pending&&(now<_sentAt||now<_deadline);return !_fileBusy&&!lease&&!request;}
+- (BOOL)pending{[self poll];return _pending;}
+- (BOOL)holdsLease{[self poll];return _holdsLease;}
+- (BOOL)fileBusy{return _fileBusy;}
+- (void)setFileBusy:(BOOL)busy{
+ _fileBusy=busy;if(!busy){if(_holdsLease&&_command.op==TDQ_KNOB_START)_leaseDeadline=MAX(_leaseDeadline,_clock()+30);[self poll];}
+}
+- (NSDictionary *)status{
+ [self poll];NSTimeInterval age=_sampleAt?_clock()-_sampleAt:-1;
+ return @{@"state":_state,@"sample":_sample?:@{},@"calibration":_calibration?:@{},@"estimate":_estimate?:NSNull.null,@"pending":@(_pending),@"fileBusy":@(_fileBusy),@"holdsLease":@(_holdsLease),@"sampleAge":@(age>=0?age:-1)};
+}
+- (BOOL)query{[self poll];if(_pending||_fileBusy||![self context])return NO;uint32_t request=arc4random_uniform(UINT32_MAX-1)+1;return [self sendCommand:(TDCommand){TDQ_STATUS,request,1,0}];}
+- (BOOL)beginCalibration{
+ [self poll];if(_pending||_fileBusy||_holdsLease||![self context])return NO;uint32_t next=arc4random_uniform(UINT32_MAX-1)+1;if(next==_window){next++;if(!next)next=1;}_window=next;_holdsLease=YES;_leaseDeadline=_clock()+30;_finishRequested=_cancelRequested=NO;_estimate=nil;_calibration=@{};
+ return [self sendCommand:(TDCommand){TDQ_KNOB_START,_window,1,TK_MAX_LEASE_MS}];
+}
+- (void)finishCalibration{[self poll];if(!_holdsLease)return;_finishRequested=YES;_cancelRequested=NO;[self pumpFinish];}
+- (void)cancelCalibration{[self poll];_estimate=nil;if(!_holdsLease){_state=@"canceled";return;}_finishRequested=_cancelRequested=YES;[self pumpFinish];}
+- (void)transportFailed{_pending=NO;_finishRequested=NO;_estimate=nil;_state=@"unavailable";_epoch++;}
+- (BOOL)receive:(NSData *)packet device:(NSString *)device{
+ [self poll];TDSample s;if(!_pending||![device isEqual:_peer]||![packet isKindOfClass:NSData.class]||!td_decode(packet.bytes,packet.length,&s)||s.kind==TD_SAMPLE||s.session!=_command.session||s.sequence!=_command.sequence||s.kind!=(_command.op==TDQ_STATUS?TD_STATUS:TD_CALIBRATION))return NO;
+ TDCommand command=_command;_pending=NO;_epoch++;
+ if(s.calibration_result==TK_OK&&command.op!=TDQ_STATUS){
+  if(!(s.extension_valid&TD_EXT_CALIBRATION)||s.calibration_window!=_window||s.calibration_sequence!=command.sequence||(command.op==TDQ_KNOB_STOP&&s.calibration_state==TK_ACTIVE)){_state=@"unavailable";_estimate=nil;return NO;}
+ }
+ _calibration=RuntimeCalibration(&s);
+ if(![_calibration[@"window"]isEqual:@(_window)])_estimate=nil;
+ if(s.calibration_result!=TK_OK){_state=s.calibration_result==TK_BLOCKED?@"blocked":s.calibration_result==TK_BUSY?@"busy":s.calibration_result==TK_OVERFLOW_RESULT?@"overflow":@"unavailable";_estimate=nil;if(s.calibration_window==_window&&s.calibration_state!=TK_ACTIVE)_holdsLease=NO;return YES;}
+ if(command.op==TDQ_STATUS){_sample=RuntimeSample(&s);_sampleAt=_clock();if(_holdsLease&&(s.calibration_window!=_window||s.calibration_state!=TK_ACTIVE))_holdsLease=NO;_state=_holdsLease?@"rotating":@"ready";}
+ else if(s.calibration_state==TK_ACTIVE){_holdsLease=YES;_leaseDeadline=MAX(_leaseDeadline,_clock()+(TK_MAX_LEASE_MS-s.calibration_elapsed)/1000.0);_state=_finishRequested?(_cancelRequested?@"canceling":@"finishing"):@"rotating";}
+ else{
+  _holdsLease=NO;_state=_cancelRequested?@"canceled":s.calibration_state==TK_FINISHED?@"finished":s.calibration_state==TK_EXPIRED?@"expired":s.calibration_state==TK_OVERFLOW?@"overflow":@"canceled";
+  TKState knob={.state=s.calibration_state,.samples=s.calibration_samples,.net=s.calibration_net,.absolute=s.calibration_absolute};uint64_t value;if(command.op==TDQ_KNOB_STOP&&!_cancelRequested&&tk_estimate(&knob,&value))_estimate=@(value);else _estimate=nil;_cancelRequested=NO;
+ }
+ [self pumpFinish];return YES;
+}
+@end

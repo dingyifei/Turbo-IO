@@ -570,6 +570,52 @@
 {"key":"ota.version.stale","en":"Needed within 2 min","zh":"需在 2 分钟内读取"}
 {"key":"projectmanager · 只读查询","en":"projectmanager · Read-only query"}
 {"key":"subtitle-hud-v1.1\n%@ · %@\n预览样本：%@ 退出格式：%@\n已发%lu段 · 字幕音频消息%lu\n建立起计时%ld秒（不是镜片亮屏计时）","en":"subtitle-hud-v1.1\n%@ · %@\nPreview sample: %@ Exit format: %@\nSent %lu segments · Caption audio messages %lu\nSession age %ld sec (not glasses screen-on time)"}
+{"key":"tmg4.knob.cancel","en":"Cancel measurement","zh":"取消测量"}
+{"key":"tmg4.knob.estimate","en":"Counts per rotation estimate","zh":"每圈计数估算"}
+{"key":"tmg4.knob.finish","en":"Finish measurement","zh":"结束测量"}
+{"key":"tmg4.knob.instructions","en":"Open the glasses launcher, start, rotate one full turn in one direction, then Finish within 30 seconds. Remote input cancels the window. Reversal, expiry or missing replies produce no estimate. Nothing is saved or recalibrated.","zh":"打开眼镜主菜单并开始，在同一方向完整转动一圈，然后在 30 秒内结束。遥控输入会取消窗口。反向、超时或缺少回执不会产生估算，不会保存或修改校准参数。"}
+{"key":"tmg4.knob.noEstimate","en":"No valid estimate yet","zh":"暂无有效估算"}
+{"key":"tmg4.knob.progress","en":"%@ · %@ samples · net %@ / total %@ raw units","zh":"%@ · %@ 次采样 · 净值 %@ / 总计 %@ 原始单位"}
+{"key":"tmg4.knob.result","en":"%@ raw units / rotation (estimate)","zh":"每圈 %@ 原始单位（估算）"}
+{"key":"tmg4.knob.start","en":"Start one-turn measurement","zh":"开始测量一圈"}
+{"key":"tmg4.knob.state","en":"Calibration window","zh":"校准窗口"}
+{"key":"tmg4.knob.title","en":"Knob calibration","zh":"旋钮校准"}
+{"key":"tmg4.runtime.applied","en":"Menu applied","zh":"菜单已应用"}
+{"key":"tmg4.runtime.caps","en":"Capabilities","zh":"能力"}
+{"key":"tmg4.runtime.caps.format","en":"0x%02x · Tiles / saved language / status / calibration / POSE2","zh":"0x%02x · 入口 / 语言保存 / 状态 / 校准 / POSE2"}
+{"key":"tmg4.runtime.default","en":"Default / RAM only","zh":"默认或仅在内存中"}
+{"key":"tmg4.runtime.detent","en":"Raw units per step","zh":"每步原始单位"}
+{"key":"tmg4.runtime.detent.format","en":"%@ raw units / step · unchanged heuristic","zh":"每步 %@ 原始单位 · 原有经验值"}
+{"key":"tmg4.runtime.footer","en":"Values describe the last reply. Available storage is space available to this app; unmeasured values are not zero. Refresh is read-only.","zh":"数值来自最近一次回执。可用存储指应用可用空间，未测不代表零。刷新只读取状态。"}
+{"key":"tmg4.runtime.identity","en":"Firmware and build","zh":"固件与构建"}
+{"key":"tmg4.runtime.intro","en":"Refresh reads firmware, storage and menu status. Calibration estimates raw units from one full turn and changes no settings. Optional ten-minute collection keeps the existing local reports.","zh":"刷新可读取固件、存储和菜单状态。校准通过完整转动一圈估算原始单位，不更改设置。可选的十分钟采集仍保留本机报告。"}
+{"key":"tmg4.runtime.lang.en","en":"English","zh":"英语"}
+{"key":"tmg4.runtime.lang.zh","en":"Chinese","zh":"中文"}
+{"key":"tmg4.runtime.language","en":"Glasses language","zh":"眼镜语言"}
+{"key":"tmg4.runtime.nand","en":"NAND storage","zh":"NAND 存储"}
+{"key":"tmg4.runtime.nand.format","en":"%@ total · %@ available","zh":"总计 %@ · 可用 %@"}
+{"key":"tmg4.runtime.pendingMenu","en":"Waiting for the menu","zh":"等待菜单应用"}
+{"key":"tmg4.runtime.refresh","en":"Refresh status","zh":"刷新状态"}
+{"key":"tmg4.runtime.saved","en":"Saved on glasses","zh":"已保存在眼镜上"}
+{"key":"tmg4.runtime.state.blocked","en":"Glasses are not ready for this query","zh":"眼镜当前不允许此查询"}
+{"key":"tmg4.runtime.state.busy","en":"Another measurement is active","zh":"其他测量正在进行"}
+{"key":"tmg4.runtime.state.canceled","en":"Measurement canceled","zh":"测量已取消"}
+{"key":"tmg4.runtime.state.canceling","en":"Canceling measurement…","zh":"正在取消测量…"}
+{"key":"tmg4.runtime.state.expired","en":"Measurement expired","zh":"测量已超时"}
+{"key":"tmg4.runtime.state.finished","en":"Measurement finished","zh":"测量已结束"}
+{"key":"tmg4.runtime.state.finishing","en":"Waiting for the final count…","zh":"正在等待最终计数…"}
+{"key":"tmg4.runtime.state.idle","en":"Not read","zh":"尚未读取"}
+{"key":"tmg4.runtime.state.overflow","en":"Counter overflow · no estimate","zh":"计数溢出 · 无估算"}
+{"key":"tmg4.runtime.state.querying","en":"Reading status…","zh":"正在读取状态…"}
+{"key":"tmg4.runtime.state.ready","en":"Status received","zh":"已收到状态"}
+{"key":"tmg4.runtime.state.rotating","en":"Rotate one full turn","zh":"请完整转动一圈"}
+{"key":"tmg4.runtime.state.starting","en":"Starting measurement…","zh":"正在开始测量…"}
+{"key":"tmg4.runtime.state.unavailable","en":"No verified reply · read again explicitly","zh":"没有有效回执 · 请手动重新读取"}
+{"key":"tmg4.runtime.status","en":"Glasses status","zh":"眼镜状态"}
+{"key":"tmg4.runtime.sync","en":"Sync language now","zh":"立即同步语言"}
+{"key":"tmg4.runtime.syncHint","en":"Open the glasses launcher first. A saved acknowledgment is required.","zh":"请先打开眼镜主菜单，需要收到已保存的确认。"}
+{"key":"tmg4.runtime.tiles","en":"Tile configuration","zh":"入口设置"}
+{"key":"tmg4.runtime.tiles.format","en":"Generation %@ · %@","zh":"代次 %@ · %@"}
 {"key":"tmg4.tile.0","en":"Recorder","zh":"录音"}
 {"key":"tmg4.tile.1","en":"Live Captions","zh":"实时字幕"}
 {"key":"tmg4.tile.10","en":"Pomodoro","zh":"番茄钟"}

@@ -97,6 +97,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   -Wno-incompatible-pointer-types \
   lang_flag.c \
   lang_store.c \
+  knob_calibration.c \
   LanguageFlag.m \
   LanguageFlagRuntime.m \
   MenuLayout.m \

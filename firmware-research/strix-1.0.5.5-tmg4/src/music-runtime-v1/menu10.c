@@ -1,6 +1,7 @@
 #include "../common-v1/tio_text.h"
 #include "menu_tiles.h"
 #include "../menu-grid-v2/tile_native.h"
+#include "../diagnostics-v1/runtime_native.h"
 #include "../menu-grid-v2/menu_config.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
@@ -276,6 +277,7 @@ void m8_hook_destroy(void *app){tc_slot_destroy(camera_slot(app));if(slot(app))s
   fm_tiles_forget(app);stock_destroy(app);
 }
 void m8_hook_wheel(void *app,int delta){
+  tgr_knob_observe(app,delta,stream_tick());
   if(tc_native_visible(app)){tc_native_wheel(app,delta);return;}
   if(tap_service_visible(app)){tap_service_wheel(app,delta);return;}
   if(tf_slot_visible(focus(app))){tf_slot_wheel(focus(app),delta);return;}

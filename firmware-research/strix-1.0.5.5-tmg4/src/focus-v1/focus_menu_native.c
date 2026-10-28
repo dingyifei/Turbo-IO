@@ -30,6 +30,7 @@ _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slo
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool detail(void *app){TNNavSlot *s=slot(app);return tc_native_visible(app)||tap_service_visible(app)||(s&&(tn_slot_visible(s)||tm_slot_visible(s->music)||tf_slot_visible(s->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page));}
+bool fm_menu_plain(void *app){void *parent=ptr(app,4);return app&&parent&&!native_has_flag(parent,1)&&!detail(app)&&focus_screen_on();}
 static void hide_legacy(void *app){
  M8NativeTail *t=(M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES);TNNavSlot *s=slot(app);TMMusicSlot *music=s?s->music:NULL;TFSlot *focus=s?s->focus:NULL;
  TCSlot *camera=s?s->camera:NULL;

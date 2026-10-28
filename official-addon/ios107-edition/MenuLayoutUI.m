@@ -82,8 +82,8 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
  (void)t;UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];TIOStyleResearchCell(c);c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;
  if(p.section==0){c.textLabel.text=TileName(p.row);c.detailTextLabel.text=TIOText(@"tmg4.tiles.fixed");c.selectionStyle=UITableViewCellSelectionStyleNone;}
  else if(p.section==1){NSUInteger tile=[self.draft[p.row]unsignedIntegerValue];c.textLabel.text=TileName(tile);c.showsReorderControl=YES;c.selectionStyle=UITableViewCellSelectionStyleNone;
-  if(tile==12){c.detailTextLabel.text=TIOText(@"tmg4.tiles.camera");c.accessoryType=UITableViewCellAccessoryCheckmark;}
-  else{UISwitch *toggle=[UISwitch new];toggle.tag=tile;toggle.on=!(self.hidden&(1u<<tile));toggle.enabled=self.link.order.count==13&&!self.link.busy;[toggle addTarget:self action:@selector(visibility:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;}
+  if(tile==12){c.detailTextLabel.text=TIOText(@"tmg4.tiles.camera");c.accessoryType=UITableViewCellAccessoryCheckmark;c.editingAccessoryType=UITableViewCellAccessoryCheckmark;}
+  else{UISwitch *toggle=[UISwitch new];toggle.tag=tile;toggle.on=!(self.hidden&(1u<<tile));toggle.enabled=self.link.order.count==13&&!self.link.busy;[toggle addTarget:self action:@selector(visibility:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;c.editingAccessoryView=toggle;}
  }else{c.textLabel.text=@[TIOText(@"tmg4.tiles.read"),TIOText(@"tmg4.tiles.save"),TIOText(@"tmg4.tiles.reset")][p.row];BOOL enabled=!self.link.busy&&(p.row!=1||self.link.ready)&&(p.row!=2||self.link.order.count==13);c.userInteractionEnabled=enabled;c.textLabel.textColor=enabled?UIColor.systemBlueColor:UIColor.tertiaryLabelColor;c.accessibilityIdentifier=@[@"tiles-read",@"tiles-save",@"tiles-reset"][p.row];}
  return c;
 }

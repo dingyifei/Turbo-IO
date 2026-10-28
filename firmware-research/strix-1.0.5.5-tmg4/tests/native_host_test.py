@@ -23,6 +23,6 @@ def main():
         exe=out/'native-remote-test'
         subprocess.run(['xcrun','clang','-std=c11','-O1','-g','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',
             '-I',str(out),'-I',str(FW/'src/global-remote-v1'),'-I',str(FW/'src'),
-            str(FW/'tests/native_remote_test.c'),str(FW/'src/global-remote-v1/remote.c'),str(FW/'src/global-remote-v1/lang_flag.c'),str(FW/'src/global-remote-v1/lang_store.c'),str(FW/'src/menu-grid-v2/tile_config.c'),'-o',str(exe)],check=True)
+            str(FW/'tests/native_remote_test.c'),str(FW/'src/global-remote-v1/remote.c'),str(FW/'src/global-remote-v1/lang_flag.c'),str(FW/'src/global-remote-v1/lang_store.c'),str(FW/'src/menu-grid-v2/tile_config.c'),str(FW/'src/diagnostics-v1/knob_calibration.c'),str(FW/'src/diagnostics-v1/diagnostics.c'),'-o',str(exe)],check=True)
         subprocess.run([str(exe)],check=True)
 if __name__=='__main__':main()

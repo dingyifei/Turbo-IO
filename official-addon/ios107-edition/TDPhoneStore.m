@@ -17,7 +17,7 @@ static NSArray<NSString *> *Names(void){return @[@"lv_configured_bytes",@"lv_use
 - (void)end{NSAssert(NSThread.isMainThread,@"main executor");_active=NO;}
 - (BOOL)receive:(NSData *)packet fromDevice:(NSString *)device{
  NSAssert(NSThread.isMainThread,@"main executor");TDSample s;
- if(!_active||![device isEqual:_device]||![packet isKindOfClass:NSData.class]||!td_decode(packet.bytes,packet.length,&s)||s.build!=_build||s.session!=_session)return NO;
+ if(!_active||![device isEqual:_device]||![packet isKindOfClass:NSData.class]||!td_decode(packet.bytes,packet.length,&s)||s.kind!=TD_SAMPLE||s.build!=_build||s.session!=_session)return NO;
  if(_sequence){uint32_t ds=s.sequence-_sequence,dt=s.tick_ms-_tick;if(!ds||ds>=0x80000000u||dt>=0x80000000u)return NO;_gaps=MIN((uint64_t)UINT32_MAX,(uint64_t)_gaps+ds-1);}
  NSMutableDictionary *metrics=[NSMutableDictionary new];NSArray *names=Names();
  for(NSUInteger i=0;i<names.count;i++)metrics[names[i]]=(s.valid&(1u<<i))?@(s.values[i]):NSNull.null;
