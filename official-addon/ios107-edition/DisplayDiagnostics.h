@@ -4,3 +4,6 @@ void TDPDiagConfigure(NSURL *file);
 void TDPDiagRecord(NSString *event,NSDictionary *numbers);
 void TDPDiagEnvelope(id event);
 NSDictionary *TDPDiagSnapshot(void);
+
+// Number of snapshot writes (numeric diagnostics only).
+NSUInteger TDPDiagDiskWriteCount(void);
