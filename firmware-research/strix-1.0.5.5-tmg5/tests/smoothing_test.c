@@ -18,5 +18,6 @@ int main(void){
  assert(tnr_receive(&s,TNR_CLEAR,NULL,0,3000)&&s.smooth&&!s.valid);
  // TMG4 mirror mode remains the legacy codec/math for a caps3 peer.
  memset(&s,0,sizeof s);scene(&s);pose(&s,0,0,90,6,1000);last=at(&s,5000).p.x;pose(&s,8,0,90,6,5000);assert(at(&s,5180).p.x<last);
+ memset(&s,0,sizeof s);s.smooth=true;scene(&s);pose(&s,-8192,-8192,0,0,0);pose(&s,8192,8192,180,0,1000);tnr_presented(&s,1500);assert(tnr_needs_draw(&s,2000));for(unsigned t=1000;t<=9000;t+=33){TNRPose p=at(&s,t);assert(p.p.x>=-8192&&p.p.x<=8192&&p.p.y>=-8192&&p.p.y<=8192);}
  puts("PASS bounded smoothing: no reverse, bounded forward, heading, 8s/position clamps, wrap, caps3 legacy and vertical stroke");return 0;
 }

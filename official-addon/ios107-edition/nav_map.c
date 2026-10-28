@@ -44,9 +44,12 @@ bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
    * Backward corrections can slow forward travel to zero, never reverse it. */
   uint32_t horizon=TNR_PREDICT_MS-s->target.age;if(tp>horizon)tp=horizon;
   uint32_t duration=s->blend_ms?s->blend_ms:TNR_SMOOTH_MS,t=tp<duration?tp:duration;
-  int64_t travel=(int64_t)s->target.speed*tp;*p=s->target;
-  p->p.x=(int16_t)bound_position(s->from.p.x+(int)((travel*sine(s->target.heading)/1000+(int64_t)(s->target.p.x-s->from.p.x)*t*16384/duration)/16384));
-  p->p.y=(int16_t)bound_position(s->from.p.y+(int)((travel*sine(s->target.heading+90)/1000+(int64_t)(s->target.p.y-s->from.p.y)*t*16384/duration)/16384));
+  /* speed*tp <= 1,600,000; Q14 correction <= 16,384*16,384.
+   * Split millisecond travel before multiplication: no 64-bit division ABI. */
+  int travel=(int)s->target.speed*(int)tp,weight=(int)(t*16384/duration),sx=sine(s->target.heading),sy=sine(s->target.heading+90);*p=s->target;
+  int vx=(travel/1000)*sx+(travel%1000)*sx/1000,vy=(travel/1000)*sy+(travel%1000)*sy/1000;
+  p->p.x=(int16_t)bound_position(s->from.p.x+(vx+(s->target.p.x-s->from.p.x)*weight)/16384);
+  p->p.y=(int16_t)bound_position(s->from.p.y+(vy+(s->target.p.y-s->from.p.y)*weight)/16384);
   uint32_t turn=(uint32_t)ab(angle(s->from.heading,s->target.heading))*1000/90;if(turn<TNR_SMOOTH_MS)turn=TNR_SMOOTH_MS;
   uint32_t ht=elapsed<turn?elapsed:turn;p->heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)ht/(int)turn+360)%360);return true;
  }
@@ -88,7 +91,7 @@ bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now)
  }else if(ab(q.p.x-s->from.p.x)+ab(q.p.y-s->from.p.y)>400)s->from=q;
  s->target=q;s->pose_at=now;s->located=true;s->dirty=true;return true;
 }
-bool tnr_needs_draw(const TNRState *s,uint32_t now){return s&&(s->dirty||s->was_stale!=tnr_stale(s,now)||(s->valid&&s->located&&(uint32_t)(now-s->pose_at)<TNR_BLEND_MS+40&&(uint32_t)(now-s->last_draw)>=33)||(s->valid&&s->located&&s->target.speed&&(uint32_t)(now-s->pose_at)<TNR_PREDICT_MS&&(uint32_t)(now-s->last_draw)>=100));}
+bool tnr_needs_draw(const TNRState *s,uint32_t now){return s&&(s->dirty||s->was_stale!=tnr_stale(s,now)||(s->valid&&s->located&&(uint32_t)(now-s->pose_at)<(s->smooth?TNR_PREDICT_MS:TNR_BLEND_MS+40)&&(uint32_t)(now-s->last_draw)>=33)||(s->valid&&s->located&&s->target.speed&&(uint32_t)(now-s->pose_at)<TNR_PREDICT_MS&&(uint32_t)(now-s->last_draw)>=100));}
 void tnr_presented(TNRState *s,uint32_t now){if(s){s->dirty=false;s->last_draw=now;s->was_stale=tnr_stale(s,now);}}
 /* Q14 sine table; no libm, heap allocation or FP ABI assumptions in renderer. */
 static const int16_t sin5[]={0,1428,2845,4240,5604,6924,8192,9397,10531,11585,12551,13421,14189,14849,15396,15826,16135,16322,16384};
