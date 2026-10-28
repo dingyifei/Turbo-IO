@@ -36,15 +36,43 @@ NSURL *TMSpotifyAuthorizeURL(NSString *clientID,NSString *redirect,NSString *cha
     c.percentEncodedQuery=[c.percentEncodedQuery stringByReplacingOccurrencesOfString:@"+" withString:@"%2B"];return c.URL;
 }
 NSDictionary *TMSpotifyCallbackResult(NSURL *callback,NSString *redirect,NSString *state){
-    if(![callback isKindOfClass:NSURL.class])return @{@"error":@"mismatch"};
+    if(![callback isKindOfClass:NSURL.class])return @{@"error":@"mismatch:nil"};
     NSURLComponents *r=TMRedirect(redirect),*c=[NSURLComponents componentsWithURL:callback resolvingAgainstBaseURL:NO];
-    if(!r||!c||callback.absoluteString.length>16384||c.user||c.password||c.fragment||![c.scheme.lowercaseString isEqual:r.scheme.lowercaseString]||![(c.host?:@"") isEqual:(r.host?:@"")]||![(c.port?:@0) isEqual:(r.port?:@0)]||![(c.percentEncodedPath?:@"") isEqual:(r.percentEncodedPath?:@"")]||c.percentEncodedQuery.length>8192)return @{@"error":@"mismatch"};
+    if(!r||!c)return @{@"error":@"mismatch:nil"};
+    if(callback.absoluteString.length>16384||c.percentEncodedQuery.length>8192)return @{@"error":@"mismatch:size"};
+    if(c.user||c.password)return @{@"error":@"mismatch:userinfo"};
+    if(![c.scheme.lowercaseString isEqual:r.scheme.lowercaseString])return @{@"error":@"mismatch:scheme"};
+    if(![(c.host.lowercaseString?:@"") isEqual:(r.host.lowercaseString?:@"")])return @{@"error":@"mismatch:host"};
+    if((c.port||r.port)&&![c.port isEqual:r.port])return @{@"error":@"mismatch:port"};
+    NSString *path=c.percentEncodedPath?:@"",*expected=r.percentEncodedPath?:@"";
+    if(!path.length)path=@"/";if(!expected.length)expected=@"/";
+    if(![path isEqual:expected])return @{@"error":@"mismatch:path"};
+    if(c.percentEncodedFragment.length&&![c.percentEncodedFragment isEqual:@"_=_"])return @{@"error":@"mismatch:fragment"};
     NSMutableDictionary *q=[NSMutableDictionary dictionary];
     for(NSURLQueryItem *item in c.queryItems){if(!item.name.length||q[item.name]||!item.value||item.value.length>4096)return @{@"error":@"missing"};q[item.name]=item.value;}
     if(!TMString(state,512)||![q[@"state"] isEqual:state])return @{@"error":@"state"};
     if(q[@"code"]&&q[@"error"])return @{@"error":@"missing"};
     if(q[@"error"])return @{@"error":[q[@"error"] isEqual:@"access_denied"]?@"access_denied":@"missing"};
     return TMString(q[@"code"],4096)?@{@"code":q[@"code"]}:@{@"error":@"missing"};
+}
+// Bounded, memory-only metadata: never serialize the URL, userinfo or fragment.
+NSString *TMSpotifyCallbackShape(NSURL *callback){
+    if(![callback isKindOfClass:NSURL.class]||callback.absoluteString.length>16384)return @"{}";
+    NSURLComponents *c=[NSURLComponents componentsWithURL:callback resolvingAgainstBaseURL:NO];
+    if(!c||c.percentEncodedQuery.length>8192)return @"{}";
+    NSMutableArray *keys=[NSMutableArray array],*values=[NSMutableArray array];
+    for(NSURLQueryItem *item in c.queryItems){if(item.name)[keys addObject:item.name];if(item.value.length)[values addObject:item.value];}
+    NSMutableArray *fields=[@[(c.scheme?:@""),(c.host?:@""),(c.percentEncodedPath?:@"")] mutableCopy];
+    [fields addObjectsFromArray:keys];
+    // A malformed callback may repeat a secret in a path or even a query name.
+    for(NSUInteger i=0;i<fields.count;i++){
+        NSString *field=fields[i],*decoded=[field stringByRemovingPercentEncoding]?:field;
+        for(NSString *value in values)if([field containsString:value]||[decoded containsString:value]){field=@"[redacted]";break;}
+        fields[i]=field.length<=256?field:@"[oversize]";
+    }
+    NSDictionary *shape=@{@"scheme":fields[0],@"host":fields[1],@"path":fields[2],@"queryKeys":[fields subarrayWithRange:NSMakeRange(3,fields.count-3)]};
+    NSData *json=[NSJSONSerialization dataWithJSONObject:shape options:NSJSONWritingSortedKeys error:NULL];
+    return json?[[NSString alloc]initWithData:json encoding:NSUTF8StringEncoding]:@"{}";
 }
 NSURL *TMSpotifyLoopbackRequestURL(NSData *head,uint16_t port){
     if(port<1024||!head.length||head.length>8192)return nil;NSString *s=[[NSString alloc]initWithData:head encoding:NSASCIIStringEncoding];
@@ -81,11 +109,12 @@ static NSDictionary *TMStoredData(id input){if(![input isKindOfClass:NSDictionar
 - (BOOL)save:(NSDictionary *)input{NSDictionary *d=TMStoredData(input);if(!d)return NO;if(!_keychain){_memory=[d copy];return YES;}NSData *data=[NSJSONSerialization dataWithJSONObject:d options:0 error:NULL];if(!data||data.length>TMTokenLimit)return NO;NSMutableDictionary *q=[self query];NSDictionary *attrs=@{(__bridge id)kSecValueData:data,(__bridge id)kSecAttrAccessible:(__bridge id)kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly};OSStatus result=SecItemUpdate((__bridge CFDictionaryRef)q,(__bridge CFDictionaryRef)attrs);if(result==errSecItemNotFound){[q addEntriesFromDictionary:attrs];result=SecItemAdd((__bridge CFDictionaryRef)q,NULL);}return result==errSecSuccess;}
 - (void)remove{if(_keychain)SecItemDelete((__bridge CFDictionaryRef)[self query]);else _memory=nil;}
 @end
-@implementation TMSpotifyAuth {TMSpotifyHTTP _http;TMSpotifyTokenStore *_store;NSUserDefaults *_defaults;NSDate *(^_clock)(void);BOOL _loaded;NSDictionary *_stored,*_pending;NSString *_access;NSDate *_expires;NSUInteger _epoch;BOOL _refreshing;NSMutableArray *_waiters;}
+@implementation TMSpotifyAuth {TMSpotifyHTTP _http;TMSpotifyTokenStore *_store;NSUserDefaults *_defaults;NSDate *(^_clock)(void);BOOL _loaded;NSDictionary *_stored,*_pending;NSString *_access,*_callbackDiagnostics;NSDate *_expires;NSUInteger _epoch;BOOL _refreshing;NSMutableArray *_waiters;}
 + (instancetype)shared{static TMSpotifyAuth *s;static dispatch_once_t once;dispatch_once(&once,^{s=[[self alloc]initWithHTTP:TMSpotifyDefaultHTTP() store:TMSpotifyTokenStore.keychain defaults:NSUserDefaults.standardUserDefaults clock:^{return NSDate.date;}];});return s;}
 - (instancetype)initWithHTTP:(TMSpotifyHTTP)http store:(TMSpotifyTokenStore *)store defaults:(NSUserDefaults *)defaults clock:(NSDate *(^)(void))clock{if((self=[super init])){_http=[http copy];_store=store;_defaults=defaults;_clock=[clock copy];_waiters=[NSMutableArray array];}return self;}
 - (NSString *)clientID{__block NSString *s;TMSyncMain(^{id v=[self->_defaults objectForKey:@"TurboSpotifyClientIDV1"];s=[v isKindOfClass:NSString.class]?v:@"";});return s;}
 - (NSString *)redirect{__block NSString *s;TMSyncMain(^{id v=[self->_defaults objectForKey:@"TurboSpotifyRedirectV1"];s=TMSpotifyRedirectScheme(v)?v:TMSpotifyDefaultRedirect;});return s;}
+- (NSString *)callbackDiagnostics{__block NSString *s;TMSyncMain(^{s=self->_callbackDiagnostics?:@"";});return s;}
 - (void)changed{[NSNotificationCenter.defaultCenter postNotificationName:TMSpotifyAuthChanged object:self];}
 - (void)finishWaiters:(NSString *)token error:(NSString *)error{NSArray *a=[_waiters copy];[_waiters removeAllObjects];_refreshing=NO;NSUInteger epoch=_epoch;NSString *client=self.clientID;for(void(^b)(NSString *,NSString *) in a)dispatch_async(dispatch_get_main_queue(),^{if(epoch!=self->_epoch||![client isEqual:self.clientID])b(nil,@"signed_out");else b(token,error);});}
 - (void)advance{_epoch++;_pending=nil;_access=nil;_expires=nil;[self finishWaiters:nil error:@"signed_out"];}
@@ -94,7 +123,7 @@ static NSDictionary *TMStoredData(id input){if(![input isKindOfClass:NSDictionar
 - (BOOL)signedIn{__block BOOL yes;TMSyncMain(^{if(!self->_loaded){self->_stored=TMStoredData([self->_store load]);self->_loaded=YES;}yes=TMString(self->_stored[@"refresh_token"],65536)&&[self->_stored[@"client_id"] isEqual:self.clientID];});return yes;}
 - (NSURL *)beginSignIn{__block NSURL *url;TMSyncMain(^{[self advance];NSString *client=self.clientID;if(!TMSpotifyValidClientID(client))return;NSString *verifier=TMSpotifyNewVerifier(),*state=TMSpotifyRandomURLSafe(16),*redirect=self.redirect;url=TMSpotifyAuthorizeURL(client,redirect,TMSpotifyChallenge(verifier),state);if(url)self->_pending=@{@"verifier":verifier,@"state":state,@"redirect":redirect,@"client_id":client};});return url;}
 - (void)cancelPendingSignIn{TMSyncMain(^{[self advance];});}
-- (void)finishSignInWithCallback:(NSURL *)url done:(void(^)(NSString *))done{TMOnMain(^{NSDictionary *pending=self->_pending;self->_pending=nil;if(!pending){done(@"missing");return;}NSDictionary *cb=TMSpotifyCallbackResult(url,pending[@"redirect"],pending[@"state"]);if(cb[@"error"]){done(cb[@"error"]);return;}NSUInteger epoch=self->_epoch;NSString *client=pending[@"client_id"];NSURLRequest *request=TMSpotifyTokenRequest(@{@"grant_type":@"authorization_code",@"code":cb[@"code"],@"redirect_uri":pending[@"redirect"],@"client_id":client,@"code_verifier":pending[@"verifier"]});if(!request){done(@"bad_response");return;}self->_http(request,^(NSData *body,NSHTTPURLResponse *r,NSError *e){TMOnMain(^{if(epoch!=self->_epoch||![client isEqual:self.clientID]){done(@"cancelled");return;}if(e||r.statusCode>=500){done(@"network");return;}NSDictionary *token=TMSpotifyParseToken(body,r.statusCode,self->_clock());if(token[@"error"]){done(token[@"error"]);return;}NSMutableDictionary *stored=[@{@"client_id":client} mutableCopy];if(token[@"refresh_token"])stored[@"refresh_token"]=token[@"refresh_token"];if(token[@"scope"])stored[@"scope"]=token[@"scope"];if(!TMStoredData(stored)){done(@"bad_response");return;}if(![self->_store save:stored]){done(@"storage");return;}self->_stored=[stored copy];self->_loaded=YES;self->_access=token[@"access_token"];self->_expires=token[@"expires_at"];[self changed];done(epoch==self->_epoch?nil:@"cancelled");});});});}
+- (void)finishSignInWithCallback:(NSURL *)url done:(void(^)(NSString *))done{TMOnMain(^{NSDictionary *pending=self->_pending;self->_pending=nil;if(!pending){done(@"missing");return;}NSDictionary *cb=TMSpotifyCallbackResult(url,pending[@"redirect"],pending[@"state"]);self->_callbackDiagnostics=[NSString stringWithFormat:@"%@\n%@",cb[@"error"]?:@"ok",TMSpotifyCallbackShape(url)];if(cb[@"error"]){done(cb[@"error"]);return;}NSUInteger epoch=self->_epoch;NSString *client=pending[@"client_id"];NSURLRequest *request=TMSpotifyTokenRequest(@{@"grant_type":@"authorization_code",@"code":cb[@"code"],@"redirect_uri":pending[@"redirect"],@"client_id":client,@"code_verifier":pending[@"verifier"]});if(!request){done(@"bad_response");return;}self->_http(request,^(NSData *body,NSHTTPURLResponse *r,NSError *e){TMOnMain(^{if(epoch!=self->_epoch||![client isEqual:self.clientID]){done(@"cancelled");return;}if(e||r.statusCode>=500){done(@"network");return;}NSDictionary *token=TMSpotifyParseToken(body,r.statusCode,self->_clock());if(token[@"error"]){done(token[@"error"]);return;}NSMutableDictionary *stored=[@{@"client_id":client} mutableCopy];if(token[@"refresh_token"])stored[@"refresh_token"]=token[@"refresh_token"];if(token[@"scope"])stored[@"scope"]=token[@"scope"];if(!TMStoredData(stored)){done(@"bad_response");return;}if(![self->_store save:stored]){done(@"storage");return;}self->_stored=[stored copy];self->_loaded=YES;self->_access=token[@"access_token"];self->_expires=token[@"expires_at"];[self changed];done(epoch==self->_epoch?nil:@"cancelled");});});});}
 - (void)accessToken:(void(^)(NSString *,NSString *))done{TMOnMain(^{NSString *client=self.clientID;if(!TMSpotifyValidClientID(client)){done(nil,@"not_configured");return;}if(!self.signedIn){done(nil,@"signed_out");return;}if(self->_access&&[self->_expires timeIntervalSinceDate:self->_clock()]>60){done(self->_access,nil);return;}[self->_waiters addObject:[done copy]];if(self->_refreshing)return;self->_refreshing=YES;NSUInteger epoch=self->_epoch;NSDictionary *old=self->_stored;NSURLRequest *request=TMSpotifyTokenRequest(@{@"grant_type":@"refresh_token",@"refresh_token":old[@"refresh_token"],@"client_id":client});if(!request){[self finishWaiters:nil error:@"bad_response"];return;}self->_http(request,^(NSData *body,NSHTTPURLResponse *r,NSError *e){TMOnMain(^{if(epoch!=self->_epoch||![client isEqual:self.clientID])return;if(e||r.statusCode>=500){[self finishWaiters:nil error:@"network"];return;}NSDictionary *token=TMSpotifyParseToken(body,r.statusCode,self->_clock());if([token[@"error"] isEqual:@"invalid_grant"]){[self->_store remove];self->_stored=nil;self->_loaded=YES;self->_access=nil;self->_expires=nil;[self changed];[self finishWaiters:nil error:@"signed_out"];return;}if(token[@"error"]){[self finishWaiters:nil error:token[@"error"]];return;}NSMutableDictionary *stored=[old mutableCopy];for(NSString *key in @[@"refresh_token",@"scope"])if(token[key])stored[key]=token[key];if(![self->_store save:stored]){[self finishWaiters:nil error:@"storage"];return;}self->_stored=[stored copy];self->_access=token[@"access_token"];self->_expires=token[@"expires_at"];[self finishWaiters:self->_access error:nil];});});});}
 - (void)invalidateAccessToken{TMSyncMain(^{self->_access=nil;self->_expires=nil;});}
 - (void)signOut{TMSyncMain(^{[self advance];[self->_store remove];self->_stored=nil;self->_loaded=YES;[self changed];});}

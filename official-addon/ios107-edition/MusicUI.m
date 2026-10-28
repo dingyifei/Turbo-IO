@@ -87,7 +87,13 @@
     NSInteger offset = signedIn ? 1 : 0;
     if (section == 1 + offset) return 2;
     if (section == 2 + offset) return 1;
-    if (section == 3 + offset) return 2;
+    if (section == 3 + offset) {
+#if TIO_DISPLAY_DIAGNOSTICS
+        return 3;
+#else
+        return 2;
+#endif
+    }
     return 0;
 }
 
@@ -275,6 +281,15 @@
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         return cell;
     }
+#if TIO_DISPLAY_DIAGNOSTICS
+    if (s == self.advancedSection && r == 2) {
+        UITableViewCell *cell = [self basicCell:@"callback-diagnostics"];
+        cell.textLabel.text = TIOText(@"music.callback.copy");
+        cell.detailTextLabel.text = TMSpotifyAuth.shared.callbackDiagnostics.length ? TMSpotifyAuth.shared.callbackDiagnostics : TIOText(@"music.callback.none");
+        cell.detailTextLabel.numberOfLines = 0;
+        return cell;
+    }
+#endif
     return [self basicCell:@"empty"];
 }
 
@@ -355,7 +370,12 @@
     }
     if (s == self.advancedSection) {
         if (r == 0) [self showClientIDEditor];
-        else [self chooseRedirect];
+        else if (r == 1) [self chooseRedirect];
+#if TIO_DISPLAY_DIAGNOSTICS
+        else if (r == 2 && TMSpotifyAuth.shared.callbackDiagnostics.length) {
+            UIPasteboard.generalPasteboard.string = TMSpotifyAuth.shared.callbackDiagnostics;
+        }
+#endif
     }
 }
 

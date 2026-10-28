@@ -453,6 +453,8 @@ static const TIOStringRow Rows[]={
     {"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。","knowledge_query / knowledge_query_status: %@. Codex searches WeChat archives, projects, and learning materials in read-only mode and cites sources; it does not modify the knowledge base.\n\ncreate_todo: Adds a title through the RayNeo app entry point. Confirmed only after a new ID appears in the list; no retry on timeout.\nweb_search: Public TinyFish search; internet access must be enabled.\n\nTo-do tools cannot edit, delete, complete, or set reminder times and currently do not write to knowledge base web pages. Only real voice sessions have the to-do execution context.",NULL},
     {"mode3 / status0：测试同一句文字更新；观察覆盖还是追加、是否闪屏。检测到字幕音频消息立即停止；没有音频包不等于全链路未采音。","mode3 / status0: Test updates to the same line of text; check whether it replaces or appends and whether the display flashes. Stop immediately if a caption audio message is detected; no audio packet does not prove that no audio was captured anywhere in the pipeline.",NULL},
     {"music.advanced","Advanced","高级"},
+    {"music.callback.copy","Copy Spotify callback diagnostics (Developer)","复制 Spotify 回调诊断（开发者）"},
+    {"music.callback.none","No callback received this session","本次会话尚未收到回调"},
     {"music.cancel","Cancel","取消"},
     {"music.catalog.row","Spotify · glasses menu 10","Spotify · 眼镜第十项菜单"},
     {"music.clientID","Client ID","Client ID"},

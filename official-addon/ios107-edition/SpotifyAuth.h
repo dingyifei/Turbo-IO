@@ -12,6 +12,7 @@ FOUNDATION_EXPORT NSString *TMSpotifyRedirectScheme(NSString *redirect);
 FOUNDATION_EXPORT uint16_t TMSpotifyLoopbackPort(NSString *redirect);
 FOUNDATION_EXPORT NSURL *TMSpotifyAuthorizeURL(NSString *clientID, NSString *redirect, NSString *challenge, NSString *state);
 FOUNDATION_EXPORT NSDictionary *TMSpotifyCallbackResult(NSURL *callback, NSString *redirect, NSString *state);
+FOUNDATION_EXPORT NSString *TMSpotifyCallbackShape(NSURL *callback);
 FOUNDATION_EXPORT NSURL *TMSpotifyLoopbackRequestURL(NSData *head, uint16_t port);
 FOUNDATION_EXPORT NSURLRequest *TMSpotifyTokenRequest(NSDictionary<NSString *,NSString *> *form);
 FOUNDATION_EXPORT NSDictionary *TMSpotifyParseToken(NSData *body, NSInteger status, NSDate *now);
@@ -28,6 +29,7 @@ FOUNDATION_EXPORT NSDictionary *TMSpotifyParseToken(NSData *body, NSInteger stat
 @property(nonatomic,readonly) NSString *clientID;
 @property(nonatomic,copy) NSString *redirect;
 @property(nonatomic,readonly) BOOL signedIn;
+@property(nonatomic,readonly) NSString *callbackDiagnostics;
 - (BOOL)setClientIDString:(NSString *)value;
 - (NSURL *)beginSignIn;
 - (void)finishSignInWithCallback:(NSURL *)url done:(void(^)(NSString *error))done;

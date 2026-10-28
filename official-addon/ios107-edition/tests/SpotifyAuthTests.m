@@ -15,6 +15,30 @@ static void Spin(BOOL(^condition)(void)){NSDate *end=[NSDate dateWithTimeInterva
 static NSData *Fixture(NSString *root,NSString *name){NSData *d=[NSData dataWithContentsOfFile:[root stringByAppendingPathComponent:name]];assert(d);return d;}
 static NSHTTPURLResponse *Response(NSInteger status){return [[NSHTTPURLResponse alloc]initWithURL:[NSURL URLWithString:@"https://accounts.spotify.com/api/token"] statusCode:status HTTPVersion:@"HTTP/1.1" headerFields:@{}];}
 static NSURL *Callback(NSURL *authorize){NSURLComponents *c=[NSURLComponents componentsWithURL:authorize resolvingAgainstBaseURL:NO];NSString *state;for(NSURLQueryItem *q in c.queryItems)if([q.name isEqual:@"state"])state=q.value;assert(state);return [NSURL URLWithString:[NSString stringWithFormat:@"io.turboio.spotify://callback?code=FAKE_CODE&state=%@",state]];}
+static void TestCallbackNormalization(void){
+ NSString *query=@"?code=PRIVATE_CODE_71&state=PRIVATE_STATE_83";
+ for(NSString *base in @[@"io.turboio.spotify://callback",@"io.turboio.spotify://callback/",@"io.turboio.spotify://CALLBACK",@"IO.TURBOIO.SPOTIFY://callback"]){
+  for(NSString *fragment in @[@"",@"#",@"#_=_"]){
+   NSURL *url=[NSURL URLWithString:[[base stringByAppendingString:query] stringByAppendingString:fragment]];
+   assert([TMSpotifyCallbackResult(url,TMSpotifyDefaultRedirect,@"PRIVATE_STATE_83")[@"code"] isEqual:@"PRIVATE_CODE_71"]);
+  }
+ }
+ NSArray *bad=@[@[@"other://callback",@"mismatch:scheme"],@[@"io.turboio.spotify://other",@"mismatch:host"],@[@"io.turboio.spotify://callback/other",@"mismatch:path"],@[@"io.turboio.spotify://callback:43821",@"mismatch:port"],@[@"io.turboio.spotify://callback:0",@"mismatch:port"],@[@"io.turboio.spotify://callback:000",@"mismatch:port"],@[@"io.turboio.spotify://user:password@callback",@"mismatch:userinfo"]];
+ for(NSArray *pair in bad)assert([TMSpotifyCallbackResult([NSURL URLWithString:[pair[0] stringByAppendingString:query]],TMSpotifyDefaultRedirect,@"PRIVATE_STATE_83")[@"error"] isEqual:pair[1]]);
+ for(NSString *fragment in @[@"#other",@"#_=_extra",@"#%5F%3D%5F"])assert([TMSpotifyCallbackResult([NSURL URLWithString:[[TMSpotifyDefaultRedirect stringByAppendingString:query] stringByAppendingString:fragment]],TMSpotifyDefaultRedirect,@"PRIVATE_STATE_83")[@"error"] isEqual:@"mismatch:fragment"]);
+ for(NSString *queryPart in @[@"?code=fake",@"?code=fake&state=wrong",@"?code=fake&state=PRIVATE_STATE_83x"])assert([TMSpotifyCallbackResult([NSURL URLWithString:[TMSpotifyDefaultRedirect stringByAppendingString:queryPart]],TMSpotifyDefaultRedirect,@"PRIVATE_STATE_83")[@"error"] isEqual:@"state"]);
+ assert([TMSpotifyCallbackResult(nil,TMSpotifyDefaultRedirect,@"s")[@"error"] isEqual:@"mismatch:nil"]);
+ NSString *shape=TMSpotifyCallbackShape([NSURL URLWithString:@"io.turboio.spotify://callback?code=PRIVATE_CODE_71&state=PRIVATE_STATE_83&access_token=PRIVATE_TOKEN_94#PRIVATE_FRAGMENT_15"]);
+ assert([shape containsString:@"code"]&&[shape containsString:@"state"]&&[shape containsString:@"callback"]);
+ for(NSString *secret in @[@"PRIVATE_CODE_71",@"PRIVATE_STATE_83",@"PRIVATE_TOKEN_94",@"PRIVATE_FRAGMENT_15"])assert(![shape containsString:secret]);
+ NSString *malicious=TMSpotifyCallbackShape([NSURL URLWithString:@"io.turboio.spotify://callback/PRIVATE_CODE_71?code=PRIVATE_CODE_71&PRIVATE_STATE_83=x&state=PRIVATE_STATE_83"]);
+ assert(![malicious containsString:@"PRIVATE_CODE_71"]&&![malicious containsString:@"PRIVATE_STATE_83"]);
+ NSString *large=[@"x" stringByPaddingToLength:8200 withString:@"x" startingAtIndex:0];
+ NSURL *oversized=[NSURL URLWithString:[NSString stringWithFormat:@"%@?code=%@&state=s",TMSpotifyDefaultRedirect,large]];
+ assert([TMSpotifyCallbackResult(oversized,TMSpotifyDefaultRedirect,@"s")[@"error"] isEqual:@"mismatch:size"]);
+ assert([TMSpotifyCallbackResult([NSURL URLWithString:[TMSpotifyLoopbackRedirect stringByAppendingString:query]],TMSpotifyLoopbackRedirect,@"PRIVATE_STATE_83")[@"code"] isEqual:@"PRIVATE_CODE_71"]);
+ assert([TMSpotifyCallbackResult([NSURL URLWithString:[@"http://127.0.0.1:43822/callback" stringByAppendingString:query]],TMSpotifyLoopbackRedirect,@"PRIVATE_STATE_83")[@"error"] isEqual:@"mismatch:port"]);
+}
 static void TestOversizedEncodedForms(void){
  // Synthetic opaque UTF-8 data fits the JSON store limit but expands past the encoded form limit.
  const unsigned char unit[]={0xf0,0x9f,0x98,0x80};NSMutableData *bytes=[NSMutableData dataWithCapacity:131072];for(NSUInteger i=0;i<32768;i++)[bytes appendBytes:unit length:sizeof(unit)];NSString *opaque=[[NSString alloc]initWithData:bytes encoding:NSUTF8StringEncoding];assert(opaque.length==65536);
@@ -32,7 +56,7 @@ static void TestOversizedEncodedForms(void){
  [NSNotificationCenter.defaultCenter removeObserver:observer];[defaults removePersistentDomainForName:suite];
 }
 int main(int argc,char **argv){@autoreleasepool{
- assert(argc==2);TestOversizedEncodedForms();NSString *root=@(argv[1]);
+ assert(argc==2);TestCallbackNormalization();TestOversizedEncodedForms();NSString *root=@(argv[1]);
  assert([TMSpotifyChallenge(@"dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") isEqual:@"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"]);
  NSString *v=TMSpotifyNewVerifier();assert(v.length==86);assert([v rangeOfString:@"^[A-Za-z0-9_-]+$" options:NSRegularExpressionSearch].location!=NSNotFound);
  assert(!TMSpotifyValidClientID([FakeClient stringByAppendingString:@"\n"]));assert(!TMSpotifyChallenge(@"short"));assert(!TMSpotifyValidClientID(@"missing"));
@@ -40,7 +64,7 @@ int main(int argc,char **argv){@autoreleasepool{
  for(NSString *r in @[@"https://x.com/cb",@"http://localhost:43821/callback",@"javascript:alert(1)",@"http://127.0.0.1:1/callback",@"http://127.0.0.1:65536/callback",@"http://127.0.0.1:43821/callback?q=x",@"io.turboio.spotify://u:p@callback",@"io.turboio.spotify://callback#x",@"http://127.1:43821/callback"] )assert(!TMSpotifyRedirectScheme(r));
  NSURL *authURL=TMSpotifyAuthorizeURL(FakeClient,TMSpotifyDefaultRedirect,TMSpotifyChallenge(v),@"state+value");NSURLComponents *ac=[NSURLComponents componentsWithURL:authURL resolvingAgainstBaseURL:NO];assert(ac.queryItems.count==7);assert([ac.percentEncodedQuery containsString:@"state%2Bvalue"]);
  assert([TMSpotifyCallbackResult([NSURL URLWithString:@"io.turboio.spotify://callback?code=fake&state=s"],TMSpotifyDefaultRedirect,@"s")[@"code"] isEqual:@"fake"]);
- NSArray *bad=@[@[@"io.turboio.spotify://callback?code=fake&state=t",@"state"],@[@"io.turboio.spotify://callback?error=access_denied&state=s",@"access_denied"],@[@"io.turboio.spotify://evil?code=fake&state=s",@"mismatch"],@[@"io.turboio.spotify://callback?code=fake&state=s&state=s",@"missing"],@[@"io.turboio.spotify://callback?code=a&code=b&state=s",@"missing"],@[@"io.turboio.spotify://callback?code=a&error=access_denied&state=s",@"missing"]];for(NSArray *pair in bad)assert([TMSpotifyCallbackResult([NSURL URLWithString:pair[0]],TMSpotifyDefaultRedirect,@"s")[@"error"] isEqual:pair[1]]);
+ NSArray *bad=@[@[@"io.turboio.spotify://callback?code=fake&state=t",@"state"],@[@"io.turboio.spotify://callback?error=access_denied&state=s",@"access_denied"],@[@"io.turboio.spotify://evil?code=fake&state=s",@"mismatch:host"],@[@"io.turboio.spotify://callback?code=fake&state=s&state=s",@"missing"],@[@"io.turboio.spotify://callback?code=a&code=b&state=s",@"missing"],@[@"io.turboio.spotify://callback?code=a&error=access_denied&state=s",@"missing"]];for(NSArray *pair in bad)assert([TMSpotifyCallbackResult([NSURL URLWithString:pair[0]],TMSpotifyDefaultRedirect,@"s")[@"error"] isEqual:pair[1]]);
  NSString *head=@"GET /callback?code=fake&state=s HTTP/1.1\r\nHost: 127.0.0.1:43821\r\n\r\n";assert(TMSpotifyLoopbackRequestURL([head dataUsingEncoding:NSASCIIStringEncoding],43821));
  for(NSString *h in @[@"POST /callback HTTP/1.1\r\n\r\n",@"GET /callback%0d%0aX:x HTTP/1.1\r\n\r\n",@"GET //evil/callback HTTP/1.1\r\n\r\n",@"GET /callback HTTP/1.1\r\nHost: evil\r\n\r\n",@"GET /callback HTTP/1.1\r\n\r\nJUNK"])assert(!TMSpotifyLoopbackRequestURL([h dataUsingEncoding:NSASCIIStringEncoding],43821));
  assert(!TMSpotifyLoopbackRequestURL([NSMutableData dataWithLength:8193],43821));
@@ -52,7 +76,7 @@ int main(int argc,char **argv){@autoreleasepool{
  __block NSDate *now=[NSDate dateWithTimeIntervalSince1970:1000];__block NSUInteger requests=0;__block TMSpotifyHTTPDone held;__block NSURLRequest *last;
  TMSpotifyAuth *auth=[[TMSpotifyAuth alloc]initWithHTTP:^(NSURLRequest *r,TMSpotifyHTTPDone d){requests++;last=r;held=[d copy];} store:store defaults:defaults clock:^{return now;}];
  assert(!auth.signedIn);NSUInteger loads=store.loads;for(int i=0;i<100;i++)assert(!auth.signedIn);assert(store.loads==loads);assert([auth setClientIDString:[@" \n" stringByAppendingString:FakeClient]]);
- __block BOOL completed=NO;__block NSString *error;NSURL *start=[auth beginSignIn];[auth finishSignInWithCallback:Callback(start) done:^(NSString *e){error=e;completed=YES;}];assert(requests==1);assert([last.HTTPMethod isEqual:@"POST"]);held(Fixture(root,@"token_exchange.json"),Response(200),nil);Spin(^{return completed;});assert(!error&&auth.signedIn);assert([[store load][@"refresh_token"] isEqual:@"RT1"]);
+ __block BOOL completed=NO;__block NSString *error;NSURL *start=[auth beginSignIn];[auth finishSignInWithCallback:Callback(start) done:^(NSString *e){error=e;completed=YES;}];assert(requests==1);assert([last.HTTPMethod isEqual:@"POST"]);held(Fixture(root,@"token_exchange.json"),Response(200),nil);Spin(^{return completed;});assert(!error&&auth.signedIn);assert([auth.callbackDiagnostics containsString:@"queryKeys"]&&![auth.callbackDiagnostics containsString:@"FAKE_CODE"]);assert(![[defaults dictionaryRepresentation].description containsString:@"queryKeys"]);assert([[store load][@"refresh_token"] isEqual:@"RT1"]);
  NSUInteger before=requests;__block NSString *access;[auth accessToken:^(NSString *t,NSString *e){access=t;assert(!e);}];assert([access isEqual:@"AT1"]&&requests==before);
  now=[now dateByAddingTimeInterval:4000];__block int calls=0;[auth accessToken:^(NSString *t,NSString *e){assert(t&&!e);calls++;}];[auth accessToken:^(NSString *t,NSString *e){assert(t&&!e);calls++;}];assert(requests==before+1);held(Fixture(root,@"token_refresh_rotated.json"),Response(200),nil);Spin(^BOOL{return calls==2;});assert([[store load][@"refresh_token"] isEqual:@"RT2"]);
  [auth invalidateAccessToken];completed=NO;[auth accessToken:^(NSString *t,NSString *e){assert(t&&!e);completed=YES;}];held(Fixture(root,@"token_refresh_same.json"),Response(200),nil);Spin(^{return completed;});assert([[store load][@"refresh_token"] isEqual:@"RT2"]);
