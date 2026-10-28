@@ -37,23 +37,23 @@ static void render(FMView *v,uint32_t now){
  unsigned size=icon_size(v),cells=per(v);
  v->api.place(v->api.ctx,v->frame,v->frame_x+offset,v->frame_y,FM_FRAME_W,size+6);
  for(unsigned i=0;i<FM_CELLS;i++){
-  unsigned index=(unsigned)v->selected/cells*cells+i;bool show=i<cells&&index<FM_ITEMS;
+  unsigned index=(unsigned)v->selected/cells*cells+i;bool show=i<cells&&index<v->tiles.count;
   v->api.visible(v->api.ctx,v->icons[i],show);v->api.visible(v->api.ctx,v->labels[i],show);
   if(!show)continue;
-  icon(v->pixels[bank][i],index,v->weights[i],fade,size);
+  icon(v->pixels[bank][i],v->tiles.ids[index],v->weights[i],fade,size);
   v->api.buffer(v->api.ctx,v->icons[i],v->pixels[bank][i],size,size);
   v->api.place(v->api.ctx,v->icons[i],center(i)-(int)size/2+offset,top(v,i),size,size);
   v->api.place(v->api.ctx,v->labels[i],center(i)-80+offset,top(v,i)+(int)size+3,160,20);
-  v->api.text_static(v->api.ctx,v->labels[i],tio_text(names[index],lang));
+  v->api.text_static(v->api.ctx,v->labels[i],tio_text(names[v->tiles.ids[index]],lang));
  }
  memset(v->pager[bank],0,144);
- unsigned pages=(FM_ITEMS+cells-1)/cells,start=(36-(pages*12-6))/2;
+ unsigned pages=(v->tiles.count+cells-1)/cells,start=(36-(pages*12-6))/2;
  for(unsigned p=0;p<pages;p++)for(unsigned y=1;y<3;y++)for(unsigned x=0;x<6;x++)v->pager[bank][y*36+start+p*12+x]=(p==(unsigned)v->selected/cells)?255:70;
  v->api.buffer(v->api.ctx,v->page,v->pager[bank],36,4);v->api.visible(v->api.ctx,v->root,true);
  v->bank=bank;v->last_draw=now;
 }
 bool fm_view_open(FMView *v,const TNWidgets *api,void *parent,bool (*attach)(void *,void *),void *owner){
- if(!v||!api||!attach||!api->idle(api->ctx))return false;memset(v,0,sizeof *v);v->api=*api;v->selected=-1;
+ if(!v||!api||!attach||!api->idle(api->ctx))return false;memset(v,0,sizeof *v);v->api=*api;v->selected=-1;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&v->tiles);
  v->root=api->root(api->ctx,parent);if(!v->root)return false;
  if(!attach(v->root,owner)){api->destroy(api->ctx,v->root);v->root=NULL;return false;}
  api->place(api->ctx,v->root,0,0,540,220);v->rows=3;
@@ -65,6 +65,12 @@ bool fm_view_open(FMView *v,const TNWidgets *api,void *parent,bool (*attach)(voi
  v->rows=0;if(!fm_view_rows(v,3))goto failed;
  api->visible(api->ctx,v->root,false);return true;
 failed:api->destroy(api->ctx,v->root);v->root=NULL;return false;
+}
+bool fm_view_tiles(FMView *v,const TTVisible *tiles){
+ if(!v||!v->root||!tiles||tiles->count<8||tiles->count>13||!v->api.idle(v->api.ctx))return false;
+ unsigned seen=0;for(unsigned i=0;i<tiles->count;i++){unsigned id=tiles->ids[i];if(id>=13||(seen&(1u<<id))||tiles->rank[id]!=i||(i<7&&id!=i))return false;seen|=1u<<id;}if(!(seen&(1u<<12)))return false;
+ for(unsigned id=0;id<13;id++)if(!(seen&(1u<<id))&&tiles->rank[id]!=255)return false;
+ if(v->tiles.count!=tiles->count||memcmp(v->tiles.ids,tiles->ids,13)){v->tiles=*tiles;fm_view_suspend(v);}return true;
 }
 bool fm_view_rows(FMView *v,unsigned rows){
  if(!v||!v->root||(rows!=2&&rows!=3)||!v->api.idle(v->api.ctx))return false;
@@ -81,7 +87,7 @@ bool fm_view_rows(FMView *v,unsigned rows){
  v->api.buffer(v->api.ctx,v->frame,v->border,w,h);return true;
 }
 bool fm_view_update(FMView *v,int selected,int64_t local,int battery,uint32_t now){
- if(!v||!v->root||selected<0||selected>=FM_ITEMS||!v->api.idle(v->api.ctx))return false;
+ if(!v||!v->root||selected<0||selected>=v->tiles.count||!v->api.idle(v->api.ctx))return false;
  unsigned b=v->header_bank^1;char *h=v->header[b];memset(h,0,48);memcpy(h,"--:--   --%",11);
  if(local>=946684800&&local<=4102444800LL){unsigned secs=(unsigned)((uint64_t)local%86400),hour=secs/3600,min=secs/60%60;h[0]='0'+hour/10;h[1]='0'+hour%10;h[3]='0'+min/10;h[4]='0'+min%10;}
  if(battery>=0&&battery<=100){unsigned at=8;if(battery==100)h[at++]='1';if(battery>=10)h[at++]='0'+battery/10%10;h[at++]='0'+battery%10;h[at++]='%';h[at]=0;}

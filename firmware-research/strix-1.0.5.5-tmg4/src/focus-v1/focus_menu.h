@@ -2,9 +2,10 @@
 #define TURBO_FOCUS_MENU_H
 #include "../navigation-runtime-v1/nav_view.h"
 #include "../music-runtime-v1/menu_tiles.h"
+#include "../menu-grid-v2/tile_config.h"
 enum { FM_ITEMS=TIO_MENU_ITEMS, FM_CELLS=9, FM_ICON=40, FM_FRAME_W=52, FM_FRAME_H=46 };
 typedef struct {
- TNWidgets api;void *root,*icons[FM_CELLS],*labels[FM_CELLS],*frame,*status,*brand,*page;
+ TTVisible tiles;TNWidgets api;void *root,*icons[FM_CELLS],*labels[FM_CELLS],*frame,*status,*brand,*page;
  _Alignas(64) uint8_t pixels[2][FM_CELLS][FM_ICON*FM_ICON];
  _Alignas(64) uint8_t border[FM_FRAME_W*FM_FRAME_H];
  _Alignas(64) uint8_t pager[2][36*4];
@@ -17,6 +18,7 @@ bool fm_view_open(FMView *,const TNWidgets *,void *,bool (*)(void *,void *),void
 bool fm_view_update(FMView *,int,int64_t,int,uint32_t);
 bool fm_view_step(FMView *,uint32_t);
 bool fm_view_rows(FMView *,unsigned);
+bool fm_view_tiles(FMView *,const TTVisible *);
 void fm_view_suspend(FMView *);
 bool fm_view_close(FMView *);
 void fm_show(void *app);

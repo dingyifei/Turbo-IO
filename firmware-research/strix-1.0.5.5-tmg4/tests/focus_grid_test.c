@@ -25,6 +25,16 @@ int main(void){
  assert(fm_view_update(&view,8,1704067200,75,1));assert(f.text_calls==calls+1);assert(f.texts[(uintptr_t)view.labels[8]]==before);
  calls=f.text_calls;fm_view_suspend(&view);assert(fm_view_update(&view,8,1704067200,75,2));assert(f.text_calls==calls+10);assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,1)));
  for(int i=0;i<13;i++){assert(fm_view_update(&view,i,1704067200,75,(unsigned)(1000+i*200)));assert(!strcmp(f.texts[(uintptr_t)view.status],"00:00   75%"));}
+ const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+ for(unsigned rows=2;rows<=3;rows++)for(unsigned rank=0;rank<720;rank+=119)for(unsigned hide=0;hide<32;hide++){
+  TTConfig config;TTVisible tiles;assert(tt_unrank(rank,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(&view,rows)&&fm_view_tiles(&view,&tiles));
+  for(unsigned selected=0;selected<tiles.count;selected++){
+   assert(fm_view_update(&view,(int)selected,1704067200,75,10000+selected*200));unsigned per=rows*3;
+   for(unsigned cell=0;cell<9;cell++){unsigned at=selected/per*per+cell;bool show=cell<per&&at<tiles.count;assert(f.visible[(uintptr_t)view.labels[cell]]==show);if(show)assert(!strcmp(f.texts[(uintptr_t)view.labels[cell]],tio_text(names[tiles.ids[at]],g_lang)));}
+  }
+  assert(!fm_view_update(&view,tiles.count,0,0,20000));
+ }
+ TTConfig defaults;TTVisible defaults_map;tt_default(&defaults);tt_compact(&defaults,&defaults_map);assert(fm_view_tiles(&view,&defaults_map));
  assert(!fm_view_update(&view,-1,0,0,5000)&&!fm_view_update(&view,13,0,0,5000));
  f.idle=false;assert(!fm_view_update(&view,0,0,0,5000)&&!fm_view_close(&view));f.idle=true;
  assert(fm_view_close(&view)&&f.destroyed==1);

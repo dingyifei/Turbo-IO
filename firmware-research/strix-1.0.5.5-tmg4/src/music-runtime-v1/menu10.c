@@ -1,5 +1,6 @@
 #include "../common-v1/tio_text.h"
 #include "menu_tiles.h"
+#include "../menu-grid-v2/tile_native.h"
 #include "../menu-grid-v2/menu_config.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
@@ -87,10 +88,11 @@ static void *block(void *parent,int w,int h,int x,int y){
 int m8_impl_frame_start(int index){return tio_frame_start(index);}
 int m8_impl_frame_index(int frame){return tio_frame_index(frame);}
 void m8_hook_render_slide(void *app){
- float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);if(!(value>=-1.0f))value=-1.0f;if(value>(float)TIO_MENU_ITEMS)value=(float)TIO_MENU_ITEMS;
- int frame=(int)(value*30.0f+15.5f);(void)m8_hook_frame(app,clamp(frame,0,TIO_MENU_FRAME_MAX));
+ float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);if(!(value>=-1.0f))value=-1.0f;if(value>(float)fm_tile_count())value=(float)fm_tile_count();
+ int frame=(int)(value*30.0f+15.5f);(void)m8_hook_frame(app,clamp(frame,0,30*(int)fm_tile_count()-1));
 }
 const char *m8_hook_app_id(int index){
+ if(index<0)return "";index=(int)fm_tile_id((unsigned)index);
  static const char *const ids[]={"TurboDisplay","TurboNavigation","TurboMusic","TurboFocus","TurboApps","TurboCamera"};
  if(index>=TIO_STOCK_ITEMS&&index<TIO_MENU_ITEMS)return ids[index-TIO_STOCK_ITEMS];
  return index>=0&&index<TIO_STOCK_ITEMS?stock_app_id(index):"";
@@ -129,7 +131,7 @@ void m8_hook_names(void *app){unsigned lang=tio_lang();
   f->label=native_label_create(f->row);if(!f->label)return;clean_style(f->label);native_label_text(f->label,tio_text(TT_TILE_FOCUS,lang));
   if(font)menu_text_font(f->label,font,0);native_text_color(f->label,0x00ff00,0);menu_text_align(f->label,2,0);tio_lv_obj_set_size(f->label,260,26);native_align(f->label,9,0,0);
 }
-void m8_hook_refresh_label(void *app,int index){unsigned lang=tio_lang();
+void m8_refresh_tile_label(void *app,int index){unsigned lang=tio_lang();
   if(index==TIO_TILE_CAMERA){if(camera_slot(app)&&camera_slot(app)->label)native_label_text(camera_slot(app)->label,tio_text(TT_TILE_CAMERA,lang));return;}
   if(index==TIO_TILE_APPS){if(apps(app)&&apps(app)->label)native_label_text(apps(app)->label,tio_text(TT_TILE_APPS,lang));return;}
   if(index==TIO_TILE_FOCUS){if(focus(app)&&focus(app)->label)native_label_text(focus(app)->label,tio_text(TT_TILE_FOCUS,lang));return;}
@@ -138,6 +140,7 @@ void m8_hook_refresh_label(void *app,int index){unsigned lang=tio_lang();
   if(index==TIO_TILE_DISPLAY){if(tail(app)->label)native_label_text(tail(app)->label,tio_text(TT_TILE_DISPLAY,lang));return;}
   if(index>=0 && index<7)stock_refresh_label(app,index);
 }
+void m8_hook_refresh_label(void *app,int rank){if(rank>=0)m8_refresh_tile_label(app,(int)fm_tile_id((unsigned)rank));}
 void m8_hook_delete_dots(void *app){
   /* Stock deletes the common parent, including our eighth child. */
   if(camera_slot(app))camera_slot(app)->dot=NULL;
@@ -209,11 +212,12 @@ static void *turbo_icon(void *app,unsigned k){
  return k<6?icons[k]:NULL;
 }
 void m8_hook_label_frame(void *app,int frame){
-  frame=clamp(frame,0,TIO_MENU_FRAME_MAX);
+  frame=clamp(frame,0,30*(int)fm_tile_count()-1);
   for(unsigned i=0;i<TIO_MENU_ITEMS;i++){
     void *row=turbo_row(app,i);
     if(!row)continue;
-    int d=frame-m8_hook_frame_start((int)i),distance=d<0?-d:d;
+    unsigned rank=fm_tile_rank(i);if(rank==255){hidden(row,true);continue;}
+    int d=frame-m8_hook_frame_start((int)rank),distance=d<0?-d:d;
     if(distance>=30){hidden(row,true);continue;}
     hidden(row,false);menu_opa(row,(uint8_t)(255*(30-distance)/30),0);
     menu_translate(row,-55*d/30,0);
@@ -223,9 +227,9 @@ void m8_hook_label_frame(void *app,int frame){
 void m8_hook_label_index(void *app,int index){m8_hook_label_frame(app,m8_hook_frame_start(index));}
 void m8_hook_indicator(void *app,int frame,int previous){
   (void)previous;if(!ptr(app,0x60))return;
-  frame=clamp(frame,15,30*TIO_MENU_ITEMS-15);
+  frame=clamp(frame,15,30*(int)fm_tile_count()-15);
   for(unsigned i=0;i<TIO_MENU_ITEMS;i++){
-    void *dot=turbo_dot(app,i);if(!dot)continue;
+    void *dot=turbo_dot(app,i);if(!dot)continue;hidden(dot,i>=fm_tile_count());if(i>=fm_tile_count())continue;
     int d=frame-m8_hook_frame_start((int)i);if(d<0)d=-d;
     int weight=30-clamp(d,0,30);
     tio_lv_obj_set_size(dot,4+(8*weight+15)/30,4);
@@ -233,7 +237,7 @@ void m8_hook_indicator(void *app,int frame,int previous){
   }
 }
 bool m8_hook_frame(void *app,int frame){
-  void *lottie=ptr(app,8);if(!lottie || frame<0 || frame>TIO_MENU_FRAME_MAX)return false;
+  void *lottie=ptr(app,8);if(!lottie || frame<0 || frame>30*(int)fm_tile_count()-1)return false;
   int previous=(int)*word(app,0x90);
   if(previous==frame)return false;
   *word(app,0x90)=(uint32_t)frame;
@@ -243,7 +247,8 @@ bool m8_hook_frame(void *app,int frame){
   menu_lottie_frame(lottie,frame<=195?frame:195);
   menu_opa(lottie,(uint8_t)(255*(30-mix)/30),0);
   for(unsigned k=0;k<6;k++){
-    void *icon=turbo_icon(app,k);int weight=tio_tile_weight(frame,k),part=tio_tile_mix(frame,k);
+    void *icon=turbo_icon(app,k);unsigned rank=fm_tile_rank(k+7);int part=rank==255?0:tio_tile_mix(frame,rank-7);
+    int weight=rank==255?0:rank+1==fm_tile_count()?part:tio_tile_weight(frame,rank-7);
     if(icon){hidden(icon,weight==0);menu_opa(icon,(uint8_t)(255*weight/30),0);menu_translate(icon,55*(30-part)/30,0);}
   }
   m8_hook_indicator(app,frame,previous);fm_sync(app);return true;
@@ -255,7 +260,7 @@ void *m8_hook_ctor(void *app){
   if(slot(app)){slot(app)->music=tm_slot_create(app);slot(app)->focus=tf_slot_create(app);slot(app)->apps=tap_menu_create(app);slot(app)->camera=tc_slot_create(app);}
   return app;
 }
-void m8_hook_show(void *app){retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_hook_refresh_label(app,i);m8_hook_label_index(app,(int)*word(app,0x88));fm_show(app);}
+void m8_hook_show(void *app){retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);m8_hook_label_index(app,(int)*word(app,0x88));fm_show(app);}
 void m8_hook_hide(void *app){tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
 void m8_hook_destroy(void *app){tc_slot_destroy(camera_slot(app));if(slot(app))slot(app)->camera=NULL;fm_destroy(app);
   native_unregister_wheel(app);retire(app);
@@ -268,7 +273,7 @@ void m8_hook_destroy(void *app){tc_slot_destroy(camera_slot(app));if(slot(app))s
   tn_slot_destroy(slot(app));tail(app)->navigation=NULL;
   /* Only the stock parent destructor owns row/icon/dot. Do not double-delete. */
   tail(app)->row=tail(app)->label=tail(app)->icon=tail(app)->dot=NULL;
-  stock_destroy(app);
+  fm_tiles_forget(app);stock_destroy(app);
 }
 void m8_hook_wheel(void *app,int delta){
   if(tc_native_visible(app)){tc_native_wheel(app,delta);return;}
@@ -290,13 +295,14 @@ bool m8_hook_event(void *app,void *event){
   native_snap(app); /* Same stock snap BEFORE deciding which item to launch. */
   unsigned index=*word(app,0x88);
   if(index<TIO_STOCK_ITEMS)return stock_event(app,event);
-  if(index>=TIO_MENU_ITEMS){trace(39,index);return true;}
+  if(index>=fm_tile_count()){trace(39,index);return true;}
+  index=fm_tile_id(index);
   if(index==TIO_TILE_CAMERA){trace(120,tc_slot_open(camera_slot(app)));return true;}
   if(index==TIO_TILE_APPS){trace(90,tap_service_open(app));return true;}
   if(index==TIO_TILE_FOCUS){trace(70,tf_slot_open(focus(app)));return true;}
   if(index==TIO_TILE_MUSIC){trace(50,tm_slot_open(music(app)));return true;}
   if(index==TIO_TILE_NAVIGATION){trace(40,tn_slot_open(slot(app)));return true;}
-  if(index!=7){trace(39,index);return true;}
+  if(index!=TIO_TILE_DISPLAY){trace(39,index);return true;}
   M8NativeTail *t=tail(app);uint32_t sid=stream_tick();
   if(sid<=t->last_session)sid=t->last_session+1u;
   if(!sid){trace(38,0);return true;}

@@ -259,6 +259,10 @@
     "tests/GlassesFileTransportTests.m": {
       "status": "run",
       "group": "glasses-file"
+    },
+    "tests/TileLayoutTests.m": {
+      "status": "run",
+      "group": "tile-layout"
     }
   }
 }

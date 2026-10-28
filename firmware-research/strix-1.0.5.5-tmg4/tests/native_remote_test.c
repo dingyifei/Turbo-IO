@@ -1,0 +1,85 @@
+/* Executes production controller/file/apply bodies. The runner adapts only
+ * the 32-bit LVGL timer field accesses and event-size assert for a 64-bit host.
+ * ARM compilation and pinned stock ABI tests separately enforce target layout. */
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+static void (*host_timer_callback(void *))(void *);
+static void *host_timer_user(void *);
+#include "remote_native_host.inc"
+typedef struct {void (*callback)(void *);void *user;} HostTimer;
+static HostTimer timer,decoy;
+static unsigned allocations,frees,reads,writes,snaps,nexts;
+static bool fail_alloc,fail_timer,cycle,blocked,render_idle=true,awake=true,detail_open;
+static uint32_t now_ms;
+static uint8_t app[256],reply_wire[74];
+static unsigned snap_count[4],snap_selected[4];
+typedef struct {uint8_t bytes[40];int len;size_t pos;bool writing;} File;
+static File files[3][2];static int file_error,io_fail;static size_t chunk;
+enum {FAIL_OPEN=1,FAIL_READ,FAIL_READ_ZERO,FAIL_ERROR,FAIL_CLOSE,FAIL_WRITE,FAIL_WRITE_ZERO,FAIL_FLUSH,FAIL_FILENO,FAIL_SYNC,FAIL_READ_BIG,FAIL_WRITE_BIG};
+static void (*host_timer_callback(void *p))(void *){return ((HostTimer *)p)->callback;}
+static void *host_timer_user(void *p){return ((HostTimer *)p)->user;}
+void *stream_memalign(size_t alignment,size_t n){(void)alignment;allocations++;return fail_alloc?NULL:malloc(n);}
+void stream_free(void *p){frees++;free(p);}
+void *stream_timer_next(void *previous){nexts++;if(cycle)return &decoy;return !previous&&timer.user?&timer:NULL;}
+void *stream_timer_create(void (*cb)(void *),uint32_t period,void *user){assert(period==1000);if(fail_timer)return NULL;assert(!timer.user);timer=(HostTimer){cb,user};return &timer;}
+uint32_t stream_tick(void){return now_ms;}
+uint32_t tap_random(void){return 77;}
+void *nav_monitors(void){return app;}
+void *nav_input(void *p){return p;}
+void *nav_link(void *p){return p;}
+void *fm_system(void *p){return p;}
+unsigned tgr_ota_status(void *p){(void)p;return blocked?1:0;}
+bool nav_bonded(void *p){return p!=NULL;}
+bool nav_folded(void *p){(void)p;return false;}
+bool focus_screen_on(void){return awake;}
+int nav_connection(unsigned n){assert(n==0x80);return 1;}
+const char *nav_top_app(void){return "com.rayneo.liteos.launcher";}
+void nav_screen_on(bool b){(void)b;}
+void native_report_activity(void){}
+void *tgr_indev_next(void *p){(void)p;return NULL;}
+void *tgr_indev_group(void *p){return p;}
+void *tgr_indev_driver(void *p){return p;}
+unsigned tgr_indev_type(void *p){(void)p;return 0;}
+bool tgr_intercept(void *p){(void)p;return true;}
+unsigned tgr_group_send(void *p,uint32_t key){(void)p;(void)key;return 0;}
+void tgr_raw_wheel(const void *p){(void)p;}
+void tgr_sim_wheel(int delta){(void)delta;}
+void fm_language_changed(void){}
+void fm_relayout(unsigned rows){assert(rows==2||rows==3);}
+void fm_sync(void *p){if(!fm_tiles_busy()&&render_idle&&awake&&!detail_open)(void)fm_tiles_apply(p);}
+void native_snap(void *p){assert(p==app);if(snaps<4){snap_count[snaps]=*(uint32_t *)(app+0xa0);snap_selected[snaps]=*(uint32_t *)(app+0x88);}snaps++;fm_sync(p);}
+int tdp_rnlink_send(unsigned business,const uint8_t *p,unsigned n,void *ctx){assert(business==15&&n==74&&!ctx);memcpy(reply_wire,p,n);return 0;}
+void *tap_fs_fopen(const char *path,const char *mode){
+ if(io_fail==FAIL_OPEN){file_error=5;return NULL;}unsigned family=strstr(path,"turbo_tiles_")?1:strstr(path,"turbo_lang_")?2:0;size_t n=strlen(path);unsigned bank=(unsigned)(path[n-5]-'0');assert(bank<2);File *f=&files[family][bank];f->writing=mode[0]=='w';f->pos=0;
+ if(f->writing){writes++;f->len=0;}else{reads++;if(f->len<0){file_error=2;return NULL;}}return f;
+}
+size_t tap_fs_fread(void *out,size_t size,size_t n,void *handle){File *f=handle;assert(size==1&&!f->writing);if(io_fail==FAIL_READ||io_fail==FAIL_READ_ZERO)return 0;if(io_fail==FAIL_READ_BIG)return n+1;size_t left=(size_t)f->len-f->pos;if(n>left)n=left;if(chunk&&n>chunk)n=chunk;memcpy(out,f->bytes+f->pos,n);f->pos+=n;return n;}
+size_t tap_fs_fwrite(const void *in,size_t size,size_t n,void *handle){File *f=handle;assert(size==1&&f->writing);if(io_fail==FAIL_WRITE||io_fail==FAIL_WRITE_ZERO)return 0;if(io_fail==FAIL_WRITE_BIG)return n+1;if(chunk&&n>chunk)n=chunk;assert(f->pos+n<=40);memcpy(f->bytes+f->pos,in,n);f->pos+=n;f->len=(int)f->pos;return n;}
+int tap_fs_ferror(void *p){(void)p;return io_fail==FAIL_ERROR||io_fail==FAIL_READ||io_fail==FAIL_WRITE;}
+int tap_fs_feof(void *p){File *f=p;return io_fail==FAIL_READ_ZERO?0:f->pos==(size_t)f->len;}
+int tap_fs_fflush(void *p){(void)p;return io_fail==FAIL_FLUSH?-1:0;}
+int tap_fs_fileno(void *p){(void)p;return io_fail==FAIL_FILENO?-1:5;}
+int tap_fs_fsync(int fd){assert(fd==5);return io_fail==FAIL_SYNC?-1:0;}
+int tap_fs_fclose(void *p){(void)p;return io_fail==FAIL_CLOSE?-1:0;}
+int *tap_fs_errno(void){return &file_error;}
+static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+0xa0)=13;for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=0;fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
+static TTReply request(TTCommand q){uint8_t raw[32],wire[74];tt_encode(raw,&q);tt_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TTReply r;assert(tt_uncarrier(reply_wire,74,raw,true)&&tt_reply_decode(raw,32,&r));return r;}
+int main(void){
+ reset();TTVisible map;fm_tile_snapshot(&map);assert(map.count==13&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
+ assert(fm_menu_rows()==3&&reads==4);unsigned before=reads;assert(fm_menu_rows()==3&&reads==before);*(uint32_t *)(app+0x88)=12;assert(fm_tiles_apply(app)&&snaps==2&&snap_count[0]==13&&snap_count[1]==13);assert(!fm_tiles_apply(app));
+ r=request((TTCommand){.op=TT_QUERY,.request=2,.client=2});assert(r.result==TT_OK&&r.token==77&&reads==before+2);snaps=0;detail_open=true;
+ r=request((TTCommand){.op=TT_SET,.request=3,.client=2,.token=r.token,.generation=r.generation,.rank=719,.hide=0xf80});assert(r.result==TT_OK&&writes==1&&fm_tile_count()==13&&snaps==0);detail_open=false;render_idle=false;fm_sync(app);assert(fm_tile_count()==13);render_idle=true;awake=false;fm_sync(app);assert(fm_tile_count()==13);awake=true;fm_sync(app);assert(fm_tile_count()==8&&fm_tile_id(7)==12&&fm_tile_rank(12)==7&&*(uint32_t *)(app+0xa0)==8&&*(uint32_t *)(app+0x88)==7&&snaps==2&&snap_count[0]==13&&snap_count[1]==8);
+ fm_tiles_forget(app);assert(fm_tile_count()==13);assert(fm_tiles_apply(app)&&fm_tile_count()==8);before=reads;fm_tile_snapshot(&map);assert(reads==before&&map.count==8);
+ blocked=true;before=reads;r=request((TTCommand){.op=TT_QUERY,.request=4,.client=2});assert(r.result==TT_BLOCKED&&reads==before);blocked=false;
+ // Existing file adapter handles progress and every durability failure.
+ uint8_t raw[32];TTConfig c;tt_default(&c);tt_file_encode(raw,&c,9);chunk=3;assert(tt_file_write(NULL,0,raw,32));uint8_t reread[33];assert(tt_file_read(NULL,0,reread,33)==32&&!memcmp(raw,reread,32));chunk=0;
+ const int write_failures[]={FAIL_OPEN,FAIL_ERROR,FAIL_CLOSE,FAIL_WRITE,FAIL_WRITE_ZERO,FAIL_FLUSH,FAIL_FILENO,FAIL_SYNC,FAIL_WRITE_BIG};
+ for(unsigned i=0;i<sizeof write_failures/sizeof *write_failures;i++){io_fail=write_failures[i];assert(!tt_file_write(NULL,1,raw,32));}
+ io_fail=0;assert(tt_file_write(NULL,0,raw,32));const int read_failures[]={FAIL_OPEN,FAIL_READ,FAIL_READ_ZERO,FAIL_ERROR,FAIL_CLOSE,FAIL_READ_BIG};for(unsigned i=0;i<sizeof read_failures/sizeof *read_failures;i++){io_fail=read_failures[i];assert(tt_file_read(NULL,0,reread,33)==-1);}io_fail=0;
+ reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==13);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
+ reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling");return 0;
+}

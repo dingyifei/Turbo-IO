@@ -101,6 +101,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   MenuLayout.m \
   MenuLayoutUI.m \
   menu_config.c \
+  tile_config.c \
   Brightness.m \
   BrightnessCodec.m \
   camera-v1/camera.c \

@@ -4,6 +4,7 @@
  * Detach before app destruction, retire after renderer idle, no flash writes. */
 #include "focus_menu.h"
 #include "../menu-grid-v2/menu_config.h"
+#include "../menu-grid-v2/tile_native.h"
 #include "focus_service.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
@@ -51,21 +52,24 @@ void fm_relayout(unsigned rows){
  for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;if(*(void (**)(void *))((uint8_t *)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->desired_rows=rows;return;}}
  /* No active launcher: the persisted value is loaded when it next opens. */
 }
-extern void m8_hook_refresh_label(void *,int);
+extern void m8_refresh_tile_label(void *,int);
 void fm_language_changed(void){
  void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;
   if(*(void(**)(void*))((uint8_t*)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->relabel=true;return;}}
 }
-void fm_sync(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad;bool inside=detail(app);void *dots=ptr(app,0x60);
+void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;bool inside=detail(app);void *dots=ptr(app,0x60);
  if(dots)m8_native_api.hidden(dots,inside||(c&&c->view.root&&!c->closing));
  if(c&&c->view.root&&!c->closing)hide_legacy(app);
+ void *visible_parent=ptr(app,4);TNWidgets widgets=tn_lvgl_widgets();
+ bool safe=visible_parent&&!native_has_flag(visible_parent,1)&&!inside&&focus_screen_on()&&widgets.idle(widgets.ctx);
+ if(safe){(void)fm_tiles_apply(app);if(c&&!c->closing&&c->view.root){TTVisible active;fm_tile_snapshot(&active);if(!fm_view_tiles(&c->view,&active))return;}}
  if(!c||c->closing||!c->view.root)return;
- if(c->relabel){c->relabel=false;c->selection=-1;fm_view_suspend(&c->view);for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_hook_refresh_label(app,i);}
+ if(c->relabel){c->relabel=false;c->selection=-1;fm_view_suspend(&c->view);for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);}
  void *parent=ptr(app,4);bool show=c->enabled&&parent&&!native_has_flag(parent,1)&&!inside;
  if(!show){c->view.api.visible(c->view.api.ctx,c->view.root,false);c->selection=-1;fm_view_suspend(&c->view);return;}
  if(!focus_screen_on())return; /* Never repaint or wake a sleeping panel. */
  if(c->view.rows!=c->desired_rows){if(!fm_view_rows(&c->view,c->desired_rows))return;c->selection=-1;}
- int index=(int)*(uint32_t *)((uint8_t *)app+0x88);if(index<0||index>=TIO_MENU_ITEMS)return;uint32_t now=stream_tick();
+ int index=(int)*(uint32_t *)((uint8_t *)app+0x88);if(index<0||index>=(int)fm_tile_count())return;uint32_t now=stream_tick();
  if(index==c->selection&&(uint32_t)(now-c->refreshed)<1000){(void)fm_view_step(&c->view,now);return;}
  void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*battery=mon?fm_battery_monitor(mon):NULL;
  int64_t local=sys?fm_local_time(sys):0;int level=battery?fm_battery_level(battery):-1;
@@ -74,7 +78,7 @@ void fm_sync(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
 void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad;
  if(!c){TNWidgets api=tn_lvgl_widgets();if(!api.idle(NULL)||!room())return;c=stream_memalign(64,sizeof *c);if(!c)return;memset(c,0,sizeof *c);c->app=app;c->selection=-1;
   if(!fm_view_open(&c->view,&api,ptr(app,4),attach_deleted,c)){stream_free(c);return;}
-  c->desired_rows=fm_menu_rows();
+  c->desired_rows=fm_menu_rows();TTVisible active;fm_tile_snapshot(&active);(void)fm_view_tiles(&c->view,&active);
   for(unsigned i=0;i<FM_CELLS;i++)menu_text_align(c->view.labels[i],2,0);
   c->timer=stream_timer_create(tick,100,c);if(!c->timer){fm_view_close(&c->view);stream_free(c);return;}
   s->quad=c;

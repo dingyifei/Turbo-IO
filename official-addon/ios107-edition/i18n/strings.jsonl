@@ -447,6 +447,8 @@
 {"key":"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。","en":"knowledge_query / knowledge_query_status: %@. Codex searches WeChat archives, projects, and learning materials in read-only mode and cites sources; it does not modify the knowledge base.\n\ncreate_todo: Adds a title through the RayNeo app entry point. Confirmed only after a new ID appears in the list; no retry on timeout.\nweb_search: Public TinyFish search; internet access must be enabled.\n\nTo-do tools cannot edit, delete, complete, or set reminder times and currently do not write to knowledge base web pages. Only real voice sessions have the to-do execution context."}
 {"key":"mode3 / status0：测试同一句文字更新；观察覆盖还是追加、是否闪屏。检测到字幕音频消息立即停止；没有音频包不等于全链路未采音。","en":"mode3 / status0: Test updates to the same line of text; check whether it replaces or appends and whether the display flashes. Stop immediately if a caption audio message is detected; no audio packet does not prove that no audio was captured anywhere in the pipeline."}
 {"key":"music.advanced","en":"Advanced","zh":"高级"}
+{"key":"music.callback.copy","en":"Copy Spotify callback diagnostics (Developer)","zh":"复制 Spotify 回调诊断（开发者）"}
+{"key":"music.callback.none","en":"No callback received this session","zh":"本次会话尚未收到回调"}
 {"key":"music.cancel","en":"Cancel","zh":"取消"}
 {"key":"music.catalog.row","en":"Spotify · glasses menu 10","zh":"Spotify · 眼镜第十项菜单"}
 {"key":"music.clientID","en":"Client ID","zh":"Client ID"}
@@ -568,6 +570,42 @@
 {"key":"ota.version.stale","en":"Needed within 2 min","zh":"需在 2 分钟内读取"}
 {"key":"projectmanager · 只读查询","en":"projectmanager · Read-only query"}
 {"key":"subtitle-hud-v1.1\n%@ · %@\n预览样本：%@ 退出格式：%@\n已发%lu段 · 字幕音频消息%lu\n建立起计时%ld秒（不是镜片亮屏计时）","en":"subtitle-hud-v1.1\n%@ · %@\nPreview sample: %@ Exit format: %@\nSent %lu segments · Caption audio messages %lu\nSession age %ld sec (not glasses screen-on time)"}
+{"key":"tmg4.tile.0","en":"Recorder","zh":"录音"}
+{"key":"tmg4.tile.1","en":"Live Captions","zh":"实时字幕"}
+{"key":"tmg4.tile.10","en":"Pomodoro","zh":"番茄钟"}
+{"key":"tmg4.tile.11","en":"My Apps","zh":"我的应用"}
+{"key":"tmg4.tile.12","en":"Camera","zh":"相机"}
+{"key":"tmg4.tile.2","en":"Live Assist","zh":"实时助手"}
+{"key":"tmg4.tile.3","en":"To-do","zh":"待办"}
+{"key":"tmg4.tile.4","en":"Teleprompter","zh":"提词器"}
+{"key":"tmg4.tile.5","en":"Lifelog","zh":"生活记录"}
+{"key":"tmg4.tile.6","en":"Do Not Disturb","zh":"勿扰"}
+{"key":"tmg4.tile.7","en":"Display Test","zh":"显示测试"}
+{"key":"tmg4.tile.8","en":"Navigation","zh":"导航"}
+{"key":"tmg4.tile.9","en":"Music","zh":"音乐"}
+{"key":"tmg4.tiles.blocked","en":"The glasses cannot change tiles during an update, while folded, or outside a supported page.","zh":"升级、折叠或不支持的页面中无法更改入口。"}
+{"key":"tmg4.tiles.camera","en":"Always visible · can be reordered","zh":"始终可见 · 可以调整顺序"}
+{"key":"tmg4.tiles.canceled","en":"Canceled. Read the menu again; old changes will not be resent.","zh":"已取消。请重新读取，不会补发旧设置。"}
+{"key":"tmg4.tiles.changes","en":"Read and save","zh":"读取与保存"}
+{"key":"tmg4.tiles.connect","en":"Connect the glasses, keep this app in front, and finish any update first.","zh":"请连接眼镜、保持 App 前台，并先结束升级。"}
+{"key":"tmg4.tiles.custom","en":"Custom tiles","zh":"自定义入口"}
+{"key":"tmg4.tiles.expired","en":"The editing grant expired or was used. Read again before saving.","zh":"编辑凭证已过期或已使用，保存前请重新读取。"}
+{"key":"tmg4.tiles.fixed","en":"Fixed position · always visible","zh":"固定位置 · 始终可见"}
+{"key":"tmg4.tiles.instructions","en":"Drag to reorder custom tiles. Switches control visibility; Camera stays visible. Save verifies a persistent copy on the glasses. Open the launcher first.","zh":"拖动可调整自定义入口顺序，开关控制显示，相机始终可见。保存会在眼镜上校验持久副本，请先打开主菜单。"}
+{"key":"tmg4.tiles.invalid","en":"Invalid tile configuration. Camera must remain visible.","zh":"入口设置无效，相机必须保持可见。"}
+{"key":"tmg4.tiles.loaded","en":"Saved configuration read. Drag custom tiles and choose which to show, then Save.","zh":"已读取保存的设置。拖动自定义入口并选择显示项，然后保存。"}
+{"key":"tmg4.tiles.read","en":"Read from glasses","zh":"读取眼镜设置"}
+{"key":"tmg4.tiles.readFirst","en":"Read the glasses menu before editing. Requires TMG4.","zh":"编辑前请读取眼镜菜单，需要 TMG4。"}
+{"key":"tmg4.tiles.reading","en":"Reading the saved tile configuration…","zh":"正在读取已保存的入口设置…"}
+{"key":"tmg4.tiles.reset","en":"Reset draft to built-in order","zh":"将草稿恢复为内置顺序"}
+{"key":"tmg4.tiles.save","en":"Save to glasses","zh":"保存到眼镜"}
+{"key":"tmg4.tiles.saved","en":"Saved and verified on the glasses. The menu applies changes when it is safely visible.","zh":"已在眼镜上保存并校验，菜单可安全显示时会应用更改。"}
+{"key":"tmg4.tiles.saving","en":"Waiting for the glasses to save and verify…","zh":"正在等待眼镜保存并校验…"}
+{"key":"tmg4.tiles.stock","en":"Fixed stock tiles","zh":"固定的系统入口"}
+{"key":"tmg4.tiles.storage","en":"Storage verification failed. Read again to check the actual state.","zh":"存储校验失败，请重新读取以确认实际状态。"}
+{"key":"tmg4.tiles.title","en":"Tile order and visibility","zh":"入口顺序与显示"}
+{"key":"tmg4.tiles.unavailable","en":"Open the glasses launcher first, then read again. Requires TMG4.","zh":"请先打开眼镜主菜单再重新读取，需要 TMG4。"}
+{"key":"tmg4.tiles.uncertain","en":"No verified acknowledgment. Open the glasses menu and read again; no automatic retry.","zh":"未收到有效确认。请打开眼镜菜单并重新读取，不会自动重试。"}
 {"key":"一次导出 Markdown 与 JSON","en":"Export Markdown and JSON together"}
 {"key":"三排 · 九宫格（默认）","en":"Three rows · 3×3 grid (default)"}
 {"key":"上一张照片还在保存，请稍候。","en":"The previous photo is still saving. Please wait."}
@@ -1935,5 +1973,3 @@
 {"key":"；已请求退出，镜片未确认","en":"; exit requested, but not confirmed by glasses"}
 {"key":"；文件已结束，可在眼镜开页后重新查询","en":"; file complete; query again after opening the page on the glasses"}
 {"key":"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","en":"; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state."}
-{"key":"music.callback.copy","en":"Copy Spotify callback diagnostics (Developer)","zh":"复制 Spotify 回调诊断（开发者）"}
-{"key":"music.callback.none","en":"No callback received this session","zh":"本次会话尚未收到回调"}

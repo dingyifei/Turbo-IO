@@ -4,9 +4,11 @@
  */
 #include "remote.h"
 #include "language_state.h"
-extern void fm_language_changed(void);
+extern void fm_language_changed(void),fm_sync(void *);
 #include "../menu-grid-v2/menu_config.c"
 #include "../menu-grid-v2/menu_files.inc"
+#include "../menu-grid-v2/tile_native.h"
+#include "../menu-grid-v2/tile_files.inc"
 #include "../image-upload-test/native_file_bridge.h"
 #include <string.h>
 extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_next(void *),*stream_timer_create(void (*)(void *),uint32_t,void *);
@@ -23,7 +25,7 @@ extern unsigned tgr_indev_type(void *);
 extern bool tgr_intercept(void *);
 extern unsigned tgr_group_send(void *,uint32_t);
 extern void tgr_raw_wheel(const void *),tgr_sim_wheel(int);
-typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;TLGLanguageState language;} Control;
+typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;TLGLanguageState language;TTState tiles;TTVisible active;void *menu_app;bool settings_loaded,pending,applying;} Control;
 static void tick(void *);
 static bool allowed(void){
  void *m=nav_monitors(),*i=m?nav_input(m):NULL,*l=m?nav_link(m):NULL;
@@ -38,7 +40,7 @@ static bool allowed(void){
 }
 static Control *control(void){
  void *t=NULL;for(unsigned j=0;j<512;j++){t=stream_timer_next(t);if(!t)break;if(*(void(**)(void*))((uint8_t*)t+8)==tick){Control *c=*(Control**)((uint8_t*)t+12);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}if(j==511)return NULL;}
- Control *c=stream_memalign(8,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=0x54475231;c->timer=stream_timer_create(tick,1000,c);if(!c->timer){stream_free(c);return NULL;}c->menu.stored=tml_load(&tml_io);return c;
+ Control *c=stream_memalign(8,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=0x54475231;c->timer=stream_timer_create(tick,1000,c);if(!c->timer){stream_free(c);return NULL;}c->menu.stored=(TMLStored){.rows=3,.bank=1,.readable=true};tt_default(&c->tiles.stored.config);c->tiles.stored.bank=1;c->tiles.stored.readable=true;tt_compact(&c->tiles.stored.config,&c->active);return c;
 }
 /* Read-only scan used by label renderers: never create a controller here. */
 static Control *find(void){
@@ -47,8 +49,28 @@ static Control *find(void){
  return NULL;
 }
 unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
-unsigned fm_menu_rows(void){Control *c=control();return c?c->menu.stored.rows:3;}
-static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;}}
+unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
+ c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
+ }return c?c->menu.stored.rows:3;}
+void fm_tile_snapshot(TTVisible *out){Control *c=find();if(c){*out=c->active;return;}TTConfig defaults;tt_default(&defaults);(void)tt_compact(&defaults,out);}
+unsigned fm_tile_count(void){Control *c=find();return c?c->active.count:13;}
+unsigned fm_tile_id(unsigned rank){Control *c=find();if(c)return rank<c->active.count?c->active.ids[rank]:255;return rank<13?rank:255;}
+unsigned fm_tile_rank(unsigned id){Control *c=find();if(c)return id<13?c->active.rank[id]:255;return id<13?id:255;}
+bool fm_tiles_busy(void){Control *c=find();return c&&c->applying;}
+extern void native_snap(void *);
+bool fm_tiles_apply(void *app){
+ Control *c=find();if(!c||!app||!c->settings_loaded||c->applying||(!c->pending&&c->menu_app==app))return false;
+ TTVisible next;if(!tt_compact(&c->tiles.stored.config,&next))return false;
+ unsigned selected=*(uint32_t *)((uint8_t *)app+0x88);unsigned id=selected<c->active.count?c->active.ids[selected]:12;
+ c->applying=true;native_snap(app); /* old map/count: stop old motion first */
+ unsigned rank=id<13?next.rank[id]:255;if(rank==255)rank=next.rank[12];
+ c->active=next;c->menu_app=app;c->pending=false;
+ *(uint32_t *)((uint8_t *)app+0xa0)=next.count;*(uint32_t *)((uint8_t *)app+0x88)=rank;*(uint32_t *)((uint8_t *)app+0x90)=UINT32_MAX;
+ native_snap(app);c->applying=false;return true;
+}
+void fm_tiles_forget(void *app){Control *c=find();if(c&&c->menu_app==app){c->menu_app=NULL;c->pending=true;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&c->active);}}
+
+static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
 static void *device(unsigned type){void *p=NULL;for(unsigned j=0;j<16;j++){p=tgr_indev_next(p);if(!p)return NULL;if(tgr_indev_type(p)==type)return p;}return NULL;}
 static unsigned inject(unsigned op){
  if(!allowed())return TGR_BLOCKED;
@@ -87,6 +109,14 @@ void tgr_native_message(const TIONativeMessage *m){
   fm_relayout(c->menu.stored.rows);
   uint8_t out[74];tml_reply(raw,&c->menu,&layout,r);tml_carrier(out,raw,true);
   (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
+ }
+ if(tt_uncarrier(m->data,m->bytes,raw,false)){
+  TTCommand q;if(!tt_decode(raw,sizeof raw,&q))return;Control *c=control();if(!c)return;
+  uint32_t generation=c->tiles.stored.generation;
+  unsigned r=tt_accept(&c->tiles,&q,stream_tick(),q.op==TT_QUERY?tap_random():0,allowed(),&tt_io);
+  if(c->tiles.stored.readable&&c->tiles.stored.generation!=generation)c->pending=true;
+  if(c->menu_app)fm_sync(c->menu_app);
+  uint8_t out[74];tt_reply(raw,&c->tiles,&q,r);tt_carrier(out,raw,true);(void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
  }
  if(tlg_uncarrier(m->data,m->bytes,raw,false)){
   TLGCommand flag;if(!tlg_decode(raw,sizeof raw,&flag))return;
