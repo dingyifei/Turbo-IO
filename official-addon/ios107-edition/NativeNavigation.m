@@ -5,6 +5,8 @@ static unsigned U16(const uint8_t *p){return (unsigned)p[0]|((unsigned)p[1]<<8);
 #include <stdlib.h>
 #include "nav_map.h"
 static uint32_t U32(const uint8_t *p){return p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
+// Integer narrowing wraps modulo 2^32; the receiver subtracts unsigned times.
+static uint32_t MirrorMilliseconds(NSTimeInterval seconds){return (uint32_t)(uint64_t)(seconds*1000);}
 static BOOL Var(const uint8_t *p,NSUInteger n,NSUInteger *at,uint32_t *v){*v=0;for(unsigned i=0;i<5;i++){if(*at>=n)return NO;uint8_t b=p[(*at)++];if(i==4&&(b&240))return NO;*v|=(uint32_t)(b&127)<<(i*7);if(!(b&128))return YES;}return NO;}
 static BOOL DecodeReply(NSDictionary *event,TNReply *out,uint32_t *capabilities){
  if(![event isKindOfClass:NSDictionary.class]||![event[@"eventType"] isEqual:@"messageReceived"])return NO;
@@ -66,7 +68,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 - (void)fail:(NSString *)note{[self trace:@"failed"];_active=NO;_failed=YES;_packet=nil;_note=note;/* preserve uncertain native file ownership */}
 - (void)finish{if(!_packet||!_ack||_fileBusy||!_submitted)return;unsigned op=_op;_commitMs=(_clock()-_lastWire)*1000;_packet=nil;_nativeTask=nil;_early=nil;if(_cleanup)_cleanup(_task);_task=nil;_next=_clock()+(_extended?0:1);
  if(_pose2&&_mirror&&op>=TNR_SCENE&&op<=TNR_POSE2){
-  (void)tnr_receive(_mirror,op,_sending.bytes,_sending.length,(uint32_t)(_clock()*1000));
+  (void)tnr_receive(_mirror,op,_sending.bytes,_sending.length,MirrorMilliseconds(_clock()));
   if(op==TNR_SCENE||op==TNR_SCENE2)_sceneSinceCorrection=YES;
  }
  if(op==TN_START||op==TN_UPDATE){_committed=_sending;_lastCommit=_clock();_count++;}
@@ -124,7 +126,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  // A routine number change waits up to 0.1 s for the pose forced at 1 s, so slow links keep poses steady; turns never wait.
  BOOL correctionDue=NO;
  if(_pose2&&_mapCommitted&&_poseLatest){
-  TNRPose predicted;BOOL known=_mirror&&tnr_position(_mirror,(uint32_t)(now*1000),&predicted);
+  TNRPose predicted;BOOL known=_mirror&&tnr_position(_mirror,MirrorMilliseconds(now),&predicted);
   BOOL same=known&&predicted.generation==U32(_poseLatest.bytes);
   unsigned difference=_speedLatest>_speedCommitted?_speedLatest-_speedCommitted:_speedCommitted-_speedLatest;
   correctionDue=!same||_sceneSinceCorrection||now-_lastCorrection>=(_speedCommitted?4:2.5)||(difference>=4&&difference*4>_speedCommitted);

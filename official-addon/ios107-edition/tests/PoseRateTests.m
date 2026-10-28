@@ -6,6 +6,8 @@
 // A minute of MapKit-style walking (offers every 0.2 s at 1.4 m/s) over an instant link: count files by op.
 static uint32_t U32(const uint8_t *p){uint32_t v;memcpy(&v,p,4);return v;}
 static unsigned Caps;
+// Independent expected clock: integer narrowing is defined modulo 2^32.
+static uint32_t Milliseconds(double seconds){return (uint32_t)(uint64_t)(seconds*1000);}
 static NSDictionary *Ack(NSData *packet){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=TN_OK,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});if(p[5]==TN_QUERY){raw[24]=Caps;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"data":hex}} options:0 error:nil];uint8_t head[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:head length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"businessId":@15,@"deviceId":@"peer",@"payload":pb}};}
 static NSDictionary *File(NSString *task){return @{@"eventType":@"fileShareSuccess",@"device":@{@"id":@"peer"},@"role":@"sender",@"fileName":@"turbo-navigation.tnv",@"taskId":task};}
 typedef struct{unsigned updates,poses,other,pose2,maxPose2Body,minPose2Body;double maxPoseGap,minPoseGap,maxError,turnPoseAt;BOOL failed;} Walk;
@@ -44,7 +46,7 @@ static void SameMirror(TNVSession *s,const TNRState *expected,double now){
  TNRState *m=Mirror(s);assert(m);
  assert(m->valid==expected->valid&&m->located==expected->located&&m->pending==expected->pending);
  assert(m->pose_at==expected->pose_at&&m->target.generation==expected->target.generation&&m->target.speed==expected->target.speed);
- TNRPose a,b;BOOL av=tnr_position(m,(uint32_t)(now*1000),&a),bv=tnr_position(expected,(uint32_t)(now*1000),&b);assert(av==bv);
+ TNRPose a,b;BOOL av=tnr_position(m,Milliseconds(now),&a),bv=tnr_position(expected,Milliseconds(now),&b);assert(av==bv);
  if(av)assert(a.p.x==b.p.x&&a.p.y==b.p.y&&a.heading==b.heading);
 }
 static NSDictionary *MirrorFrame(double now,unsigned generation,int x,unsigned speed,BOOL scene2){
@@ -55,9 +57,9 @@ static NSDictionary *MirrorFrame(double now,unsigned generation,int x,unsigned s
  @"tnrScene":[NSData dataWithBytes:map length:32],@"tnrPose":[NSData dataWithBytes:pose length:12],@"tnrPoseAt":@(now),@"tnrSpeed":@(speed)} mutableCopy];
  if(scene2){NSMutableData *combined=[NSMutableData dataWithBytes:map length:32];uint8_t trailing[12]={0};memcpy(trailing,&generation,4);trailing[8]=90;[combined appendBytes:trailing length:12];frame[@"tnrScene2"]=combined;}return frame;
 }
-static void CheckAsyncMirror(unsigned caps,BOOL scene2){
+static void CheckAsyncMirror(unsigned caps,BOOL scene2,NSTimeInterval initialTime){
  unsigned sceneOp=scene2?TNR_SCENE2:TNR_SCENE;
- Caps=caps;__block double now=200;__block NSData *wire=nil;__block TNVSubmitted submitted=nil;
+ Caps=caps;__block double now=initialTime;__block NSData *wire=nil;__block TNVSubmitted submitted=nil;
  TNVSession *s=[[TNVSession alloc]initWithDevice:@"peer" session:11 clock:^{return now;} sender:^(NSData *p,NSString *task,TNVSubmitted done){(void)task;assert(!wire);wire=[p copy];submitted=[done copy];} cleanup:nil];
  __block unsigned transfer=0;__block TNRState expected={0};
  void (^finish)(unsigned)=^(unsigned order){
@@ -66,7 +68,7 @@ static void CheckAsyncMirror(unsigned caps,BOOL scene2){
   // completion, and file completion before ACK. Neither half may commit alone.
   if(order==0){[s consume:Ack(packet)];if(caps&2)SameMirror(s,&expected,now);[s consume:File(native)];if(caps&2)SameMirror(s,&expected,now);submitted(YES,native);}
   else{submitted(YES,native);[s consume:File(native)];if(caps&2)SameMirror(s,&expected,now);[s consume:Ack(packet)];}
-  if(caps&2){if(op>=TNR_SCENE){assert(tnr_receive(&expected,op,(const uint8_t *)packet.bytes+32,packet.length-32,(uint32_t)(now*1000)));}SameMirror(s,&expected,now);}
+  if(caps&2){if(op>=TNR_SCENE){assert(tnr_receive(&expected,op,(const uint8_t *)packet.bytes+32,packet.length-32,Milliseconds(now)));}SameMirror(s,&expected,now);}
   else assert(Mirror(s)==NULL);
   wire=nil;submitted=nil;
  };
@@ -92,7 +94,11 @@ static void CheckAsyncMirror(unsigned caps,BOOL scene2){
 }
 
 int main(void){@autoreleasepool{
- CheckAsyncMirror(1,NO);CheckAsyncMirror(5,NO);CheckAsyncMirror(3,NO);CheckAsyncMirror(3,YES);
+ CheckAsyncMirror(1,NO,200);CheckAsyncMirror(5,NO,200);CheckAsyncMirror(3,NO,200);CheckAsyncMirror(3,YES,200);
+ // A real session must commit and predict correctly on both sides of the
+ // 49.7-day millisecond wrap, including a transfer that crosses the boundary.
+ double wrap=(double)(UINT64_C(1)<<32)/1000;
+ CheckAsyncMirror(3,NO,wrap-0.125);CheckAsyncMirror(3,YES,wrap+0.125);
  Walk fg=Run(1,NO,0,0,-1),bg=Run(1,NO,0,0,-1),slow=Run(1,NO,1.5,0,-1),future=Run(5,NO,0,0,-1);
 #ifndef TIO_BASELINE
  bg=Run(1,YES,0,0,-1);

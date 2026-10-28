@@ -6,6 +6,8 @@
 
 The existing three-step wizard and single destructive confirmation below are unchanged. TMG2 glasses keep normal phone functionality, receive legacy POSE only and ignore TLG1. Check the new phone package with TMG2 still installed before making a separate TMG3 decision.
 
+**Rollback requires an earlier phone build.** This build accepts only the TMG3 ZIP, so it cannot authorize a TMG2 reflash. Before a human chooses TMG3, keep the TMG2-pinned C5 phone IPA at `~/projects/personal/turboio-inputs/signed-20261027-1443-wp7c-c5/TurboIO-local-only.ipa`, or C4 at `~/projects/personal/turboio-inputs/signed-20261027-1231-wp5-c4/TurboIO-local-only.ipa`, with the immutable TMG2 ZIP. A human must install that earlier phone build before attempting the matching TMG2 rollback; no rollback was performed here.
+
 2026-10-19 · [构建与签名](README.md) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)
 
 ## 适用范围与风险
