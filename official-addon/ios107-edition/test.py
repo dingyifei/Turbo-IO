@@ -23,9 +23,8 @@ for file,entry in manifest.items():
     raise SystemExit('invalid manifest entry: '+file)
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
-FW3=ROOT/'firmware-research/strix-1.0.5.5-tmg3'
 FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg4'
-FW=FW3
+FW=FW4
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
 out=P/'build/tests';out.mkdir(parents=True,exist_ok=True)
@@ -113,7 +112,7 @@ else:skip('shared-sources','not selected by --only')
 
 seen.add('pins')
 if only is None or 'pins' in only:
-    run('pins',['python3','-I',FW3/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
+    run('pins',['python3','-I',FW4/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
     groups.append('pins');print('pins: PASS')
 else:skip('pins','not selected by --only')
 

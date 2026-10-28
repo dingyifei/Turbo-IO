@@ -73,10 +73,10 @@ static const TIOHubRowDefinition Rows[] = {
 
 static NSString *FirmwareCode(void) {
     id value = [NSBundle.mainBundle objectForInfoDictionaryKey:@"TIOExperimentalOTABuild"];
-    if (![value isKindOfClass:NSString.class]) return @"TMG3";
+    if (![value isKindOfClass:NSString.class]) return @"TMG4";
     NSRegularExpression *pattern = [NSRegularExpression regularExpressionWithPattern:@"^TMG[0-9]+$" options:0 error:NULL];
     NSString *code = value;
-    return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : @"TMG3";
+    return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : @"TMG4";
 }
 
 NSArray<NSDictionary *> *TIOHubCatalog(void) {

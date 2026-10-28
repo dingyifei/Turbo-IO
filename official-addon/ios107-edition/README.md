@@ -1,8 +1,35 @@
 # iOS 1.0.7（230）· APP107 兼容适配
 
+## TMG4 candidate — current development branch
+
+This branch offers only **TMG4 CANDIDATE-NOT-APPROVED**, bundled as `TurboWeReadCandidate.zip`. It includes the unflashed TMG3+TMG4 delta; deviceIO=false and physical acceptance is unrun. [Firmware source, formats and rebuild](../../firmware-research/strix-1.0.5.5-tmg4/README.md).
+
+| Payload | Bytes | SHA-256 | MD5 |
+| --- | ---: | --- | --- |
+| ZIP | 8808959 | `47f3f639400173acf57916c5e24c35b307ab2146a2030a2a2b6980b31ce4ab03` | `fe614ff2f325850e08484536a7d0cba2` |
+| AP | 7353672 | `aec2e79083dac92c55f6387b2ee5f7cf67201ba99011ecca9b70f0aaa3406efd` | `a3b5de9cfdee8341ccc4233ce4e0fc52` |
+
+TMG4 adds persistent custom tile order/visibility (stock0–6 fixed, Camera always visible,8–13 active entries), reboot-persistent language with source2 confirmation, read-only runtime status and a30-second one-turn knob estimate. The600-unit detent heuristic is unchanged. Legacy removed-app replies and the outbound legacy POSE fallback are dropped; this phone build does not fully drive TMG2. The existing flash wizard still accepts a fresh validated TMG2-era version reply and uses exactly the TMG4 ZIP; the host/freshness/hash/slice policy and single confirmation remain unchanged.
+
+**Human-only TMG2→TMG4 checklist:**
+
+1. Keep the TMG2-pinned C5 phone IPA and immutable TMG2 ZIP for rollback. Install C8 by hand only after its separate review.
+2. Back up phone app data, charge glasses above50%, open their launcher, and finish active recording/navigation/music/file work. In RayNeo Software version, turn Auto Update **on then off once** so its setting exists.
+3. In Turbo › Glasses › Glasses firmware, pass the package/source/protection/settings checks and open the15-minute download window. Download in RayNeo and stop at **Ready to install**. Return to Turbo and require an exact directory match.
+4. Read the glasses version in RayNeo and return within **120seconds**. Accept the wizard's **one confirmation**, then manually tap Start install in RayNeo. Authorization itself starts no flash.
+5. After glasses reboot/reconnect, fully close and restart the phone app. Verify13 default tiles; save and reboot reordered/hidden tiles and language; inspect status; measure one full knob turn; test POSE2 in a dead zone, all retained tiles and Spotify.
+6. For rollback, install the earlier **C5** phone package, then manually flash the matching **TMG2 ZIP**. C8 accepts only TMG4; it cannot authorize a TMG2 rollback. Recovery has not been tested by this worker.
+
+```sh
+python3 test.py --firmware /absolute/path/to/exact-TMG4-CANDIDATE-NOT-APPROVED.zip --app107 /absolute/original/Runner.app --patched-app /absolute/patched/Runner.app
+```
+
+The default packager identity is `TMG4` (an explicit `--experimental-ota TMG4` is optional); older candidate names and changed hashes are rejected. All instructions and acceptance results below describe earlier WP6/WP5/publication snapshots. They do not establish TMG4 device acceptance and do not override this section.
+
+
 Layout (2026-10): this directory is self-contained — build.sh, package.mjs, test.py, local-translation/ and tests/ live here. Older editions are in git tag `archive/editions-2026-10`. Ignored parser copies and signing inputs remain external; see the build instructions.
 
-## WP6 candidate status (current development branch)
+## Historical WP6 candidate status
 
 This branch bundles the unflashed **TMG3 CANDIDATE-NOT-APPROVED** as `TurboWeReadCandidate.zip`. ZIP SHA-256: `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` (8803177 bytes). AP: 7344072 bytes, MD5 `28d26bb9965e2648ab514e02d4708957`. [TMG3 source, tile map and rebuild](../../firmware-research/strix-1.0.5.5-tmg3/README.md). TMG2 glasses remain supported and do not need to be flashed for the phone update. The wizard offers TMG3 only after the existing checks and single human confirmation; no package automatically flashes. The 2026-10-19 TMG2 device results below are historical and do not establish TMG3 device acceptance.
 
