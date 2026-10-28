@@ -116,4 +116,4 @@ node --test official-addon/package.test.mjs scripts/check-source.test.mjs
 
 脚本只写新目录，不连接设备、不授予刷写权限。检查10项菜单44场景、音乐文件/生命周期、居中歌词/边缘留空/seek、DMA延迟释放、导航/显示/动图回归、AP-only字节审计和内存检测。重建 AP 必须与上表一致；ZIP时间戳可不同，手机只接受 Release 原始 ZIP。测试通过不能代替真机安全性。
 
-API编码参考 [Beans Music](https://github.com/XIaodou0416/Beans-Music) 提交 `f9881318caf774129205c3160510ef0dfa318adc`，保留 [MIT许可](../../../../official-addon/music/Beans-MIT-LICENSE.txt)；并非合并整个 Beans App。原创项目仍按仓库非商业许可，第三方代码、原厂固件和音乐内容的权利保持独立。固件中的头像是作者授权公开的素材，不含音乐账号或个人服务配置。
+API编码参考 [Beans Music](https://github.com/XIaodou0416/Beans-Music) 提交 `f9881318caf774129205c3160510ef0dfa318adc`，保留 MIT许可（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/music/Beans-MIT-LICENSE.txt`）；并非合并整个 Beans App。原创项目仍按仓库非商业许可，第三方代码、原厂固件和音乐内容的权利保持独立。固件中的头像是作者授权公开的素材，不含音乐账号或个人服务配置。

@@ -10,13 +10,22 @@
 
 **文档更新：2026-10-23** · 日期表示文档整理或所注明的实测记录，不代表当天全量回归。
 
+## Repository layout (2026-10 slim build)
+
+- The active phone addon is `official-addon/ios107-edition`, containing build.sh, package.mjs, test.py, local-translation/ and tests/. Parser copies and signing inputs remain external private build inputs.
+- The current glasses firmware source is `firmware-research/strix-1.0.5.5-tmg3`; TMG2 compatibility is retained.
+- Older editions and duplicated root addon sources are archived in local tag `archive/editions-2026-10`. Restore one with `git checkout archive/editions-2026-10 -- official-addon/navs3-edition`.
+- `official-addon/research/`, `knowledge-bridge/`, `tar2-airplay/`, `tar2-display/` and historical `docs/` remain.
+- The tracked root PrivateBootstrap parser files and a navs3 README pointer remain for compatibility. This cleanup does not install or flash anything.
+
+
 **最新实验更新：[TVP2 / TAR2 · 540×220 原生清晰投屏](#tvp2-tar2-update)** · [固件与校验下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [安装与测试说明](docs/TVP2_TAR2.md)。另一台设备投到iPhone，再传到眼镜；完整画面/局部放大、灰阶可调，用户实测反馈通过。**AirPlay接收模块单独采用GPLv3，见[局部许可说明](official-addon/tar2-airplay/README.md)；其余目录许可不变。** 此功能本轮仅适配iOS，需要TVP2，不提供个人合并IPA，锁屏/后台接收不支持。
 
 **最新手机适配：[iOS 1.0.7（230）· APP107](#ios107-update)** · [源码 / 构建](official-addon/ios107-edition/README.md)。iPhone 17 Pro Max 用户实测正常，**通过 1.0.7 官方升级流程刷入 TMG2 已成功，OTA 通道现已开放**。沿用原样 TMG2，无需因手机升级重复刷写；保留校验和单次授权。[刷机步骤与刷后收尾](official-addon/ios107-edition/OTA.md)。不提供合并或个人签名 IPA。
 
-**导航实验版：[NAVS3 矢量导航 + TMG2 可选排数菜单](#navs3-update)** · [iOS 1.0.6 配套源码](official-addon/navs3-edition/README.md) · [原样固件 / 校验下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)。选择起终点即可模拟新版小地图；修正路网缓存过早清空与路名锚点。**锁屏导航卡住仍未解决，非稳定版。** 已有 TMG2 只需更新手机插件，不用重刷；不提供合并 IPA。
+**导航实验版：[NAVS3 矢量导航 + TMG2 可选排数菜单](#navs3-update)** · iOS 1.0.6 配套源码（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） · [原样固件 / 校验下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)。选择起终点即可模拟新版小地图；修正路网缓存过早清空与路名锚点。**锁屏导航卡住仍未解决，非稳定版。** 已有 TMG2 只需更新手机插件，不用重刷；不提供合并 IPA。
 
-**新版本适配预发布：[TMIG1 · Strix OS 1.0.5.5](firmware-research/strix-1.0.5.5/README.md) · [RayNeo AI iOS 1.0.6（218）插件](official-addon/tmig1-edition/README.md) · [原始新版原厂固件](firmware-research/strix-1.0.5.5/stock/README.md)**。**iPhone 17 Pro Max 已由用户刷入、进入并验证这组最新版兼容组合（2026-10-14）。** 保留情境英语；Dots 开发中，尚未完成。不是稳定版、全机型验收或新版 Android APK。
+**新版本适配预发布：[TMIG1 · Strix OS 1.0.5.5](firmware-research/strix-1.0.5.5/README.md) · RayNeo AI iOS 1.0.6（218）插件（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`） · [原始新版原厂固件](firmware-research/strix-1.0.5.5/stock/README.md)**。**iPhone 17 Pro Max 已由用户刷入、进入并验证这组最新版兼容组合（2026-10-14）。** 保留情境英语；Dots 开发中，尚未完成。不是稳定版、全机型验收或新版 Android APK。
 
 **[Android APK / 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · [Android 安装与刷机](android-addon/docs/INSTALL_AND_FLASH.md) · [iOS 源码与构建](official-addon/README.md) · [☕ 自愿支持项目](#support)**
 
@@ -47,7 +56,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 | 你的目标 | 现在提供什么 | 从这里开始 |
 | --- | --- | --- |
 | **在 Android 使用插件** | 官方 1.0.5（201）宿主已合并 Turbo IO 的完整实验 APK；不用自己合并，服务配置自行填写 | [下载 APK / 配套固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) → [安装与刷机教程](android-addon/docs/INSTALL_AND_FLASH.md) |
-| **在 iPhone 使用插件（V2）** | 自行合并、签名、安装，**不提供合并 IPA**。1.0.7（230）APP107 继承 NAVS3，**TMG2 OTA 已实刷开放**；已有 TMG2 不必重刷，其他版本门禁不能移用 | [1.0.7 适配](official-addon/ios107-edition/README.md) · [刷机教程](official-addon/ios107-edition/OTA.md) · [1.0.6 NAVS3](official-addon/navs3-edition/README.md) |
+| **在 iPhone 使用插件（V2）** | 自行合并、签名、安装，**不提供合并 IPA**。1.0.7（230）APP107 继承 NAVS3，**TMG2 OTA 已实刷开放**；已有 TMG2 不必重刷，其他版本门禁不能移用 | [1.0.7 适配](official-addon/ios107-edition/README.md) · [刷机教程](official-addon/ios107-edition/OTA.md) · 1.0.6 NAVS3（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） |
 | **开发自己的仪表盘 / 小应用** | 自托管 API、Python / MCP、20 个模板、Agent Skill；先在电脑生成卡片或 ZIP 并预览，再接入匹配手机和运行时 | [开发 SDK 教程](docs/DEVELOPER_ECOSYSTEM.md) · [模板](app-gallery/README.md) · [Skill](skills/turboio-developer/SKILL.md) |
 | **只看效果 / 离线学习** | Web UI、模板、SVG 预览与本机测试；不要求设备、服务 Key 或刷机，不等于真机验收 | [Web 预览](#web-显示预览与观察台) · [模板离线入门](docs/DEVELOPER_ECOSYSTEM.md#1-十分钟离线入门) |
 | **研究独立连接（iOS V1）** | 独立 SDK 与示例客户端，研究配对、协议和自有 ASR；不是当前 V2 插件的完整替代品 | [V1 快速开始](#快速开始) |
@@ -125,7 +134,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 
 手机端捕获、压缩、传输及测试代码，眼镜端原生页面和控制协议均已公开。**已发布的 TMG2 固件包含此功能，已有 TMG2 不必另刷 TCM1。** 本次补充独立功能说明，不生成或替换固件；当前列出的配套手机实现为 iOS，不代表 Android 已同步适配。
 
-**[iOS 1.0.7 手机源码](official-addon/ios107-edition/camera-v1) · [iOS 1.0.6 手机源码](official-addon/navs3-edition/camera-v1) · [眼镜原生源码](firmware-research/strix-1.0.5.5-tmg2/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](official-addon/ios107-edition/OTA.md)**
+**[iOS 1.0.7 手机源码](official-addon/ios107-edition/camera-v1) · iOS 1.0.6 手机源码（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/camera-v1`） · [眼镜原生源码](firmware-research/strix-1.0.5.5-tmg2/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](official-addon/ios107-edition/OTA.md)**
 
 <a id="navs3-update"></a>
 
@@ -146,7 +155,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 - 仅针对 RayNeo AI iOS 1.0.6（218）＋ Strix OS 1.0.5.5；不是新版 Android APK。已有 TMG2 无需为 NAVS3 重刷。
 - 不含 Cookie、Key、签名材料、私用 IPA、真实路线/通知/智记记录或网页阅读适配；Dots 仍未完成。
 
-**[源码与构建](official-addon/navs3-edition/README.md) · [固件与刷写步骤](firmware-research/strix-1.0.5.5-tmg2/README.md) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
+**源码与构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） · [固件与刷写步骤](firmware-research/strix-1.0.5.5-tmg2/README.md) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
 
 <a id="tmig1-update"></a>
 
@@ -166,7 +175,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 - 自定义只改新版 AP，其他 **14 个负载与新版原厂逐字节一致**；完整 OTA 仍会安装它们。AP **7,373,064 字节**，低于 9.6 MB 保守预算；体积不是 RAM 或安全保证。
 - **归档官方原始 1.0.5.5 ZIP**：不重封装、无自定义修改，附来源和校验；不是救砖保证，TMIG1 固定门禁不能把它当自定义包刷入。
 
-**[下载 TMIG1 / 校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · [底层迁移、复现与刷写教程](firmware-research/strix-1.0.5.5/README.md) · [1.0.6 插件构建](official-addon/tmig1-edition/README.md) · [原版 1.0.5.5](firmware-research/strix-1.0.5.5/stock/README.md)**
+**[下载 TMIG1 / 校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · [底层迁移、复现与刷写教程](firmware-research/strix-1.0.5.5/README.md) · 1.0.6 插件构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`） · [原版 1.0.5.5](firmware-research/strix-1.0.5.5/stock/README.md)**
 
 **非官方实验预发布，小白不要刷。** 掉电、中断、错包和代码缺陷可能造成无法启动或设备损坏，不保证稳定、回滚或救砖。旧 Android APK / iOS 候选不能混用，未发布新版 Android 1.0.6 APK。不含任何个人 Key、Cookie、Apple 开发者账号、签名材料或合并 IPA。
 
@@ -260,7 +269,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 3. **新增原生番茄时钟应用**：眼镜第十二项菜单，手机双向控制，短按暂停/继续、长按停止；息屏继续计时、到时空闲提醒，避免长期亮屏打扰。
 4. **Turbo IO 插件 UI 焕新**：首页眼镜动效、音乐/微信读书/导航/番茄卡片，整理内页与设置；只改自己的插件，不重做官方 App。
 
-**[FOCUS-04 固件与构建校验](firmware-research/strix-1.0.4.12/native-navigation/focus/README.md)** · **[配套手机构建和使用](official-addon/focus-edition/README.md)** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
+**[FOCUS-04 固件与构建校验](firmware-research/strix-1.0.4.12/native-navigation/focus/README.md)** · **配套手机构建和使用（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
 
 基于 Strix OS 1.0.4.12，仅 AP 内容变化，其他 13 个固件负载不变；AP **9,558,216 字节**，低于 9,600,000 字节限制。2026-09-25 用户实刷并确认此版正常；仍是试验用品，不代表全场景稳定、不会变砖或可保证救砖。配套宿主为雷鸟 AI **iOS 1.0.5（201）**，不可与旧包/门禁混用。
 
@@ -297,7 +306,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 ![微信读书界面效果示意：菜单入口、同步提示、四本书架与阅读页](docs/screenshots/weread-ui-concept.jpg)
 
-上述集成限制针对历史 TWR1；09-25 新增的 [FOCUS-04 可选集成版](official-addon/focus-edition/README.md)已提供匹配的构建与 TFP1 打包入口。网页正文适配仍未公开，本机 TXT/EPUB 导入范围不变。
+上述集成限制针对历史 TWR1；09-25 新增的 FOCUS-04 可选集成版（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）已提供匹配的构建与 TFP1 打包入口。网页正文适配仍未公开，本机 TXT/EPUB 导入范围不变。
 
 *界面效果示意（用户提供）：展示菜单、同步提示、四本书架与阅读布局，不作为实机验收证据；图中书籍、文字、页码和速度仅为示例，具体交互以研究说明为准。*
 
@@ -371,7 +380,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 **[1.0.6（218）原厂砸壳 · 已去签名](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.6-218) · [1.0.5（201）历史输入](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.5-201) · [版本索引与校验](official-apps/ios/README.md)**。
 
-提供的是**原厂应用的砸壳（解密）版本，未合并 Turbo IO 扩展，不是修改功能后的版本**。新增 1.0.6 已移除全部 95 个 Mach-O 的代码签名、签名目录及商店授权元数据，不包含个人 Apple 签名信息。解密、去签名及重归档意味着不是 App Store 原始加密包的逐字节副本。下载不会直接获得 Turbo IO 功能；1.0.6 请按 [TMIG1 教程](official-addon/tmig1-edition/README.md)自行合并、配置并用自己的签名安装，历史输入按对应旧版教程使用。
+提供的是**原厂应用的砸壳（解密）版本，未合并 Turbo IO 扩展，不是修改功能后的版本**。新增 1.0.6 已移除全部 95 个 Mach-O 的代码签名、签名目录及商店授权元数据，不包含个人 Apple 签名信息。解密、去签名及重归档意味着不是 App Store 原始加密包的逐字节副本。下载不会直接获得 Turbo IO 功能；1.0.6 请按 TMIG1 教程（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`）自行合并、配置并用自己的签名安装，历史输入按对应旧版教程使用。
 
 <details>
 <summary>版本、校验值与版权说明</summary>
@@ -390,7 +399,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 ### 手机版本怎么选（2026-10-14）
 
-**新增固定组合：iOS 官方 1.0.6（218）＋ TMIG1 / Strix OS 1.0.5.5**，见[新适配教程](official-addon/tmig1-edition/README.md)。其 iPhone 17 Pro Max 实测不自动扩展到旧 Android APK、旧 iOS 门禁或其他机型。以下历史版本仍保留各自兼容边界。
+**新增固定组合：iOS 官方 1.0.6（218）＋ TMIG1 / Strix OS 1.0.5.5**，见新适配教程（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`）。其 iPhone 17 Pro Max 实测不自动扩展到旧 Android APK、旧 iOS 门禁或其他机型。以下历史版本仍保留各自兼容边界。
 
 下表比较**当前公开的内容与接入方式**，不把“有源码”“已打包”和“真机全量通过”混为一谈。V1/V2 是架构路线，1.0.5 是官方宿主版本；GUARD-07、FOCUS-04、TAP1 则是不同扩展/固件标记，不是同一组版本号。
 
@@ -413,7 +422,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 | 固件 / 运行时 | 主要能力与用途 | 配套要求 |
 | --- | --- | --- |
 | **原厂 Strix OS** | 官方菜单和功能；手机扩展可利用已有文字/字幕等通道，但没有我们的原生新菜单、TCE1图形编辑运行时或TAP1四槽应用 | 普通用户首选。保留官方 App / 固件；原厂有限卡片不等于新仪表盘 SDK |
-| **FOCUS-04 / TFP1**（历史实验版） | 四项同屏菜单、原生番茄；包含音乐/阅读交互等修复。**不包含后来的 TCE1/TAP1 运行时** | [FOCUS-04 iOS 集成版](official-addon/focus-edition/README.md)与该 Release 固定固件；不是 Android GUARD-07 的升级候选 |
+| **FOCUS-04 / TFP1**（历史实验版） | 四项同屏菜单、原生番茄；包含音乐/阅读交互等修复。**不包含后来的 TCE1/TAP1 运行时** | FOCUS-04 iOS 集成版（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）与该 Release 固定固件；不是 Android GUARD-07 的升级候选 |
 | **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | [GUARD-07 APK + 同一 Release 的精确 ZIP](android-addon/docs/INSTALL_AND_FLASH.md)；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
 | **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | [固件研究索引](firmware-research/strix-1.0.4.12/README.md)。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
 
@@ -714,7 +723,7 @@ node scripts/start.mjs --device
 | 路径 | 内容 |
 | --- | --- |
 | android-addon | Android 官方 App 扩展、纯 Java 测试及本地合并工具 |
-| official-addon | iOS 官方 App 扩展、导航及本地构建/合并说明 |
+| official-addon | iOS 官方 App 扩展：当前为 ios107-edition；旧版本见 git tag archive/editions-2026-10 |
 | harmony-sdk | 原生鸿蒙 HarmonyOS SDK、ArkUI 客户端、导航及自行签名安装教程 |
 | apps/RayNeoCompanion | SwiftUI客户端与测试，技术名称为兼容保留 |
 | core-probe/Sources | 当前设备版复用的研究通信/语音适配源码 |

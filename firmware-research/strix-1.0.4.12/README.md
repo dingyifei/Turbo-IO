@@ -20,7 +20,7 @@
 
 ## 历史：FOCUS-04 四项菜单与原生番茄时钟
 
-**2026-09-25 [FOCUS-04 / TFP1 源码、精确实刷固件及教程](native-navigation/focus/README.md)**：四项同屏菜单、左上角时间与电量、原生番茄计时，以及音乐/阅读/详情残留等交互修复；配套[新版 iOS 插件 UI 和打包入口](../../official-addon/focus-edition/README.md)。仅 AP 内容改变，大小 9,558,216 字节；其他 13 个负载不变。用户确认实刷正常，仍有无法启动或失去 OTA 的风险，不保证回滚或救砖。
+**2026-09-25 [FOCUS-04 / TFP1 源码、精确实刷固件及教程](native-navigation/focus/README.md)**：四项同屏菜单、左上角时间与电量、原生番茄计时，以及音乐/阅读/详情残留等交互修复；配套新版 iOS 插件 UI 和打包入口（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）。仅 AP 内容改变，大小 9,558,216 字节；其他 13 个负载不变。用户确认实刷正常，仍有无法启动或失去 OTA 的风险，不保证回滚或救砖。
 
 ## 历史：TWR1 / TNV1 与 TDP1
 

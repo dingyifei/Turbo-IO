@@ -6,7 +6,7 @@
 
 *imagegen 宣传设计示意，不是实机截图。Dots 开发中，尚未完成，不是本次已交付功能。*
 
-**[下载实测原样 TMIG1 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · [新版原厂 ZIP](stock/README.md) · [1.0.6 手机插件源码与构建](../../official-addon/tmig1-edition/README.md)**
+**[下载实测原样 TMIG1 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · [新版原厂 ZIP](stock/README.md) · 1.0.6 手机插件源码与构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`）**
 
 ## 实测兼容组合：请勿忽略构建号
 
@@ -65,7 +65,7 @@ AP 体积与分区容量不等于可用 RAM。历史 `CANDIDATE-NOT-APPROVED` �
 
 ## 开发者刷写步骤：完整一次操作
 
-先完成[匹配手机插件构建与自己的签名](../../official-addon/tmig1-edition/README.md)。**不提供合并 IPA 或代签，不能拿旧安装器强刷。**
+先完成匹配手机插件构建与自己的签名（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`）。**不提供合并 IPA 或代签，不能拿旧安装器强刷。**
 
 1. 下载 Release 固件与 SHA256SUMS，执行 `shasum -a 256 -c SHA256SUMS`；不符立即停止。
 2. 手机解锁，眼镜首页、无录音/智记/音乐/阅读/导航/对话，电量至少 50%，连接和供电稳定；关闭官方自动更新。
@@ -102,7 +102,7 @@ python3 firmware-research/strix-1.0.5.5/test_host_cores.py
 
 ## 情境英语、Dots 与隐私
 
-情境英语详见[使用与授权](../../official-addon/tmig1-edition/context-english-v1/README.md)。已有智记缓存不完整时仍需官方 App 加载原文；模型需用户自己的配置，自动备题默认关闭。点头/摇头受原厂头控、佩戴和资源仲裁限制，手动按键是保守回退；不保证全天后台自动推题或永久在线。
+情境英语详见使用与授权（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/context-english-v1/README.md`）。已有智记缓存不完整时仍需官方 App 加载原文；模型需用户自己的配置，自动备题默认关闭。点头/摇头受原厂头控、佩戴和资源仲裁限制，手动按键是保守回退；不保证全天后台自动推题或永久在线。
 
 Dots 只保留开发中的原生/手机接入代码，不带实际 Bridge 服务与凭据，不声称正式接入 ChatGPT Dots。微信读书公开版保留书架、统计、封面和有权使用的 TXT/EPUB，不公开网页正文适配；账号、Cookie、音乐登录与服务权限自行处理。
 

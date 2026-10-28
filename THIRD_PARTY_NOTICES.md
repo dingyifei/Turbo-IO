@@ -14,7 +14,7 @@ TVP2's eye-side first-party display code is separate from the phone-side GPL rec
 
 ## NAVS3 / TMG2 navigation research (2026-10-19)
 
-The small-area map extracts under `official-addon/navs3-edition/tests/maps` are © OpenStreetMap contributors, licensed under ODbL 1.0; provenance and attribution are retained in each fixture and its README. They are not personal navigation logs and are not relicensed under PolyForm. AMap SDK/services retain their separate terms and require the user's own configuration. TMG2 original vendor firmware components retain the same copyright boundaries as the prior Strix releases; only the listed original extension sources are licensed by this project. No signed/merged iOS app, developer credentials, account session or private reading adapter is included.
+The small-area map extracts under `official-addon/ios107-edition/tests/maps` are © OpenStreetMap contributors, licensed under ODbL 1.0; provenance and attribution are retained in each fixture and its README. They are not personal navigation logs and are not relicensed under PolyForm. AMap SDK/services retain their separate terms and require the user's own configuration. TMG2 original vendor firmware components retain the same copyright boundaries as the prior Strix releases; only the listed original extension sources are licensed by this project. No signed/merged iOS app, developer credentials, account session or private reading adapter is included.
 
 HarmonyOS (`harmony-sdk/`) is an original ArkTS/ArkUI client and protocol implementation, not a modified official app. It depends on AMap Harmony packages pinned to 11.2.0 (navigation with bundled map APIs, location, search and common) from the official ohpm registry. Those SDKs/services remain subject to their own licensing, API-key and privacy requirements; they are not relicensed under PolyForm. They are downloaded during build, not distributed here as pre-signed apps. Users supply their own provider keys and signing material.
 
@@ -42,6 +42,6 @@ The `firmware-strix-1.0.4.12-tnv1` prerelease additionally provides the exact te
 
 ## TMU1 音乐 API 参考
 
-`official-addon/music/MusicAPI.m` 的网易云 API 编码参考 Beans Music（XIaodou0416，提交 `f9881318caf774129205c3160510ef0dfa318adc`），上游 MIT 许可原文位于 `official-addon/music/Beans-MIT-LICENSE.txt`，随音乐合并包保留。不是将整个 Beans App 合并或重新许可。项目原创代码的非商业条款不改变第三方代码原有许可。音乐、封面、歌词及网易云服务权利归其权利人；本仓库不提供账号、歌曲资源、付费解锁或风控绕过。
+The NetEase client adapted from Beans Music (MIT) was removed in 2026-10; the historical source and its license are preserved in git tag `archive/editions-2026-10`.
 
 The `firmware-strix-1.0.4.12-tmu1` prerelease distributes the exact hardware-tested music OTA archive, retaining navigation, display and animation experiments. The firmware copyright and risk boundaries above apply equally; only AP payload content and its manifest Size/MD5 change. No account data or personal signing material is included, and original vendor firmware is not licensed as original project source.
