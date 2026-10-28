@@ -132,6 +132,8 @@ test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m',
 test('glasses-file',['tests/GlassesFileTransportTests.m','TIOGlassesFileTransport.m','tests/diagnostic_stub.m','tests/fixtures/wp8/LegacyFocusTransport.m','tests/fixtures/wp8/LegacyMusicTransport.m','tests/fixtures/wp8/LegacyTDTransport.m','focus.c','music.c','command.c','diagnostics.c'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
 test('tile-layout',['tests/TileLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
+if only is None or 'tile-layout' in only:
+    run('tile-roundtrip',['python3','-I',P/'tests/tile_roundtrip.py',out/'tile-roundtrip'])
 test('apple-ai-core',['AppleAICoreTests.m','AppleAICore.m'])
 test('no-network-turn',['tests/NoNetworkTurnTests.m','NoNetworkTurn.m','NoNetworkTurnHost.m','Core.m'],extra=['-framework','Network','-DTIO_NO_NETWORK_TESTING=1'])
 test('catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1'])

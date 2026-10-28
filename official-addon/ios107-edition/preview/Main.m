@@ -106,7 +106,7 @@ static NSDictionary *ReportFor(UIViewController *controller) {
     NSString *screen=controller.navigationItem.title?:controller.title?:@"";
     return @{@"screen":screen,@"subtitle":subtitle,
              @"preferredLanguage":NSLocale.preferredLanguages.firstObject?:@"",@"deviceIO":@NO,@"hardwareValidated":@NO,
-             @"sections":sections,@"buttons":buttons,@"steps":steps};
+             @"sections":sections,@"buttons":buttons,@"steps":steps,@"editing":@(table.editing),@"selectionWhileEditing":@(table.allowsSelectionDuringEditing)};
 }
 
 static void WriteReport(UINavigationController *navigation,UIViewController *fallback) {

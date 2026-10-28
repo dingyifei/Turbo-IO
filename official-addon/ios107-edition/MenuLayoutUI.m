@@ -65,12 +65,13 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
 @property(nonatomic) NSUInteger hidden;
 @end
 @implementation TIOTileEditor
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"tmg4.tiles.title");TIOStyleResearchTable(self);self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=62;self.tableView.editing=YES;self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];}
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"tmg4.tiles.title");TIOStyleResearchTable(self);self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=62;self.tableView.editing=YES;self.tableView.allowsSelectionDuringEditing=YES;self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];}
 - (void)viewWillAppear:(BOOL)animated{[super viewWillAppear:animated];[self read];}
 - (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[self.link cancel];}
 - (void)loadDraft{NSArray *order=self.link.order;if(order.count==13){self.draft=[[order subarrayWithRange:NSMakeRange(7,6)]mutableCopy];self.hidden=self.link.hide;}}
 - (void)read{__weak typeof(self) weak=self;[self.link query:^{[weak loadDraft];[weak.tableView reloadData];}];[self.tableView reloadData];}
 - (void)save{
+ if(!self.link.ready){__weak typeof(self) weak=self;[self.link query:^{if(weak.link.ready)[weak save];else [weak.tableView reloadData];}];[self.tableView reloadData];return;}
  NSMutableArray *order=[NSMutableArray arrayWithArray:@[@0,@1,@2,@3,@4,@5,@6]];[order addObjectsFromArray:self.draft];__weak typeof(self) weak=self;NSUInteger hide=self.hidden;
  [self.link saveOrder:order hide:hide done:^{typeof(self) s=weak;if([s.link.order isEqual:order]&&s.link.hide==hide)[s loadDraft];[s.tableView reloadData];}];[self.tableView reloadData];
 }
@@ -84,7 +85,7 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
  else if(p.section==1){NSUInteger tile=[self.draft[p.row]unsignedIntegerValue];c.textLabel.text=TileName(tile);c.showsReorderControl=YES;c.selectionStyle=UITableViewCellSelectionStyleNone;
   if(tile==12){c.detailTextLabel.text=TIOText(@"tmg4.tiles.camera");c.accessoryType=UITableViewCellAccessoryCheckmark;c.editingAccessoryType=UITableViewCellAccessoryCheckmark;}
   else{UISwitch *toggle=[UISwitch new];toggle.tag=tile;toggle.on=!(self.hidden&(1u<<tile));toggle.enabled=self.link.order.count==13&&!self.link.busy;[toggle addTarget:self action:@selector(visibility:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;c.editingAccessoryView=toggle;}
- }else{c.textLabel.text=@[TIOText(@"tmg4.tiles.read"),TIOText(@"tmg4.tiles.save"),TIOText(@"tmg4.tiles.reset")][p.row];BOOL enabled=!self.link.busy&&(p.row!=1||self.link.ready)&&(p.row!=2||self.link.order.count==13);c.userInteractionEnabled=enabled;c.textLabel.textColor=enabled?UIColor.systemBlueColor:UIColor.tertiaryLabelColor;c.accessibilityIdentifier=@[@"tiles-read",@"tiles-save",@"tiles-reset"][p.row];}
+ }else{c.textLabel.text=@[TIOText(@"tmg4.tiles.read"),TIOText(@"tmg4.tiles.save"),TIOText(@"tmg4.tiles.reset")][p.row];BOOL enabled=!self.link.busy;c.detailTextLabel.text=self.link.note;c.userInteractionEnabled=enabled;c.textLabel.textColor=enabled?UIColor.systemBlueColor:UIColor.tertiaryLabelColor;c.accessibilityIdentifier=@[@"tiles-read",@"tiles-save",@"tiles-reset"][p.row];}
  return c;
 }
 - (void)visibility:(UISwitch *)sender{if(sender.tag<7||sender.tag>11)return;if(sender.on)self.hidden&=~(1u<<sender.tag);else self.hidden|=1u<<sender.tag;}
@@ -94,7 +95,7 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
 - (BOOL)tableView:(UITableView *)t shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)p{(void)t;(void)p;return NO;}
 - (NSIndexPath *)tableView:(UITableView *)t targetIndexPathForMoveFromRowAtIndexPath:(NSIndexPath *)from toProposedIndexPath:(NSIndexPath *)to{(void)t;return to.section==1?to:from;}
 - (void)tableView:(UITableView *)t moveRowAtIndexPath:(NSIndexPath *)from toIndexPath:(NSIndexPath *)to{(void)t;if(from.section!=1||to.section!=1||from.row>=6||to.row>=6)return;NSNumber *tile=self.draft[from.row];[self.draft removeObjectAtIndex:from.row];[self.draft insertObject:tile atIndex:to.row];}
-- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{[t deselectRowAtIndexPath:p animated:YES];if(p.section!=2)return;if(p.row==0)[self read];else if(p.row==1)[self save];else{self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];self.hidden=0;[self.tableView reloadData];}}
+- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{[t deselectRowAtIndexPath:p animated:YES];if(p.section!=2)return;if(p.row==0)[self read];else if(p.row==1)[self save];else{self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];self.hidden=0;[self save];}}
 @end
 UIViewController *TIOTileEditorController(void){TIOTileEditor *c=[[TIOTileEditor alloc]initWithStyle:UITableViewStyleInsetGrouped];c.link=TileLink();return c;}
 #if TIO_UI_PREVIEW

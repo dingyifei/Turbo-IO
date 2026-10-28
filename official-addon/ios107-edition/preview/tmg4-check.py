@@ -14,6 +14,7 @@ def check(root,screens):
             assert 'tmg4.' not in text,'untranslated key in '+str(stem)
             assert not han(text) if lang=='en' else han(report['screen']), 'wrong UI language: '+str(stem)
             if screen=='tiles':
+                assert not report['editing'] or report['selectionWhileEditing'],'tile actions are unselectable while reordering'
                 assert len(sections)==3 and len(sections[0]['rows'])==7 and not any(r['movable'] for r in sections[0]['rows'])
                 custom=sections[1]['rows'];assert len(custom)==6 and all(r['movable'] for r in custom)
                 assert all(r["editingSwitch"] for r in custom if r["switchOn"] is not None),"editing mode hid visibility controls"

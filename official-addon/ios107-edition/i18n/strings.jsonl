@@ -645,9 +645,9 @@
 {"key":"tmg4.tiles.read","en":"Read from glasses","zh":"读取眼镜设置"}
 {"key":"tmg4.tiles.readFirst","en":"Read the glasses menu before editing. Requires TMG4.","zh":"编辑前请读取眼镜菜单，需要 TMG4。"}
 {"key":"tmg4.tiles.reading","en":"Reading the saved tile configuration…","zh":"正在读取已保存的入口设置…"}
-{"key":"tmg4.tiles.reset","en":"Reset draft to built-in order","zh":"将草稿恢复为内置顺序"}
+{"key":"tmg4.tiles.reset","en":"Restore and save built-in order","zh":"恢复并保存内置顺序"}
 {"key":"tmg4.tiles.save","en":"Save to glasses","zh":"保存到眼镜"}
-{"key":"tmg4.tiles.saved","en":"Saved and verified on the glasses. The menu applies changes when it is safely visible.","zh":"已在眼镜上保存并校验，菜单可安全显示时会应用更改。"}
+{"key":"tmg4.tiles.saved","en":"Saved and verified. Open the glasses main menu to see the layout; it survives a reboot.","zh":"已保存并校验。打开眼镜主菜单即可查看，重启后仍然保留。"}
 {"key":"tmg4.tiles.saving","en":"Waiting for the glasses to save and verify…","zh":"正在等待眼镜保存并校验…"}
 {"key":"tmg4.tiles.stock","en":"Fixed stock tiles","zh":"固定的系统入口"}
 {"key":"tmg4.tiles.storage","en":"Storage verification failed. Read again to check the actual state.","zh":"存储校验失败，请重新读取以确认实际状态。"}
