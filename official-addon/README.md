@@ -16,7 +16,7 @@
 
 **2026-09-25 新增 [FOCUS-04 集成版](focus-edition/README.md)**：新版插件 UI、四项同屏菜单、微信读书本地正文、音乐交互修复与原生番茄时钟。使用独立源码目录及 `--experimental-ota TFP1` 打包入口，固定匹配 FOCUS-04 固件；不要与下方旧版本宏、源码或固件混用。普通插件开发无需刷固件。
 
-**另有无需刷固件的 [iOS 26+ 本地翻译与英语离线字幕](local-translation/README.md)**：Apple / Hy-MT2、Parakeet 英语 ASR、手机/蓝牙麦克风、快速预译与镜片文字同步。`TIO_LOCAL_TRANSLATION=1` 显式编译；需自行下载模型、准备系统语言包、打包签名，不包含维护者配置。前台采集、20分钟保护，不等于眼镜前方/四周定向收音或全面替换官方翻译页。
+**另有无需刷固件的 [iOS 26+ 本地翻译与英语离线字幕](ios107-edition/local-translation/README.md)**：Apple / Hy-MT2、Parakeet 英语 ASR、手机/蓝牙麦克风、快速预译与镜片文字同步。`TIO_LOCAL_TRANSLATION=1` 显式编译；需自行下载模型、准备系统语言包、打包签名，不包含维护者配置。前台采集、20分钟保护，不等于眼镜前方/四周定向收音或全面替换官方翻译页。
 
 **微信读书 TWR1：** [原创 AP、书架/本地阅读手机模块、固件与构建说明](../firmware-research/strix-1.0.4.12/native-navigation/weread/README.md) · [架构与参考项目](../docs/WEREAD_RESEARCH.md)。不含网页正文适配或 Cookie；公开手机模块尚未接入本页默认构建与 TWR1 打包门禁。长按旋钮返回可能异常；没有匹配手机集成请先别刷，不要使用下面的音乐/导航授权代替阅读固件。
 
@@ -47,7 +47,7 @@
 | TurboIO 底部入口 | 原生导航适配层加入第五项；原四项仍转交官方。匹配不明确、辅助功能等情况下回退，不篡改 Flutter 的业务 Tab 枚举 |
 | 自定义文字模型 | 官方 ASR 后，把已识别问题交给用户配置的 HTTPS OpenAI-compatible chat/completions；支持流式文字和最近50条成功消息的进程内上下文 |
 | 回答同步朗读（TTS） | 官方回答与自有模型回答均可边显示边朗读；默认 iOS 本机语音，不需要 TTS Key。可选阿里云流式 TTS，需在 App 内填写自己的 WSS 地址与 Key；语音走眼镜音频路由，连接或路由异常时不承诺出声 |
-| 本地翻译 / 离线字幕（可选） | iOS 26+ Apple / Hy-MT2 文字翻译，Parakeet 英语识别；原文先显示、快速预译会修正，无云端兜底。独立入口，不是官方对话ASR替换。见[构建与限制](local-translation/README.md) |
+| 本地翻译 / 离线字幕（可选） | iOS 26+ Apple / Hy-MT2 文字翻译，Parakeet 英语识别；原文先显示、快速预译会修正，无云端兜底。独立入口，不是官方对话ASR替换。见[构建与限制](ios107-edition/local-translation/README.md) |
 | 个人资料与提示词 | 程序内编辑称呼、身份、回答偏好；默认全空，保存后供下一次自有模型对话使用 |
 | 会话收尾 | 响应完成与官方页面等待事件配合的退出保护；支持“退下吧 / 关闭 / 没事了 / 关闭窗口”等完整短句，仍需目标设备验收 |
 | 联网和自然语音待办 | TinyFish 搜索、模型 `create_todo` 工具；写操作与搜索/知识库混用有保护。通用服务兼容性取决于模型是否支持相应 Tools |

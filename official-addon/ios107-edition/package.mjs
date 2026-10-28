@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFileSync as exec } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import {validateTranslationPair,prepareTranslationResources,copyTranslationResources} from '../local-translation/package-resources.mjs';
+import {validateTranslationPair,prepareTranslationResources,copyTranslationResources} from './local-translation/package-resources.mjs';
 import {prepareAppleAI,copyAppleAI} from './apple-ai/package-resources.mjs';
 import {inspectMachO} from './macho-embed.mjs';
 import {patch as patchOTARoute,verifyRoute} from './patch-route.mjs';
@@ -89,7 +89,7 @@ function run(program,args,options={}){return exec(program,args,{stdio:['pipe','p
 function main(){
   if(process.argv.includes('--help'))console.log(`iOS 1.0.7/230 APP107: exact ${pins.name} OTA candidate included by default. Installation does NOT grant flash permission; manual one-shot authorization required.`);
   if(process.argv.includes('--help'))console.log('Optional Apple AI: --apple-ai-dylib /absolute/TurboAppleAI.dylib (requires TIO_APPLE_AI=1 addon)');
-  if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see local-translation/README.md)');
+  if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see official-addon/ios107-edition/local-translation/README.md)');
   if(process.argv.includes('--help')){console.log(`node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-${pins.name}-CANDIDATE-NOT-APPROVED.zip [--product iPhone18,2]`);return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
   if(args.length%2)throw Error('expected_named_arguments');

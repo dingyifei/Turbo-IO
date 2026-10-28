@@ -127,7 +127,7 @@ package_test_stage() {
   # failed its fixed patched-output hash (500d3360... versus fd68e86b...),
   # so those two optional inputs stay unset. See package-probe-pair.log.
   export IOS107_TEST_UNSIGNED_APP=$TURBO_APP107
-  IOS107_TEST_FIRMWARE="$TURBO_FIRMWARE" node --test package.test.mjs
+  IOS107_TEST_FIRMWARE="$TURBO_FIRMWARE" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
 }
 source_audit_stage() {
   cd "$REPO"

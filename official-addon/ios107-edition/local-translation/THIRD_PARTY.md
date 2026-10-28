@@ -4,7 +4,7 @@
 
 | 内容 | 固定来源 | 许可 / 分发边界 |
 | --- | --- | --- |
-| Turbo IO 原创 UI、流水线、桥接、调度和测试 | 本目录 | [PolyForm Noncommercial](../../LICENSE)；非商业研究 |
+| Turbo IO 原创 UI、流水线、桥接、调度和测试 | 本目录 | [PolyForm Noncommercial](../../../LICENSE)；非商业研究 |
 | Apple Translation / AVFoundation / CoreML | 用户的 Apple SDK 与系统 | Apple SDK/平台条款；不随本仓库分发 SDK 或系统语言包 |
 | Hy-MT2 GGUF | [腾讯模型卡](https://huggingface.co/tencent/Hy-MT2-1.8B-1.25Bit-GGUF/tree/9df5c824a00a744fb0512a29c640466f4d97dfb0) | 模型卡标注 Apache-2.0；权重从上游自行下载，不上传到本仓库 |
 | llama.cpp STQ 分支 | [固定提交](https://github.com/sjl623/llama.cpp/tree/1e411d8f5a1e23525fa3265dfb4bd76265465397) | MIT，见 `licenses/llama-MIT.txt`；不声称普通主线支持本次量化 |

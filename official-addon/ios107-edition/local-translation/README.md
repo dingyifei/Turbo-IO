@@ -24,13 +24,13 @@ Apple Silicon Mac、CMake、Python 3.10+、Node.js、完整 Xcode（本次用 iO
 先阅读[第三方许可](THIRD_PARTY.md)。下面命令在仓库根目录运行，目录必须是新的，不覆盖已有实验：
 
 ```sh
-mkdir -p official-addon/local-translation/work
-git clone https://github.com/sjl623/llama.cpp.git official-addon/local-translation/work/llama.cpp
-git -C official-addon/local-translation/work/llama.cpp checkout --detach 1e411d8f5a1e23525fa3265dfb4bd76265465397
-git clone https://github.com/FluidInference/FluidAudio.git official-addon/local-translation/work/FluidAudio
-git -C official-addon/local-translation/work/FluidAudio checkout --detach eabcd9e36dab48f1f7180165396d84b9688650e0
-python3 official-addon/local-translation/models.py \
-  --out official-addon/local-translation/work/models --accept-model-licenses
+mkdir -p official-addon/ios107-edition/local-translation/work
+git clone https://github.com/sjl623/llama.cpp.git official-addon/ios107-edition/local-translation/work/llama.cpp
+git -C official-addon/ios107-edition/local-translation/work/llama.cpp checkout --detach 1e411d8f5a1e23525fa3265dfb4bd76265465397
+git clone https://github.com/FluidInference/FluidAudio.git official-addon/ios107-edition/local-translation/work/FluidAudio
+git -C official-addon/ios107-edition/local-translation/work/FluidAudio checkout --detach eabcd9e36dab48f1f7180165396d84b9688650e0
+python3 official-addon/ios107-edition/local-translation/models.py \
+  --out official-addon/ios107-edition/local-translation/work/models --accept-model-licenses
 ```
 
 下载器只访问固定公开版本，逐文件验证长度和 SHA-256；失败保留 `.download` 供检查，使用新输出目录重试。不要用其他权重替换文件名绕过校验。Apple语言包不是这里下载的：在 App 内点“准备 Apple 语言包”，明确同意系统下载，之后才可离线翻译。
@@ -38,12 +38,12 @@ python3 official-addon/local-translation/models.py \
 ## 2. 编译翻译模块和宿主入口
 
 ```sh
-python3 official-addon/local-translation/build.py \
-  --llama official-addon/local-translation/work/llama.cpp \
-  --fluid official-addon/local-translation/work/FluidAudio \
-  --out official-addon/local-translation/work/module
+python3 official-addon/ios107-edition/local-translation/build.py \
+  --llama official-addon/ios107-edition/local-translation/work/llama.cpp \
+  --fluid official-addon/ios107-edition/local-translation/work/FluidAudio \
+  --out official-addon/ios107-edition/local-translation/work/module
 TIO_LOCAL_TRANSLATION=1 bash official-addon/build.sh embedded
-python3 official-addon/local-translation/test.py
+python3 official-addon/ios107-edition/local-translation/test.py
 ```
 
 第一个命令生成 `module/TurboCaptionTranslation.dylib` 和依赖资源，不使用开发者证书。第二个生成 `official-addon/build/local-translation/TurboIOPrivateAddon.dylib`，增加「TurboIO → 资料 → Apple / Hy-MT2 本地翻译」入口。默认构建不带此入口；旧 iOS 不加载26+模块。也可与既有导航/音乐构建开关组合，但仍须遵守各自固件门禁，不因此授权刷机。
@@ -52,14 +52,14 @@ Hy-MT 使用固定 STQ CPU/ARM NEON 内核，不是 Metal/ANE 后端。默认线
 
 ## 3. 自行签名打包
 
-遵循[宿主版本与签名说明](../README.md)。需要合法取得且通过仓库校验的未加密 thin-arm64 `Runner.app`；本文不提供解密操作。已测试私用前身宿主为官方 iOS 1.0.5（201），设备为 iPhone Air；其他版本不能直接外推。
+遵循[宿主版本与签名说明](../../README.md)。需要合法取得且通过仓库校验的未加密 thin-arm64 `Runner.app`；本文不提供解密操作。已测试私用前身宿主为官方 iOS 1.0.5（201），设备为 iPhone Air；其他版本不能直接外推。
 
 ```sh
 node official-addon/package.mjs \
   --app /absolute/Runner.app \
   --addon /absolute/Turbo-IO/official-addon/build/local-translation/TurboIOPrivateAddon.dylib \
-  --translation-module-dir /absolute/Turbo-IO/official-addon/local-translation/work/module \
-  --translation-models /absolute/Turbo-IO/official-addon/local-translation/work/models \
+  --translation-module-dir /absolute/Turbo-IO/official-addon/ios107-edition/local-translation/work/module \
+  --translation-models /absolute/Turbo-IO/official-addon/ios107-edition/local-translation/work/models \
   --profile /absolute/your.mobileprovision \
   --identity YOUR_CERTIFICATE_SHA1 \
   --device YOUR_DEVICE_ID \

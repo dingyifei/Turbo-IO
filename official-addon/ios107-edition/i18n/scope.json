@@ -38,7 +38,9 @@
     "NavigationPlacePicker.m",
     "TodoBridgeClient.m"
   ],
-  "owned": [],
+  "owned": [
+    "local-translation/**"
+  ],
   "generated": [
     "Localization.m"
   ],

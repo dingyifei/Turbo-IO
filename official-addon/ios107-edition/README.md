@@ -72,7 +72,7 @@ node package.mjs \
   --firmware /absolute/path/to/exact-TMG3-CANDIDATE-NOT-APPROVED.zip
 ```
 
-无需额外传 `--experimental-ota`，WP6 打包默认携带固定 TMG3 候选（显式传值也只接受 `TMG3`）。工具只修改两个已核验的 App.framework 查询数据记录，不改代码指令；签名后再次检查记录，不下载/安装/刷写，不新增官方推送或 Apple 登录权限。可选翻译模块与模型见[单独说明](../local-translation/README.md)；Watch 按 [Watch 说明](../../watch-remote/README.md)自行构建，不含作者签名包。源码含模块不代表打包器自动补齐所有第三方 SDK、模型、Watch、服务配置或应用广场资源。
+无需额外传 `--experimental-ota`，WP6 打包默认携带固定 TMG3 候选（显式传值也只接受 `TMG3`）。工具只修改两个已核验的 App.framework 查询数据记录，不改代码指令；签名后再次检查记录，不下载/安装/刷写，不新增官方推送或 Apple 登录权限。可选翻译模块与模型见[单独说明](local-translation/README.md)；Watch 按 [Watch 说明](../../watch-remote/README.md)自行构建，不含作者签名包。源码含模块不代表打包器自动补齐所有第三方 SDK、模型、Watch、服务配置或应用广场资源。
 
 先备份，再使用同一有效签名覆盖安装；签名冲突时不要盲目卸载。启动确认版本、插件入口、眼镜连接并逐项测试，编译成功不等于你的设备验收通过。
 

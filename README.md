@@ -285,7 +285,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 公开 **Apple 本地翻译、Hy-MT2 文字翻译和 Parakeet 英语离线 ASR**，支持手机/系统可用的蓝牙麦克风、快速预译、原文与译文同步眼镜。运行在 iPhone，**无需服务 Key、无需刷眼镜固件**；是独立字幕入口，不是全面替换官方翻译所有功能。iOS 26+ 可选构建，首次需自行准备模型与系统语言包，不提供签名 IPA 或权重包。
 
-[下载、构建、签名与使用教程](official-addon/local-translation/README.md) · [模型及第三方许可证](official-addon/local-translation/THIRD_PARTY.md) · [验证与限制](official-addon/local-translation/VALIDATION.md)。英语识别不是多语言 ASR；眼镜专有前方/四周定向收音尚未接入，前台采集、20分钟保护，无自动云端兜底。公开源码已编译并做离线测试，完整公开包与镜片仍需使用者验收。
+[下载、构建、签名与使用教程](official-addon/ios107-edition/local-translation/README.md) · [模型及第三方许可证](official-addon/ios107-edition/local-translation/THIRD_PARTY.md) · [验证与限制](official-addon/ios107-edition/local-translation/VALIDATION.md)。英语识别不是多语言 ASR；眼镜专有前方/四周定向收音尚未接入，前台采集、20分钟保护，无自动云端兜底。公开源码已编译并做离线测试，完整公开包与镜片仍需使用者验收。
 
 <a id="weread-research"></a>
 
