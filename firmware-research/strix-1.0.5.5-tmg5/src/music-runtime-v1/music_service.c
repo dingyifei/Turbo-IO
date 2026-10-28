@@ -10,10 +10,10 @@
 #include "../focus-v1/focus_service.h"
 #define TM_MESSAGE 0x544d5531u
 #define TM_LYRIC_ROWS 5u
-#define TM_LABELS (TM_LYRIC_ROWS+2u)
+#define TM_LABELS (TM_LYRIC_ROWS+3u)
 typedef struct {
  _Alignas(64) uint8_t pixels[TM_COVER_BYTES];
- char title[96],lyrics[TM_LYRIC_ROWS][244],status[80];
+ char title[96],lyrics[TM_LYRIC_ROWS][244],status[80],controls[96];
 } Frame;
 typedef struct {
  TMMusic music;TNWidgets api;TMMusicSlot *slot;void *app,*timer,*root,*canvas,*labels[TM_LABELS],*bar;
@@ -45,7 +45,7 @@ static bool wake(Control *c){if(!owns(c))return false;if(!c->token)c->token=nav_
 static void put(uint8_t *p,uint32_t n){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(n>>(8*i));}
 static void emit(Control *c,unsigned event,unsigned result,uint32_t sid,uint32_t gen,uint32_t seq){
  uint8_t raw[32]={ 'T','M','A','1',1,0,0,0 },out[220];raw[5]=event;raw[6]=result;
- if(c){raw[7]=(c->music.active?1:0)|(c->music.awake?2:0);put(raw+20,c->request_id);put(raw+24,tm_position(&c->music,stream_tick()));}
+ if(c){raw[7]=(c->music.active?1:0)|(c->music.awake?2:0)|4;put(raw+20,c->request_id);put(raw+24,tm_position(&c->music,stream_tick()));}
  put(raw+8,sid);put(raw+12,gen);put(raw+16,seq);put(raw+28,tm_crc(raw,28));
  static const char prefix[]="{\"cmd\":\"turbo_music_v1\",\"payload\":{\"data\":\"",suffix[]="\"}}",hex[]="0123456789abcdef";
  unsigned len=sizeof prefix-1+64+sizeof suffix-1,pos=0;out[pos++]=8;out[pos++]=1;out[pos++]=16;out[pos++]=6;out[pos++]=26;if(len>=128){out[pos++]=(len&127)|128;out[pos++]=len>>7;}else out[pos++]=len;
@@ -64,14 +64,15 @@ static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root
  if(c->waiting){copy_text(f->title,sizeof f->title,tio_text(TT_MUSIC_TITLE,lang));copy_text(f->lyrics[2],sizeof f->lyrics[2],tio_text(TT_MUSIC_PICK,lang));}
  else {int line=tm_line(&c->music,now);for(unsigned i=0;i<TM_LYRIC_ROWS;i++)tm_text(&c->music,line+(int)i-2,f->lyrics[i],sizeof f->lyrics[i]);
   if(!c->music.lyrics_ready)copy_text(f->lyrics[2],sizeof f->lyrics[2],tio_text(TT_MUSIC_LYRICS,lang));}
- if(c->music.cover_ready)tm_rotate(c->music.cover,f->pixels,c->music.playing?(now/125)%64:0);
- else for(unsigned y=0;y<144;y++)for(unsigned x=0;x<144;x++){int dx=(int)x-72,dy=(int)y-72,r=dx*dx+dy*dy;f->pixels[y*144+x]=(r<4900&&r>36)?(uint8_t)(45+(x+y)%64):0;}
+ if(c->music.cover_ready)tm_square_cover(c->music.cover,f->pixels);
+ else for(unsigned y=0;y<144;y++)for(unsigned x=0;x<144;x++){f->pixels[y*144+x]=(uint8_t)(45+(x+y)%64);}
  unsigned p=tm_position(&c->music,now)/1000,d=c->music.duration_ms/1000;
  const char *state=c->music.playing?tio_text(TT_MUSIC_PLAYING,lang):tio_text(TT_MUSIC_PAUSED,lang);memset(f->status,0,sizeof f->status);unsigned k=0;while(state[k]){f->status[k]=state[k];k++;}
  f->status[k++]=' ';unsigned vals[4]={p/60%100,p%60,d/60%100,d%60};for(unsigned j=0;j<4;j++){f->status[k++]=(char)('0'+vals[j]/10);f->status[k++]=(char)('0'+vals[j]%10);if(j!=3)f->status[k++]=j==1?'/':':';}
+ copy_text(f->controls,sizeof f->controls,tio_text(c->music.playing?TT_MUSIC_CONTROLS_PAUSE:TT_MUSIC_CONTROLS_PLAY,lang));
  c->api.buffer(NULL,c->canvas,f->pixels,144,144);
  for(unsigned i=0;i<TM_LYRIC_ROWS;i++)c->api.text_static(NULL,c->labels[i],f->lyrics[i]);
- c->api.text_static(NULL,c->labels[5],f->title);c->api.text_static(NULL,c->labels[6],f->status);c->front=1-c->front;c->last_frame=now;return true;
+ c->api.text_static(NULL,c->labels[5],f->title);c->api.text_static(NULL,c->labels[6],f->status);c->api.text_static(NULL,c->labels[7],f->controls);c->front=1-c->front;c->last_frame=now;return true;
 }
 static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
  if(c->root)return wake(c);TNNavSlot *n=navslot(c->app);if(!n||tap_service_visible(c->app)||tf_slot_visible(n->focus)||tn_slot_visible(n)||((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page)return false;
@@ -82,9 +83,10 @@ static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
  c->focus_transition=true;nav_set_state(manager(),1);c->focus_transition=false;
  if(!owns(c)||c->closing||!paired()||!c->api.idle(NULL))return false;c->root=c->api.root(NULL,ptr(c->app,4));if(!c->root)return false;
  c->api.place(NULL,c->root,0,0,540,180);c->canvas=c->api.canvas(NULL,c->root);if(!c->canvas)goto fail;c->api.place(NULL,c->canvas,8,0,144,144);
- const unsigned fonts[]={18,20,24,20,18,14,14};const uint8_t opacity[]={85,150,255,150,85,190,130};
+ const unsigned fonts[]={18,20,24,20,18,14,14,14};const uint8_t opacity[]={85,150,255,150,85,190,130,230};
  for(unsigned i=0;i<TM_LABELS;i++){c->labels[i]=c->api.label(NULL,c->root,fonts[i]);if(!c->labels[i])goto fail;
-  if(i<TM_LYRIC_ROWS)c->api.place(NULL,c->labels[i],166,10+(int)i*32,366,32);
+  if(i<TM_LYRIC_ROWS)c->api.place(NULL,c->labels[i],166,8+(int)i*27,366,27);
+  else if(i==7)c->api.place(NULL,c->labels[i],166,154,366,24);
   else c->api.place(NULL,c->labels[i],16,i==5?144:162,140,16);
   menu_opa(c->labels[i],opacity[i],0);}
  if(!stream_add_event(c->root,deleted,0x24,c))goto fail;

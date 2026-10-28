@@ -20,5 +20,6 @@ int main(void){TMMusic *m=calloc(1,sizeof *m);assert(m);put(state+4,90000);state
  assert(send(m,TM_CLOSE,0,1,2,seq++,0,NULL,0,33002)==TM_OK);assert(!m->active);assert(send(m,TM_CLOCK,0,1,2,seq++,0,state,sizeof state,33003)==TM_NO_SESSION);
  size_t n=tm_encode(packet,sizeof packet,TM_OPEN,0,2,1,seq++,0,state,sizeof state);assert(n);TMPacket q;for(size_t i=0;i<n;i++){packet[i]^=1;assert(!tm_decode(packet,n,&q));packet[i]^=1;}
  assert(!tm_decode(packet,31,&q)&&!tm_decode(packet,TM_PACKET_MAX+1,&q));state[16]=0xc0;assert(!tm_encode(packet,sizeof packet,TM_OPEN,0,2,1,seq,0,state,sizeof state));state[16]='T';
- uint8_t *out=malloc(TM_COVER_BYTES+16);assert(out);memset(out+TM_COVER_BYTES,0xAA,16);for(unsigned i=0;i<10000;i++)tm_rotate(cover,out,i);for(unsigned i=0;i<16;i++)assert(out[TM_COVER_BYTES+i]==0xAA);assert(out[0]==0&&out[72*144+72]==0);
- free(out);free(m);printf("PASS music core: CRC, bounds, replay, generation, UTF8, lyrics, timer, pause, 10000 rotations; state=%zu bytes\n",sizeof(TMMusic));return 0;}
+ uint8_t *out=malloc(TM_COVER_BYTES+16);assert(out);memset(out+TM_COVER_BYTES,0xAA,16);for(unsigned i=0;i<TM_COVER_BYTES;i++)cover[i]=(uint8_t)(i*31u+7u);
+ tm_square_cover(cover,out);assert(!memcmp(out,cover,TM_COVER_BYTES));for(unsigned i=0;i<16;i++)assert(out[TM_COVER_BYTES+i]==0xAA);
+ free(out);free(m);printf("PASS music core: CRC, bounds, replay, generation, UTF8, lyrics, timer, pause, static square cover; state=%zu bytes\n",sizeof(TMMusic));return 0;}

@@ -32,5 +32,5 @@ uint32_t tm_position(const TMMusic *,uint32_t);
 int tm_line(const TMMusic *,uint32_t);
 void tm_text(const TMMusic *,int,char *,size_t);
 bool tm_expired(const TMMusic *,uint32_t);
-void tm_rotate(const uint8_t *,uint8_t *,unsigned);
+void tm_square_cover(const uint8_t *,uint8_t *);
 #endif

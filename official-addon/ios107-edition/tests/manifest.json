@@ -283,6 +283,10 @@
     "tests/TMG5RoadFilterTests.m": {
       "status": "run",
       "group": "tmg5-roads"
+    },
+    "tests/MusicCompatibilityTests.m": {
+      "status": "run",
+      "group": "music-compatibility"
     }
   }
 }
