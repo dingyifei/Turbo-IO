@@ -9,6 +9,7 @@ import {validateTranslationPair,prepareTranslationResources,copyTranslationResou
 import {prepareAppleAI,copyAppleAI} from './apple-ai/package-resources.mjs';
 import {inspectMachO} from './macho-embed.mjs';
 import {patch as patchOTARoute,verifyRoute} from './patch-route.mjs';
+export const CANDIDATE_RESOURCE='TurboWeReadCandidate.zip';
 export const PRIVATE_NAME=/Private|CookieImport|KnowledgeConnection/;
 export const ALLOWED_BUNDLE_PRIVATE=new Set(['TurboIOPrivatePreparation.json']);
 export function privateBundleNames(dir,allowed=new Set()){return fs.readdirSync(dir).filter(n=>PRIVATE_NAME.test(n)&&!allowed.has(n)).sort();}
@@ -97,8 +98,7 @@ function main(){
   validateOptions(o);
   const symbols=run('/usr/bin/nm',['-g',o.addon],{encoding:'utf8',maxBuffer:64*1024*1024});
   // FOCUS has a dynamic optional entry even without the translation module.
-  const focusEdition=symbols.includes('_TFFocusConsume');
-  validateTranslationPair(focusEdition&&!o['translation-module-dir']&&!o['translation-models']?symbols.replaceAll('_TIOOpenLocalTranslation',''):symbols,o);
+  validateTranslationPair(!o['translation-module-dir']&&!o['translation-models']?symbols.replaceAll('_TIOOpenLocalTranslation',''):symbols,o);
   const translationResources=prepareTranslationResources(o);
   const appleAI=prepareAppleAI(o['apple-ai-dylib'],symbols);
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
@@ -132,7 +132,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
     run('plutil',['-insert','TIOExperimentalOTAQueryRouting','-string','ios107-tmg2-loopback-flash-gated',plist]);
     run('plutil',['-insert','TIOPackagingRevision','-string','APP107-OTA-PUBLIC-SOURCE-01',plist]);
     run('plutil',['-insert','TIOExperimentalOTABuild','-string',pins.name,plist]);
-    if(firmware)fs.writeFileSync(path.join(app,'TurboWeReadCandidate.zip'),firmware,{flag:'wx'});
+    if(firmware)fs.writeFileSync(path.join(app,CANDIDATE_RESOURCE),firmware,{flag:'wx'});
     const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));
     if(!info.NSAppTransportSecurity)run('plutil',['-insert','NSAppTransportSecurity','-dictionary',plist]);
     if(info.NSAppTransportSecurity?.NSAllowsLocalNetworking===undefined)run('plutil',['-insert','NSAppTransportSecurity.NSAllowsLocalNetworking','-bool','YES',plist]);

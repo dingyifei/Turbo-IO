@@ -26,9 +26,9 @@ test('entitlements restricted to existing profile grants',()=>{
  assert.throws(()=>entitlementsFor({...p,expires:'2000-01-01T00:00:00Z'},options));
 });
 test('location prompt follows the linked navigation provider',()=>{
- assert.match(locationUsageFor('_x OBJC_CLASS_$_TIOMapKitNavigationPanel _y',false),/turn-by-turn/);
+ assert.match(locationUsageFor('_x OBJC_CLASS_$_TIOMapKitNavigationPanel _y'),/turn-by-turn/);
  assert.equal(locationUsageFor('_x'),null);
- assert.equal(locationUsageFor('_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap',false),null);
+ assert.equal(locationUsageFor('_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap'),null);
 });
 test('unknown original image bytes and private markers rejected',()=>{
  assert.throws(()=>validateHost({...info,TIOPackagingRevision:'private'},Buffer.alloc(32),Buffer.alloc(32)));
@@ -135,7 +135,7 @@ test('translationResources argument does not expand the helper write lists or al
 });
 
 test('music packaging has no NetEase leftovers or URL-scheme registration',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/B[e]ans|UIBackgroundModes|const music|CFBundleURLTypes/);});
-test('firmware candidate keeps the shared resource filename',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/TurboNavigationCandidate/);assert.match(s,/path\.join\(app,'TurboWeReadCandidate\.zip'\)/);});
+test('firmware candidate keeps the shared resource filename',()=>{const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');assert.doesNotMatch(s,/TurboNavigationCandidate/);assert.equal(leakGuard.CANDIDATE_RESOURCE,'TurboWeReadCandidate.zip');assert.match(s,/path\.join\(app,CANDIDATE_RESOURCE\)/);});
 test('package does not ship decorative art',()=>{assert.ok(!fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8').includes('TurboIOArt'));});
 
 // WP7 opt-in wrapper contract: no signing, packaging, or device operations.
@@ -174,4 +174,17 @@ test('private files are rejected by name pattern',()=>{
   assert.deepEqual(leakGuard.privateArchiveNames(['Payload/Runner.app/Frameworks/TurboIOPrivateTTSBootstrap.json']),['Payload/Runner.app/Frameworks/TurboIOPrivateTTSBootstrap.json']);
   assert.ok(!fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8').includes('TurboIOPrivateTTS.json'));
  }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('ios107 packaging is self-contained',()=>{
+ const source=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/from ['"]\.\.\//);
+ assert.doesNotMatch(source,/['"]\.\.\//);
+ assert.ok(!source.includes('focusEdition'));
+ const ui=fs.readFileSync(new URL('./ExperimentalOTAUI.m',import.meta.url),'utf8');
+ const loop=ui.match(/for \(NSString \*name in @\[([^\]]+)\]\)/);assert.ok(loop);
+ const names=[...loop[1].matchAll(/@"(Turbo[A-Za-z]*Candidate)"/g)].map(m=>m[1]);
+ assert.ok(names.includes(leakGuard.CANDIDATE_RESOURCE.replace('.zip','')));
+ assert.equal([...source.matchAll(/fs\.writeFileSync\(path\.join\(app,CANDIDATE_RESOURCE\),firmware/g)].length,1);
+ assert.doesNotMatch(source,/path\.join\(app,["\x27][^"\x27]*Candidate\.zip/);
 });
