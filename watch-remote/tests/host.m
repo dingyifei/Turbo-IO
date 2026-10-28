@@ -119,3 +119,8 @@ static NSDictionary *Command(NSString *action){NSString *s=NSUUID.UUID.UUIDStrin
 - (UISceneConfiguration *)application:(UIApplication *)application configurationForConnectingSceneSession:(UISceneSession *)session options:(UISceneConnectionOptions *)options {UISceneConfiguration *c=[[UISceneConfiguration alloc]initWithName:@"Test" sessionRole:session.role];c.delegateClass=TestScene.class;return c;}
 @end
 int main(int argc,char **argv){@autoreleasepool{return UIApplicationMain(argc,argv,nil,NSStringFromClass(TestDelegate.class));}}
+
+// Localization is supplied by ios107 in production; this harness tests routing.
+NSString *TIOText(NSString *key){return key;}
+
+void TIOAttachInfo(UIViewController *vc, NSString *title, NSString *body){(void)vc;(void)title;(void)body;}

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-stage=../official-addon/focus-edition
+stage=../official-addon/ios107-edition
 app=build/WatchAddonQA.app
 mkdir -p "$app"
 cp tests/Info.plist "$app/Info.plist"

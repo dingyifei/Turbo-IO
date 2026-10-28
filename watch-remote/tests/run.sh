@@ -13,6 +13,6 @@ xcrun --sdk macosx clang -isysroot "$sdk_path" -fobjc-arc -fmodules \
 build/tests/gate-tests
 xcrun --sdk macosx clang -isysroot "$sdk_path" -fobjc-arc -fmodules \
  -Wno-incompatible-pointer-types -framework Foundation -I Addon -I Firmware \
- -I ../official-addon/focus-edition Addon/WatchGlobalBridge.m Firmware/remote.c tests/bridge.m \
+ -I ../official-addon/ios107-edition Addon/WatchGlobalBridge.m Firmware/remote.c tests/bridge.m \
  -o build/tests/bridge-tests
 build/tests/bridge-tests build/tests/bridge-tests.json

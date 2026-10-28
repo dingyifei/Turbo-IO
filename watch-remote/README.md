@@ -47,23 +47,12 @@ xcodebuild -project TurboWatchRemote.xcodeproj -scheme RayNeoWatchRemote \
 
 ## 2. 接入公开 iOS 插件
 
-从仓库根运行，创建新目录，不修改原 `focus-edition`：
-
-```sh
-python3 watch-remote/stage-addon.py \
-  --base official-addon/focus-edition --out watch-remote/build-public-phone
-cd watch-remote/build-public-phone
-TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 bash build.sh embedded
-```
-
-这个公开派生只接入 Watch，不启用 OTA 编译开关、不包含服务配置，也不是私用手机包的完整复制。脚本核对精确插入点，不匹配会停止；失败输出不可用于打包，检查原因后换一个新目录。不得用 `python -O` 跳过断言，不要覆盖其他派生树。
+official-addon/ios107-edition already compiles the Watch sources (build.sh: WatchRemoteGate.m WatchGlobalBridge.m remote.c WatchRemoteAddon.m); build and package ios107 per its README. 当前 ios107-edition 已内置 Watch 源码，无需派生；旧的 stage-addon.py（focus-edition）保存在 git tag archive/editions-2026-10。
 
 - 编译 `Addon/*.m`、`Firmware/remote.c`，链接 WatchConnectivity。
 - `DisplayPhoneUI.m` 回执分类和消费接入 TGR1，不吞掉其他业务回执。
 - 设置页增加 Watch 遥控；音乐仅追加当前会话可用性查询。
 - 宿主已有其他 `WCSessionDelegate` 时拒绝抢占。与提词卡/跑步等其他 Watch 伴侣必须统一消息分发，不能叠加两个接收器。
-
-按 [官方扩展构建说明](../official-addon/README.md)准备合法兼容宿主，用新生成的 `build/image-rx-lab/TurboIOPrivateAddon.dylib` 打包。常规 `official-addon/package.mjs` 不会自动嵌入本 Watch；下一步单独创建伴侣派生。
 
 ## 3. 签名、嵌入与安装
 

@@ -71,3 +71,6 @@ int main(int argc,char **argv){@autoreleasepool{
  check(!b.busy&&!b.ready&&!ready&&sends==before,@"timeout drops without resend");
  BOOL passed=YES;for(NSDictionary *r in checks)passed&=[r[@"passed"]boolValue];NSDictionary *report=@{@"passed":@(passed),@"checks":checks,@"scope":@"real Objective-C bridge and C codec; mocked Flutter radio"};NSData *json=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];if(argc==2)[json writeToFile:[NSString stringWithUTF8String:argv[1]] atomically:YES];printf("bridge checks: %lu, passed: %s\n",(unsigned long)checks.count,passed?"yes":"NO");return passed?0:1;
 }}
+
+// Localization is supplied by ios107 in production; this harness tests routing.
+NSString *TIOText(NSString *key){return key;}
