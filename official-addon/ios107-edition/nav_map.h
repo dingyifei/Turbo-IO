@@ -23,10 +23,10 @@ typedef struct {uint16_t first,count;uint8_t style,flags;int8_t layer;uint8_t re
 typedef struct {TNRPoint p;char text[TNR_LABEL_BYTES];uint16_t width;} TNRLabel;
 typedef struct {int16_t x,y;uint16_t width;char text[TNR_LABEL_BYTES];} TNRLabelView;
 typedef struct {uint32_t generation;uint16_t range,path_count,point_count,label_count;TNRPath paths[TNR_MAX_PATHS];TNRPoint points[TNR_MAX_POINTS];TNRLabel labels[TNR_MAX_LABELS];} TNRScene;
-typedef struct {TNRPoint p;uint16_t heading,age;uint32_t generation;uint16_t speed;} TNRPose;
+typedef struct {TNRPoint p;uint16_t heading,age;uint32_t generation;uint16_t speed;int32_t fine_x,fine_y,rotated_x,rotated_y;bool precise;} TNRPose;
 typedef struct {
  TNRScene scenes[2];TNRPose from,target;
- uint32_t pose_at,last_draw,blend_ms;unsigned bank;bool valid,located,dirty,was_stale,pending,smooth;
+ uint32_t pose_at,last_draw,blend_ms,motion_ms;unsigned bank;bool valid,located,dirty,was_stale,pending,smooth;
 } TNRState;
 bool tnr_body_valid(unsigned op,const uint8_t *,size_t);
 bool tnr_receive(TNRState *,unsigned op,const uint8_t *,size_t,uint32_t now);

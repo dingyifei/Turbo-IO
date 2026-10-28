@@ -36,6 +36,36 @@ static int angle(int a,int b){int d=(b-a+540)%360-180;return d;}
 bool tnr_stale(const TNRState *s,uint32_t now){if(!s||!s->located)return true;uint32_t elapsed=now-s->pose_at,limit=s->target.speed?TNR_STALE_MS2:TNR_STALE_MS;return elapsed>=limit||s->target.age>=limit-elapsed;}
 static int sine(unsigned);
 static int bound_position(int x){return x< -8192?-8192:x>8192?8192:x;}
+/* Bounded signed 64/32 division without a freestanding runtime helper.
+ * Callers guarantee |quotient| <= INT32_MAX and divisor <= 45,875,200,
+ * so the 32-step remainder doubling cannot overflow. */
+static int32_t fine_div(int64_t value,uint32_t divisor){
+ bool negative=value<0;uint64_t magnitude=negative?(uint64_t)(-value):(uint64_t)value;
+ uint32_t low=(uint32_t)magnitude,rem=(uint32_t)(magnitude>>32),quotient=0;
+ if(!rem)quotient=low/divisor;
+ else for(unsigned bit=0;bit<32;bit++){rem=(rem<<1)|(low>>31);low<<=1;quotient<<=1;if(rem>=divisor){rem-=divisor;quotient|=1;}}
+ return negative?-(int32_t)quotient:(int32_t)quotient;
+}
+static int32_t fine_bound(int32_t x){return x< -8192*16384?-8192*16384:x>8192*16384?8192*16384:x;}
+static int32_t fine_x(const TNRPose *p){return p->precise?p->fine_x:(int32_t)p->p.x*16384;}
+static int32_t fine_y(const TNRPose *p){return p->precise?p->fine_y:(int32_t)p->p.y*16384;}
+static void fine_position(const TNRState *s,uint32_t elapsed,int32_t *x,int32_t *y){
+ uint32_t duration=s->blend_ms?s->blend_ms:TNR_SMOOTH_MS,t=elapsed<duration?elapsed:duration;
+ int32_t fx=fine_x(&s->from),fy=fine_y(&s->from),dx=fine_x(&s->target)-fx,dy=fine_y(&s->target)-fy;
+ int travel=(int)s->target.speed*(int)elapsed;
+ *x=fx+fine_div((int64_t)travel*sine(s->target.heading),1000)+fine_div((int64_t)dx*t,duration);
+ *y=fy+fine_div((int64_t)travel*sine(s->target.heading+90),1000)+fine_div((int64_t)dy*t,duration);
+}
+static bool fine_inside(const TNRState *s,uint32_t t){int32_t x,y;fine_position(s,t,&x,&y);return x==fine_bound(x)&&y==fine_bound(y);}
+static uint32_t motion_limit(const TNRState *s){
+ /* Each side of blend completion is a straight segment. Find the first
+  * boundary crossing once per received pose, then freeze BOTH coordinates.
+  * A binary search over <=8000 ms needs at most 13 bounded iterations. */
+ uint32_t end=TNR_PREDICT_MS-s->target.age,first=s->blend_ms<end?s->blend_ms:end,lo=0,hi=first;
+ if(fine_inside(s,first)){if(fine_inside(s,end))return end;lo=first;hi=end;}
+ while(hi-lo>1){uint32_t mid=lo+(hi-lo)/2;if(fine_inside(s,mid))lo=mid;else hi=mid;}
+ return lo;
+}
 bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
  if(!s||!p||!s->valid||!s->located)return false;
  uint32_t elapsed=now-s->pose_at,tp=elapsed>TNR_PREDICT_MS?TNR_PREDICT_MS:elapsed;
@@ -43,15 +73,14 @@ bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
   /* Constant velocity plus a bounded correction, not a moving-target lerp.
    * Backward corrections can slow forward travel to zero, never reverse it. */
   uint32_t horizon=TNR_PREDICT_MS-s->target.age;if(tp>horizon)tp=horizon;
-  uint32_t duration=s->blend_ms?s->blend_ms:TNR_SMOOTH_MS,t=tp<duration?tp:duration;
-  /* speed*tp <= 1,600,000; Q14 correction <= 16,384*16,384.
-   * Split millisecond travel before multiplication: no 64-bit division ABI. */
-  int travel=(int)s->target.speed*(int)tp,weight=(int)(t*16384/duration),sx=sine(s->target.heading),sy=sine(s->target.heading+90);*p=s->target;
-  int vx=(travel/1000)*sx+(travel%1000)*sx/1000,vy=(travel/1000)*sy+(travel%1000)*sy/1000;
-  p->p.x=(int16_t)bound_position(s->from.p.x+(vx+(s->target.p.x-s->from.p.x)*weight)/16384);
-  p->p.y=(int16_t)bound_position(s->from.p.y+(vy+(s->target.p.y-s->from.p.y)*weight)/16384);
+  if(s->target.precise&&tp>s->motion_ms)tp=s->motion_ms;
+  *p=s->target;p->precise=true;fine_position(s,tp,&p->fine_x,&p->fine_y);
+  p->p.x=(int16_t)(p->fine_x/16384);p->p.y=(int16_t)(p->fine_y/16384);
   uint32_t turn=(uint32_t)ab(angle(s->from.heading,s->target.heading))*1000/90;if(turn<TNR_SMOOTH_MS)turn=TNR_SMOOTH_MS;
-  uint32_t ht=elapsed<turn?elapsed:turn;p->heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)ht/(int)turn+360)%360);return true;
+  uint32_t ht=elapsed<turn?elapsed:turn;p->heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)ht/(int)turn+360)%360);
+  int sn=sine(p->heading),cs=sine(p->heading+90);
+  p->rotated_x=(int32_t)(((int64_t)p->fine_x*cs-(int64_t)p->fine_y*sn)/16384);
+  p->rotated_y=(int32_t)(((int64_t)p->fine_x*sn+(int64_t)p->fine_y*cs)/16384);return true;
  }
  int d=(int)s->target.speed*(int)tp/1000;
  TNRPoint target={
@@ -78,25 +107,34 @@ bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now)
  if(s->pending){if(nm_u32(p)!=s->scenes[s->bank^1u].generation)return false;s->bank^=1u;s->valid=true;s->located=false;s->pending=false;}
  if(!s->valid||nm_u32(p)!=s->scenes[s->bank].generation)return false;
  TNRPose q={.generation=nm_u32(p),.p={(int16_t)nm_u16(p+4),(int16_t)nm_u16(p+6)},.heading=(uint16_t)nm_u16(p+8),.age=(uint16_t)nm_u16(p+10),.speed=op==TNR_POSE2?(uint16_t)nm_u16(p+12):0};
- if(s->smooth){int advance=(int)q.speed*q.age/1000;q.p.x=(int16_t)bound_position(q.p.x+advance*sine(q.heading)/16384);q.p.y=(int16_t)bound_position(q.p.y+advance*sine(q.heading+90)/16384);}
+ if(s->smooth){q.precise=true;q.fine_x=fine_bound((int32_t)q.p.x*16384+fine_div((int64_t)q.speed*q.age*sine(q.heading),1000));q.fine_y=fine_bound((int32_t)q.p.y*16384+fine_div((int64_t)q.speed*q.age*sine(q.heading+90),1000));q.p.x=(int16_t)(q.fine_x/16384);q.p.y=(int16_t)(q.fine_y/16384);}
  if(s->located&&(!tnr_stale(s,now)||s->smooth))tnr_position(s,now,&s->from);else s->from=q;
  if(s->smooth){
-  int dx=q.p.x-s->from.p.x,dy=q.p.y-s->from.p.y,sy=sine(q.heading),cy=sine(q.heading+90);
-  int behind=-(dx*sy+dy*cy)/16384;
-  if(behind>0&&!q.speed){q.p=s->from.p;dx=q.p.x-s->from.p.x;dy=q.p.y-s->from.p.y;}
-  uint32_t duration=(uint32_t)(ab(dx)+ab(dy))*1000/TNR_CORRECTION_QM_S;
+  int32_t dx=q.fine_x-fine_x(&s->from),dy=q.fine_y-fine_y(&s->from);
+  int32_t backward=(int32_t)(-((int64_t)dx*sine(q.heading)+(int64_t)dy*sine(q.heading+90))/16384);
+  uint32_t behind=backward>0?(uint32_t)(backward+16383)/16384:0;
+  if(behind&&!q.speed){q.p=s->from.p;q.fine_x=fine_x(&s->from);q.fine_y=fine_y(&s->from);dx=dy=0;}
+  uint32_t error=(uint32_t)(ab(dx)+ab(dy)+16383)/16384;
+  uint32_t duration=error*1000/TNR_CORRECTION_QM_S;
   /* Leave rounding headroom: at most half the forward velocity is removed. */
   if(behind>0&&q.speed){uint32_t braking=(uint32_t)behind*2000/q.speed;if(duration<braking)duration=braking;}
   s->blend_ms=duration<TNR_SMOOTH_MS?TNR_SMOOTH_MS:duration;
  }else if(ab(q.p.x-s->from.p.x)+ab(q.p.y-s->from.p.y)>400)s->from=q;
- s->target=q;s->pose_at=now;s->located=true;s->dirty=true;return true;
+ s->target=q;if(s->smooth)s->motion_ms=motion_limit(s);s->pose_at=now;s->located=true;s->dirty=true;return true;
 }
 bool tnr_needs_draw(const TNRState *s,uint32_t now){return s&&(s->dirty||s->was_stale!=tnr_stale(s,now)||(s->valid&&s->located&&(uint32_t)(now-s->pose_at)<(s->smooth?TNR_PREDICT_MS:TNR_BLEND_MS+40)&&(uint32_t)(now-s->last_draw)>=33)||(s->valid&&s->located&&s->target.speed&&(uint32_t)(now-s->pose_at)<TNR_PREDICT_MS&&(uint32_t)(now-s->last_draw)>=100));}
 void tnr_presented(TNRState *s,uint32_t now){if(s){s->dirty=false;s->last_draw=now;s->was_stale=tnr_stale(s,now);}}
 /* Q14 sine table; no libm, heap allocation or FP ABI assumptions in renderer. */
 static const int16_t sin5[]={0,1428,2845,4240,5604,6924,8192,9397,10531,11585,12551,13421,14189,14849,15396,15826,16135,16322,16384};
 static int sine(unsigned a){a%=360;int sign=a>=180?-1:1;a%=180;if(a>90)a=180-a;unsigned i=a/5,r=a%5;return sign*(sin5[i]+(i<18?(sin5[i+1]-sin5[i])*(int)r/5:0));}
-static TNRPoint screen(TNRPoint p,const TNRPose *pose,unsigned range){int x=p.x-pose->p.x,y=p.y-pose->p.y,s=sine(pose->heading),c=sine(pose->heading+90);int dx=(x*c-y*s)/16384,dy=(x*s+y*c)/16384;return (TNRPoint){(int16_t)(96+dx*192/(int)(range*4)),(int16_t)(101-dy*192/(int)(range*4))};}
+static TNRPoint screen(TNRPoint p,const TNRPose *pose,unsigned range){
+ if(pose->precise){int sn=sine(pose->heading),cs=sine(pose->heading+90);
+  /* Combined Q14 rotation, then one pixel rounding. Relative rotation is
+   * bounded by 379.7M; multiplying by 3 stays within signed 32 bits. */
+  int32_t x=(int32_t)p.x*cs-(int32_t)p.y*sn-pose->rotated_x,y=(int32_t)p.x*sn+(int32_t)p.y*cs-pose->rotated_y;
+  return (TNRPoint){(int16_t)(96+x*3/(int)(range*1024)),(int16_t)(101-y*3/(int)(range*1024))};
+ }
+ int x=p.x-pose->p.x,y=p.y-pose->p.y,s=sine(pose->heading),c=sine(pose->heading+90);int dx=(x*c-y*s)/16384,dy=(x*s+y*c)/16384;return (TNRPoint){(int16_t)(96+dx*192/(int)(range*4)),(int16_t)(101-dy*192/(int)(range*4))};}
 unsigned tnr_labels(const TNRState *s,uint32_t now,TNRLabelView out[TNR_MAX_LABELS]){
  memset(out,0,sizeof(TNRLabelView)*TNR_MAX_LABELS);TNRPose p;if(!tnr_position(s,now,&p)||tnr_stale(s,now))return 0;
  const TNRScene *d=&s->scenes[s->bank];unsigned count=0;

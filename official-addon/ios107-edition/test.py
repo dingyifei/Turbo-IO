@@ -81,6 +81,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-text',[FW4/'tests/tio_text_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
     ctest('tmg4-grid',[FW4/'tests/focus_grid_test.c',FW4/'src/focus-v1/focus_menu.c',FW4/'src/common-v1/tio_text.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
     ctest('tmg5-music',[FW4/'src/music-runtime-v1/music_test.c',FW4/'src/music-runtime-v1/music.c'],FW4/'src/music-runtime-v1')
+    ctest('tmg5-noncardinal',[FW4/'tests/noncardinal_smoothing_test.c'],FW4/'src')
     ctest('tmg5-smoothing',[FW4/'tests/smoothing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-prediction',[FW4/'tests/pose_prediction_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     run('tmg4-native-ui',['python3','-I',FW4/'tests/native_ui_host_test.py','--out',out/'tmg4-native-ui-host'])
