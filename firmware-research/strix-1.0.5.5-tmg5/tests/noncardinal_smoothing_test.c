@@ -11,6 +11,11 @@ static void replay(unsigned heading,unsigned speed,int x,int y,int target_x,int 
  for(unsigned elapsed=1;elapsed<=8100;elapsed+=33){TNRPose current;assert(tnr_position(&s,began+elapsed,&current));assert(current.precise&&current.heading==heading);assert(current.rotated_y>=previous.rotated_y);assert(ab(current.fine_x)<=8192*16384&&ab(current.fine_y)<=8192*16384);TNRPoint a=screen((TNRPoint){-313,-99},&previous,180),b=screen((TNRPoint){-313,-99},&current,180);assert(b.y>=a.y);previous=current;}
  TNRPose a,b;assert(tnr_position(&s,began+8000,&a)&&tnr_position(&s,began+9000,&b));assert(a.fine_x==b.fine_x&&a.fine_y==b.fine_y);
 }
+static void repeated(unsigned heading){
+ TNRState s={.smooth=true};uint8_t scene[44]={1,0,0,0,180,0,1,0,2,0};scene[16]=2;scene[18]=6;pp(scene+24,-400);pp(scene+26,-400);pp(scene+28,400);pp(scene+30,400);scene[32]=1;pp(scene+40,heading);assert(tnr_receive(&s,TNR_SCENE2,scene,sizeof scene,0));
+ uint8_t pose[14]={1};pp(pose+8,heading);pp(pose+12,6);
+ for(unsigned i=0;i<40;i++){uint32_t now=1000+i*200;TNRPose before,after;assert(tnr_position(&s,now,&before));pp(pose+4,i%2?40:100);pp(pose+6,heading==90?0:(i%2?40:47));assert(tnr_receive(&s,TNR_POSE2,pose,sizeof pose,now));assert(tnr_position(&s,now,&after));assert(before.fine_x==after.fine_x&&before.fine_y==after.fine_y);assert(before.rotated_x==after.rotated_x&&before.rotated_y==after.rotated_y);}
+}
 int main(void){
  TNRState s={.smooth=true};
  uint8_t scene[44]={1,0,0,0,180,0,1,0,2,0};scene[16]=2;scene[18]=6;pp(scene+24,-400);pp(scene+26,-400);pp(scene+28,400);pp(scene+30,400);scene[32]=1;pp(scene+40,144);
@@ -23,5 +28,6 @@ int main(void){
  for(int64_t n=-500000000000LL;n<=500000000000LL;n+=100000003LL)assert(fine_div(n,1234567)==n/1234567);
  for(unsigned h=0;h<360;h+=3)for(unsigned k=0;k<3;k++){unsigned speed=(unsigned[]){1,6,200}[k];replay(h,speed,0,0,45,47,1000);replay(h,speed,0,0,-45,47,UINT32_MAX-1200);replay(h,speed,0,0,8192,-8192,1000);replay(h,speed,8192,0,8192,-1000,1000);replay(h,speed,0,-8192,1000,-8192,1000);}
  replay(60,6,8192,0,8192,-1000,1000);replay(60,1,8190,0,8192,-1000,1000);replay(240,6,-8192,0,-8192,1000,1000);
+ repeated(90);repeated(144);repeated(225);
  puts("PASS diagonal correction does not reverse the raster");return 0;
 }

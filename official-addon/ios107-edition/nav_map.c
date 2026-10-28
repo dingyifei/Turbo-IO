@@ -37,7 +37,7 @@ bool tnr_stale(const TNRState *s,uint32_t now){if(!s||!s->located)return true;ui
 static int sine(unsigned);
 static int bound_position(int x){return x< -8192?-8192:x>8192?8192:x;}
 /* Bounded signed 64/32 division without a freestanding runtime helper.
- * Callers guarantee |quotient| <= INT32_MAX and divisor <= 45,875,200,
+ * Callers guarantee |quotient| <= INT32_MAX and divisor < 2^26,
  * so the 32-step remainder doubling cannot overflow. */
 static int32_t fine_div(int64_t value,uint32_t divisor){
  bool negative=value<0;uint64_t magnitude=negative?(uint64_t)(-value):(uint64_t)value;
@@ -74,13 +74,14 @@ bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
    * Backward corrections can slow forward travel to zero, never reverse it. */
   uint32_t horizon=TNR_PREDICT_MS-s->target.age;if(tp>horizon)tp=horizon;
   if(s->target.precise&&tp>s->motion_ms)tp=s->motion_ms;
-  *p=s->target;p->precise=true;fine_position(s,tp,&p->fine_x,&p->fine_y);
-  p->p.x=(int16_t)(p->fine_x/16384);p->p.y=(int16_t)(p->fine_y/16384);
+  /* Output may alias s->from; finish every source-state read first. */
+  TNRPose result=s->target;result.precise=true;fine_position(s,tp,&result.fine_x,&result.fine_y);
+  result.p.x=(int16_t)(result.fine_x/16384);result.p.y=(int16_t)(result.fine_y/16384);
   uint32_t turn=(uint32_t)ab(angle(s->from.heading,s->target.heading))*1000/90;if(turn<TNR_SMOOTH_MS)turn=TNR_SMOOTH_MS;
-  uint32_t ht=elapsed<turn?elapsed:turn;p->heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)ht/(int)turn+360)%360);
-  int sn=sine(p->heading),cs=sine(p->heading+90);
-  p->rotated_x=(int32_t)(((int64_t)p->fine_x*cs-(int64_t)p->fine_y*sn)/16384);
-  p->rotated_y=(int32_t)(((int64_t)p->fine_x*sn+(int64_t)p->fine_y*cs)/16384);return true;
+  uint32_t ht=elapsed<turn?elapsed:turn;result.heading=(uint16_t)((s->from.heading+angle(s->from.heading,s->target.heading)*(int)ht/(int)turn+360)%360);
+  int sn=sine(result.heading),cs=sine(result.heading+90);
+  result.rotated_x=(int32_t)(((int64_t)result.fine_x*cs-(int64_t)result.fine_y*sn)/16384);
+  result.rotated_y=(int32_t)(((int64_t)result.fine_x*sn+(int64_t)result.fine_y*cs)/16384);*p=result;return true;
  }
  int d=(int)s->target.speed*(int)tp/1000;
  TNRPoint target={
