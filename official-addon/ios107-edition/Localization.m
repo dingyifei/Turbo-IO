@@ -447,7 +447,7 @@ static const TIOStringRow Rows[]={
     {"hub.status.tools","Search, to-dos, knowledge","搜索、待办、知识库"},
     {"hub.status.tts.off","Off","已关闭"},
     {"hub.status.tts.on","On-device voice","本机语音"},
-    {"hub.status.ttsSpeed","%.2g× · English and Chinese","%.2g× · 中英文通用"},
+    {"hub.status.ttsSpeed","%.3g× · English and Chinese","%.3g× · 中英文通用"},
     {"hub.title","Turbo","Turbo"},
     {"hub.title.singleImageTest","Single image test","单张传图测试"},
     {"hub.ttsTest.off.message","Turn on “Read answers aloud” first.","请打开“回答同步朗读”开关。"},
