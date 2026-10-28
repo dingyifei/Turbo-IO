@@ -145,6 +145,8 @@ test('spotify-api',['SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','tests/Spotif
 test('spotify-cover',['SpotifyCover.m','tests/SpotifyCoverTests.m'],[],['-framework','CoreGraphics','-framework','ImageIO'])
 test('language-flag',['tests/LanguageFlagTests.m','LanguageFlag.m','lang_flag.c'])
 test('runtime-status',['tests/TDRuntimeTests.m','TDPhoneRun.m','TDPhoneStore.m','TDPhoneReply.m','command.c','diagnostics.c','knob_calibration.c'])
+if only is None or 'runtime-status' in only:
+    run('tmg5-native-status',['python3','-I',ROOT/'firmware-research/strix-1.0.5.5-tmg5/tests/native_status_host_test.py','--out',out/'tmg5-native-status'])
 test('voice-tts',['VoiceTTSTests.m','VoiceTTSText.m'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     root=Path(tmp)

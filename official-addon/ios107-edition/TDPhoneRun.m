@@ -169,10 +169,10 @@ static NSDictionary *RuntimeCalibration(const TDSample *s){
  if(s.calibration_result==TK_OK&&command.op!=TDQ_STATUS){
   if(!(s.extension_valid&TD_EXT_CALIBRATION)||s.calibration_window!=_window||s.calibration_sequence!=command.sequence||(command.op==TDQ_KNOB_STOP&&s.calibration_state==TK_ACTIVE)){_state=@"unavailable";_estimate=nil;return NO;}
  }
- if(command.op==TDQ_KNOB_START&&s.calibration_result==TK_OK)_startDeliveryUncertain=NO;
+ if(command.op==TDQ_KNOB_START){_startDeliveryUncertain=NO;if(s.calibration_result!=TK_OK){_holdsLease=NO;_finishRequested=_cancelRequested=NO;}}
  _calibration=RuntimeCalibration(&s);
  if(![_calibration[@"window"]isEqual:@(_window)])_estimate=nil;
- if(s.calibration_result!=TK_OK){_state=s.calibration_result==TK_BLOCKED?@"blocked":s.calibration_result==TK_BUSY?@"busy":s.calibration_result==TK_OVERFLOW_RESULT?@"overflow":@"unavailable";_estimate=nil;if(s.calibration_window==_window&&s.calibration_state!=TK_ACTIVE)_holdsLease=NO;return YES;}
+ if(s.calibration_result!=TK_OK){_state=s.calibration_result==TK_BLOCKED?(command.op==TDQ_STATUS?@"blocked":@"menuRequired"):s.calibration_result==TK_BUSY?@"busy":s.calibration_result==TK_OVERFLOW_RESULT?@"overflow":@"unavailable";_estimate=nil;if(s.calibration_window==_window&&s.calibration_state!=TK_ACTIVE)_holdsLease=NO;return YES;}
  if(command.op==TDQ_STATUS){_sample=RuntimeSample(&s);_sampleAt=_clock();if(_holdsLease&&(s.calibration_window!=_window||s.calibration_state!=TK_ACTIVE))_holdsLease=NO;_state=_holdsLease?@"rotating":@"ready";}
  else if(s.calibration_state==TK_ACTIVE){_holdsLease=YES;_leaseDeadline=_clock()+(TK_MAX_LEASE_MS-s.calibration_elapsed)/1000.0;_state=_finishRequested?(_cancelRequested?@"canceling":@"finishing"):@"rotating";}
  else{

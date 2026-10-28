@@ -35,7 +35,7 @@ int nav_connection(unsigned n){assert(n==0x80);return connected?1:0;}
 bool nav_business_idle(void){return idle;}
 int td_gettid(void){return tid;}
 uint32_t stream_tick(void){return now_ms;}
-const char *nav_top_app(void){return home?"com.rayneo.liteos.launcher":"factory";}
+const char *nav_top_app(void){return home?"com.rayneo.liteos.launcher":"com.rayneo.liteos.prompter";}
 void *nav_ensure_menu(void *p){assert(p==vm);ensures++;set_app(app);return app;}
 void td_stock_light(void *p,TDDiagnostics *d){TDLightOwner *owner=p;assert(owner&&owner->owner_tid==tid);probes++;now_ms+=probe_delay;td_metric(d,TD_LV_TOTAL,16777216,true);td_metric(d,TD_LV_USED,1024,true);td_metric(d,TD_LV_PEAK,2048,true);}
 int tap_fs_statfs(const char *path,void *out){assert(!strcmp(path,"/mnt/nand_data"));statfs_calls++;uint32_t *s=out;s[2]=131072;s[4]=100;s[6]=80;s[8]=70;if(bad_nand)s[9]=1;return 0;}
@@ -48,8 +48,12 @@ static int enqueue(unsigned channel,const TIONativeMessage *m){assert(channel==1
 static void send(TDCommand q){uint8_t raw[24];assert(td_command_encode(q,raw,24));TIONativeMessage m={.id=TD_MESSAGE,.data=raw,.bytes=24};td_message_dispatch(&m);}
 static void reset(void){if(slot.diagnostics)td_slot_destroy(&slot);timer=(HostTimer){0};slot=(TNNavSlot){0};memset(vm,0,sizeof vm);knob=(TKState){0};allocations=frees=probes=statfs_calls=ensures=emits=enqueues=0;connected=home=idle=runtime_allowed=true;fail_heap=fail_timer=bad_nand=false;tid=7;now_ms=100;probe_delay=0;}
 int main(void){
+ reset();home=false;send((TDCommand){TDQ_STATUS,91,1,0});assert(last.calibration_result==TK_OK&&probes==1&&statfs_calls==1&&ensures==0);
+
  reset();assert(!td_message_is_ours(NULL)&&allocations==0&&statfs_calls==0);send((TDCommand){TDQ_STATUS,1,1,0});assert(emits==1&&last.kind==TD_STATUS&&last.session==1&&last.sequence==1&&last.build_sha[0]==0x44&&last.extension_valid==TD_EXT_NAND&&last.nand_available==9175040&&last.values[TD_LV_USED]==1024&&!(last.valid&(1u<<TD_SYS_FREE)));assert(ensures==0&&!timer.user&&allocations==1&&frees==1&&statfs_calls==1);
- for(unsigned gate=0;gate<4;gate++){reset();if(gate==0)home=false;if(gate==1)idle=false;if(gate==2)runtime_allowed=false;if(gate==3)tid=-1;send((TDCommand){TDQ_STATUS,2,1,0});assert(emits==1&&last.calibration_result==TK_BLOCKED&&probes==0&&statfs_calls==0&&ensures==0&&allocations==0);}
+ reset();idle=false;send((TDCommand){TDQ_STATUS,92,1,0});assert(last.calibration_result==TK_OK&&probes==1&&statfs_calls==1&&ensures==0);
+ for(unsigned gate=0;gate<2;gate++){reset();if(gate==0)runtime_allowed=false;if(gate==1)tid=-1;send((TDCommand){TDQ_STATUS,2,1,0});assert(emits==1&&last.calibration_result==TK_BLOCKED&&probes==0&&statfs_calls==0&&ensures==0&&allocations==0);}
+ for(unsigned gate=0;gate<2;gate++){reset();set_app(app);if(gate==0)home=false;else idle=false;send((TDCommand){TDQ_KNOB_START,93,1,30000});assert(last.calibration_result==TK_BLOCKED&&probes==0&&statfs_calls==0);}
  reset();connected=false;send((TDCommand){TDQ_STATUS,3,1,0});assert(emits==0&&statfs_calls==0);
  reset();fail_heap=true;send((TDCommand){TDQ_STATUS,4,1,0});assert(last.calibration_result==TK_UNAVAILABLE&&last.valid==0&&ensures==0&&!timer.user);
  reset();set_app(app);send((TDCommand){TDQ_KNOB_START,5,1,30000});assert(last.kind==TD_CALIBRATION&&last.calibration_state==TK_ACTIVE&&statfs_calls==0&&probes==0&&allocations==0);tk_observe(&knob,4800,now_ms+1000,true,false);now_ms+=2000;send((TDCommand){TDQ_KNOB_STOP,5,2,0});assert(last.calibration_state==TK_FINISHED&&last.calibration_net==4800&&last.sequence==2&&statfs_calls==0);

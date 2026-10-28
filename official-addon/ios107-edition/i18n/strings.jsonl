@@ -573,7 +573,7 @@
 {"key":"tmg4.knob.cancel","en":"Cancel measurement","zh":"取消测量"}
 {"key":"tmg4.knob.estimate","en":"Counts per rotation estimate","zh":"每圈计数估算"}
 {"key":"tmg4.knob.finish","en":"Finish measurement","zh":"结束测量"}
-{"key":"tmg4.knob.instructions","en":"Open the glasses launcher, start, rotate one full turn in one direction, then Finish within 30 seconds. Remote input cancels the window. Reversal, expiry or missing replies produce no estimate. Nothing is saved or recalibrated.","zh":"打开眼镜主菜单并开始，在同一方向完整转动一圈，然后在 30 秒内结束。遥控输入会取消窗口。反向、超时或缺少回执不会产生估算，不会保存或修改校准参数。"}
+{"key":"tmg4.knob.instructions","en":"Open the glasses main menu, then tap Start. Rotate one full turn in one direction, then tap Finish. This measures raw movement; it does not change calibration.","zh":"打开眼镜主菜单，然后点开始。沿一个方向转满一圈，再点完成。仅测量原始转动量，不会修改校准值。"}
 {"key":"tmg4.knob.noEstimate","en":"No valid estimate yet","zh":"暂无有效估算"}
 {"key":"tmg4.knob.progress","en":"%@ · %@ samples · net %@ / total %@ raw units","zh":"%@ · %@ 次采样 · 净值 %@ / 总计 %@ 原始单位"}
 {"key":"tmg4.knob.result","en":"%@ raw units / rotation (estimate)","zh":"每圈 %@ 原始单位（估算）"}
@@ -607,6 +607,7 @@
 {"key":"tmg4.runtime.state.finished","en":"Measurement finished","zh":"测量已结束"}
 {"key":"tmg4.runtime.state.finishing","en":"Waiting for the final count…","zh":"正在等待最终计数…"}
 {"key":"tmg4.runtime.state.idle","en":"Not read","zh":"尚未读取"}
+{"key":"tmg4.runtime.state.menuRequired","en":"Open the glasses main menu, then tap Start. End any active task or update first.","zh":"打开眼镜主菜单，然后点开始。请先结束正在运行的任务或升级。"}
 {"key":"tmg4.runtime.state.overflow","en":"Counter overflow · no estimate","zh":"计数溢出 · 无估算"}
 {"key":"tmg4.runtime.state.querying","en":"Reading status…","zh":"正在读取状态…"}
 {"key":"tmg4.runtime.state.ready","en":"Status received","zh":"已收到状态"}

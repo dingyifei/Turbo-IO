@@ -22,8 +22,19 @@ static void LeaseOrdering(void){
  __block double now=100;__block TDCommand command;__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
  TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return @"queue";} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){command=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;assert([r beginCalibration]);now=102;assert([r receive:Packet(command,TD_CALIBRATION,TK_ACTIVE,600,600) device:@"queue"]);now=129;[r finishCalibration];assert(sends==1);now=131;r.fileBusy=NO;assert(sends==1&&r.idleForOTA&&!r.holdsLease);
 }
+static void RejectedStart(void){@autoreleasepool{
+ __block double now=100;__block TDCommand sent;__block __weak TDRuntimeSession *weak=nil;
+ TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return @"host-peer";} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){sent=q;weak.fileBusy=YES;return YES;}];weak=r;
+ assert([r beginCalibration]);TDSample s={.build=TD_BUILD_TMG4,.kind=TD_CALIBRATION,.session=sent.session,.sequence=sent.sequence,.caps=TD_CAPS_ALL,.detent=600,.calibration_result=TK_BLOCKED};
+ uint8_t raw[TD_WIRE_BYTES];assert(td_encode(&s,raw,sizeof raw));now=101;assert([r receive:[NSData dataWithBytes:raw length:sizeof raw] device:@"host-peer"]);
+ printf("REPRO refused START: state=%s pending=%d holdsLease=%d fileBusy=%d expected_lease=0\n",[r.status[@"state"]UTF8String],r.pending,r.holdsLease,r.fileBusy);bool bad=r.holdsLease;
+ now=102;r.fileBusy=NO;printf("REPRO file terminal after refused START: holdsLease=%d idleForOTA=%d expected_lease=0 expected_idle=1\n",r.holdsLease,r.idleForOTA);bad|=r.holdsLease;
+ now=131;printf("REPRO 31s after send: holdsLease=%d (deadline renewed by file terminal)\n",r.holdsLease);
+ assert(!bad);
+}}
+
 int main(void){@autoreleasepool{
- LeaseOrdering();
+ RejectedStart();LeaseOrdering();
  __block NSString *peer=@"peer-one";__block BOOL allowed=YES;__block double now=100;__block TDCommand sent={0};__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
  TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return peer;} allowed:^BOOL{return allowed;} clock:^{return now;} send:^BOOL(TDCommand q){sent=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;
  assert([r query]&&r.pending&&r.fileBusy&&sent.op==TDQ_STATUS);unsigned pure_sends=sends;assert(![r idleForOTA]&&sends==pure_sends);TDCommand query=sent;TDCommand wrong=sent;wrong.sequence++;assert(![r receive:Packet(wrong,TD_STATUS,0,0,0) device:peer]);assert(![r receive:Packet(query,TD_STATUS,0,0,0) device:@"other"]);assert(![r receive:Packet(query,TD_SAMPLE,0,0,0) device:peer]);assert([r receive:Packet(query,TD_STATUS,0,0,0) device:peer]&&!r.pending&&!r.holdsLease);assert([Status(r)[@"sample"][@"nand_available"]unsignedLongLongValue]==64000);assert(![r query]&&sends==1);r.fileBusy=NO;

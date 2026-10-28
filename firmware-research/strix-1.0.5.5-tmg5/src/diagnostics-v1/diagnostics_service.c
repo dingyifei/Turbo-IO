@@ -60,7 +60,7 @@ static void reply_query(void *app,Control *c,TDCommand q,bool gate){
 void td_message_dispatch(const TIONativeMessage *m){
  TDCommand q;if(!td_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!td_command_decode(m->data,m->bytes,&q)||!paired())return;
  bool home=launcher();void *vm=home?manager():NULL,*app=ptr(vm,0x10);TNNavSlot *s=app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;Control *c=s?s->diagnostics:NULL;
- if(q.op>=TDQ_STATUS){int tid=td_gettid();bool gate=home&&nav_business_idle()&&tgr_runtime_allowed()&&tid>=0&&(!c||c->owner.owner_tid==tid);reply_query(app,c,q,gate);return;}
+ if(q.op>=TDQ_STATUS){int tid=td_gettid();bool gate=tgr_runtime_allowed()&&tid>=0&&(!c||c->owner.owner_tid==tid)&&(q.op==TDQ_STATUS||(home&&nav_business_idle()));reply_query(app,c,q,gate);return;}
  if(!home||!vm)return;if(!app&&q.op==TDQ_START&&nav_business_idle())app=nav_ensure_menu(vm);
  s=app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;if(!s)return;c=s->diagnostics;
  if(q.op==TDQ_STOP){if(c&&c->d.session==q.session&&q.sequence>c->command_seq)discard(c);return;}if(c)return;
