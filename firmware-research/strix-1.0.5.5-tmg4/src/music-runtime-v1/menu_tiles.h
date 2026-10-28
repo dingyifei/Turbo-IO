@@ -8,4 +8,11 @@ static inline int tio_frame_start(int i){return 15+30*tio_clampi(i,0,TIO_MENU_LA
 static inline int tio_frame_index(int f){return tio_clampi(f,0,TIO_MENU_FRAME_MAX)/30;}
 static inline int tio_tile_mix(int f,unsigned k){return k<6?tio_clampi(tio_clampi(f,0,TIO_MENU_FRAME_MAX)-(195+30*(int)k),0,30):0;}
 static inline int tio_tile_weight(int f,unsigned k){return k<6?tio_tile_mix(f,k)-(k+1<6?tio_tile_mix(f,k+1):0):0;}
+/* Clamp before float-to-int conversion, including NaN and infinities. */
+static inline int tio_slide_frame(float value,unsigned count){
+ if(count<8||count>13)count=13;
+ if(!(value>=-1.0f))value=-1.0f;
+ if(value>(float)count)value=(float)count;
+ return tio_clampi((int)(value*30.0f+15.5f),0,30*(int)count-1);
+}
 #endif

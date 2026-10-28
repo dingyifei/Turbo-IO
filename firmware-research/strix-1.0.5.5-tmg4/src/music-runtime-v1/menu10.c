@@ -5,9 +5,9 @@
 #include "../menu-grid-v2/menu_config.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
-/* 1.0.4.12 ONLY. Experimental native eight-index carousel, not a proven OTA.
- * This replaces the virtual eighth overlay. Native wheel spring, direction,
- * snap, hide/show and seven stock launch targets are retained. All functions
+/* STRIX 1.0.5.5 TMG4. Native carousel has 8..13 visible canonical tiles.
+ * The runtime map retains all seven stock targets and mandatory Camera.
+ * Native wheel spring, direction, snap and hide/show are retained. All functions
  * run on the existing Launcher/LVGL executor. No new timers or global RAM.
  */
 #include "../navigation-runtime-v1/menu9.h"
@@ -89,8 +89,8 @@ static void *block(void *parent,int w,int h,int x,int y){
 int m8_impl_frame_start(int index){return tio_frame_start(index);}
 int m8_impl_frame_index(int frame){return tio_frame_index(frame);}
 void m8_hook_render_slide(void *app){
- float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);if(!(value>=-1.0f))value=-1.0f;if(value>(float)fm_tile_count())value=(float)fm_tile_count();
- int frame=(int)(value*30.0f+15.5f);(void)m8_hook_frame(app,clamp(frame,0,30*(int)fm_tile_count()-1));
+ float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);
+ (void)m8_hook_frame(app,tio_slide_frame(value,fm_tile_count()));
 }
 const char *m8_hook_app_id(int index){
  if(index<0)return "";index=(int)fm_tile_id((unsigned)index);

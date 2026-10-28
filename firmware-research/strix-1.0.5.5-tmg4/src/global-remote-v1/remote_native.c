@@ -1,4 +1,4 @@
-/* STRIX 1.0.4.12 ONLY. Executed by LauncherThreadMsgHandler on the UI thread.
+/* STRIX 1.0.5.5 TMG4. Executed by LauncherThreadMsgHandler on the UI thread.
  * No button-driver simulation: that path blocks and includes reset/pair events.
  * Current native input interceptors retain ownership of global input policy.
  */

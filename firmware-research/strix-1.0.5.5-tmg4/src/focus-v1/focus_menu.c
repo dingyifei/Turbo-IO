@@ -1,5 +1,5 @@
 #include "../common-v1/tio_text.h"
-/* TMG2: fixed nine-cell renderer, no per-frame heap, bounded packed artwork.
+/* TMG4: bounded six/nine-cell renderer over the active tile map, no per-frame heap, bounded packed artwork.
  * All retained text and pixels live with the view. Write/swap only while idle.
  * Stock selection is authoritative; rapid input replaces, never queues, motion.
  */

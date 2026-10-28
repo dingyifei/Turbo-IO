@@ -16,7 +16,7 @@ BOOL TIOMenuLayoutIsReply(NSDictionary *e){return Reply(e)!=nil||TIOTileLayoutIs
  double _confirmedAt;void(^_done)(void);
 }
 - (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(double(^)(void))clock send:(BOOL(^)(NSData *))send{
- if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_send=[send copy];_note=TIOText(@"读取眼镜布局后可切换；需 TMG2 固件");}return self;
+ if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_send=[send copy];_note=TIOText(@"读取眼镜布局后可切换；需 TMG4 固件");}return self;
 }
 - (BOOL)busy{return _done!=nil;}
 - (BOOL)ready{return _token&&[_peer isEqual:_peerNow()]&&_allowed()&&_clock()-_confirmedAt<110&&_clock()>=_confirmedAt;}
@@ -33,7 +33,7 @@ BOOL TIOMenuLayoutIsReply(NSDictionary *e){return Reply(e)!=nil||TIOTileLayoutIs
  tml_carrier(wire,raw,false);_request=q.request;_op=q.op;_target=q.rows;_done=done?[done copy]:[^(void){} copy];NSUInteger epoch=++_epoch;
  _note=q.op==TML_QUERY?TIOText(@"正在读取眼镜布局…"):TIOText(@"等待眼镜保存布局…");
  if(!_send([NSData dataWithBytes:wire length:74])){_token=0;[self finish:TIOText(@"发送未确认，请重新读取；没有自动重试")];return;}
- dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(self->_epoch==epoch&&self.busy){self->_token=0;self->_rows=0;[self finish:TIOText(@"眼镜未回执；需 TMG2 固件。结果未知，请重新读取，不自动重试")];}});
+ dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(self->_epoch==epoch&&self.busy){self->_token=0;self->_rows=0;[self finish:TIOText(@"眼镜未回执；需 TMG4 固件。结果未知，请重新读取，不自动重试")];}});
 }
 - (void)query:(void(^)(void))done{
  if(self.busy){if(done)done();return;}_peer=[_peerNow() copy];_token=0;_rows=0;_client=arc4random_uniform(UINT32_MAX-1)+1;

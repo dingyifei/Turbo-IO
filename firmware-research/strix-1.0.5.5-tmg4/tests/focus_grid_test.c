@@ -16,6 +16,20 @@ static bool attach(void *obj,void *owner){return obj&&owner;}
 static unsigned g_lang;
 unsigned tio_lang(void){return g_lang;}
 static FMView view;
+typedef struct {int x,y;unsigned weights[9];bool moving,page;} Motion;
+static void wrap_motion(FMView *v){
+ const unsigned offsets[]={0,15,16,32,119,120,159,160,176};Motion expected[9];
+ for(unsigned rows=2;rows<=3;rows++)for(unsigned page=0;page<2;page++)for(unsigned pass=0;pass<2;pass++){
+  assert(fm_view_rows(v,rows));fm_view_suspend(v);uint32_t start=pass?UINT32_MAX-7:10000;int from=page?(int)(rows*3-1):0,to=from+1;
+  assert(fm_view_update(v,from,0,0,start-200)&&fm_view_update(v,to,0,0,start));
+  for(unsigned j=0;j<9;j++){bool drew=fm_view_step(v,start+offsets[j]);if(j<2)assert(!drew);if(j==2)assert(drew);Motion actual={.x=v->frame_x,.y=v->frame_y,.moving=v->moving,.page=v->page_motion};memcpy(actual.weights,v->weights,sizeof actual.weights);
+   if(!pass)expected[j]=actual;else{assert(actual.x==expected[j].x&&actual.y==expected[j].y&&actual.moving==expected[j].moving&&actual.page==expected[j].page&&!memcmp(actual.weights,expected[j].weights,sizeof actual.weights));}
+  }assert(!v->moving&&!v->page_motion&&!fm_view_step(v,start+1000));
+  // Latest selection replaces an interrupted animation; it never queues input.
+  for(unsigned j=0;j<400;j++){uint32_t now=start+2000+7*j;assert(fm_view_update(v,(int)(j%v->tiles.count),0,0,now));(void)fm_view_step(v,now+16);}
+  assert(fm_view_update(v,v->tiles.count-1,0,0,start+6000));(void)fm_view_step(v,start+6160);assert(v->selected==v->tiles.count-1&&!v->moving);
+ }
+}
 int main(void){
  Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy};
  assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==23);
@@ -36,8 +50,9 @@ int main(void){
  }
  TTConfig defaults;TTVisible defaults_map;tt_default(&defaults);tt_compact(&defaults,&defaults_map);assert(fm_view_tiles(&view,&defaults_map));
  assert(!fm_view_update(&view,-1,0,0,5000)&&!fm_view_update(&view,13,0,0,5000));
+ wrap_motion(&view);
  f.idle=false;assert(!fm_view_update(&view,0,0,0,5000)&&!fm_view_close(&view));f.idle=true;
  assert(fm_view_close(&view)&&f.destroyed==1);
  for(unsigned fail=1;fail<=23;fail++){f=(Fake){.idle=true,.fail=fail};assert(!fm_view_open(&view,&api,&f,attach,&f));assert(!view.root);assert(f.destroyed==(fail==1?0:1));}
- puts("PASS focus_grid: 13 indices, nine labels, suspend rerender, bounds and allocation failures");
+ puts("PASS focus_grid: mapped rows/pages/labels, 16/120/160ms timer wrap, interrupted motion, bounds and allocation failures");
 }

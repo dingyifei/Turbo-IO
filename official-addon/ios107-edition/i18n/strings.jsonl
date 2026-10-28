@@ -775,6 +775,7 @@
 {"key":"先预览范围，再确认发送文字","en":"Preview the scope, then confirm to send the text"}
 {"key":"入口未加载","en":"Entry not loaded"}
 {"key":"入口顺序、实体按键和 Apple Watch 遥控不变。眼镜保存后重启仍生效；首次升级默认三排。切换不会退出当前应用或唤醒屏幕，回菜单后查看。旧固件必须先更新 TMG2；无能力回执不会发送修改。","en":"Entry order, physical buttons, and Apple Watch Remote stay unchanged. The glasses retain the saved layout after restart; the first upgrade defaults to three rows. Switching does not exit the current app or wake the display; return to the menu to see it. Older firmware must be updated to TMG2 first; without a capability acknowledgement, no change is sent."}
+{"key":"入口顺序、实体按键和 Apple Watch 遥控不变。眼镜保存后重启仍生效；首次升级默认三排。切换不会退出当前应用或唤醒屏幕，回菜单后查看。旧固件必须先更新 TMG4；无能力回执不会发送修改。","en":"Entry order, physical buttons, and Apple Watch Remote stay unchanged. The glasses retain the saved layout after restart; the first upgrade defaults to three rows. Switching does not exit the current app or wake the display; return to the menu to see it. Older firmware must be updated to TMG4 first; without a capability acknowledgement, no change is sent."}
 {"key":"全天智记","en":"All-day Lifelog"}
 {"key":"全天智记导出","en":"All-day Lifelog export"}
 {"key":"全天智记归档失败，官方数据未改","en":"All-day Lifelog archive failed; RayNeo app data unchanged"}
@@ -1647,6 +1648,7 @@
 {"key":"眼镜未回执：确认 TMU1 固件和蓝牙。传输已停止。","en":"No acknowledgement from glasses: check TMU1 firmware and Bluetooth. Transmission stopped."}
 {"key":"眼镜未回执：需 TGR1 固件或重新连接；不补发","en":"No acknowledgement from glasses: TGR1 firmware or reconnection required; will not resend"}
 {"key":"眼镜未回执；需 TMG2 固件。结果未知，请重新读取，不自动重试","en":"No acknowledgement from glasses; TMG2 firmware required. Result unknown. Read again; will not retry automatically."}
+{"key":"眼镜未回执；需 TMG4 固件。结果未知，请重新读取，不自动重试","en":"No acknowledgement from glasses; TMG4 firmware required. Result unknown. Read again; will not retry automatically."}
 {"key":"眼镜未执行（%u）；不重试旧按键","en":"Glasses did not act (%u); will not retry the old button press"}
 {"key":"眼镜未连接","en":"Glasses not connected"}
 {"key":"眼镜未连接或升级保护中","en":"Glasses disconnected or update lock is active"}
@@ -1868,6 +1870,7 @@
 {"key":"读取最终顺序","en":"Read final order"}
 {"key":"读取眼镜布局","en":"Read glasses layout"}
 {"key":"读取眼镜布局后可切换；需 TMG2 固件","en":"Read the glasses layout before switching; requires TMG2 firmware"}
+{"key":"读取眼镜布局后可切换；需 TMG4 固件","en":"Read the glasses layout before switching; requires TMG4 firmware"}
 {"key":"调整进度","en":"Adjust progress"}
 {"key":"资料与导出","en":"Library and exports"}
 {"key":"资源与耗时","en":"Resources and timing"}

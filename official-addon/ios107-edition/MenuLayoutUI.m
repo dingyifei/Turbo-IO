@@ -35,7 +35,7 @@ BOOL TIOMenuLayoutConsume(NSDictionary *e){return [Link() consume:e]||[TileLink(
  if(p.section==0){c.textLabel.text=Link().busy?TIOText(@"正在与眼镜通信…"):TIOText(@"读取眼镜布局");c.detailTextLabel.text=Link().note;c.imageView.image=[UIImage systemImageNamed:@"arrow.clockwise"];}
  else if(p.section==1){NSUInteger rows=p.row==0?3:2;c.textLabel.text=rows==3?TIOText(@"三排 · 九宫格（默认）"):TIOText(@"两排 · 舒展留白");c.detailTextLabel.text=rows==3?TIOText(@"每页 9 项 · 32px 图标 · 紧凑浏览"):TIOText(@"每页 6 项 · 40px 图标 · 更大行距");c.imageView.image=[UIImage systemImageNamed:rows==3?@"square.grid.3x3":@"rectangle.grid.3x2"];c.accessoryType=Link().rows==rows?UITableViewCellAccessoryCheckmark:UITableViewCellAccessoryNone;}
  else if(p.section==2){c.textLabel.text=TIOText(@"tmg4.tiles.title");c.detailTextLabel.text=TIOText(@"tmg4.tiles.instructions");c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;}
- else{c.textLabel.text=TIOText(@"只调整菜单排版");c.detailTextLabel.text=TIOText(@"入口顺序、实体按键和 Apple Watch 遥控不变。眼镜保存后重启仍生效；首次升级默认三排。切换不会退出当前应用或唤醒屏幕，回菜单后查看。旧固件必须先更新 TMG2；无能力回执不会发送修改。");c.selectionStyle=UITableViewCellSelectionStyleNone;}
+ else{c.textLabel.text=TIOText(@"只调整菜单排版");c.detailTextLabel.text=TIOText(@"入口顺序、实体按键和 Apple Watch 遥控不变。眼镜保存后重启仍生效；首次升级默认三排。切换不会退出当前应用或唤醒屏幕，回菜单后查看。旧固件必须先更新 TMG4；无能力回执不会发送修改。");c.selectionStyle=UITableViewCellSelectionStyleNone;}
  c.userInteractionEnabled=p.section!=3&&!Link().busy;return c;
 }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{

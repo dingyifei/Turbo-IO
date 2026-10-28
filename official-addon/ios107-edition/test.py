@@ -72,6 +72,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
+    ctest('tmg4-timer-wrap',[FW4/'tests/timer_wrap_test.c',FW4/'src/menu-grid-v2/tile_config.c',FW4/'src/menu-grid-v2/menu_config.c'],FW4/'src')
     ctest('tmg4-knob',[FW4/'tests/knob_test.c',FW4/'src/diagnostics-v1/knob_calibration.c'],FW4/'src')
     run('tmg4-identity',['python3','-I',FW4/'tests/identity_test.py'])
     ctest('tmg4-tile-config',[FW4/'tests/tile_config_test.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')

@@ -1,4 +1,4 @@
-"""Reproduce pinned TMG3 from the exact official ZIP. Never connects to a device."""
+"""Reproduce pinned TMG4 from the exact official ZIP. Never connects to a device."""
 import argparse
 import hashlib
 import json
