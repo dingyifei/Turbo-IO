@@ -1,0 +1,487 @@
+{
+  "edits": [
+    {
+      "offset": "0x4da940",
+      "address": "0x1066a940",
+      "before": "90b583b0",
+      "after": "11f265bf",
+      "role": "Entry trampoline show",
+      "kind": "bw",
+      "target": "m8_hook_show",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da974",
+      "address": "0x1066a974",
+      "before": "b0b582b0",
+      "after": "11f270bf",
+      "role": "Entry trampoline hide",
+      "kind": "bw",
+      "target": "m8_hook_hide",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d99fc",
+      "address": "0x106699fc",
+      "before": "f0b50446",
+      "after": "12f264bf",
+      "role": "Entry trampoline destroy",
+      "kind": "bw",
+      "target": "m8_hook_destroy",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da6ae",
+      "address": "0x1066a6ae",
+      "before": "2de9f041",
+      "after": "12f25eb9",
+      "role": "Entry trampoline wheel",
+      "kind": "bw",
+      "target": "m8_hook_wheel",
+      "pad": 0
+    },
+    {
+      "offset": "0x4daa40",
+      "address": "0x1066aa40",
+      "before": "b0b582b0",
+      "after": "11f2e8bf",
+      "role": "Entry trampoline event",
+      "kind": "bw",
+      "target": "m8_hook_event",
+      "pad": 0
+    },
+    {
+      "offset": "0x3ec04c",
+      "address": "0x1057c04c",
+      "before": "b0b50c46",
+      "after": "00f319be",
+      "role": "Entry trampoline message",
+      "kind": "bw",
+      "target": "m8_hook_message",
+      "pad": 0
+    },
+    {
+      "offset": "0x5a12b0",
+      "address": "0x107312b0",
+      "before": "f0b5c3b0",
+      "after": "42f1c8be",
+      "role": "Entry trampoline dc_text",
+      "kind": "bw",
+      "target": "m8_hook_dc_text",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da1fc",
+      "address": "0x1066a1fc",
+      "before": "2de9f04f",
+      "after": "11f2c3bc",
+      "role": "Entry trampoline names",
+      "kind": "bw",
+      "target": "m8_hook_names",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d9cc8",
+      "address": "0x10669cc8",
+      "before": "2de9f047",
+      "after": "12f22eba",
+      "role": "Entry trampoline dots",
+      "kind": "bw",
+      "target": "m8_hook_dots",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d9ca6",
+      "address": "0x10669ca6",
+      "before": "98b50446",
+      "after": "12f21fba",
+      "role": "Entry trampoline delete_dots",
+      "kind": "bw",
+      "target": "m8_hook_delete_dots",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da068",
+      "address": "0x1066a068",
+      "before": "b0b584b0",
+      "after": "12f2e0b8",
+      "role": "Entry trampoline lottie",
+      "kind": "bw",
+      "target": "m8_hook_lottie",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d9c48",
+      "address": "0x10669c48",
+      "before": "80b500af",
+      "after": "11f281bf",
+      "role": "Entry trampoline app_id",
+      "kind": "bw",
+      "target": "m8_hook_app_id",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da02a",
+      "address": "0x1066a02a",
+      "before": "2de9f041",
+      "after": "12f24fb8",
+      "role": "Entry trampoline refresh_label",
+      "kind": "bw",
+      "target": "m8_hook_refresh_label",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d8d8c",
+      "address": "0x10668d8c",
+      "before": "f0b585b0",
+      "after": "18f244b8",
+      "role": "Entry trampoline vm_event",
+      "kind": "bw",
+      "target": "m8_hook_vm_event",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d984a",
+      "address": "0x1066984a",
+      "before": "0628a8bf",
+      "after": "1bf2cfbb",
+      "role": "Menu replacement frame_start",
+      "kind": "bw",
+      "target": "m8_hook_frame_start",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d9860",
+      "address": "0x10669860",
+      "before": "1e22a0f10f03",
+      "after": "1bf2c8bb00bf",
+      "role": "Menu replacement frame_index",
+      "kind": "bw",
+      "target": "m8_hook_frame_index",
+      "pad": 1
+    },
+    {
+      "offset": "0x4da42c",
+      "address": "0x1066a42c",
+      "before": "2de9f04f",
+      "after": "12f28eb8",
+      "role": "Menu replacement label_frame",
+      "kind": "bw",
+      "target": "m8_hook_label_frame",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da780",
+      "address": "0x1066a780",
+      "before": "0629a8bf",
+      "after": "11f27abf",
+      "role": "Menu replacement label_index",
+      "kind": "bw",
+      "target": "m8_hook_label_index",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d9e54",
+      "address": "0x10669e54",
+      "before": "2de9f04f",
+      "after": "12f21cbc",
+      "role": "Menu replacement indicator",
+      "kind": "bw",
+      "target": "m8_hook_indicator",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da148",
+      "address": "0x1066a148",
+      "before": "b0b50446",
+      "after": "11f209bc",
+      "role": "Menu replacement frame",
+      "kind": "bw",
+      "target": "m8_hook_frame",
+      "pad": 0
+    },
+    {
+      "offset": "0x4da17e",
+      "address": "0x1066a17e",
+      "before": "80b5b3ee0e7a",
+      "after": "11f2afbb00bf",
+      "role": "Menu replacement render_slide",
+      "kind": "bw",
+      "target": "m8_hook_render_slide",
+      "pad": 1
+    },
+    {
+      "offset": "0x4d6cdc",
+      "address": "0x10666cdc",
+      "before": "fc204bf02dff",
+      "after": "1ef23cf900bf",
+      "role": "284-byte menu allocation",
+      "kind": "bl",
+      "target": "port_allocate_menu",
+      "pad": 1
+    },
+    {
+      "offset": "0x4d6d06",
+      "address": "0x10666d06",
+      "before": "02f04dff",
+      "after": "15f257fd",
+      "role": "Initialize tail after new stock constructor",
+      "kind": "bl",
+      "target": "m8_hook_ctor",
+      "pad": 0
+    },
+    {
+      "offset": "0x4d9bec",
+      "address": "0x10669bec",
+      "before": "0721",
+      "after": "0d21",
+      "role": "Carousel item count 7 to 13",
+      "kind": "raw",
+      "target": "",
+      "pad": 0
+    },
+    {
+      "offset": "0x3da186",
+      "address": "0x1056a186",
+      "before": "00241f48204b84610360",
+      "after": "1af323ff00bf00bf00bf",
+      "role": "File callback registration",
+      "kind": "bl",
+      "target": "stream_register_shim",
+      "pad": 3
+    }
+  ],
+  "moduleBytes": 145152,
+  "moduleVA": "0x1086fec0",
+  "moduleSHA256": "ef8d92111acb04f6086cdfdc7cb3e1f8e0394d04d7824f8a6f234a5181364f16",
+  "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
+  "APBytes": 7353800,
+  "archive": {
+    "name": "StrixOS-1.0.5.5-TurboIO-TMG4-CANDIDATE-NOT-APPROVED.zip",
+    "bytes": 8809015,
+    "sha256": "aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126",
+    "md5": "f72c9a3a79ab02d968dc1415ee117509"
+  },
+  "sources": [
+    {
+      "source": "animation-runtime-v1/animation.c",
+      "sha256": "15265dc02008ab87f93cc1188c4fae80b9d2dee88e68500665b772104ea0342a"
+    },
+    {
+      "source": "app-runtime-v1/app.c",
+      "sha256": "d3829bcaf7f0391340458454727d21a3162453518fd28e96bc1f0deb93188f7e"
+    },
+    {
+      "source": "app-runtime-v1/app_command.c",
+      "sha256": "ade69f730424a7bb89945ee3139b5cd97f07353eaf3b92e2991b9c1722afa599"
+    },
+    {
+      "source": "app-runtime-v1/app_files.c",
+      "sha256": "171aedaf898977515e9efd571b804ef4f6d57ddbfc5cfe60aa2128099d2f885b"
+    },
+    {
+      "source": "app-runtime-v1/app_files_native.c",
+      "sha256": "adcc644b5daf52b3059dcf5e7b057520ddd854ba1c87ceb96621582281f070bf"
+    },
+    {
+      "source": "app-runtime-v1/app_lvgl.c",
+      "sha256": "647bb23340221923353b40a8cd4c775c6dd333e3eb41629ee2f6a005b58220af"
+    },
+    {
+      "source": "app-runtime-v1/app_runner.c",
+      "sha256": "e96b7ad1d86fc4287d21adb59aedbf2830b0f5baf3dcde956538e3d8565943b8"
+    },
+    {
+      "source": "app-runtime-v1/app_service.c",
+      "sha256": "3b513041ea38ab2fcedb9faa079e9e69d7ff9a5379864d63deaf79c93ae40c36"
+    },
+    {
+      "source": "app-runtime-v1/app_shelf.c",
+      "sha256": "7e6f99d125be8f527a9cfde93c59a0cdae325cc91e3e64cf79f1dffc81732db1"
+    },
+    {
+      "source": "app-runtime-v1/app_store.c",
+      "sha256": "89cf0a40ef3ca157fa3c952deaffe3c4539515f034d8f3b25d30e621d9c65ea5"
+    },
+    {
+      "source": "app-runtime-v1/app_view.c",
+      "sha256": "23efdf443697eceb7fa435957017224db9f5faba7dc1871e55846fb723670b72"
+    },
+    {
+      "source": "dashboard-editor-v1/editor.c",
+      "sha256": "e28f033276ecc3ac9a10461bd7e35d07558e42a3fcfe44c599ac482171be4b91"
+    },
+    {
+      "source": "dashboard-editor-v1/editor_native.c",
+      "sha256": "55dfbfcd7697e103258ed412599c9521de55c3776ecc94eced7aaf8c5ef06851"
+    },
+    {
+      "source": "dashboard-v1/card.c",
+      "sha256": "f628bfcd3301e9b1bcc3fba66c1d6d61fb6cc5105c7c1821ae293e835c444e59"
+    },
+    {
+      "source": "dashboard-v1/native.c",
+      "sha256": "92c44079c111a479252d2d898a84de480119af0a98da5339b2fec27d072a106d"
+    },
+    {
+      "source": "diagnostics-v1/command.c",
+      "sha256": "3bc827d0ad0855b02311c69a286ebdb9dad146b1b216fa2a29c571c2435b49c9"
+    },
+    {
+      "source": "diagnostics-v1/diagnostics.c",
+      "sha256": "2a8c0af6d465a11fca3792918ad9d8cfa5f454888c12de5b46859962a82c0e89"
+    },
+    {
+      "source": "diagnostics-v1/diagnostics_service.c",
+      "sha256": "a4ce6e09e8820ac09d393c4511325edacd9c69636c8a0dd0a7c1213fd66fffa2"
+    },
+    {
+      "source": "diagnostics-v1/native_light.c",
+      "sha256": "686bc9afbef20848c217f5ced374deead512b9be421d3724df0dcdaeeba8b70f"
+    },
+    {
+      "source": "display-runtime-v1/display_carrier.c",
+      "sha256": "bc2ee8205c4b34f2265cb952a0307548bbe4a8073ba91fbc1f11c2ede19ae308"
+    },
+    {
+      "source": "display-runtime-v1/display_runtime.c",
+      "sha256": "a03a15b93eef3a30fad5555749ddc9b8171f31d75a7aa768b098eb6012ea549b"
+    },
+    {
+      "source": "display-runtime-v1/native_display_file.c",
+      "sha256": "ecc8dbb5b265abb4ff065929dd58e2a820575a6c64696d016776e9a8d023d018"
+    },
+    {
+      "source": "display-runtime-v1/native_display_page.c",
+      "sha256": "08f926bba7ad54aab1ab25ef7c10a43727597ed862188d47e6ecb2d953bb85ca"
+    },
+    {
+      "source": "focus-v1/focus.c",
+      "sha256": "d589bb5ff1f0b5be349561150d4219eaf1fdbaeb953f3d2cc539f47b18b98fed"
+    },
+    {
+      "source": "focus-v1/focus_menu.c",
+      "sha256": "fb5b1327c4d2cc623557619e26d15433683d4fb6f2fd7c617d0187e749294754"
+    },
+    {
+      "source": "focus-v1/focus_menu_native.c",
+      "sha256": "b641ca1cc3a0df69c5297dbbbf784638650cc6044f15bb93691547c128208d35"
+    },
+    {
+      "source": "focus-v1/focus_service.c",
+      "sha256": "edb98f78e82fdc8554895b64084d6d21d5ce39d56e51a2e1828ff70c0f0e9a29"
+    },
+    {
+      "source": "focus-v1/focus_view.c",
+      "sha256": "a5a2d2c53019158abce687a1e442ea3b7deedd4bed4f15acb67b76cd291eaa96"
+    },
+    {
+      "source": "global-remote-v1/remote.c",
+      "sha256": "30c10c8a91c21522e9c3bb9a2fa8ddb361e219e4d2bd97bba2de2c5e01797dd6"
+    },
+    {
+      "source": "global-remote-v1/remote_native.c",
+      "sha256": "d3cb7bfabad138ff6e977959181317fcfd6904ca15a12312e1067b5e0391aaac"
+    },
+    {
+      "source": "image-upload-test/render_idle.c",
+      "sha256": "9cf5a90ba554d9371bb74e8eebac89b6a40ff262ebb72a22a086e7bdc2d36177"
+    },
+    {
+      "source": "menu8-native-lvgl.c",
+      "sha256": "b96a7e827ed4e94a439fbabb0c1167d13f7321fb1f919ce1ecf0a9bb3a52b086"
+    },
+    {
+      "source": "menu8-renderer.c",
+      "sha256": "24ddf69b65cf75e0eb4ca63e429a865ae289396bf8a7d3a0f61aebdc135ffe48"
+    },
+    {
+      "source": "music-runtime-v1/menu10.c",
+      "sha256": "1a3c9565122ec3ca3f4e0d122ec1d936df59cc66633505747eee5981344b5d89"
+    },
+    {
+      "source": "music-runtime-v1/music.c",
+      "sha256": "b0189a6fba3dbeac11722c8ce6f4f8332a7d5a1f4f883fb88e25dcff33d15b2d"
+    },
+    {
+      "source": "music-runtime-v1/music_service.c",
+      "sha256": "a32fe3cbef91f82de6ecdb17057611809acdc9d26fd993b4d85d1ce636e7e410"
+    },
+    {
+      "source": "navigation-runtime-v1/nav_lvgl.c",
+      "sha256": "3a6c98bc83f6eeca222b17b4da2dff261e32f59496b4cd83b33e8d204378fe2c"
+    },
+    {
+      "source": "navigation-runtime-v1/nav_runtime.c",
+      "sha256": "a980efeeff0d4442d13b45fa1e817adaf5eb25b381e05e864bb5791f31396f59"
+    },
+    {
+      "source": "navigation-runtime-v1/nav_service.c",
+      "sha256": "4ddbc41dc3f0e0261ad5150e96a69aae81ad889eeb2c7576c7c3cd1d78f14939"
+    },
+    {
+      "source": "navigation-runtime-v1/nav_view.c",
+      "sha256": "b8f9bd4cf668e63e41f3b88bda4e064dd5d51e4ade929e83f453710bd1b49913"
+    },
+    {
+      "source": "navigation-runtime-v1/nav_visual.c",
+      "sha256": "db18b80dd8f91182e343e165902424df13cc820fde2673221bd0c20d4777b222"
+    },
+    {
+      "source": "camera-v1/camera.c",
+      "sha256": "561d788d5f094c5dfca5cd949c4306b9ee3e508499aedf51553b2750c8fc5cb0"
+    },
+    {
+      "source": "camera-v1/camera_native.c",
+      "sha256": "e62e4dfa7f42eb497671b1b2e4e963c0a3cc90fd542ce2fc7d142cd7e7a0bbbb"
+    },
+    {
+      "source": "common-v1/business_idle.c",
+      "sha256": "1c5f4b69e8dc9c980b9b24affcc06283997da6b1c242d14085847fd79c566b62"
+    },
+    {
+      "source": "global-remote-v1/lang_flag.c",
+      "sha256": "2cd9126031af4a6ac5a6c0ce830425c0b600e1fad2e5689292e5e10cb91d2c73"
+    },
+    {
+      "source": "common-v1/tio_text.c",
+      "sha256": "a233c5df028125e4a5886096d5495570a9e5d791ffa6f12a30515be5791fdcc8"
+    },
+    {
+      "source": "menu-grid-v2/tile_config.c",
+      "sha256": "56f9fa677b35c25e9c90c0d5dcbdbbfbd866f1382fca2be99cb2f8b06bf3ae77"
+    },
+    {
+      "source": "global-remote-v1/lang_store.c",
+      "sha256": "559aaa234a1b7cbf1120d450cb85afad24fd96b575f102abcd5b713fc142d8ec"
+    },
+    {
+      "source": "diagnostics-v1/knob_calibration.c",
+      "sha256": "5c4737328a9e69166efd177724e48bcb4161d882ee961b5b68c8858151e26de4"
+    }
+  ],
+  "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
+  "APSHA256": "0d6a3ec1d4aac08351afa6b60031c96f4e3904887a61a62def3da561f6c0c02b",
+  "toolchain": {
+    "clang": "Homebrew clang version 23.1.4",
+    "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"
+  },
+  "extras": [
+    {
+      "path": "src/port_allocate.c",
+      "sha256": "e4389cfcaf644b45581fe97f706315035bb902287fdd996a7fe49489a163d67b"
+    },
+    {
+      "path": "trampolines.S",
+      "sha256": "81cef0444d490eb02b44b086298e3f404023677d2d8d2493aea2aace8ac7cbae"
+    },
+    {
+      "path": "src/app-runtime-v1/app_abi.S",
+      "sha256": "4e33a6c6f27284f2149c27279edff139911b68eefa7acfa00f6577be901ae794"
+    },
+    {
+      "path": "src/common-v1/coexist.S",
+      "sha256": "df4fcf7426a34f660c99017333baf8649940f2c0a960ba6cec4667d85042c69c"
+    }
+  ]
+}
