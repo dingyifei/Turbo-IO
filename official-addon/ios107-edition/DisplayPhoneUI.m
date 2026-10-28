@@ -33,6 +33,7 @@ static TDPPhoneTransport *Transport;
 static TDPNavFeed *NavFeed;
 
 // Read-only guards: do not stop any user task.
+BOOL TDPPhoneCaptionInputIdle(void){return NSThread.isMainThread&&[TIOOTAFlashStatus()[@"stage"] integerValue]==0&&!Session.busy&&!Session.ready&&!NavFeed.active&&TNVPauseForOTA();}
 BOOL TDPPhoneAutomaticIdle(void){
  if(!TCCameraIdleForOTA())return NO;
  if(!NSThread.isMainThread||[TIOOTAFlashStatus()[@"stage"] integerValue]!=0||

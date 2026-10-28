@@ -1,5 +1,6 @@
 #import "SubtitleHUDCore.h"
 #import "TIOLanguage.h"
+BOOL TIOCaptionInputAllowed(NSString *phase,BOOL pending,BOOL externalConflict){return !pending&&!externalConflict&&[@[@"idle",@"stopping",@"uncertain"] containsObject:phase];}
 static BOOL Var(const uint8_t *b,NSUInteger n,NSUInteger *p,uint64_t *v){*v=0;for(unsigned i=0;i<10;i++){if(*p>=n)return NO;uint8_t x=b[(*p)++];if(i==9&&(x&254))return NO;*v|=(uint64_t)(x&127)<<(i*7);if(!(x&128))return YES;}return NO;}
 NSData *TIOSubtitlePacket(NSUInteger type,NSDictionary *j){
     if(![@[@3,@5,@7] containsObject:@(type)]||![j isKindOfClass:NSDictionary.class])return nil;

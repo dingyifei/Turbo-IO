@@ -7,10 +7,17 @@
 #import <dlfcn.h>
 #import <objc/message.h>
 #import "NavigationSubtitleHUD.h"
+#import "SubtitleHUDCore.h"
+#import "DisplayPhoneUI.h"
 static NSDictionary *(^TIOCaptionHostCallback(void))(NSString *,NSDictionary *) {
     return [^NSDictionary *(NSString *operation,NSDictionary *args){
                     if(!NSThread.isMainThread)return @{@"available":@NO};
                     if([operation isEqual:@"status"])return TIOSubtitleNavigationStatus();
+                    if([operation isEqual:@"inspect"]){
+                        NSDictionary *status=TIOSubtitleNavigationStatus();
+                        BOOL allowed=TIOCaptionInputAllowed(status[@"phase"],[status[@"pending"] boolValue],!TDPPhoneCaptionInputIdle());
+                        return @{@"ok":@(allowed&&TIOSubtitleConfirmIdle())};
+                    }
                     if([operation isEqual:@"start"]){
                         // UI has just obtained explicit idle confirmation; never called automatically.
                         if(!TIOSubtitleConfirmIdle())return @{};

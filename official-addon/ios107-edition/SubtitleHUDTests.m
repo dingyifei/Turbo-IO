@@ -1,6 +1,8 @@
 #import "SubtitleHUDCore.h"
 #include <assert.h>
 int main(void){@autoreleasepool{
+    for(NSString *phase in @[@"idle",@"stopping",@"uncertain"]){assert(TIOCaptionInputAllowed(phase,NO,NO));assert(!TIOCaptionInputAllowed(phase,YES,NO));assert(!TIOCaptionInputAllowed(phase,NO,YES));}
+    for(NSString *phase in @[@"starting",@"ready",@"unknown"])assert(!TIOCaptionInputAllowed(phase,NO,NO));
     NSDictionary *preview=@{@"sid":@"official",@"scope":@"temporary",@"force":@NO,@"config":@{@"is_display":@YES}},*stop=@{@"sid":@"official",@"reason_code":@10};
     NSMutableArray *sent=[NSMutableArray new];TIOSubtitleTrial *t=[TIOSubtitleTrial new];
     NSDictionary *differentStop=@{@"sid":@"different-official-id",@"reason_code":@10,@"text":@""};

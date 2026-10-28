@@ -1,4 +1,6 @@
 #import <Foundation/Foundation.h>
+// Call only after the user explicitly confirms idle. No transport capability is required.
+BOOL TIOCaptionInputAllowed(NSString *phase,BOOL pending,BOOL externalConflict);
 // Isolated, bounded experiment. Caller supplies only an observed preview/stop contract.
 NSData *TIOSubtitlePacket(NSUInteger type, NSDictionary *json);
 NSDictionary *TIOSubtitleEnvelope(NSData *data);

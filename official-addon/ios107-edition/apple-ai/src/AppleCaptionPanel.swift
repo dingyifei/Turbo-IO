@@ -116,8 +116,7 @@ import Translation
     private func inspectMicrophones(epoch: Int) {
         guard generation == epoch, !active, !starting, !preparing, viewIfLoaded?.window != nil, UIApplication.shared.applicationState == .active else { return }
         if hostAvailable {
-            let status = AppleCaptionHost.call("status")
-            guard status["available"] as? Bool == true, status["phase"] as? String == "idle", status["pending"] as? Bool != true else {
+            guard AppleCaptionHost.call("inspect")["ok"] as? Bool == true else {
                 state = t("Glasses are busy. End their session before inspecting microphone inputs.", "眼镜正忙，请先结束会话再查看麦克风输入。")
                 tableView.reloadData(); return
             }
