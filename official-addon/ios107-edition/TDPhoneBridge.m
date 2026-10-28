@@ -27,7 +27,7 @@
 @end
 @implementation TDDriver
 - (instancetype)init{if((self=[super init])){
- _peer=[TIOProtocolDevice() copy]?:@"";_store=[[TDPhoneStore alloc]initWithBuild:TD_BUILD_TMG4 device:_peer];NSString *peer=_peer;
+ _peer=[TIOProtocolDevice() copy]?:@"";_store=[[TDPhoneStore alloc]initWithBuild:0 device:_peer];NSString *peer=_peer;
  NSURL *root=[NSURL fileURLWithPath:[NSHomeDirectory()stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/DiagnosticsTDG1"]];
  _transport=[[TIOGlassesFileTransport alloc]initWithRoot:root device:peer currentDevice:^{return TIOProtocolDevice();} call:^BOOL(NSString *method,NSDictionary *args,void(^done)(id)){
   if(!peer.length||![peer isEqual:TIOProtocolDevice()]||[TIOOTAFlashStatus()[@"stage"]unsignedIntegerValue]!=0)return NO;

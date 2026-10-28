@@ -9,6 +9,8 @@ static uint32_t clock_ms(void *p){return ((Probe *)p)->now;}
 static void probe(void *p,TDDiagnostics *d){Probe *q=p;q->calls++;q->now+=q->delay;td_metric(d,TD_LV_USED,123,true);}
 static void fix_crc(uint8_t *p){uint32_t c=td_crc(p,252);for(unsigned i=0;i<4;i++)p[252+i]=(uint8_t)(c>>(i*8));}
 int main(void){
+ TDSample family={.build=0x00050001u,.session=1,.sequence=1,.caps=0xff,.detent=600},decoded;uint8_t familyWire[TD_WIRE_BYTES];
+ assert(td_encode(&family,familyWire,sizeof familyWire)&&!memcmp(familyWire+124,"TMG5",4));assert(td_decode(familyWire,sizeof familyWire,&decoded)&&decoded.caps==0xff);family.build=TD_BUILD_TMG4;assert(!td_encode(&family,familyWire,sizeof familyWire));
  TDDiagnostics d;TDSample s,out;Probe p={0};uint8_t wire[TD_WIRE_BYTES];
  td_init(&d,TD_BUILD_TMG4);assert(!d.enabled&&sizeof d<=2048);
  assert(!td_sample(&d,0,true,probe,clock_ms,&p,&s)&&!p.calls);

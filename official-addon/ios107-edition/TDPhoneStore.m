@@ -3,22 +3,23 @@
 #import "diagnostics.h"
 static NSArray<NSString *> *Names(void){return @[@"lv_configured_bytes",@"lv_used_bytes",@"lv_peak_bytes",@"lv_free_bytes",@"lv_largest_free_bytes",@"system_arena_bytes",@"system_used_bytes",@"system_peak_bytes",@"system_free_bytes",@"system_largest_free_bytes",@"instrumented_owned_bytes",@"instrumented_owned_peak_bytes",@"allocation_failures",@"rx_packets",@"rx_bytes",@"rx_max_ms",@"render_submissions",@"render_max_ms",@"errors"];}
 @implementation TDPhoneStore {
- uint32_t _build,_session,_sequence,_tick;NSString *_device;BOOL _active;
+ uint32_t _build,_configuredBuild,_session,_sequence,_tick;NSString *_device;BOOL _active;
  NSMutableArray<NSDictionary *> *_samples;NSUInteger _evicted,_gaps;
  NSTimeInterval _lastReceipt;
 }
 - (instancetype)initWithBuild:(uint32_t)build device:(NSString *)device{
- if((self=[super init])){_build=build;_device=[device copy];_samples=[NSMutableArray new];}return self;
+ if((self=[super init])){_configuredBuild=_build=build;_device=[device copy];_samples=[NSMutableArray new];}return self;
 }
 - (BOOL)begin:(uint32_t)session{
  NSAssert(NSThread.isMainThread,@"main executor");if(!session||!_device.length||_active)return NO;
- _session=session;_sequence=_tick=0;_evicted=_gaps=0;_lastReceipt=0;[_samples removeAllObjects];_active=YES;return YES;
+ _build=_configuredBuild;_session=session;_sequence=_tick=0;_evicted=_gaps=0;_lastReceipt=0;[_samples removeAllObjects];_active=YES;return YES;
 }
 - (void)end{NSAssert(NSThread.isMainThread,@"main executor");_active=NO;}
 - (BOOL)receive:(NSData *)packet fromDevice:(NSString *)device{
  NSAssert(NSThread.isMainThread,@"main executor");TDSample s;
- if(!_active||![device isEqual:_device]||![packet isKindOfClass:NSData.class]||!td_decode(packet.bytes,packet.length,&s)||s.kind!=TD_SAMPLE||s.build!=_build||s.session!=_session)return NO;
+ if(!_active||![device isEqual:_device]||![packet isKindOfClass:NSData.class]||!td_decode(packet.bytes,packet.length,&s)||s.kind!=TD_SAMPLE||(_build&&s.build!=_build)||s.session!=_session)return NO;
  if(_sequence){uint32_t ds=s.sequence-_sequence,dt=s.tick_ms-_tick;if(!ds||ds>=0x80000000u||dt>=0x80000000u)return NO;_gaps=MIN((uint64_t)UINT32_MAX,(uint64_t)_gaps+ds-1);}
+ _build=s.build; // Auto mode pins the first validated family for this run.
  NSMutableDictionary *metrics=[NSMutableDictionary new];NSArray *names=Names();
  for(NSUInteger i=0;i<names.count;i++)metrics[names[i]]=(s.valid&(1u<<i))?@(s.values[i]):NSNull.null;
  NSDictionary *row=@{@"build":[NSString stringWithFormat:@"%08x",s.build],@"session":@(s.session),@"sequence":@(s.sequence),@"tick_ms":@(s.tick_ms),@"phone_received_uptime_s":@(NSProcessInfo.processInfo.systemUptime),@"phone_received_wall_time_s":@(NSDate.date.timeIntervalSince1970),@"probe_ms":@(s.probe_ms),@"metrics":metrics,@"ring_events":@(s.event_count),@"ring_overwritten":@(s.events_lost),@"probe_stopped_for_latency":@(s.flags==1)};

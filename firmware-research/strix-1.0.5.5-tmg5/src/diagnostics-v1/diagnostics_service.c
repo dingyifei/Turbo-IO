@@ -46,12 +46,12 @@ TIOImageResult td_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
 }
 bool td_message_is_ours(const TIONativeMessage *m){return m&&m->id==TD_MESSAGE;}
 static void reply_query(void *app,Control *c,TDCommand q,bool gate){
- TDSample s;memset(&s,0,sizeof s);s.build=TD_BUILD_TMG4;s.session=q.session;s.sequence=q.sequence;s.tick_ms=stream_tick();s.kind=q.op==TDQ_STATUS?TD_STATUS:TD_CALIBRATION;s.caps=TD_CAPS_ALL;s.detent=TK_DETENT_RAW;s.calibration_result=gate?TK_OK:TK_BLOCKED;
+ TDSample s;memset(&s,0,sizeof s);s.build=TD_BUILD_TMG5;s.session=q.session;s.sequence=q.sequence;s.tick_ms=stream_tick();s.kind=q.op==TDQ_STATUS?TD_STATUS:TD_CALIBRATION;s.caps=TD_CAPS_TMG5;s.detent=TK_DETENT_RAW;s.calibration_result=gate?TK_OK:TK_BLOCKED;
  if(gate&&q.op==TDQ_STATUS){
   if(c){c->nand_valid=false;c->nand_total=c->nand_available=0;}
   /* One-shot RAM scratch is fixed-size heap state, not a new timer/controller. */
   TDDiagnostics *d=stream_memalign(8,sizeof *d);if(!d)s.calibration_result=TK_UNAVAILABLE;else{
-   td_init(d,TD_BUILD_TMG4);TDLightOwner owner={td_gettid()};uint32_t began=stream_tick();td_stock_light(&owner,d);s.probe_ms=stream_tick()-began;s.valid=d->valid;memcpy(s.values,d->values,sizeof s.values);stream_free(d);if(s.probe_ms>10)s.flags=1;
+   td_init(d,TD_BUILD_TMG5);TDLightOwner owner={td_gettid()};uint32_t began=stream_tick();td_stock_light(&owner,d);s.probe_ms=stream_tick()-began;s.valid=d->valid;memcpy(s.values,d->values,sizeof s.values);stream_free(d);if(s.probe_ms>10)s.flags=1;
   }
   uint64_t total,available;if(nand(&total,&available)){s.extension_valid|=TD_EXT_NAND;s.nand_total=total;s.nand_available=available;if(c){c->nand_total=total;c->nand_available=available;c->nand_valid=true;}}
  }else if(gate)s.calibration_result=(uint8_t)tgr_knob_command(app,&q,stream_tick());
@@ -65,6 +65,6 @@ void td_message_dispatch(const TIONativeMessage *m){
  s=app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;if(!s)return;c=s->diagnostics;
  if(q.op==TDQ_STOP){if(c&&c->d.session==q.session&&q.sequence>c->command_seq)discard(c);return;}if(c)return;
  if(!nav_business_idle())return;int tid=td_gettid();if(tid<0)return;c=stream_memalign(8,sizeof *c);if(!c)return;memset(c,0,sizeof *c);c->slot=s;c->owner.owner_tid=tid;c->command_seq=q.sequence;
- td_init(&c->d,TD_BUILD_TMG4);if(!td_start(&c->d,q.session,stream_tick(),q.lease_ms)){stream_free(c);return;}if(tgr_runtime_allowed())c->nand_valid=nand(&c->nand_total,&c->nand_available);
+ td_init(&c->d,TD_BUILD_TMG5);if(!td_start(&c->d,q.session,stream_tick(),q.lease_ms)){stream_free(c);return;}if(tgr_runtime_allowed())c->nand_valid=nand(&c->nand_total,&c->nand_available);
  td_allocation(&c->d,stream_tick(),sizeof *c,true);c->timer=stream_timer_create(tick,1000,c);if(!c->timer){stream_free(c);return;}s->diagnostics=c;tick(c->timer);
 }
