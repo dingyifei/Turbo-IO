@@ -28,7 +28,7 @@ static void Codec(void){
  TLGReply r={0x01020304,TLG_SET,TLG_ZH,TLG_OK,TLG_SOURCE_PHONE},got={0};uint8_t raw[32],wire[74],back[32];tlg_reply_encode(raw,&r);
  CHECK([Hex(raw,32) isEqual:@"544c41310101010004030201010000000000000000000000000000004d8c4d53"]);CHECK(tlg_reply_decode(raw,32,&got));CHECK(got.request==r.request&&got.op==r.op&&got.lang==r.lang&&got.result==r.result&&got.source==r.source);
  CHECK(tlg_carrier(wire,raw,true)==74);CHECK([Hex(wire,10) isEqual:@"0801107f1a44544c413a"]);CHECK(tlg_uncarrier(wire,74,back,true));CHECK(!memcmp(raw,back,32));CHECK(!tlg_uncarrier(wire,74,back,false));
- const int indexes[]={0,4,5,6,7,8,12,13,27};const uint8_t values[]={0,2,2,2,3,0,3,1,1};
+ const int indexes[]={0,4,5,6,7,8,12,13,27};const uint8_t values[]={0,2,2,2,5,0,3,1,1};
  for(int j=0;j<9;j++){uint8_t bad[32];memcpy(bad,raw,32);bad[indexes[j]]=values[j];if(indexes[j]==8)memset(bad+8,0,4);CRC(bad);CHECK(!tlg_reply_decode(bad,32,&got));}
  raw[31]^=1;CHECK(!tlg_reply_decode(raw,32,&got));raw[31]^=1;
  CHECK(!tlg_reply_decode(raw,31,&got));CHECK(!tlg_reply_decode(raw,33,&got));CHECK(!tlg_reply_decode(NULL,32,&got));CHECK(!tlg_reply_decode(raw,32,NULL));
@@ -47,11 +47,11 @@ static void Codec(void){
 - (instancetype)init{if((self=[super init])){_peer=@"peer-a";_allowed=YES;_submit=YES;_now=100;_sent=[NSMutableArray new];__weak Fixture *w=self;_link=[[TIOLanguageFlagLink alloc]initWithPeer:^{return w.peer;} allowed:^BOOL{return w.allowed;} clock:^{return w.now;} send:^BOOL(NSData *p){[w.sent addObject:p];return w.submit;}];}return self;}
 @end
 static TLGCommand Sent(Fixture *f){uint8_t raw[32];TLGCommand q={0};CHECK(tlg_uncarrier(f.sent.lastObject.bytes,f.sent.lastObject.length,raw,false));CHECK(tlg_decode(raw,32,&q));return q;}
-static NSDictionary *Event(NSString *peer,TLGCommand q,uint8_t lang,uint8_t result){TLGReply r={q.request,q.op,lang,result,TLG_SOURCE_PHONE};uint8_t raw[32],wire[74];tlg_reply_encode(raw,&r);tlg_carrier(wire,raw,true);return @{@"eventType":@"messageReceived",@"message":@{@"deviceId":peer,@"businessId":@15,@"payload":[NSData dataWithBytes:wire length:74]}};}
+static NSDictionary *Event(NSString *peer,TLGCommand q,uint8_t lang,uint8_t result){TLGReply r={q.request,q.op,lang,result,TLG_SOURCE_PERSISTED};uint8_t raw[32],wire[74];tlg_reply_encode(raw,&r);tlg_carrier(wire,raw,true);return @{@"eventType":@"messageReceived",@"message":@{@"deviceId":peer,@"businessId":@15,@"payload":[NSData dataWithBytes:wire length:74]}};}
 static void Ack(Fixture *f,uint8_t lang){CHECK([f.link consume:Event(f.peer,Sent(f),lang,TLG_OK)]);}
 static BOOL State(Fixture *f,NSString *s){return [f.link.status[@"state"]isEqual:s];}
 static void Link(void){
- Fixture *f=[Fixture new];CHECK(State(f,@"idle"));[f.link pushLanguage:TLG_ZH];CHECK(f.sent.count==1&&f.link.busy&&State(f,@"sending"));TLGCommand first=Sent(f);CHECK(first.op==TLG_SET&&first.lang==TLG_ZH&&first.request);Ack(f,TLG_ZH);CHECK(State(f,@"acked")&&!f.link.busy);CHECK([f.link.status[@"lang"]isEqual:@1]);CHECK([f.link.status[@"source"]isEqual:@1]);CHECK([f.link.status[@"lastAckAge"]doubleValue]==0);
+ Fixture *f=[Fixture new];CHECK(State(f,@"idle"));[f.link pushLanguage:TLG_ZH];CHECK(f.sent.count==1&&f.link.busy&&State(f,@"sending"));TLGCommand first=Sent(f);CHECK(first.op==TLG_SET&&first.lang==TLG_ZH&&first.request);Ack(f,TLG_ZH);CHECK(State(f,@"acked")&&!f.link.busy);CHECK([f.link.status[@"lang"]isEqual:@1]);CHECK([f.link.status[@"source"]isEqual:@2]);CHECK([f.link.status[@"lastAckAge"]doubleValue]==0);
  CHECK([NSSet setWithArray:f.link.status.allKeys].count==4);CHECK(f.link.status[@"deviceId"]==nil);CHECK([[f.link.status description]rangeOfString:f.peer].location==NSNotFound);
  [f.link pushLanguage:TLG_ZH];CHECK(f.sent.count==1);f.now+=29.999;[f.link pushLanguage:TLG_ZH];CHECK(f.sent.count==1);f.now+=.001;[f.link pushLanguage:TLG_ZH];CHECK(f.sent.count==2);Ack(f,TLG_ZH);
  // Latest wins, including changing back to the in-flight value.
@@ -71,6 +71,10 @@ static void Link(void){
  for(int result=TLG_BLOCKED;result<=TLG_INVALID;result++){f=[Fixture new];[f.link pushLanguage:TLG_EN];[f.link pushLanguage:TLG_ZH];CHECK([f.link consume:Event(f.peer,Sent(f),TLG_EN,result)]);CHECK(State(f,result==TLG_BLOCKED?@"blocked":@"failed"));CHECK(!f.link.busy&&f.sent.count==1);}
  f=[Fixture new];f.submit=NO;[f.link pushLanguage:TLG_EN];CHECK(State(f,@"failed")&&!f.link.busy);CHECK(f.sent.count==1);f.now+=5;CHECK(State(f,@"failed"));
  f=[Fixture new];[f.link pushLanguage:TLG_ZH];CHECK([f.link consume:Event(f.peer,Sent(f),TLG_EN,TLG_OK)]);CHECK(State(f,@"failed")&&!f.link.busy);
+ // A RAM-only success must not claim durable synchronization.
+ f=[Fixture new];[f.link pushLanguage:TLG_EN];first=Sent(f);TLGReply legacy={first.request,TLG_SET,TLG_EN,TLG_OK,TLG_SOURCE_PHONE};uint8_t lr[32],lw[74];tlg_reply_encode(lr,&legacy);tlg_carrier(lw,lr,true);CHECK(([f.link consume:@{@"eventType":@"messageReceived",@"message":@{@"deviceId":f.peer,@"businessId":@15,@"payload":[NSData dataWithBytes:lw length:74]}}]));CHECK(State(f,@"failed"));
+ for(unsigned result=TLG_STORAGE;result<=TLG_UNAVAILABLE;result++){f=[Fixture new];[f.link pushLanguage:TLG_EN];[f.link consume:Event(f.peer,Sent(f),TLG_EN,result)];CHECK(State(f,result==TLG_STORAGE?@"storage":@"unavailable")&&!f.link.busy);}
+ f=[Fixture new];[f.link pushLanguage:TLG_EN];f.now+=3;CHECK(State(f,@"unsupported"));[f.link syncLanguage:TLG_ZH];CHECK(f.sent.count==2&&f.link.busy);Ack(f,TLG_ZH);CHECK(State(f,@"acked")&&[f.link.status[@"source"]isEqual:@2]);
  // An uncertain intervening SET invalidates suppression based on an older ACK.
  f=[Fixture new];[f.link pushLanguage:TLG_EN];Ack(f,TLG_EN);[f.link pushLanguage:TLG_ZH];[f.link cancel];[f.link pushLanguage:TLG_EN];CHECK(f.sent.count==3&&f.link.busy);
  // Reconnecting through nil clears unsupported; unchanged peer does not.

@@ -33,3 +33,5 @@ void TIOLanguageFlagStart(void){
 }
 BOOL TIOLanguageFlagConsume(NSDictionary *e){return [Link() consume:e];}
 NSDictionary *TIOLanguageFlagStatus(void){return Link().status;}
+
+void TIOLanguageFlagSync(void){NSCAssert(NSThread.isMainThread,@"main only");[Link() syncLanguage:TIOGlassesLanguageCode(TIOUILanguage())];}

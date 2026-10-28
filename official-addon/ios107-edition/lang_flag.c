@@ -11,7 +11,7 @@ bool tlg_decode(const uint8_t *p,size_t n,TLGCommand *q){
 }
 void tlg_encode(uint8_t *p,const TLGCommand *q){memset(p,0,32);memcpy(p,"TLG1",4);p[4]=1;p[5]=q->op;p[6]=q->lang;w32(p+8,q->request);w32(p+28,tlg_crc(p,28));}
 bool tlg_reply_decode(const uint8_t *p,size_t n,TLGReply *q){
- if(!q||!base(p,n,"TLA1")||p[7]>TLG_INVALID||p[12]>TLG_SOURCE_PERSISTED)return false;
+ if(!q||!base(p,n,"TLA1")||p[7]>TLG_UNAVAILABLE||p[12]>TLG_SOURCE_PERSISTED)return false;
  for(unsigned i=13;i<28;i++)if(p[i])return false;
  *q=(TLGReply){u32(p+8),p[5],p[6],p[7],p[12]};return true;
 }

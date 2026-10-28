@@ -2,26 +2,18 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-static void crc(uint8_t p[32]){uint32_t c=tlg_crc(p,28);for(unsigned i=0;i<4;i++)p[28+i]=(uint8_t)(c>>(8*i));}
+typedef struct {uint8_t bytes[2][21];int n[2];unsigned reads,writes;bool fail;} Disk;
+static int read_bank(void *ctx,unsigned b,uint8_t *p,size_t n){Disk *d=ctx;assert(b<2&&n==21);d->reads++;memcpy(p,d->bytes[b],(size_t)d->n[b]);return d->n[b];}
+static bool write_bank(void *ctx,unsigned b,const uint8_t *p,size_t n){Disk *d=ctx;assert(b<2&&n==20);d->writes++;if(d->fail)return false;memcpy(d->bytes[b],p,n);d->n[b]=(int)n;return true;}
 int main(void){
- TLGLanguageState state={0};TLGCommand q={1,TLG_QUERY,TLG_EN},got;TLGReply reply,decoded;
- assert(!tlg_state_accept(&state,&q,true,&reply));assert(reply.lang==TLG_EN&&reply.source==TLG_SOURCE_DEFAULT);
- q=(TLGCommand){2,TLG_SET,TLG_ZH};assert(tlg_state_accept(&state,&q,true,&reply));
- assert(state.lang==TLG_ZH&&reply.source==TLG_SOURCE_PHONE);
- assert(!tlg_state_accept(&state,&q,true,&reply));
- q=(TLGCommand){3,TLG_SET,TLG_EN};assert(!tlg_state_accept(&state,&q,false,&reply));assert(reply.result==TLG_BLOCKED&&state.lang==TLG_ZH);
- q.op=TLG_QUERY;q.lang=TLG_EN;assert(!tlg_state_accept(&state,&q,true,&reply));assert(reply.lang==TLG_ZH&&reply.source==TLG_SOURCE_PHONE);
- uint8_t raw[32],wire[75],back[32];tlg_reply_encode(raw,&reply);assert(tlg_reply_decode(raw,32,&decoded));assert(decoded.source<=1);
- tlg_carrier(wire,raw,true);assert(tlg_uncarrier(wire,74,back,true)&&!memcmp(raw,back,32));
- for(unsigned n=0;n<80;n++)if(n!=74)assert(!tlg_uncarrier(wire,n,back,true));
- q=(TLGCommand){4,TLG_SET,TLG_EN};tlg_encode(raw,&q);assert(tlg_decode(raw,32,&got));
- tlg_carrier(wire,raw,false);assert(tlg_uncarrier(wire,74,back,false)&&tlg_decode(back,32,&got));
- for(unsigned n=0;n<40;n++)if(n!=32)assert(!tlg_decode(raw,n,&got));
- for(unsigned i=0;i<32;i++){uint8_t bad[32];memcpy(bad,raw,32);bad[i]^=1;assert(!tlg_decode(bad,32,&got));}
- for(unsigned i=12;i<28;i++){uint8_t bad[32];memcpy(bad,raw,32);bad[i]=1;crc(bad);assert(!tlg_decode(bad,32,&got));}
- raw[6]=2;crc(raw);assert(!tlg_decode(raw,32,&got));raw[6]=0;raw[5]=TLG_QUERY;raw[6]=TLG_ZH;crc(raw);assert(!tlg_decode(raw,32,&got));
- wire[10]='g';assert(!tlg_uncarrier(wire,74,back,false));
- // A new RAM controller always starts in English; no persisted source exists.
- state=(TLGLanguageState){0};q=(TLGCommand){5,TLG_QUERY,TLG_EN};assert(!tlg_state_accept(&state,&q,true,&reply));assert(reply.lang==TLG_EN&&reply.source==0);
- puts("PASS TLG1 parse bounds, RAM state, blocked SET, source 0/1");
+ Disk d={0};TLSIO io={&d,read_bank,write_bank};TLGLanguageState s={0};TLGReply r,out;TLGCommand q={1,TLG_SET,TLG_ZH};
+ assert(!tlg_state_accept(&s,&q,true,&io,&r)&&r.result==TLG_UNAVAILABLE&&d.reads==0&&d.writes==0&&s.lang==TLG_EN);
+ assert(!tlg_state_load(&s,&io)&&d.reads==2&&s.lang==TLG_EN&&s.source==0);q=(TLGCommand){2,TLG_SET,TLG_EN};assert(!tlg_state_accept(&s,&q,true,&io,&r)&&r.result==TLG_OK&&r.source==2&&d.writes==1);
+ q=(TLGCommand){3,TLG_SET,TLG_ZH};assert(tlg_state_accept(&s,&q,true,&io,&r)&&r.result==TLG_OK&&r.source==2);unsigned writes=d.writes,reads=d.reads;assert(!tlg_state_accept(&s,&q,true,&io,&r)&&d.writes==writes);
+ q=(TLGCommand){4,TLG_QUERY,TLG_EN};assert(!tlg_state_accept(&s,&q,true,&io,&r)&&r.lang==TLG_ZH&&r.source==2);assert(d.reads>=reads);reads=d.reads;assert(!tlg_state_accept(&s,&q,true,&io,&r)&&d.reads==reads);
+ TLGLanguageState reboot={0};assert(tlg_state_load(&reboot,&io)&&reboot.lang==TLG_ZH&&reboot.source==2);
+ q=(TLGCommand){5,TLG_SET,TLG_EN};assert(!tlg_state_accept(&reboot,&q,false,&io,&r)&&r.result==TLG_BLOCKED&&reboot.lang==TLG_ZH);d.fail=true;assert(!tlg_state_accept(&reboot,&q,true,&io,&r)&&r.result==TLG_STORAGE&&reboot.lang==TLG_ZH);
+ uint8_t raw[32],wire[74],back[32];tlg_reply_encode(raw,&r);assert(tlg_reply_decode(raw,32,&out)&&out.source==2&&out.result==TLG_STORAGE);tlg_carrier(wire,raw,true);assert(tlg_uncarrier(wire,74,back,true)&&!memcmp(raw,back,32));
+ for(unsigned n=0;n<80;n++)if(n!=74)assert(!tlg_uncarrier(wire,n,back,true));for(unsigned n=0;n<40;n++)if(n!=32)assert(!tlg_reply_decode(raw,n,&out));for(unsigned i=0;i<32;i++){raw[i]^=1;assert(!tlg_reply_decode(raw,32,&out));raw[i]^=1;}
+ puts("PASS durable TLG1: pre-show refusal, explicit EN, ZH reboot source2, no query reads and no success after storage failure");
 }

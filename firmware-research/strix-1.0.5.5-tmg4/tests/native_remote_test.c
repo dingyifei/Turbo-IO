@@ -68,9 +68,11 @@ int tap_fs_fclose(void *p){(void)p;return io_fail==FAIL_CLOSE?-1:0;}
 int *tap_fs_errno(void){return &file_error;}
 static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+0xa0)=13;for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=0;fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
 static TTReply request(TTCommand q){uint8_t raw[32],wire[74];tt_encode(raw,&q);tt_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TTReply r;assert(tt_uncarrier(reply_wire,74,raw,true)&&tt_reply_decode(raw,32,&r));return r;}
+static TLGReply language_request(TLGCommand q){uint8_t raw[32],wire[74];tlg_encode(raw,&q);tlg_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TLGReply r;assert(tlg_uncarrier(reply_wire,74,raw,true)&&tlg_reply_decode(raw,32,&r));return r;}
 int main(void){
  reset();TTVisible map;fm_tile_snapshot(&map);assert(map.count==13&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
- assert(fm_menu_rows()==3&&reads==4);unsigned before=reads;assert(fm_menu_rows()==3&&reads==before);*(uint32_t *)(app+0x88)=12;assert(fm_tiles_apply(app)&&snaps==2&&snap_count[0]==13&&snap_count[1]==13);assert(!fm_tiles_apply(app));
+ TLGReply lr=language_request((TLGCommand){10,TLG_SET,TLG_ZH});assert(lr.result==TLG_UNAVAILABLE&&lr.source==0&&reads==0&&writes==0&&tio_lang()==TLG_EN);
+ assert(fm_menu_rows()==3&&reads==6);unsigned before=reads;assert(fm_menu_rows()==3&&reads==before);*(uint32_t *)(app+0x88)=12;assert(fm_tiles_apply(app)&&snaps==2&&snap_count[0]==13&&snap_count[1]==13);assert(!fm_tiles_apply(app));
  r=request((TTCommand){.op=TT_QUERY,.request=2,.client=2});assert(r.result==TT_OK&&r.token==77&&reads==before+2);snaps=0;detail_open=true;
  r=request((TTCommand){.op=TT_SET,.request=3,.client=2,.token=r.token,.generation=r.generation,.rank=719,.hide=0xf80});assert(r.result==TT_OK&&writes==1&&fm_tile_count()==13&&snaps==0);detail_open=false;render_idle=false;fm_sync(app);assert(fm_tile_count()==13);render_idle=true;awake=false;fm_sync(app);assert(fm_tile_count()==13);awake=true;fm_sync(app);assert(fm_tile_count()==8&&fm_tile_id(7)==12&&fm_tile_rank(12)==7&&*(uint32_t *)(app+0xa0)==8&&*(uint32_t *)(app+0x88)==7&&snaps==2&&snap_count[0]==13&&snap_count[1]==8);
  fm_tiles_forget(app);assert(fm_tile_count()==13);assert(fm_tiles_apply(app)&&fm_tile_count()==8);before=reads;fm_tile_snapshot(&map);assert(reads==before&&map.count==8);
@@ -80,6 +82,12 @@ int main(void){
  const int write_failures[]={FAIL_OPEN,FAIL_ERROR,FAIL_CLOSE,FAIL_WRITE,FAIL_WRITE_ZERO,FAIL_FLUSH,FAIL_FILENO,FAIL_SYNC,FAIL_WRITE_BIG};
  for(unsigned i=0;i<sizeof write_failures/sizeof *write_failures;i++){io_fail=write_failures[i];assert(!tt_file_write(NULL,1,raw,32));}
  io_fail=0;assert(tt_file_write(NULL,0,raw,32));const int read_failures[]={FAIL_OPEN,FAIL_READ,FAIL_READ_ZERO,FAIL_ERROR,FAIL_CLOSE,FAIL_READ_BIG};for(unsigned i=0;i<sizeof read_failures/sizeof *read_failures;i++){io_fail=read_failures[i];assert(tt_file_read(NULL,0,reread,33)==-1);}io_fail=0;
+ // Run the same durability/progress cases through the language adapter.
+ uint8_t lang_raw[20],lang_back[21];tls_file_encode(lang_raw,TLG_ZH,11);chunk=3;assert(tls_file_write(NULL,0,lang_raw,20)&&tls_file_read(NULL,0,lang_back,21)==20&&!memcmp(lang_raw,lang_back,20));chunk=0;
+ for(unsigned i=0;i<sizeof write_failures/sizeof *write_failures;i++){io_fail=write_failures[i];assert(!tls_file_write(NULL,1,lang_raw,20));}io_fail=0;assert(tls_file_write(NULL,0,lang_raw,20));for(unsigned i=0;i<sizeof read_failures/sizeof *read_failures;i++){io_fail=read_failures[i];assert(tls_file_read(NULL,0,lang_back,21)==-1);}io_fail=0;
+ // A real TLG1 handler query reads cached state; reboot loading is lazy.
+ before=reads;lr=language_request((TLGCommand){11,TLG_QUERY,TLG_EN});assert(lr.result==TLG_OK&&reads==before);lr=language_request((TLGCommand){12,TLG_SET,TLG_ZH});assert(lr.result==TLG_OK&&lr.source==2&&tio_lang()==TLG_ZH);
+ free(timer.user);timer=(HostTimer){0};before=reads;assert(tio_lang()==TLG_EN&&reads==before);assert(fm_menu_rows()==3&&tio_lang()==TLG_ZH&&find()->language.source==2&&reads==before+6);before=reads;lr=language_request((TLGCommand){13,TLG_QUERY,TLG_EN});assert(lr.source==2&&lr.lang==TLG_ZH&&reads==before);
  reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==13);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
  reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling");return 0;
 }

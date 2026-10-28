@@ -9,6 +9,7 @@ extern void fm_language_changed(void),fm_sync(void *);
 #include "../menu-grid-v2/menu_files.inc"
 #include "../menu-grid-v2/tile_native.h"
 #include "../menu-grid-v2/tile_files.inc"
+#include "lang_files.inc"
 #include "../image-upload-test/native_file_bridge.h"
 #include <string.h>
 extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_next(void *),*stream_timer_create(void (*)(void *),uint32_t,void *);
@@ -50,7 +51,7 @@ static Control *find(void){
 }
 unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
 unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
- c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
+ c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);if(tlg_state_load(&c->language,&tls_io))fm_language_changed();c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
  }return c?c->menu.stored.rows:3;}
 void fm_tile_snapshot(TTVisible *out){Control *c=find();if(c){*out=c->active;return;}TTConfig defaults;tt_default(&defaults);(void)tt_compact(&defaults,out);}
 unsigned fm_tile_count(void){Control *c=find();return c?c->active.count:13;}
@@ -121,7 +122,7 @@ void tgr_native_message(const TIONativeMessage *m){
  if(tlg_uncarrier(m->data,m->bytes,raw,false)){
   TLGCommand flag;if(!tlg_decode(raw,sizeof raw,&flag))return;
   Control *c=control();if(!c)return;TLGReply reply;
-  if(tlg_state_accept(&c->language,&flag,allowed(),&reply))fm_language_changed();
+  if(tlg_state_accept(&c->language,&flag,allowed(),&tls_io,&reply))fm_language_changed();
   uint8_t out[74];tlg_reply_encode(raw,&reply);tlg_carrier(out,raw,true);
   (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
  }

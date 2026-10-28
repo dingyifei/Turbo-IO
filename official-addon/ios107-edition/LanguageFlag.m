@@ -47,12 +47,13 @@ BOOL TIOLanguageFlagIsReply(NSDictionary *e){return Reply(e,NULL);}
   typeof(self) strong=weak;if(strong&&strong->_epoch==epoch)[strong refresh];
  });
 }
+- (void)syncLanguage:(uint8_t)lang{[self refresh];if(self.busy)return;_unsupported=NO;_ackUsable=NO;[self pushLanguage:lang];}
 - (BOOL)consume:(NSDictionary *)e{
  TLGReply r;if(!Reply(e,&r))return NO;
  [self refresh];if(!_request||![e[@"message"][@"deviceId"]isEqual:_peer]||r.request!=_request||r.op!=TLG_SET)return YES;
  _lang=r.lang;_source=r.source;
- if(r.result!=TLG_OK){[self finish:r.result==TLG_BLOCKED?@"blocked":@"failed"];return YES;}
- if(r.lang!=_target){[self finish:@"failed"];return YES;}
+ if(r.result!=TLG_OK){[self finish:r.result==TLG_BLOCKED?@"blocked":r.result==TLG_STORAGE?@"storage":r.result==TLG_UNAVAILABLE?@"unavailable":@"failed"];return YES;}
+ if(r.lang!=_target||r.source!=TLG_SOURCE_PERSISTED){[self finish:@"failed"];return YES;}
  BOOL pending=_pending;uint8_t latest=_pendingLang;
  _hasAck=YES;_ackUsable=YES;_ackAt=_clock();_ackLang=r.lang;[self finish:@"acked"];
  if(pending&&latest!=r.lang)[self pushLanguage:latest];return YES;

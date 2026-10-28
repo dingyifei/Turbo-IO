@@ -84,7 +84,8 @@ seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
     ctest('tmg4-tile-config',[FW4/'tests/tile_config_test.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
     ctest('tmg4-menu-tiles',[FW4/'tests/menu_tiles_test.c'],FW4/'src')
-    ctest('tmg4-menu-lang',[FW4/'tests/menu_lang_test.c',FW4/'src/global-remote-v1/lang_flag.c'],FW4/'src')
+    ctest('tmg4-menu-lang',[FW4/'tests/menu_lang_test.c',FW4/'src/global-remote-v1/lang_flag.c',FW4/'src/global-remote-v1/lang_store.c'],FW4/'src')
+    ctest('tmg4-lang-store',[FW4/'tests/lang_store_test.c',FW4/'src/global-remote-v1/lang_store.c'],FW4/'src')
     ctest('tmg4-text',[FW4/'tests/tio_text_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
     ctest('tmg4-grid',[FW4/'tests/focus_grid_test.c',FW4/'src/focus-v1/focus_menu.c',FW4/'src/common-v1/tio_text.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
     ctest('tmg4-prediction',[FW4/'tests/pose_prediction_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
@@ -107,9 +108,9 @@ if only is None or 'shared-sources' in only:
         phone=P/Path(name).name
         if not phone.exists():
             print('shared-sources: skip removed phone copy '+phone.name);continue
-        if phone.read_bytes()!=(FW3/'src'/name).read_bytes():
+        if phone.read_bytes()!=(FW4/'src'/name).read_bytes():
             raise RuntimeError('shared source mismatch: '+name)
-    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h']:
+    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h']:
         phone=P/Path(name).name
         if not phone.is_file() or phone.read_bytes()!=(FW4/'src'/name).read_bytes():
             raise RuntimeError('TMG4 shared source missing/mismatch: '+name)
