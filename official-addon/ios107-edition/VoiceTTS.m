@@ -76,7 +76,8 @@
         for(NSDictionary *run in TIOVoiceTTSRuns(part,self.fallbackLanguage)) {
             AVSpeechUtterance *utterance=[[AVSpeechUtterance alloc]initWithString:run[@"text"]];
             utterance.voice=[self voiceForLanguage:run[@"lang"]];
-            utterance.rate=AVSpeechUtteranceDefaultSpeechRate;utterance.volume=1.0;
+            NSUserDefaults *prefs=[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.official-private-addon"];
+            utterance.rate=MIN(AVSpeechUtteranceMaximumSpeechRate,MAX(AVSpeechUtteranceMinimumSpeechRate,AVSpeechUtteranceDefaultSpeechRate*TIOVoiceTTSSpeedMultiplier(prefs)));utterance.volume=1.0;
             self.localOutstanding++;[self.localSynth speakUtterance:utterance];
         }
     }

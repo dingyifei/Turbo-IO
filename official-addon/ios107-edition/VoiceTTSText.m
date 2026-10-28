@@ -1,4 +1,6 @@
 #import "VoiceTTSText.h"
+NSInteger TIOVoiceTTSSpeedStep(NSUserDefaults *prefs){id value=[prefs objectForKey:@"ttsSpeedStep"];if(![value isKindOfClass:NSNumber.class]||[value doubleValue]!=[value integerValue]||[value integerValue]<0||[value integerValue]>4)return 2;return [value integerValue];}
+double TIOVoiceTTSSpeedMultiplier(NSUserDefaults *prefs){static const double rates[]={.9,1.,1.2,1.35,1.5};return rates[TIOVoiceTTSSpeedStep(prefs)];}
 
 static BOOL TIOScriptPeriodIsStop(NSString *text, NSUInteger index, BOOL final) {
     if(index<3)return NO;

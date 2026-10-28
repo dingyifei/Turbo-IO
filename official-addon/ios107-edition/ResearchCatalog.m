@@ -28,6 +28,7 @@ static const TIOHubRowDefinition Rows[] = {
     {@"mode", @"sparkles", TIOHubSectionAssistant, @"", @""},
     {@"api", @"cube", TIOHubSectionAssistant, @"", @""},
     {@"tts", @"speaker.wave.2", TIOHubSectionAssistant, @"", @""},
+    {@"ttsSpeed", @"speedometer", TIOHubSectionAssistant, @"", @""},
     {@"search", @"globe", TIOHubSectionAssistant, @"", @""},
     {@"knowledge", @"books.vertical", TIOHubSectionAssistant, @"", @""},
     {@"assistantMore", @"slider.horizontal.3", TIOHubSectionAssistant, @"", @""},

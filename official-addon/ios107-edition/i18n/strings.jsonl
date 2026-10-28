@@ -2025,3 +2025,5 @@
 {"key":"；已请求退出，镜片未确认","en":"; exit requested, but not confirmed by glasses"}
 {"key":"；文件已结束，可在眼镜开页后重新查询","en":"; file complete; query again after opening the page on the glasses"}
 {"key":"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","en":"; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state."}
+{"key":"hub.row.ttsSpeed","en":"Voice speed","zh":"朗读速度"}
+{"key":"hub.status.ttsSpeed","en":"%.2g× · English and Chinese","zh":"%.2g× · 中英文通用"}

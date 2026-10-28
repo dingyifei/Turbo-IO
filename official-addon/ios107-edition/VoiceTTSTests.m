@@ -16,6 +16,10 @@ static NSDictionary *Voice(NSString *identifier, NSString *language, NSNumber *q
         @"novelty":@(novelty),@"personal":@(personal),@"systemDefault":@(systemDefault)};
 }
 int main(void) { @autoreleasepool {
+    NSUserDefaults *speed=[[NSUserDefaults alloc]initWithSuiteName:@"tmg5-speech-test"];[speed removePersistentDomainForName:@"tmg5-speech-test"];
+    assert(TIOVoiceTTSSpeedStep(speed)==2 && fabs(TIOVoiceTTSSpeedMultiplier(speed)-1.2)<0.001);
+    const double expected[]={.9,1.,1.2,1.35,1.5};for(int i=0;i<5;i++){[speed setInteger:i forKey:@"ttsSpeedStep"];assert(fabs(TIOVoiceTTSSpeedMultiplier([[NSUserDefaults alloc]initWithSuiteName:@"tmg5-speech-test"])-expected[i])<0.001);}
+    for(id bad in @[@(-1),@5,@"bad",@2.5]){[speed setObject:bad forKey:@"ttsSpeedStep"];assert(TIOVoiceTTSSpeedStep(speed)==2);}[speed removePersistentDomainForName:@"tmg5-speech-test"];
     // These fixed vectors catch premature chunking and missing sentence boundaries.
     Chunk(/*i18n:keep*/@"正在说话",NO,nil,0);
     Chunk(/*i18n:keep*/@"第一句话。第二句",NO,/*i18n:keep*/@"第一句话。",5);
