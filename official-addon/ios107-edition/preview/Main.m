@@ -372,6 +372,7 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
     dispatch_async(dispatch_get_main_queue(),^{
         UIViewController *presented=nil;
         UINavigationController *navigation=nil;
+        UIViewController *captionsPage=nil; // pushed from the hub after it is on screen
         if (wizard || HasArgument(@"--hub") || ([screen isEqual:@"hub"]||[screen isEqual:@"voice"]||pushScreen)) {
             if (wizard) TIOOTAWizardUseFixture(fixture?:@"ready-authorize");
             UIViewController *hub=TIOCreateTurboPreview();
@@ -392,8 +393,10 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             if ([page isKindOfClass:UINavigationController.class]) navigation=(UINavigationController *)page;
             presented=navigation;
         } else if ([screen isEqual:@"captions"]) {
-            UIViewController *page=TIOPreviewCaptionsController(Argument(@"--captions-fixture")?:@"listening");
-            if ([page isKindOfClass:UINavigationController.class]) navigation=(UINavigationController *)page;
+            // Pushed from the real hub, as production does, so the hub's navigation delegate styles it (its large title stays).
+            captionsPage=TIOPreviewCaptionsController(Argument(@"--captions-fixture")?:@"listening");
+            UIViewController *hub=captionsPage?TIOCreateTurboPreview():nil;
+            if ([hub isKindOfClass:UINavigationController.class]) navigation=(UINavigationController *)hub;
             presented=navigation;
         } else if ([screen isEqual:@"ota"]) {
             UIViewController *page=TIOExperimentalOTAController();
@@ -423,6 +426,8 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             fflush(stderr);
             if (wizard) {
                 [navigation pushViewController:TIOExperimentalOTAController() animated:NO];
+            } else if (captionsPage) {
+                [navigation pushViewController:captionsPage animated:NO];
             } else if ([screen isEqual:@"hub"] || pushScreen || HasArgument(@"--hub")) {
                 NSString *key=pushScreen?[screen substringFromIndex:5]:Argument(@"--push");
                 if (key) SelectHubKey(navigation,key);

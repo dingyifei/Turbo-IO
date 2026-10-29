@@ -303,10 +303,11 @@ void TIODesignStyleTable(UITableViewController *c){
  TIODesignTableTheme *proxy=objc_getAssociatedObject(t,&ThemeKey);
  if(!proxy){proxy=[TIODesignTableTheme new];objc_setAssociatedObject(t,&ThemeKey,proxy,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}
  if(t.delegate!=proxy){proxy.original=t.delegate;t.delegate=proxy;}
- /* The hub root keeps its large title; pushed pages use standard titles. */
+ /* The hub root keeps its large title; pushed pages use standard titles unless they set a mode themselves. */
  UINavigationController *nav=c.navigationController;
  BOOL root=nav&&nav.viewControllers.firstObject==c&&nav.navigationBar.prefersLargeTitles;
- c.navigationItem.largeTitleDisplayMode=root?UINavigationItemLargeTitleDisplayModeAlways:UINavigationItemLargeTitleDisplayModeNever;
+ if(root)c.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeAlways;
+ else if(c.navigationItem.largeTitleDisplayMode==UINavigationItemLargeTitleDisplayModeAutomatic)c.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeNever; /* a page that asked for the large title itself (the caption panels) keeps it */
 }
 
 /* Normalize only standard system surfaces in our navigation subtree. Preview

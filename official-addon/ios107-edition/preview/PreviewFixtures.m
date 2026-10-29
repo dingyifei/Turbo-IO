@@ -172,8 +172,6 @@ UIViewController *TIOPreviewCaptionsController(NSString *fixture) {
     if (![panel respondsToSelector:make]) return nil;
     id page=((id(*)(id,SEL,id))objc_msgSend)(panel,make,fixture?:@"listening");
     if (![page isKindOfClass:UIViewController.class]) return nil;
-    UINavigationController *navigation=[[UINavigationController alloc] initWithRootViewController:page];
-    navigation.navigationBar.prefersLargeTitles=YES; // the hub shell does the same
-    return navigation;
+    return page; // the preview pushes it from the hub, as production does, so the hub's navigation delegate styles it
 }
 #endif
