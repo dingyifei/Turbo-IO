@@ -6,6 +6,7 @@
 #import "ExperimentalOTAFlash.h"
 #import "OTAWizardModel.h"
 #import "ResearchUI.h"
+#import "TIODesign.h"
 #import "TIOConfirm.h"
 #import "TIOLanguage.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -78,6 +79,11 @@ static NSString *ShortStatus(NSString *value) {
 @property(nonatomic) UIVisualEffectView *actionBar;
 @property(nonatomic) UIButton *primary;
 @property(nonatomic) UIButton *secondary;
+@property(nonatomic) UILabel *reason;
+@property(nonatomic) UIView *summaryHolder;
+@property(nonatomic) UIView *summaryPill;
+@property(nonatomic) NSLayoutConstraint *summaryHeight;
+@property(nonatomic) BOOL largeTitleWas;
 @property(nonatomic) NSDictionary *snapshot;
 @property(nonatomic) NSInteger step;
 @property(nonatomic) BOOL choseStep;
@@ -130,7 +136,8 @@ static NSString *ShortStatus(NSString *value) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title=TIOText(@"ota.title");
-    self.view.backgroundColor=TIOPaper();
+    self.view.backgroundColor=TIODesignColor(TIODesignColorBg);
+    self.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeAlways;
     TIOAttachInfo(self,TIOText(@"ota.info.title"),TIOFormat(@"ota.info.body",FirmwareName()));
     [self buildTable];
     [self buildActionBar];
@@ -150,25 +157,26 @@ static NSString *ShortStatus(NSString *value) {
     table.translatesAutoresizingMaskIntoConstraints=NO;
     table.dataSource=self;
     table.delegate=self;
-    table.backgroundColor=TIOPaper();
-    table.separatorColor=[UIColor.separatorColor colorWithAlphaComponent:.35];
+    table.backgroundColor=TIODesignColor(TIODesignColorBg);
+    table.separatorColor=TIODesignColor(TIODesignColorSeparator);
     table.rowHeight=UITableViewAutomaticDimension;
     table.estimatedRowHeight=56;
     table.sectionHeaderTopPadding=8;
     [self.view addSubview:table];
     [NSLayoutConstraint activateConstraints:@[
-        [table.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [table.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [table.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         [table.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [table.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
     ]];
-    UIView *header=[[UIView alloc] initWithFrame:CGRectMake(0,0,table.bounds.size.width,104)];
+    UIView *header=[[UIView alloc] initWithFrame:CGRectMake(0,0,table.bounds.size.width,148)];
     self.header=header;
     UILabel *subtitle=[UILabel new];self.subtitle=subtitle;
     subtitle.translatesAutoresizingMaskIntoConstraints=NO;
     subtitle.text=TIOFormat(@"ota.subtitle",FirmwareName());
-    subtitle.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-    subtitle.textColor=UIColor.secondaryLabelColor;
+    subtitle.font=TIODesignFont(TIODesignTextStyleSubheadline);
+    subtitle.textColor=TIODesignColor(TIODesignColorLabelSecondary);
+    subtitle.numberOfLines=0;
     subtitle.adjustsFontForContentSizeCategory=YES;
     subtitle.accessibilityIdentifier=@"ota-subtitle";
     [header addSubview:subtitle];
@@ -181,10 +189,10 @@ static NSString *ShortStatus(NSString *value) {
     for (NSInteger n=1;n<=3;n++) {
         TIOWizardStepControl *control=[TIOWizardStepControl new];control.step=n;
         UIImageView *icon=[UIImageView new];control.icon=icon;icon.contentMode=UIViewContentModeScaleAspectFit;
-        [icon.widthAnchor constraintEqualToConstant:28].active=YES;
-        [icon.heightAnchor constraintEqualToConstant:28].active=YES;
+        [icon.widthAnchor constraintEqualToConstant:TIOHitMin*0.64].active=YES;
+        [icon.heightAnchor constraintEqualToConstant:TIOHitMin*0.64].active=YES;
         UILabel *caption=[UILabel new];control.caption=caption;
-        caption.font=[UIFont preferredFontForTextStyle:UIFontTextStyleCaption1];
+        caption.font=TIODesignFont(TIODesignTextStyleFootnote);
         caption.adjustsFontForContentSizeCategory=YES;
         caption.textAlignment=NSTextAlignmentCenter;
         caption.text=StepName(n);
@@ -195,10 +203,12 @@ static NSString *ShortStatus(NSString *value) {
         [control addSubview:column];
         [NSLayoutConstraint activateConstraints:@[
             [column.centerXAnchor constraintEqualToAnchor:control.centerXAnchor],
-            [column.centerYAnchor constraintEqualToAnchor:control.centerYAnchor],
+            [column.topAnchor constraintEqualToAnchor:control.topAnchor constant:TIOSpace1],
+            [column.bottomAnchor constraintEqualToAnchor:control.bottomAnchor constant:-TIOSpace1],
             [column.leadingAnchor constraintGreaterThanOrEqualToAnchor:control.leadingAnchor],
             [column.trailingAnchor constraintLessThanOrEqualToAnchor:control.trailingAnchor]
         ]];
+        [control.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
         control.isAccessibilityElement=YES;
         control.accessibilityIdentifier=[NSString stringWithFormat:@"ota-step-%ld",(long)n];
         [control addTarget:self action:@selector(selectStep:) forControlEvents:UIControlEventTouchUpInside];
@@ -210,11 +220,17 @@ static NSString *ShortStatus(NSString *value) {
     strip.axis=UILayoutConstraintAxisHorizontal;
     strip.distribution=UIStackViewDistributionFillEqually;
     [header addSubview:strip];
+    UIView *holder=[UIView new];self.summaryHolder=holder;holder.translatesAutoresizingMaskIntoConstraints=NO;
+    [header addSubview:holder];
+    self.summaryHeight=[holder.heightAnchor constraintEqualToConstant:0];self.summaryHeight.active=YES;
     [NSLayoutConstraint activateConstraints:@[
         [strip.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:14],
         [strip.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:20],
         [strip.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-20],
-        [strip.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-4]
+        [strip.bottomAnchor constraintEqualToAnchor:holder.topAnchor constant:-TIOSpace3],
+        [holder.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:TIOSpace5],
+        [holder.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-TIOSpace5],
+        [holder.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-TIOSpace1]
     ]];
     table.tableHeaderView=header;
 }
@@ -224,7 +240,7 @@ static NSString *ShortStatus(NSString *value) {
     self.actionBar=bar;bar.translatesAutoresizingMaskIntoConstraints=NO;
     [self.view addSubview:bar];
     UIView *hairline=[UIView new];hairline.translatesAutoresizingMaskIntoConstraints=NO;
-    hairline.backgroundColor=UIColor.separatorColor;
+    hairline.backgroundColor=TIODesignColor(TIODesignColorSeparator);
     [bar.contentView addSubview:hairline];
     UIButton *primary=[UIButton buttonWithType:UIButtonTypeSystem];self.primary=primary;
     primary.accessibilityIdentifier=@"ota-primary";
@@ -234,7 +250,11 @@ static NSString *ShortStatus(NSString *value) {
     secondary.accessibilityIdentifier=@"ota-secondary";
     [secondary.heightAnchor constraintGreaterThanOrEqualToConstant:44].active=YES;
     [secondary addTarget:self action:@selector(secondaryTapped) forControlEvents:UIControlEventTouchUpInside];
-    UIStackView *stack=[[UIStackView alloc] initWithArrangedSubviews:@[primary,secondary]];
+    UILabel *reason=[UILabel new];self.reason=reason;
+    reason.font=TIODesignFont(TIODesignTextStyleFootnote);reason.textColor=TIODesignColor(TIODesignColorLabelSecondary);
+    reason.adjustsFontForContentSizeCategory=YES;reason.numberOfLines=0;reason.textAlignment=NSTextAlignmentCenter;
+    reason.accessibilityIdentifier=@"ota-reason";reason.hidden=YES;
+    UIStackView *stack=[[UIStackView alloc] initWithArrangedSubviews:@[reason,primary,secondary]];
     stack.translatesAutoresizingMaskIntoConstraints=NO;
     stack.axis=UILayoutConstraintAxisVertical;stack.spacing=8;
     [bar.contentView addSubview:stack];
@@ -268,6 +288,8 @@ static NSString *ShortStatus(NSString *value) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    self.largeTitleWas=self.navigationController.navigationBar.prefersLargeTitles;
+    self.navigationController.navigationBar.prefersLargeTitles=YES;
     RefreshReport();
     [self refreshSnapshot];
     [self runChecksIfNeeded];
@@ -279,6 +301,7 @@ static NSString *ShortStatus(NSString *value) {
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    self.navigationController.navigationBar.prefersLargeTitles=self.largeTitleWas;
     [self.timer invalidate];self.timer=nil;
 }
 
@@ -338,11 +361,7 @@ static NSString *ShortStatus(NSString *value) {
 
 - (void)updateHeader {
     BOOL unavailable=[self.snapshot[@"phase"] integerValue]==TIOOTAPhaseUnavailable;
-    CGFloat desired=unavailable?44:104;
-    if (fabs(self.header.frame.size.height-desired)>.5) {
-        CGRect frame=self.header.frame;frame.size.height=desired;
-        self.header.frame=frame;self.tableView.tableHeaderView=self.header;
-    }
+    [self updateSummary:unavailable];
     self.subtitle.text=TIOFormat(@"ota.subtitle",FirmwareName());
     self.stepStrip.hidden=unavailable;
     for (TIOWizardStepControl *control in self.stepControls) {
@@ -351,15 +370,52 @@ static NSString *ShortStatus(NSString *value) {
         NSString *symbol=completed?@"checkmark.circle.fill":[NSString stringWithFormat:current?@"%ld.circle.fill":@"%ld.circle",(long)n];
         UIImageSymbolConfiguration *configuration=[UIImageSymbolConfiguration configurationWithPointSize:24];
         control.icon.image=[[UIImage systemImageNamed:symbol] imageByApplyingSymbolConfiguration:configuration];
-        control.icon.tintColor=completed?UIColor.systemGreenColor:current?TIOAccent():UIColor.tertiaryLabelColor;
+        control.icon.tintColor=completed?TIODesignColor(TIODesignColorStatusOk):current?TIODesignColor(TIODesignColorAccentFill):TIODesignColor(TIODesignColorLabelSecondary);
         control.caption.text=StepName(n);
-        control.caption.font=[UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleCaption1].pointSize
-                                           weight:current?UIFontWeightMedium:UIFontWeightRegular];
-        control.caption.textColor=(current||completed)?UIColor.labelColor:UIColor.tertiaryLabelColor;
+        control.caption.font=current?TIODesignFontWeight(TIODesignTextStyleFootnote,UIFontWeightSemibold):TIODesignFont(TIODesignTextStyleFootnote);
+        control.caption.adjustsFontSizeToFitWidth=YES;control.caption.minimumScaleFactor=.7;
+        control.caption.textColor=(current||completed)?TIODesignColor(TIODesignColorLabel):TIODesignColor(TIODesignColorLabelSecondary);
         control.enabled=n<=[self maxReachable];
         control.accessibilityTraits=UIAccessibilityTraitButton|(current?UIAccessibilityTraitSelected:0);
         control.accessibilityLabel=TIOFormat(@"ota.step.accessibility",(long)n,StepName(n));
     }
+}
+
+- (NSUInteger)blockerCount {
+    NSUInteger n=0;
+    for (NSString *key in @[@"package",@"source",@"protect",@"autoUpdate",@"version"])
+        if ([self.snapshot[key] integerValue]!=TIOOTACheckOK) n++;
+    return n;
+}
+
+// Presentation only: a pill that counts the unfinished checks on step 1.
+- (void)updateSummary:(BOOL)unavailable {
+    NSUInteger count=[self blockerCount];
+    BOOL show=!unavailable && self.step==1 && count>0;
+    [self.summaryPill removeFromSuperview];self.summaryPill=nil;
+    if (show) {
+        NSString *word=count==1?TIOText(@"ota.summary.one"):TIOFormat(@"ota.summary.many",(long)count);
+        UIView *pill=TIODesignStatusPill(TIODesignStatusWarn,word);
+        pill.translatesAutoresizingMaskIntoConstraints=NO;
+        [self.summaryHolder addSubview:pill];
+        [NSLayoutConstraint activateConstraints:@[
+            [pill.topAnchor constraintEqualToAnchor:self.summaryHolder.topAnchor],
+            [pill.bottomAnchor constraintEqualToAnchor:self.summaryHolder.bottomAnchor],
+            [pill.leadingAnchor constraintEqualToAnchor:self.summaryHolder.leadingAnchor],
+            [pill.trailingAnchor constraintLessThanOrEqualToAnchor:self.summaryHolder.trailingAnchor]]];
+        self.summaryPill=pill;
+        self.summaryHeight.active=NO;
+    } else {
+        self.summaryHeight.active=YES;
+    }
+    CGFloat width=self.tableView.bounds.size.width>0?self.tableView.bounds.size.width:self.view.bounds.size.width;
+    if (width<=0) width=UIScreen.mainScreen.bounds.size.width;
+    self.header.frame=CGRectMake(0,0,width,0);
+    [self.header setNeedsLayout];[self.header layoutIfNeeded];
+    CGFloat height=unavailable?44:[self.header systemLayoutSizeFittingSize:CGSizeMake(width,UILayoutFittingCompressedSize.height)
+        withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
+    CGRect frame=self.header.frame;frame.size.height=MAX(height,unavailable?44:0);
+    self.header.frame=frame;self.tableView.tableHeaderView=self.header;
 }
 
 - (void)selectStep:(TIOWizardStepControl *)sender {
@@ -400,6 +456,9 @@ static NSString *ShortStatus(NSString *value) {
         }
         if (stage==1) secondaryTitle=TIOText(@"ota.install.revoke");
     }
+    BOOL showReason=self.step==1 && !primaryEnabled;
+    self.reason.hidden=!showReason;
+    self.reason.text=showReason?TIOText(@"ota.continue.why"):nil;
     [self.primary setTitle:primaryTitle forState:UIControlStateNormal];
     TIOStyleAction(self.primary,YES,primaryDestructive);
     BOOL authorizedExit=self.step==3 && (stage==1 || stage==3);
@@ -435,9 +494,7 @@ static NSString *ShortStatus(NSString *value) {
 - (void)tableView:(__unused UITableView *)tableView willDisplayHeaderView:(UIView *)view forSection:(__unused NSInteger)section {
     if ([view isKindOfClass:UITableViewHeaderFooterView.class]) {
         UILabel *label=((UITableViewHeaderFooterView *)view).textLabel;
-        label.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-        label.textColor=UIColor.secondaryLabelColor;
-        label.adjustsFontForContentSizeCategory=YES;
+        TIODesignStyleHeaderLabel(label);
     }
 }
 
@@ -451,9 +508,16 @@ static NSString *ShortStatus(NSString *value) {
     UIButtonConfiguration *configuration=UIButtonConfiguration.tintedButtonConfiguration;
     configuration.buttonSize=UIButtonConfigurationSizeSmall;
     configuration.title=title;
-    configuration.baseBackgroundColor=TIOAccent();
-    configuration.baseForegroundColor=TIOAccent();
+    configuration.cornerStyle=UIButtonConfigurationCornerStyleCapsule;
+    configuration.background.backgroundColor=TIODesignColor(TIODesignColorAccentSoft);
+    configuration.baseForegroundColor=TIODesignColor(TIODesignColorAccent);
+    configuration.contentInsets=NSDirectionalEdgeInsetsMake(TIOSpace2,14,TIOSpace2,14);
+    configuration.titleTextAttributesTransformer=^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attributes){
+        NSMutableDictionary *next=[attributes mutableCopy];next[NSFontAttributeName]=TIODesignFontWeight(TIODesignTextStyleSubheadline,UIFontWeightSemibold);return next;
+    };
     button.configuration=configuration;
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
+    [button.widthAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
     button.accessibilityIdentifier=identifier;
     button.tag=tag;
     [button addTarget:self action:@selector(fixTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -463,14 +527,15 @@ static NSString *ShortStatus(NSString *value) {
 
 - (void)configureCell:(UITableViewCell *)cell at:(NSIndexPath *)path {
     NSDictionary *s=self.snapshot;
-    cell.accessoryView=nil;
+    cell.accessoryView=nil;cell.detailTextLabel.accessibilityLabel=nil;
     cell.imageView.image=nil;
-    cell.textLabel.textColor=TIOInk();
-    cell.detailTextLabel.textColor=UIColor.secondaryLabelColor;
-    cell.textLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-    cell.detailTextLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+    cell.textLabel.textColor=TIODesignColor(TIODesignColorLabel);
+    cell.detailTextLabel.textColor=TIODesignColor(TIODesignColorLabelSecondary);
+    cell.textLabel.font=TIODesignFont(TIODesignTextStyleBody);
+    cell.detailTextLabel.font=TIODesignFont(TIODesignTextStyleSubheadline);
+    cell.textLabel.adjustsFontForContentSizeCategory=YES;cell.detailTextLabel.adjustsFontForContentSizeCategory=YES;
     cell.textLabel.numberOfLines=0;
-    cell.detailTextLabel.numberOfLines=1;
+    cell.detailTextLabel.numberOfLines=0;
     cell.selectionStyle=UITableViewCellSelectionStyleNone;
     cell.accessibilityIdentifier=nil;
     TIOOTACheck state=TIOOTACheckPending;
@@ -518,8 +583,8 @@ static NSString *ShortStatus(NSString *value) {
             cell.textLabel.text=TIOText(@"ota.download.how");
             cell.detailTextLabel.text=@"";
             cell.textLabel.numberOfLines=0;
-            cell.textLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-            cell.textLabel.textColor=UIColor.secondaryLabelColor;
+            cell.textLabel.font=TIODesignFont(TIODesignTextStyleFootnote);
+            cell.textLabel.textColor=TIODesignColor(TIODesignColorLabelSecondary);
             cell.accessibilityIdentifier=@"ota-download-how";
             return;
         } else {
@@ -542,14 +607,14 @@ static NSString *ShortStatus(NSString *value) {
             else if (stage==2) {detail=TIOFormat(@"ota.install.sending",(unsigned long)[s[@"validatedSlices"] unsignedIntegerValue]);state=TIOOTACheckPending;}
             else if (stage==3) {
                 detail=TIOFormat(@"ota.install.failed",s[@"failure"]?:@"");
-                state=TIOOTACheckFail;cell.detailTextLabel.textColor=UIColor.systemRedColor;
+                state=TIOOTACheckFail;cell.detailTextLabel.textColor=TIODesignColor(TIODesignColorStatusDanger);
             } else {detail=TIOText(@"ota.install.notAuthorized");state=TIOOTACheckPending;}
             cell.accessibilityIdentifier=@"ota-install-session";
         } else {
             cell.textLabel.text=TIOText(@"ota.install.after");
             cell.detailTextLabel.text=@"";
-            cell.textLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-            cell.textLabel.textColor=UIColor.secondaryLabelColor;
+            cell.textLabel.font=TIODesignFont(TIODesignTextStyleFootnote);
+            cell.textLabel.textColor=TIODesignColor(TIODesignColorLabelSecondary);
             cell.accessibilityIdentifier=@"ota-install-after";
             return;
         }
@@ -560,11 +625,16 @@ static NSString *ShortStatus(NSString *value) {
         NSString *symbol=state==TIOOTACheckOK?@"checkmark.circle.fill":
                          state==TIOOTACheckFail?@"xmark.circle.fill":
                          state==TIOOTACheckAction?@"exclamationmark.triangle.fill":@"clock";
-        UIColor *color=state==TIOOTACheckOK?UIColor.systemGreenColor:
-                       state==TIOOTACheckFail?UIColor.systemRedColor:UIColor.systemOrangeColor;
+        UIColor *color=state==TIOOTACheckOK?TIODesignColor(TIODesignColorStatusOk):
+                       state==TIOOTACheckFail?TIODesignColor(TIODesignColorStatusDanger):
+                       state==TIOOTACheckAction?TIODesignColor(TIODesignColorStatusWarn):TIODesignColor(TIODesignColorLabelSecondary);
         UIImageSymbolConfiguration *configuration=[UIImageSymbolConfiguration configurationWithPointSize:20];
         UIImage *image=[[UIImage systemImageNamed:symbol] imageByApplyingSymbolConfiguration:configuration];
         cell.imageView.image=[[image imageWithTintColor:color] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        cell.imageView.accessibilityLabel=TIOText(state==TIOOTACheckOK?@"ota.state.ok":state==TIOOTACheckFail?@"ota.state.blocked":state==TIOOTACheckAction?@"ota.state.attention":@"ota.state.pending");
+        // The state symbol is decorative; VoiceOver hears the state ahead of the detail text.
+        cell.imageView.isAccessibilityElement=NO;
+        cell.detailTextLabel.accessibilityLabel=[NSString stringWithFormat:@"%@. %@",cell.imageView.accessibilityLabel,detail?:@""];
     }
 }
 

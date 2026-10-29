@@ -671,7 +671,7 @@
 {"key":"ota.install.sending","en":"Installing · %lu parts verified","zh":"安装中 · 已校验 %lu 个分片"}
 {"key":"ota.package.bad","en":"Verification failed","zh":"校验失败"}
 {"key":"ota.package.checking","en":"Verifying…","zh":"正在校验…"}
-{"key":"ota.package.import","en":"Import from Files…","zh":"从“文件”导入…"}
+{"key":"ota.package.import","en":"Import…","zh":"导入…"}
 {"key":"ota.package.missing","en":"Not in this app build","zh":"此安装包未包含"}
 {"key":"ota.package.ok","en":"Verified on this phone","zh":"已在本机校验"}
 {"key":"ota.protect.fail","en":"Not active on this version","zh":"此版本未生效"}
@@ -2145,3 +2145,10 @@
 {"key":"；已请求退出，镜片未确认","en":"; exit requested, but not confirmed by glasses"}
 {"key":"；文件已结束，可在眼镜开页后重新查询","en":"; file complete; query again after opening the page on the glasses"}
 {"key":"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","en":"; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state."}
+{"key":"ota.summary.one","en":"1 check needs attention","zh":"有 1 项检查需要处理"}
+{"key":"ota.summary.many","en":"%ld checks need attention","zh":"有 %ld 项检查需要处理"}
+{"key":"ota.continue.why","en":"Fix the items above to continue.","zh":"处理以上事项后即可继续。"}
+{"key":"ota.state.ok","en":"Passed","zh":"已通过"}
+{"key":"ota.state.blocked","en":"Blocked","zh":"受阻"}
+{"key":"ota.state.attention","en":"Needs attention","zh":"需要处理"}
+{"key":"ota.state.pending","en":"Checking","zh":"检查中"}
