@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1cf235be",
+      "after": "1cf2bfbe",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1cf22ebe00bf",
+      "after": "1cf2b8be00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1ff2a2fb00bf",
+      "after": "1ff22cfc00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1cf389f900bf00bf00bf",
+      "after": "1cf313fa00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 150400,
+  "moduleBytes": 150720,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "ae4f89f66e4ed48916899ddd0bffb160c58595a1c1f0b4014b6c51a95c7d7988",
+  "moduleSHA256": "6cc14a29b2e966e25c4e4bfbb6eafcb0d12190f041c9fbe1136a838bc99adc70",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7359048,
+  "APBytes": 7359368,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG7-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8813487,
-    "sha256": "2c5f28427d3fcdb58c47ea361d7384a8e3672f68de2bfdfa2014ad1ada44a4a7",
-    "md5": "b7ed1d05968f92bc5c5d8056bbea5fee"
+    "bytes": 8813680,
+    "sha256": "fe8af88765ed65ea7b972fcd0bc307232752f7cd3f2cf26dd8331874044d931e",
+    "md5": "d5d94fc650f2d467df08a007c55e72b1"
   },
   "sources": [
     {
@@ -433,7 +433,7 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "e62e4dfa7f42eb497671b1b2e4e963c0a3cc90fd542ce2fc7d142cd7e7a0bbbb"
+      "sha256": "1ed86c47509554c1093d19f405fb5fee8c1777821298aa3bb38a0f54e28bc32e"
     },
     {
       "source": "common-v1/business_idle.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "3d84d6ba6e76c71cb57b0e18756f8b59f3ea7d38eee406063f2c237f63ea1d50",
+  "APSHA256": "171317f501213b33e164643120e9fe3e4aea70c56e0b132a18742b865755eb37",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

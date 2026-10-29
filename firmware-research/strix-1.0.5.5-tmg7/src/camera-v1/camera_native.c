@@ -7,13 +7,14 @@
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
 #include "../common-v1/wheel_input.h"
+#include "../common-v1/tio_hint.h"
 #include "../focus-v1/focus_service.h"
 #include "../focus-v1/focus_menu.h"
 #include "../app-runtime-v1/app_service.h"
 #include <string.h>
 typedef struct {
  TCSlot *slot;void *app,*timer,*root,*canvas,*title,*state,*hint;TCFrame *frame;
- WRInput input;uint32_t sid,seq,event,seen,hold,back;unsigned phase,zoom,remaining;
+ WRInput input;TIOHint th;uint32_t sid,seq,event,seen,hold,back;unsigned phase,zoom,remaining;
  bool closing,transitioning,backed;
 } TCControl;
 extern void *stream_memalign(size_t,size_t),stream_free(void *);
@@ -24,6 +25,7 @@ extern void *nav_monitors(void),*nav_link(void *),*nav_input(void *),*nav_ensure
 extern const char *nav_top_app(void);
 extern bool nav_bonded(void *),nav_folded(void *),ce_extension_idle(void),focus_screen_on(void);
 extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *);
+extern void native_text_color(void *,uint32_t,uint32_t);
 extern void nav_set_state(void *,unsigned),nav_screen_on(bool),nav_stop_event(void *),native_report_activity(void);
 extern unsigned native_event_code(void *),native_event_key(void *);
 extern uint32_t nav_always_on(const char *);
@@ -45,15 +47,19 @@ static bool dispose(TCControl *c){TNWidgets w=tn_lvgl_widgets();if(!w.idle(NULL)
  if(c->root){void *r=c->root;c->root=NULL;w.destroy(NULL,r);}c->canvas=c->title=c->state=c->hint=NULL;
  if(c->frame){stream_free(c->frame);c->frame=NULL;}c->closing=false;return true;}
 static char *num(char *p,unsigned n){char v[10];unsigned k=0;do{v[k++]=(char)('0'+n%10);n/=10;}while(n);while(k)*p++=v[--k];return p;}
+/* Control hint (TransientHint): lit for TIO_HINT_MS after entry and every wheel/press, then hidden. The no-session setup text is status, not a hint, and stays. */
+static void hint_sync(TCControl *c){if(!c->root||!c->hint)return;uint32_t now=stream_tick();bool on=!c->sid||tio_hint_visible(&c->th,now);
+ TNWidgets w=tn_lvgl_widgets();if(c->sid&&on)native_text_color(c->hint,tio_hint_color(&c->th,now),0);w.visible(NULL,c->hint,on);}
 static void render_status(TCControl *c){unsigned lang=tio_lang();if(!c->root)return;char text[80],*p=text;
  const char *state=c->phase==TC_COUNTDOWN?tio_text(TT_CAM_COUNTDOWN,lang):c->phase==TC_CAPTURING?tio_text(TT_CAM_TAKING,lang):c->phase==TC_SAVED?tio_text(TT_CAM_SAVED,lang):c->phase==TC_ERROR?tio_text(TT_CAM_UNAVAILABLE,lang):c->sid?tio_text(TT_CAM_LIVE,lang):tio_text(TT_CAM_OPEN_ON_PHONE,lang);
  while(*state)*p++=*state++;if(c->phase==TC_COUNTDOWN){p=num(p,(c->remaining+999)/1000);*p++='s';}*p=0;native_label_text(c->state,text);
  p=text;p=num(p,c->zoom/100);*p++='.';*p++=(char)('0'+c->zoom/10%10);*p++='x';*p=0;native_label_text(c->title,text);
- native_label_text(c->hint,c->sid?tio_text(TT_CAM_HINT,lang):tio_text(TT_CAM_SETUP,lang));
+ native_label_text(c->hint,c->sid?tio_text(TT_CAM_HINT,lang):tio_text(TT_CAM_SETUP,lang));hint_sync(c);
 }
 static void tick(void *t){TCControl *c=ptr(t,12);if(!c)return;uint32_t now=stream_tick();
  if(c->root&&!c->closing&&(!owns(c)||(c->sid&&(!paired()||(uint32_t)(now-c->seen)>15000))))close_page(c);
  if(c->frame)tc_expire(c->frame,now);
+ if(c->root&&!c->closing)hint_sync(c);
  if(c->closing){if(!dispose(c))return;if(c->app)fm_sync(c->app);}
  if(!c->slot&&!c->root&&!c->frame){stream_timer_delete(t);stream_free(c);}
 }
@@ -74,17 +80,18 @@ bool tc_slot_open(TCSlot *s){
  if(!c->canvas||!c->title||!c->state||!c->hint){close_page(c);(void)dispose(c);return false;}
  w.place(NULL,c->root,0,0,540,180);w.place(NULL,c->canvas,16,18,256,144);
  w.buffer(NULL,c->canvas,c->frame->pixels[0],256,144);w.place(NULL,c->title,298,14,220,32);w.place(NULL,c->state,298,60,220,60);w.place(NULL,c->hint,298,128,226,44);
- dc_text_mode(c->state,4);dc_text_mode(c->hint,4);c->phase=TC_WAIT;memset(&c->input,0,sizeof c->input);c->backed=false;
+ dc_text_mode(c->state,4);dc_text_mode(c->hint,4);c->phase=TC_WAIT;memset(&c->input,0,sizeof c->input);c->backed=false;tio_hint_init(&c->th);tio_hint_enter(&c->th,stream_tick());
  render_status(c);w.visible(NULL,c->root,true);native_report_activity();nav_screen_on(true);fm_sync(c->app);return true;
 }
 void tc_native_wheel(void *app,int delta){TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;
- if(!tc_native_visible(app)||!owns(c)||!c->sid||c->phase!=TC_LIVE)return;int step=wr_input_wheel(&c->input,delta,stream_tick());if(!step)return;
+ if(!tc_native_visible(app)||!owns(c)||!c->sid||c->phase!=TC_LIVE)return;tio_hint_input(&c->th,stream_tick());int step=wr_input_wheel(&c->input,delta,stream_tick());if(!step)return;
  native_report_activity();if(!focus_screen_on()){nav_screen_on(true);return;}event(c,TC_ZOOM,step>0?1:0);
 }
 bool tc_native_event(void *e){void *app=ptr(manager(),0x10);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;
  if(!tc_native_visible(app)||!owns(c)||native_event_code(e)!=14)return false;
  unsigned key=native_event_key(e);uint32_t now=stream_tick();if(key!=0x3a&&key!=0x3b)return false;
  nav_stop_event(e);native_report_activity();if(!focus_screen_on()){nav_screen_on(true);return true;}
+ tio_hint_input(&c->th,now);
  if(key==0x3b){if(c->backed&&(uint32_t)(now-c->back)<700)return true;c->backed=true;c->back=now;TNNavSlot *n=navslot(app);if(n)n->back_until=now+700;
   if(c->phase==TC_COUNTDOWN){event(c,TC_CANCEL,0);c->phase=TC_LIVE;render_status(c);}else{event(c,TC_EXIT,0);close_page(c);fm_sync(app);}return true;}
  if(c->backed&&(uint32_t)(now-c->back)<700)return true;
