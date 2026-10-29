@@ -6,13 +6,13 @@ ppd values 22..27; the page layouts are fitted to 24.8 only and must refuse any 
 (tests/tmg7_layout_preview.m), which renders every page EN and ZH to PNG and checks each
 widget against its band, the reserved rows, the 16 px text floor and the no-filled-panel rule.
 No device I/O."""
-import argparse, io, json, subprocess, sys, zipfile
+import argparse, base64, io, json, subprocess, sys, zipfile
 from pathlib import Path
 
 FW = Path(__file__).resolve().parents[1]
 BOARD = FW.parents[1] / 'docs/design-system/screens/LensApp.dc.html'
 DS = FW.parents[1] / 'dashboard-service'
-LEGACY_TAP = DS / 'tests/fixtures/gallery_commute_legacy.tap'
+LEGACY_TAP_B64 = DS / 'tests/fixtures/gallery_commute_legacy.tap.b64'   # committed as base64 text: the source audit rejects binaries
 PPD_X10 = (220, 230, 240, 248, 260, 270)   # tokens only; the pages build at 248 alone
 
 def run(cmd, log):
@@ -48,6 +48,8 @@ def main():
     run(cc + [FW / 'tests/tmg7_app_test.c', src / 'app-runtime-v1/app.c', src / 'app-runtime-v1/app_view.c', '-o', exe], a.out / 'tmg7-app-build.log')
     wires = a.out / 'app-wire'
     wires.mkdir(exist_ok=True)
+    legacy_tap = wires / 'gallery_commute_legacy.tap.bin'
+    legacy_tap.write_bytes(base64.b64decode(LEGACY_TAP_B64.read_text()))
     sys.path.insert(0, str(DS))
     from turbo_dashboard.app_wire import encode
     from turbo_dashboard.app_examples import examples
@@ -58,7 +60,7 @@ def main():
     for name, doc in docs.items():
         (wires / (name + '.tap')).write_bytes(encode(doc))
         paths.append(wires / (name + '.tap'))
-    if 'PASS tmg7 app runtime' not in run([exe, LEGACY_TAP] + paths, a.out / 'tmg7-app.log'):
+    if 'PASS tmg7 app runtime' not in run([exe, legacy_tap] + paths, a.out / 'tmg7-app.log'):
         sys.exit('tmg7-app did not report PASS')
     nav = src / 'navigation-runtime-v1'
     # Navigation core and the LensNav view facade (mock widgets, ASan/UBSan); tio_lang is stubbed by the tests.

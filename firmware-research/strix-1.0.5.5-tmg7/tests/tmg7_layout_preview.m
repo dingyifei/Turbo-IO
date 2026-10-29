@@ -106,6 +106,8 @@ static void SelfTest(void){   // the gate must catch each defect
 }
 
 // ---- Mini-app page composed from the design-system components (LensApp board, TAP1 kind 2 buttons as caret focus items) ----
+// BuildApp is a design fixture that checks the board's proposed column and models the transient hint and the sliding caret the
+// board shows. The TAP runtime itself has no hint and its caret snaps; the shipped gallery wire is checked in RunWire/AppRuntime.
 typedef struct {const char *title,*items[3],*value,*unit,*detail,*hint;} AppCopy;
 static const AppCopy App[2]={
  {"Commute · Line 2",{"Later trains","Alerts","Platform map"},"4 min","to Downtown","Platform 3 · then 12 min","Wheel: choose · Press: open · Hold: exit"},
@@ -212,6 +214,11 @@ static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,b
     unsigned b=0;Widget *caret=NULL;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind==KPixels&&w->ramp)caret=w;
      if(w->kind==KText&&w->font==TIO_FONT_BODY){assert(w->x==ItemX[b]&&w->y==76);assert(w->color==(b==focus?TIO_LENS_FULL:TIO_LENS_MID));b++;}}
     assert(b==3&&caret&&caret->x==ItemX[focus]&&caret->y==101);}
+   if(strict&&buttons==1&&page==0){   // the shipped gallery overview: one action on the board's action row in M, caret under it, readout lowest in B
+    Widget *caret=NULL,*action=NULL,*readout=NULL;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind==KPixels&&w->ramp)caret=w;
+     if(w->kind==KText&&w->font==TIO_FONT_BODY)action=w;if(w->kind==KText&&w->font>=TIO_FONT_BODY&&w->y>=TIO_PAGE_M1&&(!readout||w->y>readout->y))readout=w;}
+    assert(action&&caret&&action->x==TIO_CORE_X0&&action->y==76&&action->color==TIO_LENS_FULL&&caret->x==TIO_CORE_X0&&caret->y==101);
+    assert(readout&&readout->y>=TIO_PAGE_M1&&readout->font>=TIO_FONT_BODY);}
    assert(tap_view_close(v));
    for(unsigned k=1;k<host->count;k++)free((void *)(host->w[k].kind==KText?host->w[k].text:NULL));
    free(v);free(host);}
@@ -232,7 +239,8 @@ static void AppRuntime(NSString *dir,NSString *board,int argc,char **argv){
  for(unsigned z=0;z<2;z++){language=z;uint8_t wire[512];size_t n=CommuteWire(wire,z);RunWire(dir,z?"app-rt-zh":"app-rt-en",wire,n,true,true);}
  for(int i=3;i<argc;i++){   // NAME=file.tap: current gallery and example packages from dashboard-service, as encoded by the SDK
   char *eq=strchr(argv[i],'=');assert(eq);char tag[48];snprintf(tag,sizeof tag,"app-%.*s",(int)(eq-argv[i]),argv[i]);
-  FILE *f=fopen(eq+1,"rb");assert(f);uint8_t *wire=malloc(20480);size_t n=fread(wire,1,20480,f);fclose(f);RunWire(dir,tag,wire,n,false,false);free(wire);}
+  FILE *f=fopen(eq+1,"rb");assert(f);uint8_t *wire=malloc(20480);size_t n=fread(wire,1,20480,f);fclose(f);
+  RunWire(dir,tag,wire,n,!strncmp(argv[i],"gallery",7),false);free(wire);}   // the shipped gallery commute package is checked strictly: bands, core, caret rules
 }
 
 // ---- Navigation (LensNav, tmg7(2)) ---------------

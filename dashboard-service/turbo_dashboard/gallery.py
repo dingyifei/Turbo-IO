@@ -8,7 +8,7 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
-from .app_examples import c, t, button, page, document
+from .app_examples import c, t, page, document
 from .app_package import build_package, read_package
 from .contracts import Fault, canonical, exact
 
@@ -75,12 +75,21 @@ def snapshot_doc(ident,snapshot=None,version=1):
     except ValueError:raise Fault('snapshot_time','observedAt must include an ISO timezone') from None
     short=lambda s:s if len(s)<=21 else s[:20]+'…'
     rows=snapshot['lines'];badge='离线示例 · 非实时' if demo else '数据快照 · 非实时'
-    home=[c('icon','image',18,52,48,48,asset='icon'),t('title',r[1],18,12,300,24),t('badge',badge,338,14,185,16)]
-    home += [t('line_'+str(i),short(s),86,52+i*26,434,18) for i,s in enumerate(rows[:3])]
-    home += [button('detail','详情与时间',18,140,244,'detail'),button('exit','退出',278,140,244,'system')]
-    detail=[t('title',short(snapshot['headline']),18,12,504,20)]
-    detail += [t('row_'+str(i),s,18,38+i*22,504,16) for i,s in enumerate(rows)]
-    detail += [t('time',('演示数据' if demo else '快照时间')+' '+observed.strftime('%m-%d %H:%M %z'),18,126,504,16,20),button('back','返回概览',18,146,244,'home'),button('exit','退出',278,146,244,'system')]
+    # TMG7 layout (LensApp board, PriorityBands, FocusCaret). Rows 0-12 and 172-180 stay empty; every item sits in one band:
+    # T 12-56, M 56-112, B 112-172. Priority rises toward the bottom, the actions sit in M, and there is no Exit or Back
+    # button (a long press exits; the detail page is reached from the overview and needs no way back). TAP1 has no
+    # intensity: text draws lens-full, buttons lens-mid until focused.
+    em=lambda text:sum(1.0 if ord(ch)>=0x2e80 else .6 for ch in text)
+    line=lambda id,text,x,y,w,font:t(id,text,x,y,w,font,font+4)
+    first,font0=(rows[0],24) if em(rows[0])*24<=424 else (short(rows[0]),20)
+    home=[line('title',r[1],40,23,170,18),line('badge',badge,216,24,284,16),
+          c('detail','button',40,76,200,24,text='详情与时间',font=20,action=dict(type='page',target='detail')),
+          c('icon','image',16,118,48,48,asset='icon'),line('line_0',first,76,116,424,font0)]
+    if len(rows)>1:home.append(line('line_1',short(rows[1]),76,148,424,16))
+    mrows,brows=rows[:-2],rows[-2:]
+    detail=[line('time',('演示数据' if demo else '快照时间')+' '+observed.strftime('%m-%d %H:%M %z'),40,23,460,18)]
+    detail+=[line('row_'+str(i),s_,40,88-(len(mrows)-1-i)*24,460,16) for i,s_ in enumerate(mrows)]
+    detail+=[line('row_'+str(len(mrows)+j),s_,40,144-(len(brows)-1-j)*26,460,18 if em(s_)*18<=460 else 16) for j,s_ in enumerate(brows)]
     doc=document('mcp_'+ident,r[1]+' · 示例' if demo else r[1],[page('home',*home),page('detail',*detail)],{'icon':icon(RECIPES.index(r))})
     doc['version']=version;read_package(build_package(doc));return doc
 

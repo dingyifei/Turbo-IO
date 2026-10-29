@@ -72,14 +72,16 @@ static void CheckWire(const char *path,bool legacy){
  }else assert(!has14);
  for(unsigned p=0;p<d->pages;p++)CheckPage(d,p,path);
  // Event and focus semantics are untouched by the view change.
- TAPState s;assert(tap_start(&s,d));TAPEvent e=tap_event(&s,TAP_NEXT,1000);assert(e.type==TAP_FOCUS_CHANGED);
+ TAPState s;assert(tap_start(&s,d));
  {   // Wheel focus is clamped at both ends (FocusCaret: no wrap); a step that cannot move reports no change.
   unsigned buttons=0;for(unsigned i=d->first[0];i<d->first[0]+d->size[0];i++)buttons+=d->items[i].kind==2;
-  assert(tap_start(&s,d)&&buttons>=2);uint32_t t=2000;
-  for(unsigned i=0;i+1<buttons;i++){t+=200;e=tap_event(&s,TAP_NEXT,t);assert(e.type==TAP_FOCUS_CHANGED&&s.focus==i+1);}
-  t+=200;e=tap_event(&s,TAP_NEXT,t);assert(e.type==TAP_NO_EVENT&&s.focus==buttons-1);   // last item: stays, no wrap to the first
-  for(unsigned i=buttons-1;i>0;i--){t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_FOCUS_CHANGED&&s.focus==i-1);}
-  t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_NO_EVENT&&s.focus==0);       // first item: stays, no wrap to the last
+  uint32_t t=1000;TAPEvent e;
+  if(buttons<2){t+=200;e=tap_event(&s,TAP_NEXT,t);assert(e.type==TAP_NO_EVENT&&s.focus==0);t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_NO_EVENT&&s.focus==0);}
+  else{
+   for(unsigned i=0;i+1<buttons;i++){t+=200;e=tap_event(&s,TAP_NEXT,t);assert(e.type==TAP_FOCUS_CHANGED&&s.focus==i+1);}
+   t+=200;e=tap_event(&s,TAP_NEXT,t);assert(e.type==TAP_NO_EVENT&&s.focus==buttons-1);   // last item: stays, no wrap to the first
+   for(unsigned i=buttons-1;i>0;i--){t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_FOCUS_CHANGED&&s.focus==i-1);}
+   t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_NO_EVENT&&s.focus==0);}       // first item: stays, no wrap to the last
  }
  free(d);free(wire);
 }

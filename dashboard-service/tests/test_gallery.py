@@ -24,7 +24,9 @@ def test_twenty_deterministic_bounded_templates(tmp_path):
         assert build_package(doc)==blob and len(encode(doc))<=20480
         assert len(doc['pages'])==2 and '示例' in doc['name']
         assert any('非实时' in c.get('text','') for p in doc['pages'] for c in p['components'])
-        assert all(any(c.get('action',{}).get('type')=='exit' for c in p['components']) for p in doc['pages'])
+        # FocusCaret: no Exit or Back item on any page (a long press exits); the overview reaches the detail page.
+        assert not any(c.get('action',{}).get('type')=='exit' or c['id'] in ('exit','back') for p in doc['pages'] for c in p['components'])
+        assert [c['action']['target'] for c in doc['pages'][0]['components'] if c['kind']=='button']==['detail']
 
 def test_snapshot_whitelist_and_no_overwrite(tmp_path):
     snap=dict(headline='北京天气',lines=['晴 26°C','湿度 40%'],observedAt='2026-09-26T13:00:00+08:00')

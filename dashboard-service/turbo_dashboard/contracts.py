@@ -11,8 +11,10 @@ from jsonschema import Draft202012Validator
 
 SCHEMA = json.loads(Path(__file__).with_name("card.schema.json").read_text())
 VALIDATOR = Draft202012Validator(SCHEMA)
-# TMG7: 14 px text is retired. The wire and the schemas still carry 14 (existing packages and cards decode
-# unchanged); the glasses draw it at the smallest accepted size >= 16.
+# TMG7: 14 px text is retired for TAP1 mini-apps. The wire and the schemas still carry 14 (existing packages decode
+# unchanged) and the mini-app runtime draws it at the smallest accepted size >= 16. The TCE1 card renderer is not
+# re-laid in TMG7: the glasses still draw a card's declared size, 14 included, so for cards `retiredFonts` only
+# counts the sizes an author should move off.
 LENS_MIN_FONT = 16
 
 

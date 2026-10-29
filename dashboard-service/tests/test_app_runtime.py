@@ -1,4 +1,5 @@
 """TMG7 mini-app contract: TAP1 stays wire-compatible, buttons are caret focus items, 14 px text is retired."""
+import base64
 import hashlib
 import json
 import zipfile
@@ -17,8 +18,13 @@ GALLERY = Path(__file__).resolve().parents[2] / 'app-gallery'
 SVG = '{http://www.w3.org/2000/svg}'
 
 
+def fixture(name):
+    """Binary test fixtures are committed as base64 text (the source audit rejects committed binaries)."""
+    return base64.b64decode((FIXTURES / (name + '.b64')).read_text())
+
+
 def legacy():
-    return (FIXTURES / 'gallery_commute_legacy.zip').read_bytes()
+    return fixture('gallery_commute_legacy.zip')
 
 
 def test_legacy_gallery_package_decodes_unchanged():
@@ -29,7 +35,7 @@ def test_legacy_gallery_package_decodes_unchanged():
     doc = checked['document']
     assert checked['budget']['valid'] and checked['budget']['retiredFonts'] == 1
     wire = encode(doc)
-    assert wire == (FIXTURES / 'gallery_commute_legacy.tap').read_bytes()
+    assert wire == fixture('gallery_commute_legacy.tap')
     assert hashlib.sha256(wire).hexdigest() == '59bfcb594af568982ef3f862289325027ca2c73c110780f87c309fec04d9980d'
     assert wire[:4] == b'TAP1' and len(wire) == 808
     # The firmware test (tests/tmg7_app_test.c) feeds this same wire to the unchanged TAP1 parser.
@@ -86,6 +92,41 @@ def test_gallery_and_examples_follow_the_tmg7_rules(tmp_path):
     for name, doc in examples().items():
         layout_ok(doc, name)
         assert validate_app(doc)['retiredFonts'] == 0
+
+
+BANDS = ((12, 56), (56, 112), (112, 172))   # PriorityBands on the 540x180 page: T, M, B
+
+
+def band_of(y, h):
+    for i, (lo, hi) in enumerate(BANDS):
+        if y >= lo and y + h <= hi:
+            return i
+    return None
+
+
+def test_gallery_pages_follow_the_bands_and_the_caret_rules():
+    for recipe in RECIPES:
+        doc = snapshot_doc(recipe[0])
+        for page in doc['pages']:
+            ids = [c['id'] for c in page['components']]
+            assert 'exit' not in ids and 'back' not in ids, (recipe[0], page['id'])                  # FocusCaret: never list Exit or Back
+            assert not any(c.get('action', {}).get('type') == 'exit' for c in page['components']), recipe[0]
+            for c in page['components']:
+                band = band_of(c['y'], c['h'])
+                assert band is not None, (recipe[0], page['id'], c['id'])                              # every item sits in exactly one band
+                if c['kind'] == 'text':
+                    assert c['x'] >= 40 and c['x'] + c['w'] <= 500, (recipe[0], c['id'])               # primary text inside the lens core
+                if c['kind'] == 'button':
+                    assert band == 1 and c['font'] == 20, (recipe[0], c['id'])                         # actions sit in M
+                    assert band_of(c['y'], c['font'] + 1 + 4 + 3) == band, (recipe[0], c['id'])        # and so does the caret under them
+            texts = [c for c in page['components'] if c['kind'] == 'text']
+            top = [c['y'] for c in texts if band_of(c['y'], c['h']) == 0]
+            assert top and max(top) - min(top) <= 3, (recipe[0], page['id'])                            # band T is one row of ambient text
+            assert sum(band_of(c['y'], c['h']) == 2 for c in texts) <= 2 + (page['id'] == 'home'), (recipe[0], page['id'])
+        home = doc['pages'][0]['components']
+        primary = [c for c in home if c['id'] == 'line_0'][0]
+        assert primary['y'] >= 112 and primary['font'] in (20, 24)                                     # the readout sits lowest, largest
+        assert [c['action']['target'] for c in home if c['kind'] == 'button'] == ['detail']
 
 
 def test_dashboard_templates_use_the_floor():
