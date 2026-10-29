@@ -189,7 +189,7 @@ static NSString *LensSymbol(NSInteger icon){
 - (void)glass:(UIView *)v radius:(CGFloat)radius{
     CGFloat alpha=UIAccessibilityIsReduceTransparencyEnabled()?1:.94;
     v.backgroundColor=[TIODesignColor(TIODesignColorBgRaised) colorWithAlphaComponent:alpha];v.layer.cornerRadius=radius;v.layer.cornerCurve=kCACornerCurveContinuous;
-    v.layer.shadowColor=UIColor.blackColor.CGColor;v.layer.shadowOpacity=.14;v.layer.shadowRadius=TIOSpace3+TIOSpace1+TIOSpace1;v.layer.shadowOffset=CGSizeMake(0,TIOSpace1+2);
+    v.layer.shadowColor=TIODesignColor(TIODesignColorLensBlack).CGColor;v.layer.shadowOpacity=.14;v.layer.shadowRadius=TIOSpace3+TIOSpace1+TIOSpace1;v.layer.shadowOffset=CGSizeMake(0,TIOSpace1+2);
 }
 - (UIButton *)glassButton:(NSString *)title symbol:(NSString *)symbol label:(NSString *)label{
     UIButtonConfiguration *c=[UIButtonConfiguration plainButtonConfiguration];
@@ -248,7 +248,7 @@ static NSString *LensSymbol(NSInteger icon){
     // Bottom sheet: grabber, title and metrics with the glasses pill, lens preview, Start / Apple Maps (End while navigating), footnote.
     UIView *sheet=[UIView new];sheet.translatesAutoresizingMaskIntoConstraints=NO;sheet.backgroundColor=TIODesignColor(TIODesignColorBgRaised);self.sheet=sheet;
     sheet.layer.cornerRadius=TIORadiusLG;sheet.layer.maskedCorners=kCALayerMinXMinYCorner|kCALayerMaxXMinYCorner;sheet.layer.cornerCurve=kCACornerCurveContinuous;
-    sheet.layer.shadowColor=UIColor.blackColor.CGColor;sheet.layer.shadowOpacity=.12;sheet.layer.shadowRadius=TIOSpace5;sheet.layer.shadowOffset=CGSizeMake(0,-TIOSpace1);
+    sheet.layer.shadowColor=TIODesignColor(TIODesignColorLensBlack).CGColor;sheet.layer.shadowOpacity=.12;sheet.layer.shadowRadius=TIOSpace5;sheet.layer.shadowOffset=CGSizeMake(0,-TIOSpace1);
     self.titleLabel=[self label:TIODesignTextStyleTitle3 weight:UIFontWeightSemibold];self.titleLabel.accessibilityTraits|=UIAccessibilityTraitHeader;
     self.metricsLabel=[self label:TIODesignTextStyleSubheadline weight:UIFontWeightRegular];self.metricsLabel.textColor=TIODesignColor(TIODesignColorLabelSecondary);self.metricsLabel.font=TIODesignMonospacedDigitFont(TIODesignTextStyleSubheadline);
     self.detailLabel=[self label:TIODesignTextStyleFootnote weight:UIFontWeightRegular];self.detailLabel.textColor=TIODesignColor(TIODesignColorLabelSecondary);self.detailLabel.textAlignment=NSTextAlignmentCenter;
