@@ -2154,3 +2154,5 @@
 {"key":"ota.state.pending","en":"Checking","zh":"检查中"}
 {"key":"editor.crop.preview","en":"Icon preview","zh":"图标预览"}
 {"key":"editor.crop.threshold","en":"Brightness threshold","zh":"亮度阈值"}
+{"key":"apps.review.pages","en":"Pages","zh":"页面"}
+{"key":"apps.recipe.preview","en":"Template preview on the glasses display","zh":"眼镜显示屏上的模板预览"}

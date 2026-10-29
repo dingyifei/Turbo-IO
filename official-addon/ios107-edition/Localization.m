@@ -185,6 +185,8 @@ static const TIOStringRow Rows[]={
     {"apple.status.ready","Ready","已就绪"},
     {"apple.status.yes","Yes","是"},
     {"apple.title","Apple Intelligence","Apple 智能"},
+    {"apps.recipe.preview","Template preview on the glasses display","眼镜显示屏上的模板预览"},
+    {"apps.review.pages","Pages","页面"},
     {"common.cancel","Cancel","取消"},
     {"common.clear","Clear","清除"},
     {"common.close","Close Turbo","关闭 Turbo"},

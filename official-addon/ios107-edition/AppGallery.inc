@@ -4,12 +4,26 @@ static NSData *GalleryBytes(NSDictionary *item){NSString *p=[NSBundle.mainBundle
 static NSDictionary *GalleryPackage(NSDictionary *item,NSString **error){NSDictionary *p=TAPReadPackage(GalleryBytes(item),error);if(p&&![p[@"zipSHA256"]isEqual:item[@"sha256"]]){if(error)*error=TIOText(@"目录校验值不匹配，未加载应用。");return nil;}return p;}
 static NSString *DeveloperPrompt(void){return TIOText(@"请使用 Turbo IO 的 turboio-developer Skill，阅读 https://github.com/Turbo1123/Turbo-IO/blob/main/docs/DEVELOPER_ECOSYSTEM.md 。在我的 Server 连接我授权的 MCP，只读获取我选择的数据，密钥留在 Server。仪表盘使用 TCE1 API 的草稿/发布/手机批准；小应用使用 TAP1 540×180 原生组件、20KiB 解压预算、最多4页，生成 ZIP 并校验/预览。先离线演示，再接真实数据；不要假装联网、自动安装、刷机或执行付款等写操作。交付源码、ZIP、SHA256、测试、部署配置和手机导入步骤。App v1 是数据快照包，自动刷新和按钮后端回流尚未接入。");}
 static void CopyPrompt(UIViewController *vc,NSString *text){UIPasteboard.generalPasteboard.string=text;Notice(vc,TIOText(@"已复制。粘贴给你的 Agent，按提示连接自己的 Server。密钥无需填进提示词。"));}
+// A table header laid out with Auto Layout: fit it to the table width whenever the width or text size changes.
+static void TAPFitHeader(UITableView *table){
+ UIView *header=table.tableHeaderView;CGFloat width=table.bounds.size.width;if(!header||width<=0)return;
+ CGSize size=[header systemLayoutSizeFittingSize:CGSizeMake(width,UILayoutFittingCompressedSize.height) withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+ CGFloat height=ceil(size.height);
+ if(fabs(header.frame.size.height-height)>.5||fabs(header.frame.size.width-width)>.5){header.frame=CGRectMake(0,0,width,height);table.tableHeaderView=header;}
+}
 @interface TAPRecipe:UITableViewController
 @property NSDictionary *item,*package;
 @end
 @implementation TAPRecipe
-- (void)viewDidLayoutSubviews{[super viewDidLayoutSubviews];UIView *h=self.tableView.tableHeaderView;CGFloat w=self.tableView.bounds.size.width;CGFloat ph=(w-40)/3;h.frame=CGRectMake(0,0,w,ph+70);NSArray<UIView *> *v=h.subviews;if(v.count>=2){v[0].frame=CGRectMake(20,16,w-40,ph);v[1].frame=CGRectMake(20,ph+23,w-40,40);}}
-- (void)viewDidLoad{[super viewDidLoad];self.title=_item[@"name"];TIOStyleResearchTable(self);NSString *error;self.package=GalleryPackage(_item,&error);UIView *header=[[UIView alloc]initWithFrame:CGRectMake(0,0,360,174)];TAPPreview *p=[[TAPPreview alloc]initWithFrame:CGRectMake(20,16,320,107)];p.autoresizingMask=UIViewAutoresizingFlexibleWidth;p.document=_package[@"document"];p.layer.cornerRadius=12;p.clipsToBounds=YES;[header addSubview:p];UILabel *note=[[UILabel alloc]initWithFrame:CGRectMake(20,130,320,36)];note.autoresizingMask=UIViewAutoresizingFlexibleWidth;note.numberOfLines=2;note.font=[UIFont systemFontOfSize:12];note.textColor=UIColor.secondaryLabelColor;note.text=_package?TIOText(@"可安装的离线示例 · 真实数据由你自己的 Server 提供"):(error?:TIOText(@"示例包未附带"));[header addSubview:note];self.tableView.tableHeaderView=header;}
+- (void)viewDidLayoutSubviews{[super viewDidLayoutSubviews];TAPFitHeader(self.tableView);}
+- (void)viewDidLoad{[super viewDidLoad];self.title=_item[@"name"];TIOStyleResearchTable(self);NSString *error;self.package=GalleryPackage(_item,&error);
+ TAPPreview *p=[TAPPreview new];p.translatesAutoresizingMaskIntoConstraints=NO;p.document=_package[@"document"];p.layer.cornerRadius=12;p.clipsToBounds=YES;[p.heightAnchor constraintEqualToAnchor:p.widthAnchor multiplier:180.0/540].active=YES;
+ p.isAccessibilityElement=YES;p.accessibilityLabel=TIOText(@"apps.recipe.preview");
+ UILabel *note=[UILabel new];note.numberOfLines=0;note.font=TIODesignFont(TIODesignTextStyleCaption);note.adjustsFontForContentSizeCategory=YES;note.textColor=TIODesignColor(TIODesignColorLabelSecondary);note.text=_package?TIOText(@"可安装的离线示例 · 真实数据由你自己的 Server 提供"):(error?:TIOText(@"示例包未附带"));
+ UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[p,note]];stack.axis=UILayoutConstraintAxisVertical;stack.spacing=TIOSpace2;stack.translatesAutoresizingMaskIntoConstraints=NO;
+ UIView *header=[UIView new];[header addSubview:stack];header.layoutMargins=UIEdgeInsetsMake(TIOSpace4,TIOSpace5,TIOSpace2,TIOSpace5);
+ [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:header.layoutMarginsGuide.topAnchor],[stack.bottomAnchor constraintEqualToAnchor:header.layoutMarginsGuide.bottomAnchor],[stack.leadingAnchor constraintEqualToAnchor:header.layoutMarginsGuide.leadingAnchor],[stack.trailingAnchor constraintEqualToAnchor:header.layoutMarginsGuide.trailingAnchor]]];
+ self.tableView.tableHeaderView=header;TAPFitHeader(self.tableView);}
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t{return 2;}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return s?3:3;}
 - (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s{return s?TIOText(@"接入你的 Server"):TIOText(@"从这个模板开始");}
