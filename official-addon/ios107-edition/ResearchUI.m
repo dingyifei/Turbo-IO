@@ -89,8 +89,11 @@ UIViewController *TIOFocusController(void){return [TIOFocus new];}
 }
 - (void)navigationController:(UINavigationController *)n willShowViewController:(UIViewController *)v animated:(BOOL)animated{
  v.view.tintColor=TIOAccent();TIOStyleFeatureSurface(v.view);
- // Only the hub root has the large title; sub-pages push with standard titles.
- v.navigationItem.largeTitleDisplayMode=(v==self.viewControllers.firstObject)?UINavigationItemLargeTitleDisplayModeAlways:UINavigationItemLargeTitleDisplayModeNever;
+ // The hub root has the large title; a sub-page pushes with a standard title unless it asked for the large one itself
+ // (the firmware wizard and the caption panels set Always in viewDidLoad, which the line above has already run).
+ UINavigationItem *item=v.navigationItem;
+ if(v==self.viewControllers.firstObject)item.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeAlways;
+ else if(item.largeTitleDisplayMode==UINavigationItemLargeTitleDisplayModeAutomatic)item.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeNever;
  if([v isKindOfClass:UITableViewController.class])TIOStyleResearchTable((UITableViewController *)v);
  [self ensureCloseForController:v];
 }

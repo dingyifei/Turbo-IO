@@ -82,6 +82,7 @@ static NSString *ShortStatus(NSString *value) {
 @property(nonatomic) UILabel *reason;
 @property(nonatomic) UIView *summaryHolder;
 @property(nonatomic) UIView *summaryPill;
+@property(nonatomic,copy) NSString *summaryKey;
 @property(nonatomic) NSLayoutConstraint *summaryHeight;
 @property(nonatomic) BOOL largeTitleWas;
 @property(nonatomic) NSDictionary *snapshot;
@@ -392,6 +393,12 @@ static NSString *ShortStatus(NSString *value) {
 - (void)updateSummary:(BOOL)unavailable {
     NSUInteger count=[self blockerCount];
     BOOL show=!unavailable && self.step==1 && count>0;
+    // The 1 s timer calls this every tick. Rebuild the pill and re-fit the header only when what they show changes
+    // (blocker count, step, availability, width, text size); a rebuilt pill would drop the VoiceOver focus every second.
+    CGFloat fitWidth=self.tableView.bounds.size.width>0?self.tableView.bounds.size.width:self.view.bounds.size.width;
+    NSString *key=[NSString stringWithFormat:@"%d|%lu|%d|%.0f|%@",show,(unsigned long)count,unavailable,fitWidth,self.traitCollection.preferredContentSizeCategory];
+    if ([key isEqualToString:self.summaryKey]&&self.tableView.tableHeaderView==self.header) return;
+    self.summaryKey=key;
     [self.summaryPill removeFromSuperview];self.summaryPill=nil;
     if (show) {
         NSString *word=count==1?TIOText(@"ota.summary.one"):TIOFormat(@"ota.summary.many",(long)count);
@@ -410,7 +417,8 @@ static NSString *ShortStatus(NSString *value) {
     }
     CGFloat width=self.tableView.bounds.size.width>0?self.tableView.bounds.size.width:self.view.bounds.size.width;
     if (width<=0) width=UIScreen.mainScreen.bounds.size.width;
-    self.header.frame=CGRectMake(0,0,width,0);
+    // Keep the installed height while measuring: a zero-height frame fights the step strip's 44 pt minimum.
+    self.header.frame=CGRectMake(0,0,width,MAX(self.header.frame.size.height,unavailable?44:1));
     [self.header setNeedsLayout];[self.header layoutIfNeeded];
     CGFloat height=unavailable?44:[self.header systemLayoutSizeFittingSize:CGSizeMake(width,UILayoutFittingCompressedSize.height)
         withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
