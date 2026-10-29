@@ -328,6 +328,8 @@ static const TIOStringRow Rows[]={
     {"create_todo调用异常，结果未知；禁止重试","create_todo call raised an exception; result unknown; do not retry",NULL},
     {"editor.crop.preview","Icon preview","图标预览"},
     {"editor.crop.threshold","Brightness threshold","亮度阈值"},
+    {"focus.duration","Timer length","计时时长"},
+    {"focus.target","Run timer on","计时位置"},
     {"hub.aboutMe.placeholder","e.g. Call me Alex. I design products in Toronto.","例如：叫我小李，在多伦多做产品设计。"},
     {"hub.alert.aboutMe.message","Optional background the model may use, such as how to address you, your job or your city.","可选。供模型参考的背景信息，如称呼、职业或城市。"},
     {"hub.alert.api.message","Enter the full HTTPS /chat/completions URL.","填写完整 HTTPS /chat/completions 地址。"},

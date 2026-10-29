@@ -226,8 +226,11 @@ UIView *TIODesignValueAccessory(NSString *value){
  UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[control,_menuButton]];stack.axis=UILayoutConstraintAxisVertical;
  stack.translatesAutoresizingMaskIntoConstraints=NO;[self addSubview:stack];
  [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:self.topAnchor],[stack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],[stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],[stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor]]];
+ for(NSString *key in @[@"enabled",@"selectedSegmentIndex"])[control addObserver:self forKeyPath:key options:0 context:NULL];
  [self update];return self;
 }
+- (void)dealloc{for(NSString *key in @[@"enabled",@"selectedSegmentIndex"])[_control removeObserver:self forKeyPath:key];}
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context{[self update];}
 - (void)traitCollectionDidChange:(UITraitCollection *)previous{[super traitCollectionDidChange:previous];[self update];}
 - (void)layoutSubviews{[super layoutSubviews];[self update];}
 - (void)update{
@@ -242,7 +245,7 @@ UIView *TIODesignValueAccessory(NSString *value){
  _control.hidden=menu;_menuButton.hidden=!menu;if(!menu)return;
  NSInteger selected=_control.selectedSegmentIndex;NSString *title=selected>=0?[_control titleForSegmentAtIndex:selected]:@"";
  UIButtonConfiguration *c=_menuButton.configuration;if(![c.title isEqual:title]){c.title=title;_menuButton.configuration=c;}
- _menuButton.accessibilityLabel=_choiceLabel;_menuButton.accessibilityValue=title;
+ _menuButton.enabled=_control.enabled;_menuButton.accessibilityLabel=_choiceLabel;_menuButton.accessibilityValue=title;
  NSMutableArray<UIAction *> *actions=[NSMutableArray new];__weak typeof(self) weak=self;
  for(NSInteger index=0;index<_control.numberOfSegments;index++){
   UIAction *action=[UIAction actionWithTitle:[_control titleForSegmentAtIndex:index]?:@"" image:nil identifier:nil handler:^(UIAction *x){

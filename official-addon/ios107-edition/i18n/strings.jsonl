@@ -2160,3 +2160,5 @@
 {"key":"camera.quality","en":"Preview quality","zh":"取景画质"}
 {"key":"camera.orientation","en":"Orientation","zh":"取景方向"}
 {"key":"camera.countdown","en":"Countdown","zh":"倒计时"}
+{"key":"focus.duration","en":"Timer length","zh":"计时时长"}
+{"key":"focus.target","en":"Run timer on","zh":"计时位置"}
