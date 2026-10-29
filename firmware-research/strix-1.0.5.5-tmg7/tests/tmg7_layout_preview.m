@@ -9,6 +9,7 @@
 #include "../src/music-runtime-v1/music.h"
 #include "../src/music-runtime-v1/music_layout.h"
 #include "../src/focus-v1/focus_view.h"
+#include "../src/focus-v1/focus_menu.h"
 #include "../src/common-v1/tio_text.h"
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
@@ -17,15 +18,16 @@
 #include <stdio.h>
 #include <math.h>
 enum {KText,KPixels,KRect};
-typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading,art;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
-typedef struct {Widget w[24];unsigned count;bool busy;} Host;
+typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading,art,ambient,ramp;int align;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
+typedef struct {Widget w[32];unsigned count;bool busy;} Host;
 enum {VReserved=1,VBand=2,VFont=4,VPanel=8,VCore=16,VColor=32,VOverlap=64,VCanvas=128,VBox=256};
 static unsigned language;
+static TIOSurface gSurface=TIO_SURFACE_PAGE;   // surface the gate and the PNG writer use: 540x180 pages, 540x220 menu
 unsigned tio_lang(void){return language;}
 static bool idle(void *p){return !((Host *)p)->busy;}
-static void *create(void *p,void *parent){assert(parent);Host *h=p;assert(h->count<24);Widget *w=&h->w[h->count++];w->shown=true;w->band=-1;return w;}
+static void *create(void *p,void *parent){assert(parent);Host *h=p;assert(h->count<32);Widget *w=&h->w[h->count++];w->shown=true;w->band=-1;return w;}
 static void *label(void *p,void *parent,unsigned font){Widget *w=create(p,parent);w->font=font;return w;}
-static void place(void *p,void *o,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=540&&y+h<=180);Widget *v=o;v->x=x;v->y=y;v->w=w;v->h=h;}
+static void place(void *p,void *o,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);Widget *v=o;v->x=x;v->y=y;v->w=w;v->h=h;}
 static void buffer(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
 static void text(void *p,void *o,const char *s){(void)p;((Widget *)o)->text=s;}
 static void visible(void *p,void *o,bool show){(void)p;((Widget *)o)->shown=show;}
@@ -33,12 +35,12 @@ static void destroy(void *p,void *o){(void)p;((Widget *)o)->shown=false;}
 static void cliptext(void *p,void *o){(void)p;((Widget *)o)->clip=true;}
 static NSColor *Ink(uint32_t c){return [NSColor colorWithRed:0 green:((c>>8)&255)/255.0 blue:0 alpha:1];}
 static void Save(Host *host,NSString *path){
- NSImage *im=[[NSImage alloc]initWithSize:NSMakeSize(540,180)];[im lockFocusFlipped:YES];[NSColor.blackColor setFill];NSRectFill(NSMakeRect(0,0,540,180));
+ NSImage *im=[[NSImage alloc]initWithSize:NSMakeSize(540,tio_surface_h(gSurface))];[im lockFocusFlipped:YES];[NSColor.blackColor setFill];NSRectFill(NSMakeRect(0,0,540,tio_surface_h(gSurface)));
  for(unsigned i=1;i<host->count;i++){Widget *w=&host->w[i];if(!w->shown)continue;NSRect rect=NSMakeRect(w->x,w->y,w->w,w->h);
   [NSGraphicsContext saveGraphicsState];NSRectClip(rect);
   if(w->kind==KRect){[Ink(w->color) setFill];[[NSBezierPath bezierPathWithRoundedRect:rect xRadius:TIO_RADIUS_XS yRadius:TIO_RADIUS_XS] fill];}
   if(w->pixels){NSBitmapImageRep *b=[[NSBitmapImageRep alloc]initWithBitmapDataPlanes:NULL pixelsWide:w->w pixelsHigh:w->h bitsPerSample:8 samplesPerPixel:3 hasAlpha:NO isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:w->w*3 bitsPerPixel:24];for(int y=0;y<w->h;y++)for(int x=0;x<w->w;x++){uint8_t *d=b.bitmapData+y*b.bytesPerRow+x*3;d[0]=d[2]=0;d[1]=w->pixels[y*w->w+x];}NSImage *tile=[[NSImage alloc]initWithSize:NSMakeSize(w->w,w->h)];[tile addRepresentation:b];[tile drawInRect:rect fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1 respectFlipped:YES hints:nil];}
-  if(w->text&&*w->text){NSString *s=[NSString stringWithUTF8String:w->text];assert(s);NSMutableParagraphStyle *ps=[NSMutableParagraphStyle new];ps.lineBreakMode=NSLineBreakByClipping;
+  if(w->text&&*w->text){NSString *s=[NSString stringWithUTF8String:w->text];assert(s);NSMutableParagraphStyle *ps=[NSMutableParagraphStyle new];ps.lineBreakMode=NSLineBreakByClipping;ps.alignment=w->align==1?NSTextAlignmentCenter:w->align==2?NSTextAlignmentRight:NSTextAlignmentLeft;
    [s drawInRect:rect withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:w->font],NSForegroundColorAttributeName:Ink(w->color?w->color:TIO_LENS_FULL),NSParagraphStyleAttributeName:ps}];}
   [NSGraphicsContext restoreGraphicsState];
  }
@@ -50,27 +52,28 @@ static bool overlap(const Widget *a,const Widget *b){return a->x<b->x+b->w&&b->x
 static bool textual(const Widget *w){return w->kind==KText&&w->text&&*w->text;}
 // Returns a mask of violated rules for the shown widgets of a 540x180 page. `band` of a widget is its declared band, else the band its box lies in.
 static unsigned Check(Host *host,const char *name,bool verbose){
- unsigned mask=0;const TIOSurface s=TIO_SURFACE_PAGE;
+ unsigned mask=0;const TIOSurface s=gSurface;
  for(unsigned i=1;i<host->count;i++){Widget *w=&host->w[i];if(!w->shown)continue;
   bool text=textual(w),pix=w->kind==KPixels,rect=w->kind==KRect;if(!text&&!pix&&!rect)continue;
   TIORect r={w->x,w->y,w->w,w->h};unsigned v=0;
-  if(r.x<0||r.y<0||r.x+r.w>TIO_PAGE_W||r.y+r.h>TIO_PAGE_H)v|=VCanvas;
+  if(r.x<0||r.y<0||r.x+r.w>TIO_PAGE_W||r.y+r.h>tio_surface_h(s))v|=VCanvas;
   if(tio_rect_in_reserved(s,r))v|=VReserved;                                   // nothing drawn in y 0-12 or 172-180
   int band=w->band>=0?w->band:tio_band_of(s,r.y,r.h);
   if(!w->span&&(band<TIO_BAND_T||band>TIO_BAND_B||!tio_rect_in_band(s,(TIOBand)band,r)))v|=VBand;   // inside its band
   if(text){
    if(w->font<TIO_FONT_MIN||!tio_font_native(w->font))v|=VFont;                // 16 px floor, stock sizes only
    if(w->h<(int)w->font+TIO_TEXT_PAD)v|=VBox;                                  // box at least font + 4
-   if(!tio_rect_in_core(r))v|=VCore;                                           // primary text inside lens-core-x
+   if(w->ambient?(r.x<TIO_INSET_X||r.x+r.w>TIO_PAGE_W-TIO_INSET_X):!tio_rect_in_core(r))v|=VCore;   // primary text inside lens-core-x; ambient menu names may use the side insets
    uint32_t c=w->color?w->color:TIO_LENS_FULL;
    if(c!=TIO_LENS_FULL&&c!=TIO_LENS_HIGH&&c!=TIO_LENS_MID&&!(w->fading&&c<TIO_LENS_HIGH))v|=VColor;   // track is never text; only a fading hint may sit between steps
-   if(c==TIO_LENS_MID&&w->font<TIO_FONT_LABEL)v|=VColor;                       // mid only at 18 px or larger
+   if(c==TIO_LENS_MID&&w->font<TIO_FONT_LABEL&&!w->ambient)v|=VColor;              // mid only at 18 px or larger (AmbientStatus: unfocused menu names are lens-min in lens-mid)
   }
   if(pix&&w->art){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]>TM_ART_LEVEL){v|=VColor;break;}}   // artwork stays under lens-mid
   if(pix&&!w->span&&(r.x<TIO_INSET_X||r.x+r.w>TIO_PAGE_W-TIO_INSET_X))v|=VCore;   // glyphs may use the side insets, not the edge
   if(rect&&!(r.h<=TIO_TRACK_H&&(w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK)))v|=VPanel;   // only carets and tracks are filled
-  bool track=pix&&r.h<=TIO_TRACK_H;if(track){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]!=TF_TRACK_LEVEL&&w->pixels[k]!=TF_FILL_LEVEL){v|=VColor;break;}}   // progress track: only track and full levels
-  if(pix&&!w->art&&!track&&r.w*r.h>=32*32){unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
+  bool track=pix&&!w->ramp&&r.h<=TIO_TRACK_H;if(track){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]!=TF_TRACK_LEVEL&&w->pixels[k]!=TF_FILL_LEVEL){v|=VColor;break;}}   // progress track: only track and full levels
+  if(pix&&!w->art&&!w->ramp&&!track&&r.w*r.h>=32*32){   // ramp = the existing pictogram art, kept by the design system (README: menu icons), not a panel
+  unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
   for(unsigned j=1;j<i;j++){Widget *o=&host->w[j];if(o->shown&&(textual(o)||o->kind==KRect)&&(text||rect)&&overlap(w,o)&&!(rect&&o->kind==KRect))v|=VOverlap;}
   if(v&&verbose)printf("  %s widget %u (%d,%d %dx%d font %u): mask 0x%x\n",name,i,r.x,r.y,r.w,r.h,w->font,v);
   mask|=v;
@@ -320,6 +323,92 @@ static void Focus(NSString *dir,NSString *board,bool zh){
   assert(tn_text_width(title->text,strlen(title->text),TIO_FONT_LABEL)<=(unsigned)title->w&&tn_text_width(status->text,strlen(status->text),TIO_FONT_BODY)<=(unsigned)status->w);
   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(tf_view_close(v));free(v);free(host);}
 }
+// ---- Menu (LensMenu, tmg7(7)): the real FMView on mock widgets -------------------------------------------------------------
+static bool attach_ok(void *o,void *owner){return o&&owner;}
+// Fixture: the settled menu for `rows` x 3 cells, `hide` (0..31) hides stock tiles 7..11, `selected` is the compact index.
+static void BuildMenu(Host *host,FMView *v,unsigned rows,unsigned hide,unsigned selected){
+ create(host,host);TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};
+ assert(fm_view_open(v,&api,host,attach_ok,host));
+ TTConfig config;TTVisible tiles;assert(tt_unrank(0,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,rows)&&fm_view_tiles(v,&tiles));
+ assert(fm_view_update(v,(int)selected,946684800+10*3600,82,1000));
+ for(unsigned i=0;i<FM_CELLS;i++){W(v->labels[i])->ambient=true;W(v->icons[i])->ramp=true;}W(v->caret)->ramp=true;W(v->page)->ramp=true;
+ for(unsigned i=0;i<FM_CELLS;i++)W(v->labels[i])->align=1;W(v->battery)->align=2;W(v->name)->align=1;   // mirrors fm_show: menu_text_align centre / right / centre
+}
+// Compare the fixture (EN, 8 tiles, two pages, second cell focused) with the board's proposed column (drawn at 2x).
+static void CompareMenuBoard(NSString *html,Host *host,FMView *v){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSRange proposed=[s rangeOfString:@"Proposed"];assert(proposed.location!=NSNotFound);s=[s substringFromIndex:proposed.location];
+ NSRange guides=[s rangeOfString:@"<sc-if"];if(guides.location!=NSNotFound)s=[s substringToIndex:guides.location];   // the band guides are an editor overlay, not part of the design
+ NSRegularExpression *re=[NSRegularExpression regularExpressionWithPattern:@"(left|right): (\\d+)(?:px)?;(?: width: (\\d+)px;)? top: (\\d+)px;[^\"]*?font-size: (\\d+)px;[^\"]*?color: (#[0-9a-f]{6});\">([^<{]+)</div>" options:0 error:nil];
+ unsigned grid=0,status=0,name=0;
+ for(NSTextCheckingResult *m in [re matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  bool right=[[s substringWithRange:[m rangeAtIndex:1]] isEqualToString:@"right"];int edge=[[s substringWithRange:[m rangeAtIndex:2]] intValue]/2;
+  int width=[m rangeAtIndex:3].location==NSNotFound?0:[[s substringWithRange:[m rangeAtIndex:3]] intValue]/2;int y=[[s substringWithRange:[m rangeAtIndex:4]] intValue]/2,font=[[s substringWithRange:[m rangeAtIndex:5]] intValue]/2;
+  uint32_t color=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:6]] UTF8String]+1,NULL,16);
+  if(font==18){   // status row: time left, battery right, lens-label in lens-mid
+   Widget *w=right?W(v->battery):W(v->status);assert(w->font==18&&w->color==color&&color==TIO_LENS_MID&&abs(w->y-y)<=3);
+   assert(right?w->x+w->w==TIO_PAGE_W-edge:w->x==edge);status++;
+  }else if(font==16){   // grid names: centred on the icon column, lens-min in lens-mid, row within 6 px
+   int cx=edge+width/2;Widget *w=NULL;for(unsigned i=0;i<FM_CELLS&&!w;i++){Widget *c=W(v->labels[i]);if(c->shown&&abs(c->x+c->w/2-cx)<=1&&abs(c->y-y)<=6)w=c;}
+   if(!w){printf("board name at %d,%d without fixture label\n",cx,y);assert(0);}assert(w->font==16&&w->color==color&&color==TIO_LENS_MID);grid++;
+  }else{   // focused name: lens-title in lens-full, centred in band B
+   Widget *w=W(v->name);assert(font==24&&color==TIO_LENS_FULL&&w->font==24&&w->x+w->w/2==edge+width/2&&abs(w->y-y)<=6&&tio_band_of(TIO_SURFACE_MENU,w->y,w->h)==TIO_BAND_B);name++;
+  }
+ }
+ assert(status==2&&grid==5&&name==1);   // five other cells show a name; the focused one shows it once, in band B
+ // Caret 24x3 under the focused icon, page dots in band T (12 and 4 px wide, 6 px apart), both within a pixel of the board.
+ NSRegularExpression *rr=[NSRegularExpression regularExpressionWithPattern:@"<rect x=\"(\\d+)\" y=\"(\\d+)\" width=\"(\\d+)\" height=\"(\\d+)\" rx=\"[\\d.]+\" fill=\"#([0-9a-f]{6})\"/>" options:0 error:nil];
+ unsigned seen=0;
+ for(NSTextCheckingResult *m in [rr matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  int x=[[s substringWithRange:[m rangeAtIndex:1]] intValue],y=[[s substringWithRange:[m rangeAtIndex:2]] intValue],w=[[s substringWithRange:[m rangeAtIndex:3]] intValue],h=[[s substringWithRange:[m rangeAtIndex:4]] intValue];
+  if(w==24&&h==3){Widget *c=W(v->caret);assert(c->w==24&&c->h==3&&abs(c->x-x)<=1&&abs(c->y-y)<=4);seen|=1;}
+  if(w==12&&h==4){Widget *d=W(v->page);int first=-1;for(int k=0;k<d->w&&first<0;k++)if(d->pixels[1*d->w+k]==176)first=k;assert(first>=0&&abs(d->x+first-x)<=1&&abs(d->y-y)<=1&&d->y>=TIO_MENU_T0&&d->y+d->h<=TIO_MENU_T1);seen|=2;}
+  if(w==4&&h==4){Widget *d=W(v->page);int first=-1;for(int k=0;k<d->w;k++)if(d->pixels[1*d->w+k]==119){first=k;break;}assert(first>=0&&abs(d->x+first-x)<=1);seen|=4;}
+ }
+ assert(seen==7);
+ printf("PASS board LensMenu (proposed, halved): status row, five grid names, focused name in band B, 24x3 caret and page dots match\n");(void)host;
+}
+static void Menu(NSString *dir,NSString *board,bool zh){
+ language=zh;gSurface=TIO_SURFACE_MENU;
+ {Host h={0};create(&h,&h);Add(&h,KText,40,205,100,20,16,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&(VReserved|VBand));   // the gate guards the menu's bottom strip
+  h=(Host){0};create(&h,&h);Add(&h,KText,40,200,100,28,24,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&VCanvas);}
+ struct {const char *tag;unsigned rows,hide,selected;} shots[]={
+  {"",2,31,1},             // board: 8 tiles, two pages, second icon focused
+  {"-all",2,0,8},          // 13 tiles, Navigation focused on page 2
+  {"-wide",2,0,7},         // "Do Not Disturb" in an outer column next to the focused icon
+  {"-camera",2,0,12},      // Camera, alone on page 3
+  {"-rows3",3,0,4},        // dense grid: icons only, name in band B
+  {"-rows3-p2",3,0,11}};
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
+  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
+  BuildMenu(host,v,sh->rows,sh->hide,sh->selected);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  const unsigned cells=sh->rows*3,cell=sh->selected%cells;TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
+  Widget *status=W(v->status),*battery=W(v->battery),*nm=W(v->name),*caret=W(v->caret),*dots=W(v->page);
+  // Status row: time and battery in lens-mid, band T, no wordmark; focused name once in B in lens-full; nothing else carries it.
+  assert(!strcmp(status->text,"10:00")&&!strcmp(battery->text,"82%")&&status->color==TIO_LENS_MID&&battery->color==TIO_LENS_MID&&status->font==TIO_FONT_LABEL);
+  assert(nm->font==TIO_FONT_TITLE&&nm->color==0&&nm->x==TIO_CORE_X0&&nm->w==TIO_CORE_W&&strlen(nm->text)>0);
+  for(unsigned k=1;k<host->count;k++)if(host->w[k].text&&!strcmp(host->w[k].text,"Turbo IO"))assert(0);
+  unsigned namesShown=0;for(unsigned k=0;k<FM_CELLS;k++){Widget *l=W(v->labels[k]);if(l->shown){namesShown++;assert(l->font==TIO_FONT_MIN&&l->color==TIO_LENS_MID&&strcmp(l->text,nm->text)&&k!=cell);}}
+  unsigned onPage=tiles.count-sh->selected/cells*cells;if(onPage>cells)onPage=cells;assert(namesShown==(sh->rows==2?onPage-1:0));
+  // Focused icon in lens-full, the others no brighter than lens-mid; caret 24x3 lens-full, dots lens-high / lens-mid.
+  for(unsigned k=0;k<FM_CELLS;k++){Widget *ic=W(v->icons[k]);if(!ic->shown)continue;uint8_t peak=0;for(int q=0;q<ic->w*ic->h;q++)if(ic->pixels[q]>peak)peak=ic->pixels[q];
+   if(k==cell)assert(peak>=250);else assert(peak<=TIO_LENS_MID>>8&255u);}
+  for(int q=0;q<caret->w*caret->h;q++)assert(caret->pixels[q]==0||caret->pixels[q]==255);
+  {unsigned pages=(tiles.count+cells-1)/cells,hi=0,mid=0;for(int q=0;q<dots->w*dots->h;q++){uint8_t g=dots->pixels[q];assert(g==0||g==(TIO_LENS_HIGH>>8&255u)||g==(TIO_LENS_MID>>8&255u));hi+=g==(TIO_LENS_HIGH>>8&255u);mid+=g==(TIO_LENS_MID>>8&255u);}
+   assert(hi==12*4-4&&mid==(pages-1)*(4*4-4));}
+  assert(caret->y>=W(v->icons[cell])->y+W(v->icons[cell])->h&&caret->x+12==W(v->icons[cell])->x+W(v->icons[cell])->w/2);
+  if(!strcmp(sh->tag,"")&&!zh)CompareMenuBoard(board,host,v);
+  if(!strcmp(sh->tag,"-wide")){Widget *l=W(v->labels[0]);assert(l->shown&&!strcmp(l->text,tio_text(TT_GRID_6,zh))&&l->x>=TIO_INSET_X);   // the longest name fits its column
+   if(!zh){NSDictionary *a=@{NSFontAttributeName:[NSFont systemFontOfSize:16]};assert([[NSString stringWithUTF8String:l->text] sizeWithAttributes:a].width<=l->w);}}
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(fm_view_close(v));free(v);free(host);}
+ // Wheel step: the caret slides in lens-move-ms (cubic ease-out) and a newer target replaces it; the name changes at once.
+ {Host *host=calloc(1,sizeof *host);FMView *v=calloc(1,sizeof *v);BuildMenu(host,v,2,0,1);
+  Widget *caret=W(v->caret);int x1=caret->x,y1=caret->y;assert(fm_view_update(v,2,946684800+10*3600,82,2000));assert(!strcmp(W(v->name)->text,tio_text(TT_GRID_2,zh)));
+  assert(fm_view_step(v,2080));int mid=caret->x;assert(mid>x1&&mid<x1+178&&caret->y==y1);
+  assert(fm_view_update(v,0,946684800+10*3600,82,2090));assert(fm_view_step(v,2110)&&caret->x<x1+178);   // retargeted from where it is, never queued
+  (void)fm_view_step(v,2400);assert(!v->moving&&caret->x==92-12);assert(fm_view_close(v));free(v);free(host);}
+ gSurface=TIO_SURFACE_PAGE;
+}
 int main(int argc,char **argv){@autoreleasepool{assert(argc==3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);
- puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music and focus are re-laid");}return 0;}
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);
+ puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}

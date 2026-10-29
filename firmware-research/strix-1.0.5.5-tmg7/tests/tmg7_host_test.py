@@ -41,13 +41,18 @@ def main():
         run(cc + [nav / f for f in files] + [src / 'common-v1/tio_text.c', '-o', exe], a.out / ('tmg7-%s-build.log' % name))
         if 'PASS' not in run([exe], a.out / ('tmg7-%s.log' % name)):
             sys.exit('tmg7-%s did not report PASS' % name)
+    # LensMenu renderer: bands, caret, single focused name, index math and allocation failures (mock widgets, ASan/UBSan).
+    exe = a.out / 'tmg7-grid'
+    run(cc + [FW / 'tests/focus_grid_test.c', src / 'focus-v1/focus_menu.c', src / 'common-v1/tio_text.c', src / 'menu-grid-v2/tile_config.c', '-o', exe], a.out / 'tmg7-grid-build.log')
+    if 'PASS focus_grid' not in run([exe], a.out / 'tmg7-grid.log'):
+        sys.exit('tmg7-grid did not report PASS')
     exe = a.out / 'tmg7-layout'
     run(['xcrun', 'clang', '-fobjc-arc', '-fblocks', '-O1', '-g', '-fsanitize=address,undefined', '-framework', 'AppKit',
          FW / 'tests/tmg7_layout_preview.m', src / 'navigation-runtime-v1/nav_view.c', src / 'navigation-runtime-v1/nav_visual.c',
-         src / 'navigation-runtime-v1/nav_runtime.c', src / 'music-runtime-v1/music.c', src / 'focus-v1/focus_view.c', src / 'focus-v1/focus.c', src / 'common-v1/tio_text.c', '-o', exe],
+         src / 'navigation-runtime-v1/nav_runtime.c', src / 'music-runtime-v1/music.c', src / 'focus-v1/focus_view.c', src / 'focus-v1/focus.c', src / 'focus-v1/focus_menu.c', src / 'menu-grid-v2/tile_config.c', src / 'common-v1/tio_text.c', '-o', exe],
         a.out / 'tmg7-layout-build.log')
     if 'PASS tmg7 layout gate' not in run([exe, a.out / 'preview', a.board], a.out / 'tmg7-layout.log'):
         sys.exit('tmg7 layout gate did not report PASS')
-    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, layout EN/ZH)')
+    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, menu grid, layout EN/ZH)')
 
 main()

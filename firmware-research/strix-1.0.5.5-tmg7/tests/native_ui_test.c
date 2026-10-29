@@ -15,7 +15,7 @@ static const char *texts[64];
 static bool shown[64];
 static bool idle(void *p){(void)p;return true;}
 static void *create(void *p,void *parent){(void)p;(void)parent;return (void *)(uintptr_t)++made;}
-static void *label(void *p,void *parent,unsigned font){assert(font==18);return create(p,parent);}
+static void *label(void *p,void *parent,unsigned font){assert(font==16||font==18||font==24);return create(p,parent);   /* TMG7 menu: names 16, status 18, focused name 24 */}
 static void place(void *p,void *o,int x,int y,int w,int h){(void)p;(void)o;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);}
 static void buffer(void *p,void *o,const uint8_t *b,unsigned w,unsigned h){(void)p;(void)o;assert(b&&w&&h);}
 static void text(void *p,void *o,const char *s){(void)p;texts[(uintptr_t)o]=s;}

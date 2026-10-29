@@ -81,6 +81,7 @@ void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
   if(!fm_view_open(&c->view,&api,ptr(app,4),attach_deleted,c)){stream_free(c);return;}
   c->desired_rows=fm_menu_rows();TTVisible active;fm_tile_snapshot(&active);(void)fm_view_tiles(&c->view,&active);
   for(unsigned i=0;i<FM_CELLS;i++)menu_text_align(c->view.labels[i],2,0);
+  menu_text_align(c->view.battery,3,0);menu_text_align(c->view.name,2,0); /* battery right-aligned to the core edge, focused name centred in band B */
   c->timer=stream_timer_create(tick,100,c);if(!c->timer){fm_view_close(&c->view);stream_free(c);return;}
   s->quad=c;
  }
