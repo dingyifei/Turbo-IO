@@ -404,9 +404,12 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     dispatch_async(ArchiveQueue,^{NSError *error=nil;BOOL ok=[Archive recordText:text round:identity role:role at:NSDate.date error:&error];dispatch_async(dispatch_get_main_queue(),^{Diagnostic=ok?TIOText(@"全天智记最终文字已保存到扩展本机归档"):TIOText(@"全天智记归档失败，官方数据未改");});});
 }
 
-// Leading glasses card: name, firmware build and whether the RayNeo app has
-// reported a device. Words plus a symbol; battery is not read passively.
-// stacked is set from the accessibility content size: the pill drops under the labels.
+// Leading glasses card: name, an optional firmware line and whether the RayNeo app has
+// reported a device. Words plus a symbol; battery is not read passively. `detail` is the
+// firmware the glasses themselves reported; with none observed it is nil and the line and its
+// VoiceOver phrase are left out (the bundled candidate is not what the glasses run, and it
+// belongs on the Glasses firmware row). stacked is set from the accessibility content size:
+// the pill drops under the labels.
 static UIView *TIOHubStatusCard(NSString *name,NSString *detail,TIODesignStatus status,NSString *word,BOOL stacked) {
     UIView *card=[UIView new];
     card.backgroundColor=TIODesignColor(TIODesignColorBgRaised);
@@ -419,7 +422,7 @@ static UIView *TIOHubStatusCard(NSString *name,NSString *detail,TIODesignStatus 
         [glyph.centerXAnchor constraintEqualToAnchor:tile.centerXAnchor],[glyph.centerYAnchor constraintEqualToAnchor:tile.centerYAnchor]]];
     UILabel *title=[UILabel new],*sub=[UILabel new];
     title.text=name;title.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightSemibold);title.textColor=TIODesignColor(TIODesignColorLabel);
-    sub.text=detail;sub.font=TIODesignFont(TIODesignTextStyleSubheadline);sub.textColor=TIODesignColor(TIODesignColorLabelSecondary);
+    sub.text=detail;sub.hidden=!detail.length;sub.font=TIODesignFont(TIODesignTextStyleSubheadline);sub.textColor=TIODesignColor(TIODesignColorLabelSecondary);
     for (UILabel *l in @[title,sub]) {l.numberOfLines=0;l.adjustsFontForContentSizeCategory=YES;}
     UIStackView *labels=[[UIStackView alloc]initWithArrangedSubviews:@[title,sub]];labels.axis=UILayoutConstraintAxisVertical;labels.spacing=TIOSpace1/2;
     [labels setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
@@ -433,7 +436,8 @@ static UIView *TIOHubStatusCard(NSString *name,NSString *detail,TIODesignStatus 
         [stack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:TIOSpace4],[stack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-TIOSpace4],
         [card.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin]]];
     // One element; the pill's word is part of the sentence.
-    card.isAccessibilityElement=YES;card.accessibilityLabel=[NSString stringWithFormat:@"%@, %@, %@",name,[NSString stringWithFormat:TIOText(@"hub.card.firmware"),detail],word];
+    card.isAccessibilityElement=YES;
+    card.accessibilityLabel=detail.length?[NSString stringWithFormat:@"%@, %@, %@",name,[NSString stringWithFormat:TIOText(@"hub.card.firmware"),detail],word]:[NSString stringWithFormat:@"%@, %@",name,word];
     card.accessibilityTraits=UIAccessibilityTraitStaticText;card.accessibilityIdentifier=@"hub-glasses-card";
     return card;
 }
@@ -468,10 +472,10 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 }
 - (void)updateCard {
     if (self.page.length) {self.tableView.tableHeaderView=nil;return;}
-    NSString *code=@"";
-    for (NSDictionary *row in TIOHubCatalog()) if ([row[@"key"] isEqual:@"experimentalOTA"]) code=row[@"code"];
+    // No firmware line: the catalog's code for the OTA row is the bundled candidate (TMG7), not what the glasses run, and the
+    // glasses keep reporting their previous build identity until a flash has been done and read back.
     BOOL seen=TIOProtocolDevice().length>0;
-    UIView *card=TIOHubStatusCard(TIOText(@"hub.card.name"),code,
+    UIView *card=TIOHubStatusCard(TIOText(@"hub.card.name"),nil,
         seen?TIODesignStatusOk:TIODesignStatusNeutral,TIOText(seen?@"hub.card.detected":@"hub.card.notDetected"),
         UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory));
     UIView *holder=[UIView new];card.translatesAutoresizingMaskIntoConstraints=NO;[holder addSubview:card];
