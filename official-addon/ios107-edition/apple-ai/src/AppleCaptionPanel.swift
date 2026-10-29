@@ -211,3 +211,30 @@ private struct AppleTranslationPreparation: View {
     }
 }
 #endif
+#if TIO_UI_PREVIEW
+// Preview-only fixture entry (compiled by preview/build.sh with -DTIO_UI_PREVIEW; the device
+// build never defines it). It returns the real panel with canned state and never starts the
+// microphone, speech recognition, translation or the glasses host.
+@available(iOS 26.0, *)
+extension AppleCaptionPanel {
+    @objc(makePreviewController:) nonisolated public static func makePreviewController(_ fixture: String) -> UIViewController {
+        let build: @MainActor () -> UIViewController = {
+            let panel = AppleCaptionPanel(style: .insetGrouped)
+            panel.loadViewIfNeeded(); panel.applyPreviewFixture(fixture); return panel
+        }
+        if Thread.isMainThread { return MainActor.assumeIsolated(build) }
+        return DispatchQueue.main.sync { MainActor.assumeIsolated(build) }
+    }
+    fileprivate func applyPreviewFixture(_ fixture: String) {
+        hostAvailable = true; glasses = true; direction = "en-zh"; portName = t("iPhone", "iPhone"); ports = []
+        if fixture == "idle" {
+            active = false; state = ""; original = ""; translated = ""
+        } else {
+            active = true; state = t("Listening on device", "正在本机收音")
+            original = "…so we can move the design review to Thursday afternoon."
+            translated = "…所以我们可以把设计评审改到周四下午。"
+        }
+        sourceView.text = original; targetView.text = translated; tableView.reloadData()
+    }
+}
+#endif

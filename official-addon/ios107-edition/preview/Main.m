@@ -8,15 +8,6 @@
 #import "ResearchUI.h"
 #import "TIODesign.h"
 #include <stdio.h>
-#import "nav_map.h"
-static UIViewController *NavigationSample(void){
- TNRState s={.valid=true,.located=true,.smooth=true};TNRScene *d=&s.scenes[0];d->range=320;d->generation=1;d->path_count=4;d->point_count=10;
- TNRPoint points[]={{-280,-200},{-280,300},{-400,240},{400,240},{-400,-80},{400,-80},{0,-200},{0,80},{180,80},{180,300}};memcpy(d->points,points,sizeof points);d->paths[0]=(TNRPath){0,2,2,0,0,0};d->paths[1]=(TNRPath){2,2,3,0,0,0};d->paths[2]=(TNRPath){4,2,4,0,0,0};d->paths[3]=(TNRPath){6,4,6,0,0,0};
- uint8_t pixels[TNR_W*TNR_H];tnr_draw(&s,0,pixels);CGColorSpaceRef color=CGColorSpaceCreateDeviceGray();CGDataProviderRef provider=CGDataProviderCreateWithCFData((__bridge CFDataRef)[NSData dataWithBytes:pixels length:sizeof pixels]);CGImageRef image=CGImageCreate(TNR_W,TNR_H,8,8,TNR_W,color,kCGImageAlphaNone,provider,NULL,false,kCGRenderingIntentDefault);
- UIViewController *page=[UIViewController new];page.title=TIOText(@"hub.row.navigation");page.view.backgroundColor=UIColor.systemBackgroundColor;UIImageView *view=[[UIImageView alloc]initWithImage:[UIImage imageWithCGImage:image]];view.translatesAutoresizingMaskIntoConstraints=NO;view.layer.magnificationFilter=kCAFilterNearest;[page.view addSubview:view];[NSLayoutConstraint activateConstraints:@[[view.centerXAnchor constraintEqualToAnchor:page.view.centerXAnchor],[view.centerYAnchor constraintEqualToAnchor:page.view.centerYAnchor],[view.widthAnchor constraintEqualToAnchor:page.view.widthAnchor constant:-32],[view.heightAnchor constraintEqualToAnchor:view.widthAnchor multiplier:.75]]];CGImageRelease(image);CGDataProviderRelease(provider);CGColorSpaceRelease(color);return page;
-}
-
-
 // Design-system gallery (docs/design-system): every token as TIODesign renders
 // it, following the system appearance. DESIGN_SELFTEST compares the compiled
 // UIKit values with the token tables.
@@ -105,6 +96,9 @@ static UIViewController *TokensSample(void){
 extern UIViewController *TIOCreateTurboPreview(void);
 extern UIViewController *TMMusicController(void);
 extern NSDictionary *TIOPreviewOTAFixture(NSString *state);
+extern UIViewController *TIOPreviewNavigationController(NSString *state);
+extern NSDictionary *TIOPreviewNavigationFacts(UIViewController *panel);
+extern UIViewController *TIOPreviewCaptionsController(NSString *fixture);
 
 static BOOL HasArgument(NSString *name) {
     return [NSProcessInfo.processInfo.arguments containsObject:name];
@@ -199,7 +193,9 @@ static NSDictionary *ReportFor(UIViewController *controller) {
         }
     });
     NSString *screen=controller.navigationItem.title?:controller.title?:@"";
-    return @{@"screen":screen,@"subtitle":subtitle,
+    NSString *style=controller.traitCollection.userInterfaceStyle==UIUserInterfaceStyleDark?@"dark":controller.traitCollection.userInterfaceStyle==UIUserInterfaceStyleLight?@"light":@"unspecified";
+    return @{@"screen":screen,@"controllerClass":NSStringFromClass(controller.class),@"navigation":TIOPreviewNavigationFacts(controller),
+             @"interfaceStyle":style,@"contentSizeCategory":controller.traitCollection.preferredContentSizeCategory?:@"",@"subtitle":subtitle,
              @"preferredLanguage":NSLocale.preferredLanguages.firstObject?:@"",@"deviceIO":@NO,@"hardwareValidated":@NO,
              @"sections":sections,@"buttons":buttons,@"steps":steps,@"editing":@(table.editing),@"selectionWhileEditing":@(table.allowsSelectionDuringEditing)};
 }
@@ -380,7 +376,15 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
                 presented=hub;
             }
         } else if ([screen isEqual:@"tokens"]) {DesignSelfTest();navigation=[[UINavigationController alloc]initWithRootViewController:TokensSample()];presented=navigation;
-        } else if ([screen isEqual:@"nav"]) {navigation=[[UINavigationController alloc]initWithRootViewController:NavigationSample()];presented=navigation;
+        } else if ([screen isEqual:@"nav"]||[screen isEqual:@"nav-active"]) {
+            // The real TIOMapKitNavigationPanel with a stub route; nav-active is the navigating state (End shown).
+            UIViewController *page=TIOPreviewNavigationController([screen isEqual:@"nav-active"]?@"active":@"ready");
+            if ([page isKindOfClass:UINavigationController.class]) navigation=(UINavigationController *)page;
+            presented=navigation;
+        } else if ([screen isEqual:@"captions"]) {
+            UIViewController *page=TIOPreviewCaptionsController(Argument(@"--captions-fixture")?:@"listening");
+            if ([page isKindOfClass:UINavigationController.class]) navigation=(UINavigationController *)page;
+            presented=navigation;
         } else if ([screen isEqual:@"ota"]) {
             UIViewController *page=TIOExperimentalOTAController();
             if (page) navigation=[[UINavigationController alloc] initWithRootViewController:page];
