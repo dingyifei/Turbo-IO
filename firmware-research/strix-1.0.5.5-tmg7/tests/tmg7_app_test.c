@@ -136,6 +136,8 @@ static void Synthetic(void){
  assert(t14&&t28&&b0&&b1);assert(t14->font==16&&t14->h==20&&t28->font==28&&t28->h==32);
  assert(h->outlines==1);W *c=caret(h);
  assert(b0->color==TIO_LENS_FULL&&b1->color==TIO_LENS_MID&&c->x==40&&c->y==100+16+1+TIO_CARET_GAP);
+ assert(tap_view_tint_plain(v,0,TIO_LENS_MID)&&t14->color==TIO_LENS_MID&&tap_view_tint_plain(v,1,TIO_LENS_HIGH)&&t28->color==TIO_LENS_HIGH);   // plain labels can be re-tinted (the shelf's title)
+ assert(!tap_view_tint_plain(v,2,TIO_LENS_MID));   // only two plain labels on this page; the buttons are not plain
  assert(tap_view_focus(v,1));assert(b0->color==TIO_LENS_HIGH&&b1->color==TIO_LENS_FULL&&c->x==300&&c->y==TIO_PAGE_H-TIO_CARET_H);   // 16 px idle label is lens-high, not lens-mid
  h->busy=true;assert(!tap_view_focus(v,0));h->busy=false;assert(c->x==300);   // renderer busy: nothing changes
  assert(tap_view_close(v));free(d);free(v);free(h);

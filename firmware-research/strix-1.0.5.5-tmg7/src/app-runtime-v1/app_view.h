@@ -19,9 +19,11 @@ typedef struct {
 // lens-full with a 24x3 caret under its baseline, the others lens-mid (lens-high below 18 px). No outline, no fill.
 #define TAP_CARET_W 24
 #define TAP_CARET_H 3
+#define TAP_PLAIN_MAX 8
 typedef struct {
  TAPWidgets api;void *root,*focus; // focus: the caret canvas (hidden when the page has no button)
  void *buttons[12]; // kind 2 labels of the open page in wire order
+ void *plain[TAP_PLAIN_MAX];unsigned plain_count; // the first kind 1 labels in wire order (the shelf re-tints its title and placeholders)
  const TAPDocument *document;unsigned page,used,selected;
  bool retiring; // external parent destruction; pixels retained until render idle
  // Align absolute buffer addresses, not the struct: ordinary malloc on AP
@@ -33,6 +35,8 @@ typedef struct {
 // No hidden global instance, timers or allocations. Do not stack-allocate on AP.
 bool tap_view_open(TAPView *,const TAPWidgets *,void *,const TAPDocument *,unsigned);
 bool tap_view_focus(TAPView *,unsigned);
+// Re-tint the n-th plain text label (kind 1) of the open page; TAP1 carries no intensity, so plain text opens lens-full.
+bool tap_view_tint_plain(TAPView *,unsigned index,uint32_t lens_level);
 // Text size actually drawn for a wire size: 14 px is retired (decodes as before, draws at the 16 px floor).
 unsigned tap_view_font(unsigned wire_font);
 bool tap_view_close(TAPView *); // false: renderer busy, keep owner+pixels alive

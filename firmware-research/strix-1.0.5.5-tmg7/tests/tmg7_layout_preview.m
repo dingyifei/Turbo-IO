@@ -193,6 +193,7 @@ static size_t CommuteWire(uint8_t *wire,bool zh){
  for(unsigned i=0;i<4;i++)wire[8+i]=(uint8_t)(n>>(8*i));return n;
 }
 // Open one page of `wire` for every focus position, gate it, save the PNGs. `strict` = the page follows the bands and the core.
+static bool (*AfterOpen)(TAPView *);   // run on every opened page before it is gated and drawn (the shelf's lens-mid re-tint)
 static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,bool strict,bool save_all){
  TAPDocument *d=calloc(1,sizeof *d);assert(tap_parse(wire,n,d));
  for(unsigned page=0;page<d->pages;page++){
@@ -200,7 +201,7 @@ static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,b
   for(unsigned focus=0;focus<(buttons?buttons:1);focus++){
    Host *host=calloc(1,sizeof *host);TAPView *v=calloc(1,sizeof *v);create(host,host);
    TAPWidgets api={host,idle,rtRoot,rtText,rtRect,rtImage,rtPlace,visible,destroy,rtTint};
-   assert(tap_view_open(v,&api,host,d,page));assert(!buttons||tap_view_focus(v,focus));
+   assert(tap_view_open(v,&api,host,d,page));if(AfterOpen)assert(AfterOpen(v));assert(!buttons||tap_view_focus(v,focus));
    char name[96];snprintf(name,sizeof name,"%s-p%u%s%u",tag,page,buttons>1?"-f":"",focus);if(buttons<=1)snprintf(name,sizeof name,"%s-p%u",tag,page);
    unsigned mask=Check(host,name,false);
    if(!strict)mask&=~(VBand|VCore);   // gallery content keeps its 18 px margins and free vertical flow; reserved rows, 16 px floor, panels and overlap still apply
@@ -231,7 +232,18 @@ static void Shelf(NSString *dir){
   for(unsigned installed=0;installed<=4;installed+=2){TAPStore *st=calloc(1,sizeof *st);assert(st);
    for(unsigned i=0;i<4;i++){TAPSlot *s=&st->slots[i];s->present=i<installed;snprintf(s->name,sizeof s->name,z?"%s":"%s",i==1?(z?"通勤助手 · 今日班次与换乘":"Commute · today's trains and transfers"):(z?"番茄时钟":"Focus"));}
    uint8_t wire[512];size_t n=tap_shelf_wire(wire,st,z);char tag[32];snprintf(tag,sizeof tag,"shelf%u-%s",installed,z?"zh":"en");
-   RunWire(dir,tag,wire,n,true,true);free(st);}
+   AfterOpen=tap_shelf_style;RunWire(dir,tag,wire,n,true,true);AfterOpen=NULL;
+   // Intensity and columns: the title and the empty slots are lens-mid (never above an unfocused app), the focused app is lens-full,
+   // and the two columns are separated by a gutter of at least 16 px inside the core.
+   TAPDocument *d=calloc(1,sizeof *d);assert(tap_parse(wire,n,d));Host *host=calloc(1,sizeof *host);TAPView *v=calloc(1,sizeof *v);create(host,host);
+   TAPWidgets api={host,idle,rtRoot,rtText,rtRect,rtImage,rtPlace,visible,destroy,rtTint};
+   assert(tap_view_open(v,&api,host,d,0));assert(tap_shelf_style(v));if(installed)assert(tap_view_focus(v,0));
+   unsigned item=0,app=0,gaps=0;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind!=KText||!w->text)continue;   // not the root or the caret
+    const TAPItem *q=&d->items[d->first[0]+item++];assert(q->kind==1||q->kind==2);
+    if(q->kind==1)assert(w->color==TIO_LENS_MID);else assert(w->color==(app++==0?TIO_LENS_FULL:TIO_LENS_MID));
+    if(item>1){unsigned slot=item-2;assert(q->w==222&&q->x==(unsigned)(TIO_CORE_X0+238*(slot%2)));if(slot%2){const TAPItem *left=q-1;assert(left->x+left->w+16<=q->x&&q->x+q->w<=(unsigned)TIO_CORE_X1);gaps++;}}}
+   assert(item==5&&app==installed&&gaps==2);
+   assert(tap_view_close(v));free(v);free(host);free(d);free(st);}
  }
 }
 static void AppRuntime(NSString *dir,NSString *board,int argc,char **argv){

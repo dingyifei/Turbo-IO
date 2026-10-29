@@ -12,11 +12,15 @@ static void place_text(TAPView *v,void *o,const TAPItem *q){
  unsigned h=q->h,need=tap_view_font(q->font)+TIO_TEXT_PAD;if(h<need)h=need;if(q->y+h>TIO_PAGE_H)h=TIO_PAGE_H-q->y;
  v->api.place(v->api.ctx,o,q->x,q->y,q->w,h);
 }
-static void clear(TAPView *v){v->root=NULL;v->focus=NULL;memset(v->buttons,0,sizeof v->buttons);v->selected=0;}
+static void clear(TAPView *v){v->root=NULL;v->focus=NULL;memset(v->buttons,0,sizeof v->buttons);memset(v->plain,0,sizeof v->plain);v->plain_count=0;v->selected=0;}
 void tap_view_detached(TAPView *v){if(!v)return;clear(v);v->document=NULL;v->retiring=true;}
 bool tap_view_close(TAPView *v){
  if(!v)return false;if(!v->root&&!v->retiring)return true;if(!v->api.idle(v->api.ctx))return false;
  if(v->root)v->api.destroy(v->api.ctx,v->root);clear(v);v->document=NULL;v->used=0;v->retiring=false;return true;
+}
+bool tap_view_tint_plain(TAPView *v,unsigned index,uint32_t level){
+ if(!v||!v->root||index>=v->plain_count||!v->api.idle(v->api.ctx))return false;
+ v->api.tint(v->api.ctx,v->plain[index],level);return true;
 }
 // Wheel focus: the selected button goes lens-full, the others drop to their idle level, and the 24x3 caret sits
 // TIO_CARET_GAP under the selected label's baseline. The caret snaps; the page has no animation tick.
@@ -35,14 +39,16 @@ bool tap_view_focus(TAPView *v,unsigned selected){
 }
 bool tap_view_open(TAPView *v,const TAPWidgets *a,void *parent,const TAPDocument *d,unsigned page){
  if(!v||v->root||v->retiring||!a||!a->idle||!a->root||!a->text||!a->rect||!a->image||!a->place||!a->visible||!a->destroy||!a->tint||!d||page>=d->pages||!a->idle(a->ctx))return false;
- v->api=*a;v->document=d;v->page=page;v->used=0;memset(v->buttons,0,sizeof v->buttons);v->selected=0;
+ v->api=*a;v->document=d;v->page=page;v->used=0;memset(v->buttons,0,sizeof v->buttons);memset(v->plain,0,sizeof v->plain);v->plain_count=0;v->selected=0;
  v->root=a->root(a->ctx,parent);if(!v->root)return false;
  a->place(a->ctx,v->root,0,0,540,180);unsigned buttons=0;
  for(unsigned i=d->first[page];i<d->first[page]+d->size[page];i++){
   const TAPItem *q=&d->items[i];void *o=NULL;
   if(q->kind==1||q->kind==2){
    char text[97];memcpy(text,q->data,q->length);text[q->length]=0;o=a->text(a->ctx,v->root,text,tap_view_font(q->font));if(!o)goto failed;
-   place_text(v,o,q);if(q->kind==2){a->tint(a->ctx,o,idle_color(tap_view_font(q->font)));v->buttons[buttons++]=o;}continue;
+   place_text(v,o,q);if(q->kind==2){a->tint(a->ctx,o,idle_color(tap_view_font(q->font)));v->buttons[buttons++]=o;}
+   else if(v->plain_count<TAP_PLAIN_MAX)v->plain[v->plain_count++]=o;
+   continue;
   }else if(q->kind==3){
    o=a->rect(a->ctx,v->root,0x003800,false);if(!o)goto failed;place(v,o,q);
    unsigned fill=(q->w*q->param+50)/100;
