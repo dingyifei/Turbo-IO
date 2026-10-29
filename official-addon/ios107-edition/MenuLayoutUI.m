@@ -96,7 +96,6 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
  BOOL enabled=!self.link.busy,primary=row==0;
  c.detailTextLabel.text=nil;c.backgroundColor=UIColor.clearColor;c.backgroundView=nil;c.selectedBackgroundView=nil;c.selectionStyle=UITableViewCellSelectionStyleNone;
  c.textLabel.text=titles[row];c.textLabel.hidden=YES; /* the capsule label below is drawn instead, so the table styling cannot recolor it */
- c.separatorInset=UIEdgeInsetsMake(0,10000,0,0); /* a button, not a list row: no hairline between the capsules, and the capsule is inset like the section content */
  UIColor *ink=!enabled?TIODesignColor(TIODesignColorLabelTertiary):primary?TIODesignColor(TIODesignColorOnAccent):TIODesignColor(TIODesignColorAccent);
  UIView *capsule=[UIView new];capsule.translatesAutoresizingMaskIntoConstraints=NO;capsule.userInteractionEnabled=NO;capsule.layer.cornerRadius=TIOButtonHeight/2;capsule.layer.cornerCurve=kCACornerCurveContinuous;
  capsule.backgroundColor=!enabled?TIODesignColor(TIODesignColorBgSunken):primary?TIODesignColor(TIODesignColorAccentFill):TIODesignColor(TIODesignColorAccentSoft);
@@ -114,6 +113,8 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
 - (BOOL)tableView:(UITableView *)t shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)p{(void)t;(void)p;return NO;}
 - (NSIndexPath *)tableView:(UITableView *)t targetIndexPathForMoveFromRowAtIndexPath:(NSIndexPath *)from toProposedIndexPath:(NSIndexPath *)to{(void)t;return to.section==1?to:from;}
 - (void)tableView:(UITableView *)t moveRowAtIndexPath:(NSIndexPath *)from toIndexPath:(NSIndexPath *)to{(void)t;if(from.section!=1||to.section!=1||from.row>=6||to.row>=6)return;NSNumber *tile=self.draft[from.row];[self.draft removeObjectAtIndex:from.row];[self.draft insertObject:tile atIndex:to.row];}
+/* The capsules are buttons, not list rows: no hairline between them. Hide the separator with a zero-length one, exactly as wide as the cell (an inset larger than the cell draws the line in the margin outside the card). */
+- (void)tableView:(UITableView *)t willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)p{(void)t;if(p.section==2)cell.separatorInset=UIEdgeInsetsMake(0,cell.bounds.size.width,0,0);}
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{[t deselectRowAtIndexPath:p animated:YES];if(p.section!=2)return;if(p.row==1)[self read];else if(p.row==0)[self save];else{self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];self.hidden=0;[self save];}}
 @end
 UIViewController *TIOTileEditorController(void){TIOTileEditor *c=[[TIOTileEditor alloc]initWithStyle:UITableViewStyleInsetGrouped];c.link=TileLink();return c;}

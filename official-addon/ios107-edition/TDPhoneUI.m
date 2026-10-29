@@ -49,7 +49,6 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  BOOL primary=row<2;
  c.detailTextLabel.text=nil;c.backgroundColor=UIColor.clearColor;c.backgroundView=nil;c.selectedBackgroundView=nil;c.selectionStyle=UITableViewCellSelectionStyleNone;
  c.textLabel.text=titles[row];c.textLabel.hidden=YES; /* the capsule label below is drawn instead, so the table styling cannot recolor it */
- c.separatorInset=UIEdgeInsetsMake(0,10000,0,0); /* a button, not a list row: no hairline between the capsules, and the capsule is inset like the section content */
  UIColor *ink=!enabled?TIODesignColor(TIODesignColorLabelTertiary):primary?TIODesignColor(TIODesignColorOnAccent):TIODesignColor(TIODesignColorAccent);
  UIView *capsule=[UIView new];capsule.translatesAutoresizingMaskIntoConstraints=NO;capsule.userInteractionEnabled=NO;capsule.layer.cornerRadius=TIOButtonHeight/2;capsule.layer.cornerCurve=kCACornerCurveContinuous;
  capsule.backgroundColor=!enabled?TIODesignColor(TIODesignColorBgSunken):primary?TIODesignColor(TIODesignColorAccentFill):TIODesignColor(TIODesignColorAccentSoft);
@@ -81,6 +80,8 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  else{NSString *key=@[@"probe_ms",@"ring_overwritten",@"sequence"][p.row];c.textLabel.text=@[TIOText(@"本次采样耗时（毫秒）"),TIOText(@"眼镜事件环覆盖数"),TIOText(@"最新采样序号")][p.row];c.detailTextLabel.text=Value(self.run.store.latest[key]);}
  return c;
 }
+/* The capsules are buttons, not list rows: no hairline between them. Hide the separator with a zero-length one, exactly as wide as the cell (an inset larger than the cell draws the line in the margin outside the card). */
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)p{(void)tableView;if(p.section==1&&p.row>=2)cell.separatorInset=UIEdgeInsetsMake(0,cell.bounds.size.width,0,0);}
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)p{
  [tableView deselectRowAtIndexPath:p animated:YES];if(p.section==0&&p.row==0)[self.runtime query];else if(p.section==0&&p.row==7){if(!self.preview)TIOLanguageFlagSync();}
  else if(p.section==1){if(p.row==2)[self.runtime beginCalibration];else if(p.row==3)[self.runtime finishCalibration];else if(p.row==4)[self.runtime cancelCalibration];}[self refresh];
