@@ -23,7 +23,7 @@ for file,entry in manifest.items():
     raise SystemExit('invalid manifest entry: '+file)
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
-FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg6'
+FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg7'
 FW=FW4
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
@@ -68,8 +68,7 @@ def ctest(name,files,inc):
         raise RuntimeError(name+' did not report PASS')
 seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
-    run('tmg6-layout-build',['xcrun','clang','-fobjc-arc','-fblocks','-O1','-g','-fsanitize=address,undefined','-framework','AppKit',FW4/'tests/tmg6_layout_preview.m',FW4/'src/navigation-runtime-v1/nav_view.c',FW4/'src/navigation-runtime-v1/nav_visual.c',FW4/'src/navigation-runtime-v1/nav_runtime.c',FW4/'src/music-runtime-v1/music.c',FW4/'src/common-v1/tio_text.c','-o',out/'tmg6-layout'])
-    run('tmg6-layout',[out/'tmg6-layout',out/'tmg6-preview'])
+    run('tmg7-host',['python3','-I',FW4/'tests/tmg7_host_test.py','--out',out/'tmg7-host'])
     ctest('tmg6-passing',[FW4/'tests/tmg6_passing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')

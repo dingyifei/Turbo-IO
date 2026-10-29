@@ -1,8 +1,25 @@
 # TMG7 candidate (design-system fork)
 
-TMG7 starts as a byte-identical source fork of frozen TMG6 (`../strix-1.0.5.5-tmg6`) with only the candidate archive name and phone-pin tool label renamed. Wire protocol, capabilities, runtime build identity, patch sites (25) and the sole raw edit are unchanged, so it builds the same AP as TMG6 until the design-system page re-layout commits land. The TMG6 sections below are historical until updated.
+**CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-# TMG6 candidate
+TMG7 forks frozen TMG6 (`../strix-1.0.5.5-tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, runtime build identity, the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
+
+- Shared tokens in `src/common-v1` (lens intensity ramp, bands, 40..500 core, caret, 16 px text floor) with a transient hint helper that fades and hides.
+- Navigation (LensNav): the map is clipped to the lens core and the fixed clock footer is gone (removed at TMG6).
+- Music (LensMusic): current and next lyric labels are core width, lyric lines wrap to two rows with an ellipsis, and the control hint is transient.
+- Main menu (LensMenu): status row, page dots, 24x3 caret, one focused name in the bottom band, two- and three-row grids. Tile and index math is unchanged.
+- Camera control hint is transient.
+- Mini-app runtime: buttons are caret focus items and 14 px text draws at 16. The TAP1 wire format is unchanged and older packages still decode.
+
+Modules removed at TMG4 stay removed: ride (didi-v1), English (context-english-v1), dots (dots-v1) and reader (weread-v1). None is restored here.
+
+## Host gates
+
+`python3 tests/tmg7_host_test.py --out DIR` runs the tokens test at 22..27 px/deg, the mini-app runtime test, the navigation core and view tests, the menu grid test and the layout gate. The layout gate renders every page in English and Chinese to PNG and checks each widget against its band, the reserved rows, the 16 px floor and the no-filled-panel rule. The phone `test.py` in `official-addon/ios107-edition` now targets this tree: it audits the supplied ZIP with this tree's `build.py`, runs the tmg7 host group, and checks the shared sources against the phone copies. Its `pins` group stays red for a ZIP7 until the phone is re-pinned to ZIP7. Each source edit needs a repin (`build.py --repin`) and a copy of the repin output into `build-inputs.json`.
+
+Phone pins still name TMG6 until the final ZIP7 pin step. Navigation `Passing`, the knob observation and the older candidate records below are historical.
+
+# TMG6 candidate (historical)
 
 TMG6 keeps the 25 existing patch sites and unchanged sole raw carousel edit. New navigation opcode 12 is a 224-byte body: map generation, UTF-8 byte count, reserved zeros, 192-byte zero-padded text, and 24 bytes of word-end offsets. The phone sends it only after nav capability bit 3 is acknowledged; TMG5 peers advertising caps 7 retain their understood messages and presentation. The geographic map receives remaining route geometry independently of the turn schematic. FW6 uses a five-pixel route with a seven-pixel contrast halo and a larger centered heading-up marker.
 
