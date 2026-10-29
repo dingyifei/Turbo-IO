@@ -23,7 +23,7 @@ for file,entry in manifest.items():
     raise SystemExit('invalid manifest entry: '+file)
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
-FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg5'
+FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg6'
 FW=FW4
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
@@ -127,6 +127,7 @@ test('voice-exit',['tests/VoiceExitTests.m','Core.m'],extra=['-fmodules','-Wno-u
 test('stability',['RoadMap.m','nav_runtime.c','tests/StabilityTests.m'])
 test('coordinates',['RoadMap.m','nav_runtime.c','tests/CoordinateTests.m'])
 test('replay',['RoadMap.m','NativeNavigation.m','nav_runtime.c','tests/RoadMapTests.m'],[P/'tests/maps',out,'v2'])
+test('tmg6-route',['NavigationGuidance.m','RoadMap.m','nav_runtime.c','tests/TMG6RouteTests.m'])
 test('guidance',['NavigationGuidance.m','tests/NavigationGuidanceTests.m'])
 test('labels',['RoadMap.m','NavigationGuidance.m','RoadTiles.m','nav_runtime.c','tests/RoadMapLabelTests.m'],[],['-DTIO_MAPKIT_ENABLED=1'])
 test('tiles',['RoadTiles.m','tests/RoadTilesTests.m'])

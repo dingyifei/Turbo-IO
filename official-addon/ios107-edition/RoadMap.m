@@ -22,7 +22,12 @@ static NSArray *Pieces(NSArray *coords,NSArray *origin,NSArray *(^convert)(doubl
   if(last){double x=[last[0] doubleValue],y=[last[1] doubleValue],xx=[xy[0] doubleValue],yy=[xy[1] doubleValue];if(Clip(&x,&y,&xx,&yy)){
    NSArray *a=@[@((int)lround(x*4)),@((int)lround(y*4))],*b=@[@((int)lround(xx*4)),@((int)lround(yy*4))];
    if(!part||![part.lastObject isEqual:a]){part=[NSMutableArray arrayWithObject:a];[pieces addObject:part];}
-   if(![part.lastObject isEqual:b])[part addObject:b];budget++;if(budget>=2048)break;
+   if(![part.lastObject isEqual:b]){
+    // Compress dense straight route samples before the visible-segment budget.
+    // Road tiles retain their original segmentation; route corners stay explicit.
+    if(!osm&&part.count>=2){NSArray *u=part[part.count-2],*v=part.lastObject;double dx=[b[0] doubleValue]-[u[0] doubleValue],dy=[b[1] doubleValue]-[u[1] doubleValue],vx=[v[0] doubleValue]-[u[0] doubleValue],vy=[v[1] doubleValue]-[u[1] doubleValue],den=dx*dx+dy*dy,t=den?(vx*dx+vy*dy)/den:0;
+     if(den&&t>=0&&t<=1&&fabs(vx*dy-vy*dx)<=4*sqrt(den)){[part removeLastObject];if(budget)budget--;}}
+    [part addObject:b];budget++;}if(budget>=2048)break;
   }else part=nil;}last=xy;
  }
  return pieces;
@@ -64,7 +69,7 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
  }return NO;
 }
 @implementation TIORoadMap{
- NSArray *(^_convert)(double,double);NSArray *_features,*_bbox,*_origin,*_regions;double _labelHeading,_sceneAt;NSData *_scene,*_scene2;uint32_t _generation;id _segment;NSString *_note;
+ NSArray *(^_convert)(double,double);NSArray *_features,*_bbox,*_origin,*_regions,*_route;double _labelHeading,_sceneAt;NSData *_scene,*_scene2;uint32_t _generation;id _segment;NSString *_note;
  NSURLSession *_session;NSURLSessionDataTask *_task;NSMutableData *_received;NSTimeInterval _lastRequest;NSUInteger _requests,_epoch;BOOL _httpOK,_tileBusy,_partial,_retile;
 #if TIO_MAPKIT_ENABLED
  TIORoadTileStore *_store;
@@ -72,7 +77,7 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
 }
 - (instancetype)initWithWGS84ToMap:(NSArray *(^)(double,double))convert{if((self=[super init])){_convert=[convert copy];_note=TIOText(@"路网关闭 · 保留原路线示意图");}return self;}
 - (NSString *)note{return _note?:@"";}
-- (void)reset{_epoch++;[_task cancel];[_session invalidateAndCancel];_task=nil;_session=nil;_received=nil;_tileBusy=NO;_partial=NO;_retile=NO;_regions=nil;_features=nil;_bbox=nil;_scene=nil;_scene2=nil;_origin=nil;_segment=nil;_requests=0;_lastRequest=0;self.allowNetwork=NO;_note=TIOText(@"路网缓存已清理");}
+- (void)reset{_epoch++;[_task cancel];[_session invalidateAndCancel];_task=nil;_session=nil;_received=nil;_tileBusy=NO;_partial=NO;_retile=NO;_regions=nil;_features=nil;_bbox=nil;_scene=nil;_scene2=nil;_origin=nil;_segment=nil;_route=nil;_requests=0;_lastRequest=0;self.allowNetwork=NO;_note=TIOText(@"路网缓存已清理");}
 - (void)dealloc{[_session invalidateAndCancel];}
 - (NSArray *)wgs:(NSArray *)map{
  if(!LL(map))return nil;if(!_convert)return map;
@@ -222,7 +227,11 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
  return tnr_body_valid(TNR_SCENE,out.bytes,out.length)?out:nil;
 }
 - (NSDictionary *)decorate:(NSDictionary *)frame coordinates:(NSArray *)coords{
- if(!self.enabled||![frame[@"phase"] isEqual:@"navigating"]||coords.count<2||coords.count>512||!LL(frame[@"tnrLocation"])||!N(frame[@"tnrLocationAt"],0,DBL_MAX)||NSProcessInfo.processInfo.systemUptime-[frame[@"tnrLocationAt"] doubleValue]>4)return frame;
+ // The turn schematic is step-scoped; the geographic map gets the remaining
+ // route independently, so later turns and route reentries are not cut off.
+ NSArray *whole=frame[@"tnrRoute"];BOOL full=[whole isKindOfClass:NSArray.class]&&whole.count>=2&&whole.count<=65536;
+ if(full)coords=whole;
+ if(!self.enabled||![frame[@"phase"] isEqual:@"navigating"]||coords.count<2||coords.count>(full?65536:512)||!LL(frame[@"tnrLocation"])||!N(frame[@"tnrLocationAt"],0,DBL_MAX)||NSProcessInfo.processInfo.systemUptime-[frame[@"tnrLocationAt"] doubleValue]>4)return frame;
  NSArray *position=frame[@"tnrLocation"];NSArray *wgs=[self wgs:position];if(!LL(wgs)){_note=TIOText(@"坐标转换未收敛 · 不显示错位路网");return frame;}
  BOOL covered=[self covers:wgs];if(!covered)covered=[self loadFixture:wgs];
  // Prefetch before the rendered viewport reaches an edge. Do not clear the old
@@ -232,8 +241,10 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
  else _note=_task||_tileBusy?TIOText(@"正在加载周边道路 · 保留已知路网"):self.allowNetwork?(_requests>=TIO_ROAD_REQUESTS?TIOText(@"本次图源请求已达上限 · 仅显示已有道路"):TIOText(@"当前区域路网暂缺 · 保留已有道路")):TIOText(@"未授权周边道路 · 仅显示已有道路");
  double now=NSProcessInfo.processInfo.systemUptime,heading=[frame[@"navHeading"] doubleValue],turn=fabs(fmod(heading-_labelHeading+540,360)-180);
  BOOL refreshNames=_features.count&&now-_sceneAt>=3&&(turn>=30||Distance(position,_origin?:position)>50||![self hasVisibleLabelsAt:position heading:(unsigned)heading]);
- if(!_scene||!_origin||Distance(position,_origin)>100||![_segment isEqual:frame[@"segment"]]||refreshNames){
-  _origin=position;_segment=frame[@"segment"];_labelHeading=heading;_sceneAt=now;_scene=[self scene:coords origin:_origin];
+ if(!_scene||!_origin||(full&&_route!=coords)||Distance(position,_origin)>100||![_segment isEqual:frame[@"segment"]]||refreshNames){
+  _origin=position;_segment=frame[@"segment"];_route=coords;_labelHeading=heading;_sceneAt=now;
+  NSArray *geometry=coords;if(full){NSUInteger start=MIN([frame[@"tnrRouteStart"] unsignedIntegerValue],coords.count-2);NSMutableArray *remaining=[NSMutableArray arrayWithObject:position];[remaining addObjectsFromArray:[coords subarrayWithRange:NSMakeRange(start+1,coords.count-start-1)]];geometry=remaining;}
+  _scene=[self scene:geometry origin:_origin];
  }
  if(!_scene)return frame;NSArray *xy=XY(position,_origin);double x=[xy[0] doubleValue]*4,y=[xy[1] doubleValue]*4;if(fabs(x)>2000||fabs(y)>2000)return frame;
  uint8_t pose[12]={0};W32(pose,_generation);W16(pose+4,(int)lround(x));W16(pose+6,(int)lround(y));W16(pose+8,[frame[@"navHeading"] unsignedIntValue]%360);

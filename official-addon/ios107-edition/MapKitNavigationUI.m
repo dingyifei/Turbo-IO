@@ -293,6 +293,7 @@ static TIOGuideRoute *GuideRoute(MKRoute *route){
         @"simulated":@(self.simulated),@"segment":@(s.step),@"observedAt":@(NSDate.date.timeIntervalSince1970),@"tnrSource":self.simulated?@"mapkit-simulation":@"mapkit-realtime"} mutableCopy];
     [f addEntriesFromDictionary:TNVNormalizeCoordinates(ahead)];
     f[@"navSpeed"]=@(isfinite(speed)&&speed>=0?speed:0);f[@"tnrLocation"]=@[@(plat),@(plon)];f[@"tnrLocationAt"]=@(self.simulated?now:now-MAX(0,-self.fix.timestamp.timeIntervalSinceNow));f[@"navHeading"]=@((unsigned)lround(TIOGuideHeading(course,speed,s.bearing))%360);
+    f[@"tnrRoute"]=self.guide.points;f[@"tnrRouteStart"]=@(s.segment);
     NSDictionary *frame=[self.roadMap decorate:f coordinates:ahead];self.display=frame;
     if(!self.firstFrameAt)self.firstFrameAt=now;
     if(self.glassesStarted){TDPPhoneNavigationOffer(frame);self.offers++;}

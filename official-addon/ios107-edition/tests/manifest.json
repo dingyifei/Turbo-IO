@@ -287,6 +287,10 @@
     "tests/MusicCompatibilityTests.m": {
       "status": "run",
       "group": "music-compatibility"
+    },
+    "tests/TMG6RouteTests.m": {
+      "status": "run",
+      "group": "tmg6-route"
     }
   }
 }
