@@ -1,5 +1,6 @@
 #import "camera-v1/CameraUI.h"
 #import "TIOConfirm.h"
+#import "TIODesign.h"
 #import "TIOLanguage.h"
 #import "DisplayPhoneUI.h"
 #import "AppBridge.h"
@@ -184,7 +185,7 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
  if(ip.section==0){c.textLabel.text=ip.row?TIOText(@"1 · 查询眼镜 SID"):TIOText(@"DISPLAY PHONE 06 · 诊断");c.detailTextLabel.text=ip.row?TIOText(@"先在眼镜进入 Turbo Display SID 页面。只查询一次，5秒无匹配回执停止；不根据旧提示猜测固件版本。"):self.note;c.imageView.image=[UIImage systemImageNamed:ip.row?@"antenna.radiowaves.left.and.right":@"checkmark.shield"];}
  if(ip.section==1){NSArray *titles=@[TIOText(@"导航布局 · 本机预览"),TIOText(@"切换左转 / 右转示例"),TIOText(@"从文件选择 PNG / JPEG / HEIC"),TIOText(@"2 · 发送完整画布（64 KiB）")];c.textLabel.text=titles[ip.row];
   if(ip.row==0){
-   c.textLabel.text=nil;c.detailTextLabel.text=nil;UIImageView *v=[[UIImageView alloc]initWithImage:self.preview];v.contentMode=UIViewContentModeScaleAspectFit;v.backgroundColor=UIColor.blackColor;v.layer.cornerRadius=10;v.clipsToBounds=YES;
+   c.textLabel.text=nil;c.detailTextLabel.text=nil;UIImageView *v=[[UIImageView alloc]initWithImage:self.preview];v.contentMode=UIViewContentModeScaleAspectFit;v.backgroundColor=TIODesignColor(TIODesignColorLensBlack);v.layer.cornerRadius=10;v.clipsToBounds=YES;
    UILabel *label=[UILabel new];label.text=TIOText(@"512×128 灰度 · 手机布局预览\n箭头 / 距离 / 路名 / 示意小地图\n不是实时导航，也不是眼镜截图");label.numberOfLines=0;label.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];label.textColor=UIColor.secondaryLabelColor;
    UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[v,label]];stack.axis=UILayoutConstraintAxisVertical;stack.spacing=10;stack.translatesAutoresizingMaskIntoConstraints=NO;[c.contentView addSubview:stack];
    [NSLayoutConstraint activateConstraints:@[[stack.leadingAnchor constraintEqualToAnchor:c.contentView.leadingAnchor constant:16],[stack.trailingAnchor constraintEqualToAnchor:c.contentView.trailingAnchor constant:-16],[stack.topAnchor constraintEqualToAnchor:c.contentView.topAnchor constant:16],[stack.bottomAnchor constraintEqualToAnchor:c.contentView.bottomAnchor constant:-16],[v.heightAnchor constraintEqualToAnchor:v.widthAnchor multiplier:0.25]]];
@@ -209,7 +210,7 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
   c.textLabel.text=@[TIOText(@"4 · 距离 80 / 60 米切换并局部发送"),TIOText(@"5 · 左右转切换并局部发送"),TIOText(@"6 · 重发同图（应为零传输）"),TIOText(@"像素基线与局部传输状态")][ip.row];
   c.detailTextLabel.text=ip.row==3?[NSString stringWithFormat:TIOText(@"基线%@ · %lu/%lu块 · %.2f秒\n%@"),Session.hasPixelBaseline?TIOText(@"已确认"):TIOText(@"无效"),(unsigned long)Session.completedRects,(unsigned long)Session.deltaTotal,Session.deltaElapsed,Session.state?:TIOText(@"未查询")]:TIOText(@"先成功发送一次完整导航示例图，再点本项。只发送差异，最多32块；不是实时导航，不自动连续发送。");
  }
- BOOL action=!(ip.section==0&&ip.row==0)&&!(ip.section==1&&ip.row==0)&&!(ip.section==3&&ip.row==3);if(action){c.textLabel.textColor=UIColor.systemBlueColor;c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;}return c;
+ BOOL action=!(ip.section==0&&ip.row==0)&&!(ip.section==1&&ip.row==0)&&!(ip.section==3&&ip.row==3);if(action){c.textLabel.textColor=TIODesignColor(TIODesignColorAccent);c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;}return c;
 }
 - (void)result:(BOOL)ok {if(!ok){self.note=Session.state?:TIOText(@"未发送：请先连接并进入眼镜 Turbo Display 页面，再查询 SID。");[self.tableView reloadData];} [self saveStatus];}
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{
@@ -242,7 +243,7 @@ NSDictionary *TDPPhoneNavigationStatus(void){return TNVStatus();}
     if(allowed&&w&&h&&w<=16000000&&h<=16000000&&w<=16000000/h&&CGImageSourceGetCount(src)==1){
      CGImageRef thumb=CGImageSourceCreateThumbnailAtIndex(src,0,(__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways:@YES,(__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform:@YES,(__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize:@512});
      if(thumb){UIImage *small=[UIImage imageWithCGImage:thumb];UIGraphicsImageRendererFormat *f=[UIGraphicsImageRendererFormat defaultFormat];f.scale=1;f.opaque=YES;
-      im=[[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(512,128) format:f] imageWithActions:^(UIGraphicsImageRendererContext *r){[UIColor.blackColor setFill];UIRectFill(CGRectMake(0,0,512,128));CGFloat s=MIN(512/small.size.width,128/small.size.height);[small drawInRect:CGRectMake((512-small.size.width*s)/2,(128-small.size.height*s)/2,small.size.width*s,small.size.height*s)];}];CGImageRelease(thumb);
+      im=[[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(512,128) format:f] imageWithActions:^(UIGraphicsImageRendererContext *r){[TIODesignColor(TIODesignColorLensBlack) setFill];UIRectFill(CGRectMake(0,0,512,128));CGFloat s=MIN(512/small.size.width,128/small.size.height);[small drawInRect:CGRectMake((512-small.size.width*s)/2,(128-small.size.height*s)/2,small.size.width*s,small.size.height*s)];}];CGImageRelease(thumb);
      }
     }CFRelease(src);
    }
