@@ -88,7 +88,7 @@ import UIKit
         default:
             cell.textLabel?.text = path.row == 0 ? (busy ? "正在本机翻译…" : "翻译输入文字") : path.row == 1 ? "载入固定测试句" : "载入《哈姆雷特》长文"
             cell.imageView?.image = UIImage(systemName: path.row == 0 ? "play.circle.fill" : "text.quote")
-            cell.textLabel?.textColor = .systemIndigo
+            cell.textLabel?.textColor = TIODesign.color(.accent)
             cell.accessibilityIdentifier = path.row == 0 ? "turbo.localtranslation.translate" : "turbo.localtranslation.fixture"
         }
         return cell
