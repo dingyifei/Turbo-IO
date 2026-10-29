@@ -314,6 +314,11 @@ static NSString *LensSymbol(NSInteger icon){
 - (void)traitCollectionDidChange:(UITraitCollection *)previous{
     [super traitCollectionDidChange:previous];
     if(previous.preferredContentSizeCategory!=self.traitCollection.preferredContentSizeCategory){[self styleSegments:self.modeControl];[self adaptLayout];}
+    // The route stroke is resolved when the renderer is made; resolve it again when light and dark switch with the panel open.
+    if(previous.userInterfaceStyle!=self.traitCollection.userInterfaceStyle&&self.line){
+        MKPolylineRenderer *r=(MKPolylineRenderer *)[self.map rendererForOverlay:self.line];
+        if([r isKindOfClass:MKPolylineRenderer.class]){r.strokeColor=[TIODesignColor(TIODesignColorAccent) resolvedColorWithTraitCollection:self.traitCollection];[r setNeedsDisplay];}
+    }
 }
 // At accessibility text sizes the pill drops under the title and the buttons stack.
 - (void)adaptLayout{
@@ -405,7 +410,7 @@ static NSString *LensSymbol(NSInteger icon){
 }
 
 #pragma mark Destination
-- (void)completerDidUpdateResults:(MKLocalSearchCompleter *)c{self.results.hidden=!c.results.count||!self.search.isFirstResponder;[self.results reloadData];}
+- (void)completerDidUpdateResults:(MKLocalSearchCompleter *)c{self.results.hidden=!c.results.count||!self.search.isFirstResponder;[self.results reloadData];if(!self.results.hidden)[self.view bringSubviewToFront:self.results];   /* the sheet is added after the table: lift the suggestions above it on short phones */}
 - (void)completer:(MKLocalSearchCompleter *)c didFailWithError:(NSError *)error{self.results.hidden=YES;}
 - (void)searchBar:(UISearchBar *)bar textDidChange:(NSString *)text{if(!text.length){self.results.hidden=YES;return;}self.completer.region=self.map.region;self.completer.queryFragment=text;}
 - (void)searchBarSearchButtonClicked:(UISearchBar *)bar{MKLocalSearchRequest *r=[MKLocalSearchRequest new];r.naturalLanguageQuery=bar.text;r.region=self.map.region;[self runSearch:r];}
@@ -647,8 +652,7 @@ static NSString *LensSymbol(NSInteger icon){
     NSString *key=[NSString stringWithFormat:@"%ld|%@",(long)status,word];
     if([key isEqual:self.pillKey])return;self.pillKey=key;
     [self.pill removeFromSuperview];UIView *pill=TIODesignStatusPill(status,word);pill.translatesAutoresizingMaskIntoConstraints=NO;pill.accessibilityLabel=spoken;self.pill=pill;
-    // The neutral pill's sunken fill leaves its secondary text at 4.2:1 in light; on the raised sheet the page background keeps it at 4.7:1 or better.
-    if(status==TIODesignStatusNeutral)pill.backgroundColor=TIODesignColor(TIODesignColorBg);[self.pillHolder addSubview:pill];
+    [self.pillHolder addSubview:pill];
     [NSLayoutConstraint activateConstraints:@[[pill.leadingAnchor constraintEqualToAnchor:self.pillHolder.leadingAnchor],[pill.trailingAnchor constraintEqualToAnchor:self.pillHolder.trailingAnchor],[pill.topAnchor constraintEqualToAnchor:self.pillHolder.topAnchor],[pill.bottomAnchor constraintEqualToAnchor:self.pillHolder.bottomAnchor]]];
 }
 - (void)refresh{
