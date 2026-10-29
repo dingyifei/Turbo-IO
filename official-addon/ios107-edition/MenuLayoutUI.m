@@ -4,6 +4,7 @@
 #import "ProtocolContext.h"
 #import "ExperimentalOTAFlash.h"
 #import "ResearchUI.h"
+#import "TIODesign.h"
 #import <objc/message.h>
 static TIOMenuLayoutLink *Link(void){
  static TIOMenuLayoutLink *link;static dispatch_once_t once;
@@ -84,9 +85,26 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
  if(p.section==0){c.textLabel.text=TileName(p.row);c.detailTextLabel.text=TIOText(@"tmg4.tiles.fixed");c.selectionStyle=UITableViewCellSelectionStyleNone;}
  else if(p.section==1){NSUInteger tile=[self.draft[p.row]unsignedIntegerValue];c.textLabel.text=TileName(tile);c.showsReorderControl=YES;c.selectionStyle=UITableViewCellSelectionStyleNone;
   if(tile==12){c.detailTextLabel.text=TIOText(@"tmg4.tiles.camera");c.accessoryType=UITableViewCellAccessoryCheckmark;c.editingAccessoryType=UITableViewCellAccessoryCheckmark;}
-  else{UISwitch *toggle=[UISwitch new];toggle.tag=tile;toggle.on=!(self.hidden&(1u<<tile));toggle.enabled=self.link.order.count==13&&!self.link.busy;[toggle addTarget:self action:@selector(visibility:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;c.editingAccessoryView=toggle;}
- }else{c.textLabel.text=@[TIOText(@"tmg4.tiles.read"),TIOText(@"tmg4.tiles.save"),TIOText(@"tmg4.tiles.reset")][p.row];BOOL enabled=!self.link.busy;c.detailTextLabel.text=self.link.note;c.userInteractionEnabled=enabled;c.textLabel.textColor=enabled?UIColor.systemBlueColor:UIColor.tertiaryLabelColor;c.accessibilityIdentifier=@[@"tiles-read",@"tiles-save",@"tiles-reset"][p.row];}
+  else{UISwitch *toggle=[UISwitch new];toggle.tag=tile;toggle.on=!(self.hidden&(1u<<tile));toggle.onTintColor=TIODesignColor(TIODesignColorAccentFill);toggle.accessibilityLabel=TileName(tile);toggle.enabled=self.link.order.count==13&&!self.link.busy;[toggle addTarget:self action:@selector(visibility:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;c.editingAccessoryView=toggle;}
+ }else{[self styleAction:c row:p.row];}
  return c;
+}
+/* Save is the primary action; Read and Restore are secondary. The link's status
+ * sentence is stated once, in this section's footer, not under every button. */
+- (void)styleAction:(UITableViewCell *)c row:(NSInteger)row{
+ NSString *titles[]={TIOText(@"tmg4.tiles.save"),TIOText(@"tmg4.tiles.read"),TIOText(@"tmg4.tiles.reset")};NSString *ids[]={@"tiles-save",@"tiles-read",@"tiles-reset"};
+ BOOL enabled=!self.link.busy,primary=row==0;
+ c.detailTextLabel.text=nil;c.backgroundColor=UIColor.clearColor;c.backgroundView=nil;c.selectedBackgroundView=nil;c.selectionStyle=UITableViewCellSelectionStyleNone;
+ c.textLabel.text=titles[row];c.textLabel.hidden=YES; /* the capsule label below is drawn instead, so the table styling cannot recolor it */
+ UIColor *ink=!enabled?TIODesignColor(TIODesignColorLabelTertiary):primary?TIODesignColor(TIODesignColorOnAccent):TIODesignColor(TIODesignColorAccent);
+ UIView *capsule=[UIView new];capsule.translatesAutoresizingMaskIntoConstraints=NO;capsule.userInteractionEnabled=NO;capsule.layer.cornerRadius=TIOButtonHeight/2;capsule.layer.cornerCurve=kCACornerCurveContinuous;
+ capsule.backgroundColor=!enabled?TIODesignColor(TIODesignColorBgSunken):primary?TIODesignColor(TIODesignColorAccentFill):TIODesignColor(TIODesignColorAccentSoft);
+ UILabel *label=[UILabel new];label.translatesAutoresizingMaskIntoConstraints=NO;label.text=titles[row];label.textAlignment=NSTextAlignmentCenter;label.numberOfLines=0;label.textColor=ink;label.font=TIODesignFont(TIODesignTextStyleHeadline);label.adjustsFontForContentSizeCategory=YES;label.isAccessibilityElement=NO;
+ [capsule addSubview:label];[c.contentView insertSubview:capsule atIndex:0];
+ [NSLayoutConstraint activateConstraints:@[[label.leadingAnchor constraintEqualToAnchor:capsule.leadingAnchor constant:TIOSpace4],[label.trailingAnchor constraintEqualToAnchor:capsule.trailingAnchor constant:-TIOSpace4],[label.topAnchor constraintEqualToAnchor:capsule.topAnchor constant:TIOSpace3],[label.bottomAnchor constraintEqualToAnchor:capsule.bottomAnchor constant:-TIOSpace3]]];
+ NSLayoutConstraint *tall=[capsule.heightAnchor constraintGreaterThanOrEqualToConstant:primary?TIOButtonHeight:TIOHitMin];
+ [NSLayoutConstraint activateConstraints:@[[capsule.leadingAnchor constraintEqualToAnchor:c.contentView.leadingAnchor constant:TIOSpace1],[capsule.trailingAnchor constraintEqualToAnchor:c.contentView.trailingAnchor constant:-TIOSpace1],[capsule.topAnchor constraintEqualToAnchor:c.contentView.topAnchor constant:TIOSpace1],[capsule.bottomAnchor constraintEqualToAnchor:c.contentView.bottomAnchor constant:-TIOSpace1],tall]];
+ c.userInteractionEnabled=enabled;c.accessibilityTraits=UIAccessibilityTraitButton|(enabled?0:UIAccessibilityTraitNotEnabled);c.accessibilityLabel=titles[row];c.accessibilityIdentifier=ids[row];
 }
 - (void)visibility:(UISwitch *)sender{if(sender.tag<7||sender.tag>11)return;if(sender.on)self.hidden&=~(1u<<sender.tag);else self.hidden|=1u<<sender.tag;}
 - (BOOL)tableView:(UITableView *)t canEditRowAtIndexPath:(NSIndexPath *)p{(void)t;return p.section==1;}
@@ -95,7 +113,7 @@ static NSString *TileName(NSUInteger tile){static NSString *const keys[]={@"tmg4
 - (BOOL)tableView:(UITableView *)t shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)p{(void)t;(void)p;return NO;}
 - (NSIndexPath *)tableView:(UITableView *)t targetIndexPathForMoveFromRowAtIndexPath:(NSIndexPath *)from toProposedIndexPath:(NSIndexPath *)to{(void)t;return to.section==1?to:from;}
 - (void)tableView:(UITableView *)t moveRowAtIndexPath:(NSIndexPath *)from toIndexPath:(NSIndexPath *)to{(void)t;if(from.section!=1||to.section!=1||from.row>=6||to.row>=6)return;NSNumber *tile=self.draft[from.row];[self.draft removeObjectAtIndex:from.row];[self.draft insertObject:tile atIndex:to.row];}
-- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{[t deselectRowAtIndexPath:p animated:YES];if(p.section!=2)return;if(p.row==0)[self read];else if(p.row==1)[self save];else{self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];self.hidden=0;[self save];}}
+- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{[t deselectRowAtIndexPath:p animated:YES];if(p.section!=2)return;if(p.row==1)[self read];else if(p.row==0)[self save];else{self.draft=[@[@7,@8,@9,@10,@11,@12]mutableCopy];self.hidden=0;[self save];}}
 @end
 UIViewController *TIOTileEditorController(void){TIOTileEditor *c=[[TIOTileEditor alloc]initWithStyle:UITableViewStyleInsetGrouped];c.link=TileLink();return c;}
 #if TIO_UI_PREVIEW
