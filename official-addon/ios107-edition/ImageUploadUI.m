@@ -1,5 +1,6 @@
 #import "ImageUploadUI.h"
 #import "TIOLanguage.h"
+#import "TIODesign.h"
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadTransport.h"
 #import "ProtocolContext.h"
@@ -87,8 +88,9 @@ static NSData *Luminance(NSURL *url){
  c.textLabel.numberOfLines=c.detailTextLabel.numberOfLines=0;
  NSArray *titles=@[TIOText(@"1 · 从照片选择"),TIOText(@"或从文件选择 PNG / JPEG"),[NSString stringWithFormat:TIOText(@"2 · 传输预览（%d×%d）"),TIO_W,TIO_H],TIOText(@"3 · 发送到眼镜"),TIOText(@"接收与显示状态"),TIOText(@"原图解码是另一项测试")];
  c.textLabel.text=titles[p.row];
+ if(p.row<2)c.accessibilityTraits|=UIAccessibilityTraitButton;
  if(p.row==2){c.imageView.image=self.preview;c.detailTextLabel.text=self.pixels?[NSString stringWithFormat:TIOText(@"%d KiB 灰度像素；等比缩小留黑边。协议 v%d，需匹配本轮 AP。"),TIO_PIXELS/1024,TIO_VERSION]:TIOText(@"尚未选图");}
- if(p.row==3){BOOL ready=[self.client.state isEqual:@"ready"]||[self.client.state isEqual:@"render_submitted"];c.textLabel.textColor=(ready&&self.pixels&&!self.loading)?UIColor.systemBlueColor:UIColor.secondaryLabelColor;c.detailTextLabel.text=ready?TIOText(@"仅发送当前图片，不启动 OTA，不上传云端"):TIOText(@"等待已验证的 AP 图片接收会话；当前不会盲发");}
+ if(p.row==3){BOOL ready=[self.client.state isEqual:@"ready"]||[self.client.state isEqual:@"render_submitted"];BOOL can=ready&&self.pixels&&!self.loading;c.textLabel.textColor=can?TIODesignColor(TIODesignColorAccent):TIODesignColor(TIODesignColorLabelSecondary);c.accessibilityTraits=UIAccessibilityTraitButton|(can?0:UIAccessibilityTraitNotEnabled);c.detailTextLabel.text=ready?TIOText(@"仅发送当前图片，不启动 OTA，不上传云端"):TIOText(@"等待已验证的 AP 图片接收会话；当前不会盲发");}
  if(p.row==4){NSString *state=self.client.state?:@"receiver_not_verified";NSString *detail=self.note?:@"";
   if([state isEqual:@"submission_failed"])detail=TIOText(@"手机提交失败，未确认眼镜收到；诊断已保存。请勿重复点发送。");
   else if([state isEqual:@"file_failed"])detail=TIOText(@"官方文件通道返回失败，未确认显示。请勿重复发送。");

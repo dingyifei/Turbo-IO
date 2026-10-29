@@ -4,6 +4,7 @@
 #import "NoNetworkTurn.h"
 #import "TIOLanguage.h"
 #import "TIOConfirm.h"
+#import "TIODesign.h"
 #import <objc/message.h>
 @interface TIOApplePanel:UITableViewController
 @property(nonatomic) NSDictionary *report;
@@ -59,7 +60,7 @@ else cell.detailTextLabel.text=[value description];}else {cell.textLabel.text=TI
     NSData *json=[NSJSONSerialization dataWithJSONObject:TIONoNetworkTimeline() options:NSJSONWritingPrettyPrinted|NSJSONWritingSortedKeys error:NULL];
     self.timelineText=[[NSString alloc]initWithData:json encoding:NSUTF8StringEncoding]?:@"[]";
     UIViewController *page=[UIViewController new];page.title=TAIText(@"No-network timeline",/*i18n:keep*/@"无网络时间线");
-    UITextView *text=[[UITextView alloc]initWithFrame:page.view.bounds];text.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;text.editable=NO;text.font=[UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightRegular];text.textContainerInset=UIEdgeInsetsMake(16,16,16,16);text.text=self.timelineText;text.backgroundColor=UIColor.systemBackgroundColor;[page.view addSubview:text];
+    UITextView *text=[[UITextView alloc]initWithFrame:page.view.bounds];text.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;text.editable=NO;text.font=TIODesignMonospacedDigitFont(TIODesignTextStyleCaption);text.adjustsFontForContentSizeCategory=YES;text.textColor=TIODesignColor(TIODesignColorLabel);text.textContainerInset=UIEdgeInsetsMake(16,16,16,16);text.text=self.timelineText;text.backgroundColor=TIODesignColor(TIODesignColorBg);[page.view addSubview:text];
     page.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:TAIText(@"Copy",/*i18n:keep*/@"复制") style:UIBarButtonItemStylePlain target:self action:@selector(copyNoNetworkTimeline)];
     [self.navigationController pushViewController:page animated:YES];
 }
