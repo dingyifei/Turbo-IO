@@ -75,6 +75,11 @@ static int hint(void){
  /* Reduce Motion: no fade, full intensity until it hides. */
  TIOHint r;tio_hint_init(&r);r.reduce_motion=true;tio_hint_enter(&r,0);EQ(tio_hint_alpha(&r,2999),255);EQ(tio_hint_alpha(&r,3000),0);
  /* 32-bit millisecond wrap. */
+ /* Controls usable later than page entry (camera: the phone connects after the setup text was shown): the hint re-arms then. */
+ TIOHint u;tio_hint_init(&u);tio_hint_enter(&u,1000);assert(!tio_hint_visible(&u,1000+5000));
+ tio_hint_usable(&u,false,false,7000);assert(!tio_hint_visible(&u,7000));   /* still not usable: nothing */
+ tio_hint_usable(&u,false,true,7000);assert(tio_hint_visible(&u,7000)&&tio_hint_alpha(&u,7000+2600)==255&&!tio_hint_visible(&u,10000));
+ tio_hint_usable(&u,true,true,20000);assert(!tio_hint_visible(&u,20000));   /* already usable: no re-arm */
  TIOHint w;tio_hint_init(&w);tio_hint_enter(&w,0xfffffe00u);assert(tio_hint_visible(&w,0xfffffe00u+2000)&&tio_hint_visible(&w,100)&&!tio_hint_visible(&w,0xfffffe00u+3000));
  return 0;
 }

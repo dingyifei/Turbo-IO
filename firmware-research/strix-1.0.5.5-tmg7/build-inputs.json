@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1cf2bdbf",
+      "after": "1cf2d5bf",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1cf2b6bf00bf",
+      "after": "1cf2cebf00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1ff22afd00bf",
+      "after": "1ff242fd00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,7 +244,7 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1cf311fb00bf00bf00bf",
+      "after": "1cf329fb00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
@@ -253,14 +253,14 @@
   ],
   "moduleBytes": 151232,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "ff5b19ba08ea57856226e4b2d6361db1207d3634aab7522d0ded82c7d54d8da5",
+  "moduleSHA256": "666f7459a432ad969d4d870d458d76dd8d825e8290dbf7486769b955e7d8852c",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
   "APBytes": 7359880,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG7-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8814035,
-    "sha256": "ce3d77f818e636bb87f576282566ee1620ca1031268ef4a4acd0f9c17cdf1e78",
-    "md5": "3ca4574b2cd8d5bc79e97e9e8154ba86"
+    "bytes": 8814079,
+    "sha256": "6958c6a386a16828495706acb28b7c8a62f41b1c9bc6eabe0d96088513b28e76",
+    "md5": "99f80468e73f9e47158e3d195cc9e2a4"
   },
   "sources": [
     {
@@ -433,7 +433,7 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "5c38159ee1aea28a9665796270f4a3942f037767006a5b6e623cc9cfa9d395c6"
+      "sha256": "27e6e5f8260e4600bb399ea158a984248c2309e0f3908a62430c058e7da6c131"
     },
     {
       "source": "common-v1/business_idle.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "5249d2a68399cd686b803ca7c9806fc022b5221a802e5a02235727ce07e7453b",
+  "APSHA256": "f9ce7198107854b0736fd023de2864bfbe2596dfcf9f7866cdd1da25a76de644",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

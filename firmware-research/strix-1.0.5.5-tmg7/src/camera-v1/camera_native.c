@@ -111,13 +111,15 @@ void tc_native_message(const TIONativeMessage *m){
   int32_t age=(int32_t)(now-q.a);if(age< -250||age>1500){a.result=TC_STALE;emit(&a);return;}
   if(c&&c->sid&&c->sid!=q.sid){a.result=TC_BUSY;emit(&a);return;}
   if(!s||!tc_slot_open(s)){a.result=TC_BUSY;emit(&a);return;}c=s->control;
-  if(!c->sid){c->sid=q.sid;c->seq=0;c->event=0;c->phase=TC_LIVE;if(!c->hold)c->hold=nav_always_on("turbo_camera_v1");}
+  if(!c->sid){c->sid=q.sid;c->seq=0;c->event=0;c->phase=TC_LIVE;if(!c->hold)c->hold=nav_always_on("turbo_camera_v1");
+   /* The page may have been open for longer than the hint lifetime (glasses-first flow): the controls are usable now. */
+   tio_hint_usable(&c->th,false,true,now);if(tn_lvgl_widgets().idle(NULL))render_status(c);}
  }
  if(!c||!c->root||c->closing||!owns(c)||c->sid!=q.sid){a.result=TC_SESSION;emit(&a);return;}
  c->seen=now;
  if(q.op==TC_OPEN||q.op==TC_STATE||q.op==TC_CLOSE||q.op==TC_PING){
   if(q.seq<=c->seq){a.result=TC_STALE;emit(&a);return;}c->seq=q.seq;
-  if(q.op==TC_STATE){if(q.a>TC_ERROR||q.b<100||q.b>10000||q.c>10000)a.result=TC_INVALID;else{c->phase=q.a;c->zoom=q.b;c->remaining=q.c;if(tn_lvgl_widgets().idle(NULL))render_status(c);}}
+  if(q.op==TC_STATE){if(q.a>TC_ERROR||q.b<100||q.b>10000||q.c>10000)a.result=TC_INVALID;else{tio_hint_usable(&c->th,c->phase==TC_LIVE||c->phase==TC_COUNTDOWN||c->phase==TC_CAPTURING||c->phase==TC_SAVED,q.a==TC_LIVE||q.a==TC_COUNTDOWN||q.a==TC_CAPTURING||q.a==TC_SAVED,now);c->phase=q.a;c->zoom=q.b;c->remaining=q.c;if(tn_lvgl_widgets().idle(NULL))render_status(c);}}
   if(q.op==TC_CLOSE)close_page(c);
  }else if(q.op==TC_BEGIN){a.result=tc_begin(c->frame,q.seq,q.a&65535,q.a>>16,q.b>>24,q.b&0xffffff,q.c,now);}
  else if(q.op==TC_CHUNK){if(q.b||q.c)a.result=TC_INVALID;else a.result=tc_chunk(c->frame,q.seq,q.a,q.data,q.length,now);}

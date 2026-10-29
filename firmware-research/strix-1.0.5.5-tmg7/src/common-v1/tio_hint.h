@@ -18,6 +18,9 @@ static inline void tio_hint_enter(TIOHint *h,uint32_t now){h->since=now;h->armed
 /* Wheel or press. After the wearer has seen the hint three times the phone sets entry_only
  * (phone-side counter, no wire change) and input no longer re-shows it. */
 static inline void tio_hint_input(TIOHint *h,uint32_t now){if(!h->entry_only){h->since=now;h->armed=true;}}
+/* A page whose controls become usable after it opened (the camera session starts when the phone connects, long after the
+ * page showed its setup text) re-arms the hint at that moment; it does nothing when the controls were already usable. */
+static inline void tio_hint_usable(TIOHint *h,bool was_usable,bool now_usable,uint32_t now){if(now_usable&&!was_usable)tio_hint_enter(h,now);}
 /* Alpha 0..255 at `now`: 255 until the fade starts, then eight steps down, 0 from 3000 ms. */
 static inline unsigned tio_hint_alpha(const TIOHint *h,uint32_t now){
  if(!h->armed)return 0;
