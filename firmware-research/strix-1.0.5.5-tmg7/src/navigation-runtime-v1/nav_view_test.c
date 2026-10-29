@@ -17,7 +17,11 @@ static void place(void *p,void *obj,int x,int y,int w,int h){
  if(m->fonts[i])assert(h>=(int)m->fonts[i]+TIO_TEXT_PAD&&x>=TIO_CORE_X0&&x+w<=TIO_CORE_X1);
  m->box[i][0]=x;m->box[i][1]=y;m->box[i][2]=w;m->box[i][3]=h;
 }
-static void buffer(void *p,void *obj,const uint8_t *bytes,unsigned w,unsigned h){assert(obj&&bytes);Mock *m=p;assert((w==TN_ICON_W&&h==TN_ICON_H)||(w==192&&h==144));m->pixels[m->buffers%2]=bytes;m->buffers++;}
+static unsigned map_px_checked;
+static void buffer(void *p,void *obj,const uint8_t *bytes,unsigned w,unsigned h){assert(obj&&bytes);
+ if(w==192){ /* no map pixel past the lens core: x = 328 + column must stay below TIO_CORE_X1 */
+  for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(bytes[y*w+x])assert(328+(int)x<TIO_CORE_X1);map_px_checked++;}
+Mock *m=p;assert((w==TN_ICON_W&&h==TN_ICON_H)||(w==192&&h==144));m->pixels[m->buffers%2]=bytes;m->buffers++;}
 static void text(void *p,void *obj,const char *s){assert(obj&&s);Mock *m=p;m->strings[index_of(m,obj)]=s;m->texts++;}
 static void visible(void *p,void *obj,bool yes){assert(obj);Mock *m=p;m->shown[index_of(m,obj)]=yes;}
 static void destroy(void *p,void *obj){assert(obj);((Mock *)p)->destroyed++;}
@@ -45,6 +49,7 @@ int main(void){
  assert(original!=tn_crc((const uint8_t[TN_ICON_W*TN_ICON_H]){0},TN_ICON_W*TN_ICON_H));
  m.busy=true;s.icon=TN_LEFT;s.distance_m=60;assert(!tn_view_update(&v,&s,false));assert(m.buffers==2&&tn_crc(first,TN_ICON_W*TN_ICON_H)==original);
  m.busy=false;assert(tn_view_update(&v,&s,false));assert(m.alloc==Objects&&m.pixels[0]!=first);assert(!strcmp(m.strings[Dist],"60 m"));
+ assert(map_px_checked>=2);
  for(unsigned i=0;i<1000;i++){s.icon=(uint8_t)(i%TN_ICON_COUNT);s.heading=(uint16_t)(i%360);s.distance_m=i;assert(tn_view_update(&v,&s,i%2));
   assert(shown_of(&m,Turn0,3)==1&&shown_of(&m,Trip0,2)==1);}
  /* The turn text steps down through 24, 20, 16 px and the instruction never reaches the map. */

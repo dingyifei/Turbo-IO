@@ -25,6 +25,7 @@ static void line(uint8_t *p,int w,int h,TNXY a,TNXY b,int radius,uint8_t gray){
 #define NV_MAP_R 520                                             /* board: map column ends 20 px from the edge */
 #define NV_MAP_X (NV_MAP_R-(int)TN_MAP_W)                        /* 328 */
 #define NV_MAP_Y (TIO_PAGE_B1-(int)TN_MAP_H)                     /* 28: bottom of band B */
+#define NV_MAP_CLIP_W (TIO_CORE_X1-NV_MAP_X)                     /* 172: map columns at or past x=500 are blanked */
 #define NV_TEXT_R (NV_MAP_X-8)                                   /* 320: text stops short of the map */
 #define NV_DIST_Y (TIO_PAGE_B1-TIO_LINE(TIO_FONT_MIN)-TIO_LINE(TIO_FONT_PRIMARY))   /* 116 */
 #define NV_ROAD_Y (TIO_PAGE_B1-TIO_LINE(TIO_FONT_MIN))           /* 152 */
@@ -103,6 +104,12 @@ static unsigned fit_passing(const char *s,size_t n,const uint8_t *breaks,unsigne
  size_t best=0;for(size_t i=1;i<=n;i++)if(breaks&&(breaks[i/8]&(1u<<(i%8)))&&i+4<=cap&&tn_text_width(s,i,font)+font<=width)best=i;
  while(best&&s[best-1]==' ')best--;memcpy(out,s,best);memcpy(out+best,"\xe2\x80\xa6",4);return font;
 }
+/* The map canvas is 192 px wide and sits 20 px short of the edge, so its last columns would pass the lens core
+ * (TIO_CORE_X1). Blank them in the frame just before every hand-off; the canvas, its size and its place stay put. */
+static void map_buffer(TNView *v,TNViewFrame *f){
+ for(unsigned y=0;y<TN_MAP_H;y++)memset(f->map+y*TN_MAP_W+NV_MAP_CLIP_W,0,TN_MAP_W-NV_MAP_CLIP_W);
+ v->api.buffer(v->api.ctx,v->map,f->map,TN_MAP_W,TN_MAP_H);
+}
 static void publish_names(TNView *v,TNViewFrame *f){
  TNWidgets *a=&v->api;size_t n=0;while(n<191&&v->map_state.passing[n])n++;
  unsigned font=fit_passing(v->map_state.passing,n,v->map_state.passing_breaks,NV_PASS_W,f->passing,sizeof f->passing);
@@ -127,7 +134,7 @@ static void trip_update(TNView *v,const TNVisual *vis){
 static void publish(TNView *v,TNViewFrame *f){
  TNWidgets *a=&v->api;
  a->buffer(a->ctx,v->icon,f->icon,TN_ICON_W,TN_ICON_H);
- a->buffer(a->ctx,v->map,f->map,TN_MAP_W,TN_MAP_H);
+ map_buffer(v,f);
  /* Distance is the primary line; the instruction follows it on the same baseline. */
  unsigned dw=est_px(f->visual.distance,TIO_FONT_PRIMARY)+6;if(dw>150)dw=150;
  a->place(a->ctx,v->distance,NV_TEXT_X,NV_DIST_Y,(int)dw,TIO_LINE(TIO_FONT_PRIMARY));
@@ -200,5 +207,5 @@ bool tn_view_map_tick(TNView *v,uint32_t now){
  /* Map ticks do not need to copy/repaint the 16 KiB arrow or semantic text.
   * Retained text pointers stay valid until a full semantic publish. */
  f->visual=v->frames[v->active].visual;
- if(v->map_state.valid)tnr_draw(&v->map_state,now,f->map);else draw(f);v->api.buffer(v->api.ctx,v->map,f->map,TN_MAP_W,TN_MAP_H);publish_names(v,f);v->active=next;tnr_presented(&v->map_state,now);return true;
+ if(v->map_state.valid)tnr_draw(&v->map_state,now,f->map);else draw(f);map_buffer(v,f);publish_names(v,f);v->active=next;tnr_presented(&v->map_state,now);return true;
 }
