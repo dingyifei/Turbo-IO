@@ -21,6 +21,11 @@ static NSArray<NSNumber *> *Numbers(NSString *value){
  return out;
 }
 static BOOL Near(double a,double b){return fabs(a-b)<1e-9;}
+/* WCAG relative luminance and contrast of sRGB hex colors; `over` blends a color at `alpha` onto an opaque background. */
+static double Lin(double c){return c<=0.04045?c/12.92:pow((c+0.055)/1.055,2.4);}
+static double Lum(uint32_t h){return 0.2126*Lin(((h>>16)&255)/255.0)+0.7152*Lin(((h>>8)&255)/255.0)+0.0722*Lin((h&255)/255.0);}
+static double Ratio(uint32_t a,uint32_t b){double x=Lum(a),y=Lum(b);if(x<y){double t=x;x=y;y=t;}return (x+0.05)/(y+0.05);}
+static uint32_t Over(uint32_t fg,double alpha,uint32_t bg){uint32_t out=0;for(int s=16;s>=0;s-=8){double f=(fg>>s)&255,b=(bg>>s)&255;out|=(uint32_t)lround(f*alpha+b*(1-alpha))<<s;}return out;}
 
 #define COLOR_ROW(Id,name,light,dark) {name,light,dark},
 static const struct {const char *name;uint32_t light,dark;} Colors[]={TIO_DESIGN_COLORS(COLOR_ROW)};
@@ -56,6 +61,29 @@ int main(int argc,char **argv){
    CHECK(found,"color %s missing from compiled table",name.UTF8String);
   }
   CHECK(seen.count==sizeof Colors/sizeof *Colors,"compiled colors not all in tokens.json");
+
+  /* Contrast of the pairings TIODesign.m builds, in both themes: status pills (label over the 15% tint or bg-sunken, 4.5:1 for the
+   * 13 pt word; the status symbol 3:1 for graphics) and the filled destructive button (on-accent over status-danger, 4.5:1 for the
+   * 17 pt semibold title). The pill sits on bg-raised (hub card) and on bg (OTA summary, sheets). */
+  {
+   uint32_t lo[2],hi[2];
+   #define PAIR(want,ix) for(size_t i=0;i<sizeof Colors/sizeof *Colors;i++)if(!strcmp(Colors[i].name,want)){lo[ix]=Colors[i].light;hi[ix]=Colors[i].dark;}
+   enum {Bg,Raised,Sunken,Label,Secondary,Ok,Warn,Danger,OnAccent,Count};
+   uint32_t tl[Count],td[Count];
+   const char *names[Count]={"bg","bg-raised","bg-sunken","label","label-secondary","status-ok","status-warn","status-danger","on-accent"};
+   for(int k=0;k<Count;k++){PAIR(names[k],0);tl[k]=lo[0];td[k]=hi[0];}
+   for(int theme=0;theme<2;theme++){
+    const uint32_t *t=theme?td:tl;const char *tn=theme?"dark":"light";
+    for(int status=Ok;status<=Danger;status++)for(int surface=0;surface<2;surface++){
+     uint32_t base=t[surface?Raised:Bg],tint=Over(t[status],0.15,base);
+     CHECK(Ratio(t[Label],tint)>=4.5,"pill word: label on %s tint over %s (%s) %.2f:1",names[status],surface?"bg-raised":"bg",tn,Ratio(t[Label],tint));
+     CHECK(Ratio(t[status],tint)>=3.0,"pill symbol: %s on its tint over %s (%s) %.2f:1",names[status],surface?"bg-raised":"bg",tn,Ratio(t[status],tint));
+    }
+    CHECK(Ratio(t[Label],t[Sunken])>=4.5,"neutral pill word: label on bg-sunken (%s) %.2f:1",tn,Ratio(t[Label],t[Sunken]));
+    CHECK(Ratio(t[Secondary],t[Sunken])>=3.0,"neutral pill symbol: label-secondary on bg-sunken (%s) %.2f:1",tn,Ratio(t[Secondary],t[Sunken]));
+    CHECK(Ratio(t[OnAccent],t[Danger])>=4.5,"filled destructive button: on-accent on status-danger (%s) %.2f:1",tn,Ratio(t[OnAccent],t[Danger]));
+   }
+  }
 
   /* Phone text styles */
   NSArray *styles=json[@"type"][@"groups"][0][@"styles"];

@@ -145,7 +145,7 @@ void TIODesignStyleButton(UIButton *button, TIODesignButtonRole role){
    c.baseBackgroundColor=TIODesignColor(TIODesignColorAccentFill);c.baseForegroundColor=TIODesignColor(TIODesignColorOnAccent);break;
   case TIODesignButtonDestructiveFilled:
    c=UIButtonConfiguration.filledButtonConfiguration;
-   c.baseBackgroundColor=danger;c.baseForegroundColor=UIColor.whiteColor;break;
+   c.baseBackgroundColor=danger;c.baseForegroundColor=TIODesignColor(TIODesignColorOnAccent);break;   /* white on light danger (5.4:1), the dark surface color on dark danger (6.5:1); white on dark danger is 2.8:1 */
   case TIODesignButtonDestructive:
    c=UIButtonConfiguration.plainButtonConfiguration;c.baseForegroundColor=danger;break;
   case TIODesignButtonSecondary:default:
@@ -375,6 +375,9 @@ UIImage *TIODesignHubIcon(NSString *symbol, NSInteger section){
 - (void)layoutSubviews{[super layoutSubviews];self.layer.cornerRadius=MIN(TIORadiusPill,CGRectGetHeight(self.bounds)/2);}
 @end
 
+/* The word is set in `label`, not in the status color: the status colors on their own 15% tint reach only 3.7 to 4.3:1 in light
+ * (4.5:1 needed at 13 pt) and the neutral label-secondary on bg-sunken 4.2:1. The symbol carries the status color (3:1 for
+ * graphics) and the tint; TIODesignTests asserts every pairing in both themes. */
 UIView *TIODesignStatusPill(TIODesignStatus status, NSString *word){
  UIColor *color;NSString *symbol;
  switch(status){
@@ -388,7 +391,7 @@ UIView *TIODesignStatusPill(TIODesignStatus status, NSString *word){
  icon.tintColor=color;icon.contentMode=UIViewContentModeScaleAspectFit;icon.isAccessibilityElement=NO;icon.accessibilityElementsHidden=YES;
  [icon setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
  UILabel *label=[UILabel new];label.text=word;label.font=TIODesignFontWeight(TIODesignTextStyleFootnote,UIFontWeightSemibold);
- label.textColor=color;label.adjustsFontForContentSizeCategory=YES;label.numberOfLines=0;
+ label.textColor=TIODesignColor(TIODesignColorLabel);label.adjustsFontForContentSizeCategory=YES;label.numberOfLines=0;
  UIStackView *stack=[[TIODesignPillView alloc]initWithArrangedSubviews:@[icon,label]];
  stack.axis=UILayoutConstraintAxisHorizontal;stack.alignment=UIStackViewAlignmentCenter;stack.spacing=TIOSpace1;
  stack.layoutMarginsRelativeArrangement=YES;stack.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(TIOSpace1,TIOSpace2,TIOSpace1,TIOSpace2);
