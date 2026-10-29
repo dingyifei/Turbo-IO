@@ -1,0 +1,182 @@
+// TMG7 host preview and layout gate. Production geometry and raster for the native pages; macOS surrogate fonts.
+// Extends tmg6_layout_preview.m: every page is rendered EN and ZH to PNG and checked against the design-system
+// rules in docs/design-system (bands, reserved rows, 16 px text floor, no filled panels).
+// Pages that still use the TMG6 layout are listed as PENDING and must report violations; the commit that re-lays a
+// page flips its flag, after which it must report none.
+#import <AppKit/AppKit.h>
+#include "../src/navigation-runtime-v1/nav_view.h"
+#include "../src/navigation-runtime-v1/nav_text.h"
+#include "../src/music-runtime-v1/music.h"
+#include "../src/common-v1/tio_ui.h"
+#include "../src/common-v1/tio_hint.h"
+#include "../src/common-v1/tio_caret.h"
+#include <assert.h>
+#include <stdio.h>
+#include <math.h>
+enum {KText,KPixels,KRect};
+typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
+typedef struct {Widget w[24];unsigned count;bool busy;} Host;
+enum {VReserved=1,VBand=2,VFont=4,VPanel=8,VCore=16,VColor=32,VOverlap=64,VCanvas=128,VBox=256};
+static unsigned language;
+unsigned tio_lang(void){return language;}
+static bool idle(void *p){return !((Host *)p)->busy;}
+static void *create(void *p,void *parent){assert(parent);Host *h=p;assert(h->count<24);Widget *w=&h->w[h->count++];w->shown=true;w->band=-1;return w;}
+static void *label(void *p,void *parent,unsigned font){Widget *w=create(p,parent);w->font=font;return w;}
+static void place(void *p,void *o,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=540&&y+h<=180);Widget *v=o;v->x=x;v->y=y;v->w=w;v->h=h;}
+static void buffer(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
+static void text(void *p,void *o,const char *s){(void)p;((Widget *)o)->text=s;}
+static void visible(void *p,void *o,bool show){(void)p;((Widget *)o)->shown=show;}
+static void destroy(void *p,void *o){(void)p;((Widget *)o)->shown=false;}
+static void cliptext(void *p,void *o){(void)p;((Widget *)o)->clip=true;}
+static NSColor *Ink(uint32_t c){return [NSColor colorWithRed:0 green:((c>>8)&255)/255.0 blue:0 alpha:1];}
+static void Save(Host *host,NSString *path){
+ NSImage *im=[[NSImage alloc]initWithSize:NSMakeSize(540,180)];[im lockFocusFlipped:YES];[NSColor.blackColor setFill];NSRectFill(NSMakeRect(0,0,540,180));
+ for(unsigned i=1;i<host->count;i++){Widget *w=&host->w[i];if(!w->shown)continue;NSRect rect=NSMakeRect(w->x,w->y,w->w,w->h);
+  [NSGraphicsContext saveGraphicsState];NSRectClip(rect);
+  if(w->kind==KRect){[Ink(w->color) setFill];[[NSBezierPath bezierPathWithRoundedRect:rect xRadius:TIO_RADIUS_XS yRadius:TIO_RADIUS_XS] fill];}
+  if(w->pixels){NSBitmapImageRep *b=[[NSBitmapImageRep alloc]initWithBitmapDataPlanes:NULL pixelsWide:w->w pixelsHigh:w->h bitsPerSample:8 samplesPerPixel:3 hasAlpha:NO isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:w->w*3 bitsPerPixel:24];for(int y=0;y<w->h;y++)for(int x=0;x<w->w;x++){uint8_t *d=b.bitmapData+y*b.bytesPerRow+x*3;d[0]=d[2]=0;d[1]=w->pixels[y*w->w+x];}NSImage *tile=[[NSImage alloc]initWithSize:NSMakeSize(w->w,w->h)];[tile addRepresentation:b];[tile drawInRect:rect fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1 respectFlipped:YES hints:nil];}
+  if(w->text&&*w->text){NSString *s=[NSString stringWithUTF8String:w->text];assert(s);NSMutableParagraphStyle *ps=[NSMutableParagraphStyle new];ps.lineBreakMode=NSLineBreakByClipping;
+   [s drawInRect:rect withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:w->font],NSForegroundColorAttributeName:Ink(w->color?w->color:TIO_LENS_FULL),NSParagraphStyleAttributeName:ps}];}
+  [NSGraphicsContext restoreGraphicsState];
+ }
+ [im unlockFocus];NSBitmapImageRep *rep=[NSBitmapImageRep imageRepWithData:im.TIFFRepresentation];assert([[rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}] writeToFile:path atomically:YES]);
+}
+
+// ---- Layout gate -----------------------------------------------------------------------------------------------
+static bool overlap(const Widget *a,const Widget *b){return a->x<b->x+b->w&&b->x<a->x+a->w&&a->y<b->y+b->h&&b->y<a->y+a->h;}
+static bool textual(const Widget *w){return w->kind==KText&&w->text&&*w->text;}
+// Returns a mask of violated rules for the shown widgets of a 540x180 page. `band` of a widget is its declared band, else the band its box lies in.
+static unsigned Check(Host *host,const char *name,bool verbose){
+ unsigned mask=0;const TIOSurface s=TIO_SURFACE_PAGE;
+ for(unsigned i=1;i<host->count;i++){Widget *w=&host->w[i];if(!w->shown)continue;
+  bool text=textual(w),pix=w->kind==KPixels,rect=w->kind==KRect;if(!text&&!pix&&!rect)continue;
+  TIORect r={w->x,w->y,w->w,w->h};unsigned v=0;
+  if(r.x<0||r.y<0||r.x+r.w>TIO_PAGE_W||r.y+r.h>TIO_PAGE_H)v|=VCanvas;
+  if(tio_rect_in_reserved(s,r))v|=VReserved;                                   // nothing drawn in y 0-12 or 172-180
+  int band=w->band>=0?w->band:tio_band_of(s,r.y,r.h);
+  if(!w->span&&(band<TIO_BAND_T||band>TIO_BAND_B||!tio_rect_in_band(s,(TIOBand)band,r)))v|=VBand;   // inside its band
+  if(text){
+   if(w->font<TIO_FONT_MIN||!tio_font_native(w->font))v|=VFont;                // 16 px floor, stock sizes only
+   if(w->h<(int)w->font+TIO_TEXT_PAD)v|=VBox;                                  // box at least font + 4
+   if(!tio_rect_in_core(r))v|=VCore;                                           // primary text inside lens-core-x
+   uint32_t c=w->color?w->color:TIO_LENS_FULL;
+   if(c!=TIO_LENS_FULL&&c!=TIO_LENS_HIGH&&c!=TIO_LENS_MID&&!(w->fading&&c<TIO_LENS_HIGH))v|=VColor;   // track is never text; only a fading hint may sit between steps
+   if(c==TIO_LENS_MID&&w->font<TIO_FONT_LABEL)v|=VColor;                       // mid only at 18 px or larger
+  }
+  if(pix&&!w->span&&(r.x<TIO_INSET_X||r.x+r.w>TIO_PAGE_W-TIO_INSET_X))v|=VCore;   // glyphs may use the side insets, not the edge
+  if(rect&&!(r.h<=TIO_TRACK_H&&(w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK)))v|=VPanel;   // only carets and tracks are filled
+  if(pix&&r.w*r.h>=32*32){unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
+  for(unsigned j=1;j<i;j++){Widget *o=&host->w[j];if(o->shown&&(textual(o)||o->kind==KRect)&&(text||rect)&&overlap(w,o)&&!(rect&&o->kind==KRect))v|=VOverlap;}
+  if(v&&verbose)printf("  %s widget %u (%d,%d %dx%d font %u): mask 0x%x\n",name,i,r.x,r.y,r.w,r.h,w->font,v);
+  mask|=v;
+ }
+ return mask;
+}
+static void Gate(Host *host,const char *name,bool relaid){
+ unsigned mask=Check(host,name,false);
+ if(relaid){if(mask)Check(host,name,true);assert(mask==0);printf("PASS layout %s: bands, reserved rows, 16 px floor, no panels\n",name);}
+ else{assert(mask!=0);printf("PENDING layout %s: TMG6 layout still in place (violations 0x%x), re-laid by a later tmg7 commit\n",name,mask);}
+}
+static Widget *Add(Host *h,int kind,int x,int y,int w,int ht,unsigned font,uint32_t color,int band,const char *s){
+ Widget *v=create(h,h);v->kind=kind;v->x=x;v->y=y;v->w=w;v->h=ht;v->font=font;v->color=color;v->band=band;v->text=s;return v;
+}
+static void SelfTest(void){   // the gate must catch each defect
+ Host h={0};create(&h,&h);
+ Add(&h,KText,40,4,100,22,18,TIO_LENS_MID,TIO_BAND_T,"a");assert(Check(&h,"x",false)&VReserved);
+ h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,18,14,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&(VFont|VBox));
+ h=(Host){0};create(&h,&h);Add(&h,KRect,40,60,200,40,0,TIO_LENS_MID,TIO_BAND_M,NULL);assert(Check(&h,"x",false)&VPanel);
+ h=(Host){0};create(&h,&h);Add(&h,KText,40,100,100,24,20,TIO_LENS_HIGH,TIO_BAND_M,"a");assert(Check(&h,"x",false)&VBand);       // straddles M/B
+ h=(Host){0};create(&h,&h);Add(&h,KText,8,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&VCore);
+ h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_TRACK,TIO_BAND_B,"a");assert(Check(&h,"x",false)&VColor);
+ h=(Host){0};create(&h,&h);Add(&h,KText,40,60,100,24,16,TIO_LENS_MID,TIO_BAND_M,"a");assert(Check(&h,"x",false)&VColor);
+ h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");Add(&h,KText,60,130,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"b");assert(Check(&h,"x",false)&VOverlap);
+ h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");Add(&h,KRect,40,150,TIO_CARET_W,TIO_CARET_H,0,TIO_LENS_FULL,TIO_BAND_B,NULL);assert(Check(&h,"ok",false)==0);
+}
+
+// ---- Mini-app page composed from the design-system components (LensApp board, TAP1 kind 2 buttons as caret focus items) ----
+typedef struct {const char *title,*items[3],*value,*unit,*detail,*hint;} AppCopy;
+static const AppCopy App[2]={
+ {"Commute · Line 2",{"Later trains","Alerts","Platform map"},"4 min","to Downtown","Platform 3 · then 12 min","Wheel: choose · Press: open · Hold: exit"},
+ {"通勤 · 2 号线",{"稍后班次","提醒","站台图"},"4 分钟","往市中心","3 号站台 · 之后 12 分钟","滚轮：选择 · 按下：打开 · 长按：退出"}};
+static const int ItemX[3]={40,200,300},ItemW[3]={150,90,160};
+static void BuildApp(Host *h,bool zh,unsigned focus,uint32_t now,TIOHint *hint,TIOCaret *caret){
+ const AppCopy *c=&App[zh];create(h,h);
+ const TIOSpan T=tio_band(TIO_SURFACE_PAGE,TIO_BAND_T),M=tio_band(TIO_SURFACE_PAGE,TIO_BAND_M),B=tio_band(TIO_SURFACE_PAGE,TIO_BAND_B);
+ // Band T: the title in lens-mid, replaced by the transient hint (lens-high) while it is shown.
+ if(tio_hint_visible(hint,now)){TIORect r=tio_hint_rect(TIO_SURFACE_PAGE);Widget *w=Add(h,KText,r.x,r.y,r.w,r.h,TIO_HINT_FONT,tio_hint_color(hint,now),TIO_BAND_T,c->hint);w->fading=tio_hint_alpha(hint,now)<255;}
+ else Add(h,KText,TIO_CORE_X0,T.y0+(T.y1-T.y0-TIO_LINE(TIO_FONT_LABEL))/2,TIO_CORE_W,TIO_LINE(TIO_FONT_LABEL),TIO_FONT_LABEL,TIO_LENS_MID,TIO_BAND_T,c->title);
+ // Band M: the actions, one row, caret under the focused one. Bottom-aligned so the row sits next to band B.
+ int row=M.y1-TIO_RESERVE_BOTTOM-(TIO_FONT_BODY+1+TIO_CARET_GAP+TIO_CARET_H);   // caret bottom keeps the bottom clearance
+ for(unsigned i=0;i<3;i++)Add(h,KText,ItemX[i],row,ItemW[i],TIO_LINE(TIO_FONT_BODY),TIO_FONT_BODY,tio_focus_color(i==focus),TIO_BAND_M,c->items[i]);
+ tio_caret_to(caret,tio_caret_left(ItemX[focus]),tio_caret_top(row,TIO_FONT_BODY),now,false);
+ TIORect cr=tio_caret_rect(caret,now);Add(h,KRect,cr.x,cr.y,cr.w,cr.h,0,TIO_LENS_FULL,TIO_BAND_M,NULL);
+ // Band B: the one thing the page is for, lowest and brightest; baselines of 32 and 24 px text share one line.
+ int y=B.y0+TIO_TEXT_PAD,u=y+(int)(TIO_FONT_PRIMARY-TIO_FONT_TITLE);
+ Add(h,KText,TIO_CORE_X0,y,100,TIO_LINE(TIO_FONT_PRIMARY),TIO_FONT_PRIMARY,TIO_LENS_FULL,TIO_BAND_B,c->value);
+ Add(h,KText,150,u,350,TIO_LINE(TIO_FONT_TITLE),TIO_FONT_TITLE,TIO_LENS_FULL,TIO_BAND_B,c->unit);
+ Add(h,KText,TIO_CORE_X0,B.y1-TIO_LINE(TIO_FONT_MIN),TIO_CORE_W,TIO_LINE(TIO_FONT_MIN),TIO_FONT_MIN,TIO_LENS_HIGH,TIO_BAND_B,c->detail);
+}
+// Compare the fixture with the board's proposed column (board is drawn at 2x). Same band, size, intensity and text; x within 1, y within 6.
+static void CompareBoard(NSString *html,Host *host){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSRange proposed=[s rangeOfString:@"Proposed"];assert(proposed.location!=NSNotFound);s=[s substringFromIndex:proposed.location];
+ NSRegularExpression *re=[NSRegularExpression regularExpressionWithPattern:@"left: (\\d+)px; top: (\\d+)px; font-size: (\\d+)px;[^\"]*?color: (#[0-9a-f]{6});\">([^<{]+)</div>" options:0 error:nil];
+ unsigned matched=0;
+ for(NSTextCheckingResult *m in [re matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  int x=[[s substringWithRange:[m rangeAtIndex:1]] intValue]/2,y=[[s substringWithRange:[m rangeAtIndex:2]] intValue]/2,font=[[s substringWithRange:[m rangeAtIndex:3]] intValue]/2;
+  uint32_t color=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:4]] UTF8String]+1,NULL,16);NSString *t=[s substringWithRange:[m rangeAtIndex:5]];
+  Widget *w=NULL;for(unsigned i=1;i<host->count;i++)if(host->w[i].text&&[t isEqualToString:[NSString stringWithUTF8String:host->w[i].text]])w=&host->w[i];
+  if(!w||!w->shown){printf("board text without fixture widget: %s\n",t.UTF8String);assert(0);}
+  matched++;assert(abs(w->x-x)<=1&&abs(w->y-y)<=6&&(int)w->font==font&&w->color==color);
+  assert(w->band==tio_band_of(TIO_SURFACE_PAGE,y+font/2,1));
+ }
+ // Focus items are scripted in the board (xs/labels arrays) and the caret sits under the focused one.
+ NSRegularExpression *xs=[NSRegularExpression regularExpressionWithPattern:@"const xs = \\[(\\d+), (\\d+), (\\d+)\\]" options:0 error:nil];NSTextCheckingResult *xm=[xs firstMatchInString:s options:0 range:NSMakeRange(0,s.length)];assert(xm);
+ for(unsigned i=0;i<3;i++)assert([[s substringWithRange:[xm rangeAtIndex:i+1]] intValue]/2==ItemX[i]);
+ assert(matched>=4);
+ Widget *caret=NULL;for(unsigned i=1;i<host->count;i++)if(host->w[i].kind==KRect)caret=&host->w[i];assert(caret&&caret->x==ItemX[0]&&caret->w==48/2&&caret->h==6/2&&[s containsString:@"width: 48px; height: 6px"]);
+ printf("PASS board LensApp (proposed, halved): %u text items, 3 focus items and caret match; band, size, intensity, x and y within tolerance\n",matched);
+}
+static void AppPages(NSString *dir,NSString *board){
+ typedef struct {uint32_t now;const char *tag;unsigned focus;bool input,save;} Shot;
+ // Page opens at t=1000 (hint shown); fade; hint gone, title back; wheel step at t=6000 re-shows the hint and slides the caret.
+ const Shot shots[]={{1000,"hint",0,false,true},{3850,"hint-fade",0,false,true},{4000,"",0,false,true},{6000,"input-start",1,true,false},{6080,"input-slide",1,false,true},{6160,"input",1,false,true},{9300,"focus1",1,false,true}};
+ for(unsigned z=0;z<2;z++){language=z;TIOHint hint;tio_hint_init(&hint);tio_hint_enter(&hint,1000);TIOCaret caret;tio_caret_init(&caret);
+  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){const Shot *sh=&shots[i];if(sh->input)tio_hint_input(&hint,sh->now);
+   Host *host=calloc(1,sizeof *host);assert(host);BuildApp(host,z,sh->focus,sh->now,&hint,&caret);
+   bool shown=!strcmp(sh->tag,"hint")||!strcmp(sh->tag,"hint-fade")||!strncmp(sh->tag,"input",5);assert(tio_hint_visible(&hint,sh->now)==shown);
+   char name[64];snprintf(name,sizeof name,"app%s%s-%s",*sh->tag?"-":"",sh->tag,z?"zh":"en");Gate(host,name,true);
+   Widget *first=&host->w[1];
+   if(!strcmp(sh->tag,"hint"))assert(first->color==TIO_LENS_HIGH&&first->font==18);                    // lens-label in lens-high in band T
+   if(!strcmp(sh->tag,"hint-fade"))assert(first->color>0&&first->color<TIO_LENS_HIGH);                // fading toward see-through
+   if(!*sh->tag){assert(first->color==TIO_LENS_MID&&!strcmp(first->text,App[z].title));if(!z)CompareBoard(board,host);}   // ambient title returns
+   if(!strcmp(sh->tag,"input-slide")){Widget *c=&host->w[host->count-4];(void)c;int cx=0;for(unsigned k=1;k<host->count;k++)if(host->w[k].kind==KRect)cx=host->w[k].x;assert(cx>ItemX[0]&&cx<ItemX[1]);}   // caret mid-slide, not queued
+   if(!strcmp(sh->tag,"input")||!strcmp(sh->tag,"focus1")){for(unsigned k=1;k<host->count;k++)if(host->w[k].kind==KRect)assert(host->w[k].x==ItemX[1]);}
+   if(sh->save)Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ }
+ unsigned words=0;for(const char *p=App[0].hint;*p;p++)if(*p!=' '&&(p==App[0].hint||p[-1]==' ')&&strncmp(p,"·",2))words++;assert(words<=TIO_HINT_MAX_WORDS_EN);
+}
+
+// ---- Pages that keep the TMG6 layout until their tmg7 re-layout commit ---------------------------------------------
+static void Put16(uint8_t *p,int n){p[0]=n;p[1]=n>>8;}
+static void Nav(NSString *dir,bool zh,bool longer){
+ language=zh;Host host={0};TNWidgets api={&host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext};TNView *v=calloc(1,sizeof *v);assert(v);TNScene semantic={.icon=TN_RIGHT,.distance_m=100,.remaining_m=1200,.remaining_s=600};strcpy(semantic.turn,zh?"前方右转":"Turn right");assert(tn_view_open(v,&api,&host,&semantic));
+ uint8_t scene[104]={1,0,0,0};Put16(scene+4,320);scene[6]=4;scene[8]=11;unsigned counts[]={2,2,2,5},styles[]={0,1,4,6};for(unsigned i=0;i<4;i++){scene[16+8*i]=counts[i];scene[18+8*i]=styles[i];}
+ int16_t pts[]={-600,240,600,240,300,-160,300,600,-300,200,300,600,0,0,0,160,160,160,160,320,320,320};for(unsigned i=0;i<22;i++)Put16(scene+48+i*2,pts[i]);scene[92]=1;
+ assert(tn_view_map(v,TNR_SCENE2,scene,sizeof scene,0));uint8_t name[224]={1,0,0,0};const char *s=zh?"经过 南京西路与人民广场连接道路":"Passing Martin Luther King Junior Boulevard";if(longer)s=zh?"经过 南京西路人民广场世纪公园文化中心滨江国际会议展览中心连接道路历史文化保护区城市公共交通枢纽":"Passing Martin Luther King Junior Boulevard Near the International Conference and Exhibition Center";size_t len=strlen(s);name[4]=len;memcpy(name+8,s,len);
+ uint8_t *breakBits=name+200;NSString *nativeName=[NSString stringWithUTF8String:s];[nativeName enumerateSubstringsInRange:NSMakeRange(0,nativeName.length) options:NSStringEnumerationByWords usingBlock:^(NSString *word,NSRange range,NSRange all,BOOL *stop){NSUInteger end=[[nativeName substringToIndex:NSMaxRange(range)] lengthOfBytesUsingEncoding:NSUTF8StringEncoding];breakBits[end/8]|=1u<<(end%8);}];name[200+len/8]|=1u<<(len%8);
+ assert(tn_view_map(v,TNR_PASSING,name,sizeof name,0));assert(tn_view_map_tick(v,0));assert(tn_view_clock(v,946684800+10*3600,946684800+10*3600+600,false));
+ ((Widget *)v->map)->span=true;                                                  // the map is a spatial element anchored to the right column
+ const char *tag=longer?(zh?"nav-long-zh":"nav-long-en"):(zh?"nav-zh":"nav-en");
+ Gate(&host,tag,false);
+ Save(&host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",tag]]);assert(tn_view_close(v));free(v);
+}
+static void Lyrics(NSString *dir,bool zh){language=zh;Host host={0};create(&host,&host);char lines[3][244];const char *raw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方在清晨再次回想起那些温暖的故事":"The morning light is falling on the streets we used to know";
+ for(unsigned i=0;i<3;i++){TMLyricSlot slot=tm_lyric_slot(i);if(i)assert(tm_lyric_slot(i-1).top+tm_lyric_slot(i-1).height<=slot.top);assert(slot.top+slot.height<=154);
+  tn_text_two_lines(raw,366,slot.font,lines[i],sizeof lines[i]);Widget *w=label(&host,&host,slot.font);place(&host,w,166,slot.top,366,slot.height);text(&host,w,lines[i]);cliptext(&host,w);}
+ Widget *control=label(&host,&host,14);place(&host,control,166,154,366,24);text(&host,control,zh?"滚轮：切歌 · 轻触：暂停":"Wheel: previous / next · Tap: pause");
+ Gate(&host,zh?"lyrics-zh":"lyrics-en",false);Save(&host,[dir stringByAppendingPathComponent:zh?@"lyrics-zh.png":@"lyrics-en.png"]);
+}
+int main(int argc,char **argv){@autoreleasepool{assert(argc==3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
+ SelfTest();AppPages(dir,[NSString stringWithUTF8String:argv[2]]);Nav(dir,false,false);Nav(dir,true,false);Nav(dir,false,true);Nav(dir,true,true);Lyrics(dir,false);Lyrics(dir,true);
+ puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, pending pages keep the TMG6 layout");}return 0;}
