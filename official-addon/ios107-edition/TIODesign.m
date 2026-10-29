@@ -180,7 +180,12 @@ void TIODesignStyleRow(UITableViewCell *c){
  BOOL warning=IsWarning(original);
  UIColor *tertiary=TIODesignColor(TIODesignColorLabelTertiary),*accent=TIODesignColor(TIODesignColorAccent);
  c.backgroundColor=TIODesignColor(TIODesignColorBgRaised);
- c.textLabel.textColor=disabled?tertiary:warning?WarningToken(original):TIODesignColor(TIODesignColorLabel);
+ /* A row may ask for an action (accent or system blue), secondary or tertiary text; any other color is the primary label. */
+ UIColor *text=TIODesignColor(TIODesignColorLabel);
+ if([original isEqual:accent]||[original isEqual:UIColor.systemBlueColor])text=accent;
+ else if([original isEqual:UIColor.secondaryLabelColor])text=TIODesignColor(TIODesignColorLabelSecondary);
+ else if([original isEqual:UIColor.tertiaryLabelColor])text=tertiary;
+ c.textLabel.textColor=disabled?tertiary:warning?WarningToken(original):text;
  c.textLabel.font=TIODesignFont(TIODesignTextStyleBody);c.detailTextLabel.font=TIODesignFont(TIODesignTextStyleSubheadline);
  c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;
  c.textLabel.adjustsFontForContentSizeCategory=c.detailTextLabel.adjustsFontForContentSizeCategory=YES;
