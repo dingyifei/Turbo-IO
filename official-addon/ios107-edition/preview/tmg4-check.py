@@ -51,6 +51,9 @@ def check_panel(screen,report,stem):
         assert nav['navigating']==active,'wrong navigation state in '+str(stem)
         assert nav['endVisible']==active,'End must show only while navigating: '+str(stem)
         assert nav['startVisible']!=active,'Start must hide while navigating: '+str(stem)
+        assert nav['lastActionOnScreen'],'the last action button is clipped or off screen (Apple Maps unreachable): '+str(stem)+' '+nav['lastActionFrame']
+        assert nav['modeControlVisible']!=active,'Walk/Cycle/Drive must be hidden while navigating and shown otherwise: '+str(stem)
+        assert not active or nav['searchText'].strip(),'the collapsed top card must still show the destination: '+str(stem)
     else:
         assert report['sections'] and any(s['rows'] for s in report['sections']),'captions fixture rendered no rows: '+str(stem)
 def check(root,screens):

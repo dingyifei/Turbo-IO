@@ -137,8 +137,25 @@ NSDictionary *TIOPreviewNavigationFacts(UIViewController *panel) {
     };
     BOOL navigating=NO,hasGuide=NO;
     @try {navigating=[[panel valueForKey:@"navigating"] boolValue];hasGuide=[panel valueForKey:@"guide"]!=nil;} @catch (NSException *e) {}
+    // The last action button on screen (Apple Maps, else End or Start) must sit fully inside the window and
+    // inside every scroll view and clipping ancestor above it, so a button hidden below a fold fails.
+    UIView *last=nil;
+    for (NSString *key in @[@"startButton",@"stopButton",@"appleMapsButton"]) {
+        @try {UIView *button=[panel valueForKey:key];if (button&&!button.hidden) last=button;} @catch (NSException *e) {}
+    }
+    BOOL actionOnScreen=NO,modeVisible=NO;CGRect actionFrame=CGRectZero;
+    if (last.window) {
+        UIWindow *window=last.window;actionFrame=[last convertRect:last.bounds toView:window];
+        actionOnScreen=CGRectContainsRect(window.bounds,actionFrame);
+        for (UIView *up=last.superview;up&&up!=window&&actionOnScreen;up=up.superview) {
+            if ([up isKindOfClass:UIScrollView.class]||up.clipsToBounds) actionOnScreen=CGRectContainsRect([up convertRect:up.bounds toView:window],actionFrame);
+        }
+    }
+    @try {UIView *mode=[panel valueForKey:@"modeControl"];modeVisible=mode&&!mode.hidden&&mode.window;} @catch (NSException *e) {}
     return @{@"navigating":@(navigating),@"routeLoaded":@(hasGuide),@"title":text(@"titleLabel"),@"metrics":text(@"metricsLabel"),
-             @"startVisible":@(!hidden(@"startButton")),@"endVisible":@(!hidden(@"stopButton")),@"appleMapsVisible":@(!hidden(@"appleMapsButton"))};
+             @"startVisible":@(!hidden(@"startButton")),@"endVisible":@(!hidden(@"stopButton")),@"appleMapsVisible":@(!hidden(@"appleMapsButton")),
+             @"modeControlVisible":@(modeVisible),@"lastActionOnScreen":@(actionOnScreen),@"lastActionFrame":NSStringFromCGRect(actionFrame),
+             @"searchText":[[panel valueForKey:@"search"] text]?:@""};
 }
 
 // ---- Captions: the real Apple captions panel (Swift) with canned state ----

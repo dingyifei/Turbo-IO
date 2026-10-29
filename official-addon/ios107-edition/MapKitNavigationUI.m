@@ -166,7 +166,8 @@ static NSString *LensSymbol(NSInteger icon){
 // Layout: glass buttons, top card, bottom sheet. Navigation state above is untouched by the UI.
 @property UIButton *backButton,*moreButton;
 @property UIView *topCard,*sheet,*grabber,*pillHolder,*pill;
-@property UIStackView *titleRow,*buttonRow;
+@property UIStackView *titleRow,*buttonRow,*sheetContent,*sheetFooter;
+@property BOOL footnotesInContent;
 @property NSLayoutConstraint *buttonRatio,*pillWidth;
 @property UIScrollView *sheetScroll;
 @property TIONavLensView *lensView;
@@ -264,11 +265,15 @@ static NSString *LensSymbol(NSInteger icon){
     self.appleMapsButton=[self action:TIOText(@"nav.appleMaps") icon:nil selector:@selector(appleMapsTapped) role:TIODesignButtonSecondary];
     self.buttonRow=[[UIStackView alloc]initWithArrangedSubviews:@[self.startButton,self.stopButton,self.appleMapsButton]];self.buttonRow.spacing=TIOSpace3;
     self.buttonRatio=[self.appleMapsButton.widthAnchor constraintEqualToAnchor:self.startButton.widthAnchor multiplier:.5];self.buttonRatio.priority=UILayoutPriorityDefaultHigh;self.buttonRatio.active=YES;
-    UIStackView *content=[[UIStackView alloc]initWithArrangedSubviews:@[self.titleRow,self.metricsLabel,self.lensView,self.buttonRow,self.detailLabel,self.glassesLabel]];
+    // The details scroll; the actions (and the footnotes, until text grows large) sit in a footer under the scroll
+    // view, so Start, End and Apple Maps are always on screen whatever the text size.
+    UIStackView *content=[[UIStackView alloc]initWithArrangedSubviews:@[self.titleRow,self.metricsLabel,self.lensView]];self.sheetContent=content;
     content.axis=UILayoutConstraintAxisVertical;content.spacing=TIOSpace3-2;[content setCustomSpacing:2 afterView:self.titleRow];content.translatesAutoresizingMaskIntoConstraints=NO;
+    UIStackView *footer=[[UIStackView alloc]initWithArrangedSubviews:@[self.buttonRow,self.detailLabel,self.glassesLabel]];self.sheetFooter=footer;
+    footer.axis=UILayoutConstraintAxisVertical;footer.spacing=TIOSpace3-2;footer.translatesAutoresizingMaskIntoConstraints=NO;
     for(UIView *v in @[self.titleLabel,self.metricsLabel,self.detailLabel,self.glassesLabel])[v setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     UIScrollView *scroll=[UIScrollView new];scroll.translatesAutoresizingMaskIntoConstraints=NO;scroll.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;scroll.alwaysBounceVertical=NO;self.sheetScroll=scroll;
-    [scroll addSubview:content];[sheet addSubview:scroll];
+    [scroll addSubview:content];[sheet addSubview:scroll];[sheet addSubview:footer];
     // The grabber's 44 pt hit area overlaps the sheet's top margin; tap or drag toggles the details.
     UIView *grabber=[UIView new];grabber.translatesAutoresizingMaskIntoConstraints=NO;self.grabber=grabber;
     UIView *bar=[UIView new];bar.translatesAutoresizingMaskIntoConstraints=NO;bar.backgroundColor=TIODesignColor(TIODesignColorSeparator);bar.layer.cornerRadius=TIORadiusXS+.5;bar.userInteractionEnabled=NO;[grabber addSubview:bar];
@@ -277,7 +282,8 @@ static NSString *LensSymbol(NSInteger icon){
     [grabber addGestureRecognizer:[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(grabberPan:)]];
     [sheet addSubview:grabber];[self.view addSubview:sheet];
     UILayoutGuide *scrollContent=scroll.contentLayoutGuide,*scrollFrame=scroll.frameLayoutGuide;
-    // Sheet height follows its content (top margin included) up to 62% of the screen, then the content scrolls.
+    // Sheet height follows its content (top margin included) up to 62% of the screen, then the details scroll above the footer.
+    NSLayoutConstraint *capHeight=[sheet.heightAnchor constraintLessThanOrEqualToAnchor:self.view.heightAnchor multiplier:.62];capHeight.priority=UILayoutPriorityDefaultHigh+1;
     NSLayoutConstraint *fit=[scroll.heightAnchor constraintEqualToAnchor:content.heightAnchor constant:TIOSpace6];fit.priority=UILayoutPriorityDefaultLow; // below every compression resistance: the cap shrinks the scroll view, never the content
     [NSLayoutConstraint activateConstraints:@[
         [self.map.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[self.map.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],[self.map.topAnchor constraintEqualToAnchor:self.view.topAnchor],[self.map.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
@@ -288,8 +294,9 @@ static NSString *LensSymbol(NSInteger icon){
         [sheet.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[sheet.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],[sheet.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         [sheet.topAnchor constraintGreaterThanOrEqualToAnchor:top.bottomAnchor constant:TIOSpace2],
         [scroll.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor],[scroll.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor],[scroll.topAnchor constraintEqualToAnchor:sheet.topAnchor],
-        [scroll.bottomAnchor constraintEqualToAnchor:sheet.safeAreaLayoutGuide.bottomAnchor constant:-TIOSpace2],fit,
-        [scroll.heightAnchor constraintLessThanOrEqualToAnchor:self.view.heightAnchor multiplier:.62],
+        [footer.topAnchor constraintEqualToAnchor:scroll.bottomAnchor constant:TIOSpace3-2],[footer.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor constant:TIOSpace5],[footer.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor constant:-TIOSpace5],
+        [footer.bottomAnchor constraintEqualToAnchor:sheet.safeAreaLayoutGuide.bottomAnchor constant:-TIOSpace2],fit,
+        capHeight,
         [content.leadingAnchor constraintEqualToAnchor:scrollContent.leadingAnchor constant:TIOSpace5],[content.trailingAnchor constraintEqualToAnchor:scrollContent.trailingAnchor constant:-TIOSpace5],
         [content.topAnchor constraintEqualToAnchor:scrollContent.topAnchor constant:TIOSpace6],[content.bottomAnchor constraintEqualToAnchor:scrollContent.bottomAnchor],
         [content.widthAnchor constraintEqualToAnchor:scrollFrame.widthAnchor constant:-2*TIOSpace5],
@@ -313,6 +320,11 @@ static NSString *LensSymbol(NSInteger icon){
     BOOL large=UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
     self.titleRow.axis=large?UILayoutConstraintAxisVertical:UILayoutConstraintAxisHorizontal;self.titleRow.alignment=large?UIStackViewAlignmentFill:UIStackViewAlignmentTop;
     self.buttonRow.axis=large?UILayoutConstraintAxisVertical:UILayoutConstraintAxisHorizontal;self.buttonRow.distribution=UIStackViewDistributionFill;self.buttonRatio.active=!large;self.pillWidth.active=!large;
+    // Large text: the footnotes join the scrolling details so the footer is only the buttons.
+    if(large!=self.footnotesInContent){
+        self.footnotesInContent=large;
+        for(UIView *note in @[self.detailLabel,self.glassesLabel]){[note removeFromSuperview];[(large?self.sheetContent:self.sheetFooter) addArrangedSubview:note];}
+    }
 }
 - (void)viewDidLayoutSubviews{
     [super viewDidLayoutSubviews];
@@ -634,7 +646,9 @@ static NSString *LensSymbol(NSInteger icon){
     else{status=TIODesignStatusNeutral;word=TIOText(@"nav.glasses.onStart");spoken=word;}
     NSString *key=[NSString stringWithFormat:@"%ld|%@",(long)status,word];
     if([key isEqual:self.pillKey])return;self.pillKey=key;
-    [self.pill removeFromSuperview];UIView *pill=TIODesignStatusPill(status,word);pill.translatesAutoresizingMaskIntoConstraints=NO;pill.accessibilityLabel=spoken;self.pill=pill;[self.pillHolder addSubview:pill];
+    [self.pill removeFromSuperview];UIView *pill=TIODesignStatusPill(status,word);pill.translatesAutoresizingMaskIntoConstraints=NO;pill.accessibilityLabel=spoken;self.pill=pill;
+    // The neutral pill's sunken fill leaves its secondary text at 4.2:1 in light; on the raised sheet the page background keeps it at 4.7:1 or better.
+    if(status==TIODesignStatusNeutral)pill.backgroundColor=TIODesignColor(TIODesignColorBg);[self.pillHolder addSubview:pill];
     [NSLayoutConstraint activateConstraints:@[[pill.leadingAnchor constraintEqualToAnchor:self.pillHolder.leadingAnchor],[pill.trailingAnchor constraintEqualToAnchor:self.pillHolder.trailingAnchor],[pill.topAnchor constraintEqualToAnchor:self.pillHolder.topAnchor],[pill.bottomAnchor constraintEqualToAnchor:self.pillHolder.bottomAnchor]]];
 }
 - (void)refresh{
@@ -652,7 +666,8 @@ static NSString *LensSymbol(NSInteger icon){
     self.startButton.hidden=self.navigating;self.startButton.enabled=self.guide&&!self.planning;self.stopButton.hidden=!self.navigating;
     // Apple Maps only follows your real position, so the hand-off is for live routes.
     self.appleMapsButton.hidden=self.navigating?self.simulated:sim;self.appleMapsButton.enabled=self.navigating||(self.guide&&!self.planning);
-    self.modeControl.enabled=!self.navigating;self.search.userInteractionEnabled=!self.navigating;
+    // While navigating the top card is just the search field showing the destination.
+    self.modeControl.enabled=!self.navigating;self.modeControl.hidden=self.navigating;self.search.userInteractionEnabled=!self.navigating;
     self.glassesLabel.text=[self glassesText];[self updateGlassesPill];
     NSDictionary *lens=[self lensModel];self.lensView.model=lens;
     TIODesignStyleLensPreview(self.lensView,lens?[NSString stringWithFormat:FormatText(@"nav.lens.a11y"),lens[@"summary"]]:@"");
