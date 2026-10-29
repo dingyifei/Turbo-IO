@@ -90,7 +90,8 @@
       "ImageUploadUI.m",
       "RoadMap.m",
       "NativeNavigation.m",
-      "NativeNavigationUI.m"
+      "NativeNavigationUI.m",
+      "MapKitNavigationUI.m"
     ],
     "B4": [
       "AppUI.m",

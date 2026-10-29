@@ -322,6 +322,10 @@
 {"key":"hub.alert.mode.message","en":"Choosing experimental takeover sends the recognized question to your configured service.","zh":"选择实验接管会将识别后的问题发给你配置的服务。"}
 {"key":"hub.alert.search.message","en":"When enabled, the custom model may send necessary search terms to TinyFish and receive search summaries.","zh":"开启后，自有模型可把必要检索词发给 TinyFish，将搜索摘要交回模型。"}
 {"key":"hub.alert.tools.message","en":"knowledge_query / knowledge_query_status: %@.","zh":"knowledge_query / knowledge_query_status：%@。"}
+{"key":"hub.card.detected","en":"Detected","zh":"已识别"}
+{"key":"hub.card.firmware","en":"Firmware %@","zh":"固件 %@"}
+{"key":"hub.card.name","en":"RayNeo iO","zh":"RayNeo iO"}
+{"key":"hub.card.notDetected","en":"Not detected","zh":"未识别"}
 {"key":"hub.choose.mode.apple","en":"Apple on-device model","zh":"Apple 本机模型"}
 {"key":"hub.choose.mode.custom","en":"Custom model (experimental)","zh":"自定义模型（实验）"}
 {"key":"hub.choose.mode.official","en":"RayNeo app default","zh":"官方默认"}
@@ -502,7 +506,120 @@
 {"key":"music.timeout.always","en":"Always","zh":"常亮"}
 {"key":"music.title","en":"Music","zh":"音乐"}
 {"key":"music.watch","en":"Music · Spotify","zh":"音乐 · Spotify"}
+{"key":"nav.alert.busy.message","en":"Wait a few seconds for the last update to finish, then try again.","zh":"请等几秒让上一次更新完成，然后重试。"}
+{"key":"nav.alert.busy.title","en":"Glasses busy","zh":"眼镜正忙"}
+{"key":"nav.alert.endFirst.dest","en":"End the current route before choosing a new destination.","zh":"选择新目的地前，请先结束当前路线。"}
+{"key":"nav.alert.endFirst.options","en":"Options can be changed after the current route ends.","zh":"当前路线结束后才能更改选项。"}
+{"key":"nav.alert.endFirst.title","en":"End navigation first","zh":"请先结束导航"}
+{"key":"nav.alert.glasses.message","en":"Check that the glasses are connected and idle on the home screen, then use ⋯ › Reconnect glasses. Phone navigation continues.","zh":"请确认眼镜已连接并停在主屏幕，然后使用 ⋯ › 重新连接眼镜。手机上的导航会继续。"}
+{"key":"nav.alert.glasses.title","en":"Glasses didn't start","zh":"眼镜未能启动"}
+{"key":"nav.alert.location.message","en":"Allow location access in Settings for live navigation, or use Simulate.","zh":"请在“设置”中允许定位以使用实时导航，或改用模拟。"}
+{"key":"nav.alert.location.title","en":"Location needed","zh":"需要定位"}
+{"key":"nav.alert.maps.message","en":"Turbo IO navigation continues on the glasses.","zh":"Turbo IO 的眼镜导航会继续。"}
+{"key":"nav.alert.maps.title","en":"Couldn't open Apple Maps","zh":"无法打开 Apple 地图"}
+{"key":"nav.alert.noResults.message","en":"Try a different search, or long-press the map to drop a pin.","zh":"换个关键词试试，或长按地图放置图钉。"}
+{"key":"nav.alert.noResults.title","en":"No results","zh":"没有结果"}
+{"key":"nav.appleMaps","en":"Apple Maps","zh":"Apple 地图"}
+{"key":"nav.back.a11y","en":"Back to Turbo","zh":"返回 Turbo"}
+{"key":"nav.busy.captions","en":"Caption navigation is still running.","zh":"字幕导航仍在运行。"}
+{"key":"nav.busy.suffix","en":"Stop it, then use ⋯ › Reconnect glasses.","zh":"请先停止它，然后使用 ⋯ › 重新连接眼镜。"}
+{"key":"nav.dest.default","en":"Destination","zh":"目的地"}
+{"key":"nav.dest.pin","en":"Dropped pin","zh":"放置的图钉"}
+{"key":"nav.dest.yours","en":"your destination","zh":"你的目的地"}
+{"key":"nav.detail.live","en":"From your location","zh":"从你的位置出发"}
+{"key":"nav.detail.simHere","en":"Simulated from your location","zh":"从你的位置模拟"}
+{"key":"nav.detail.simStart","en":"Simulated from the chosen start","zh":"从所选起点模拟"}
+{"key":"nav.detail.simulatedRoute","en":"Simulated route","zh":"模拟路线"}
+{"key":"nav.end","en":"End","zh":"结束"}
+{"key":"nav.glasses.connected","en":"Glasses connected","zh":"眼镜已连接"}
+{"key":"nav.glasses.connected.short","en":"Connected","zh":"已连接"}
+{"key":"nav.glasses.connecting","en":"Connecting glasses…","zh":"正在连接眼镜…"}
+{"key":"nav.glasses.connecting.short","en":"Connecting…","zh":"正在连接…"}
+{"key":"nav.glasses.notConnected","en":"Glasses not connected","zh":"眼镜未连接"}
+{"key":"nav.glasses.notConnected.short","en":"Not connected","zh":"未连接"}
+{"key":"nav.glasses.onStart","en":"Glasses on Start","zh":"开始后连接"}
+{"key":"nav.glasses.stats","en":"%@ updates · %@ maps","zh":"%@ 次更新 · %@ 张地图"}
+{"key":"nav.hint.search","en":"Search for a destination, or long-press the map.","zh":"搜索目的地，或长按地图。"}
+{"key":"nav.lens.a11y","en":"Glasses preview: %@","zh":"眼镜预览：%@"}
+{"key":"nav.lens.approx","en":"Approximate preview of the glasses display","zh":"眼镜显示的近似预览"}
+{"key":"nav.lens.onto","en":"onto %@","zh":"进入 %@"}
+{"key":"nav.menu.displayOn","en":"Keep glasses display on","zh":"保持眼镜显示屏常亮"}
+{"key":"nav.menu.displaySleep","en":"Let glasses display sleep","zh":"允许眼镜显示屏休眠"}
+{"key":"nav.menu.notes","en":"About background guidance","zh":"关于后台导航"}
+{"key":"nav.menu.reconnect","en":"Reconnect glasses","zh":"重新连接眼镜"}
+{"key":"nav.menu.roadsOff","en":"Turn off nearby roads on glasses","zh":"关闭眼镜上的周边道路"}
+{"key":"nav.menu.roadsOn","en":"Show nearby roads on glasses…","zh":"在眼镜上显示周边道路…"}
+{"key":"nav.menu.setStart","en":"Set simulation start (long-press map)","zh":"设置模拟起点（长按地图）"}
+{"key":"nav.menu.simHere","en":"Simulate from my location","zh":"从我的位置模拟"}
+{"key":"nav.metrics.arrive","en":"arrive %@","zh":"%@ 到达"}
+{"key":"nav.mode.a11y","en":"Travel by","zh":"出行方式"}
+{"key":"nav.mode.cycle","en":"Cycle","zh":"骑行"}
+{"key":"nav.mode.drive","en":"Drive","zh":"驾车"}
+{"key":"nav.mode.walk","en":"Walk","zh":"步行"}
+{"key":"nav.note.arrived","en":"Arrived at %@.","zh":"已到达%@。"}
+{"key":"nav.note.connectingMaps","en":"Connecting the glasses, then opening Apple Maps…","zh":"正在连接眼镜，然后打开 Apple 地图…"}
+{"key":"nav.note.ended","en":"Navigation ended.","zh":"导航已结束。"}
+{"key":"nav.note.finding","en":"Finding a route…","zh":"正在规划路线…"}
+{"key":"nav.note.keepUnlocked","en":"Keep the phone unlocked with this screen open.","zh":"请保持手机解锁并停留在本页面。"}
+{"key":"nav.note.locationOff","en":"Location access was turned off.","zh":"定位权限已关闭。"}
+{"key":"nav.note.lost","en":"Lost the glasses connection. Use ⋯ › Reconnect glasses.","zh":"眼镜连接已断开。请使用 ⋯ › 重新连接眼镜。"}
+{"key":"nav.note.navigating","en":"Navigating. You can switch to Apple Maps or lock the phone (experimental).","zh":"正在导航。可以切换到 Apple 地图或锁屏（实验功能）。"}
+{"key":"nav.note.newRoute","en":"New route found.","zh":"已找到新路线。"}
+{"key":"nav.note.noRoute","en":"No route found.","zh":"未找到路线。"}
+{"key":"nav.note.noRouteWhy","en":"No route found: %@.","zh":"未找到路线：%@。"}
+{"key":"nav.note.offRoute","en":"Off route. Finding a new route…","zh":"已偏离路线。正在重新规划…"}
+{"key":"nav.note.pickStart","en":"Long-press the map to set where the simulation starts.","zh":"长按地图以设置模拟起点。"}
+{"key":"nav.note.reconnecting","en":"Reconnecting to the glasses…","zh":"正在重新连接眼镜…"}
+{"key":"nav.note.rerouteFail","en":"Couldn't find a new route. Keep following the old one or end navigation.","zh":"无法找到新路线。可继续按原路线走，或结束导航。"}
+{"key":"nav.note.simulating","en":"Simulating. You can switch apps or lock the phone (experimental).","zh":"正在模拟。可以切换 App 或锁屏（实验功能）。"}
+{"key":"nav.note.startSet","en":"Start set. Now choose a destination.","zh":"起点已设置。现在选择目的地。"}
+{"key":"nav.note.timeout","en":"Route search timed out. Check your connection and try again.","zh":"路线搜索超时。请检查网络后重试。"}
+{"key":"nav.note.waitLive","en":"Waiting for your location. Allow location access for live navigation.","zh":"正在等待你的位置。实时导航需要允许定位。"}
+{"key":"nav.note.waitSim","en":"Waiting for your location. Or use ⋯ › Set simulation start, then long-press the map.","zh":"正在等待你的位置。也可以使用 ⋯ › 设置模拟起点，然后长按地图。"}
+{"key":"nav.note.weak","en":"Weak GPS signal. Guidance resumes when the signal improves.","zh":"GPS 信号弱。信号恢复后会继续导航。"}
+{"key":"nav.options.hint","en":"Simulate or live, nearby roads, reconnect glasses","zh":"模拟或实时、周边道路、重新连接眼镜"}
+{"key":"nav.options.message","en":"Guidance behind Apple Maps or the lock screen is experimental; if the glasses freeze, return to this screen. Not for driving.","zh":"在 Apple 地图或锁屏后运行的导航属于实验功能；如果眼镜画面卡住，请回到本页面。不适用于驾驶。"}
+{"key":"nav.options.title","en":"Navigation options","zh":"导航选项"}
 {"key":"nav.passing","en":"Passing %@","zh":"经过 %@"}
+{"key":"nav.pin.simPosition","en":"Simulated position","zh":"模拟位置"}
+{"key":"nav.pin.simStart","en":"Simulation start","zh":"模拟起点"}
+{"key":"nav.roads.allow","en":"Allow","zh":"允许"}
+{"key":"nav.roads.message","en":"When you plan a route, the street map along it (about 700 m either side) is downloaded from OpenFreeMap (tiles.openfreemap.org, OpenStreetMap data) and saved on this phone until navigation ends, so nearby streets still show on the glasses without cell signal. Open highway needs well under 1 MB per 100 km; city driving more (San Francisco to San Jose is about 10 MB). Plan on Wi-Fi when you can. The route itself still comes from Apple Maps.","zh":"规划路线时，会从 OpenFreeMap（tiles.openfreemap.org，OpenStreetMap 数据）下载沿途的街道地图（两侧约 700 米），并保存在本机直到导航结束，这样没有蜂窝信号时眼镜上仍能显示周边街道。开阔公路每 100 公里远小于 1 MB，城市道路更多（旧金山到圣何塞约 10 MB）。建议尽量在 Wi-Fi 下规划。路线本身仍由 Apple 地图提供。"}
+{"key":"nav.roads.noSignal","en":"no signal","zh":"无信号"}
+{"key":"nav.roads.on","en":"Roads on · OpenFreeMap © OpenStreetMap","zh":"道路已开启 · OpenFreeMap © OpenStreetMap"}
+{"key":"nav.roads.saved","en":"Route map saved","zh":"路线地图已保存"}
+{"key":"nav.roads.saving","en":"Saving map %lu/%lu","zh":"正在保存地图 %lu/%lu"}
+{"key":"nav.roads.title","en":"Show nearby roads?","zh":"显示周边道路？"}
+{"key":"nav.roads.waiting","en":"Roads waiting","zh":"道路等待中"}
+{"key":"nav.search.a11y","en":"Search for a destination","zh":"搜索目的地"}
+{"key":"nav.search.placeholder","en":"Where to?","zh":"去哪里？"}
+{"key":"nav.sheet.collapse","en":"Hide details","zh":"收起详情"}
+{"key":"nav.sheet.expand","en":"Show details","zh":"展开详情"}
+{"key":"nav.source.live","en":"Live","zh":"实时"}
+{"key":"nav.source.simulate","en":"Simulate","zh":"模拟"}
+{"key":"nav.source.title","en":"Position source","zh":"位置来源"}
+{"key":"nav.start","en":"Start","zh":"开始"}
+{"key":"nav.start.finding","en":"Finding route…","zh":"正在规划路线…"}
+{"key":"nav.start.simulation","en":"Start simulation","zh":"开始模拟"}
+{"key":"nav.steps.none","en":"No steps.","zh":"没有步骤。"}
+{"key":"nav.steps.title","en":"Route steps","zh":"路线步骤"}
+{"key":"nav.title.ready","en":"Route ready","zh":"路线已就绪"}
+{"key":"nav.turn.arrive","en":"Arrive","zh":"到达"}
+{"key":"nav.turn.follow","en":"Follow the route","zh":"沿路线行驶"}
+{"key":"nav.turn.left","en":"Turn left","zh":"左转"}
+{"key":"nav.turn.rerouting","en":"Rerouting…","zh":"正在重新规划…"}
+{"key":"nav.turn.right","en":"Turn right","zh":"右转"}
+{"key":"nav.turn.roundabout","en":"Enter roundabout","zh":"进入环岛"}
+{"key":"nav.turn.sharpLeft","en":"Sharp left","zh":"向左急转"}
+{"key":"nav.turn.sharpRight","en":"Sharp right","zh":"向右急转"}
+{"key":"nav.turn.slightLeft","en":"Slight left","zh":"向左前方"}
+{"key":"nav.turn.slightRight","en":"Slight right","zh":"向右前方"}
+{"key":"nav.turn.straight","en":"Continue straight","zh":"直行"}
+{"key":"nav.turn.uturn","en":"Make a U-turn","zh":"掉头"}
+{"key":"nav.unit.hmin","en":"%ld h %ld min","zh":"%ld 小时 %ld 分钟"}
+{"key":"nav.unit.km","en":"%.1f km","zh":"%.1f 公里"}
+{"key":"nav.unit.m","en":"%ld m","zh":"%ld 米"}
+{"key":"nav.unit.min","en":"%ld min","zh":"%ld 分钟"}
 {"key":"ota.auto.missing","en":"Not set yet · switch on, then off","zh":"尚未设置，请先开后关"}
 {"key":"ota.auto.off","en":"Off","zh":"已关闭"}
 {"key":"ota.auto.on","en":"On · tap Fix","zh":"已开启，点“处理”"}
@@ -2028,7 +2145,3 @@
 {"key":"；已请求退出，镜片未确认","en":"; exit requested, but not confirmed by glasses"}
 {"key":"；文件已结束，可在眼镜开页后重新查询","en":"; file complete; query again after opening the page on the glasses"}
 {"key":"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","en":"; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state."}
-{"key":"hub.card.name","en":"RayNeo iO","zh":"RayNeo iO"}
-{"key":"hub.card.firmware","en":"Firmware %@","zh":"固件 %@"}
-{"key":"hub.card.detected","en":"Detected","zh":"已识别"}
-{"key":"hub.card.notDetected","en":"Not detected","zh":"未识别"}

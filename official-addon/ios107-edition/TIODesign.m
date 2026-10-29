@@ -88,6 +88,10 @@ UIFont *TIODesignLegacyFont(CGFloat size, UIFontWeight weight){
  return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:size weight:weight]];
 }
 
+UIFont *TIODesignLensFont(CGFloat glassesPixels, CGFloat previewScale, UIFontWeight weight){
+ return [UIFont monospacedDigitSystemFontOfSize:MAX(1,glassesPixels*previewScale) weight:weight];
+}
+
 #pragma mark Numbers
 
 typedef struct { const char *name; CGFloat first; CGFloat second; BOOL pair; } TIODesignNumberRow;

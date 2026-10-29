@@ -103,6 +103,8 @@ UIViewController *TIOPreviewNavigationController(NSString *state) {
     MKMapItem *destination=[[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:coords[3]]];
     StubSet(panel,@"destination",destination);StubSet(panel,@"destinationName",@"Coit Tower");
     StubSet(panel,@"route",route);StubSet(panel,@"guide",guide);StubSet(panel,@"note",nil);
+    // Live source (the default is Simulate, which hides the Apple Maps hand-off); the board shows both buttons.
+    ((UISegmentedControl *)[panel valueForKey:@"sourceControl"]).selectedSegmentIndex=1;
     UISearchBar *search=[panel valueForKey:@"search"];search.text=@"Coit Tower";
     MKMapView *map=[panel valueForKey:@"map"];
     MKPointAnnotation *pin=[MKPointAnnotation new];pin.coordinate=coords[3];pin.title=@"Coit Tower";[map addAnnotation:pin];StubSet(panel,@"destinationPin",pin);
@@ -112,7 +114,8 @@ UIViewController *TIOPreviewNavigationController(NSString *state) {
         // map is not followed. The glasses attempt is already spent (glassesTried), so the panel's
         // timer never starts a glasses session; the simulator has no location fix to feed updates.
         StubSet(panel,@"navigating",@YES);StubSet(panel,@"simulated",@NO);StubSet(panel,@"glassesTried",@YES);
-        StubSet(panel,@"display",@{@"turn":@"Turn left",@"meters":@120,@"road":@"Battery Street",@"remainingSeconds":@(11*60),@"remainingMeters":@1500});
+        StubSet(panel,@"display",@{@"turn":@"Turn left",@"icon":@(TIOGuideIconLeft),@"meters":@120,@"road":@"Battery Street",@"remainingSeconds":@(11*60),@"remainingMeters":@1500,
+            @"tnrPassing":[TIOText(@"nav.passing") stringByReplacingOccurrencesOfString:@"%@" withString:@"The Embarcadero"],@"tnrLocation":@[@(pts[1][0]),@(pts[1][1])]});
     }
     SEL refresh=NSSelectorFromString(@"refresh");
     if ([panel respondsToSelector:refresh]) ((void(*)(id,SEL))objc_msgSend)(panel,refresh);

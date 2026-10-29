@@ -48,6 +48,10 @@ FOUNDATION_EXPORT NSInteger TIODesignTextStyleCSSWeight(TIODesignTextStyle style
 FOUNDATION_EXPORT CGFloat TIODesignTextStyleTracking(TIODesignTextStyle style);
 /* Only for forwarding shims over pre-design-system call sites. */
 FOUNDATION_EXPORT UIFont *TIODesignLegacyFont(CGFloat size, UIFontWeight weight);
+/* A glasses type role (lens-hero ... lens-min, in glasses pixels) drawn at the
+ * scale of a phone-side lens preview (preview width / lens-page-w). Deliberately
+ * not Dynamic Type: the picture shows the glasses, and the glasses do not scale. */
+FOUNDATION_EXPORT UIFont *TIODesignLensFont(CGFloat glassesPixels, CGFloat previewScale, UIFontWeight weight);
 
 #pragma mark Numbers
 
