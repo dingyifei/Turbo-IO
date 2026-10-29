@@ -13,17 +13,15 @@ static char *clock_hm(char *p,int64_t epoch){unsigned min=((uint32_t)epoch%86400
  *p++=(char)('0'+min/60/10);*p++=(char)('0'+min/60%10);*p++=':';
  *p++=(char)('0'+min%60/10);*p++=(char)('0'+min%10);*p=0;return p;
 }
+/* ETA tail of the LensNav trip line ("1.2 km, 10 min, 10:10"): the arrival clock time, or why it is
+ * missing. The wall clock itself is no longer shown (TMG6 footer removed); `now` only anchors the day. */
 void tn_clock_text(char out[64],int64_t now,int64_t eta,bool stale){
  unsigned lang=tio_lang();memset(out,0,64);
  if(stale){append(out,tio_text(TT_NAV_STALE,lang));return;}
- if(now<946684800||now>4102444800LL){append(out,tio_text(TT_NAV_NOW_UNKNOWN,lang));return;}
- char *p=append(out,tio_text(TT_NAV_NOW,lang));p=clock_hm(p,now);p=append(p,tio_text(TT_NAV_SEP,lang));
- if(eta<now||eta-now>604800){append(p,tio_text(TT_NAV_ETA_PENDING,lang));return;}
- unsigned days=(uint32_t)eta/86400-(uint32_t)now/86400;
- if(!lang)p=append(p,tio_text(TT_NAV_ETA_PREFIX,lang));
+ if(now<946684800||now>4102444800LL||eta<now||eta-now>604800){append(out,tio_text(TT_NAV_ETA_PENDING,lang));return;}
+ char *p=out;unsigned days=(uint32_t)eta/86400-(uint32_t)now/86400;
  if(days==1)p=append(p,tio_text(TT_NAV_TOMORROW,lang));else if(days){if(!lang)*p++='+';p=decimal(p,days);p=append(p,tio_text(TT_NAV_DAYS,lang));}
- if(lang)p=append(p,tio_text(TT_NAV_ETA_PREFIX,lang));
- p=clock_hm(p,eta);append(p,tio_text(TT_NAV_ETA_SUFFIX,lang));
+ clock_hm(p,eta);
 }
 static const TNXY straight[]={{48,84},{48,12},{20,40},{48,12},{76,40}};
 static const TNXY right[]={{18,84},{18,36},{76,36},{52,12},{76,36},{52,60}};
@@ -64,9 +62,10 @@ bool tn_visual(const TNScene *s,bool stale,TNVisual *v){
  char *p=v->distance;if(s->distance_m<1000){p=decimal(p,s->distance_m);append(p," m");}
  else {p=decimal(p,s->distance_m/1000);*p++='.';*p++=(char)('0'+s->distance_m%1000/100);append(p," km");}
  memcpy(v->turn,s->turn,sizeof v->turn);memcpy(v->road,s->road,sizeof v->road);v->turn[TN_TURN_MAX]=0;v->road[TN_ROAD_MAX]=0;
- p=append(v->summary,tio_text(TT_NAV_LEFT,lang));p=distance(p,s->remaining_m);p=append(p," / ");
+ /* Trip summary for band M, e.g. "1.2 km", middle dot, "10 min"; the arrival time follows from tn_clock_text. */
+ p=distance(v->summary,s->remaining_m);p=append(p," \xc2\xb7 ");
  unsigned minutes=s->remaining_s/60+(s->remaining_s%60!=0);
- if(minutes>=60){p=decimal(p,minutes/60);p=append(p,"h ");minutes%=60;}
- p=decimal(p,minutes);append(p,"min");
+ if(minutes>=60){p=decimal(p,minutes/60);p=append(p,tio_text(TT_NAV_HOUR,lang));minutes%=60;}
+ p=decimal(p,minutes);append(p,tio_text(TT_NAV_MIN,lang));
  tn_clock_text(v->status,0,0,stale);return true;
 }

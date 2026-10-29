@@ -55,6 +55,8 @@ enum TIOTextKey {
  TT_NAV_ETA_PREFIX,
  TT_NAV_ETA_SUFFIX,
  TT_NAV_LEFT,
+ TT_NAV_HOUR,
+ TT_NAV_MIN,
  TT_COUNT
 };
 const char *tio_text(unsigned key,unsigned lang);

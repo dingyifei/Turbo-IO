@@ -134,7 +134,7 @@
       "offset": "0x4d8d8c",
       "address": "0x10668d8c",
       "before": "f0b585b0",
-      "after": "18f250be",
+      "after": "18f25abe",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1cf2b5bb",
+      "after": "1cf2e9bc",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1cf2aebb00bf",
+      "after": "1cf2e2bc00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1ff222f900bf",
+      "after": "1ff256fa00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1bf309ff00bf00bf00bf",
+      "after": "1cf33df800bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 149184,
+  "moduleBytes": 149824,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "10740cfd853ff18b47ba2353e421de8760d2449654c3114b98f6065dd2b2ccff",
+  "moduleSHA256": "5dbbbce0344303fdb7a62d227dec7a6a1b010dfb8aeb366fdd72ca9a9c17ed87",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7357832,
+  "APBytes": 7358472,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG7-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8812240,
-    "sha256": "717ee18887884616353c1ebe189b0dbcef9e9cb87b61b43d0d4cd6eb8593988b",
-    "md5": "c44a98b60e38ba799478ef5c03d4f9c6"
+    "bytes": 8812973,
+    "sha256": "fdaf18ec4dcad96bfce62dccc75d4e6a531b75cbbdd51b43d0c5d9506b63ddbc",
+    "md5": "f0060d511b84af0cf5d4f3cc013fe3bd"
   },
   "sources": [
     {
@@ -409,7 +409,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
-      "sha256": "aff54f70501465a0d0022b11b3bfd90dfa1b8f904752d4d74ef4363bacfd8c78"
+      "sha256": "04982f2d428d428da141622ea7ca5d6b700cbcb7c2f259be1e7b9baeb17a1cbb"
     },
     {
       "source": "navigation-runtime-v1/nav_runtime.c",
@@ -421,11 +421,11 @@
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
-      "sha256": "402f6be62f2492d410df46e7d88ac61319fb127ce01b927082a3851247ba379d"
+      "sha256": "b2f5c1497eaa17d9361f4de74719a8b0a8afbe285e3c72190a5d1a8915502f94"
     },
     {
       "source": "navigation-runtime-v1/nav_visual.c",
-      "sha256": "7f657fdcaf15cb16ce8ed71c5c97fca0fc2436ac1b67a6e73cf5b399cdae40e9"
+      "sha256": "4215b896cc5e1064c8e618e021d31fa91e3cd527d7a76400e1a4df174489e841"
     },
     {
       "source": "camera-v1/camera.c",
@@ -445,7 +445,7 @@
     },
     {
       "source": "common-v1/tio_text.c",
-      "sha256": "86cee24bb8aaa378ba31df8e70c0423c981ca4cad8b3214186be3769466c43cb"
+      "sha256": "83bcff6ac15edc55b95abefeb40e17ea198100a2db920ab7aaba83791048f80c"
     },
     {
       "source": "menu-grid-v2/tile_config.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "12fd13034ad80cce6bec426573bd856a956daf43a60b044b8f4b568992cb4958",
+  "APSHA256": "0b750876bfd621984dcbe76ec3217ac755ce72feb9535164a87ec0b4a83430fe",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

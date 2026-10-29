@@ -157,18 +157,55 @@ static void AppPages(NSString *dir,NSString *board){
  unsigned words=0;for(const char *p=App[0].hint;*p;p++)if(*p!=' '&&(p==App[0].hint||p[-1]==' ')&&strncmp(p,"·",2))words++;assert(words<=TIO_HINT_MAX_WORDS_EN);
 }
 
-// ---- Pages that keep the TMG6 layout until their tmg7 re-layout commit ---------------------------------------------
+// ---- Navigation (LensNav, tmg7(2)) re-laid; lyrics still keep the TMG6 layout until their tmg7 commit ---------------
 static void Put16(uint8_t *p,int n){p[0]=n;p[1]=n>>8;}
-static void Nav(NSString *dir,bool zh,bool longer){
- language=zh;Host host={0};TNWidgets api={&host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext};TNView *v=calloc(1,sizeof *v);assert(v);TNScene semantic={.icon=TN_RIGHT,.distance_m=100,.remaining_m=1200,.remaining_s=600};strcpy(semantic.turn,zh?"前方右转":"Turn right");assert(tn_view_open(v,&api,&host,&semantic));
+#define W(p) ((Widget *)(p))
+static void color(void *p,void *o,uint32_t rgb){(void)p;((Widget *)o)->color=rgb;}
+// Compare an EN page with its board's proposed column (board drawn at 2x): same text, size, intensity and band; x and y within 6 px.
+static void CompareNavBoard(NSString *html,Host *host,TNView *v){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSRange proposed=[s rangeOfString:@"Proposed"];assert(proposed.location!=NSNotFound);s=[s substringFromIndex:proposed.location];
+ NSRegularExpression *re=[NSRegularExpression regularExpressionWithPattern:@"left: (\\d+)px; top: (\\d+)px; font-size: (\\d+)px;[^\"]*?color: (#[0-9a-f]{6});\">([^<{]+)</div>" options:0 error:nil];
+ unsigned matched=0;
+ for(NSTextCheckingResult *m in [re matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  int x=[[s substringWithRange:[m rangeAtIndex:1]] intValue]/2,y=[[s substringWithRange:[m rangeAtIndex:2]] intValue]/2,font=[[s substringWithRange:[m rangeAtIndex:3]] intValue]/2;
+  uint32_t color=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:4]] UTF8String]+1,NULL,16);NSString *t=[s substringWithRange:[m rangeAtIndex:5]];
+  Widget *w=NULL;for(unsigned i=1;i<host->count&&!w;i++)if(host->w[i].shown&&host->w[i].text&&[t isEqualToString:[NSString stringWithUTF8String:host->w[i].text]])w=&host->w[i];   // first match: the distance, not the map scale
+  if(!w){printf("board text without fixture widget: %s\n",t.UTF8String);assert(0);}
+  matched++;
+  if(!(abs(w->x-x)<=6&&abs(w->y-y)<=6&&(int)w->font==font&&w->color==color)){printf("board mismatch %s: board (%d,%d %d px %06x) fixture (%d,%d %u px %06x)\n",t.UTF8String,x,y,font,color,w->x,w->y,w->font,w->color);assert(0);}
+  assert(tio_band_of(TIO_SURFACE_PAGE,w->y,w->h)==tio_band_of(TIO_SURFACE_PAGE,y+font/2,1));
+ }
+ // The map column is anchored to the bottom of band B and ends where the board's map ends (translate(372 28), 148 px wide).
+ NSRegularExpression *mapre=[NSRegularExpression regularExpressionWithPattern:@"translate\\((\\d+) (\\d+)\\)" options:0 error:nil];NSTextCheckingResult *mm=[mapre firstMatchInString:s options:0 range:NSMakeRange(0,s.length)];assert(mm);
+ int bx=[[s substringWithRange:[mm rangeAtIndex:1]] intValue],by=[[s substringWithRange:[mm rangeAtIndex:2]] intValue];
+ Widget *map=W(v->map);assert(map->y==by&&map->y+map->h==TIO_PAGE_B1&&map->x+map->w==bx+148&&map->x<=bx);
+ assert(matched==5);
+ printf("PASS board LensNav (proposed, halved): %u text items match; band, size, intensity, x and y within tolerance, map column anchored to band B\n",matched);
+}
+static void Nav(NSString *dir,NSString *board,bool zh,bool longer){
+ language=zh;Host host={0};TNWidgets api={&host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TNView *v=calloc(1,sizeof *v);assert(v);TNScene semantic={.icon=TN_RIGHT,.distance_m=100,.remaining_m=1200,.remaining_s=600};
+ strcpy(semantic.turn,zh?"前方右转":"Turn right");strcpy(semantic.road,zh?"进入 市场街":"onto Market St");assert(tn_view_open(v,&api,&host,&semantic));
  uint8_t scene[104]={1,0,0,0};Put16(scene+4,320);scene[6]=4;scene[8]=11;unsigned counts[]={2,2,2,5},styles[]={0,1,4,6};for(unsigned i=0;i<4;i++){scene[16+8*i]=counts[i];scene[18+8*i]=styles[i];}
  int16_t pts[]={-600,240,600,240,300,-160,300,600,-300,200,300,600,0,0,0,160,160,160,160,320,320,320};for(unsigned i=0;i<22;i++)Put16(scene+48+i*2,pts[i]);scene[92]=1;
- assert(tn_view_map(v,TNR_SCENE2,scene,sizeof scene,0));uint8_t name[224]={1,0,0,0};const char *s=zh?"经过 南京西路与人民广场连接道路":"Passing Martin Luther King Junior Boulevard";if(longer)s=zh?"经过 南京西路人民广场世纪公园文化中心滨江国际会议展览中心连接道路历史文化保护区城市公共交通枢纽":"Passing Martin Luther King Junior Boulevard Near the International Conference and Exhibition Center";size_t len=strlen(s);name[4]=len;memcpy(name+8,s,len);
+ assert(tn_view_map(v,TNR_SCENE2,scene,sizeof scene,0));uint8_t name[224]={1,0,0,0};const char *s=zh?"经过 教会街":"Passing Mission St";if(longer)s=zh?"经过 南京西路人民广场世纪公园文化中心滨江国际会议展览中心连接道路历史文化保护区城市公共交通枢纽":"Passing Martin Luther King Junior Boulevard Near the International Conference and Exhibition Center";size_t len=strlen(s);name[4]=len;memcpy(name+8,s,len);
  uint8_t *breakBits=name+200;NSString *nativeName=[NSString stringWithUTF8String:s];[nativeName enumerateSubstringsInRange:NSMakeRange(0,nativeName.length) options:NSStringEnumerationByWords usingBlock:^(NSString *word,NSRange range,NSRange all,BOOL *stop){NSUInteger end=[[nativeName substringToIndex:NSMaxRange(range)] lengthOfBytesUsingEncoding:NSUTF8StringEncoding];breakBits[end/8]|=1u<<(end%8);}];name[200+len/8]|=1u<<(len%8);
  assert(tn_view_map(v,TNR_PASSING,name,sizeof name,0));assert(tn_view_map_tick(v,0));assert(tn_view_clock(v,946684800+10*3600,946684800+10*3600+600,false));
+ // TMG6 behaviour kept: one passing line, fixed (never moves with the map), whole words, 16 px floor, scale label, no draw churn at any heading.
+ unsigned shown=0;for(unsigned i=0;i<TN_PASS_SIZES;i++){Widget *w=W(v->pass[i]);if(w->shown){shown++;assert(w->x==TIO_CORE_X0&&w->clip&&w->font>=TIO_FONT_MIN);assert(tn_text_width(w->text,strlen(w->text),w->font)<=(unsigned)w->w);
+   assert(tio_band_of(TIO_SURFACE_PAGE,w->y,w->h)==TIO_BAND_T);if(!longer)assert(!strncmp(w->text,zh?"经过":"Passing",zh?6:7)&&w->font==TIO_FONT_LABEL&&w->color==TIO_LENS_MID);}}assert(shown==1);
+ Widget *scale=W(v->scale);assert(scale->shown&&scale->font==TIO_FONT_MIN&&!strcmp(scale->text,"100 m")&&scale->color==TIO_LENS_HIGH);
+ Widget *trip=W(v->trip[0])->shown?W(v->trip[0]):W(v->trip[1]);assert(trip->shown&&!strcmp(trip->text,zh?"1.2 km \xc2\xb7 10分钟 \xc2\xb7 10:10":"1.2 km \xc2\xb7 10 min \xc2\xb7 10:10")&&trip->color==TIO_LENS_HIGH);
+ Widget *dist=W(v->distance);assert(dist->shown&&dist->font==TIO_FONT_PRIMARY&&dist->color==TIO_LENS_FULL&&!strcmp(dist->text,"100 m"));
+ unsigned turns=0;for(unsigned i=0;i<TN_TURN_SIZES;i++)if(W(v->turn[i])->shown){Widget *t=W(v->turn[i]);turns++;assert(t->color==TIO_LENS_FULL&&t->x>=dist->x+dist->w&&t->x+t->w<=W(v->map)->x);}assert(turns==1);
+ assert(((Widget *)v->road)->shown&&((Widget *)v->road)->color==TIO_LENS_HIGH);
+ unsigned before=host.count;for(unsigned heading=0;heading<360;heading++){uint8_t pose[14]={1,0,0,0};Put16(pose+8,heading);assert(tn_view_map(v,TNR_POSE2,pose,sizeof pose,heading+1));assert(tn_view_map_tick(v,heading+1));assert(host.count==before);const uint8_t *raster=((Widget *)v->map)->pixels;assert(raster[87*192+96]>=250&&raster[109*192+104]>=250);for(unsigned i=0;i<TN_PASS_SIZES;i++)assert(W(v->pass[i])->y==TIO_PAGE_T0+((TIO_PAGE_T1-TIO_PAGE_T0)-TIO_LINE(W(v->pass[i])->font))/2);}
+ uint8_t pose[14]={1,0,0,0};assert(tn_view_map(v,TNR_POSE2,pose,sizeof pose,5000));assert(tn_view_map_tick(v,6000));
+ const uint8_t *pixels=((Widget *)v->map)->pixels;unsigned road=0,route=0;for(unsigned i=0;i<192*144;i++){road+=pixels[i]==140;route+=pixels[i]==255;}assert(road&&route);double roadLight=pow((140.0/255+0.055)/1.055,2.4)*0.7152;double contrast=(0.7152+0.05)/(roadLight+0.05);assert(contrast>3.2);printf("route/brightest road green-channel contrast %.3f:1; route/black halo %.3f:1\n",contrast,(0.7152+0.05)/0.05);
  ((Widget *)v->map)->span=true;                                                  // the map is a spatial element anchored to the right column
  const char *tag=longer?(zh?"nav-long-zh":"nav-long-en"):(zh?"nav-zh":"nav-en");
- Gate(&host,tag,false);
+ Gate(&host,tag,true);
+ if(!zh&&!longer)CompareNavBoard(board,&host,v);
  Save(&host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",tag]]);assert(tn_view_close(v));free(v);
 }
 static void Lyrics(NSString *dir,bool zh){language=zh;Host host={0};create(&host,&host);char lines[3][244];const char *raw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方在清晨再次回想起那些温暖的故事":"The morning light is falling on the streets we used to know";
@@ -178,5 +215,5 @@ static void Lyrics(NSString *dir,bool zh){language=zh;Host host={0};create(&host
  Gate(&host,zh?"lyrics-zh":"lyrics-en",false);Save(&host,[dir stringByAppendingPathComponent:zh?@"lyrics-zh.png":@"lyrics-en.png"]);
 }
 int main(int argc,char **argv){@autoreleasepool{assert(argc==3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- SelfTest();AppPages(dir,[NSString stringWithUTF8String:argv[2]]);Nav(dir,false,false);Nav(dir,true,false);Nav(dir,false,true);Nav(dir,true,true);Lyrics(dir,false);Lyrics(dir,true);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);Lyrics(dir,false);Lyrics(dir,true);
  puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, pending pages keep the TMG6 layout");}return 0;}

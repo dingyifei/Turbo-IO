@@ -33,6 +33,14 @@ def main():
         if 'PASS' not in run([exe], a.out / ('tmg7-ui-%d.log' % ppd)):
             sys.exit('tmg7-ui did not report PASS at ppd %d' % ppd)
     src = FW / 'src'
+    nav = src / 'navigation-runtime-v1'
+    # Navigation core and the LensNav view facade (mock widgets, ASan/UBSan); tio_lang is stubbed by the tests.
+    for name, files in (('nav', ['nav_test.c', 'nav_runtime.c', 'nav_visual.c']),
+                        ('nav-view', ['nav_view_test.c', 'nav_view.c', 'nav_runtime.c', 'nav_visual.c'])):
+        exe = a.out / ('tmg7-' + name)
+        run(cc + [nav / f for f in files] + [src / 'common-v1/tio_text.c', '-o', exe], a.out / ('tmg7-%s-build.log' % name))
+        if 'PASS' not in run([exe], a.out / ('tmg7-%s.log' % name)):
+            sys.exit('tmg7-%s did not report PASS' % name)
     exe = a.out / 'tmg7-layout'
     run(['xcrun', 'clang', '-fobjc-arc', '-fblocks', '-O1', '-g', '-fsanitize=address,undefined', '-framework', 'AppKit',
          FW / 'tests/tmg7_layout_preview.m', src / 'navigation-runtime-v1/nav_view.c', src / 'navigation-runtime-v1/nav_visual.c',
@@ -40,6 +48,6 @@ def main():
         a.out / 'tmg7-layout-build.log')
     if 'PASS tmg7 layout gate' not in run([exe, a.out / 'preview', a.board], a.out / 'tmg7-layout.log'):
         sys.exit('tmg7 layout gate did not report PASS')
-    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, layout EN/ZH)')
+    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, layout EN/ZH)')
 
 main()

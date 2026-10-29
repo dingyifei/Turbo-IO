@@ -54,6 +54,8 @@ static const char *const en[TT_COUNT]={
  [TT_NAV_ETA_PREFIX]="ETA ",
  [TT_NAV_ETA_SUFFIX]="",
  [TT_NAV_LEFT]="Left ",
+ [TT_NAV_HOUR]=" h ",
+ [TT_NAV_MIN]=" min",
 };
 static const char *const zh[TT_COUNT]={
  [TT_TILE_DISPLAY]="Turbo Display",
@@ -110,5 +112,7 @@ static const char *const zh[TT_COUNT]={
  [TT_NAV_ETA_PREFIX]="预计 ",
  [TT_NAV_ETA_SUFFIX]=" 到达",
  [TT_NAV_LEFT]="剩余 ",
+ [TT_NAV_HOUR]="小时",
+ [TT_NAV_MIN]="分钟",
 };
 const char *tio_text(unsigned key,unsigned lang){return key<TT_COUNT?(lang==1?zh[key]:en[key]):"";}

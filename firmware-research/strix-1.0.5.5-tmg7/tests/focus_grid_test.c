@@ -31,7 +31,7 @@ static void wrap_motion(FMView *v){
  }
 }
 int main(void){
- Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy,NULL};
+ Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy,NULL,NULL};
  assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==23);
  assert(fm_view_update(&view,8,1704067200,75,0));assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,0)));
  for(unsigned j=0;j<9;j++)assert(f.texts[(uintptr_t)view.labels[j]]&&f.visible[(uintptr_t)view.labels[j]]);
