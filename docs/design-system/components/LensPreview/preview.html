@@ -1,0 +1,28 @@
+<!-- @dsCard group="Phone" height=290 subtitle="The glasses, shown on the phone. Always black and green." -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>LensPreview</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .card{background:var(--bg-raised);border-radius:var(--radius-lg);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .stroke{stroke:var(--lens-full);fill:none}
+  text{font-family:var(--font-sans)}
+  .meta{display:flex;justify-content:space-between;color:var(--label-secondary)}
+</style></head><body>
+<div class="wrap"><div class="card">
+  <div class="lens" role="img" aria-label="Glasses preview: Turn right in 100 metres onto Market Street">
+    <svg viewBox="0 0 540 180">
+      <text class="mid" x="40" y="40" font-size="18">Passing Mission St</text>
+      <text class="high" x="40" y="92" font-size="20">1.2 km · 10 min · ETA 10:10</text>
+      <path class="stroke" d="M28 168v-30h28m-12-14 14 14-14 14" stroke-width="8" stroke-linejoin="round"/>
+      <text class="full" x="96" y="146" font-size="32" font-weight="500">100 m</text>
+      <text class="full" x="214" y="146" font-size="24" font-weight="500">Turn right</text>
+      <text class="high" x="96" y="168" font-size="18">onto Market St</text>
+    </svg>
+  </div>
+  <div class="meta caption"><span>Approximate · surrogate font</span><span>540 × 180</span></div>
+</div></div>
+</body></html>

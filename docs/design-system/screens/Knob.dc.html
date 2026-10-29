@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Knob calibration</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · C10 preview build</div>
+    <img src="/_blob/89ee3195bfd9eb9a27829270ba7f4ab1" alt="Current knob calibration: Start, Finish and Cancel shown as plain list rows" style="width: 390px; height: 844px; object-fit: cover; object-position: top; border-radius: 48px; display: block;">
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}} · measuring</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; align-items: center; padding: 0 4px; height: 44px;">
+        <button aria-label="Back to Glasses runtime" style="height: 44px; border: 0; background: transparent; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px; padding: 0 8px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Runtime</button>
+      </div>
+      <div style="padding: 2px 20px 12px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Knob calibration</div>
+      <div style="margin: 0 16px; padding: 20px 16px; border-radius: 26px; background: {{p.raised}}; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;">
+        <span style="font-size: 13px; color: {{p.sec}};">Raw units this turn</span>
+        <span style="font-size: 56px; line-height: 64px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.5px;">1,960</span>
+        <span style="font-size: 15px; color: {{p.sec}}; font-variant-numeric: tabular-nums;">6 samples · last estimate 4,800 per turn</span>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">How to measure</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; padding: 4px 16px;">
+        <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="width: 24px; height: 24px; border-radius: 12px; background: {{p.soft}}; color: {{p.accent}}; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none;">1</span><span style="font-size: 17px; line-height: 22px;">Open the main menu on your glasses.</span></div>
+        <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="width: 24px; height: 24px; border-radius: 12px; background: {{p.fill}}; color: {{p.on}}; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none;">2</span><span style="font-size: 17px; line-height: 22px; font-weight: 600;">Turn the knob one full turn in one direction.</span></div>
+        <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;"><span style="width: 24px; height: 24px; border-radius: 12px; background: {{p.soft}}; color: {{p.accent}}; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none;">3</span><span style="font-size: 17px; line-height: 22px;">Tap Finish.</span></div>
+      </div>
+      <div style="padding: 8px 36px 0; font-size: 13px; line-height: 18px; color: {{p.sec}};">This only measures movement. It does not change calibration.</div>
+      <div style="position: absolute; left: 16px; right: 16px; bottom: 34px; display: flex; flex-direction: column; gap: 8px;">
+        <button style="height: 50px; border-radius: 999px; border: 0; background: {{p.fill}}; color: {{p.on}}; font-size: 17px; font-weight: 600;">Finish</button>
+        <button style="height: 44px; border-radius: 999px; border: 0; background: transparent; color: {{p.accent}}; font-size: 17px; font-weight: 600;">Cancel</button>
+      </div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themes: [
+      { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', ok: '#1e7b34', warn: '#b25000', danger: '#d70015' },
+      { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', ok: '#30db5b', warn: '#ffb340', danger: '#ff6961' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

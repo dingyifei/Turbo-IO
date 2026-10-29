@@ -1,0 +1,27 @@
+<!-- @dsCard group="Glasses" height=290 subtitle="Hero timer in B with a hairline track in T" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ProgressTrack</title><style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 180" role="img" aria-label="Focus timer 18 minutes 42 seconds left, session 2 of 4, about one quarter done">
+    <rect class="track" x="40" y="44" width="460" height="4" rx="2"/>
+    <rect class="full" x="40" y="44" width="118" height="4" rx="2"/>
+    <text class="mid" x="40" y="34" font-size="18">Focus</text>
+    <text class="mid" x="500" y="34" font-size="18" text-anchor="end">2 / 4</text>
+    <text class="high" x="40" y="96" font-size="20">Break at 10:35</text>
+    <text class="full" x="40" y="166" font-size="48" font-weight="500" style="font-variant-numeric:tabular-nums">18:42</text>
+  </svg></div>
+</div>
+</body></html>

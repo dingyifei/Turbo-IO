@@ -1,0 +1,369 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-10-29T09:06:44Z"
+ },
+ "title": "Turbo IO Screens",
+ "launch": {
+  "view": "canvas",
+  "page": "phone"
+ },
+ "pages": [
+  {
+   "id": "phone",
+   "name": "Phone"
+  },
+  {
+   "id": "glasses",
+   "name": "Glasses"
+  }
+ ],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 300,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Hub",
+   "page": "phone"
+  },
+  "Navigation.dc.html": {
+   "x": 1840,
+   "y": 300,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Navigation",
+   "page": "phone"
+  },
+  "Music.dc.html": {
+   "x": 0,
+   "y": 1390,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Music",
+   "page": "phone"
+  },
+  "Captions.dc.html": {
+   "x": 1840,
+   "y": 1390,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Captions",
+   "page": "phone"
+  },
+  "Firmware.dc.html": {
+   "x": 0,
+   "y": 2480,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Firmware",
+   "page": "phone"
+  },
+  "Tiles.dc.html": {
+   "x": 1840,
+   "y": 2480,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Menu layout",
+   "page": "phone"
+  },
+  "Knob.dc.html": {
+   "x": 0,
+   "y": 3570,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Knob calibration",
+   "page": "phone"
+  },
+  "Assistant.dc.html": {
+   "x": 1840,
+   "y": 3570,
+   "w": 1320,
+   "h": 970,
+   "title": "Phone · Assistant & speech",
+   "page": "phone"
+  },
+  "LensNav.dc.html": {
+   "x": 0,
+   "y": 300,
+   "w": 1160,
+   "h": 900,
+   "title": "Glasses · Navigation",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensMusic.dc.html": {
+   "x": 1640,
+   "y": 300,
+   "w": 1160,
+   "h": 900,
+   "title": "Glasses · Music",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensMenu.dc.html": {
+   "x": 0,
+   "y": 1320,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Menu",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensFocus.dc.html": {
+   "x": 1640,
+   "y": 1320,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Focus timer",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensReader.dc.html": {
+   "x": 0,
+   "y": 2000,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Reader",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensRide.dc.html": {
+   "x": 1640,
+   "y": 2000,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Ride",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensEnglish.dc.html": {
+   "x": 0,
+   "y": 2680,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · English",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensApp.dc.html": {
+   "x": 1640,
+   "y": 2680,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Mini-app",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensVoice.dc.html": {
+   "x": 0,
+   "y": 3360,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Assistant",
+   "page": "glasses",
+   "is_interactive": true
+  },
+  "LensCaptions.dc.html": {
+   "x": 1640,
+   "y": 3360,
+   "w": 1160,
+   "h": 560,
+   "title": "Glasses · Captions",
+   "page": "glasses",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Navigation.dc.html",
+  "Music.dc.html",
+  "Captions.dc.html",
+  "Firmware.dc.html",
+  "Tiles.dc.html",
+  "Knob.dc.html",
+  "Assistant.dc.html",
+  "LensNav.dc.html",
+  "LensMusic.dc.html",
+  "LensMenu.dc.html",
+  "LensFocus.dc.html",
+  "LensReader.dc.html",
+  "LensRide.dc.html",
+  "LensEnglish.dc.html",
+  "LensApp.dc.html",
+  "LensVoice.dc.html",
+  "LensCaptions.dc.html"
+ ],
+ "notes": {
+  "phone-title": {
+   "x": 0,
+   "y": 0,
+   "text": "Phone: iOS, follows the system appearance. Current · proposed light · proposed dark",
+   "kind": "title1",
+   "maxW": 3560,
+   "page": "phone"
+  },
+  "n-main": {
+   "x": 1360,
+   "y": 300,
+   "text": "Hub. Follows the system appearance. A glasses status card leads (connection, firmware and battery as words plus symbols). Rows use text styles and 44pt targets. The lime accent is retuned to deep olive in light mode.",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-navigation": {
+   "x": 3200,
+   "y": 300,
+   "text": "Navigation (MapKit panel). The current column is rebuilt from MapKitNavigationUI.m because shoot.sh 'nav' captures a different HUD sample. Proposed: keep the map-first layout. Only search and travel mode stay on top. Simulate/Live moves into the ⋯ menu. The bottom card becomes a standard sheet with a grabber, a green lens preview and a glasses pill. Start is primary, Apple Maps secondary, and End appears only while navigating. Fonts move from systemFontOfSize to text styles, and the ~22 hard-coded strings go through TIOText.",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-music": {
+   "x": 1360,
+   "y": 1390,
+   "text": "Music. Removes the duplicated Client ID rows and moves 'Copy callback diagnostics' to Developer. Adds a now-playing card with a lyric preview. Spotify setup moves below the everyday controls.",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-captions": {
+   "x": 3200,
+   "y": 1390,
+   "text": "Live captions. No preview fixture exists yet, so the current column is empty. Proposed: a transcript card shows source and translation together, status is a pill (symbol plus word), and settings are standard value rows.",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-firmware": {
+   "x": 1360,
+   "y": 2480,
+   "text": "Firmware wizard. Today the title is dark-on-dark and unreadable because dark mode is forced. Proposed: a summary pill counts the blockers, inline fixes meet 44pt, and the disabled Continue says why it is disabled.",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-tiles": {
+   "x": 3200,
+   "y": 2480,
+   "text": "Menu layout. The same status sentence was repeated under three actions. Proposed: a live lens preview of the menu, one status pill, and real buttons (Save is primary; Read and Restore are secondary).",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-knob": {
+   "x": 1360,
+   "y": 3570,
+   "text": "Knob calibration. The actions were plain rows. Proposed: numbered steps, a large tabular result, and buttons whose set changes with state (Start, then Finish and Cancel).",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "n-assistant": {
+   "x": 3200,
+   "y": 3570,
+   "text": "Assistant and speech settings, as the reference for ordinary settings rows: values trail, toggles use the accent, and section tiles keep their colors in both themes.",
+   "w": 340,
+   "fill": "green",
+   "page": "phone"
+  },
+  "glasses-title": {
+   "x": 0,
+   "y": 0,
+   "text": "Glasses: 540×180 at 2×. Orange bands are design-time guides (toggle in Tweaks)",
+   "kind": "title1",
+   "maxW": 3200,
+   "page": "glasses"
+  },
+  "n-lensnav": {
+   "x": 1200,
+   "y": 300,
+   "text": "Navigation. The arrow, distance and turn move to band B. The road being passed goes to T and trip detail to M. ETA joins the M line, and the clock footer is removed. The map stays in the right column, anchored to the bottom.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensmusic": {
+   "x": 2840,
+   "y": 300,
+   "text": "Lyrics. The current line is lowest and brightest, the next line sits above it, and the previous line is dropped. The 144px art becomes a 36px ambient tile. The permanent control line becomes a 3 s transient hint.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensmenu": {
+   "x": 1200,
+   "y": 1320,
+   "text": "Menu (540×220). Status goes to T in lens-mid, and the 'Turbo IO' wordmark is removed. The focus ring becomes brightness plus a caret, and the focused name shows once, in band B.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensfocus": {
+   "x": 2840,
+   "y": 1320,
+   "text": "Pomodoro. A 48px hero timer in B, a hairline track and session count in T, and the next break in M. The footer hint becomes transient.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensreader": {
+   "x": 1200,
+   "y": 2000,
+   "text": "Reader is the exception to one primary item: running text fills M and B at 20px. Position and chapter are ambient in T.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensride": {
+   "x": 2840,
+   "y": 2000,
+   "text": "Ride. The arrival time and plate, the two things you check at the curb, go in band B. The car description goes in M and the trip state in T.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensenglish": {
+   "x": 1200,
+   "y": 2680,
+   "text": "English. The word and its meaning go in B, the example sentence in M, and the deck position in T.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensapp": {
+   "x": 2840,
+   "y": 2680,
+   "text": "TAP1 mini-app (commute.json). The 'Details' and 'Exit' buttons are replaced by a focus list with a caret, and Exit is gone because a long press exits. When a page has a primary readout, actions sit in M.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lensvoice": {
+   "x": 1200,
+   "y": 3360,
+   "text": "Voice. The question goes in M and the answer in B. This matches the stock 'ASR on top, answer below' layout, now with intensity steps.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  },
+  "n-lenscaptions": {
+   "x": 2840,
+   "y": 3360,
+   "text": "Captions. The translation goes in B and the source line in M, using stock caption position 'bottom' rather than 'center'. The language pair is in T.",
+   "w": 320,
+   "fill": "teal",
+   "page": "glasses"
+  }
+ },
+ "designSystems": [
+  {
+   "title": "Turbo IO",
+   "namespace": "turboio",
+   "artifact": "https://claude.ai/artifact/99kxGzdKLKrS28m5CpQicc",
+   "version": "1793264602-7e32",
+   "copiedAt": "2026-10-29T09:06:44Z"
+  }
+ ]
+}

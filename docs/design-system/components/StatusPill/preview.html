@@ -1,0 +1,19 @@
+<!-- @dsCard group="Phone" height=150 subtitle="Symbol + word, never color alone" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>StatusPill</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+  .pill{display:inline-flex;align-items:center;gap:var(--space-1);padding:6px 12px 6px 10px;border-radius:var(--radius-pill);background:var(--bg-raised)}
+  .ok{color:var(--status-ok)} .warn{color:var(--status-warn)} .danger{color:var(--status-danger)} .neutral{color:var(--label-secondary)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+</style></head><body>
+<div class="wrap"><div class="row">
+  <span class="pill ok subheadline"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="var(--bg-raised)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Connected</span>
+  <span class="pill warn subheadline"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 2.5 1.8 20.5h20.4z" fill="currentColor"/><path d="M12 9v5" stroke="var(--bg-raised)" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.3" fill="var(--bg-raised)"/></svg>Update ready</span>
+  <span class="pill danger subheadline"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z" fill="currentColor"/><path d="m9 9 6 6m0-6-6 6" stroke="var(--bg-raised)" stroke-width="2.4" stroke-linecap="round"/></svg>Transfer failed</span>
+  <span class="pill neutral subheadline"><span class="dot"></span>Glasses asleep</span>
+</div></div>
+</body></html>

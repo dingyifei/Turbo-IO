@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses menu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1160px; height: 560px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 10px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Proposed · TMG7 menu (540 × 220) · Navigation focused</div>
+  <div role="img" aria-label="Proposed menu: time and battery at the top, six icons, Navigation focused with a caret and its name at the bottom" style="width: 1080px; height: 440px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <svg style="position: absolute; left: 0; top: 0;" width="1080" height="440" viewBox="0 0 540 220" aria-hidden="true">
+      <rect x="258" y="27" width="12" height="4" rx="2" fill="#00b000"/>
+      <rect x="276" y="27" width="4" height="4" rx="2" fill="#007700"/>
+      <rect x="432" y="24" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="435" y="27" width="15" height="6" fill="#007700"/><rect x="457" y="27" width="2" height="6" fill="#007700"/>
+      <g fill="none" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M84 90V66l18-4v24" stroke="#007700"/><circle cx="80" cy="90" r="4" stroke="#007700"/><circle cx="98" cy="86" r="4" stroke="#007700"/>
+        <path d="M270 60l-14 32 14-8 14 8z" stroke="#00ff00"/>
+        <circle cx="448" cy="78" r="14" stroke="#007700"/><path d="M448 78v-8M444 60h8" stroke="#007700"/>
+        <rect x="76" y="122" width="32" height="22" rx="4" stroke="#007700"/><circle cx="92" cy="133" r="6" stroke="#007700"/>
+        <path d="M256 118h10v10h-10zM274 118h10v10h-10zM256 136h10v10h-10zM274 136h10v10h-10z" stroke="#007700"/>
+        <path d="M434 120h12v26h-12zM450 120h12v26h-12z" stroke="#007700"/>
+      </g>
+      <rect x="258" y="98" width="24" height="3" rx="1.5" fill="#00ff00"/>
+    </svg>
+    <div style="position: absolute; left: 80px; top: 47px; font-size: 36px; line-height: 1; color: #007700;">10:00</div>
+    <div style="position: absolute; right: 80px; top: 47px; font-size: 36px; line-height: 1; color: #007700;">82</div>
+    <div style="position: absolute; left: 104px; width: 160px; top: 190px; text-align: center; font-size: 32px; line-height: 1; color: #007700;">Music</div>
+    <div style="position: absolute; left: 816px; width: 160px; top: 190px; text-align: center; font-size: 32px; line-height: 1; color: #007700;">Focus</div>
+    <div style="position: absolute; left: 104px; width: 160px; top: 306px; text-align: center; font-size: 32px; line-height: 1; color: #007700;">Camera</div>
+    <div style="position: absolute; left: 460px; width: 160px; top: 306px; text-align: center; font-size: 32px; line-height: 1; color: #007700;">My apps</div>
+    <div style="position: absolute; left: 816px; width: 160px; top: 306px; text-align: center; font-size: 32px; line-height: 1; color: #007700;">Reader</div>
+    <div style="position: absolute; left: 0; width: 1080px; top: 362px; text-align: center; font-size: 48px; line-height: 1; font-weight: 500; color: #00ff00;">Navigation</div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 228px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 344px; width: 1012px; height: 76px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 424px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 80px; font-size: 20px; font-weight: 700; color: #ff7a1a;">T</div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 354px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":true},"$preview":{"width":1160,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { bands: this.props.bands ?? true };
+  }
+}
+</script>
+</body>
+</html>

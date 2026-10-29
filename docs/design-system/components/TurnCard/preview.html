@@ -1,0 +1,40 @@
+<!-- @dsCard group="Glasses" height=310 subtitle="Navigation primary block: arrow, distance and turn in band B" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TurnCard</title><style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 180" role="img" aria-label="Turn right in 100 metres onto Market Street; map on the right">
+    
+      <g aria-hidden="true">
+        <rect class="guide" x="16" y="12" width="508" height="44"/><text class="gtext" x="527" y="38" text-anchor="end" dx="-4">T</text>
+        <rect class="guide" x="16" y="56" width="508" height="56"/><text class="gtext" x="527" y="88" text-anchor="end" dx="-4">M</text>
+        <rect class="guide" x="16" y="112" width="508" height="60"/><text class="gtext" x="527" y="146" text-anchor="end" dx="-4">B</text>
+      </g>
+    <text class="mid" x="40" y="40" font-size="18">Passing Mission St</text>
+    <text class="high" x="40" y="92" font-size="20">1.2 km · 10 min · 10:10</text>
+    <path class="s-full" d="M30 170v-34h30m-14-16 16 16-16 16" stroke-width="8" stroke-linejoin="round" stroke-linecap="square"/>
+    <text class="full" x="84" y="148" font-size="32" font-weight="500">100 m</text>
+    <text class="full" x="192" y="148" font-size="24" font-weight="500">Turn right</text>
+    <text class="high" x="84" y="169" font-size="16">onto Market St</text>
+    <g transform="translate(372 28)">
+      <path class="s-track" d="M0 70h148M60 0v144M0 30l148 90" stroke-width="3"/>
+      <path class="s-mid" d="M0 104h148M110 0v144" stroke-width="3"/>
+      <path class="s-full" d="M74 144v-40h36v-60" stroke-width="5" stroke-linejoin="round"/>
+      <path class="full" d="M74 116l-9 22h18z"/>
+    </g>
+  </svg></div>
+  <div class="caption note">TMG6 today: arrow 128×128 at the top left, distance at y 4, road name at y 2, clock in the footer.</div>
+</div>
+</body></html>

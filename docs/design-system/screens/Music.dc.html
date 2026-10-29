@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Music</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · C10 preview build</div>
+    <img src="/_blob/5a02aa1d9226027a7ee5ca93f139bbb5" alt="Current music settings: light screen with Client ID listed twice" style="width: 390px; height: 844px; object-fit: cover; object-position: top; border-radius: 48px; display: block; box-shadow: 0 0 0 1px #c6c6c8;">
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; align-items: center; padding: 0 4px; height: 44px;">
+        <button aria-label="Back to Turbo" style="height: 44px; border: 0; background: transparent; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px; padding: 0 8px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Turbo</button>
+      </div>
+      <div style="padding: 2px 20px 12px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Music</div>
+      <div style="margin: 0 16px; padding: 16px; border-radius: 26px; background: {{p.raised}}; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 56px; height: 56px; border-radius: 10px; background: {{p.sunken}}; display: grid; place-items: center; flex: none;"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="{{p.sec}}" stroke-width="2" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="{{p.sec}}"/><circle cx="17.5" cy="16" r="2.5" fill="{{p.sec}}"/></svg></div>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px; font-weight: 600;">Streets</span><span style="font-size: 15px; color: {{p.sec}};">The Lanterns · Spotify</span></div>
+          <div style="display: flex; align-items: center; gap: 5px; padding: 6px 12px 6px 10px; border-radius: 999px; background: {{p.bg}}; color: {{p.ok}}; font-size: 13px;"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="{{p.ok}}"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="{{p.bg}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>On glasses</div>
+        </div>
+        <div role="img" aria-label="Glasses preview: lyric The morning light is falling" style="height: 119px; border-radius: 12px; background: #000000; position: relative; overflow: hidden;">
+          <div style="position: absolute; left: 24px; top: 11px; width: 22px; height: 22px; box-shadow: inset 0 0 0 1.5px #007700;"></div>
+          <div style="position: absolute; left: 53px; top: 14px; font-size: 11px; color: #007700;">Streets · The Lanterns</div>
+          <div style="position: absolute; left: 24px; top: 42px; font-size: 12px; color: #00b000;">on the streets we used to know</div>
+          <div style="position: absolute; left: 24px; top: 70px; font-size: 15px; line-height: 16px; font-weight: 500; color: #00ff00;">The morning light<br>is falling</div>
+        </div>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Glasses</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; padding: 0 16px;">
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="flex: 1; font-size: 17px;">Show on glasses</span>
+          <span role="switch" aria-checked="true" aria-label="Show on glasses" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span>
+        </div>
+        <div style="display: flex; align-items: center; min-height: 52px; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="flex: 1; font-size: 17px;">Screen timeout</span>
+          <div role="radiogroup" aria-label="Screen timeout" style="display: flex; padding: 2px; border-radius: 9px; background: {{p.sunken}}; font-size: 13px; font-weight: 600;">
+            <span role="radio" aria-checked="true" style="padding: 6px 10px; border-radius: 7px; background: {{p.raised}}; box-shadow: 0 1px 2px rgba(0,0,0,.12);">Always</span><span role="radio" aria-checked="false" style="padding: 6px 10px;">30 s</span><span role="radio" aria-checked="false" style="padding: 6px 10px;">1 min</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px;"><span style="flex: 1; font-size: 17px;">Synced lyrics</span>
+          <span role="switch" aria-checked="true" aria-label="Synced lyrics" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span>
+        </div>
+      </div>
+      <div style="padding: 8px 36px 0; font-size: 13px; line-height: 18px; color: {{p.sec}};">Looks up lyrics on lrclib.net using only the song title, artist, and duration.</div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Spotify</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; padding: 0 16px;">
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px;"><span style="flex: 1; font-size: 17px;">Client ID</span><span style="font-size: 17px; color: {{p.sec}};">Not set</span>
+          <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      <div style="padding: 8px 36px 0; font-size: 13px; line-height: 18px; color: {{p.sec}};">Create an app at developer.spotify.com with the redirect URI io.turboio.spotify://callback, then enter its Client ID.</div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themes: [
+      { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', ok: '#1e7b34', warn: '#b25000', danger: '#d70015' },
+      { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', ok: '#30db5b', warn: '#ffb340', danger: '#ff6961' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

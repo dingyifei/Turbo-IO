@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assistant and speech</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · C10 preview build</div>
+    <img src="/_blob/63a6a753008ae7f86518f87929444892" alt="Current assistant section of the hub, forced dark" style="width: 390px; height: 844px; object-fit: cover; object-position: top; border-radius: 48px; display: block;">
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; align-items: center; padding: 0 4px; height: 44px;">
+        <button aria-label="Back to Turbo" style="height: 44px; border: 0; background: transparent; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px; padding: 0 8px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Turbo</button>
+      </div>
+      <div style="padding: 2px 20px 12px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Assistant</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; overflow: hidden;">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.assist}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="{{r.icon}}" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 60px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px; line-height: 22px;">{{r.title}}</span><span style="font-size: 15px; line-height: 20px; color: {{p.sec}};">{{r.sub}}</span></div>
+            <sc-if value="{{r.isOn}}" hint-placeholder-val="{{false}}"><span role="switch" aria-checked="true" aria-label="{{r.title}}" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span></sc-if>
+            <sc-if value="{{r.isOff}}" hint-placeholder-val="{{false}}"><span role="switch" aria-checked="false" aria-label="{{r.title}}" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.sunken}}; position: relative; flex: none;"><span style="position: absolute; left: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span></sc-if>
+            <sc-if value="{{r.isLink}}" hint-placeholder-val="{{true}}"><span style="font-size: 17px; color: {{p.sec}};">{{r.value}}</span><svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></sc-if>
+          </div>
+        </div>
+        </sc-for>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Language</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; padding: 0 16px;">
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px;"><span style="flex: 1; font-size: 17px;">App and glasses</span><span style="font-size: 17px; color: {{p.sec}};">Automatic</span><svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+      <div style="padding: 8px 36px 0; font-size: 13px; line-height: 18px; color: {{p.sec}};">Follows your iPhone language: English or 简体中文.</div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      rows: [
+        { title: 'Answer with', sub: 'RayNeo assistant', value: '', isLink: true, isOn: false, isOff: false, icon: 'M12 3c.6 4.6 3.4 7.4 8 8-4.6.6-7.4 3.4-8 8-.6-4.6-3.4-7.4-8-8 4.6-.6 7.4-3.4 8-8z' },
+        { title: 'Custom model', sub: 'Not set', value: '', isLink: true, isOn: false, isOff: false, icon: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12 4 7.5' },
+        { title: 'Read answers aloud', sub: 'On-device voice', value: '', isLink: false, isOn: true, isOff: false, icon: 'M4 9v6h4l5 4V5L8 9zM16 9c1.3 1.6 1.3 4.4 0 6' },
+        { title: 'Voice speed', sub: 'English and Chinese', value: '1.2×', isLink: true, isOn: false, isOff: false, icon: 'M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18zM12 12l4-4' },
+        { title: 'Web search', sub: 'Needs an API key', value: '', isLink: false, isOn: false, isOff: true, icon: 'M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18' },
+        { title: 'Knowledge & agents', sub: 'Codex · read-only', value: '', isLink: true, isOn: false, isOff: false, icon: 'M5 4h4v16H5zM10 4h4v16h-4zM15 5l4 1-3 14-4-1z' },
+        { title: 'More settings', sub: 'Thinking, voice exit, prompt', value: '', isLink: true, isOn: false, isOff: false, icon: 'M4 7h16M4 12h16M4 17h16' }
+      ],
+      themes: [
+        { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', assist: '#5856d6', ok: '#1e7b34', warn: '#b25000', danger: '#d70015' },
+        { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', assist: '#5e5ce6', ok: '#30db5b', warn: '#ffb340', danger: '#ff6961' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!-- @dsCard group="Glasses" height=380 subtitle="Six sizes, each with its visual angle" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>LensType</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+  table{border-collapse:collapse;width:100%} td{padding:3px 6px;font-variant-numeric:tabular-nums} td:first-child{font-family:var(--font-mono);font-size:12px}
+  .note td{color:var(--label-secondary)}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 180" role="img" aria-label="Type ramp on the glasses from 48 down to 16 pixels">
+    <text class="full" x="20" y="54" font-size="48" font-weight="500">18:42</text>
+    <text class="full" x="160" y="50" font-size="32" font-weight="500">100 m</text>
+    <text class="full" x="290" y="46" font-size="24" font-weight="500">Turn right</text>
+    <text class="high" x="20" y="100" font-size="20">Left 1.2 km · 10 min · ETA 10:10</text>
+    <text class="mid" x="20" y="134" font-size="18">Passing Martin Luther King Jr Blvd</text>
+    <text class="mid" x="20" y="164" font-size="16">100 m  ·  2 / 4  ·  floor: 16px</text>
+  </svg></div>
+  <table class="subheadline" id="t"></table>
+</div>
+<script>
+  var p=24.8,rows=[["lens-hero",48,"Timer only"],["lens-primary",32,"Distance"],["lens-title",24,"Turn, lyric, focused label"],["lens-body",20,"Band M"],["lens-label",18,"Band T, hint"],["lens-min",16,"Floor"]];
+  document.getElementById('t').innerHTML=rows.map(function(r){var d=r[1]/p;return '<tr><td>'+r[0]+'</td><td>'+r[1]+' px</td><td>'+d.toFixed(2)+'°</td><td>'+Math.round(d*60)+'′ em · ~'+Math.round(d*60*0.7)+'′ cap</td><td class="note">'+r[2]+'</td></tr>'}).join('');
+</script>
+</body></html>

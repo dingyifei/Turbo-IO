@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Navigation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · rebuilt from MapKitNavigationUI.m (no screenshot)</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: #17131b; color: #f0ede5;">
+      <svg style="position: absolute; left: 0; top: 0;" width="390" height="844" viewBox="0 0 390 844" aria-hidden="true">
+        <rect width="390" height="844" fill="#242127"/>
+        <path d="M0 520 390 380" stroke="#1e3a4a" stroke-width="70"/>
+        <path d="M-10 300h410M-10 470h410M-10 640h410M80 0v844M210 0v844M330 0v844M0 760 390 600" stroke="#3a3540" stroke-width="10"/>
+        <path d="M195 720V640h135V300" fill="none" stroke="#dbf67a" stroke-width="7" stroke-linejoin="round"/>
+        <circle cx="195" cy="720" r="9" fill="#0a84ff" stroke="#ffffff" stroke-width="3"/>
+        <circle cx="330" cy="300" r="8" fill="#ff453a" stroke="#ffffff" stroke-width="3"/>
+      </svg>
+      <div style="position: absolute; left: 0; right: 0; top: 54px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; background: rgba(23,19,27,.92);">Navigation<span style="position: absolute; right: 16px; font-size: 22px; color: #dbf67a;">⋯</span></div>
+      <div style="position: absolute; left: 12px; right: 12px; top: 106px; padding: 12px 14px; border-radius: 20px; background: rgba(23,19,27,.97); box-shadow: 0 4px 14px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 8px;">
+        <div style="height: 36px; border-radius: 10px; background: #2c2630; display: flex; align-items: center; padding: 0 10px; font-size: 17px; color: #8d8794;">Where to?</div>
+        <div style="display: flex; padding: 2px; border-radius: 9px; background: #2c2630; font-size: 13px; font-weight: 600;"><span style="flex: 1; text-align: center; padding: 6px; border-radius: 7px; background: #4a4450;">Walk</span><span style="flex: 1; text-align: center; padding: 6px;">Cycle</span><span style="flex: 1; text-align: center; padding: 6px;">Drive</span></div>
+        <div style="display: flex; padding: 2px; border-radius: 9px; background: #2c2630; font-size: 13px; font-weight: 600;"><span style="flex: 1; text-align: center; padding: 6px; border-radius: 7px; background: #4a4450;">Simulate</span><span style="flex: 1; text-align: center; padding: 6px;">Live</span></div>
+      </div>
+      <div style="position: absolute; left: 12px; right: 12px; bottom: 42px; padding: 12px 14px; border-radius: 20px; background: rgba(23,19,27,.97); box-shadow: 0 4px 14px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 20px; font-weight: 600;">Ferry Building</span>
+        <span style="font-size: 14px; color: #a39fa8;">Search for a destination, or long-press the map.</span>
+        <span style="font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums;">1.2 km · 10 min</span>
+        <div style="display: flex; gap: 10px;">
+          <span style="flex: 1; height: 34px; border-radius: 10px; background: #dbf67a; color: #17131b; display: grid; place-items: center; font-size: 15px;">Start simulation</span>
+          <span style="flex: 1; height: 34px; border-radius: 10px; background: #2f3320; color: #dbf67a; display: grid; place-items: center; font-size: 15px;">Apple Maps</span>
+          <span style="flex: 1; height: 34px; border-radius: 10px; background: #2f3320; color: #dbf67a; display: grid; place-items: center; font-size: 15px;">End</span>
+        </div>
+        <span style="font-size: 12px; color: #a39fa8;">Glasses: connected · 1 Hz updates · roads on · TMG6</span>
+      </div>
+    </div>
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.map}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <svg style="position: absolute; left: 0; top: 0;" width="390" height="844" viewBox="0 0 390 844" aria-hidden="true">
+        <rect width="390" height="844" fill="{{p.map}}"/>
+        <rect x="230" y="150" width="120" height="90" rx="10" fill="{{p.park}}"/>
+        <path d="M0 470 390 330" stroke="{{p.water}}" stroke-width="70"/>
+        <path d="M-10 260h410M-10 420h410M80 0v844M210 0v844M330 0v844M0 560 390 470" stroke="{{p.road}}" stroke-width="10"/>
+        <path d="M195 400V340h135V200" fill="none" stroke="{{p.route}}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="195" cy="400" r="9" fill="#0a84ff" stroke="#ffffff" stroke-width="3"/>
+        <circle cx="330" cy="200" r="8" fill="#ff3b30" stroke="#ffffff" stroke-width="3"/>
+      </svg>
+      <div style="position: absolute; left: 0; right: 0; top: 54px; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 4px;">
+        <button aria-label="Back to Turbo" style="height: 44px; padding: 0 12px 0 8px; border: 0; border-radius: 22px; background: {{p.glass}}; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Turbo</button>
+        <button aria-label="Navigation options: simulate or live, reconnect glasses, road labels" style="width: 44px; height: 44px; border-radius: 22px; border: 0; background: {{p.glass}}; display: grid; place-items: center;"><svg width="20" height="6" viewBox="0 0 20 6" aria-hidden="true"><circle cx="3" cy="3" r="2.2" fill="{{p.label}}"/><circle cx="10" cy="3" r="2.2" fill="{{p.label}}"/><circle cx="17" cy="3" r="2.2" fill="{{p.label}}"/></svg></button>
+      </div>
+      <div style="position: absolute; left: 16px; right: 16px; top: 106px; padding: 8px; border-radius: 26px; background: {{p.glass}}; box-shadow: 0 6px 20px rgba(0,0,0,.14); display: flex; flex-direction: column; gap: 8px;">
+        <div style="height: 44px; border-radius: 18px; background: {{p.sunken}}; display: flex; align-items: center; gap: 8px; padding: 0 12px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="{{p.sec}}" stroke-width="2.4"/><path d="m15.5 15.5 5 5" stroke="{{p.sec}}" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <span style="font-size: 17px;">Ferry Building</span>
+        </div>
+        <div role="radiogroup" aria-label="Travel by" style="display: flex; padding: 2px; border-radius: 999px; background: {{p.sunken}}; font-size: 13px; font-weight: 600;">
+          <span role="radio" aria-checked="true" style="flex: 1; text-align: center; padding: 8px; border-radius: 999px; background: {{p.raised}}; box-shadow: 0 1px 2px rgba(0,0,0,.12);">Walk</span><span role="radio" aria-checked="false" style="flex: 1; text-align: center; padding: 8px;">Cycle</span><span role="radio" aria-checked="false" style="flex: 1; text-align: center; padding: 8px;">Drive</span>
+        </div>
+      </div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 20px 34px; border-radius: 30px 30px 0 0; background: {{p.raised}}; box-shadow: 0 -4px 20px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 10px;">
+        <span style="width: 36px; height: 5px; border-radius: 3px; background: {{p.sep}}; align-self: center;"></span>
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 20px; line-height: 25px; font-weight: 600;">Ferry Building</span>
+            <span style="font-size: 15px; color: {{p.sec}}; font-variant-numeric: tabular-nums;">10 min · 1.2 km · arrive 10:10</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 5px; padding: 5px 10px 5px 8px; border-radius: 999px; background: {{p.bg}}; color: {{p.ok}}; font-size: 13px;"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="{{p.ok}}"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="{{p.bg}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Glasses</div>
+        </div>
+        <div role="img" aria-label="Glasses preview: Turn right in 100 metres onto Market Street" style="height: 117px; border-radius: 12px; background: #000000; position: relative; overflow: hidden;">
+          <div style="position: absolute; left: 24px; top: 11px; font-size: 11px; color: #007700;">Passing Mission St</div>
+          <div style="position: absolute; left: 24px; top: 40px; font-size: 12px; color: #00b000;">1.2 km · 10 min · 10:10</div>
+          <svg style="position: absolute; left: 12px; top: 68px;" width="30" height="34" viewBox="0 0 30 34" aria-hidden="true"><path d="M4 32V12h16M13 4l8 8-8 8" fill="none" stroke="#00ff00" stroke-width="5" stroke-linejoin="round"/></svg>
+          <div style="position: absolute; left: 50px; top: 66px; font-size: 19px; font-weight: 500; color: #00ff00;">100 m</div>
+          <div style="position: absolute; left: 116px; top: 71px; font-size: 14px; font-weight: 500; color: #00ff00;">Turn right</div>
+          <div style="position: absolute; left: 50px; top: 90px; font-size: 10px; color: #00b000;">onto Market St</div>
+          <svg style="position: absolute; left: 236px; top: 17px;" width="90" height="87" viewBox="0 0 148 144" aria-hidden="true"><path d="M0 70h148M60 0v144M0 30l148 90" stroke="#003800" stroke-width="4" fill="none"/><path d="M0 104h148M110 0v144" stroke="#007700" stroke-width="4" fill="none"/><path d="M74 144v-40h36v-60" stroke="#00ff00" stroke-width="7" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button style="flex: 2; height: 50px; border-radius: 999px; border: 0; background: {{p.fill}}; color: {{p.on}}; font-size: 17px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 21l8-4 8 4z" fill="{{p.on}}"/></svg>Start</button>
+          <button style="flex: 1; height: 50px; border-radius: 999px; border: 0; background: {{p.soft}}; color: {{p.accent}}; font-size: 17px; font-weight: 600;">Apple Maps</button>
+        </div>
+        <span style="font-size: 13px; line-height: 18px; color: {{p.sec}}; text-align: center;">Keep the phone unlocked with this screen open.</span>
+      </div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themes: [
+      { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', glass: 'rgba(255,255,255,.94)', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', ok: '#1e7b34', map: '#f1eee8', road: '#ffffff', water: '#b9d7ec', park: '#d4e8c4', route: '#4d6c00' },
+      { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', glass: 'rgba(34,29,37,.94)', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', ok: '#30db5b', map: '#242127', road: '#3a3540', water: '#1e3a4a', park: '#26352a', route: '#dbf67a' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!-- @dsCard group="Glasses" height=300 subtitle="Control hints show for 3 s on entry or after input, then hide" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TransientHint</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+  #hint{transition:opacity 300ms ease-out} #hint.gone{opacity:0}
+  @media (prefers-reduced-motion: reduce){#hint{transition:none}}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 180" role="img" aria-label="Music page with a temporary control hint at the top">
+    <text id="hint" class="high" x="40" y="40" font-size="18">Wheel: previous / next · Press: pause</text>
+    <text class="high" x="40" y="92" font-size="20">is falling on the streets we used to know</text>
+    <text class="full" x="40" y="150" font-size="24" font-weight="500">The morning light</text>
+  </svg></div>
+  <div class="ctl subheadline"><button id="go">Open page</button><span class="note" id="st">Hint visible</span></div>
+</div>
+<script>
+  var h=document.getElementById('hint'),st=document.getElementById('st'),t;
+  function show(){clearTimeout(t);h.classList.remove('gone');st.textContent='Hint visible for 3 s';t=setTimeout(function(){h.classList.add('gone');st.textContent='Hint hidden; band T is clear'},3000);}
+  document.getElementById('go').onclick=show;show();
+</script>
+</body></html>

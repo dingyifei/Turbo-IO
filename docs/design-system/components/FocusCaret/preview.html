@@ -1,0 +1,36 @@
+<!-- @dsCard group="Glasses" height=330 subtitle="Brightness plus a caret replaces outlined buttons. The wheel moves, a press acts." -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>FocusCaret</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+  #caret{transition:transform 160ms cubic-bezier(.22,.61,.36,1)}
+  @media (prefers-reduced-motion: reduce){#caret{transition:none}}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 180" role="img" aria-label="Focus list with three actions; the focused action is bright with a caret under it">
+    <text class="mid" x="40" y="40" font-size="18">Commute</text>
+    <text class="high" x="40" y="92" font-size="20">Line 2 to Downtown · platform 3</text>
+    <g id="items" font-size="24" font-weight="500"></g>
+    <rect id="caret" class="full" x="40" y="160" width="24" height="3" rx="2"/>
+  </svg></div>
+  <div class="ctl subheadline"><button id="prev" aria-label="Wheel up">Wheel ↑</button><button id="next" aria-label="Wheel down">Wheel ↓</button><span class="note" id="said">Focused: Next train</span></div>
+</div>
+<script>
+  var labels=["Next train","Later trains","Alerts"],x=[40,196,360],i=0,g=document.getElementById('items'),c=document.getElementById('caret'),s=document.getElementById('said');
+  function draw(){g.innerHTML=labels.map(function(l,k){return '<text class="'+(k===i?'full':'mid')+'" x="'+x[k]+'" y="152">'+l+'</text>'}).join('');c.setAttribute('transform','translate('+(x[i]-40)+',0)');s.textContent='Focused: '+labels[i];}
+  document.getElementById('prev').onclick=function(){i=Math.max(0,i-1);draw()};
+  document.getElementById('next').onclick=function(){i=Math.min(labels.length-1,i+1);draw()};draw();
+</script>
+</body></html>

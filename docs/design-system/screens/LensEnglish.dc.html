@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses English</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1160px; height: 560px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 10px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Proposed · TMG7 English · today the help line sits at {16,147,508,25}</div>
+  <div role="img" aria-label="Proposed English card: the word ferry with its Chinese meaning at the bottom, an example sentence in the middle, deck position at the top" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <div style="position: absolute; left: 80px; top: 51px; font-size: 36px; line-height: 1; color: #007700;">English</div>
+    <div style="position: absolute; right: 80px; top: 51px; font-size: 36px; line-height: 1; color: #007700; font-variant-numeric: tabular-nums;">12 / 30</div>
+    <div style="position: absolute; left: 80px; top: 152px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00b000;">The ferry leaves at noon.</div>
+    <div style="position: absolute; left: 80px; top: 245px; font-size: 64px; line-height: 1; font-weight: 500; color: #00ff00;">ferry</div>
+    <div style="position: absolute; left: 280px; top: 258px; font-size: 48px; line-height: 1; font-weight: 500; color: #00ff00;">渡轮</div>
+    <div style="position: absolute; left: 80px; top: 312px; font-size: 32px; line-height: 1; color: #00b000;">noun · /ˈferi/</div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 108px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 224px; width: 1012px; height: 116px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 234px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":true},"$preview":{"width":1160,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { bands: this.props.bands ?? true };
+  }
+}
+</script>
+</body>
+</html>

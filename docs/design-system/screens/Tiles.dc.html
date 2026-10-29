@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Menu layout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · C10 preview build</div>
+    <img src="/_blob/02e2bbd98499e1e9c08d648e5554ec75" alt="Current tile editor: the same status sentence repeated under three actions" style="width: 390px; height: 844px; object-fit: cover; object-position: top; border-radius: 48px; display: block;">
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; align-items: center; padding: 0 4px; height: 44px;">
+        <button aria-label="Back to Turbo" style="height: 44px; border: 0; background: transparent; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px; padding: 0 8px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Turbo</button>
+      </div>
+      <div style="padding: 2px 20px 12px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Menu layout</div>
+      <div style="margin: 0 16px; padding: 16px; border-radius: 26px; background: {{p.raised}}; display: flex; flex-direction: column; gap: 10px;">
+        <div role="img" aria-label="Glasses menu preview: Camera focused, then My apps, Pomodoro, Music" style="height: 120px; border-radius: 12px; background: #000000; position: relative; overflow: hidden;">
+          <div style="position: absolute; left: 24px; top: 9px; font-size: 11px; color: #007700;">10:00</div>
+          <div style="position: absolute; right: 24px; top: 9px; font-size: 11px; color: #007700;">82%</div>
+          <div style="position: absolute; left: 34px; top: 44px; width: 24px; height: 24px; border-radius: 6px; box-shadow: inset 0 0 0 2px #00ff00;"></div>
+          <div style="position: absolute; left: 34px; top: 76px; width: 24px; height: 2px; background: #00ff00;"></div>
+          <div style="position: absolute; left: 110px; top: 44px; width: 24px; height: 24px; border-radius: 6px; box-shadow: inset 0 0 0 2px #007700;"></div>
+          <div style="position: absolute; left: 186px; top: 44px; width: 24px; height: 24px; border-radius: 12px; box-shadow: inset 0 0 0 2px #007700;"></div>
+          <div style="position: absolute; left: 262px; top: 44px; width: 24px; height: 24px; border-radius: 3px; box-shadow: inset 0 0 0 2px #007700;"></div>
+          <div style="position: absolute; left: 0; right: 0; top: 92px; text-align: center; font-size: 15px; font-weight: 500; color: #00ff00;">Camera</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: {{p.sec}};"><span>On your glasses · approximate</span><span>540 × 220</span></div>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Tiles</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; overflow: hidden;">
+        <sc-for list="{{tiles}}" as="t" hint-placeholder-count="6">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+          <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><path d="M1 1h16M1 6h16M1 11h16" stroke="{{p.ter}}" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div style="flex: 1; display: flex; flex-direction: column;"><span style="font-size: 17px;">{{t.name}}</span><span style="font-size: 13px; color: {{p.sec}};">{{t.note}}</span></div>
+          <sc-if value="{{t.locked}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-label="Always shown" role="img"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="{{p.sec}}" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="{{p.sec}}" stroke-width="2"/></svg></sc-if>
+          <sc-if value="{{t.on}}" hint-placeholder-val="{{true}}"><span role="switch" aria-checked="true" aria-label="{{t.name}}" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span></sc-if>
+          <sc-if value="{{t.off}}" hint-placeholder-val="{{false}}"><span role="switch" aria-checked="false" aria-label="{{t.name}}" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.sunken}}; position: relative; flex: none;"><span style="position: absolute; left: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span></sc-if>
+        </div>
+        </sc-for>
+      </div>
+      <div style="padding: 8px 36px 0; font-size: 13px; line-height: 18px; color: {{p.sec}};">Drag to reorder. Open the glasses main menu before saving.</div>
+      <div style="position: absolute; left: 16px; right: 16px; bottom: 34px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; justify-content: center;"><div style="display: flex; align-items: center; gap: 5px; padding: 6px 12px 6px 10px; border-radius: 999px; background: {{p.raised}}; color: {{p.ok}}; font-size: 13px;"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="{{p.ok}}"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="{{p.raised}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Saved on glasses · survives restart</div></div>
+        <button style="height: 50px; border-radius: 999px; border: 0; background: {{p.fill}}; color: {{p.on}}; font-size: 17px; font-weight: 600;">Save to glasses</button>
+        <div style="display: flex; gap: 12px;">
+          <button style="flex: 1; height: 44px; border-radius: 999px; border: 0; background: {{p.soft}}; color: {{p.accent}}; font-size: 15px; font-weight: 600;">Read from glasses</button>
+          <button style="flex: 1; height: 44px; border-radius: 999px; border: 0; background: {{p.soft}}; color: {{p.accent}}; font-size: 15px; font-weight: 600;">Restore default</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      tiles: [
+        { name: 'Camera', note: 'Always shown', locked: true, on: false, off: false },
+        { name: 'My apps', note: '', locked: false, on: true, off: false },
+        { name: 'Pomodoro', note: '', locked: false, on: true, off: false },
+        { name: 'Music', note: '', locked: false, on: true, off: false },
+        { name: 'Navigation', note: 'Hidden', locked: false, on: false, off: true },
+        { name: 'Display test', note: 'Hidden', locked: false, on: false, off: true }
+      ],
+      themes: [
+        { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', ok: '#1e7b34', warn: '#b25000', danger: '#d70015' },
+        { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', ok: '#30db5b', warn: '#ffb340', danger: '#ff6961' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

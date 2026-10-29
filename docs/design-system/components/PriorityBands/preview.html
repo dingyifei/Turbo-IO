@@ -1,0 +1,50 @@
+<!-- @dsCard group="Glasses" height=420 subtitle="Vertical priority bands in degrees. Move the ppd to see every size re-derive." -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>PriorityBands</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+  .legend{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline}
+  .legend b{font-weight:600} .deg{font-variant-numeric:tabular-nums;color:var(--label-secondary)}
+  input[type=range]{flex:1;min-width:140px;accent-color:var(--accent)}
+  output{font-variant-numeric:tabular-nums;min-width:7ch}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 180" role="img" aria-label="540 by 180 glasses page divided into a reserved top strip and bands T, M and B">
+    <rect x="0" y="0" width="540" height="12" fill="var(--lens-guide)" opacity=".18"/>
+    <rect x="0" y="172" width="540" height="8" fill="var(--lens-guide)" opacity=".18"/>
+    <rect class="guide" x="40" y="112" width="460" height="60" style="stroke-dasharray:1 3"/>
+    
+      <g aria-hidden="true">
+        <rect class="guide" x="16" y="12" width="508" height="44"/><text class="gtext" x="527" y="38" text-anchor="end" dx="-4">T</text>
+        <rect class="guide" x="16" y="56" width="508" height="56"/><text class="gtext" x="527" y="88" text-anchor="end" dx="-4">M</text>
+        <rect class="guide" x="16" y="112" width="508" height="60"/><text class="gtext" x="527" y="146" text-anchor="end" dx="-4">B</text>
+      </g>
+    <text class="mid" x="40" y="40" font-size="18">T · ambient: status, title, passing road, hint</text>
+    <text class="high" x="40" y="92" font-size="20">M · secondary: detail, next line, question</text>
+    <text class="full" x="40" y="152" font-size="24" font-weight="500">B · primary: the one thing this page is for</text>
+  </svg></div>
+  <div class="ctl subheadline"><label for="ppd">lens-ppd</label><input id="ppd" type="range" min="18" max="34" step="0.1" value="24.8"><output id="ppdv" for="ppd">24.8 px/°</output></div>
+  <div class="legend subheadline" id="legend"></div>
+  <div class="caption note">Orange is design-time only. The dotted box inside B is lens-core-x (x 40–500), where both eyes overlap. 24.8 px/° is an estimate until it is measured on the device.</div>
+</div>
+<script>
+  var rows=[["Reserved top",0,12,"empty: room for the height and depth shift"],["T  ambient",12,56,"lens-mid · 18px+"],["M  secondary",56,112,"lens-high · 20px"],["B  primary",112,172,"lens-full · 24–48px"],["Reserved bottom",172,180,"edge falloff"]];
+  var el=document.getElementById('legend'),inp=document.getElementById('ppd'),out=document.getElementById('ppdv');
+  function draw(){var p=parseFloat(inp.value);out.textContent=p.toFixed(1)+' px/°';
+    el.innerHTML=rows.map(function(r){return '<b>'+r[0]+'</b><span>'+r[3]+'</span><span class="deg">y '+r[1]+'–'+r[2]+' · '+((r[2]-r[1])/p).toFixed(2)+'°</span>'}).join('')+
+    '<b>Page</b><span>540 × 180 px</span><span class="deg">'+(540/p).toFixed(1)+'° × '+(180/p).toFixed(1)+'°</span>';}
+  inp.addEventListener('input',draw);draw();
+</script>
+</body></html>

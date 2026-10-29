@@ -1,0 +1,24 @@
+<!-- @dsCard group="Phone" height=330 subtitle="TIOConfirm as a half sheet" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ConfirmSheet</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .scrim{background:var(--bg);padding:24px 16px 0;height:298px;box-sizing:border-box;display:flex;align-items:flex-end}
+  .sheet{background:var(--bg-raised);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:var(--space-2) var(--space-6) var(--space-6);width:100%;display:flex;flex-direction:column;gap:var(--space-3);box-shadow:0 -1px 0 var(--separator)}
+  .grab{width:36px;height:5px;border-radius:3px;background:var(--separator);align-self:center;margin-bottom:var(--space-2)}
+  .sub{color:var(--label-secondary)}
+  .b{display:flex;align-items:center;justify-content:center;height:var(--button-height);border-radius:var(--radius-pill);border:0;font:inherit;width:100%}
+  .primary{background:var(--accent-fill);color:var(--on-accent)} .plain{background:transparent;color:var(--accent)}
+  .meta{color:var(--label-secondary);font-variant-numeric:tabular-nums}
+</style></head><body>
+<div class="scrim"><div class="sheet" role="dialog" aria-label="Install TMG6 on your glasses">
+  <span class="grab"></span>
+  <span class="title3">Install TMG6 on your glasses?</span>
+  <span class="subheadline sub">Keep the glasses on the charger and near the phone. They restart when the install finishes, after about 4 minutes.</span>
+  <span class="caption meta">7,355,400 bytes · a134c0f9…3fe4d6e</span>
+  <button class="b primary headline">Install</button>
+  <button class="b plain headline">Not now</button>
+</div></div>
+</body></html>

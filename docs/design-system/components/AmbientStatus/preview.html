@@ -1,0 +1,35 @@
+<!-- @dsCard group="Glasses" height=330 subtitle="Menu: status in T, grid in M, focused label in B" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>AmbientStatus</title><style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .lens{background:var(--lens-black);border-radius:var(--radius-md);overflow:hidden}
+  .lens svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--font-sans)}
+  .full{fill:var(--lens-full)} .high{fill:var(--lens-high)} .mid{fill:var(--lens-mid)} .track{fill:var(--lens-track)}
+  .s-full{stroke:var(--lens-full);fill:none} .s-mid{stroke:var(--lens-mid);fill:none} .s-track{stroke:var(--lens-track);fill:none}
+  .guide{stroke:var(--lens-guide);fill:none;stroke-width:1;stroke-dasharray:4 4} .gtext{fill:var(--lens-guide);font-size:11px}
+  .note{color:var(--label-secondary)}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ctl button{font:inherit;border:0;border-radius:var(--radius-pill);padding:8px 14px;min-height:var(--hit-min);background:var(--accent-soft);color:var(--accent)}
+  .ctl button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+</style></head><body>
+<div class="wrap">
+  <div class="lens"><svg viewBox="0 0 540 220" role="img" aria-label="Glasses menu: time 10:00 and battery 82 percent at the top, six icons, Navigation focused">
+    <text class="mid" x="40" y="38" font-size="18">10:00</text>
+    <g transform="translate(446 26)"><rect class="s-mid" x="0" y="0" width="26" height="13" rx="2" stroke-width="2"/><rect class="mid" x="3" y="3" width="17" height="7"/><rect class="mid" x="27" y="4" width="3" height="5"/></g>
+    <text class="mid" x="500" y="38" font-size="18" text-anchor="end">82</text>
+    <g stroke-width="3" fill="none">
+      <rect class="s-mid" x="62" y="72" width="40" height="40" rx="8"/>
+      <path class="s-full" d="M260 70l-18 44 18-10 18 10z" stroke-linejoin="round"/>
+      <circle class="s-mid" cx="440" cy="92" r="19"/>
+      <path class="s-mid" d="M70 130h24M62 144h40" />
+    </g>
+    <text class="mid" x="82" y="166" font-size="16" text-anchor="middle">Music</text>
+    <text class="mid" x="440" y="166" font-size="16" text-anchor="middle">Focus</text>
+    <rect class="full" x="248" y="126" width="24" height="3" rx="2"/>
+    <text class="full" x="260" y="200" font-size="24" font-weight="500" text-anchor="middle">Navigation</text>
+  </svg></div>
+  <div class="caption note">One row shown, cropped from the 3×3 or 2×3 grid. The time and battery move from a top-left status line to band T at lens-mid.</div>
+</div>
+</body></html>

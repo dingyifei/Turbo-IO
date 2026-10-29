@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses navigation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1160px; height: 900px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 10px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Current · TMG6 host preview (production geometry, surrogate font)</div>
+  <img src="/_blob/0d8e89b035da73f2aaa9be292cd2ee16" alt="TMG6 navigation: passing road at the top, arrow top left, clock footer" style="width: 1080px; height: 360px; display: block; border-radius: 16px;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em; margin-top: 22px;">Proposed · TMG7 · bottom-priority bands</div>
+  <div role="img" aria-label="Proposed navigation: Turn right in 100 metres in the bottom band, trip detail in the middle, passing road at the top, map on the right" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <svg style="position: absolute; left: 0; top: 0;" width="1080" height="360" viewBox="0 0 540 180" aria-hidden="true">
+      <path d="M30 170v-34h30m-14-16 16 16-16 16" fill="none" stroke="#00ff00" stroke-width="8" stroke-linejoin="round"/>
+      <g transform="translate(372 28)">
+        <path d="M0 70h148M60 0v144M0 30l148 90" fill="none" stroke="#003800" stroke-width="3"/>
+        <path d="M0 104h148M110 0v144" fill="none" stroke="#007700" stroke-width="3"/>
+        <path d="M74 144v-40h36v-60" fill="none" stroke="#000000" stroke-width="9" stroke-linejoin="round"/>
+        <path d="M74 144v-40h36v-60" fill="none" stroke="#00ff00" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M74 118l-9 22h18z" fill="#00ff00"/>
+      </g>
+    </svg>
+    <div style="position: absolute; left: 80px; top: 51px; font-size: 36px; line-height: 1; white-space: nowrap; color: #007700;">Passing Mission St</div>
+    <div style="position: absolute; left: 80px; top: 152px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00b000;">1.2 km · 10 min · 10:10</div>
+    <div style="position: absolute; left: 168px; top: 245px; font-size: 64px; line-height: 1; font-weight: 500; white-space: nowrap; color: #00ff00;">100 m</div>
+    <div style="position: absolute; left: 384px; top: 258px; font-size: 48px; line-height: 1; font-weight: 500; white-space: nowrap; color: #00ff00;">Turn right</div>
+    <div style="position: absolute; left: 168px; top: 312px; font-size: 32px; line-height: 1; white-space: nowrap; color: #00b000;">onto Market St</div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 108px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 224px; width: 1012px; height: 116px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 34px; font-size: 20px; font-weight: 700; color: #ff7a1a;">T</div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 234px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":true},"$preview":{"width":1160,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { bands: this.props.bands ?? true };
+  }
+}
+</script>
+</body>
+</html>

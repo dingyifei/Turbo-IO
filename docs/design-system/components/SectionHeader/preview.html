@@ -1,0 +1,18 @@
+<!-- @dsCard group="Phone" height=210 subtitle="Section header, footer and collapsible fold" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SectionHeader</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .hdr{color:var(--label-secondary);padding:0 var(--space-4);display:flex;justify-content:space-between;align-items:center;min-height:var(--hit-min);margin-bottom:-6px}
+  .fold{color:var(--accent)}
+  .group{background:var(--bg-raised);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
+  .ftr{color:var(--label-secondary);padding:0 var(--space-4)}
+</style></head><body>
+<div class="wrap">
+  <div class="hdr"><span class="footnote">Lyrics</span><span class="footnote fold" role="button" aria-expanded="true">Hide</span></div>
+  <div class="group"><span class="body">Synced lyrics</span></div>
+  <div class="ftr footnote">Looks up lyrics on lrclib.net using only the song title, artist, and duration.</div>
+</div>
+</body></html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live captions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · no preview fixture</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; box-sizing: border-box; border: 2px dashed #aeaeb2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; text-align: center; color: #48484a;">
+      <span style="font-size: 17px; font-weight: 600;">No screenshot yet</span>
+      <span style="font-size: 15px; line-height: 20px;">AppleCaptionPanel and OfflineCaptionPanel are not in preview/shoot.sh. Phase 2 adds a "captions" fixture so this column fills in.</span>
+    </div>
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; align-items: center; padding: 0 4px; height: 44px;">
+        <button aria-label="Back to Turbo" style="height: 44px; border: 0; background: transparent; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px; padding: 0 8px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Turbo</button>
+      </div>
+      <div style="padding: 2px 20px 6px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Live captions</div>
+      <div style="padding: 0 20px 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 10px; border-radius: 999px; background: {{p.raised}}; color: {{p.ok}}; font-size: 15px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{p.ok}};"></span>Listening on device</div>
+        <div style="display: flex; align-items: center; padding: 6px 12px; border-radius: 999px; background: {{p.raised}}; color: {{p.sec}}; font-size: 15px;">Nothing leaves this iPhone</div>
+      </div>
+      <div style="margin: 0 16px; padding: 16px; border-radius: 26px; background: {{p.raised}}; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 12px; color: {{p.sec}};">English</span>
+        <span style="font-size: 17px; line-height: 22px;">…so we can move the design review to Thursday afternoon.</span>
+        <div style="height: 1px; background: {{p.sep}};"></div>
+        <span style="font-size: 12px; color: {{p.sec}};">Chinese</span>
+        <span style="font-size: 20px; line-height: 26px; font-weight: 600;">…所以我们可以把设计评审改到周四下午。</span>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Session</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; padding: 0 16px;">
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="flex: 1; font-size: 17px;">Direction</span><span style="font-size: 17px; color: {{p.sec}};">English → Chinese</span>
+          <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="flex: 1; font-size: 17px;">Microphone</span><span style="font-size: 17px; color: {{p.sec}};">iPhone</span>
+          <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px;"><span style="flex: 1; font-size: 17px;">Glasses sync</span>
+          <span role="switch" aria-checked="true" aria-label="Glasses sync" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span></div>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Resources</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; padding: 0 16px;">
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px; box-shadow: inset 0 -1px 0 {{p.sep}};"><span style="flex: 1; font-size: 17px;">Speech pack</span><span style="font-size: 17px; color: {{p.ok}};">Ready</span></div>
+        <div style="display: flex; align-items: center; min-height: 52px; gap: 8px;"><span style="flex: 1; font-size: 17px;">Translation pack</span><span style="font-size: 17px; color: {{p.ok}};">Ready</span></div>
+      </div>
+      <div style="position: absolute; left: 16px; right: 16px; bottom: 34px;">
+        <button style="width: 100%; height: 50px; border-radius: 999px; border: 0; background: {{p.soft}}; color: {{p.accent}}; font-size: 17px; font-weight: 600;">Stop captions</button>
+      </div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themes: [
+      { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', ok: '#1e7b34', warn: '#b25000', danger: '#d70015' },
+      { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', ok: '#30db5b', warn: '#ffb340', danger: '#ff6961' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

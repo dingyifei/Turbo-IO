@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses lyrics</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1160px; height: 900px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 10px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Current · TMG6 host preview (production geometry, surrogate font)</div>
+  <img src="/_blob/9cbe914c56eed6eda07251de01892762" alt="TMG6 lyrics: three equal two-line slots and a permanent control line" style="width: 1080px; height: 360px; display: block; border-radius: 16px;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em; margin-top: 22px;">Proposed · TMG7 · current line lowest and brightest</div>
+  <div role="img" aria-label="Proposed lyrics: current line The morning light is falling at the bottom, next line above, track name at the top" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <div style="position: absolute; left: 80px; top: 32px; width: 68px; height: 68px; box-shadow: inset 0 0 0 4px #007700;"></div>
+    <div style="position: absolute; left: 176px; top: 51px; font-size: 36px; line-height: 1; white-space: nowrap; color: #007700;">Streets · The Lanterns</div>
+    <div style="position: absolute; left: 80px; top: 152px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00b000;">on the streets we used to know</div>
+    <div style="position: absolute; left: 80px; top: 246px; font-size: 48px; line-height: 1; font-weight: 500; white-space: nowrap; color: #00ff00;">The morning light</div>
+    <div style="position: absolute; left: 80px; top: 298px; font-size: 48px; line-height: 1; font-weight: 500; white-space: nowrap; color: #00ff00;">is falling</div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 108px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 224px; width: 1012px; height: 116px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 34px; font-size: 20px; font-weight: 700; color: #ff7a1a;">T</div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 234px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":true},"$preview":{"width":1160,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { bands: this.props.bands ?? true };
+  }
+}
+</script>
+</body>
+</html>

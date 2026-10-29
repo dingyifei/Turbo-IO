@@ -1,0 +1,29 @@
+<!-- @dsCard group="Phone" height=330 subtitle="Inset-grouped row: icon tile, title, value, accessory" -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ListRow</title>
+<style>
+  body{margin:0;background:var(--bg);color:var(--label);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .wrap{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .group{background:var(--bg-raised);border-radius:var(--radius-lg);overflow:hidden}
+  .row{display:flex;align-items:center;gap:var(--space-4);min-height:var(--hit-min);padding:var(--space-3) var(--space-4)}
+  .row + .row .text{box-shadow:inset 0 1px 0 var(--separator)}
+  .row + .row{padding-top:0} .row + .row .text, .row + .row .acc{padding-top:var(--space-3)}
+  .tile{flex:none;width:var(--icon-tile);height:var(--icon-tile);border-radius:var(--radius-sm);display:grid;place-items:center;color:#fff}
+  .t-glasses{background:var(--accent-fill);color:var(--on-accent)} .t-assist{background:var(--tile-assistant)} .t-media{background:var(--tile-media)}
+  .text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;align-self:stretch;justify-content:center}
+  .sub{color:var(--label-secondary)}
+  .acc{display:flex;align-items:center;gap:var(--space-2);color:var(--label-tertiary);align-self:stretch}
+  .val{color:var(--label-secondary)}
+  .sw{width:51px;height:31px;border-radius:var(--radius-pill);background:var(--accent);position:relative;flex:none}
+  .sw::after{content:"";position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .sw.off{background:var(--bg-sunken)} .sw.off::after{right:auto;left:2px}
+</style></head><body>
+<div class="wrap"><div class="group" role="list">
+  <div class="row" role="listitem"><span class="tile t-glasses"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v9m-4-4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text"><span class="body">Glasses firmware</span><span class="subheadline sub">Ready to check</span></span><span class="acc"><svg viewBox="0 0 10 16" width="8" height="13" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+  <div class="row" role="listitem"><span class="tile t-glasses"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 3 5 20l7-4 7 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><span class="text"><span class="body">Navigation</span><span class="subheadline sub">Apple Maps turn-by-turn</span></span><span class="acc"><svg viewBox="0 0 10 16" width="8" height="13" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+  <div class="row" role="listitem"><span class="tile t-assist"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 3c.6 4.6 3.4 7.4 8 8-4.6.6-7.4 3.4-8 8-.6-4.6-3.4-7.4-8-8 4.6-.6 7.4-3.4 8-8z" fill="currentColor"/></svg></span><span class="text"><span class="body">Answer with</span></span><span class="acc"><span class="body val">RayNeo assistant</span><svg viewBox="0 0 10 16" width="8" height="13" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+  <div class="row" role="listitem"><span class="tile t-media"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="currentColor"/><circle cx="17.5" cy="16" r="2.5" fill="currentColor"/></svg></span><span class="text"><span class="body">Show on glasses</span></span><span class="acc"><span class="sw" aria-label="Show on glasses, on"></span></span></div>
+  <div class="row" role="listitem"><span class="text"><span class="body">Synced lyrics</span></span><span class="acc"><span class="sw off" aria-label="Synced lyrics, off"></span></span></div>
+</div></div>
+</body></html>

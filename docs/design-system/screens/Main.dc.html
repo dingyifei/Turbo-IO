@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Current · C10 preview build</div>
+    <img src="/_blob/ecad3419e9d8225cc5e152c923471d5f" alt="Current hub: forced dark, lime tiles, Glasses section" style="width: 390px; height: 844px; object-fit: cover; object-position: top; border-radius: 48px; display: block;">
+  </div>
+  <sc-for list="{{themes}}" as="p" hint-placeholder-count="2">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed · {{p.name}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px; height: 44px; align-items: center;">
+        <button aria-label="About Turbo" style="width: 44px; height: 44px; border-radius: 22px; border: 0; background: {{p.raised}}; color: {{p.label}}; display: grid; place-items: center;"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="{{p.label}}" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="{{p.label}}" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+        <button aria-label="Close" style="width: 44px; height: 44px; border-radius: 22px; border: 0; background: {{p.raised}}; color: {{p.label}}; display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="{{p.label}}" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <div style="padding: 2px 20px 12px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Turbo</div>
+      <div style="margin: 0 16px; padding: 16px; border-radius: 26px; background: {{p.raised}}; display: flex; align-items: center; gap: 14px;">
+        <div style="width: 48px; height: 48px; border-radius: 24px; background: {{p.soft}}; display: grid; place-items: center; flex: none;"><svg width="30" height="15" viewBox="0 0 48 24" aria-hidden="true"><rect x="3" y="5" width="17" height="13" rx="5" fill="none" stroke="{{p.accent}}" stroke-width="2.6"/><rect x="28" y="5" width="17" height="13" rx="5" fill="none" stroke="{{p.accent}}" stroke-width="2.6"/><path d="M20 10c2.5-2 5.5-2 8 0" fill="none" stroke="{{p.accent}}" stroke-width="2.6"/></svg></div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 17px; line-height: 22px; font-weight: 600;">RayNeo iO</div>
+          <div style="font-size: 15px; line-height: 20px; color: {{p.sec}};">TMG6 · Battery 82%</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px; padding: 6px 12px 6px 10px; border-radius: 999px; background: {{p.bg}}; color: {{p.ok}}; font-size: 15px;"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="{{p.ok}}"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="{{p.bg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Connected</div>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; line-height: 18px; color: {{p.sec}};">Glasses</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.fill}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="{{p.on}}" stroke-width="2.2"/><path d="M12 7v9m-4-4 4 4 4-4" fill="none" stroke="{{p.on}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 64px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px; line-height: 22px;">Glasses firmware</span><span style="font-size: 15px; line-height: 20px; color: {{p.warn}};">TMG7 available</span></div>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.fill}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 20l7-4 7 4z" fill="none" stroke="{{p.on}}" stroke-width="2.2" stroke-linejoin="round"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 64px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px; line-height: 22px;">Navigation</span><span style="font-size: 15px; line-height: 20px; color: {{p.sec}};">Apple Maps turn-by-turn</span></div>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.fill}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="3" fill="none" stroke="{{p.on}}" stroke-width="2.2"/><path d="M8 7l2-3h4l2 3" fill="none" stroke="{{p.on}}" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.2" fill="none" stroke="{{p.on}}" stroke-width="2.2"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <span style="flex: 1; font-size: 17px; line-height: 22px;">Camera remote</span>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.fill}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8" fill="none" stroke="{{p.on}}" stroke-width="2.2"/><path d="M12 13V9M10 2h4" stroke="{{p.on}}" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <span style="flex: 1; font-size: 17px; line-height: 22px;">Focus timer</span><span style="font-size: 17px; color: {{p.sec}};">25 min</span>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.fill}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM10 10h4v4h-4zM16 10h4v4h-4zM4 16h4v4H4zM10 16h4v4h-4zM16 16h4v4h-4z" fill="none" stroke="{{p.on}}" stroke-width="1.8"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <span style="flex: 1; font-size: 17px; line-height: 22px;">Menu layout</span><span style="font-size: 17px; color: {{p.sec}};">6 tiles</span>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.fill}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="{{p.on}}" stroke-width="2.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" stroke="{{p.on}}" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding-right: 16px;">
+            <span style="flex: 1; font-size: 17px; line-height: 22px;">Display</span><span style="font-size: 17px; color: {{p.sec}};">Height 3</span>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; line-height: 18px; color: {{p.sec}};">Assistant</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.assist}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.6 4.6 3.4 7.4 8 8-4.6.6-7.4 3.4-8 8-.6-4.6-3.4-7.4-8-8 4.6-.6 7.4-3.4 8-8z" fill="#ffffff"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding-right: 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+            <span style="flex: 1; font-size: 17px; line-height: 22px;">Answer with</span><span style="font-size: 17px; color: {{p.sec}};">RayNeo</span>
+            <svg width="8" height="13" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="{{p.ter}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding-left: 16px;">
+          <div style="width: 30px; height: 30px; border-radius: 7px; background: {{p.assist}}; display: grid; place-items: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z" fill="#ffffff"/><path d="M16 9c1.3 1.6 1.3 4.4 0 6" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding-right: 16px;">
+            <span style="flex: 1; font-size: 17px; line-height: 22px;">Read answers aloud</span>
+            <span role="switch" aria-checked="true" aria-label="Read answers aloud" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themes: [
+      { name: 'Light', bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', soft: '#eef5d6', assist: '#5856d6', media: '#d30f45', dev: '#636366', ok: '#1e7b34', warn: '#b25000', danger: '#d70015' },
+      { name: 'Dark', bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', soft: '#2c3020', assist: '#5e5ce6', media: '#ff375f', dev: '#8e8e93', ok: '#30db5b', warn: '#ffb340', danger: '#ff6961' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses reader</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1160px; height: 560px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 10px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Proposed · TMG7 reader · running text fills M and B</div>
+  <div role="img" aria-label="Proposed reader: four lines of text in the middle and bottom bands, chapter and position at the top" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <div style="position: absolute; left: 80px; top: 51px; font-size: 36px; line-height: 1; color: #007700;">Chapter 3</div>
+    <div style="position: absolute; right: 80px; top: 51px; font-size: 36px; line-height: 1; color: #007700; font-variant-numeric: tabular-nums;">42%</div>
+    <div style="position: absolute; left: 80px; top: 136px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00ff00;">The station was quiet at dawn. A single train</div>
+    <div style="position: absolute; left: 80px; top: 188px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00ff00;">waited on platform three, its windows still</div>
+    <div style="position: absolute; left: 80px; top: 240px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00ff00;">dark, while the first light crept along the</div>
+    <div style="position: absolute; left: 80px; top: 292px; font-size: 40px; line-height: 1; white-space: nowrap; color: #00ff00;">tracks toward the empty ticket hall.</div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 108px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 224px; width: 1012px; height: 116px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 234px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":true},"$preview":{"width":1160,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { bands: this.props.bands ?? true };
+  }
+}
+</script>
+</body>
+</html>
