@@ -134,7 +134,7 @@
       "offset": "0x4d8d8c",
       "address": "0x10668d8c",
       "before": "f0b585b0",
-      "after": "18f25abe",
+      "after": "18f270be",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1cf2e9bc",
+      "after": "1cf2ffbc",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1cf2e2bc00bf",
+      "after": "1cf2f8bc00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1ff256fa00bf",
+      "after": "1ff26cfa00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1cf33df800bf00bf00bf",
+      "after": "1cf353f800bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 149824,
+  "moduleBytes": 149888,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "5dbbbce0344303fdb7a62d227dec7a6a1b010dfb8aeb366fdd72ca9a9c17ed87",
+  "moduleSHA256": "a8c49ae7745bcc24a42e9acea84b077a66854ebe7582adc9f58d9beb6232a181",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7358472,
+  "APBytes": 7358536,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG7-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8812973,
-    "sha256": "fdaf18ec4dcad96bfce62dccc75d4e6a531b75cbbdd51b43d0c5d9506b63ddbc",
-    "md5": "f0060d511b84af0cf5d4f3cc013fe3bd"
+    "bytes": 8812792,
+    "sha256": "906bf5ef53cfdd8ad94078708f7fb014a15211e90a103dc6581685c1f876a0ee",
+    "md5": "0d37c1b2ffc1ebe9a7878915bba3a3c7"
   },
   "sources": [
     {
@@ -405,7 +405,7 @@
     },
     {
       "source": "music-runtime-v1/music_service.c",
-      "sha256": "3d02cd1218cdf43f7b19e3cde9c6da42e15a6459f60d1d578f14fc67f14a4b5d"
+      "sha256": "10038c5808bbc233bf9cf167dbd247dcfe61f45bed04cb9bfd5596afd4b1be2a"
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "0b750876bfd621984dcbe76ec3217ac755ce72feb9535164a87ec0b4a83430fe",
+  "APSHA256": "9d8c7518885be1a83d3c79d4bc603b0f57f8280502332260feb380830822bcc9",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

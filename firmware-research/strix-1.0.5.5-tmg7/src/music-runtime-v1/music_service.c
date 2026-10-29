@@ -5,25 +5,25 @@
 #include "music.h"
 #include "../navigation-runtime-v1/nav_text.h"
 #include "music_input.h"
+#include "music_layout.h"
+#include "../common-v1/tio_hint.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include <string.h>
 #include "../focus-v1/focus_service.h"
 #define TM_MESSAGE 0x544d5531u
-#define TM_LYRIC_ROWS 3u
-#define TM_CURRENT (TM_LYRIC_ROWS/2u)
-#define TM_TITLE TM_LYRIC_ROWS
-#define TM_STATUS (TM_LYRIC_ROWS+1u)
-#define TM_CONTROLS (TM_LYRIC_ROWS+2u)
-#define TM_LABELS (TM_LYRIC_ROWS+3u)
+#define TM_CURRENT 0u
+#define TM_NEXT 1u
+#define TM_TRACK 2u
+#define TM_LABELS 3u
 typedef struct {
- _Alignas(64) uint8_t pixels[TM_COVER_BYTES];
- char title[96],lyrics[TM_LYRIC_ROWS][244],status[80],controls[96];
+ _Alignas(64) uint8_t pixels[TM_ART*TM_ART];
+ char track[184],current[244],next[244];
 } Frame;
 typedef struct {
  TMMusic music;TNWidgets api;TMMusicSlot *slot;void *app,*timer,*root,*canvas,*labels[TM_LABELS],*bar;
  Frame frames[2];unsigned front;uint32_t token,last_frame,last_check,last_event,last_wheel;
- uint32_t request_id;uint8_t event,event_tries;bool retired,closing,waiting,focus_transition;TMInput input;
+ uint32_t request_id,track_color;TIOHint hint;uint8_t event,event_tries;bool retired,closing,waiting,focus_transition;TMInput input;
 } Control;
 extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_create(void (*)(void *),uint32_t,void *);
 extern void stream_timer_delete(void *),*stream_event_user(void *),*stream_add_event(void *,void (*)(void *),uint32_t,void *);
@@ -61,24 +61,25 @@ static void close_view(Control *c,bool notify){if(!c)return;release(c);c->music.
 static void deleted(void *e){Control *c=stream_event_user(e);if(!c)return;c->root=NULL;c->canvas=NULL;for(unsigned i=0;i<TM_LABELS;i++)c->labels[i]=NULL;close_view(c,false);c->closing=false;}
 static void copy_text(char *out,size_t cap,const char *text){size_t n=strlen(text);if(n>=cap)n=cap-1;memcpy(out,text,n);out[n]=0;}
 static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root||c->closing||!c->api.idle(NULL))return false;
- Frame *f=&c->frames[1-c->front];memcpy(f->title,c->music.title,sizeof f->title);
- /* Three bounded two-line viewport rows. Never clamp the window near first/last line:
-  * padding stays blank so the current lyric always occupies the middle row. Static
-  * label pointers and cover bytes switch together only while DMA is idle. */
- for(unsigned i=0;i<TM_LYRIC_ROWS;i++)f->lyrics[i][0]=0;
- if(c->waiting){copy_text(f->title,sizeof f->title,tio_text(TT_MUSIC_TITLE,lang));copy_text(f->lyrics[TM_CURRENT],sizeof f->lyrics[TM_CURRENT],tio_text(TT_MUSIC_PICK,lang));}
- else {int line=tm_line(&c->music,now);for(unsigned i=0;i<TM_LYRIC_ROWS;i++)tm_text(&c->music,line+(int)i-(int)TM_CURRENT,f->lyrics[i],sizeof f->lyrics[i]);
-  if(!c->music.lyrics_ready)copy_text(f->lyrics[TM_CURRENT],sizeof f->lyrics[TM_CURRENT],tio_text(TT_MUSIC_LYRICS,lang));}
- if(c->music.cover_ready)tm_square_cover(c->music.cover,f->pixels);
- else for(unsigned y=0;y<144;y++)for(unsigned x=0;x<144;x++){f->pixels[y*144+x]=(uint8_t)(45+(x+y)%64);}
- unsigned p=tm_position(&c->music,now)/1000,d=c->music.duration_ms/1000;
- const char *state=c->music.playing?tio_text(TT_MUSIC_PLAYING,lang):tio_text(TT_MUSIC_PAUSED,lang);memset(f->status,0,sizeof f->status);unsigned k=0;while(state[k]){f->status[k]=state[k];k++;}
- f->status[k++]=' ';unsigned vals[4]={p/60%100,p%60,d/60%100,d%60};for(unsigned j=0;j<4;j++){f->status[k++]=(char)('0'+vals[j]/10);f->status[k++]=(char)('0'+vals[j]%10);if(j!=3)f->status[k++]=j==1?'/':':';}
- copy_text(f->controls,sizeof f->controls,tio_text(c->music.playing?TT_MUSIC_CONTROLS_PAUSE:TT_MUSIC_CONTROLS_PLAY,lang));
- for(unsigned i=0;i<TM_LYRIC_ROWS;i++){char raw[244];memcpy(raw,f->lyrics[i],sizeof raw);raw[sizeof raw-1]=0;tn_text_two_lines(raw,366,tm_lyric_slot(i).font,f->lyrics[i],sizeof f->lyrics[i]);}
- c->api.buffer(NULL,c->canvas,f->pixels,144,144);
- for(unsigned i=0;i<TM_LYRIC_ROWS;i++)c->api.text_static(NULL,c->labels[i],f->lyrics[i]);
- c->api.text_static(NULL,c->labels[TM_TITLE],f->title);c->api.text_static(NULL,c->labels[TM_STATUS],f->status);c->api.text_static(NULL,c->labels[TM_CONTROLS],f->controls);c->front=1-c->front;c->last_frame=now;return true;
+ Frame *f=&c->frames[1-c->front];
+ /* LensMusic: current line (band B) and the line after it (band M); the previous line is dropped.
+  * The artwork tile, label pointers and colours switch together only while DMA is idle. */
+ char cur[244]={0},next[244]={0};
+ if(c->waiting){copy_text(cur,sizeof cur,tio_text(TT_MUSIC_PICK,lang));}
+ else {int line=tm_line(&c->music,now);tm_text(&c->music,line,cur,sizeof cur);tm_text(&c->music,line+1,next,sizeof next);
+  if(!c->music.lyrics_ready)copy_text(cur,sizeof cur,tio_text(TT_MUSIC_LYRICS,lang));}
+ tn_text_two_lines(cur,TIO_CORE_W,TM_CUR_FONT,f->current,sizeof f->current);tm_one_line(next,TIO_CORE_W,TM_NEXT_FONT,f->next,sizeof f->next);
+ /* Band T: the control hint (lens-high, fading) for TIO_HINT_MS after entry and every input, else the track in lens-mid. */
+ bool hint=tio_hint_visible(&c->hint,now);uint32_t color=hint?tio_hint_color(&c->hint,now):TIO_LENS_MID;
+ if(hint)copy_text(f->track,sizeof f->track,tio_text(c->music.playing?TT_MUSIC_CONTROLS_PAUSE:TT_MUSIC_CONTROLS_PLAY,lang));
+ else {const char *title=c->waiting?tio_text(TT_MUSIC_TITLE,lang):c->music.title;size_t n=0;while(n<sizeof f->track-1&&title[n]&&n<95){f->track[n]=title[n];n++;}
+  if(!c->waiting&&c->music.artist[0]&&n+8<sizeof f->track){f->track[n++]=' ';f->track[n++]=(char)0xc2;f->track[n++]=(char)0xb7;f->track[n++]=' ';for(unsigned k=0;k<80&&c->music.artist[k]&&n<sizeof f->track-1;k++)f->track[n++]=c->music.artist[k];}
+  f->track[n]=0;}
+ tm_art_tile(c->music.cover_ready?c->music.cover:NULL,f->pixels);
+ c->api.buffer(NULL,c->canvas,f->pixels,TM_ART,TM_ART);
+ c->api.text_static(NULL,c->labels[TM_CURRENT],f->current);c->api.text_static(NULL,c->labels[TM_NEXT],f->next);c->api.text_static(NULL,c->labels[TM_TRACK],f->track);
+ if(c->api.color&&color!=c->track_color){c->api.color(NULL,c->labels[TM_TRACK],color);c->track_color=color;}
+ c->front=1-c->front;c->last_frame=now;return true;
 }
 static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
  if(c->root)return wake(c);TNNavSlot *n=navslot(c->app);if(!n||tap_service_visible(c->app)||tf_slot_visible(n->focus)||tn_slot_visible(n)||((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page)return false;
@@ -88,13 +89,14 @@ static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
   * all later hide/destroy/button events still retire the session normally. */
  c->focus_transition=true;nav_set_state(manager(),1);c->focus_transition=false;
  if(!owns(c)||c->closing||!paired()||!c->api.idle(NULL))return false;c->root=c->api.root(NULL,ptr(c->app,4));if(!c->root)return false;
- c->api.place(NULL,c->root,0,0,540,180);c->canvas=c->api.canvas(NULL,c->root);if(!c->canvas)goto fail;c->api.place(NULL,c->canvas,8,0,144,144);
- const uint8_t opacity[]={150,255,150,190,130,230};
- for(unsigned i=0;i<TM_LABELS;i++){c->labels[i]=c->api.label(NULL,c->root,i<TM_LYRIC_ROWS?tm_lyric_slot(i).font:14);if(!c->labels[i])goto fail;
-  if(i<TM_LYRIC_ROWS){TMLyricSlot slot=tm_lyric_slot(i);c->api.place(NULL,c->labels[i],166,slot.top,366,slot.height);if(c->api.clip_text)c->api.clip_text(NULL,c->labels[i]);}
-  else if(i==TM_CONTROLS)c->api.place(NULL,c->labels[i],166,154,366,24);
-  else c->api.place(NULL,c->labels[i],16,i==TM_TITLE?144:162,140,16);
-  menu_opa(c->labels[i],opacity[i],0);}
+ c->api.place(NULL,c->root,0,0,540,180);c->canvas=c->api.canvas(NULL,c->root);if(!c->canvas)goto fail;
+ {TIORect a=tm_art_rect();c->api.place(NULL,c->canvas,a.x,a.y,a.w,a.h);}
+ {const unsigned fonts[TM_LABELS]={TM_CUR_FONT,TM_NEXT_FONT,TM_TRACK_FONT};const TIORect rects[TM_LABELS]={tm_cur_rect(),tm_next_rect(),tm_track_rect()};
+  const uint32_t colors[TM_LABELS]={TIO_LENS_FULL,TIO_LENS_HIGH,TIO_LENS_MID};
+  for(unsigned i=0;i<TM_LABELS;i++){c->labels[i]=c->api.label(NULL,c->root,fonts[i]);if(!c->labels[i])goto fail;
+   c->api.place(NULL,c->labels[i],rects[i].x,rects[i].y,rects[i].w,rects[i].h);if(c->api.clip_text)c->api.clip_text(NULL,c->labels[i]);
+   if(c->api.color)c->api.color(NULL,c->labels[i],colors[i]);}}
+ c->track_color=TIO_LENS_MID;tio_hint_init(&c->hint);tio_hint_enter(&c->hint,stream_tick());
  if(!stream_add_event(c->root,deleted,0x24,c))goto fail;
  if(!render(c,stream_tick()))goto fail;c->api.visible(NULL,c->root,true);if(!wake(c))goto fail;return true;
  fail:c->api.destroy(NULL,c->root);c->root=NULL;release(c);return false;
@@ -115,9 +117,9 @@ void tm_slot_hidden(TMMusicSlot *s){if(s&&s->control){Control *c=s->control;if(c
 void tm_slot_destroy(TMMusicSlot *s){if(!s)return;Control *c=s->control;if(c){close_view(c,false);c->retired=true;c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tm_slot_visible(TMMusicSlot *s){Control *c=s?s->control:NULL;return c&&c->root;}
 bool tm_slot_open(TMMusicSlot *s){Control *c=control(s);if(!c)return false;c->waiting=!c->music.active;if(!enter(c))return false;request(c,TM_RESUME);return true;}
-void tm_slot_wheel(TMMusicSlot *s,int delta){Control *c=s?s->control:NULL;if(!c||!c->root||c->closing)return;int step=tm_input_wheel(&c->input,delta,stream_tick());if(step)request(c,step>0?TM_NEXT:TM_PREV);}
+void tm_slot_wheel(TMMusicSlot *s,int delta){Control *c=s?s->control:NULL;if(!c||!c->root||c->closing)return;tio_hint_input(&c->hint,stream_tick());int step=tm_input_wheel(&c->input,delta,stream_tick());if(step)request(c,step>0?TM_NEXT:TM_PREV);}
 bool tm_handle_event(void *e){void *vm=stream_event_user(e);TMMusicSlot *s=slot_of(ptr(vm,0x10));Control *c=s?s->control:NULL;if(!c||!c->root||!owns(c)||native_event_code(e)!=0xe)return false;unsigned key=native_event_key(e);
- if(key==0x3b)close_view(c,true);else if(key==0x3a){if(tm_input_press(&c->input,stream_tick())){if(!c->music.awake){(void)wake(c);request(c,TM_RESUME);}else request(c,c->music.playing?TM_PAUSE:TM_PLAY);}}else return false;nav_stop_event(e);return true;}
+ if(key==0x3b)close_view(c,true);else if(key==0x3a){tio_hint_input(&c->hint,stream_tick());if(tm_input_press(&c->input,stream_tick())){if(!c->music.awake){(void)wake(c);request(c,TM_RESUME);}else request(c,c->music.playing?TM_PAUSE:TM_PLAY);}}else return false;nav_stop_event(e);return true;}
 TIOImageResult tm_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){static const char name[]="turbo-music.tmu";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;TMPacket p;if(f->complete!=1||f->received!=f->declared||!tm_decode(f->data,f->received,&p))return TIO_BAD_SIZE;if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TM_MESSAGE,.data=f->data,.bytes=f->received};return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;}
 bool tm_message_is_ours(const TIONativeMessage *m){return m&&m->id==TM_MESSAGE;}
 void tm_message_dispatch(const TIONativeMessage *m){TMPacket q;if(!tm_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!paired()||!tm_decode(m->data,m->bytes,&q))return;

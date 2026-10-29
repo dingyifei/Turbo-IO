@@ -7,6 +7,7 @@
 #include "../src/navigation-runtime-v1/nav_view.h"
 #include "../src/navigation-runtime-v1/nav_text.h"
 #include "../src/music-runtime-v1/music.h"
+#include "../src/music-runtime-v1/music_layout.h"
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
 #include "../src/common-v1/tio_caret.h"
@@ -14,7 +15,7 @@
 #include <stdio.h>
 #include <math.h>
 enum {KText,KPixels,KRect};
-typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
+typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading,art;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
 typedef struct {Widget w[24];unsigned count;bool busy;} Host;
 enum {VReserved=1,VBand=2,VFont=4,VPanel=8,VCore=16,VColor=32,VOverlap=64,VCanvas=128,VBox=256};
 static unsigned language;
@@ -63,9 +64,10 @@ static unsigned Check(Host *host,const char *name,bool verbose){
    if(c!=TIO_LENS_FULL&&c!=TIO_LENS_HIGH&&c!=TIO_LENS_MID&&!(w->fading&&c<TIO_LENS_HIGH))v|=VColor;   // track is never text; only a fading hint may sit between steps
    if(c==TIO_LENS_MID&&w->font<TIO_FONT_LABEL)v|=VColor;                       // mid only at 18 px or larger
   }
+  if(pix&&w->art){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]>TM_ART_LEVEL){v|=VColor;break;}}   // artwork stays under lens-mid
   if(pix&&!w->span&&(r.x<TIO_INSET_X||r.x+r.w>TIO_PAGE_W-TIO_INSET_X))v|=VCore;   // glyphs may use the side insets, not the edge
   if(rect&&!(r.h<=TIO_TRACK_H&&(w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK)))v|=VPanel;   // only carets and tracks are filled
-  if(pix&&r.w*r.h>=32*32){unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
+  if(pix&&!w->art&&r.w*r.h>=32*32){unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
   for(unsigned j=1;j<i;j++){Widget *o=&host->w[j];if(o->shown&&(textual(o)||o->kind==KRect)&&(text||rect)&&overlap(w,o)&&!(rect&&o->kind==KRect))v|=VOverlap;}
   if(v&&verbose)printf("  %s widget %u (%d,%d %dx%d font %u): mask 0x%x\n",name,i,r.x,r.y,r.w,r.h,w->font,v);
   mask|=v;
@@ -90,6 +92,7 @@ static void SelfTest(void){   // the gate must catch each defect
  h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_TRACK,TIO_BAND_B,"a");assert(Check(&h,"x",false)&VColor);
  h=(Host){0};create(&h,&h);Add(&h,KText,40,60,100,24,16,TIO_LENS_MID,TIO_BAND_M,"a");assert(Check(&h,"x",false)&VColor);
  h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");Add(&h,KText,60,130,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"b");assert(Check(&h,"x",false)&VOverlap);
+ {static uint8_t bright[36*36];memset(bright,255,sizeof bright);h=(Host){0};create(&h,&h);Widget *a=Add(&h,KPixels,40,16,36,36,0,0,TIO_BAND_T,NULL);a->pixels=bright;a->art=true;assert(Check(&h,"x",false)&VColor);a->art=false;assert(Check(&h,"x",false)&VPanel);}
  h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");Add(&h,KRect,40,150,TIO_CARET_W,TIO_CARET_H,0,TIO_LENS_FULL,TIO_BAND_B,NULL);assert(Check(&h,"ok",false)==0);
 }
 
@@ -157,7 +160,7 @@ static void AppPages(NSString *dir,NSString *board){
  unsigned words=0;for(const char *p=App[0].hint;*p;p++)if(*p!=' '&&(p==App[0].hint||p[-1]==' ')&&strncmp(p,"·",2))words++;assert(words<=TIO_HINT_MAX_WORDS_EN);
 }
 
-// ---- Navigation (LensNav, tmg7(2)) re-laid; lyrics still keep the TMG6 layout until their tmg7 commit ---------------
+// ---- Navigation (LensNav, tmg7(2)) ---------------
 static void Put16(uint8_t *p,int n){p[0]=n;p[1]=n>>8;}
 #define W(p) ((Widget *)(p))
 static void color(void *p,void *o,uint32_t rgb){(void)p;((Widget *)o)->color=rgb;}
@@ -208,12 +211,56 @@ static void Nav(NSString *dir,NSString *board,bool zh,bool longer){
  if(!zh&&!longer)CompareNavBoard(board,&host,v);
  Save(&host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",tag]]);assert(tn_view_close(v));free(v);
 }
-static void Lyrics(NSString *dir,bool zh){language=zh;Host host={0};create(&host,&host);char lines[3][244];const char *raw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方在清晨再次回想起那些温暖的故事":"The morning light is falling on the streets we used to know";
- for(unsigned i=0;i<3;i++){TMLyricSlot slot=tm_lyric_slot(i);if(i)assert(tm_lyric_slot(i-1).top+tm_lyric_slot(i-1).height<=slot.top);assert(slot.top+slot.height<=154);
-  tn_text_two_lines(raw,366,slot.font,lines[i],sizeof lines[i]);Widget *w=label(&host,&host,slot.font);place(&host,w,166,slot.top,366,slot.height);text(&host,w,lines[i]);cliptext(&host,w);}
- Widget *control=label(&host,&host,14);place(&host,control,166,154,366,24);text(&host,control,zh?"滚轮：切歌 · 轻触：暂停":"Wheel: previous / next · Tap: pause");
- Gate(&host,zh?"lyrics-zh":"lyrics-en",false);Save(&host,[dir stringByAppendingPathComponent:zh?@"lyrics-zh.png":@"lyrics-en.png"]);
+// ---- Music (LensMusic, tmg7(3)): track in T, next lyric in M, current lyric in B -------------------------------------
+static void CompareMusicBoard(NSString *html,Host *host){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSRange proposed=[s rangeOfString:@"Proposed"];assert(proposed.location!=NSNotFound);s=[s substringFromIndex:proposed.location];
+ NSRegularExpression *re=[NSRegularExpression regularExpressionWithPattern:@"left: (\\d+)px; top: (\\d+)px; font-size: (\\d+)px;[^\"]*?color: (#[0-9a-f]{6});\">([^<{]+)</div>" options:0 error:nil];
+ unsigned matched=0;
+ for(NSTextCheckingResult *m in [re matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  int x=[[s substringWithRange:[m rangeAtIndex:1]] intValue]/2,y=[[s substringWithRange:[m rangeAtIndex:2]] intValue]/2,font=[[s substringWithRange:[m rangeAtIndex:3]] intValue]/2;
+  uint32_t color=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:4]] UTF8String]+1,NULL,16);NSString *t=[s substringWithRange:[m rangeAtIndex:5]];
+  Widget *w=NULL;NSString *joined=nil;
+  for(unsigned i=1;i<host->count&&!w;i++)if(host->w[i].shown&&textual(&host->w[i])){joined=[[NSString stringWithUTF8String:host->w[i].text] stringByReplacingOccurrencesOfString:@"\n" withString:@" "];if([joined containsString:t])w=&host->w[i];}
+  if(!w){printf("board text without fixture widget: %s\n",t.UTF8String);assert(0);}
+  matched++;bool first=[joined hasPrefix:t];
+  // The board's 24 px rows (123, 149) overrun band B by a pixel; the fixture keeps them inside it, so y may differ by up to 8.
+  if(!(abs(w->x-x)<=8&&(int)w->font==font&&w->color==color&&(first?abs(w->y-y)<=8:(y>=w->y&&y<w->y+w->h+6)))){printf("board mismatch %s: board (%d,%d %d px %06x) fixture (%d,%d %u px %06x)\n",t.UTF8String,x,y,font,color,w->x,w->y,w->font,w->color);assert(0);}
+ }
+ Widget *art=NULL;for(unsigned i=1;i<host->count;i++)if(host->w[i].kind==KPixels)art=&host->w[i];
+ assert(matched==4&&art&&art->art&&art->w==36&&art->h==36&&art->x==40&&[s containsString:@"width: 68px; height: 68px; box-shadow: inset 0 0 0 4px #007700"]);
+ printf("PASS board LensMusic (proposed, halved): %u text rows and the 36 px tile match; band, size, intensity, x and y within tolerance\n",matched);
+}
+static void BuildMusic(Host *h,bool zh,uint32_t now,TIOHint *hint,const uint8_t *tile){
+ create(h,h);
+ const char *track=zh?"街头 · 灯笼乐队":"Streets \xc2\xb7 The Lanterns",*curRaw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方":"The morning light is falling",*nextRaw=zh?"在清晨再次回想起那些温暖的故事":"on the streets we used to know";
+ static char cur[244],next[244];tn_text_two_lines(curRaw,TIO_CORE_W,TM_CUR_FONT,cur,sizeof cur);tm_one_line(nextRaw,TIO_CORE_W,TM_NEXT_FONT,next,sizeof next);
+ TIORect a=tm_art_rect(),t=tm_track_rect(),n=tm_next_rect(),c=tm_cur_rect();
+ Widget *w=Add(h,KPixels,a.x,a.y,a.w,a.h,0,0,TIO_BAND_T,NULL);w->pixels=tile;w->art=true;
+ bool hintOn=tio_hint_visible(hint,now);
+ w=Add(h,KText,t.x,t.y,t.w,t.h,TM_TRACK_FONT,hintOn?tio_hint_color(hint,now):TIO_LENS_MID,TIO_BAND_T,hintOn?(zh?"滚轮：上/下首 · 单击：暂停":"Wheel: Prev / Next | Tap: Pause"):track);w->fading=hintOn&&tio_hint_alpha(hint,now)<255;w->clip=true;
+ w=Add(h,KText,n.x,n.y,n.w,n.h,TM_NEXT_FONT,TIO_LENS_HIGH,TIO_BAND_M,next);w->clip=true;
+ w=Add(h,KText,c.x,c.y,c.w,c.h,TM_CUR_FONT,TIO_LENS_FULL,TIO_BAND_B,cur);w->clip=true;
+}
+static void Lyrics(NSString *dir,NSString *board,bool zh){
+ language=zh;static uint8_t cover[TM_COVER_BYTES],tile[TM_ART*TM_ART],blank[TM_ART*TM_ART];for(unsigned i=0;i<sizeof cover;i++)cover[i]=(uint8_t)((i%144)*2+i/144);   // full-range cover: the tile must still cap at lens-mid
+ tm_art_tile(cover,tile);tm_art_tile(NULL,blank);
+ for(unsigned i=0;i<sizeof tile;i++)assert(tile[i]<=TM_ART_LEVEL&&blank[i]<=TM_ART_LEVEL);assert(blank[18*TM_ART+18]==0&&blank[0]==TM_ART_LEVEL&&tile[0]==TM_ART_LEVEL);
+ TIOHint hint;tio_hint_init(&hint);tio_hint_enter(&hint,1000);
+ const struct {uint32_t now;const char *tag;const uint8_t *pix;} shots[]={{1000,"-hint",tile},{3850,"-hint-fade",tile},{4000,"",tile},{4500,"-nocover",blank}};
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){Host *host=calloc(1,sizeof *host);assert(host);BuildMusic(host,zh,shots[i].now,&hint,shots[i].pix);
+  char name[48];snprintf(name,sizeof name,"lyrics%s-%s",shots[i].tag,zh?"zh":"en");Gate(host,name,true);
+  Widget *track=&host->w[2];if(!strcmp(shots[i].tag,"-hint"))assert(track->color==TIO_LENS_HIGH&&track->font==TIO_FONT_LABEL);if(!strcmp(shots[i].tag,"-hint-fade"))assert(track->color>0&&track->color<TIO_LENS_HIGH);
+  if(!strcmp(shots[i].tag,"")){assert(track->color==TIO_LENS_MID&&host->w[3].color==TIO_LENS_HIGH&&host->w[4].color==TIO_LENS_FULL);if(!zh)CompareMusicBoard(board,host);}
+  // Ordering: current lyric lowest, next above it, track on top; at most two lines of 24 px in the current-lyric box.
+  assert(host->w[2].y<host->w[3].y&&host->w[3].y+host->w[3].h<=host->w[4].y&&host->w[4].y+host->w[4].h==TIO_PAGE_B1);
+  unsigned lines=1;for(const char *p=host->w[4].text;*p;p++)lines+=*p=='\n';assert(lines<=2&&tn_text_width(host->w[3].text,strlen(host->w[3].text),TM_NEXT_FONT)<=TIO_CORE_W);
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ // A next lyric too long for one line ends in an ellipsis and never wraps.
+ char one[244];tm_one_line("Streets of gold and silver rivers running through the evening light of every city we have ever known",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strchr(one,'\n')&&strstr(one,"\xe2\x80\xa6")&&tn_text_width(one,strlen(one),TM_NEXT_FONT)<=TIO_CORE_W);
+ tm_one_line("short",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strcmp(one,"short"));
+ tm_one_line("",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!*one);
 }
 int main(int argc,char **argv){@autoreleasepool{assert(argc==3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);Lyrics(dir,false);Lyrics(dir,true);
- puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, pending pages keep the TMG6 layout");}return 0;}
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);
+ puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav and music are re-laid");}return 0;}
