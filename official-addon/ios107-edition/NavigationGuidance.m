@@ -111,7 +111,9 @@ NSString *TIOGuideFullRoadName(NSString *text){
     for(NSString *key in @[@" onto ",@" on "]){at=[text rangeOfString:key options:NSCaseInsensitiveSearch|NSBackwardsSearch];if(at.location!=NSNotFound)break;}
     if(at.location==NSNotFound)return @"";NSString *name=[text substringFromIndex:NSMaxRange(at)];
     if([name.lowercaseString hasPrefix:@"your "]||[name.lowercaseString hasPrefix:@"the left"]||[name.lowercaseString hasPrefix:@"the right"])return @""; // "The destination is on your left"
-    for(NSString *cut in @[@" toward",@" towards",@" for ",@", then"]){NSRange c=[name rangeOfString:cut options:NSCaseInsensitiveSearch];if(c.location!=NSNotFound)name=[name substringToIndex:c.location];}
+    for(NSString *cut in @[@" toward",@" towards",@", then"]){NSRange c=[name rangeOfString:cut options:NSCaseInsensitiveSearch];if(c.location!=NSNotFound)name=[name substringToIndex:c.location];}
+    static NSRegularExpression *distanceSuffix;static dispatch_once_t once;dispatch_once(&once,^{distanceSuffix=[NSRegularExpression regularExpressionWithPattern:@" for (?:about )?[0-9]+(?:[.,][0-9]+)?\\s*(?:miles?|mi|meters?|metres?|m|kilometers?|kilometres?|km|feet|ft|yards?|yd|minutes?|mins?|seconds?|secs?)\\b" options:NSRegularExpressionCaseInsensitive error:nil];});
+    NSTextCheckingResult *suffix=[distanceSuffix firstMatchInString:name options:0 range:NSMakeRange(0,name.length)];if(suffix)name=[name substringToIndex:suffix.range.location];
     name=[name stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" .,;"]];
     return [name.lowercaseString hasPrefix:@"the destination"]?@"":name;
 }

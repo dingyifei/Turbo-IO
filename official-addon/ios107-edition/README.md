@@ -2,7 +2,7 @@
 
 ## TMG6 candidate — current development branch
 
-TMG6 supersedes the historical candidate sections below. ZIP SHA256: `06927af943f06463b5bff1c10df0bcbd326c110280ef4f9ec22ac7b2b44a48d4`; AP size: 7,357,832 bytes; AP MD5: `d524b992d05e2fa0f06d3d484923c845`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence; device acceptance remains NOT RUN.
+TMG6 supersedes the historical candidate sections below. ZIP SHA256: `a134c0f9d8550cdd5b53559e4857e27ca92ec8b168543d2c357cbc1e3fbe4d6e`; AP size: 7,357,832 bytes; AP MD5: `55d933ad07b474535ed0389b09d0ddf3`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence; device acceptance remains NOT RUN.
 
 C10 remains compatible with TMG5 glasses: the new Passing message requires navigation capability mask `0x08`. TMG6 shows the full forward route within the visible map, a five-pixel route with a seven-pixel black halo, a larger fixed heading-up car marker, a fixed full-road-name line, smooth stock-family scale text, and three non-overlapping lyric slots capped at two lines each. Phone word segmentation supplies safe ellipsis boundaries. Host EN/ZH previews use macOS surrogate fonts; actual stock font appearance remains a human device check. Knob observation: approximately 2000 raw counts per full rotation; wheel behavior is unchanged.
 

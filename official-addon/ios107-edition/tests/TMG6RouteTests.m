@@ -41,5 +41,13 @@ int main(void){@autoreleasepool{
  input[@"tnrLocation"]=P(0,30);assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing Second Crossing Avenue"]);
  input[@"tnrLocation"]=P(0,50);assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing Main Street"]);
  TIOSetUILanguageOverride(TIOLangChinese);input[@"tnrLocation"]=P(0,0);assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"经过 南京西路"]);
+ // Review regressions: names retain prose-like words; guide road beats a nearby parallel road.
+ TIOSetUILanguageOverride(TIOLangEnglish);assert([TIOGuideFullRoadName(@"Continue on Road for Peace") isEqual:@"Road for Peace"]);
+ assert([TIOGuideFullRoadName(@"Continue on Main Street for 2 miles") isEqual:@"Main Street"]);
+ input[@"tnrLocation"]=P(0,0);input[@"tnrRoute"]=@[P(0,0),P(0,160)];input[@"tnrCurrentRoad"]=@"Main Street";
+ NSArray *a=P(2,-50),*b=P(2,150);NSDictionary *frontage=@{@"properties":@{@"kind":@"road",@"highway":@"primary",@"name":@"Frontage Road"},@"geometry":@{@"type":@"LineString",@"coordinates":@[@[a[1],a[0]],@[b[1],b[0]]]}};
+ [map installFeatures:@[frontage] bbox:@[@37,@(-123),@38,@(-122)]];assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing Main Street"]);
+ NSMutableDictionary *foot=[roads[1] mutableCopy],*props=[foot[@"properties"] mutableCopy];props[@"highway"]=@"footway";props[@"name:en"]=@"Riverside Footpath";foot[@"properties"]=props;
+ [map installFeatures:@[roads[0],foot,roads[2]] bbox:@[@37,@(-123),@38,@(-122)]];assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing Second Crossing Avenue"]);
  puts("PASS route geometry beyond two maneuvers survives the real scene encoder and rasterizer");return 0;
 } }

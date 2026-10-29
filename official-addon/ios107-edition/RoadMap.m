@@ -196,13 +196,14 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
  NSArray *routes=Pieces(coords,position,nil,NO);NSString *next=@"",*current=fallback?:@"";double best=DBL_MAX,nearest=40;NSUInteger budget=200000,visited=0;
  BOOL zh=[TIOUILanguage() isEqual:TIOLangChinese];
  for(NSDictionary *f in _features){if(++visited>10000||!budget)break;NSDictionary *p=f[@"properties"],*g=f[@"geometry"];
-  if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"])continue;
+  if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"]||RoadStyle(Text(p[@"highway"]))==5||[Text(p[@"area"]) isEqual:@"yes"])continue;
   NSString *name=Text(p[zh?@"name:zh":@"name:en"]);if(!name.length)name=Text(p[@"name"]);if(!name.length)continue;
   for(NSArray *road in Pieces(g[@"coordinates"],position,_convert,YES))for(NSUInteger j=1;j<road.count&&budget;j++){
    double cx=[road[j-1][0]doubleValue],cy=[road[j-1][1]doubleValue],dx=[road[j][0]doubleValue]-cx,dy=[road[j][1]doubleValue]-cy;
-   double distance=SegmentDistance(0,0,cx,cy,cx+dx,cy+dy);if(distance<nearest){nearest=distance;current=name;}
+   double distance=SegmentDistance(0,0,cx,cy,cx+dx,cy+dy);
    double along=0;for(NSArray *route in routes)for(NSUInteger k=1;k<route.count&&budget;k++){
     --budget;double ax=[route[k-1][0]doubleValue],ay=[route[k-1][1]doubleValue],bx=[route[k][0]doubleValue]-ax,by=[route[k][1]doubleValue]-ay,len=hypot(bx,by),den=bx*dy-by*dx;
+    if(!fallback.length&&len>0&&fabs(den)<=0.1*len*hypot(dx,dy)&&SegmentDistance(0,0,ax,ay,ax+bx,ay+by)<=12&&distance<nearest){nearest=distance;current=name;}
     if(fabs(den)>1){double t=((cx-ax)*dy-(cy-ay)*dx)/den,u=((cx-ax)*by-(cy-ay)*bx)/den,d=along+t*len;
      if(t>=0&&t<=1&&u>=0&&u<=1&&d>12&&d<best){best=d;next=name;}}
     along+=len;

@@ -158,12 +158,13 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
    if(_mapV2&&_map2Latest){NSMutableData *combined=[map mutableCopy];uint8_t *p=(uint8_t *)combined.mutableBytes+combined.length-12;memcpy(p,_poseLatest.bytes,12);unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;_mapSending=map;_poseAgeMs=age;[self send:(enum TNOp)TNR_SCENE2 scene:combined];}
    else [self send:(enum TNOp)TNR_SCENE scene:map];return;
   }
-  if(_passingCap&&_mapCommitted&&_passingLatest&&![_passingLatest isEqual:_passingCommitted]&&U32(_passingLatest.bytes)==U32(_mapCommitted.bytes)){[self send:(enum TNOp)TNR_PASSING scene:_passingLatest];return;}
   // Slow links and the background get one pose a second; otherwise 2 Hz, and only for >=1 m or >=3 degrees.
   if(_mapCommitted&&(_pose2?correctionDue:now-_lastPose>=(self.backoff?1:0.5))){
    NSMutableData *pose=[_poseLatest mutableCopy];uint8_t *p=pose.mutableBytes;unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;
    if(_pose2){[pose setLength:14];p=pose.mutableBytes;p[12]=(uint8_t)_speedLatest;p[13]=(uint8_t)(_speedLatest>>8);_poseAgeMs=age;[self send:(enum TNOp)TNR_POSE2 scene:pose];return;}
   }
+  // Due position corrections must make progress even when label names churn.
+  if(_passingCap&&_mapCommitted&&_passingLatest&&![_passingLatest isEqual:_passingCommitted]&&U32(_passingLatest.bytes)==U32(_mapCommitted.bytes)){[self send:(enum TNOp)TNR_PASSING scene:_passingLatest];return;}
  }
  if(!_extended&&fresh&&changed){[self send:TN_UPDATE scene:_latest];return;}
  if(_clock()-_lastWire>=10)[self send:TN_HEARTBEAT scene:nil];
