@@ -36,6 +36,7 @@ static BOOL LatLon(id p){return [p isKindOfClass:NSArray.class]&&[p count]==2&&[
             if(first==NSNotFound)first=points.count;
             [points addObject:@[@(a),@(o)]];[lat appendBytes:&a length:sizeof a];[lon appendBytes:&o length:sizeof o];added++;
         }
+        if(!r->_initialRoad.length)r->_initialRoad=TIOGuideFullRoadName(step.instructions);
         if(!added||points.count<2)continue; // Zero-length steps carry no geometry.
         [steps addObject:step];[start appendBytes:&first length:sizeof first];
     }
@@ -104,14 +105,15 @@ NSInteger TIOGuideIcon(TIOGuideRoute *r,NSInteger k){
 NSString *TIOGuideTurnText(NSInteger icon){
     switch(icon){case TIOGuideIconLeft:return @"Turn left";case TIOGuideIconRight:return @"Turn right";case TIOGuideIconSlightLeft:return @"Slight left";case TIOGuideIconSlightRight:return @"Slight right";case TIOGuideIconSharpLeft:return @"Sharp left";case TIOGuideIconSharpRight:return @"Sharp right";case TIOGuideIconUTurn:return @"Make a U-turn";case TIOGuideIconStraight:return @"Continue straight";case TIOGuideIconRoundabout:return @"Enter roundabout";case TIOGuideIconArrive:return @"Arrive";default:return @"Follow the route";}
 }
-NSString *TIOGuideRoadName(NSString *text){
+NSString *TIOGuideRoadName(NSString *text){return TIOGuideAbbreviate(TIOGuideFullRoadName(text));}
+NSString *TIOGuideFullRoadName(NSString *text){
     if(![text isKindOfClass:NSString.class]||!text.length)return @"";NSRange at=NSMakeRange(NSNotFound,0);
     for(NSString *key in @[@" onto ",@" on "]){at=[text rangeOfString:key options:NSCaseInsensitiveSearch|NSBackwardsSearch];if(at.location!=NSNotFound)break;}
     if(at.location==NSNotFound)return @"";NSString *name=[text substringFromIndex:NSMaxRange(at)];
     if([name.lowercaseString hasPrefix:@"your "]||[name.lowercaseString hasPrefix:@"the left"]||[name.lowercaseString hasPrefix:@"the right"])return @""; // "The destination is on your left"
     for(NSString *cut in @[@" toward",@" towards",@" for ",@", then"]){NSRange c=[name rangeOfString:cut options:NSCaseInsensitiveSearch];if(c.location!=NSNotFound)name=[name substringToIndex:c.location];}
     name=[name stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" .,;"]];
-    return [name.lowercaseString hasPrefix:@"the destination"]?@"":TIOGuideAbbreviate(name);
+    return [name.lowercaseString hasPrefix:@"the destination"]?@"":name;
 }
 NSString *TIOGuideAbbreviate(NSString *name){
     if(![name isKindOfClass:NSString.class])return @"";

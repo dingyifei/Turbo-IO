@@ -33,9 +33,11 @@ static void *label(void *ctx,void *parent,unsigned size){
 static void place(void *ctx,void *o,int x,int y,int w,int h){(void)ctx;tio_lv_obj_set_size(o,w,h);native_align(o,1,x,y);}
 static void buffer(void *ctx,void *o,const uint8_t *data,unsigned w,unsigned h){(void)ctx;stream_canvas_set_buffer(o,(void *)data,(int)w,(int)h,6);stream_invalidate(o);}
 static void text(void *ctx,void *o,const char *s){(void)ctx;nav_label_static(o,s);}
+extern void dc_text_mode(void *,unsigned);
+static void clip_text(void *ctx,void *o){(void)ctx;dc_text_mode(o,4);}
 static void visible(void *ctx,void *o,bool value){(void)ctx;m8_native_api.hidden(o,!value);}
 static void destroy(void *ctx,void *o){(void)ctx;m8_native_api.delete_root(o);}
-TNWidgets tn_lvgl_widgets(void){return (TNWidgets){NULL,idle,root,canvas,label,place,buffer,text,visible,destroy};}
+TNWidgets tn_lvgl_widgets(void){return (TNWidgets){NULL,idle,root,canvas,label,place,buffer,text,visible,destroy,clip_text};}
 bool tn_native_power(TNNativePower *p,enum TNPower action,bool owns_page){
  static const char owner[]="turbo_nav_v1";if(!p)return false;
  if(action==TN_POWER_RELEASE){if(p->token){nav_release_always_on(owner,p->token);p->token=0;}return true;}

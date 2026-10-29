@@ -76,7 +76,7 @@ static void leave(void *ctx){Control *c=ctx;c->waiting=false;if(c->view)(void)tn
 static TNUI api(Control *c){return (TNUI){c,available,enter,render,power,leave};}
 static void emit_caps(TNReply reply,bool capabilities){
  uint8_t raw[32],out[180];if(!tn_reply_encode(raw,sizeof raw,reply))return;
- if(capabilities&&reply.result==TN_OK){raw[24]=7;uint32_t crc=tn_crc(raw,28);for(unsigned i=0;i<4;i++)raw[28+i]=(uint8_t)(crc>>(8*i));}
+ if(capabilities&&reply.result==TN_OK){raw[24]=15;uint32_t crc=tn_crc(raw,28);for(unsigned i=0;i<4;i++)raw[28+i]=(uint8_t)(crc>>(8*i));}
  static const char prefix[]="{\"cmd\":\"turbo_nav_v1\",\"payload\":{\"value\":0,\"mode\":0,\"data\":\"",suffix[]="\"}}",hex[]="0123456789abcdef";
  enum{len=sizeof prefix-1+64+sizeof suffix-1};_Static_assert(len<128,"PB length width");
  const uint8_t head[]={8,1,16,6,26,len};memcpy(out,head,sizeof head);memcpy(out+sizeof head,prefix,sizeof prefix-1);
@@ -121,7 +121,7 @@ bool tn_slot_open(TNNavSlot *s){Control *c=control(s);if(!c||!safe_home()||c->ru
  if(!power(c,TN_POWER_WAKE_HOLD)){retire(c);return false;}return true;
 }
 static uint32_t u32(const uint8_t *p){return p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
-static bool envelope(const uint8_t *p,size_t n){return p&&n>=32&&n<=TN_PACKET_MAX&&!memcmp(p,"TNV1",4)&&p[4]==1&&p[5]>=TN_START&&p[5]<=TNR_POSE2&&!p[6]&&!p[7]&&u32(p+16)==n-32&&!u32(p+24)&&!u32(p+28)&&u32(p+8)&&u32(p+12);}
+static bool envelope(const uint8_t *p,size_t n){return p&&n>=32&&n<=TN_PACKET_MAX&&!memcmp(p,"TNV1",4)&&p[4]==1&&p[5]>=TN_START&&p[5]<=TNR_PASSING&&!p[6]&&!p[7]&&u32(p+16)==n-32&&!u32(p+24)&&!u32(p+28)&&u32(p+8)&&u32(p+12);}
 TIOImageResult tn_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  static const char name[]="turbo-navigation.tnv";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;
  if(f->complete!=1||f->declared!=f->received||!envelope(f->data,f->received))return TIO_BAD_SIZE;

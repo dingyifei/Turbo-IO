@@ -68,6 +68,9 @@ def ctest(name,files,inc):
         raise RuntimeError(name+' did not report PASS')
 seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
+    run('tmg6-layout-build',['xcrun','clang','-fobjc-arc','-fblocks','-O1','-g','-fsanitize=address,undefined','-framework','AppKit',FW4/'tests/tmg6_layout_preview.m',FW4/'src/navigation-runtime-v1/nav_view.c',FW4/'src/navigation-runtime-v1/nav_visual.c',FW4/'src/navigation-runtime-v1/nav_runtime.c',FW4/'src/music-runtime-v1/music.c',FW4/'src/common-v1/tio_text.c','-o',out/'tmg6-layout'])
+    run('tmg6-layout',[out/'tmg6-layout',out/'tmg6-preview'])
+    ctest('tmg6-passing',[FW4/'tests/tmg6_passing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
@@ -95,7 +98,7 @@ else:skip('tmg4-host','not selected by --only')
 seen.add('shared-sources')
 if only is None or 'shared-sources' in only:
     pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',
-        'navigation-runtime-v1/nav_map.c','navigation-runtime-v1/nav_map.h',
+        'navigation-runtime-v1/nav_map.c','navigation-runtime-v1/nav_map.h','navigation-runtime-v1/nav_text.h',
         'navigation-runtime-v1/nav_runtime.c','navigation-runtime-v1/nav_runtime.h',
         'music-runtime-v1/music.c','music-runtime-v1/music.h',
         'focus-v1/focus.c','focus-v1/focus.h','app-runtime-v1/app.c',
@@ -127,6 +130,7 @@ test('voice-exit',['tests/VoiceExitTests.m','Core.m'],extra=['-fmodules','-Wno-u
 test('stability',['RoadMap.m','nav_runtime.c','tests/StabilityTests.m'])
 test('coordinates',['RoadMap.m','nav_runtime.c','tests/CoordinateTests.m'])
 test('replay',['RoadMap.m','NativeNavigation.m','nav_runtime.c','tests/RoadMapTests.m'],[P/'tests/maps',out,'v2'])
+test('tmg6-navigation',['NativeNavigation.m','nav_runtime.c','tests/TMG6NavigationTests.m'],extra=['-Dcalloc=TNVTestCalloc'])
 test('tmg6-route',['NavigationGuidance.m','RoadMap.m','nav_runtime.c','tests/TMG6RouteTests.m'])
 test('guidance',['NavigationGuidance.m','tests/NavigationGuidanceTests.m'])
 test('labels',['RoadMap.m','NavigationGuidance.m','RoadTiles.m','nav_runtime.c','tests/RoadMapLabelTests.m'],[],['-DTIO_MAPKIT_ENABLED=1'])

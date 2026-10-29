@@ -59,8 +59,8 @@ bool tn_visual(const TNScene *s,bool stale,TNVisual *v){
  /* Eight-way position arrow; no libm or per-frame heap allocation. */
  static const int8_t dirs[8][2]={{0,-1},{1,-1},{1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1}};
  unsigned dir=((s->heading+22u)/45u)%8u;int dx=dirs[dir][0],dy=dirs[dir][1];
- v->position[0]=(TNXY){pos.x+dx*6,pos.y+dy*6};v->position[1]=(TNXY){pos.x-dx*4-dy*4,pos.y-dy*4+dx*4};
- v->position[2]=(TNXY){pos.x-dx*4+dy*4,pos.y-dy*4-dx*4};v->position[3]=v->position[0];
+ v->position[0]=(TNXY){pos.x+dx*8,pos.y+dy*8};v->position[1]=(TNXY){pos.x-dx*5-dy*5,pos.y-dy*5+dx*5};
+ v->position[2]=(TNXY){pos.x-dx*5+dy*5,pos.y-dy*5-dx*5};v->position[3]=v->position[0];
  char *p=v->distance;if(s->distance_m<1000){p=decimal(p,s->distance_m);append(p," m");}
  else {p=decimal(p,s->distance_m/1000);*p++='.';*p++=(char)('0'+s->distance_m%1000/100);append(p," km");}
  memcpy(v->turn,s->turn,sizeof v->turn);memcpy(v->road,s->road,sizeof v->road);v->turn[TN_TURN_MAX]=0;v->road[TN_ROAD_MAX]=0;

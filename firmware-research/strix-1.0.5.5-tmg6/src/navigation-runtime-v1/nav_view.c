@@ -1,4 +1,5 @@
 #include "nav_view.h"
+#include "nav_text.h"
 #include <string.h>
 static int mag(int v){return v<0?-v:v;}
 static void pixel(uint8_t *p,int w,int h,int x,int y,int radius,uint8_t gray){
@@ -30,12 +31,12 @@ static void draw(TNViewFrame *f){
  }
 }
 static void publish_names(TNView *v,TNViewFrame *f){
- TNWidgets *a=&v->api;
- (void)tnr_labels(&v->map_state,v->map_now,f->names);
- for(unsigned i=0;i<TNR_MAX_LABELS;i++){TNRLabelView *n=&f->names[i];
-  if(n->width){a->place(a->ctx,v->map_text[i],340+n->x,4+n->y,n->width,20);a->text_static(a->ctx,v->map_text[i],n->text);}
-  a->visible(a->ctx,v->map_text[i],n->width!=0);
- }
+ TNWidgets *a=&v->api;size_t n=0;while(n<191&&v->map_state.passing[n])n++;
+ unsigned font=tn_text_fit(v->map_state.passing,n,v->map_state.passing_breaks,524,f->passing,sizeof f->passing);
+ for(unsigned i=0;i<3;i++){bool show=n&&font==18-2*i;a->text_static(a->ctx,v->map_text[i],f->passing);a->visible(a->ctx,v->map_text[i],show);}
+ unsigned metres,pixels;f->scale[0]=0;bool scale=v->map_state.valid&&tnr_scale(v->map_state.scenes[v->map_state.bank].range,&metres,&pixels);
+ if(scale){unsigned at=0;if(metres>=100)f->scale[at++]=(char)('0'+metres/100);f->scale[at++]=(char)('0'+(metres/10)%10);f->scale[at++]=(char)('0'+metres%10);f->scale[at++]=' ';f->scale[at++]='m';f->scale[at]=0;}
+ a->text_static(a->ctx,v->map_text[3],f->scale);a->visible(a->ctx,v->map_text[3],scale);
 }
 static void publish(TNView *v,TNViewFrame *f){
  TNWidgets *a=&v->api;
@@ -59,12 +60,14 @@ bool tn_view_open(TNView *v,const TNWidgets *a,void *parent,const TNScene *s){
  v->icon=a->canvas(a->ctx,v->root);v->map=a->canvas(a->ctx,v->root);
  static const unsigned sizes[]={32,20,18,16,16};
  for(unsigned i=0;i<5;i++)v->text[i]=a->label(a->ctx,v->root,sizes[i]);
- for(unsigned i=0;i<TNR_MAX_LABELS;i++){v->map_text[i]=a->label(a->ctx,v->root,16);if(!v->map_text[i])goto fail;a->visible(a->ctx,v->map_text[i],false);}
+ for(unsigned i=0;i<TNR_MAX_LABELS;i++){v->map_text[i]=a->label(a->ctx,v->root,i<3?18-2*i:16);if(!v->map_text[i])goto fail;if(a->clip_text)a->clip_text(a->ctx,v->map_text[i]);a->visible(a->ctx,v->map_text[i],false);
+  a->place(a->ctx,v->map_text[i],i<3?8:345,i<3?2:147,i<3?524:68,i<3?24:20);}
  if(!v->icon||!v->map)goto fail;for(unsigned i=0;i<5;i++)if(!v->text[i])goto fail;
- a->place(a->ctx,v->icon,8,12,TN_ICON_W,TN_ICON_H);a->place(a->ctx,v->map,340,4,TN_MAP_W,TN_MAP_H);
- a->place(a->ctx,v->text[0],112,4,220,40);a->place(a->ctx,v->text[1],112,46,220,26);
- a->place(a->ctx,v->text[2],112,75,220,26);a->place(a->ctx,v->text[3],112,106,220,24);
- a->place(a->ctx,v->text[4],8,150,524,26);
+ a->place(a->ctx,v->icon,8,26,TN_ICON_W,TN_ICON_H);a->place(a->ctx,v->map,340,30,TN_MAP_W,TN_MAP_H);
+ a->place(a->ctx,v->text[0],144,28,188,42);a->place(a->ctx,v->text[1],144,74,188,30);
+ a->place(a->ctx,v->text[2],144,108,188,26);a->visible(a->ctx,v->text[2],false);a->place(a->ctx,v->text[3],144,112,188,30);
+ a->place(a->ctx,v->text[4],8,156,324,24);
+ for(unsigned i=0;i<5;i++)if(a->clip_text)a->clip_text(a->ctx,v->text[i]);
  draw(&v->frames[0]);publish(v,&v->frames[0]);v->open=true;a->visible(a->ctx,v->root,true);return true;
  fail:a->destroy(a->ctx,v->root);v->root=v->icon=v->map=NULL;memset(v->text,0,sizeof v->text);return false;
 }

@@ -7,7 +7,7 @@ static void scene(TNRState *s){uint8_t b[44]={1,0,0,0,64,1,1,0,2,0};b[16]=2;b[18
 static void pose(TNRState *s,int x,int y,unsigned heading,unsigned speed,uint32_t now){uint8_t b[14]={1};put16(b+4,x);put16(b+6,y);put16(b+8,heading);put16(b+12,speed);assert(tnr_receive(s,TNR_POSE2,b,14,now));}
 static TNRPose at(TNRState *s,uint32_t now){TNRPose p;assert(tnr_position(s,now,&p));return p;}
 int main(void){
- TNRState s={.smooth=true};scene(&s);uint8_t raster[TNR_W*TNR_H];tnr_draw(&s,200,raster);unsigned width=0;for(unsigned x=20;x<80;x++)if(raster[60*TNR_W+x])width++;assert(width>=6&&width<=7);
+ TNRState s={.smooth=true};scene(&s);uint8_t raster[TNR_W*TNR_H];tnr_draw(&s,200,raster);unsigned width=0;for(unsigned x=20;x<80;x++)if(raster[60*TNR_W+x])width++;assert(width==5);
  pose(&s,0,0,90,6,1000);int last=at(&s,5000).p.x;pose(&s,8,0,90,6,5000);assert(at(&s,5000).p.x==last);
  for(uint32_t t=5000;t<=13000;t+=50){int x=at(&s,t).p.x;assert(x>=last);assert(x-last<=2);last=x;}
  pose(&s,1000,0,90,6,13000);int before=at(&s,13000).p.x;assert(before==last);assert(at(&s,13180).p.x-before<=5);assert(at(&s,14000).p.x-before<=23);

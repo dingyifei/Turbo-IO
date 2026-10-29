@@ -190,6 +190,27 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
   NSArray *bbox=[NSJSONSerialization JSONObjectWithData:[[NSData alloc]initWithBase64EncodedString:b64 options:0] options:0 error:nil];dispatch_async(dispatch_get_main_queue(),^{if(epoch!=self->_epoch)return;if(features.count&&bbox.count==4){[self installFeatures:features bbox:bbox];self->_note=TIOText(@"联网路网就绪 · © OpenStreetMap · 非高德底图");}else self->_note=TIOText(@"图源格式或容量不合格 · 已拒绝");});
  });
 }
+// Names are chosen in geographic order along the remaining route, independent
+// of whether the legacy map-label budget selected a road for on-map lettering.
+- (NSString *)passingAt:(NSArray *)position route:(NSArray *)coords fallback:(NSString *)fallback {
+ NSArray *routes=Pieces(coords,position,nil,NO);NSString *next=@"",*current=fallback?:@"";double best=DBL_MAX,nearest=40;NSUInteger budget=200000,visited=0;
+ BOOL zh=[TIOUILanguage() isEqual:TIOLangChinese];
+ for(NSDictionary *f in _features){if(++visited>10000||!budget)break;NSDictionary *p=f[@"properties"],*g=f[@"geometry"];
+  if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"])continue;
+  NSString *name=Text(p[zh?@"name:zh":@"name:en"]);if(!name.length)name=Text(p[@"name"]);if(!name.length)continue;
+  for(NSArray *road in Pieces(g[@"coordinates"],position,_convert,YES))for(NSUInteger j=1;j<road.count&&budget;j++){
+   double cx=[road[j-1][0]doubleValue],cy=[road[j-1][1]doubleValue],dx=[road[j][0]doubleValue]-cx,dy=[road[j][1]doubleValue]-cy;
+   double distance=SegmentDistance(0,0,cx,cy,cx+dx,cy+dy);if(distance<nearest){nearest=distance;current=name;}
+   double along=0;for(NSArray *route in routes)for(NSUInteger k=1;k<route.count&&budget;k++){
+    --budget;double ax=[route[k-1][0]doubleValue],ay=[route[k-1][1]doubleValue],bx=[route[k][0]doubleValue]-ax,by=[route[k][1]doubleValue]-ay,len=hypot(bx,by),den=bx*dy-by*dx;
+    if(fabs(den)>1){double t=((cx-ax)*dy-(cy-ay)*dx)/den,u=((cx-ax)*by-(cy-ay)*bx)/den,d=along+t*len;
+     if(t>=0&&t<=1&&u>=0&&u<=1&&d>12&&d<best){best=d;next=name;}}
+    along+=len;
+   }
+  }
+ }
+ return next.length?next:current;
+}
 - (NSData *)scene:(NSArray *)coords origin:(NSArray *)origin{
  NSArray *routeParts=Pieces(coords,origin,nil,NO);NSUInteger proximityBudget=200000;NSMutableArray *items=[NSMutableArray new],*nameLines=[NSMutableArray new];NSUInteger visited=0; // name lines label drawn roads, never drawn themselves
  for(NSDictionary *f in _features){if(++visited>10000)break;NSDictionary *p=f[@"properties"],*g=f[@"geometry"];if(![p[@"kind"] isEqual:@"road"]||![g[@"type"] isEqual:@"LineString"]||![g[@"coordinates"] isKindOfClass:NSArray.class])continue;
@@ -248,6 +269,10 @@ static BOOL NearRoute(NSArray *part,NSArray *routes,NSUInteger *budget){
  }
  if(!_scene)return frame;NSArray *xy=XY(position,_origin);double x=[xy[0] doubleValue]*4,y=[xy[1] doubleValue]*4;if(fabs(x)>2000||fabs(y)>2000)return frame;
  uint8_t pose[12]={0};W32(pose,_generation);W16(pose+4,(int)lround(x));W16(pose+6,(int)lround(y));W16(pose+8,[frame[@"navHeading"] unsignedIntValue]%360);
- NSMutableDictionary *out=[frame mutableCopy];out[@"tnrScene"]=_scene;if(_scene2)out[@"tnrScene2"]=_scene2;out[@"tnrPose"]=[NSData dataWithBytes:pose length:12];out[@"tnrPoseAt"]=frame[@"tnrLocationAt"];double speed=[frame[@"navSpeed"] doubleValue];out[@"tnrSpeed"]=@((unsigned)lround(MIN(50.0,isfinite(speed)?MAX(0.0,speed):0.0)*4));return out;
+ NSMutableDictionary *out=[frame mutableCopy];
+ NSArray *remaining=coords;if(full){NSUInteger start=MIN([frame[@"tnrRouteStart"] unsignedIntegerValue],coords.count-2);NSMutableArray *r=[NSMutableArray arrayWithObject:position];[r addObjectsFromArray:[coords subarrayWithRange:NSMakeRange(start+1,coords.count-start-1)]];remaining=r;}
+ NSString *name=[self passingAt:position route:remaining fallback:Text(frame[@"tnrCurrentRoad"])];if(!name.length)name=Text(frame[@"tnrNextRoad"]);
+ out[@"tnrPassing"]=name.length?[NSString stringWithFormat:TIOText(@"nav.passing"),name]:@"";
+ out[@"tnrScene"]=_scene;if(_scene2)out[@"tnrScene2"]=_scene2;out[@"tnrPose"]=[NSData dataWithBytes:pose length:12];out[@"tnrPoseAt"]=frame[@"tnrLocationAt"];double speed=[frame[@"navSpeed"] doubleValue];out[@"tnrSpeed"]=@((unsigned)lround(MIN(50.0,isfinite(speed)?MAX(0.0,speed):0.0)*4));return out;
 }
 @end

@@ -408,6 +408,7 @@
 {"key":"hub.row.todoTest","en":"To-do protocol test","zh":"待办协议测试"}
 {"key":"hub.row.tools","en":"Model tools","zh":"模型工具"}
 {"key":"hub.row.tts","en":"Read answers aloud","zh":"朗读回答"}
+{"key":"hub.row.ttsSpeed","en":"Voice speed","zh":"朗读速度"}
 {"key":"hub.row.ttsTest","en":"Test voice","zh":"测试朗读"}
 {"key":"hub.row.watchRemote","en":"Apple Watch remote","zh":"Apple Watch 遥控"}
 {"key":"hub.section.assistant","en":"Assistant","zh":"助手"}
@@ -440,6 +441,7 @@
 {"key":"hub.status.tools","en":"Search, to-dos, knowledge","zh":"搜索、待办、知识库"}
 {"key":"hub.status.tts.off","en":"Off","zh":"已关闭"}
 {"key":"hub.status.tts.on","en":"On-device voice","zh":"本机语音"}
+{"key":"hub.status.ttsSpeed","en":"%.3g× · English and Chinese","zh":"%.3g× · 中英文通用"}
 {"key":"hub.title","en":"Turbo","zh":"Turbo"}
 {"key":"hub.title.singleImageTest","en":"Single image test","zh":"单张传图测试"}
 {"key":"hub.ttsTest.off.message","en":"Turn on “Read answers aloud” first.","zh":"请打开“回答同步朗读”开关。"}
@@ -500,6 +502,7 @@
 {"key":"music.timeout.always","en":"Always","zh":"常亮"}
 {"key":"music.title","en":"Music","zh":"音乐"}
 {"key":"music.watch","en":"Music · Spotify","zh":"音乐 · Spotify"}
+{"key":"nav.passing","en":"Passing %@","zh":"经过 %@"}
 {"key":"ota.auto.missing","en":"Not set yet · switch on, then off","zh":"尚未设置，请先开后关"}
 {"key":"ota.auto.off","en":"Off","zh":"已关闭"}
 {"key":"ota.auto.on","en":"On · tap Fix","zh":"已开启，点“处理”"}
@@ -2025,5 +2028,3 @@
 {"key":"；已请求退出，镜片未确认","en":"; exit requested, but not confirmed by glasses"}
 {"key":"；文件已结束，可在眼镜开页后重新查询","en":"; file complete; query again after opening the page on the glasses"}
 {"key":"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","en":"; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state."}
-{"key":"hub.row.ttsSpeed","en":"Voice speed","zh":"朗读速度"}
-{"key":"hub.status.ttsSpeed","en":"%.3g× · English and Chinese","zh":"%.3g× · 中英文通用"}

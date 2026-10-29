@@ -3,13 +3,18 @@
 #include "../app-runtime-v1/app_service.h"
 #include "music_service.h"
 #include "music.h"
+#include "../navigation-runtime-v1/nav_text.h"
 #include "music_input.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include <string.h>
 #include "../focus-v1/focus_service.h"
 #define TM_MESSAGE 0x544d5531u
-#define TM_LYRIC_ROWS 5u
+#define TM_LYRIC_ROWS 3u
+#define TM_CURRENT (TM_LYRIC_ROWS/2u)
+#define TM_TITLE TM_LYRIC_ROWS
+#define TM_STATUS (TM_LYRIC_ROWS+1u)
+#define TM_CONTROLS (TM_LYRIC_ROWS+2u)
 #define TM_LABELS (TM_LYRIC_ROWS+3u)
 typedef struct {
  _Alignas(64) uint8_t pixels[TM_COVER_BYTES];
@@ -57,22 +62,23 @@ static void deleted(void *e){Control *c=stream_event_user(e);if(!c)return;c->roo
 static void copy_text(char *out,size_t cap,const char *text){size_t n=strlen(text);if(n>=cap)n=cap-1;memcpy(out,text,n);out[n]=0;}
 static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root||c->closing||!c->api.idle(NULL))return false;
  Frame *f=&c->frames[1-c->front];memcpy(f->title,c->music.title,sizeof f->title);
- /* Five fixed viewport rows. Never clamp the window near first/last line:
-  * padding stays blank so the current lyric always occupies row 2. Static
+ /* Three bounded two-line viewport rows. Never clamp the window near first/last line:
+  * padding stays blank so the current lyric always occupies the middle row. Static
   * label pointers and cover bytes switch together only while DMA is idle. */
  for(unsigned i=0;i<TM_LYRIC_ROWS;i++)f->lyrics[i][0]=0;
- if(c->waiting){copy_text(f->title,sizeof f->title,tio_text(TT_MUSIC_TITLE,lang));copy_text(f->lyrics[2],sizeof f->lyrics[2],tio_text(TT_MUSIC_PICK,lang));}
- else {int line=tm_line(&c->music,now);for(unsigned i=0;i<TM_LYRIC_ROWS;i++)tm_text(&c->music,line+(int)i-2,f->lyrics[i],sizeof f->lyrics[i]);
-  if(!c->music.lyrics_ready)copy_text(f->lyrics[2],sizeof f->lyrics[2],tio_text(TT_MUSIC_LYRICS,lang));}
+ if(c->waiting){copy_text(f->title,sizeof f->title,tio_text(TT_MUSIC_TITLE,lang));copy_text(f->lyrics[TM_CURRENT],sizeof f->lyrics[TM_CURRENT],tio_text(TT_MUSIC_PICK,lang));}
+ else {int line=tm_line(&c->music,now);for(unsigned i=0;i<TM_LYRIC_ROWS;i++)tm_text(&c->music,line+(int)i-(int)TM_CURRENT,f->lyrics[i],sizeof f->lyrics[i]);
+  if(!c->music.lyrics_ready)copy_text(f->lyrics[TM_CURRENT],sizeof f->lyrics[TM_CURRENT],tio_text(TT_MUSIC_LYRICS,lang));}
  if(c->music.cover_ready)tm_square_cover(c->music.cover,f->pixels);
  else for(unsigned y=0;y<144;y++)for(unsigned x=0;x<144;x++){f->pixels[y*144+x]=(uint8_t)(45+(x+y)%64);}
  unsigned p=tm_position(&c->music,now)/1000,d=c->music.duration_ms/1000;
  const char *state=c->music.playing?tio_text(TT_MUSIC_PLAYING,lang):tio_text(TT_MUSIC_PAUSED,lang);memset(f->status,0,sizeof f->status);unsigned k=0;while(state[k]){f->status[k]=state[k];k++;}
  f->status[k++]=' ';unsigned vals[4]={p/60%100,p%60,d/60%100,d%60};for(unsigned j=0;j<4;j++){f->status[k++]=(char)('0'+vals[j]/10);f->status[k++]=(char)('0'+vals[j]%10);if(j!=3)f->status[k++]=j==1?'/':':';}
  copy_text(f->controls,sizeof f->controls,tio_text(c->music.playing?TT_MUSIC_CONTROLS_PAUSE:TT_MUSIC_CONTROLS_PLAY,lang));
+ for(unsigned i=0;i<TM_LYRIC_ROWS;i++){char raw[244];memcpy(raw,f->lyrics[i],sizeof raw);raw[sizeof raw-1]=0;tn_text_two_lines(raw,366,tm_lyric_slot(i).font,f->lyrics[i],sizeof f->lyrics[i]);}
  c->api.buffer(NULL,c->canvas,f->pixels,144,144);
  for(unsigned i=0;i<TM_LYRIC_ROWS;i++)c->api.text_static(NULL,c->labels[i],f->lyrics[i]);
- c->api.text_static(NULL,c->labels[5],f->title);c->api.text_static(NULL,c->labels[6],f->status);c->api.text_static(NULL,c->labels[7],f->controls);c->front=1-c->front;c->last_frame=now;return true;
+ c->api.text_static(NULL,c->labels[TM_TITLE],f->title);c->api.text_static(NULL,c->labels[TM_STATUS],f->status);c->api.text_static(NULL,c->labels[TM_CONTROLS],f->controls);c->front=1-c->front;c->last_frame=now;return true;
 }
 static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
  if(c->root)return wake(c);TNNavSlot *n=navslot(c->app);if(!n||tap_service_visible(c->app)||tf_slot_visible(n->focus)||tn_slot_visible(n)||((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page)return false;
@@ -83,11 +89,11 @@ static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
  c->focus_transition=true;nav_set_state(manager(),1);c->focus_transition=false;
  if(!owns(c)||c->closing||!paired()||!c->api.idle(NULL))return false;c->root=c->api.root(NULL,ptr(c->app,4));if(!c->root)return false;
  c->api.place(NULL,c->root,0,0,540,180);c->canvas=c->api.canvas(NULL,c->root);if(!c->canvas)goto fail;c->api.place(NULL,c->canvas,8,0,144,144);
- const unsigned fonts[]={18,20,24,20,18,14,14,14};const uint8_t opacity[]={85,150,255,150,85,190,130,230};
- for(unsigned i=0;i<TM_LABELS;i++){c->labels[i]=c->api.label(NULL,c->root,fonts[i]);if(!c->labels[i])goto fail;
-  if(i<TM_LYRIC_ROWS)c->api.place(NULL,c->labels[i],166,8+(int)i*27,366,27);
-  else if(i==7)c->api.place(NULL,c->labels[i],166,154,366,24);
-  else c->api.place(NULL,c->labels[i],16,i==5?144:162,140,16);
+ const uint8_t opacity[]={150,255,150,190,130,230};
+ for(unsigned i=0;i<TM_LABELS;i++){c->labels[i]=c->api.label(NULL,c->root,i<TM_LYRIC_ROWS?tm_lyric_slot(i).font:14);if(!c->labels[i])goto fail;
+  if(i<TM_LYRIC_ROWS){TMLyricSlot slot=tm_lyric_slot(i);c->api.place(NULL,c->labels[i],166,slot.top,366,slot.height);if(c->api.clip_text)c->api.clip_text(NULL,c->labels[i]);}
+  else if(i==TM_CONTROLS)c->api.place(NULL,c->labels[i],166,154,366,24);
+  else c->api.place(NULL,c->labels[i],16,i==TM_TITLE?144:162,140,16);
   menu_opa(c->labels[i],opacity[i],0);}
  if(!stream_add_event(c->root,deleted,0x24,c))goto fail;
  if(!render(c,stream_tick()))goto fail;c->api.visible(NULL,c->root,true);if(!wake(c))goto fail;return true;

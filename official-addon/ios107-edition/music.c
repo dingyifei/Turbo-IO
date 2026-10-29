@@ -55,3 +55,8 @@ int tm_line(const TMMusic *m,uint32_t now){if(!m->lyrics_ready)return -1;uint32_
 void tm_text(const TMMusic *m,int i,char *out,size_t n){if(!n)return;out[0]=0;if(i<0||i>=m->line_count||!m->lyrics_ready)return;TMLine l=m->lines[i];size_t k=l.length;if(k>=n){k=n-1;while(k&&((m->lyrics[l.offset+k]&0xc0)==0x80))k--;}memcpy(out,m->lyrics+l.offset,k);out[k]=0;}
 bool tm_expired(const TMMusic *m,uint32_t now){return (m->mode&&(uint32_t)(now-m->wake_tick)>=(m->mode==1?30000u:60000u))||(uint32_t)(now-m->last_contact)>30000;}
 void tm_square_cover(const uint8_t *src,uint8_t *out){memcpy(out,src,TM_COVER_BYTES);}
+
+TMLyricSlot tm_lyric_slot(unsigned row){
+ static const TMLyricSlot slots[]={{0,44,18},{48,56,24},{108,44,18}};
+ return row<3?slots[row]:(TMLyricSlot){0,0,0};
+}

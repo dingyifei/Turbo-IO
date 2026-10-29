@@ -66,7 +66,7 @@ bool td_sample(TDDiagnostics *d,uint32_t now,bool connected,TDProbe probe,TDCloc
  uint32_t end=clock?clock(ctx):began,elapsed=end-began;
  if(!td_active(d,end))return false;
  d->last_sample=end;d->sampled=true;d->sample_seq++;if(!d->sample_seq)d->sample_seq=1;
- memset(out,0,sizeof *out);out->caps=d->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL;out->detent=TK_DETENT_RAW;out->build=d->build;out->session=d->session;
+ memset(out,0,sizeof *out);out->caps=d->build==TD_BUILD_TMG6?TD_CAPS_TMG6:d->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL;out->detent=TK_DETENT_RAW;out->build=d->build;out->session=d->session;
  out->sequence=d->sample_seq;out->tick_ms=end;out->probe_ms=elapsed;out->valid=d->valid;
  memcpy(out->values,d->values,sizeof out->values);out->event_count=d->count;out->events_lost=d->lost;
  /* A slow call cannot be preempted safely. Stop subsequent probes; return the
@@ -85,7 +85,7 @@ static uint64_t get64(const uint8_t *p){uint64_t n=0;for(unsigned i=0;i<8;i++)n|
 static void put64(uint8_t *p,uint64_t n){for(unsigned i=0;i<8;i++)p[i]=(uint8_t)(n>>(8*i));}
 static int64_t signed64(uint64_t n){return n<=INT64_MAX?(int64_t)n:-(int64_t)(~n)-1;}
 static bool sample_valid(const TDSample *s){
- if(!s||!s->session||!s->sequence||(s->build!=TD_BUILD_TMG4&&s->build!=TD_BUILD_TMG5)||s->kind>TD_CALIBRATION||(s->valid>>TD_RESERVED)||s->event_count>TD_RING||s->flags>1||(s->caps&~(s->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL))||(s->extension_valid&~15u)||s->detent!=TK_DETENT_RAW||s->language>1||s->language_source>2||s->calibration_state>TK_OVERFLOW||s->calibration_result>TK_OVERFLOW_RESULT||(s->settings_flags&~7u))return false;
+ if(!s||!s->session||!s->sequence||(s->build!=TD_BUILD_TMG4&&s->build!=TD_BUILD_TMG5&&s->build!=TD_BUILD_TMG6)||s->kind>TD_CALIBRATION||(s->valid>>TD_RESERVED)||s->event_count>TD_RING||s->flags>1||(s->caps&~(s->build==TD_BUILD_TMG6?TD_CAPS_TMG6:s->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL))||(s->extension_valid&~15u)||s->detent!=TK_DETENT_RAW||s->language>1||s->language_source>2||s->calibration_state>TK_OVERFLOW||s->calibration_result>TK_OVERFLOW_RESULT||(s->settings_flags&~7u))return false;
  for(unsigned i=0;i<TD_METRICS;i++)if(!(s->valid&(1u<<i))&&s->values[i])return false;
  if(s->kind==TD_SAMPLE&&s->calibration_result)return false;
  if(s->extension_valid&TD_EXT_NAND){if(!s->nand_total||s->nand_total>UINT32_MAX||s->nand_available>s->nand_total)return false;}else if(s->nand_total||s->nand_available)return false;
@@ -100,11 +100,11 @@ bool td_encode(const TDSample *s,uint8_t *p,size_t n){
  if(!p||n!=TD_WIRE_BYTES||!sample_valid(s))return false;memset(p,0,n);memcpy(p,"TDG1",4);p[4]=2;p[5]=s->kind;p[6]=0;p[7]=1;
  put(p+8,s->session);put(p+12,s->sequence);put(p+16,s->tick_ms);put(p+20,s->probe_ms);put(p+24,s->valid);put(p+28,s->build);
  for(unsigned i=0;i<TD_METRICS;i++)put(p+32+4*i,s->values[i]);put(p+112,s->event_count);put(p+116,s->events_lost);put(p+120,s->flags);
- memcpy(p+124,s->build==TD_BUILD_TMG5?"TMG5":"TMG4",4);memcpy(p+128,s->build_sha,32);put(p+160,s->caps);put(p+164,s->extension_valid);put64(p+168,s->nand_total);put64(p+176,s->nand_available);put(p+184,s->tile_generation);put(p+188,s->detent);
+ memcpy(p+124,s->build==TD_BUILD_TMG6?"TMG6":s->build==TD_BUILD_TMG5?"TMG5":"TMG4",4);memcpy(p+128,s->build_sha,32);put(p+160,s->caps);put(p+164,s->extension_valid);put64(p+168,s->nand_total);put64(p+176,s->nand_available);put(p+184,s->tile_generation);put(p+188,s->detent);
  p[192]=s->language;p[193]=s->language_source;p[194]=s->calibration_state;p[195]=s->calibration_result;put(p+196,s->calibration_window);put(p+200,s->calibration_elapsed);put(p+204,s->calibration_samples);put64(p+208,(uint64_t)s->calibration_net);put64(p+216,s->calibration_absolute);put(p+224,s->calibration_sequence);put(p+228,s->settings_flags);put(p+252,td_crc(p,252));return true;
 }
 bool td_decode(const uint8_t *p,size_t n,TDSample *s){
- if(!p||!s||n!=TD_WIRE_BYTES||memcmp(p,"TDG1",4)||p[4]!=2||p[5]>TD_CALIBRATION||p[6]||p[7]!=1||memcmp(p+124,get(p+28)==TD_BUILD_TMG5?"TMG5":"TMG4",4)||get(p+252)!=td_crc(p,252))return false;
+ if(!p||!s||n!=TD_WIRE_BYTES||memcmp(p,"TDG1",4)||p[4]!=2||p[5]>TD_CALIBRATION||p[6]||p[7]!=1||memcmp(p+124,get(p+28)==TD_BUILD_TMG6?"TMG6":get(p+28)==TD_BUILD_TMG5?"TMG5":"TMG4",4)||get(p+252)!=td_crc(p,252))return false;
  for(unsigned i=232;i<252;i++)if(p[i])return false;TDSample v;memset(&v,0,sizeof v);v.kind=p[5];v.session=get(p+8);v.sequence=get(p+12);v.tick_ms=get(p+16);v.probe_ms=get(p+20);v.valid=get(p+24);v.build=get(p+28);
  for(unsigned i=0;i<TD_METRICS;i++)v.values[i]=get(p+32+4*i);v.event_count=get(p+112);v.events_lost=get(p+116);v.flags=get(p+120);memcpy(v.build_sha,p+128,32);v.caps=get(p+160);v.extension_valid=get(p+164);v.nand_total=get64(p+168);v.nand_available=get64(p+176);v.tile_generation=get(p+184);v.detent=get(p+188);
  v.language=p[192];v.language_source=p[193];v.calibration_state=p[194];v.calibration_result=p[195];v.calibration_window=get(p+196);v.calibration_elapsed=get(p+200);v.calibration_samples=get(p+204);v.calibration_net=signed64(get64(p+208));v.calibration_absolute=get64(p+216);v.calibration_sequence=get(p+224);v.settings_flags=get(p+228);

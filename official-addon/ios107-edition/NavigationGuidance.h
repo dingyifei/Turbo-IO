@@ -16,6 +16,7 @@ FOUNDATION_EXPORT const double TIOGuideOffRouteMeters,TIOGuideArriveMeters;
 @interface TIOGuideRoute : NSObject
 @property(readonly) NSArray<TIOGuideStep *> *steps;
 @property(readonly) double totalMeters,expectedSeconds;
+@property(readonly) NSString *initialRoad;
 @property(readonly) NSArray<NSArray<NSNumber *> *> *points;
 + (instancetype)routeWithSteps:(NSArray<TIOGuideStep *> *)steps expectedSeconds:(double)seconds;
 @end
@@ -35,6 +36,7 @@ NSArray<NSArray<NSNumber *> *> *TIOGuideUpcoming(TIOGuideRoute *route,TIOGuideSn
 NSInteger TIOGuideIcon(TIOGuideRoute *route,NSInteger step);
 NSString *TIOGuideTurnText(NSInteger icon);
 NSString *TIOGuideRoadName(NSString *instructions);
+NSString *TIOGuideFullRoadName(NSString *instructions);
 // Road entered at the end of step k. MapKit step text describes the maneuver at the end of the step's polyline.
 NSString *TIOGuideManeuverRoad(TIOGuideRoute *route,NSInteger k);
 NSString *TIOGuideAbbreviate(NSString *name);

@@ -1,3 +1,15 @@
+# TMG6 candidate
+
+TMG6 keeps the 25 existing patch sites and unchanged sole raw carousel edit. New navigation opcode 12 is a 224-byte body: map generation, UTF-8 byte count, reserved zeros, 192-byte zero-padded text, and 24 bytes of word-end offsets. The phone sends it only after nav capability bit 3 is acknowledged; TMG5 peers advertising caps 7 retain their understood messages and presentation. The geographic map receives remaining route geometry independently of the turn schematic. FW6 uses a five-pixel route with a seven-pixel contrast halo and a larger centered heading-up marker.
+
+The fixed Passing line chooses the next crossing street from route/road data, then the current road, with unabridged route text as fallback when map data has no name. It tries stock-font sizes 18, 16 and 14 before word-boundary ellipsis. The map scale uses the same stock font family rather than enlarged bitmap digits. Three lyric slots each accept at most two explicitly wrapped lines and are clipped to nonoverlapping bounds. Native widgets and static text buffers remain allocated/owned through the existing lifecycle.
+
+## Knob calibration observation
+
+The user reports approximately **2000 raw counts per full rotation** on TMG5. This is a human-guided one-turn observation, not an independently measured hardware CPR specification. No calibration, scaling, detent constant, or wheel behavior changes are made; the existing 600-unit heuristic remains unchanged.
+
+Host previews use production geometry/raster/layout with explicitly documented macOS surrogate fonts; exact stock glyph appearance and physical acceptance remain human checks. C10 must be used with TMG5 before any optional human flash. Rollback is C9 plus ZIP5, or C8 plus ZIP4. The historical candidate records below remain historical.
+
 # TMG5 candidate
 
 ## TMG5 candidate — current development branch

@@ -2,8 +2,9 @@
 #import "TDPhoneReply.h"
 #include "diagnostics.h"
 #include <assert.h>
+static uint32_t SampleBuild=TD_BUILD_TMG4;
 static NSData *Packet(TDCommand q,unsigned kind,unsigned state,int64_t net,uint64_t absolute){
- TDSample s={.build=TD_BUILD_TMG4,.kind=kind,.session=q.session,.sequence=q.sequence,.caps=TD_CAPS_ALL,.detent=600,.extension_valid=7,.nand_total=128000,.nand_available=64000,.tile_generation=5,.language=1,.language_source=2,.settings_flags=3,.valid=1u<<TD_LV_USED};s.values[TD_LV_USED]=1024;memset(s.build_sha,0xab,32);
+ TDSample s={.build=SampleBuild,.kind=kind,.session=q.session,.sequence=q.sequence,.caps=TD_CAPS_ALL,.detent=600,.extension_valid=7,.nand_total=128000,.nand_available=64000,.tile_generation=5,.language=1,.language_source=2,.settings_flags=3,.valid=1u<<TD_LV_USED};s.values[TD_LV_USED]=1024;memset(s.build_sha,0xab,32);
  if(state){s.extension_valid|=TD_EXT_CALIBRATION;s.calibration_state=state;s.calibration_window=q.session;s.calibration_elapsed=2000;s.calibration_samples=8;s.calibration_net=net;s.calibration_absolute=absolute;s.calibration_sequence=q.sequence;}
  uint8_t bytes[TD_WIRE_BYTES];assert(td_encode(&s,bytes,sizeof bytes));return [NSData dataWithBytes:bytes length:sizeof bytes];
 }
@@ -34,6 +35,7 @@ static void RejectedStart(void){@autoreleasepool{
 }}
 
 int main(void){@autoreleasepool{
+ for(unsigned family=4;family<=6;family++){SampleBuild=(family<<16)|1;__block TDCommand q;TDRuntimeSession *check=[[TDRuntimeSession alloc]initWithPeer:^{return @"family";} allowed:^BOOL{return YES;} clock:^{return 100.;} send:^BOOL(TDCommand command){q=command;return YES;}];assert([check query]);assert([check receive:Packet(q,TD_STATUS,0,0,0) device:@"family"]);assert(([check.status[@"sample"][@"firmware"] isEqual:[NSString stringWithFormat:@"TMG%u",family]]));}SampleBuild=TD_BUILD_TMG4;
  RejectedStart();LeaseOrdering();
  __block NSString *peer=@"peer-one";__block BOOL allowed=YES;__block double now=100;__block TDCommand sent={0};__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
  TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return peer;} allowed:^BOOL{return allowed;} clock:^{return now;} send:^BOOL(TDCommand q){sent=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;

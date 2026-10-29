@@ -15,12 +15,14 @@ typedef struct {
  void (*text_static)(void *,void *,const char *);
  void (*visible)(void *,void *,bool);
  void (*destroy)(void *,void *);
+ void (*clip_text)(void *,void *);
 } TNWidgets;
 #define TN_ICON_W 128u
 #define TN_ICON_H 128u
 #define TN_MAP_W 192u
 #define TN_MAP_H 144u
 typedef struct {
+ char passing[196],scale[16];
  TNVisual visual;
  TNRLabelView names[TNR_MAX_LABELS];
  _Alignas(64) uint8_t icon[TN_ICON_W*TN_ICON_H];

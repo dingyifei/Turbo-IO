@@ -1,6 +1,8 @@
 #import <Foundation/Foundation.h>
 #import "NavigationGuidance.h"
 #import "RoadMap.h"
+#import "TIOLanguage.h"
+@interface TIORoadMap(TMG6Tests) - (void)installFeatures:(NSArray *)features bbox:(NSArray *)bbox; @end
 #include "nav_map.h"
 #include <assert.h>
 #include <math.h>
@@ -29,5 +31,15 @@ int main(void){@autoreleasepool{
  NSDictionary *df=[map decorate:input coordinates:ahead];TNRState ds={0};NSData *dd=df[@"tnrScene2"];assert(tnr_receive(&ds,TNR_SCENE2,dd.bytes,dd.length,1000));tnr_draw(&ds,1000,image);assert(image[62*TNR_W+120]>0);
  // A replacement route at the same step/position invalidates cached geometry.
  input[@"tnrRoute"]=@[P(0,0),P(0,40),P(-40,40),P(-40,80)];NSDictionary *rf=[map decorate:input coordinates:ahead];NSData *rd=rf[@"tnrScene2"];assert(![rd isEqual:dd]);TNRState rs={0};assert(tnr_receive(&rs,TNR_SCENE2,rd.bytes,rd.length,1000));tnr_draw(&rs,1000,image);assert(image[62*TNR_W+72]>0&&image[62*TNR_W+120]==0);
+ // Fixed label chooses the nearest upcoming crossing, then the current road.
+ TIOSetUILanguageOverride(TIOLangEnglish);NSMutableArray *roads=[NSMutableArray new];
+ NSArray *segments=@[@[P(0,-100),P(0,160)],@[P(-80,20),P(80,20)],@[P(-80,40),P(80,40)]];
+ NSArray *names=@[@"Main Street",@"First Crossing Boulevard",@"Second Crossing Avenue"],*chinese=@[@"中山路",@"南京西路",@"人民大道"];
+ for(unsigned i=0;i<3;i++){NSArray *a=segments[i][0],*b=segments[i][1];[roads addObject:@{@"properties":@{@"kind":@"road",@"highway":@"primary",@"name:en":names[i],@"name:zh":chinese[i]},@"geometry":@{@"type":@"LineString",@"coordinates":@[@[a[1],a[0]],@[b[1],b[0]]]}}];}
+ [map installFeatures:roads bbox:@[@37,@(-123),@38,@(-122)]];input[@"tnrRoute"]=@[P(0,0),P(0,160)];input[@"tnrLocation"]=P(0,0);
+ assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing First Crossing Boulevard"]);
+ input[@"tnrLocation"]=P(0,30);assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing Second Crossing Avenue"]);
+ input[@"tnrLocation"]=P(0,50);assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"Passing Main Street"]);
+ TIOSetUILanguageOverride(TIOLangChinese);input[@"tnrLocation"]=P(0,0);assert([([map decorate:input coordinates:ahead])[@"tnrPassing"] isEqual:@"经过 南京西路"]);
  puts("PASS route geometry beyond two maneuvers survives the real scene encoder and rasterizer");return 0;
 } }

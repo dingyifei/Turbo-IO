@@ -291,6 +291,10 @@
     "tests/TMG6RouteTests.m": {
       "status": "run",
       "group": "tmg6-route"
+    },
+    "tests/TMG6NavigationTests.m": {
+      "status": "run",
+      "group": "tmg6-navigation"
     }
   }
 }

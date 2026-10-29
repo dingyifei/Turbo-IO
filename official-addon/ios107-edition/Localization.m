@@ -508,6 +508,7 @@ static const TIOStringRow Rows[]={
     {"music.timeout.always","Always","常亮"},
     {"music.title","Music","音乐"},
     {"music.watch","Music · Spotify","音乐 · Spotify"},
+    {"nav.passing","Passing %@","经过 %@"},
     {"ota.auto.missing","Not set yet · switch on, then off","尚未设置，请先开后关"},
     {"ota.auto.off","Off","已关闭"},
     {"ota.auto.on","On · tap Fix","已开启，点“处理”"},

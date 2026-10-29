@@ -5,19 +5,19 @@
 typedef struct {bool busy;unsigned alloc,fail_at,destroyed,buffers,texts;uintptr_t objects[12];const uint8_t *pixels[2];const char *strings[9];} Mock;
 static bool idle(void *p){return !((Mock *)p)->busy;}
 static void *create(void *p,void *parent){assert(parent);Mock *m=p;unsigned n=++m->alloc;if(n==m->fail_at)return NULL;assert(n<=12);return &m->objects[n-1];}
-static void *label(void *p,void *parent,unsigned size){assert(size>=16&&size<=32);return create(p,parent);}
+static void *label(void *p,void *parent,unsigned size){assert(size>=14&&size<=32);return create(p,parent);}
 static void place(void *p,void *obj,int x,int y,int w,int h){(void)p;assert(obj&&x>=0&&y>=0&&x+w<=540&&y+h<=180);}
 static void buffer(void *p,void *obj,const uint8_t *bytes,unsigned w,unsigned h){assert(obj&&bytes);Mock *m=p;assert((w==128&&h==128)||(w==192&&h==144));m->pixels[m->buffers%2]=bytes;m->buffers++;}
 static void text(void *p,void *obj,const char *s){assert(obj&&s);Mock *m=p;ptrdiff_t slot=(uintptr_t *)obj-m->objects-3;assert(slot>=0&&slot<9);m->strings[slot]=s;m->texts++;}
 static void visible(void *p,void *obj,bool yes){(void)p;(void)yes;assert(obj);}
 static void destroy(void *p,void *obj){assert(obj);((Mock *)p)->destroyed++;}
-static TNWidgets api(Mock *m){return (TNWidgets){m,idle,create,create,label,place,buffer,text,visible,destroy};}
+static TNWidgets api(Mock *m){return (TNWidgets){m,idle,create,create,label,place,buffer,text,visible,destroy,NULL};}
 int main(void){
  TNScene s={.icon=TN_RIGHT,.distance_m=80,.point_count=3,.position={512,512},.heading=90};
  strcpy(s.road,"测试道路");strcpy(s.turn,"前方右转");s.points[0]=(TNPoint){512,1023};s.points[1]=(TNPoint){512,512};s.points[2]=(TNPoint){1023,512};
  for(unsigned fail=1;fail<=12;fail++){Mock m={.fail_at=fail};TNWidgets a=api(&m);TNView v={0};
   assert(!tn_view_open(&v,&a,&m,&s));assert(!v.open&&!v.root);assert(m.destroyed==(fail!=1));}
- Mock m={0};TNWidgets a=api(&m);TNView v={0};assert(tn_view_open(&v,&a,&m,&s));assert(m.alloc==12&&m.buffers==2&&m.texts==5);
+ Mock m={0};TNWidgets a=api(&m);TNView v={0};assert(tn_view_open(&v,&a,&m,&s));assert(m.alloc==12&&m.buffers==2&&m.texts==9);
  assert(!strcmp(m.strings[0],"80 m"));const uint8_t *first=m.pixels[0];uint32_t original=tn_crc(first,128*128);
  assert(original!=tn_crc((const uint8_t[128*128]){0},128*128));
  m.busy=true;s.icon=TN_LEFT;s.distance_m=60;assert(!tn_view_update(&v,&s,false));assert(m.buffers==2&&tn_crc(first,128*128)==original);

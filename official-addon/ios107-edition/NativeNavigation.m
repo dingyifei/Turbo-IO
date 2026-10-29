@@ -4,6 +4,7 @@ static unsigned U16(const uint8_t *p){return (unsigned)p[0]|((unsigned)p[1]<<8);
 #include <math.h>
 #include <stdlib.h>
 #include "nav_map.h"
+#include "nav_text.h"
 static uint32_t U32(const uint8_t *p){return p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
 // Integer narrowing wraps modulo 2^32; the receiver subtracts unsigned times.
 static uint32_t MirrorMilliseconds(NSTimeInterval seconds){return (uint32_t)(uint64_t)(seconds*1000);}
@@ -31,6 +32,20 @@ static void Clip(char *out,NSUInteger cap,id value){
   if([s lengthOfBytesUsingEncoding:NSUTF8StringEncoding]+[c lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>=cap){*stop=YES;return;}[s appendString:c];}];
  NSData *d=[s dataUsingEncoding:NSUTF8StringEncoding];memcpy(out,d.bytes,d.length);
 }
+static NSData *PassingBody(NSData *map,id value){
+ if(map.length<4||![value isKindOfClass:NSString.class])return nil;
+ // Retain whole Unicode words before the bounded wire limit, including Chinese
+ // boundaries supplied by Foundation rather than guessed by the firmware.
+ if([value length]>4096)value=[value substringToIndex:4096];
+ NSMutableString *clean=[NSMutableString new];[value enumerateSubstringsInRange:NSMakeRange(0,[value length]) options:NSStringEnumerationByComposedCharacterSequences usingBlock:^(NSString *c,NSRange r,NSRange all,BOOL *stop){NSData *d=[c dataUsingEncoding:NSUTF8StringEncoding];if(tn_text_width(d.bytes,d.length,14)!=UINT32_MAX)[clean appendString:c];}];
+ NSMutableIndexSet *ends=[NSMutableIndexSet new];[clean enumerateSubstringsInRange:NSMakeRange(0,clean.length) options:NSStringEnumerationByWords usingBlock:^(NSString *word,NSRange r,NSRange all,BOOL *stop){[ends addIndex:NSMaxRange(r)];}];
+ if([clean lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>191){__block NSUInteger end=0;[ends enumerateIndexesUsingBlock:^(NSUInteger i,BOOL *stop){if([[clean substringToIndex:i] lengthOfBytesUsingEncoding:NSUTF8StringEncoding]<=188)end=i;}];clean=[[clean substringToIndex:end] mutableCopy];[clean appendString:@"…"];}
+ NSData *text=[clean dataUsingEncoding:NSUTF8StringEncoding];if(text.length>191)return nil;
+ NSMutableData *body=[NSMutableData dataWithLength:224];uint8_t *b=body.mutableBytes;memcpy(b,map.bytes,4);b[4]=(uint8_t)text.length;memcpy(b+8,text.bytes,text.length);
+ [clean enumerateSubstringsInRange:NSMakeRange(0,clean.length) options:NSStringEnumerationByWords usingBlock:^(NSString *word,NSRange r,NSRange all,BOOL *stop){NSUInteger offset=[[clean substringToIndex:NSMaxRange(r)] lengthOfBytesUsingEncoding:NSUTF8StringEncoding];if(offset<192)b[200+offset/8]|=1u<<(offset%8);}];
+ if(text.length)b[200+text.length/8]|=1u<<(text.length%8);
+ return tnr_body_valid(TNR_PASSING,body.bytes,body.length)?body:nil;
+}
 static BOOL Number(id v,double max){return [v isKindOfClass:NSNumber.class]&&isfinite([v doubleValue])&&[v doubleValue]>=0&&[v doubleValue]<=max;}
 NSDictionary *TNVNormalizeCoordinates(NSArray *coords){
  if(![coords isKindOfClass:NSArray.class]||coords.count<2||coords.count>512)return @{};
@@ -53,6 +68,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 @implementation TNVSession{
  NSString *_device,*_task,*_nativeTask,*_note;uint32_t _sid,_seq;NSTimeInterval(^_clock)(void);void(^_sender)(NSData *,NSString *,TNVSubmitted);void(^_cleanup)(NSString *);
  NSData *_packet,*_latest,*_committed,*_sending;NSMutableArray *_early;BOOL _active,_fileBusy,_ack,_submitted,_failed,_stopping,_always;
+ NSData *_passingLatest,*_passingCommitted;BOOL _passingCap;
  NSData *_mapLatest,*_map2Latest,*_mapCommitted,*_mapSending,*_poseLatest,*_poseCommitted;NSTimeInterval _poseAt,_lastPose;NSUInteger _maps,_poses;BOOL _extended,_probed,_mapV2,_paused,_wantFarewell,_farewell,_background;NSTimeInterval _backoffUntil;NSUInteger _files;
  NSString *_source;double _ackMs,_fileMs,_commitMs,_poseAgeMs;NSUInteger _wireBytes;
  BOOL _pose2;TNRState *_mirror;unsigned _speedLatest,_speedCommitted;NSTimeInterval _lastCorrection;BOOL _sceneSinceCorrection;double _pose2MaxError;
@@ -74,8 +90,9 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(op==TNR_SCENE){_mapCommitted=_sending;_poseCommitted=nil;_maps++;}
  if(op==TNR_SCENE2){_mapCommitted=_mapSending;_mapSending=nil;_poseCommitted=[_sending subdataWithRange:NSMakeRange(_sending.length-12,12)];_lastPose=_clock();_maps++;_poses++;}
  if(op==TN_QUERY)_probed=YES;
+ if(op==TNR_PASSING)_passingCommitted=_sending;
  if(op==TNR_POSE2){_lastCorrection=_clock();_speedCommitted=U16((const uint8_t *)_sending.bytes+12);_poseCommitted=_sending;_lastPose=_clock();_poses++;_sceneSinceCorrection=NO;}
- if(op==TNR_CLEAR){_mapCommitted=nil;_poseCommitted=nil;_sceneSinceCorrection=NO;}
+ if(op==TNR_CLEAR){_passingCommitted=nil;_mapCommitted=nil;_poseCommitted=nil;_sceneSinceCorrection=NO;}
  _sending=nil;[self trace:@"committed"];
  if(op==TN_STOP){_active=NO;_stopping=NO;_note=TIOText(@"眼镜已确认退出导航");}else _note=TIOText(@"原生导航已提交 · 镜片效果待确认");
 }
@@ -89,8 +106,9 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 - (void)mapOffer:(NSDictionary *)frame{
  NSData *map=frame[@"tnrScene"],*pose=frame[@"tnrPose"];id at=frame[@"tnrPoseAt"];
  BOOL valid=[map isKindOfClass:NSData.class]&&[pose isKindOfClass:NSData.class]&&[at isKindOfClass:NSNumber.class]&&isfinite([at doubleValue])&&[at doubleValue]<=_clock()&&_clock()-[at doubleValue]<=4&&tnr_body_valid(TNR_SCENE,map.bytes,map.length)&&tnr_body_valid(TNR_POSE,pose.bytes,pose.length)&&U32(map.bytes)==U32(pose.bytes);
- if(!valid){_mapLatest=nil;_map2Latest=nil;_poseLatest=nil;return;}
+ if(!valid){_passingLatest=nil;_mapLatest=nil;_map2Latest=nil;_poseLatest=nil;return;}
  NSData *v2=frame[@"tnrScene2"];_map2Latest=[v2 isKindOfClass:NSData.class]&&tnr_body_valid(TNR_SCENE2,v2.bytes,v2.length)&&U32(v2.bytes)==U32(map.bytes)?[v2 copy]:nil;
+ _passingLatest=PassingBody(map,frame[@"tnrPassing"]?:@"");
  _extended=YES;_mapLatest=[map copy];_poseLatest=[pose copy];_poseAt=[at doubleValue];
  _speedLatest=Number(frame[@"tnrSpeed"],TNR_MAX_SPEED)?[frame[@"tnrSpeed"] unsignedIntValue]:0;
 }
@@ -140,6 +158,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
    if(_mapV2&&_map2Latest){NSMutableData *combined=[map mutableCopy];uint8_t *p=(uint8_t *)combined.mutableBytes+combined.length-12;memcpy(p,_poseLatest.bytes,12);unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;_mapSending=map;_poseAgeMs=age;[self send:(enum TNOp)TNR_SCENE2 scene:combined];}
    else [self send:(enum TNOp)TNR_SCENE scene:map];return;
   }
+  if(_passingCap&&_mapCommitted&&_passingLatest&&![_passingLatest isEqual:_passingCommitted]&&U32(_passingLatest.bytes)==U32(_mapCommitted.bytes)){[self send:(enum TNOp)TNR_PASSING scene:_passingLatest];return;}
   // Slow links and the background get one pose a second; otherwise 2 Hz, and only for >=1 m or >=3 degrees.
   if(_mapCommitted&&(_pose2?correctionDue:now-_lastPose>=(self.backoff?1:0.5))){
    NSMutableData *pose=[_poseLatest mutableCopy];uint8_t *p=pose.mutableBytes;unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;
@@ -164,6 +183,6 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(!_packet||q.sid!=_sid||q.sequence!=_seq)return YES;
  if(_clock()>=_deadline){[self fail:TIOText(@"收到迟到回执，未恢复发送")];return YES;}
  if(q.result!=TN_OK||(_op!=TN_STOP&&!q.active)){[self fail:[NSString stringWithFormat:TIOText(@"眼镜拒绝导航（%u）；先退出其他任务后重新开启"),q.result]];return YES;}
- if(_op==TN_QUERY){if(!(caps&2)){[self fail:TIOText(@"tmg4.nav.requiresPose2")];return YES;}_mapV2=!!(caps&1);if(!_mirror)_mirror=calloc(1,sizeof *_mirror);if(!_mirror){[self fail:TIOText(@"tmg4.nav.noMirror")];return YES;}_mirror->smooth=!!(caps&4);_pose2=YES;}if(!_ack)_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
+ if(_op==TN_QUERY){if(!(caps&2)){[self fail:TIOText(@"tmg4.nav.requiresPose2")];return YES;}_mapV2=!!(caps&1);_passingCap=!!(caps&8);if(!_mirror)_mirror=calloc(1,sizeof *_mirror);if(!_mirror){[self fail:TIOText(@"tmg4.nav.noMirror")];return YES;}_mirror->smooth=!!(caps&4);_pose2=YES;}if(!_ack)_ackMs=(_clock()-_lastWire)*1000;_ack=YES;[self trace:@"ack"];[self finish];return YES;
 }
 @end

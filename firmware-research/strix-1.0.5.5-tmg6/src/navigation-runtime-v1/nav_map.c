@@ -1,4 +1,5 @@
 #include "nav_map.h"
+#include "nav_text.h"
 #include "nav_runtime.h"
 #include <string.h>
 static unsigned nm_u16(const uint8_t *p){return p[0]|(unsigned)p[1]<<8;}
@@ -20,6 +21,12 @@ static unsigned text_width(const uint8_t *p,unsigned n){
 bool tnr_body_valid(unsigned op,const uint8_t *p,size_t n){
  if(op==TNR_CLEAR)return n==0;
  if(!p)return false;
+ if(op==TNR_PASSING){
+  if(n!=224||!nm_u32(p)||p[4]>191||p[5]||p[6]||p[7]||tn_text_width((const char *)p+8,p[4],14)==UINT32_MAX)return false;
+  for(unsigned i=p[4];i<192;i++)if(p[8+i])return false;
+  for(unsigned i=0;i<192;i++)if(p[200+i/8]&(1u<<(i%8))){if(!i||i>p[4]||(i<p[4]&&(p[8+i]&192)==128))return false;}
+  return true;
+ }
  if(op==TNR_POSE2)return n==14&&tnr_body_valid(TNR_POSE,p,12)&&nm_u16(p+12)<=TNR_MAX_SPEED;
  if(op==TNR_POSE)return n==12&&nm_u32(p)&&point_ok(p+4)&&nm_u16(p+8)<360&&nm_u16(p+10)<=4000;
  if((op!=TNR_SCENE&&op!=TNR_SCENE2)||n<16||n>TNR_MAX_BYTES-32||!nm_u32(p)||nm_u16(p+4)<180||nm_u16(p+4)>700||nm_u32(p+12))return false;
@@ -94,6 +101,7 @@ bool tnr_position(const TNRState *s,uint32_t now,TNRPose *p){
 }
 bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now){
  if(!s||!tnr_body_valid(op,p,n))return false;
+ if(op==TNR_PASSING){if(!s->valid||s->pending||nm_u32(p)!=s->scenes[s->bank].generation)return false;memcpy(s->passing,p+8,192);memcpy(s->passing_breaks,p+200,24);s->dirty=true;return true;}
  if(op==TNR_CLEAR){bool smooth=s->smooth;memset(s,0,sizeof *s);s->smooth=smooth;s->dirty=true;return true;}
  if(op==TNR_SCENE||op==TNR_SCENE2){
   if((s->valid&&nm_u32(p)<=s->scenes[s->bank].generation)||(s->pending&&nm_u32(p)<=s->scenes[s->bank^1u].generation))return false;
@@ -103,7 +111,7 @@ bool tnr_receive(TNRState *s,unsigned op,const uint8_t *p,size_t n,uint32_t now)
   d->label_count=(uint16_t)nm_u16(p+10);
   for(unsigned i=0;i<d->label_count;i++){const uint8_t *q=p+16+8*d->path_count+4*d->point_count+40*i;d->labels[i].p=(TNRPoint){(int16_t)nm_u16(q),(int16_t)nm_u16(q+2)};memcpy(d->labels[i].text,q+8,q[4]);d->labels[i].width=(uint16_t)text_width(q+8,q[4]);}
   /* Keep the old scene visible until a matching origin-relative pose arrives. */
-  s->pending=true;if(op==TNR_SCENE)return true;p+=n-12; /* op10 commits atomically */
+  memset(s->passing,0,sizeof s->passing);memset(s->passing_breaks,0,sizeof s->passing_breaks);s->pending=true;if(op==TNR_SCENE)return true;p+=n-12; /* op10 commits atomically */
  }
  if(s->pending){if(nm_u32(p)!=s->scenes[s->bank^1u].generation)return false;s->bank^=1u;s->valid=true;s->located=false;s->pending=false;}
  if(!s->valid||nm_u32(p)!=s->scenes[s->bank].generation)return false;
@@ -163,18 +171,8 @@ bool tnr_scale(unsigned range,unsigned *metres,unsigned *pixels){
 }
 static void scale_draw(uint8_t *out,unsigned range,unsigned gray){
  unsigned metres,pixels;if(!tnr_scale(range,&metres,&pixels))return;
- /* Small fixed digit atlas, not heap/LVGL objects; same projection as roads.
-  * Reserve bottom-left 68x27 px, outside the vehicle marker and road labels. */
- static const uint8_t glyph[11][7]={
-  {14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
-  {30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
-  {14,16,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
-  {14,17,17,15,1,1,14},{0,0,26,21,21,21,21}};
+ /* Digits are smooth stock-font widgets; keep only the geometric bar. */
  for(unsigned y=117;y<143;y++)memset(out+y*TNR_W+3,0,66);
- unsigned digits[4],count=0;if(metres>=100)digits[count++]=metres/100;
- digits[count++]=(metres/10)%10;digits[count++]=metres%10;digits[count++]=10;
- for(unsigned i=0;i<count;i++)for(unsigned y=0;y<7;y++)for(unsigned x=0;x<5;x++)
-  if(glyph[digits[i]][y]&(1u<<(4-x)))for(unsigned yy=0;yy<2;yy++)for(unsigned xx=0;xx<2;xx++)out[(119+y*2+yy)*TNR_W+5+i*12+x*2+xx]=(uint8_t)gray;
  for(unsigned x=5;x<=5+pixels;x++){out[137*TNR_W+x]=(uint8_t)gray;out[138*TNR_W+x]=(uint8_t)gray;}
  for(unsigned y=134;y<=140;y++){out[y*TNR_W+5]=(uint8_t)gray;out[y*TNR_W+5+pixels]=(uint8_t)gray;}
 }
@@ -184,13 +182,11 @@ void tnr_draw(const TNRState *s,uint32_t now,uint8_t out[TNR_W*TNR_H]){
  /* Hard raster work caps even for a syntactically valid pathological scene.
   * Keep a separate route allowance so background roads cannot starve it. */
  for(unsigned pass=0;pass<2;pass++){unsigned budget=pass?4000:8000;
-  for(unsigned i=0;i<d->path_count;i++){const TNRPath *r=&d->paths[i];if((r->style==6)!=!!pass)continue;unsigned g=stale?gray[r->style]/3:gray[r->style],w=r->style==6?6:r->style<2?2:1;
+  for(unsigned i=0;i<d->path_count;i++){const TNRPath *r=&d->paths[i];if((r->style==6)!=!!pass)continue;unsigned g=stale?gray[r->style]/3:gray[r->style],w=r->style==6?5:r->style<2?2:1;
    for(unsigned j=1;j<r->count;j++){TNRPoint a=screen(d->points[r->first+j-1],&p,d->range),b=screen(d->points[r->first+j],&p,d->range);if(r->flags&1||r->style==6)line(out,a,b,0,w+2,false,true,&budget);line(out,a,b,g,w,!!(r->flags&2),false,&budget);}
   }
  }
- TNRLabelView labels[TNR_MAX_LABELS];unsigned names=tnr_labels(s,now,labels);
- for(unsigned i=0;i<names;i++)for(int y=labels[i].y-1;y<labels[i].y+21;y++)memset(out+y*TNR_W+labels[i].x-1,0,labels[i].width+2);
- unsigned marker_budget=512;TNRPoint tip={96,90},left={90,107},right={102,107};line(out,tip,left,stale?85:255,2,false,false,&marker_budget);line(out,left,right,stale?85:255,2,false,false,&marker_budget);line(out,right,tip,stale?85:255,2,false,false,&marker_budget);
+ unsigned marker_budget=512;TNRPoint tip={96,87},left={88,109},right={104,109};line(out,tip,left,stale?85:255,2,false,false,&marker_budget);line(out,left,right,stale?85:255,2,false,false,&marker_budget);line(out,right,tip,stale?85:255,2,false,false,&marker_budget);
  scale_draw(out,d->range,stale?85:230);
  if(stale)line(out,(TNRPoint){0,142},(TNRPoint){191,142},75,1,true,false,&marker_budget);
 }

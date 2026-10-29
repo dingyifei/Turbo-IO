@@ -24,7 +24,7 @@ static void destroy(void *p,void *o){(void)p;(void)o;}
 static bool attach(void *p,void *owner){return p&&owner;}
 static void hidden(void *p,bool b){(void)p;(void)b;}
 static const struct {void(*hidden)(void *,bool);} m8_native_api={hidden};
-static TNWidgets widgets={NULL,idle,create,create,label,place,buffer,text,visible,destroy};
+static TNWidgets widgets={NULL,idle,create,create,label,place,buffer,text,visible,destroy,NULL};
 static TNNavSlot *slot(void *p){assert(p==app);return &nav;}
 static bool detail(void *p){assert(p==app);return false;}
 static void *ptr(void *p,unsigned off){assert(p==app);return off==4?&root:NULL;}
