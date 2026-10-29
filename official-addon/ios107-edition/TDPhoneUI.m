@@ -2,6 +2,7 @@
 #import "TIOConfirm.h"
 #import "TIOLanguage.h"
 #import "LanguageFlag.h"
+#import "TIODesign.h"
 @interface TDPanel:UITableViewController
 @property(nonatomic,strong) TDPhoneRun *run;
 @property(nonatomic,strong) TDRuntimeSession *runtime;
@@ -39,6 +40,25 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{(void)tableView;return section==0?8:section==1?5:section==2?3:section==3?Rows().count:3;}
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section{(void)tableView;return @[TIOText(@"tmg4.runtime.status"),TIOText(@"tmg4.knob.title"),TIOText(@"采集"),TIOText(@"资源与耗时"),TIOText(@"诊断完整性")][section];}
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section{(void)tableView;return section==0?TIOText(@"tmg4.runtime.footer"):section==1?TIOText(@"tmg4.knob.instructions"):nil;}
+/* Start, Finish and Cancel are capsule buttons: the one that moves the measurement forward is filled,
+ * Cancel is soft, and an action that does not apply right now is dimmed and not tappable. */
+- (void)styleKnobAction:(UITableViewCell *)c row:(NSInteger)row status:(NSDictionary *)status calibration:(NSDictionary *)cal{
+ NSString *titles[]={TIOText(@"tmg4.knob.start"),TIOText(@"tmg4.knob.finish"),TIOText(@"tmg4.knob.cancel")};NSString *ids[]={@"knob-start",@"knob-finish",@"knob-cancel"};
+ BOOL lease=[status[@"holdsLease"]boolValue];
+ BOOL enabled=row==0?!lease&&![status[@"pending"]boolValue]&&![status[@"fileBusy"]boolValue]:row==1?lease:(lease||cal.count);
+ BOOL primary=row<2;
+ c.detailTextLabel.text=nil;c.backgroundColor=UIColor.clearColor;c.backgroundView=nil;c.selectedBackgroundView=nil;c.selectionStyle=UITableViewCellSelectionStyleNone;
+ c.textLabel.text=titles[row];c.textLabel.hidden=YES; /* the capsule label below is drawn instead, so the table styling cannot recolor it */
+ UIColor *ink=!enabled?TIODesignColor(TIODesignColorLabelTertiary):primary?TIODesignColor(TIODesignColorOnAccent):TIODesignColor(TIODesignColorAccent);
+ UIView *capsule=[UIView new];capsule.translatesAutoresizingMaskIntoConstraints=NO;capsule.userInteractionEnabled=NO;capsule.layer.cornerRadius=TIOButtonHeight/2;capsule.layer.cornerCurve=kCACornerCurveContinuous;
+ capsule.backgroundColor=!enabled?TIODesignColor(TIODesignColorBgSunken):primary?TIODesignColor(TIODesignColorAccentFill):TIODesignColor(TIODesignColorAccentSoft);
+ UILabel *label=[UILabel new];label.translatesAutoresizingMaskIntoConstraints=NO;label.text=titles[row];label.textAlignment=NSTextAlignmentCenter;label.numberOfLines=0;label.textColor=ink;label.font=TIODesignFont(TIODesignTextStyleHeadline);label.adjustsFontForContentSizeCategory=YES;label.isAccessibilityElement=NO;
+ [capsule addSubview:label];[c.contentView insertSubview:capsule atIndex:0];
+ [NSLayoutConstraint activateConstraints:@[[label.leadingAnchor constraintEqualToAnchor:capsule.leadingAnchor constant:TIOSpace4],[label.trailingAnchor constraintEqualToAnchor:capsule.trailingAnchor constant:-TIOSpace4],[label.topAnchor constraintEqualToAnchor:capsule.topAnchor constant:TIOSpace3],[label.bottomAnchor constraintEqualToAnchor:capsule.bottomAnchor constant:-TIOSpace3]]];
+ NSLayoutConstraint *tall=[capsule.heightAnchor constraintGreaterThanOrEqualToConstant:primary?TIOButtonHeight:TIOHitMin];
+ [NSLayoutConstraint activateConstraints:@[[capsule.leadingAnchor constraintEqualToAnchor:c.contentView.leadingAnchor constant:TIOSpace1],[capsule.trailingAnchor constraintEqualToAnchor:c.contentView.trailingAnchor constant:-TIOSpace1],[capsule.topAnchor constraintEqualToAnchor:c.contentView.topAnchor constant:TIOSpace1],[capsule.bottomAnchor constraintEqualToAnchor:c.contentView.bottomAnchor constant:-TIOSpace1],tall]];
+ c.userInteractionEnabled=enabled;c.accessibilityTraits=UIAccessibilityTraitButton|(enabled?0:UIAccessibilityTraitNotEnabled);c.accessibilityLabel=titles[row];c.accessibilityIdentifier=ids[row];
+}
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)p{
  (void)tableView;UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.selectionStyle=UITableViewCellSelectionStyleNone;c.detailTextLabel.textColor=UIColor.secondaryLabelColor;c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;
  NSDictionary *status=self.runtime.status,*sample=status[@"sample"],*cal=status[@"calibration"];
@@ -54,7 +74,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  }else if(p.section==1){
   if(p.row==0){c.textLabel.text=TIOText(@"tmg4.knob.state");NSString *state=RuntimeState(status[@"state"]);if(cal[@"state"]&&[@[@"ready",@"querying",@"finished"]containsObject:status[@"state"]]){unsigned value=[cal[@"state"]unsignedIntValue];state=TIOText(value==TK_ACTIVE?@"tmg4.runtime.state.rotating":value==TK_FINISHED?@"tmg4.runtime.state.finished":value==TK_EXPIRED?@"tmg4.runtime.state.expired":value==TK_OVERFLOW?@"tmg4.runtime.state.overflow":@"tmg4.runtime.state.canceled");}c.detailTextLabel.text=cal.count?RuntimeFormat(/*i18n:id*/@"tmg4.knob.progress",state,Value(cal[@"samples"]),Value(cal[@"net"]),Value(cal[@"absolute"])):state;}
   else if(p.row==1){c.textLabel.text=TIOText(@"tmg4.knob.estimate");id value=status[@"estimate"];c.detailTextLabel.text=value&&value!=NSNull.null?RuntimeFormat(/*i18n:id*/@"tmg4.knob.result",value):TIOText(@"tmg4.knob.noEstimate");}
-  else{c.textLabel.text=@[TIOText(@"tmg4.knob.start"),TIOText(@"tmg4.knob.finish"),TIOText(@"tmg4.knob.cancel")][p.row-2];BOOL lease=[status[@"holdsLease"]boolValue];c.userInteractionEnabled=p.row==2?!lease&&![status[@"pending"]boolValue]&&![status[@"fileBusy"]boolValue]:p.row==3?lease:lease||cal.count;c.textLabel.textColor=c.userInteractionEnabled?UIColor.systemBlueColor:UIColor.tertiaryLabelColor;c.selectionStyle=UITableViewCellSelectionStyleDefault;c.accessibilityIdentifier=@[@"knob-start",@"knob-finish",@"knob-cancel"][p.row-2];}
+  else{[self styleKnobAction:c row:p.row-2 status:status calibration:cal];}
  }else if(p.section==2){if(p.row==0){c.textLabel.text=TIOText(@"自动采集 10 分钟");UISwitch *toggle=[UISwitch new];toggle.on=self.run.active;[toggle addTarget:self action:@selector(toggle:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;}else if(p.row==1){c.textLabel.text=self.run.status;c.detailTextLabel.text=[NSString stringWithFormat:TIOText(@"已记录 %lu 条 · 剩余 %.0f 秒"),(unsigned long)self.run.store.count,self.run.remaining];}else{c.textLabel.text=self.run.saveStatus;c.detailTextLabel.text=TIOText(@"每轮独立保存 · 最多 100 轮，不覆盖旧报告");}}
  else if(p.section==3){NSArray *row=Rows()[p.row];NSDictionary *metrics=self.run.active&&self.run.store.age<5?self.run.store.latest[@"metrics"]:sample[@"metrics"];id value=metrics[row[0]];c.textLabel.text=row[1];c.detailTextLabel.text=!value||value==NSNull.null?TIOText(@"未测"):[NSString stringWithFormat:@"%@ %@",value,row[2]];}
  else{NSString *key=@[@"probe_ms",@"ring_overwritten",@"sequence"][p.row];c.textLabel.text=@[TIOText(@"本次采样耗时（毫秒）"),TIOText(@"眼镜事件环覆盖数"),TIOText(@"最新采样序号")][p.row];c.detailTextLabel.text=Value(self.run.store.latest[key]);}
