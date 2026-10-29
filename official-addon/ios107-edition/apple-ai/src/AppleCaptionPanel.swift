@@ -44,7 +44,7 @@ import Translation
         glasses = hostAvailable && prefs.bool(forKey: "appleCaptionGlasses")
         if !hostAvailable { prefs.set(false, forKey: "appleCaptionGlasses") }
         TIODesign.styleTable(tableView)
-        tableView.tableHeaderView = header; tableView.tableFooterView = footer
+        tableView.tableHeaderView = header
         footer.button.addTarget(self, action: #selector(toggleSession), for: .touchUpInside)
         refresh(); refreshResources()
         mic.onBuffer = { [weak self] buffer in self?.speech.offer(buffer) }
@@ -57,6 +57,8 @@ import Translation
         super.viewDidLayoutSubviews()
         CaptionChrome.fit(header, in: tableView); CaptionChrome.fit(footer, in: tableView, footer: true)
     }
+    /// The Start/Stop bar stays at the bottom while the transcript and rows scroll under it.
+    public override func scrollViewDidScroll(_ scrollView: UIScrollView) { CaptionChrome.follow(footer, in: tableView) }
     /// Reloads rows and the header/footer chrome that mirror the session state.
     private func refresh() {
         tableView.reloadData()

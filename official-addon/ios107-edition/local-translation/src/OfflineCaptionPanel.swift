@@ -31,7 +31,7 @@ import UIKit
         fastTranslation = prefs.object(forKey: "fastTranslation") == nil ? true : prefs.bool(forKey: "fastTranslation")
         // Leave CPU headroom for capture and CoreML while running both engines.
         router.hymtThreads = min(4, ProcessInfo.processInfo.activeProcessorCount)
-        tableView.tableHeaderView = header; tableView.tableFooterView = footer
+        tableView.tableHeaderView = header
         footer.button.addTarget(self, action: #selector(toggleSession), for: .touchUpInside)
         refresh()
         speech.onText = { [weak self] text, final in self?.accept(text, final: final) }
@@ -53,6 +53,8 @@ import UIKit
         super.viewDidLayoutSubviews()
         CaptionChrome.fit(header, in: tableView); CaptionChrome.fit(footer, in: tableView, footer: true)
     }
+    /// The Start/Stop bar stays at the bottom while the transcript and rows scroll under it.
+    override func scrollViewDidScroll(_ scrollView: UIScrollView) { CaptionChrome.follow(footer, in: tableView) }
     /// Reloads rows and the header/footer chrome that mirror the session state.
     private func refresh() {
         tableView.reloadData()
