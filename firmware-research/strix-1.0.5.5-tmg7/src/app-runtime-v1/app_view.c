@@ -1,6 +1,7 @@
 #include "app_view.h"
 #include "../common-v1/tio_caret.h"
 #include <string.h>
+TIO_PAGES_CHECK;
 // 14 px text is retired (TIO_FONT_MIN floor). The wire still carries 14; it is drawn at the next accepted size.
 unsigned tap_view_font(unsigned font){return font<TIO_FONT_MIN?TIO_FONT_MIN:font;}
 // Unfocused action labels sit one step below the focused lens-full; below 18 px lens-mid is too dim, so use lens-high.

@@ -1,6 +1,7 @@
 #include "../common-v1/tio_text.h"
 #include "focus_view.h"
 #include <string.h>
+TIO_PAGES_CHECK;
 static void copy(char *d,const char *s){size_t n=0;while(n<111&&s[n])n++;memcpy(d,s,n);d[n]=0;}
 static void clock_text(char *s,uint32_t seconds){unsigned m=seconds/60,n=seconds%60;unsigned at=0;if(m>=100)s[at++]='0'+m/100;s[at++]='0'+m/10%10;s[at++]='0'+m%10;s[at++]=':';s[at++]='0'+n/10;s[at++]='0'+n%10;s[at]=0;}
 /* n of 4 focus sessions in the long-break cycle. */

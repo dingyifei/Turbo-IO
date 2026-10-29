@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """TMG7 host gate: design tokens, transient hint, focus caret and page layout.
 
-Builds tests/tmg7_ui_test.c with ASan/UBSan at the default 24.8 px/deg and at other
-ppd values (the layout must hold for 22..27), then builds and runs the layout gate
+Builds tests/tmg7_ui_test.c (tokens, hint, caret) with ASan/UBSan at the default 24.8 px/deg and at other
+ppd values 22..27; the page layouts are fitted to 24.8 only and must refuse any other value. Then builds and runs the layout gate
 (tests/tmg7_layout_preview.m), which renders every page EN and ZH to PNG and checks each
 widget against its band, the reserved rows, the 16 px text floor and the no-filled-panel rule.
 No device I/O."""
@@ -13,7 +13,7 @@ FW = Path(__file__).resolve().parents[1]
 BOARD = FW.parents[1] / 'docs/design-system/screens/LensApp.dc.html'
 DS = FW.parents[1] / 'dashboard-service'
 LEGACY_TAP = DS / 'tests/fixtures/gallery_commute_legacy.tap'
-PPD_X10 = (220, 230, 240, 248, 260, 270)
+PPD_X10 = (220, 230, 240, 248, 260, 270)   # tokens only; the pages build at 248 alone
 
 def run(cmd, log):
     r = subprocess.run(list(map(str, cmd)), capture_output=True, text=True, timeout=240)
@@ -35,6 +35,13 @@ def main():
         if 'PASS' not in run([exe], a.out / ('tmg7-ui-%d.log' % ppd)):
             sys.exit('tmg7-ui did not report PASS at ppd %d' % ppd)
     src = FW / 'src'
+    # Pages are fitted to 24.8 px/deg only (tio_ui.h): each page file must build at 24.8 and refuse every other value.
+    for page in ('navigation-runtime-v1/nav_view.c', 'focus-v1/focus_menu.c', 'focus-v1/focus_view.c', 'app-runtime-v1/app_view.c'):
+        for ppd in (240, 247, 249, 270):
+            r = subprocess.run(list(map(str, ['xcrun', 'clang', '-std=c11', '-fsyntax-only', '-DTIO_PPD_X10=%d' % ppd, '-I', FW / 'src', src / page])),
+                               capture_output=True, text=True)
+            if r.returncode == 0 or 'page layouts are fitted to 24.8' not in r.stderr:
+                sys.exit('%s must refuse TIO_PPD_X10=%d with the TIO_PAGES_CHECK error\n%s' % (page, ppd, r.stderr))
     # Mini-app runtime: TAP1 wire from the committed legacy gallery fixture and the current gallery/examples (encoded by the
     # dashboard-service SDK, which needs only the standard library plus jsonschema).
     exe = a.out / 'tmg7-app'

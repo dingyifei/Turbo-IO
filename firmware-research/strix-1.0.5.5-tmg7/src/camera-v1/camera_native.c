@@ -12,6 +12,7 @@
 #include "../focus-v1/focus_menu.h"
 #include "../app-runtime-v1/app_service.h"
 #include <string.h>
+TIO_PAGES_CHECK;
 typedef struct {
  TCSlot *slot;void *app,*timer,*root,*canvas,*title,*state,*hint;TCFrame *frame;
  WRInput input;TIOHint th;uint32_t sid,seq,event,seen,hold,back;unsigned phase,zoom,remaining;

@@ -2,6 +2,7 @@
 #include "nav_text.h"
 #include "../common-v1/tio_ui.h"
 #include <string.h>
+TIO_PAGES_CHECK;
 static int mag(int v){return v<0?-v:v;}
 static void pixel(uint8_t *p,int w,int h,int x,int y,int radius,uint8_t gray){
  for(int yy=y-radius;yy<=y+radius;yy++)for(int xx=x-radius;xx<=x+radius;xx++)

@@ -12,6 +12,7 @@
 #include "focus_menu.h"
 #include "focus_menu_icons.h"
 #include <string.h>
+TIO_PAGES_CHECK;
 static const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
 _Static_assert(sizeof names/sizeof *names==FM_ITEMS,"labels match stock item count");
 _Static_assert(sizeof fm_icon4==14976,"artwork budget");

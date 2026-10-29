@@ -253,14 +253,14 @@
   ],
   "moduleBytes": 151040,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "e4237aa914926f627c6020a869033244cd26bb2816526b91bbd98f439f43f92a",
+  "moduleSHA256": "2b6303d120f79b8f9587a346e83c7c72f32ea6159f172ce582d4a9a9d95731bb",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
   "APBytes": 7359688,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG7-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8813936,
-    "sha256": "ecb5fd7dcb7340c76b00ee609fe84f2a66fc66eaa565b1cda1900a086f0d6e0d",
-    "md5": "5180fa6200b6019418eea9f9f017480c"
+    "bytes": 8813938,
+    "sha256": "1edc5990575f8633ee839c7eef8217bbf4ad19d4d12289c953c45206c9b408ea",
+    "md5": "9a347242f0efd3d344dbb1b690b418c5"
   },
   "sources": [
     {
@@ -305,7 +305,7 @@
     },
     {
       "source": "app-runtime-v1/app_view.c",
-      "sha256": "5ea7f66cda5f554f7b6eca6394e9ec2aabf99aef54fc0f9feca7b7b3f9776552"
+      "sha256": "cc105883a3af589a850d176aa593b0cfba534ed3948fa22716c77d26cb5ff9e0"
     },
     {
       "source": "dashboard-editor-v1/editor.c",
@@ -361,7 +361,7 @@
     },
     {
       "source": "focus-v1/focus_menu.c",
-      "sha256": "dc07d4b626a08b2f9249671305b5cc19d9faec654b00201405070acf49d6db20"
+      "sha256": "c0770dba0ec11dc20c130cb430834accedb1f31dca961175c796f007c4ed3581"
     },
     {
       "source": "focus-v1/focus_menu_native.c",
@@ -373,7 +373,7 @@
     },
     {
       "source": "focus-v1/focus_view.c",
-      "sha256": "0851681d8ee5434a212bc0efd04b83d4eb4feb5ab6fe9be20071e6bfc409c8b9"
+      "sha256": "7cb6717dc397a04e3f10decfe23df74b00a0bbcfc8ecf8f5c7aacc35e13b5bec"
     },
     {
       "source": "global-remote-v1/remote.c",
@@ -421,7 +421,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
-      "sha256": "a6c1837b48ad40bf2e6dbe1b6fa93fdf875033a20014effd55a4565b2abf7423"
+      "sha256": "ff2b5e944af0edfd0ab92359fd2cc17bd3da07b1abecd9a2868cc62f43028fb4"
     },
     {
       "source": "navigation-runtime-v1/nav_visual.c",
@@ -433,7 +433,7 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "1ed86c47509554c1093d19f405fb5fee8c1777821298aa3bb38a0f54e28bc32e"
+      "sha256": "5c38159ee1aea28a9665796270f4a3942f037767006a5b6e623cc9cfa9d395c6"
     },
     {
       "source": "common-v1/business_idle.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "2025ac057a9cd8e06c2fcd5368e1a03e93b94b0d62cb1fb519cbb4df3872a7a1",
+  "APSHA256": "95a4deed708df0241c2e7d759f69174abd9f766c12a2cfb75272f90fac4f5d1a",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

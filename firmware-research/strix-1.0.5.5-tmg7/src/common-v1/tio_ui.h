@@ -9,13 +9,22 @@
  * of a degree (mdeg) so no floating point is needed. At 24.8 each angle converts back to
  * exactly the pixel value written beside it; tests/tmg7_ui_test.c pins that.
  * The 540x180 / 540x220 canvases are hardware, so derived edges clamp to them and keep the
- * bottom reserve; the layout is meant for ppd 22..26 and tests/tmg7_host_test.py checks that range.
+ * bottom reserve.
+ *
+ * Only the tokens in this header rescale with TIO_PPD_X10 (tests/tmg7_host_test.py sweeps them over 22..27). The page
+ * layouts (navigation, focus, menu, mini-apps, camera, music) hard-code pixel sizes fitted at 24.8: icon sizes and
+ * pitches, glyph heights, focus offsets, label widths. They were measured to build and pass their host tests at no other
+ * value (menu bands break below 24.6, music's core-width assert holds only at 24.8, the 56 px turn glyph leaves band B
+ * from 25.4). Each page therefore refuses to build at any other TIO_PPD_X10 (TIO_PAGES_CHECK); the host test proves it.
+ * A measured ppd that differs means the pages must be re-laid, not just this one number changed.
  */
 #include <stdbool.h>
 #include <stdint.h>
 #ifndef TIO_PPD_X10
 #define TIO_PPD_X10 248 /* UNVERIFIED: 24.8 px per degree */
 #endif
+#define TIO_PAGES_PPD_X10 248 /* the only ppd the page layouts are fitted to */
+#define TIO_PAGES_CHECK _Static_assert(TIO_PPD_X10==TIO_PAGES_PPD_X10,"page layouts are fitted to 24.8 px/deg: re-lay the pages before changing TIO_PPD_X10")
 #define TIO_PX(mdeg) ((int)(((long long)(mdeg)*TIO_PPD_X10+5000)/10000))
 #define TIO_EDGE(mdeg,limit) (TIO_PX(mdeg)>(limit)?(limit):TIO_PX(mdeg))
 
