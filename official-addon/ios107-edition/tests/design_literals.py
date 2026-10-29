@@ -26,8 +26,20 @@ SOURCE_SUFFIXES=('.m','.mm','.inc','.swift')
 SKIP_DIRS=('build/','tests/','preview/','i18n/','firmware-research/')
 SKIP_SUFFIXES=('Tests.m','Test.m')
 
-FONT=re.compile(r'\b(?:boldSystemFontOfSize|systemFontOfSize|monospacedSystemFontOfSize|monospacedDigitSystemFontOfSize|italicSystemFontOfSize|fontWithName|UIFont\s*\(\s*name)\b|\.system\s*\(\s*size|Font\.system\s*\(\s*size')
+FONT=re.compile(r'\b(?:boldSystemFontOfSize|systemFontOfSize|monospacedSystemFontOfSize|monospacedDigitSystemFontOfSize|italicSystemFontOfSize|fontWithName|UIFont\s*\(\s*name)\b|\.systemFont\s*\(\s*ofSize|\.system\s*\(\s*size|Font\.system\s*\(\s*size')
 RGB=re.compile(r'colorWith(?:Red|White|Hue)\s*:|initWith(?:Red|White|Hue)\s*:|UIColor\s*\(\s*(?:red|white|hue)\s*:|Color\s*\(\s*red\s*:|\bUIColor\.(?:white|black|red|green|blue|gray|lightGray|darkGray|orange|yellow|cyan|magenta|purple|brown)Color\b|\[UIColor\s+(?:white|black|red|green|blue|gray|lightGray|darkGray|orange|yellow|cyan|magenta|purple|brown)Color\]|\bUIColor\.(?:system(?:Red|Green|Blue|Orange|Yellow|Pink|Purple|Teal|Indigo|Mint|Cyan|Brown|Gray[0-9]?))Color\b|\.(?:white|black|red|green|blue|orange|yellow|gray)\b(?=\s*[,)\]]).{0,0}')
+
+# Display P3 / sRGB / hex helpers are also color literals.
+RGB=re.compile(RGB.pattern+r'|colorWithDisplayP3Red|initWithDisplayP3Red|\bdisplayP3\b|Color\.RGBColorSpace|\b(?:colorWithHex|colorFromHex|colorWithRGB|colorWithRGBA|UIColorFromRGB|UIColorFromHex)\w*|\b\w*ColorFrom(?:Hex|RGB)\w*|\bUIColor\s*\(\s*(?:hex|displayP3Red)\b|\bColor\s*\(\s*hex\b|\bhex(?:String|Color)?\s*:\s*0x')
+
+SELFTEST=[('font','[UIFont systemFontOfSize:14]'),('font','UIFont.systemFont(ofSize: 12)' ),('color','[UIColor colorWithRed:1 green:0 blue:0 alpha:1]'),
+ ('color','UIColor(red: 1, green: 0, blue: 0, alpha: 1)'),('color','[UIColor colorWithDisplayP3Red:1 green:0 blue:0 alpha:1]'),
+ ('color','UIColor(displayP3Red: 1, green: 0, blue: 0, alpha: 1)'),('color','[UIColor colorWithHex:0xff0000]'),('color','TIOColorFromHex(0xff0000)'),('color','[UIColor colorWithWhite:.15 alpha:1]')]
+
+def selftest():
+    # The patterns must catch each of these, or a violation would pass silently.
+    miss=[t for k,t in SELFTEST if not (FONT if k=='font' else RGB).search(t)]
+    return miss
 
 def tracked(root):
     out=subprocess.check_output(['git','-C',str(root),'ls-files','-z','--cached','--others','--exclude-standard','--','.'],text=True).split('\0')
@@ -47,6 +59,9 @@ def exempt_ranges(name,lines):
 
 def main(root):
     root=Path(root);bad=[]
+    miss=selftest()
+    if miss:
+        print('\n'.join('pattern misses: '+m for m in miss));print('DESIGN LITERALS FAIL: self-test');return 1
     for name in tracked(root):
         if name in EXEMPT_FILES:continue
         lines=(root/name).read_text(errors='replace').split('\n')
