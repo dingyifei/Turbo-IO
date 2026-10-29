@@ -2,7 +2,7 @@
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG7 forks frozen TMG6 (`../strix-1.0.5.5-tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, runtime build identity, the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
+TMG7 forks frozen TMG6 (`../strix-1.0.5.5-tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, firmware name (TD_BUILD_TMG6, TD_CAPS_TMG6), the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
 
 - Shared tokens in `src/common-v1` (lens intensity ramp, bands, 40..500 core, caret, 16 px text floor) with a transient hint helper that fades and hides.
 - Navigation (LensNav): the distance and instruction have fixed slots (x 84 and 196) that never move or resize (a distance of 10 km and more drops its tenths and rounds to the nearest kilometre, capped at 999 km), the map is the board's x 372..520 window (canvas at x 348, car within 3 px of the window centre, columns outside it blanked, the scale bar and its label inside it, 29 px clear of the band-B text), the turn glyph has a 7 px stroke, and the fixed clock footer is gone (removed at TMG6).
@@ -19,9 +19,9 @@ The tokens in `tio_ui.h` rescale with `TIO_PPD_X10`, but the page layouts are fi
 
 `python3 tests/tmg7_host_test.py --out DIR` runs the tokens test at 22..27 px/deg, the mini-app runtime test, the navigation core and view tests, the menu grid test and the layout gate. The layout gate renders every page in English and Chinese to PNG and checks each widget against its band, the reserved rows, the 16 px floor and the no-filled-panel rule. The phone `test.py` in `official-addon/ios107-edition` now targets this tree: it audits the supplied ZIP with this tree's `build.py`, runs the tmg7 host group, and checks the shared sources against the phone copies. Its `pins` group stays red for a ZIP7 until the phone is re-pinned to ZIP7. Each source edit needs a repin (`build.py --repin`) and a copy of the repin output into `build-inputs.json`.
 
-After the flash the glasses report the TMG6 firmware name and capabilities (the wire and runtime identity are unchanged, so a `firmware: TMG6` status reads the same before and after). The proof that TMG7 is running is the status `build` field, the build identity in `identity.sha256` of the build output: `7bdca491ca49911df9faf4cb6f55d7a5c905ed69c11151bd063aff68ce22dba6` for the current ZIP7 (TMG6: `83b82fab9fe9356de62570deff5878b9cfc292b3037998088664e87bd90d8644`).
+After the flash the glasses still report the TMG6 firmware name and capabilities (TD_BUILD_TMG6, TD_CAPS_TMG6; the wire protocol is unchanged, so a `firmware: TMG6` status reads the same before and after). The proof that TMG7 is running is the status `build` field, the build-identity sha256 in `identity.sha256` of the build output, which changes from TMG6's `83b82fab9fe9356de62570deff5878b9cfc292b3037998088664e87bd90d8644` to `b86af6e1edf99fef2e1c1aa8bab8153295cb7f973ad0abe262e2f6c1b00d3bdf` for the current ZIP7. The glasses never report the ZIP hash.
 
-Phone pins name TMG7 and the exact ZIP7 hash (`tools/phone_pins.py`, name `TMG7`); the phone stays compatible with TMG6 glasses because the wire protocol and runtime identity are unchanged. Navigation `Passing`, the knob observation and the older candidate records below are historical.
+Phone pins name TMG7 and the exact ZIP7 hash (`tools/phone_pins.py`, name `TMG7`); the phone stays compatible with TMG6 glasses because the wire protocol and capabilities are unchanged. Navigation `Passing`, the knob observation and the older candidate records below are historical.
 
 # TMG6 candidate (historical)
 
