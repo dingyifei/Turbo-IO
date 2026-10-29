@@ -152,11 +152,20 @@ static void trip_update(TNView *v,const TNVisual *vis){
  for(unsigned i=0;i<TN_TRIP_SIZES;i++){a->text_static(a->ctx,v->trip[i],v->trip_text[next]);a->visible(a->ctx,v->trip[i],i==size);}
  v->trip_bank=next;v->trip_shown=true;
 }
-/* The distance slot is fixed. A reading too wide for it (100 km and more) drops its tenths: "123.4 km" -> "123 km". */
+/* The distance slot is fixed. A reading too wide for it ("10.0 km" and up, estimated at 118 px against 112) drops its
+ * tenths and rounds to the nearest kilometre: "10.9 km" -> "11 km", "45.4 km" -> "45 km", "99.9 km" -> "100 km". The
+ * tenths digit is already the floor of the true tenths, so >=5 rounds up exactly as the true value would. The reading
+ * is capped at three digits ("999.9 km" -> "999 km"), which is the widest the slot holds. */
 static void fit_distance(char *d){
  if(est_px(d,TIO_FONT_PRIMARY)<=NV_DIST_W)return;
  char *dot=d;while(*dot&&*dot!='.')dot++;
- if(*dot&&dot[1]>='0'&&dot[1]<='9'){const char *rest=dot+2;while((*dot++=*rest++)){}}
+ if(!*dot||dot[1]<'0'||dot[1]>'9')return;
+ bool up=dot[1]>='5';size_t digits=(size_t)(dot-d);bool nines=true;
+ for(const char *c=d;c<dot;c++)nines&=*c=='9';
+ const char *rest=dot+2;char *w=dot;while((*w++=*rest++)){}
+ if(!up||(nines&&digits>=3))return;
+ if(nines){size_t n=strlen(d);for(size_t k=n+1;k>0;k--)d[k]=d[k-1];d[0]='1';for(size_t k=1;k<=digits;k++)d[k]='0';return;}
+ for(char *c=dot;c>d;){c--;if(*c<'9'){(*c)++;return;}*c='0';}
 }
 static void publish(TNView *v,TNViewFrame *f){
  TNWidgets *a=&v->api;

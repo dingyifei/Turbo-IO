@@ -66,8 +66,14 @@ int main(void){
    assert(!memcmp(dbox,fm.box[Dist],sizeof dbox)&&!memcmp(pbox,fm.box[Road],sizeof pbox)&&font==tfont);
    for(unsigned k=0;k<3;k++)assert(!memcmp(tbox[k],fm.box[Turn0+k],sizeof tbox[k]));
    assert(fm.box[Dist][0]==84&&fm.box[Dist][2]==112&&fm.box[Turn0][0]==196&&fm.box[Turn0][2]==152);
-   assert(strlen(fm.strings[Dist])<=8);}   /* 100 km and more drop their tenths: still one slot */
+   assert(strlen(fm.strings[Dist])<=8);}   /* 10 km and more drop their tenths: still one slot */
   assert(!strcmp(fm.strings[Dist],"999 km")&&!strcmp(fm.strings[Turn0],"Slight right"));
+  /* The tenths are rounded to the nearest kilometre, not deleted (10.9 km is 11 km, not 10 km); 9.9 km keeps its tenths. */
+  {static const struct {unsigned m;const char *text;} reading[]={{9900,"9.9 km"},{9999,"9.9 km"},{10000,"10 km"},{10400,"10 km"},{10499,"10 km"},{10500,"11 km"},{10900,"11 km"},
+    {19900,"20 km"},{45400,"45 km"},{45600,"46 km"},{99400,"99 km"},{99500,"100 km"},{99900,"100 km"},{100000,"100 km"},{100400,"100 km"},{100500,"101 km"},
+    {123456,"123 km"},{129900,"130 km"},{998900,"999 km"},{999500,"999 km"},{999999,"999 km"}};
+   for(unsigned i=0;i<sizeof reading/sizeof *reading;i++){fs.distance_m=reading[i].m;assert(tn_view_update(&fv,&fs,false));
+    if(strcmp(fm.strings[Dist],reading[i].text)){printf("FAIL %u m -> \"%s\" (want \"%s\")\n",reading[i].m,fm.strings[Dist],reading[i].text);return 1;}}}
   /* Turn glyphs: every icon (and its mirror) stays inside the canvas with a margin and a 7 px stroke, not clipped. */
   for(unsigned icon=0;icon<TN_ICON_COUNT;icon++){fs.icon=(uint8_t)icon;assert(tn_view_update(&fv,&fs,false));
    const uint8_t *px=fv.frames[fv.active].icon;int x0=64,x1=-1,y0=56,y1=-1;
