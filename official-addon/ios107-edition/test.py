@@ -229,6 +229,10 @@ test('alwayson-ogg',['AlwaysOnOggTests.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmo
 test('subtitle-hud',['SubtitleHUDTests.m', 'SubtitleHUDCore.m'],argv=[],extra=['-fmodules'])
 test('hometab',['HomeTabLayoutTests.m', 'HomeTabLayout.m'],argv=[],extra=['-fmodules'])
 test('tio-design',['TIODesignTests.m'],argv=[ROOT/'docs/design-system/tokens.json'])
+seen.add('tio-design-literals')
+if only is None or 'tio-design-literals' in only:
+    run('tio-design-literals',['python3','-I',P/'tests/design_literals.py',P])
+    groups.append('tio-design-literals');print('tio-design-literals: PASS')
 seen.add('tio-design-swift')
 if only is None or 'tio-design-swift' in only:
     run('tio-design-swift',['python3','-I',P/'tests/tio_design_swift.py',ROOT/'docs/design-system/tokens.json',P/'local-translation/src/TIODesign.swift'])

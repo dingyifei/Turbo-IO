@@ -6,8 +6,6 @@
 UIColor *TIOInk(void){return TIODesignColor(TIODesignColorLabel);}
 UIColor *TIOPaper(void){return TIODesignColor(TIODesignColorBg);}
 UIColor *TIOAccent(void){return TIODesignColor(TIODesignColorAccent);}
-static UIFont *Font(CGFloat size,UIFontWeight weight){return TIODesignLegacyFont(size,weight);}
-static UILabel *Label(NSString *text,CGFloat size,UIFontWeight weight){UILabel *l=[UILabel new];l.text=text;l.font=Font(size,weight);l.textColor=TIOInk();l.numberOfLines=0;l.adjustsFontForContentSizeCategory=YES;return l;}
 static void Pin(UIView *v,UIView *p,CGFloat inset){v.translatesAutoresizingMaskIntoConstraints=NO;[p addSubview:v];[NSLayoutConstraint activateConstraints:@[[v.leadingAnchor constraintEqualToAnchor:p.leadingAnchor constant:inset],[v.trailingAnchor constraintEqualToAnchor:p.trailingAnchor constant:-inset],[v.topAnchor constraintEqualToAnchor:p.topAnchor constant:inset],[v.bottomAnchor constraintEqualToAnchor:p.bottomAnchor constant:-inset]]];}
 void TIOCloseResearch(UIViewController *source){
  if(!source)return;

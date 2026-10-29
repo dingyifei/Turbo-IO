@@ -16,7 +16,7 @@ shots="$PWD/build/preview-shots"
 [[ -x "$app/TurboPreview" ]] || { echo 'PREVIEW SHOOT FAIL: build preview first' >&2; exit 1; }
 mkdir -p "$shots"
 screens=("$@")
-[[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles runtime knob voice nav nav-active captions)
+[[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles runtime knob voice nav nav-active captions push-focus push-camera push-developerApps push-dashboardEditor editor-draft editor-ai editor-crop push-recordings push-subtitleHUD push-imageRXLab)
 for screen in "${screens[@]}"; do
   case "$screen" in hub|ota|music|tiles|runtime|knob|voice|nav|nav-active|captions|tokens|push-*|editor-*) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
 done
