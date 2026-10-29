@@ -21,9 +21,9 @@ static void place(void *p,void *obj,int x,int y,int w,int h){
 static unsigned map_px_checked;
 static const uint8_t *last_map;
 static void buffer(void *p,void *obj,const uint8_t *bytes,unsigned w,unsigned h){assert(obj&&bytes);
- if(w==192){ /* the board's map window is x 372..520; only the scale readout (rows 117..141) may reach 3 columns into the canvas */
+ if(w==192){ /* the board's map window is x 372..520: nothing is lit outside it, the scale bar included */
   last_map=bytes;
-  for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(bytes[y*w+x]){int dx=348+(int)x;assert(dx<520&&(dx>=372||(y>=117&&y<142&&dx>=351)));}map_px_checked++;}
+  for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(bytes[y*w+x]){int dx=348+(int)x;assert(dx<520&&dx>=372);}map_px_checked++;}
 Mock *m=p;assert((w==TN_ICON_W&&h==TN_ICON_H)||(w==192&&h==144));m->pixels[m->buffers%2]=bytes;m->buffers++;}
 static void text(void *p,void *obj,const char *s){assert(obj&&s);Mock *m=p;m->strings[index_of(m,obj)]=s;m->texts++;}
 static void visible(void *p,void *obj,bool yes){assert(obj);Mock *m=p;m->shown[index_of(m,obj)]=yes;}

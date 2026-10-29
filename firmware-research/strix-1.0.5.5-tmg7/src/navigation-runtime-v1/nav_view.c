@@ -35,8 +35,10 @@ static void line(uint8_t *p,int w,int h,TNXY a,TNXY b,int radius,uint8_t gray){
 #define NV_VIS_E (NV_VIS_R-NV_MAP_X)                             /* 172: first blanked column on the right */
 #define NV_SCALE_Y0 117u                                         /* scale readout rows of the canvas (nav_map.c scale_draw) */
 #define NV_SCALE_Y1 142u
+#define NV_SCALE_X0 3u                                           /* first canvas column of the scale block (nav_map.c clears columns 3..68 first) */
+#define NV_SCALE_X1 69u
 #define NV_TEXT_R (NV_VIS_X-8)                                   /* 364: band T and M text stops short of the map window */
-#define NV_B_R NV_MAP_X                                          /* 348: band B text stops at the canvas (the scale readout sits at its corner) */
+#define NV_B_R NV_MAP_X                                          /* 348: band B text stops at the canvas; the scale readout is inside the window, 29 px further right */
 #define NV_DIST_Y (TIO_PAGE_B1-TIO_LINE(TIO_FONT_MIN)-TIO_LINE(TIO_FONT_PRIMARY))   /* 116 */
 #define NV_ROAD_Y (TIO_PAGE_B1-TIO_LINE(TIO_FONT_MIN))           /* 152 */
 #define NV_TRIP_Y (TIO_PAGE_T1+20)                               /* 76 */
@@ -123,12 +125,20 @@ static unsigned fit_passing(const char *s,size_t n,const uint8_t *breaks,unsigne
  size_t best=0;for(size_t i=1;i<=n;i++)if(breaks&&(breaks[i/8]&(1u<<(i%8)))&&i+4<=cap&&tn_text_width(s,i,font)+font<=width)best=i;
  while(best&&s[best-1]==' ')best--;memcpy(out,s,best);memcpy(out+best,"\xe2\x80\xa6",4);return font;
 }
-/* The canvas is wider than the board's map window (x 372..520). Blank the columns outside the window in the frame just
- * before every hand-off. The scale readout (bar and its tick marks) lives in the canvas corner, so while a scale is
- * shown its rows keep their columns 3.. (nav_map.c clears that block first, so nothing but the bar is there). */
+/* The canvas is wider than the board's map window (x 372..520). Blank every column outside the window in the frame just
+ * before every hand-off, with no exception. The scale readout (bar and tick marks) is drawn by nav_map.c in the canvas
+ * corner, columns 3.., which is left of the window; while a scale is shown that block (rows NV_SCALE_Y0..Y1, which
+ * nav_map.c cleared first, so only the bar is in it) is moved right by NV_VIS_L so the bar starts 3 px inside the window. */
 static void map_buffer(TNView *v,TNViewFrame *f){
  unsigned metres,pixels;bool scale=v->map_state.valid&&tnr_scale(v->map_state.scenes[v->map_state.bank].range,&metres,&pixels);
- for(unsigned y=0;y<TN_MAP_H;y++){uint8_t *row=f->map+y*TN_MAP_W;memset(row,0,scale&&y>=NV_SCALE_Y0&&y<NV_SCALE_Y1?3u:(unsigned)NV_VIS_L);memset(row+NV_VIS_E,0,TN_MAP_W-NV_VIS_E);}
+ unsigned last=0;   /* last canvas column of the bar */
+ if(scale)for(unsigned y=NV_SCALE_Y0;y<NV_SCALE_Y1;y++)for(unsigned x=NV_SCALE_X0;x<NV_SCALE_X1;x++)if(f->map[y*TN_MAP_W+x]&&x>last)last=x;
+ for(unsigned y=0;y<TN_MAP_H;y++){uint8_t *row=f->map+y*TN_MAP_W;
+  if(scale&&last&&y>=NV_SCALE_Y0&&y<NV_SCALE_Y1&&last+NV_VIS_L<NV_VIS_E){
+   for(unsigned x=last+1;x-->NV_SCALE_X0;)row[x+NV_VIS_L]=row[x];   /* high to low: source and target overlap */
+   memset(row,0,NV_SCALE_X0+NV_VIS_L);}
+  else memset(row,0,(unsigned)NV_VIS_L);
+  memset(row+NV_VIS_E,0,TN_MAP_W-NV_VIS_E);}
  v->api.buffer(v->api.ctx,v->map,f->map,TN_MAP_W,TN_MAP_H);
 }
 static void publish_names(TNView *v,TNViewFrame *f){
@@ -204,7 +214,7 @@ bool tn_view_open(TNView *v,const TNWidgets *a,void *parent,const TNScene *s){
   v->trip[i]=make(v,trip_fonts[i],TIO_LENS_HIGH,TIO_CORE_X0,NV_TRIP_Y+(int)(TIO_FONT_BODY-trip_fonts[i]),NV_TRIP_W);if(!v->trip[i])goto fail;}
  for(unsigned i=0;i<TN_PASS_SIZES;i++){
   v->pass[i]=make(v,pass_fonts[i],i?TIO_LENS_HIGH:TIO_LENS_MID,TIO_CORE_X0,TIO_PAGE_T0+((TIO_PAGE_T1-TIO_PAGE_T0)-TIO_LINE(pass_fonts[i]))/2,NV_PASS_W);if(!v->pass[i])goto fail;}
- v->scale=make(v,TIO_FONT_MIN,TIO_LENS_HIGH,NV_MAP_X+5,NV_MAP_Y+117,68);if(!v->scale)goto fail;
+ v->scale=make(v,TIO_FONT_MIN,TIO_LENS_HIGH,NV_MAP_X+5+NV_VIS_L,NV_MAP_Y+117,68);if(!v->scale)goto fail;
  if(!built(v))goto fail;
  draw(&v->frames[0]);publish(v,&v->frames[0]);v->open=true;a->visible(a->ctx,v->root,true);return true;
  fail:a->destroy(a->ctx,v->root);forget(v);return false;

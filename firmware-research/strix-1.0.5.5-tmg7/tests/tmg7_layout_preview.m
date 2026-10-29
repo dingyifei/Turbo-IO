@@ -265,10 +265,12 @@ static void CompareNavBoard(NSString *html,Host *host,TNView *v){
  NSRegularExpression *mapre=[NSRegularExpression regularExpressionWithPattern:@"translate\\((\\d+) (\\d+)\\)" options:0 error:nil];NSTextCheckingResult *mm=[mapre firstMatchInString:s options:0 range:NSMakeRange(0,s.length)];assert(mm);
  int bx=[[s substringWithRange:[mm rangeAtIndex:1]] intValue],by=[[s substringWithRange:[mm rangeAtIndex:2]] intValue];
  // The canvas (192 px) is wider than the board's 148 px window: what counts is the lit columns, which must lie inside x bx..bx+148
- // (the scale readout may reach 3 columns into the canvas), and the car must sit within 3 px of the window centre.
+ // (the scale bar too: it starts 3 px inside the window), and the car must sit within 3 px of the window centre.
  Widget *map=W(v->map);assert(map->y==by&&map->y+map->h==TIO_PAGE_B1&&map->x+map->w<=TIO_PAGE_W);
- {int lo=999,hi=-1,sleeve_lo=999;for(int y=0;y<map->h;y++)for(int x=0;x<map->w;x++)if(map->pixels[y*map->w+x]){int ax=map->x+x;if(ax<lo)lo=ax;if(ax>hi)hi=ax;if(!(y>=117&&y<142)&&ax<sleeve_lo)sleeve_lo=ax;}
-  assert(hi>=0&&sleeve_lo>=bx&&hi<bx+148&&lo>=map->x+3);assert(abs(map->x+96-(bx+74))<=3);}
+ {int lo=999,hi=-1;for(int y=0;y<map->h;y++)for(int x=0;x<map->w;x++)if(map->pixels[y*map->w+x]){int ax=map->x+x;if(ax<lo)lo=ax;if(ax>hi)hi=ax;}
+  assert(hi>=0&&lo>=bx&&hi<bx+148);   // every lit column, the scale bar included, is inside the board's window
+  assert(map->pixels[137*map->w+(bx+5-map->x)]>=200&&map->pixels[134*map->w+(bx+5-map->x)]>=200);   // the bar and its first tick start 5 px inside it
+  assert(abs(map->x+96-(bx+74))<=3);}
  assert(matched==5);
  printf("PASS board LensNav (proposed, halved): %u text items match; band, size, intensity, x and y within tolerance, map column anchored to band B\n",matched);
 }
@@ -284,6 +286,7 @@ static void Nav(NSString *dir,NSString *board,bool zh,bool longer){
  unsigned shown=0;for(unsigned i=0;i<TN_PASS_SIZES;i++){Widget *w=W(v->pass[i]);if(w->shown){shown++;assert(w->x==TIO_CORE_X0&&w->clip&&w->font>=TIO_FONT_MIN);assert(tn_text_width(w->text,strlen(w->text),w->font)<=(unsigned)w->w);
    assert(tio_band_of(TIO_SURFACE_PAGE,w->y,w->h)==TIO_BAND_T);if(!longer)assert(!strncmp(w->text,zh?"经过":"Passing",zh?6:7)&&w->font==TIO_FONT_LABEL&&w->color==TIO_LENS_MID);}}assert(shown==1);
  Widget *scale=W(v->scale);assert(scale->shown&&scale->font==TIO_FONT_MIN&&!strcmp(scale->text,"100 m")&&scale->color==TIO_LENS_HIGH);
+ assert(scale->x>=372&&scale->x+scale->w<=520);   // the readout is inside the board's window, left-aligned with the bar
  Widget *trip=W(v->trip[0])->shown?W(v->trip[0]):W(v->trip[1]);assert(trip->shown&&!strcmp(trip->text,zh?"1.2 km \xc2\xb7 10分钟 \xc2\xb7 10:10":"1.2 km \xc2\xb7 10 min \xc2\xb7 10:10")&&trip->color==TIO_LENS_HIGH);
  Widget *dist=W(v->distance);assert(dist->shown&&dist->font==TIO_FONT_PRIMARY&&dist->color==TIO_LENS_FULL&&!strcmp(dist->text,"100 m"));
  unsigned turns=0;for(unsigned i=0;i<TN_TURN_SIZES;i++)if(W(v->turn[i])->shown){Widget *t=W(v->turn[i]);turns++;assert(t->color==TIO_LENS_FULL&&t->x>=dist->x+dist->w&&t->x+t->w<=W(v->map)->x);}assert(turns==1);
