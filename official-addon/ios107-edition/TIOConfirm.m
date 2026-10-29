@@ -1,6 +1,7 @@
 #import "TIOConfirm.h"
 #import "TIOLanguage.h"
 #import "ResearchUI.h"
+#import "TIODesign.h"
 
 static UIViewController *TIOPresentationSource(UIViewController *from);
 static UIViewController *TIOWindowRoot(void);
@@ -156,8 +157,8 @@ void TIOChoose(UIViewController *from, NSString *title, NSString *message,
     text.text=_body;
     text.editable=NO;
     text.selectable=YES;
-    text.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-    text.textColor=UIColor.secondaryLabelColor;
+    text.font=TIODesignFont(TIODesignTextStyleBody);
+    text.textColor=TIODesignColor(TIODesignColorLabelSecondary);
     text.textContainerInset=UIEdgeInsetsMake(16,20,24,20);
     text.adjustsFontForContentSizeCategory=YES;
     text.dataDetectorTypes=UIDataDetectorTypeNone;
