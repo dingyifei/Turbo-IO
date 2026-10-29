@@ -78,6 +78,11 @@ UIFont *TIODesignMonospacedDigitFont(TIODesignTextStyle style){
  const TIODesignTypeRow *row=TypeRow(style);
  return ScaledFont(style,[UIFont monospacedDigitSystemFontOfSize:row->size weight:WeightForCSS(row->weight)],nil);
 }
+UIFont *TIODesignMonospacedDigitFontMagnified(TIODesignTextStyle style, CGFloat factor, CGFloat maximum){
+ const TIODesignTypeRow *row=TypeRow(style);
+ UIFont *base=[UIFont monospacedDigitSystemFontOfSize:row->size*factor weight:WeightForCSS(row->weight)];
+ return [[UIFontMetrics metricsForTextStyle:SystemStyle(style)] scaledFontForFont:base maximumPointSize:maximum];
+}
 NSString *TIODesignTextStyleName(TIODesignTextStyle style){return @(TypeRow(style)->name);}
 CGFloat TIODesignTextStyleSize(TIODesignTextStyle style){return TypeRow(style)->size;}
 CGFloat TIODesignTextStyleLineHeight(TIODesignTextStyle style){return TypeRow(style)->line;}

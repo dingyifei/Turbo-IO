@@ -39,6 +39,8 @@ FOUNDATION_EXPORT UIFont *TIODesignFontForTraits(TIODesignTextStyle style, UITra
 FOUNDATION_EXPORT UIFont *TIODesignFontWeight(TIODesignTextStyle style, UIFontWeight weight);
 /* Monospaced digits for sizes, hashes and timers (caption by default). */
 FOUNDATION_EXPORT UIFont *TIODesignMonospacedDigitFont(TIODesignTextStyle style);
+/* The same family at `factor` times the style's size (a clock), still scaled by Dynamic Type for that style and capped at `maximum` points. */
+FOUNDATION_EXPORT UIFont *TIODesignMonospacedDigitFontMagnified(TIODesignTextStyle style, CGFloat factor, CGFloat maximum);
 /* Compiled token values: point size at Large, line height, weight, tracking. */
 FOUNDATION_EXPORT NSString *TIODesignTextStyleName(TIODesignTextStyle style);
 FOUNDATION_EXPORT CGFloat TIODesignTextStyleSize(TIODesignTextStyle style);
