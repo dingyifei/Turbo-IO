@@ -246,7 +246,11 @@ static void CompareNavBoard(NSString *html,Host *host,TNView *v){
  // The map column is anchored to the bottom of band B and ends where the board's map ends (translate(372 28), 148 px wide).
  NSRegularExpression *mapre=[NSRegularExpression regularExpressionWithPattern:@"translate\\((\\d+) (\\d+)\\)" options:0 error:nil];NSTextCheckingResult *mm=[mapre firstMatchInString:s options:0 range:NSMakeRange(0,s.length)];assert(mm);
  int bx=[[s substringWithRange:[mm rangeAtIndex:1]] intValue],by=[[s substringWithRange:[mm rangeAtIndex:2]] intValue];
- Widget *map=W(v->map);assert(map->y==by&&map->y+map->h==TIO_PAGE_B1&&map->x+map->w==bx+148&&map->x<=bx);
+ // The canvas (192 px) is wider than the board's 148 px window: what counts is the lit columns, which must lie inside x bx..bx+148
+ // (the scale readout may reach 3 columns into the canvas), and the car must sit within 3 px of the window centre.
+ Widget *map=W(v->map);assert(map->y==by&&map->y+map->h==TIO_PAGE_B1&&map->x+map->w<=TIO_PAGE_W);
+ {int lo=999,hi=-1,sleeve_lo=999;for(int y=0;y<map->h;y++)for(int x=0;x<map->w;x++)if(map->pixels[y*map->w+x]){int ax=map->x+x;if(ax<lo)lo=ax;if(ax>hi)hi=ax;if(!(y>=117&&y<142)&&ax<sleeve_lo)sleeve_lo=ax;}
+  assert(hi>=0&&sleeve_lo>=bx&&hi<bx+148&&lo>=map->x+3);assert(abs(map->x+96-(bx+74))<=3);}
  assert(matched==5);
  printf("PASS board LensNav (proposed, halved): %u text items match; band, size, intensity, x and y within tolerance, map column anchored to band B\n",matched);
 }

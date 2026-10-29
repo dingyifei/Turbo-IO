@@ -23,16 +23,31 @@ static void line(uint8_t *p,int w,int h,TNXY a,TNXY b,int radius,uint8_t gray){
 #define NV_ICON_X TIO_INSET_X                                    /* 16: glyph column */
 #define NV_ICON_Y (TIO_PAGE_M1+2)                                /* 114: inside band B */
 #define NV_TEXT_X (NV_ICON_X+(int)TN_ICON_W+4)                   /* 84 */
-#define NV_MAP_R 520                                             /* board: map column ends 20 px from the edge */
-#define NV_MAP_X (NV_MAP_R-(int)TN_MAP_W)                        /* 328 */
+/* Map: the board's right column is x 372..520 (148 px, bottom-anchored at y 28..172). The shared nav_map.c renderer
+ * draws a fixed 192 px canvas with the car at canvas x 96, so the canvas sits at x 348 (ending at the page edge): the
+ * car is then at x 444, 3 px from the window centre (446). Columns outside the window are blanked before every
+ * hand-off (map_buffer); the canvas, its size and the draw code are unchanged. */
+#define NV_VIS_X 372                                             /* map window: board translate(372 28) */
+#define NV_VIS_R 520
+#define NV_MAP_X (TIO_PAGE_W-(int)TN_MAP_W)                      /* 348 */
 #define NV_MAP_Y (TIO_PAGE_B1-(int)TN_MAP_H)                     /* 28: bottom of band B */
-#define NV_MAP_CLIP_W (TIO_CORE_X1-NV_MAP_X)                     /* 172: map columns at or past x=500 are blanked */
-#define NV_TEXT_R (NV_MAP_X-8)                                   /* 320: text stops short of the map */
+#define NV_VIS_L (NV_VIS_X-NV_MAP_X)                             /* 24: first visible canvas column */
+#define NV_VIS_E (NV_VIS_R-NV_MAP_X)                             /* 172: first blanked column on the right */
+#define NV_SCALE_Y0 117u                                         /* scale readout rows of the canvas (nav_map.c scale_draw) */
+#define NV_SCALE_Y1 142u
+#define NV_TEXT_R (NV_VIS_X-8)                                   /* 364: band T and M text stops short of the map window */
+#define NV_B_R NV_MAP_X                                          /* 348: band B text stops at the canvas (the scale readout sits at its corner) */
 #define NV_DIST_Y (TIO_PAGE_B1-TIO_LINE(TIO_FONT_MIN)-TIO_LINE(TIO_FONT_PRIMARY))   /* 116 */
 #define NV_ROAD_Y (TIO_PAGE_B1-TIO_LINE(TIO_FONT_MIN))           /* 152 */
 #define NV_TRIP_Y (TIO_PAGE_T1+20)                               /* 76 */
-#define NV_TRIP_W (NV_TEXT_R-TIO_CORE_X0)                        /* 280 */
-#define NV_PASS_W (NV_TEXT_R-TIO_CORE_X0)                        /* 280 */
+#define NV_TRIP_W (NV_TEXT_R-TIO_CORE_X0)                        /* 324 */
+#define NV_PASS_W (NV_TEXT_R-TIO_CORE_X0)                        /* 324 */
+/* Fixed slots (TurnCard: "Updates at 1 Hz change text only, never positions"): the distance owns x 84..196, wide enough
+ * for "9.9 km" at 32 px; the instruction starts at 196 (board: 192) and ends at the canvas. Neither slot moves or
+ * changes size with the digit count; only the instruction's font step depends on its own text. */
+#define NV_DIST_W 112
+#define NV_TURN_X (NV_TEXT_X+NV_DIST_W)                          /* 196 */
+#define NV_TURN_W (NV_B_R-NV_TURN_X)                             /* 152 */
 static const unsigned turn_fonts[TN_TURN_SIZES]={TIO_FONT_TITLE,TIO_FONT_BODY,TIO_FONT_MIN};
 static const unsigned trip_fonts[TN_TRIP_SIZES]={TIO_FONT_BODY,TIO_FONT_MIN};
 static const unsigned pass_fonts[TN_PASS_SIZES]={TIO_FONT_LABEL,TIO_FONT_MIN};
@@ -78,22 +93,25 @@ static bool built(const TNView *v){
  for(unsigned i=0;i<TN_PASS_SIZES;i++)ok=ok&&v->pass[i];
  return ok;
 }
+static int glyph_axis(int v,int from,int to){int d=(v-from)*13;return to+(d>=0?(d+10)/20:-((-d+10)/20));}
+static TNXY glyph(TNXY p){return (TNXY){glyph_axis(p.x,56,TN_ICON_W/2),glyph_axis(p.y,60,TN_ICON_H/2)};}
 static void draw(TNViewFrame *f){
  memset(f->names,0,sizeof f->names);
  memset(f->icon,0,sizeof f->icon);memset(f->map,0,sizeof f->map);
  TNVisual *v=&f->visual;uint8_t gray=v->stale?100:255;
- /* The glyph tables are authored in a 96x84 box; the 64x56 canvas takes them at half size. */
+ /* The glyph tables are authored in a 96x84 box centred at (56,60); the 64x56 canvas takes them at 0.65 with a
+ * 7 px stroke (brush radius 3; the board draws 8 px), so the ink spans about 52x47 and keeps a margin off the edge. */
  for(unsigned i=1;i<v->icon_count;i++){
   TNXY a=v->icon[i-1],b=v->icon[i];
-  a.x=8+(a.x-8+1)/2;a.y=2+(a.y-12+1)/2;b.x=8+(b.x-8+1)/2;b.y=2+(b.y-12+1)/2;
-  line(f->icon,TN_ICON_W,TN_ICON_H,a,b,2,gray);
+  a=glyph(a);b=glyph(b);
+  line(f->icon,TN_ICON_W,TN_ICON_H,a,b,3,gray);
  }
  for(unsigned i=1;i<v->route_count;i++){
-  TNXY a=v->route[i-1],b=v->route[i];a.x=(a.x-400)*192/128;a.y=(a.y-4)*144/128;b.x=(b.x-400)*192/128;b.y=(b.y-4)*144/128;
+  TNXY a=v->route[i-1],b=v->route[i];a.x=NV_VIS_L+(a.x-400)*148/128;a.y=(a.y-4)*144/128;b.x=NV_VIS_L+(b.x-400)*148/128;b.y=(b.y-4)*144/128;
   line(f->map,TN_MAP_W,TN_MAP_H,a,b,1,v->stale?60:160);
  }
  if(v->route_count)for(unsigned i=1;i<4;i++){
-  TNXY a=v->position[i-1],b=v->position[i];a.x=(a.x-400)*192/128;a.y=(a.y-4)*144/128;b.x=(b.x-400)*192/128;b.y=(b.y-4)*144/128;
+  TNXY a=v->position[i-1],b=v->position[i];a.x=NV_VIS_L+(a.x-400)*148/128;a.y=(a.y-4)*144/128;b.x=NV_VIS_L+(b.x-400)*148/128;b.y=(b.y-4)*144/128;
   line(f->map,TN_MAP_W,TN_MAP_H,a,b,1,gray);
  }
 }
@@ -105,10 +123,12 @@ static unsigned fit_passing(const char *s,size_t n,const uint8_t *breaks,unsigne
  size_t best=0;for(size_t i=1;i<=n;i++)if(breaks&&(breaks[i/8]&(1u<<(i%8)))&&i+4<=cap&&tn_text_width(s,i,font)+font<=width)best=i;
  while(best&&s[best-1]==' ')best--;memcpy(out,s,best);memcpy(out+best,"\xe2\x80\xa6",4);return font;
 }
-/* The map canvas is 192 px wide and sits 20 px short of the edge, so its last columns would pass the lens core
- * (TIO_CORE_X1). Blank them in the frame just before every hand-off; the canvas, its size and its place stay put. */
+/* The canvas is wider than the board's map window (x 372..520). Blank the columns outside the window in the frame just
+ * before every hand-off. The scale readout (bar and its tick marks) lives in the canvas corner, so while a scale is
+ * shown its rows keep their columns 3.. (nav_map.c clears that block first, so nothing but the bar is there). */
 static void map_buffer(TNView *v,TNViewFrame *f){
- for(unsigned y=0;y<TN_MAP_H;y++)memset(f->map+y*TN_MAP_W+NV_MAP_CLIP_W,0,TN_MAP_W-NV_MAP_CLIP_W);
+ unsigned metres,pixels;bool scale=v->map_state.valid&&tnr_scale(v->map_state.scenes[v->map_state.bank].range,&metres,&pixels);
+ for(unsigned y=0;y<TN_MAP_H;y++){uint8_t *row=f->map+y*TN_MAP_W;memset(row,0,scale&&y>=NV_SCALE_Y0&&y<NV_SCALE_Y1?3u:(unsigned)NV_VIS_L);memset(row+NV_VIS_E,0,TN_MAP_W-NV_VIS_E);}
  v->api.buffer(v->api.ctx,v->map,f->map,TN_MAP_W,TN_MAP_H);
 }
 static void publish_names(TNView *v,TNViewFrame *f){
@@ -132,18 +152,22 @@ static void trip_update(TNView *v,const TNVisual *vis){
  for(unsigned i=0;i<TN_TRIP_SIZES;i++){a->text_static(a->ctx,v->trip[i],v->trip_text[next]);a->visible(a->ctx,v->trip[i],i==size);}
  v->trip_bank=next;v->trip_shown=true;
 }
+/* The distance slot is fixed. A reading too wide for it (100 km and more) drops its tenths: "123.4 km" -> "123 km". */
+static void fit_distance(char *d){
+ if(est_px(d,TIO_FONT_PRIMARY)<=NV_DIST_W)return;
+ char *dot=d;while(*dot&&*dot!='.')dot++;
+ if(*dot&&dot[1]>='0'&&dot[1]<='9'){const char *rest=dot+2;while((*dot++=*rest++)){}}
+}
 static void publish(TNView *v,TNViewFrame *f){
  TNWidgets *a=&v->api;
  a->buffer(a->ctx,v->icon,f->icon,TN_ICON_W,TN_ICON_H);
  map_buffer(v,f);
- /* Distance is the primary line; the instruction follows it on the same baseline. */
- unsigned dw=est_px(f->visual.distance,TIO_FONT_PRIMARY)+6;if(dw>150)dw=150;
- a->place(a->ctx,v->distance,NV_TEXT_X,NV_DIST_Y,(int)dw,TIO_LINE(TIO_FONT_PRIMARY));
+ /* Distance is the primary line; the instruction follows it on the same baseline. Both slots were placed once, at open:
+ * an update changes text and which font step is visible, never a position or a size. */
+ fit_distance(f->visual.distance);
  a->text_static(a->ctx,v->distance,f->visual.distance);a->visible(a->ctx,v->distance,true);
- int tx=NV_TEXT_X+(int)dw+12,tw=NV_TEXT_R-tx;
- unsigned size=pick(turn_fonts,TN_TURN_SIZES,f->visual.turn,(unsigned)tw);
+ unsigned size=pick(turn_fonts,TN_TURN_SIZES,f->visual.turn,NV_TURN_W);
  for(unsigned i=0;i<TN_TURN_SIZES;i++){
-  a->place(a->ctx,v->turn[i],tx,NV_DIST_Y+(int)TIO_FONT_PRIMARY-(int)turn_fonts[i],tw,TIO_LINE(turn_fonts[i]));
   a->text_static(a->ctx,v->turn[i],f->visual.turn);a->visible(a->ctx,v->turn[i],i==size&&f->visual.turn[0]);
  }
  a->text_static(a->ctx,v->road,f->visual.road);a->visible(a->ctx,v->road,f->visual.road[0]!=0);
@@ -164,9 +188,9 @@ bool tn_view_open(TNView *v,const TNWidgets *a,void *parent,const TNScene *s){
  if(!v->icon||!v->map)goto fail;
  a->place(a->ctx,v->icon,NV_ICON_X,NV_ICON_Y,TN_ICON_W,TN_ICON_H);a->place(a->ctx,v->map,NV_MAP_X,NV_MAP_Y,TN_MAP_W,TN_MAP_H);
  /* Intensity: B lens-full, M and the road to take lens-high, T lens-mid (18 px) or lens-high (16 px fallback). */
- v->distance=make(v,TIO_FONT_PRIMARY,TIO_LENS_FULL,NV_TEXT_X,NV_DIST_Y,108);if(!v->distance)goto fail;
- for(unsigned i=0;i<TN_TURN_SIZES;i++){v->turn[i]=make(v,turn_fonts[i],TIO_LENS_FULL,NV_TEXT_X,NV_DIST_Y,108);if(!v->turn[i])goto fail;}
- v->road=make(v,TIO_FONT_MIN,TIO_LENS_HIGH,NV_TEXT_X,NV_ROAD_Y,NV_TEXT_R-NV_TEXT_X);if(!v->road)goto fail;
+ v->distance=make(v,TIO_FONT_PRIMARY,TIO_LENS_FULL,NV_TEXT_X,NV_DIST_Y,NV_DIST_W);if(!v->distance)goto fail;
+ for(unsigned i=0;i<TN_TURN_SIZES;i++){v->turn[i]=make(v,turn_fonts[i],TIO_LENS_FULL,NV_TURN_X,NV_DIST_Y+(int)TIO_FONT_PRIMARY-(int)turn_fonts[i],NV_TURN_W);if(!v->turn[i])goto fail;}
+ v->road=make(v,TIO_FONT_MIN,TIO_LENS_HIGH,NV_TEXT_X,NV_ROAD_Y,NV_B_R-NV_TEXT_X);if(!v->road)goto fail;
  for(unsigned i=0;i<TN_TRIP_SIZES;i++){
   v->trip[i]=make(v,trip_fonts[i],TIO_LENS_HIGH,TIO_CORE_X0,NV_TRIP_Y+(int)(TIO_FONT_BODY-trip_fonts[i]),NV_TRIP_W);if(!v->trip[i])goto fail;}
  for(unsigned i=0;i<TN_PASS_SIZES;i++){

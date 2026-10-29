@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1cf275bf",
+      "after": "1cf2bdbf",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1cf26ebf00bf",
+      "after": "1cf2b6bf00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1ff2e2fc00bf",
+      "after": "1ff22afd00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1cf3c9fa00bf00bf00bf",
+      "after": "1cf311fb00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 151040,
+  "moduleBytes": 151232,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "2b6303d120f79b8f9587a346e83c7c72f32ea6159f172ce582d4a9a9d95731bb",
+  "moduleSHA256": "ff5b19ba08ea57856226e4b2d6361db1207d3634aab7522d0ded82c7d54d8da5",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7359688,
+  "APBytes": 7359880,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG7-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8813938,
-    "sha256": "1edc5990575f8633ee839c7eef8217bbf4ad19d4d12289c953c45206c9b408ea",
-    "md5": "9a347242f0efd3d344dbb1b690b418c5"
+    "bytes": 8814035,
+    "sha256": "ce3d77f818e636bb87f576282566ee1620ca1031268ef4a4acd0f9c17cdf1e78",
+    "md5": "3ca4574b2cd8d5bc79e97e9e8154ba86"
   },
   "sources": [
     {
@@ -421,7 +421,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
-      "sha256": "ff2b5e944af0edfd0ab92359fd2cc17bd3da07b1abecd9a2868cc62f43028fb4"
+      "sha256": "54fb71c333bb75deeac9914ef01b2137d817d84be159bf76611a566d30e894bf"
     },
     {
       "source": "navigation-runtime-v1/nav_visual.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "95a4deed708df0241c2e7d759f69174abd9f766c12a2cfb75272f90fac4f5d1a",
+  "APSHA256": "5249d2a68399cd686b803ca7c9806fc022b5221a802e5a02235727ce07e7453b",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

@@ -2,6 +2,7 @@
 #include "../common-v1/tio_ui.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 unsigned tio_lang(void){return 1;} /* Chinese: the strings below are the ZH table */
 /* Mock widgets in allocation order: root, icon, map, distance, turn x3, road, trip x2, passing x2, scale. */
@@ -18,9 +19,11 @@ static void place(void *p,void *obj,int x,int y,int w,int h){
  m->box[i][0]=x;m->box[i][1]=y;m->box[i][2]=w;m->box[i][3]=h;
 }
 static unsigned map_px_checked;
+static const uint8_t *last_map;
 static void buffer(void *p,void *obj,const uint8_t *bytes,unsigned w,unsigned h){assert(obj&&bytes);
- if(w==192){ /* no map pixel past the lens core: x = 328 + column must stay below TIO_CORE_X1 */
-  for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(bytes[y*w+x])assert(328+(int)x<TIO_CORE_X1);map_px_checked++;}
+ if(w==192){ /* the board's map window is x 372..520; only the scale readout (rows 117..141) may reach 3 columns into the canvas */
+  last_map=bytes;
+  for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(bytes[y*w+x]){int dx=348+(int)x;assert(dx<520&&(dx>=372||(y>=117&&y<142&&dx>=351)));}map_px_checked++;}
 Mock *m=p;assert((w==TN_ICON_W&&h==TN_ICON_H)||(w==192&&h==144));m->pixels[m->buffers%2]=bytes;m->buffers++;}
 static void text(void *p,void *obj,const char *s){assert(obj&&s);Mock *m=p;m->strings[index_of(m,obj)]=s;m->texts++;}
 static void visible(void *p,void *obj,bool yes){assert(obj);Mock *m=p;m->shown[index_of(m,obj)]=yes;}
@@ -41,7 +44,7 @@ int main(void){
  assert(shown_of(&m,Trip0,2)==1&&m.color[Trip0]==TIO_LENS_HIGH&&m.color[Trip1]==TIO_LENS_HIGH&&!strcmp(m.strings[Trip0],"1.2 km \xc2\xb7 8分钟 \xc2\xb7 到达时间待更新"));
  assert(m.box[Trip0][1]>=TIO_PAGE_T1&&m.box[Trip0][1]+m.box[Trip0][3]<=TIO_PAGE_M1);                    /* band M */
  assert(m.box[Dist][1]>=TIO_PAGE_M1&&m.box[Turn0][1]>=TIO_PAGE_M1&&m.box[Icon][1]>=TIO_PAGE_M1);            /* band B */
- assert(m.box[Icon][0]>=TIO_INSET_X&&m.box[Map][0]+m.box[Map][2]<=TIO_PAGE_W-TIO_INSET_X&&m.box[Map][1]+m.box[Map][3]==TIO_PAGE_B1);
+ assert(m.box[Icon][0]>=TIO_INSET_X&&m.box[Map][0]+m.box[Map][2]==TIO_PAGE_W&&m.box[Map][0]+24==372&&m.box[Map][1]+m.box[Map][3]==TIO_PAGE_B1);   /* canvas 348..540, window 372..520 */
  assert(m.box[Turn0][0]>=m.box[Dist][0]+m.box[Dist][2]&&m.box[Turn0][0]+m.box[Turn0][2]<=m.box[Map][0]); /* instruction follows the distance */
  assert(m.box[Turn0][1]+(int)m.fonts[Turn0]==m.box[Dist][1]+(int)TIO_FONT_PRIMARY);                      /* shared baseline */
  assert(shown_of(&m,Pass0,2)==0&&!m.shown[Scale]);
@@ -52,6 +55,35 @@ int main(void){
  assert(map_px_checked>=2);
  for(unsigned i=0;i<1000;i++){s.icon=(uint8_t)(i%TN_ICON_COUNT);s.heading=(uint16_t)(i%360);s.distance_m=i;assert(tn_view_update(&v,&s,i%2));
   assert(shown_of(&m,Turn0,3)==1&&shown_of(&m,Trip0,2)==1);}
+ /* Fixed slots (TurnCard): sweeping the distance through every digit count never moves or resizes the distance or the
+  * instruction, and an instruction keeps its font step. */
+ {Mock fm={0};TNWidgets fa=api(&fm);TNView fv={0};TNScene fs=s;strcpy(fs.turn,"Slight right");strcpy(fs.road,"onto Market St");
+  const unsigned meters[]={1200,950,100,90,9,12300,123456,999999};int dbox[4],tbox[4][4],pbox[4];unsigned tfont=0;bool first_pass=true;
+  fs.distance_m=meters[0];assert(tn_view_open(&fv,&fa,&fm,&fs));
+  for(unsigned i=0;i<sizeof meters/sizeof *meters;i++){fs.distance_m=meters[i];assert(tn_view_update(&fv,&fs,false));
+   unsigned shown=0,font=0;for(unsigned k=Turn0;k<=Turn2;k++)if(fm.shown[k]){shown++;font=fm.fonts[k];}assert(shown==1);
+   if(first_pass){memcpy(dbox,fm.box[Dist],sizeof dbox);memcpy(pbox,fm.box[Road],sizeof pbox);for(unsigned k=0;k<3;k++)memcpy(tbox[k],fm.box[Turn0+k],sizeof tbox[k]);tfont=font;first_pass=false;}
+   assert(!memcmp(dbox,fm.box[Dist],sizeof dbox)&&!memcmp(pbox,fm.box[Road],sizeof pbox)&&font==tfont);
+   for(unsigned k=0;k<3;k++)assert(!memcmp(tbox[k],fm.box[Turn0+k],sizeof tbox[k]));
+   assert(fm.box[Dist][0]==84&&fm.box[Dist][2]==112&&fm.box[Turn0][0]==196&&fm.box[Turn0][2]==152);
+   assert(strlen(fm.strings[Dist])<=8);}   /* 100 km and more drop their tenths: still one slot */
+  assert(!strcmp(fm.strings[Dist],"999 km")&&!strcmp(fm.strings[Turn0],"Slight right"));
+  /* Turn glyphs: every icon (and its mirror) stays inside the canvas with a margin and a 7 px stroke, not clipped. */
+  for(unsigned icon=0;icon<TN_ICON_COUNT;icon++){fs.icon=(uint8_t)icon;assert(tn_view_update(&fv,&fs,false));
+   const uint8_t *px=fv.frames[fv.active].icon;int x0=64,x1=-1,y0=56,y1=-1;
+   for(int y=0;y<56;y++)for(int x=0;x<64;x++)if(px[y*64+x]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+   assert(x1>=0&&x0>=1&&x1<=62&&y0>=1&&y1<=54&&x1-x0>=30&&y1-y0>=28);}
+  fs.icon=TN_STRAIGHT;assert(tn_view_update(&fv,&fs,false));
+  {const uint8_t *px=fv.frames[fv.active].icon;unsigned run=0,best=0;for(int x=0;x<64;x++){if(px[28*64+x]){run++;if(run>best)best=run;}else run=0;}assert(best==7);}   /* 7 px stroke */
+  assert(tn_view_close(&fv));}
+ /* The car marker sits in the middle of the board's map window (x 372..520, centre 446). */
+ {Mock cm={0};TNWidgets ca=api(&cm);TNView cv={0};TNScene cs=s;assert(tn_view_open(&cv,&ca,&cm,&cs));
+  uint8_t scene[32]={1,0,0,0,0x40,0x01,1,0,2,0,0,0,0,0,0,0,2,0,6,0,0,0,0,0},pose[12]={1,0,0,0};   /* sid 1, range 320, one route path of two points */
+  scene[24]=0xa0;scene[25]=0x0f;scene[26]=0xa0;scene[27]=0x0f;scene[28]=0xc0;scene[29]=0x0f;scene[30]=0xa0;scene[31]=0x0f;                      /* far off the canvas */
+  assert(tn_view_map(&cv,TNR_SCENE,scene,sizeof scene,0));assert(tn_view_map(&cv,TNR_POSE,pose,sizeof pose,1));assert(tn_view_map_tick(&cv,2));
+  int x0=192,x1=-1;for(unsigned y=80;y<112;y++)for(unsigned x=60;x<132;x++)if(last_map[y*192+x]>=250){if((int)x<x0)x0=(int)x;if((int)x>x1)x1=(int)x;}
+  assert(x1>x0&&abs(348+(x0+x1)/2-446)<=3);   /* 443 vs 446: the canvas cannot go past the page edge */
+  assert(tn_view_close(&cv));}
  /* The turn text steps down through 24, 20, 16 px and the instruction never reaches the map. */
  strcpy(s.turn,"Continue straight and keep right at the fork");s.distance_m=100;assert(tn_view_update(&v,&s,false));
  assert(m.shown[Turn2]&&shown_of(&m,Turn0,3)==1&&m.fonts[Turn2]==TIO_FONT_MIN);
