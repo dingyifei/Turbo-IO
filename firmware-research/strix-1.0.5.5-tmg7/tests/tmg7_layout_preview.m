@@ -8,6 +8,8 @@
 #include "../src/navigation-runtime-v1/nav_text.h"
 #include "../src/music-runtime-v1/music.h"
 #include "../src/music-runtime-v1/music_layout.h"
+#include "../src/focus-v1/focus_view.h"
+#include "../src/common-v1/tio_text.h"
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
 #include "../src/common-v1/tio_caret.h"
@@ -67,7 +69,8 @@ static unsigned Check(Host *host,const char *name,bool verbose){
   if(pix&&w->art){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]>TM_ART_LEVEL){v|=VColor;break;}}   // artwork stays under lens-mid
   if(pix&&!w->span&&(r.x<TIO_INSET_X||r.x+r.w>TIO_PAGE_W-TIO_INSET_X))v|=VCore;   // glyphs may use the side insets, not the edge
   if(rect&&!(r.h<=TIO_TRACK_H&&(w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK)))v|=VPanel;   // only carets and tracks are filled
-  if(pix&&!w->art&&r.w*r.h>=32*32){unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
+  bool track=pix&&r.h<=TIO_TRACK_H;if(track){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]!=TF_TRACK_LEVEL&&w->pixels[k]!=TF_FILL_LEVEL){v|=VColor;break;}}   // progress track: only track and full levels
+  if(pix&&!w->art&&!track&&r.w*r.h>=32*32){unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
   for(unsigned j=1;j<i;j++){Widget *o=&host->w[j];if(o->shown&&(textual(o)||o->kind==KRect)&&(text||rect)&&overlap(w,o)&&!(rect&&o->kind==KRect))v|=VOverlap;}
   if(v&&verbose)printf("  %s widget %u (%d,%d %dx%d font %u): mask 0x%x\n",name,i,r.x,r.y,r.w,r.h,w->font,v);
   mask|=v;
@@ -93,6 +96,7 @@ static void SelfTest(void){   // the gate must catch each defect
  h=(Host){0};create(&h,&h);Add(&h,KText,40,60,100,24,16,TIO_LENS_MID,TIO_BAND_M,"a");assert(Check(&h,"x",false)&VColor);
  h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");Add(&h,KText,60,130,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"b");assert(Check(&h,"x",false)&VOverlap);
  {static uint8_t bright[36*36];memset(bright,255,sizeof bright);h=(Host){0};create(&h,&h);Widget *a=Add(&h,KPixels,40,16,36,36,0,0,TIO_BAND_T,NULL);a->pixels=bright;a->art=true;assert(Check(&h,"x",false)&VColor);a->art=false;assert(Check(&h,"x",false)&VPanel);}
+ {static uint8_t bar[460*4];memset(bar,TF_TRACK_LEVEL,sizeof bar);h=(Host){0};create(&h,&h);Widget *t=Add(&h,KPixels,40,44,460,4,0,0,TIO_BAND_T,NULL);t->pixels=bar;assert(Check(&h,"x",false)==0);bar[7]=0x90;assert(Check(&h,"x",false)&VColor);}
  h=(Host){0};create(&h,&h);Add(&h,KText,40,120,100,24,20,TIO_LENS_FULL,TIO_BAND_B,"a");Add(&h,KRect,40,150,TIO_CARET_W,TIO_CARET_H,0,TIO_LENS_FULL,TIO_BAND_B,NULL);assert(Check(&h,"ok",false)==0);
 }
 
@@ -163,7 +167,7 @@ static void AppPages(NSString *dir,NSString *board){
 // ---- Navigation (LensNav, tmg7(2)) ---------------
 static void Put16(uint8_t *p,int n){p[0]=n;p[1]=n>>8;}
 #define W(p) ((Widget *)(p))
-static void color(void *p,void *o,uint32_t rgb){(void)p;((Widget *)o)->color=rgb;}
+static void color(void *p,void *o,uint32_t rgb){(void)p;Widget *w=o;w->color=rgb;w->fading=rgb!=0&&rgb<TIO_LENS_HIGH&&rgb!=TIO_LENS_MID;}   // between steps = a fading hint
 // Compare an EN page with its board's proposed column (board drawn at 2x): same text, size, intensity and band; x and y within 6 px.
 static void CompareNavBoard(NSString *html,Host *host,TNView *v){
  NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
@@ -261,6 +265,51 @@ static void Lyrics(NSString *dir,NSString *board,bool zh){
  tm_one_line("short",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strcmp(one,"short"));
  tm_one_line("",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!*one);
 }
+// ---- Focus timer (LensFocus, tmg7(4)): the real TFView on mock widgets ------------------------------------------------------
+static void CompareFocusBoard(NSString *html,Host *host){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSRange proposed=[s rangeOfString:@"Proposed"];assert(proposed.location!=NSNotFound);s=[s substringFromIndex:proposed.location];
+ NSRegularExpression *re=[NSRegularExpression regularExpressionWithPattern:@"left: (\\d+)px; top: (\\d+)px; font-size: (\\d+)px;[^\"]*?color: (#[0-9a-f]{6});[^\"]*\">([^<{]+)</div>" options:0 error:nil];
+ unsigned matched=0;
+ for(NSTextCheckingResult *m in [re matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  int x=[[s substringWithRange:[m rangeAtIndex:1]] intValue]/2,y=[[s substringWithRange:[m rangeAtIndex:2]] intValue]/2,font=[[s substringWithRange:[m rangeAtIndex:3]] intValue]/2;
+  uint32_t color=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:4]] UTF8String]+1,NULL,16);NSString *t=[s substringWithRange:[m rangeAtIndex:5]];
+  Widget *w=NULL;for(unsigned i=1;i<host->count&&!w;i++)if(host->w[i].shown&&textual(&host->w[i])&&(int)host->w[i].font==font&&host->w[i].color==color)w=&host->w[i];   // match by size and intensity: "Break at 10:35" needs a wall clock the glasses lack, so the M row shows what comes next
+  if(!w){printf("board text without fixture widget: %s\n",t.UTF8String);assert(0);}
+  matched++;
+  bool exact=![t hasPrefix:@"Break"];if(exact)assert([t isEqualToString:[NSString stringWithUTF8String:w->text]]);
+  if(!(abs(w->x-x)<=8&&abs(w->y-y)<=8)){printf("board mismatch %s: board (%d,%d %d px %06x) fixture (%d,%d %u px %06x)\n",t.UTF8String,x,y,font,color,w->x,w->y,w->font,w->color);assert(0);}
+ }
+ assert(matched==3);
+ Widget *bar=NULL;for(unsigned i=1;i<host->count;i++)if(host->w[i].kind==KPixels)bar=&host->w[i];assert(bar&&bar->x==40&&bar->y==44&&bar->w==460&&bar->h==4&&[s containsString:@"left: 80px; top: 88px; width: 920px; height: 8px"]);
+ unsigned fill=0;while(fill<460&&bar->pixels[fill]==TF_FILL_LEVEL)fill++;assert(abs((int)fill-236/2)<=4);   // board: 236 of 920 at 2x
+ printf("PASS board LensFocus (proposed, halved): %u text rows and the progress track match; band, size, intensity, x and y within tolerance\n",matched);
+}
+static void Focus(NSString *dir,NSString *board,bool zh){
+ language=zh;
+ struct {const char *tag;uint32_t now;unsigned status,phase,completed,remaining_s,duration_s;bool compact,input;} shots[]={
+  {"-hint",1000,TF_RUNNING,0,1,1122,1500,false,false},{"-hint-fade",3850,TF_RUNNING,0,1,1122,1500,false,false},{"",4000,TF_RUNNING,0,1,1122,1500,false,false},
+  {"-compact",9000,TF_RUNNING,0,1,1122,1500,true,false},{"-paused",4000,TF_PAUSED,0,1,600,1500,false,false},{"-break",4000,TF_RUNNING,2,4,250,900,false,false},
+  {"-done",4000,TF_DONE,0,4,0,1500,false,false},{"-ready",4000,TF_IDLE,0,0,1500,1500,false,false},{"-long",4000,TF_RUNNING,0,3,7200,7200,false,false}};
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){typeof(shots[0]) *sh=&shots[i];Host *host=calloc(1,sizeof *host);assert(host);create(host,host);
+  TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TFView *v=calloc(1,sizeof *v);assert(v);assert(tf_view_open(v,&api,host,host));tf_view_enter(v,1000);
+  TFocus st;tf_init(&st,0);st.status=sh->status;st.phase=sh->phase;st.completed=sh->completed;st.remaining_ms=sh->remaining_s*1000;st.duration_s=sh->duration_s;
+  assert(tf_view_draw(v,&st,sh->compact,sh->now));
+  char name[48];snprintf(name,sizeof name,"focus%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  Widget *title=W(v->labels[TF_L_TITLE]),*count=W(v->labels[TF_L_COUNT]),*status=W(v->labels[TF_L_STATUS]),*time=W(v->labels[TF_L_TIME]);
+  assert(time->font==TIO_FONT_HERO&&time->color==TIO_LENS_FULL&&status->font==TIO_FONT_BODY&&status->color==TIO_LENS_HIGH&&title->font==TIO_FONT_LABEL);
+  assert(time->y>status->y&&status->y>title->y);                                  // primary information lowest
+  if(!strcmp(sh->tag,"-hint")){assert(title->color==TIO_LENS_HIGH&&!count->shown&&time->shown);}
+  if(!strcmp(sh->tag,"-hint-fade"))assert(title->color>0&&title->color<TIO_LENS_HIGH&&!tf_view_due(v,3850,false)&&tf_view_due(v,4000,false));
+  if(!strcmp(sh->tag,"")){assert(title->color==TIO_LENS_MID&&count->shown&&!strcmp(count->text,"2 / 4")&&!strcmp(time->text,"18:42"));if(!zh)CompareFocusBoard(board,host);}
+  if(!strcmp(sh->tag,"-compact"))assert(title->shown&&!count->shown&&!status->shown&&!time->shown&&!W(v->bar)->shown);
+  if(!strcmp(sh->tag,"-break"))assert(!strcmp(count->text,"4 / 4")&&!strcmp(status->text,tio_text(TT_FOCUS_NEXT_FOCUS,zh)));
+  if(!strcmp(sh->tag,"-done")){assert(!strcmp(count->text,"4 / 4"));unsigned lit=0;for(int k=0;k<460*4;k++)lit+=W(v->bar)->pixels[k]==TF_FILL_LEVEL;assert(lit==460*4);}   // finished: track full
+  if(!strcmp(sh->tag,"-ready")){for(int k=0;k<460*4;k++)assert(W(v->bar)->pixels[k]==TF_TRACK_LEVEL);}
+  if(!strcmp(sh->tag,"-long")){assert(!strcmp(time->text,"120:00")&&!strcmp(status->text,tio_text(TT_FOCUS_NEXT_LONG,zh)));assert(tn_text_width(time->text,strlen(time->text),TIO_FONT_HERO)<=(unsigned)time->w);}
+  assert(tn_text_width(title->text,strlen(title->text),TIO_FONT_LABEL)<=(unsigned)title->w&&tn_text_width(status->text,strlen(status->text),TIO_FONT_BODY)<=(unsigned)status->w);
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(tf_view_close(v));free(v);free(host);}
+}
 int main(int argc,char **argv){@autoreleasepool{assert(argc==3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);
- puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav and music are re-laid");}return 0;}
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);
+ puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music and focus are re-laid");}return 0;}
