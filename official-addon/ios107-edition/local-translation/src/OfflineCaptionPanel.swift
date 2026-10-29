@@ -21,18 +21,19 @@ import UIKit
     private var fastTranslation = true, showingPreview = false
     private var finalLines: [(Int, String)] = []
     private var preparingSource = false
-    private let sourceView = UITextView(), targetView = UITextView()
+    private let header = CaptionHeaderView(), footer = CaptionActionFooter()
 
     override func viewDidLoad() {
-        super.viewDidLoad(); title = "英语离线字幕"
+        super.viewDidLoad(); title = "英语离线字幕"; navigationItem.largeTitleDisplayMode = .always
         TIODesign.styleTable(tableView)
         provider = CaptionTranslationRouter.Provider(rawValue: prefs.string(forKey: "offlineProvider") ?? "apple") ?? .apple
         router.select(provider)
         fastTranslation = prefs.object(forKey: "fastTranslation") == nil ? true : prefs.bool(forKey: "fastTranslation")
         // Leave CPU headroom for capture and CoreML while running both engines.
         router.hymtThreads = min(4, ProcessInfo.processInfo.activeProcessorCount)
-        for view in [sourceView, targetView] { view.isEditable = false; TIODesign.styleReadOnlyText(view) }
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "停止", style: .plain, target: self, action: #selector(stopTapped))
+        tableView.tableHeaderView = header; tableView.tableFooterView = footer
+        footer.button.addTarget(self, action: #selector(toggleSession), for: .touchUpInside)
+        refresh()
         speech.onText = { [weak self] text, final in self?.accept(text, final: final) }
         speech.onFailure = { [weak self] code in self?.stop("识别已停止：" + code) }
         mic.onBuffer = { [weak self] buffer in self?.speech.offer(buffer) }
@@ -48,56 +49,67 @@ import UIKit
             if let observer { NotificationCenter.default.removeObserver(observer); self.observer = nil }
         }
     }
-    override func numberOfSections(in tableView: UITableView) -> Int { 5 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { [4, 1, 1, 1, 1][section] }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { ["收音与显示", "会话", "英语 · 实时识别", "中文 · 分段翻译", "资源"][section] }
-    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        switch section {
-        case 0: return "英语专用，收音可选手机或系统蓝牙麦克风。快速预译：听到约6个词就开始，以后最多每1.2秒发起一次新预译；这是调度间隔，不是总延迟。句末修正，预译可能改写。Hy-MT2 边生成边显示；Apple 每个短块完成后显示。"
-        case 1: return state + "\nOFFLINE-ENGLISH-05 · 前台使用，最长 20 分钟。不会上传音频、保存正文或切换云端。眼镜发送成功不等于已肉眼确认。"
-        case 3: return translatedSource.isEmpty ? "等待英文；不必等整句结束。" : (showingPreview ? "预译中，后续可能修正：" : "此段已译：") + translatedSource
-        case 4: return "ASR 约 214 MiB 已内置并校验。Hy-MT2 已内置；Apple 翻译需预先下载语言包。不朗读译文，避免麦克风再次识别播报。"
-        default: return nil
-        }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        CaptionChrome.fit(header, in: tableView); CaptionChrome.fit(footer, in: tableView, footer: true)
     }
-    override func tableView(_ tableView: UITableView, heightForRowAt path: IndexPath) -> CGFloat { path.section == 2 || path.section == 3 ? 150 : 64 }
+    /// Reloads rows and the header/footer chrome that mirror the session state.
+    private func refresh() {
+        tableView.reloadData()
+        if recording { header.statusPill.set("正在本机收音", kind: .ok) }
+        else if starting { header.statusPill.set("正在准备…", kind: .warn) }
+        else { header.statusPill.set("未在收音", kind: .neutral) }
+        header.privacyPill.set("内容不会离开此 iPhone", kind: .neutral)
+        header.configure(sourceName: "英语 · 实时识别", targetName: provider == .originalOnly ? nil : "中文 · 分段翻译",
+                         sourcePlaceholder: "开始后，英文字幕会显示在这里。", targetPlaceholder: "译文会显示在这里。")
+        showTranscript()
+        let running = recording || starting
+        footer.set(title: running ? "停止收音与显示" : "开始英语离线字幕", prominent: !running, enabled: true)
+        footer.button.accessibilityIdentifier = "turbo.offline.start"
+        view.setNeedsLayout()
+    }
+    private func showTranscript() {
+        header.setText(source: original, target: translated.isEmpty ? "" : (showingPreview ? "预译 · " : "") + translated)
+        view.setNeedsLayout()
+    }
+    @objc private func toggleSession() { if starting || recording { stop("已手动停止") } else if !preparingSource { confirmStart() } }
+    override func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 4 : 1 }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { ["收音与显示", "资源"][section] }
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        if section == 0 {
+            var text = state + "\nOFFLINE-ENGLISH-05 · 前台使用，最长 20 分钟。不会上传音频、保存正文或切换云端。眼镜发送成功不等于已肉眼确认。"
+            if !translatedSource.isEmpty { text += "\n" + (showingPreview ? "预译中，后续可能修正：" : "此段已译：") + translatedSource }
+            return text
+        }
+        return "英语专用，收音可选手机或系统蓝牙麦克风。快速预译：听到约6个词就开始，以后最多每1.2秒发起一次新预译；这是调度间隔，不是总延迟。句末修正，预译可能改写。Hy-MT2 边生成边显示；Apple 每个短块完成后显示。\nASR 约 214 MiB 已内置并校验。Hy-MT2 已内置；Apple 翻译需预先下载语言包。不朗读译文，避免麦克风再次识别播报。"
+    }
     override func tableView(_ tableView: UITableView, cellForRowAt path: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
-        TIODesign.styleRow(cell); cell.detailTextLabel?.numberOfLines = 2
+        TIODesign.styleRow(cell); cell.textLabel?.numberOfLines = 0; cell.detailTextLabel?.numberOfLines = 0
         if path.section == 0 {
             cell.textLabel?.text = ["收音来源", "翻译方式", "同步眼镜字幕", "快速预译"][path.row]
             cell.detailTextLabel?.text = path.row == 0 ? (port?.name ?? "默认手机麦克风 · 点击选择") : path.row == 1 ? providerName : path.row == 2 ? (glasses ? "开启 · 仅显示，不启用眼镜录音" : "关闭 · 仅在手机显示") : (fastTranslation ? "开启 · 不等整句，边说边修正" : "关闭 · 等稳定语块后翻译")
             cell.accessoryType = .disclosureIndicator
-        } else if path.section == 1 {
-            cell.textLabel?.text = recording ? "停止收音与显示" : starting ? "正在准备… 点击取消" : "开始英语离线字幕"
-            cell.textLabel?.textColor = recording || starting ? TIODesign.color(.statusDanger) : TIODesign.color(.accent)
-            cell.imageView?.image = UIImage(systemName: recording ? "stop.circle.fill" : "mic.circle.fill")
-            cell.accessibilityIdentifier = "turbo.offline.start"
-        } else if path.section == 2 || path.section == 3 {
-            let textView = path.section == 2 ? sourceView : targetView
-            textView.text = path.section == 2 ? original : (showingPreview ? "预译 · " : "") + translated
-            textView.removeFromSuperview(); textView.frame = CGRect(x: 12, y: 4, width: tableView.bounds.width - 64, height: 142)
-            textView.autoresizingMask = [.flexibleWidth, .flexibleHeight]; cell.contentView.addSubview(textView); cell.selectionStyle = .none
         } else { cell.textLabel?.text = "准备 Apple 英中语言包"; cell.accessoryType = .disclosureIndicator }
         return cell
     }
     private var providerName: String { provider == .apple ? "Apple · 本机英 → 中" : provider == .hymt ? "Hy-MT2 · 本机英 → 中" : "只显示英文，不翻译" }
     override func tableView(_ tableView: UITableView, didSelectRowAt path: IndexPath) {
-        tableView.deselectRow(at: path, animated: true)
-        if path.section == 1 { if starting || recording { stop("已手动停止") } else { confirmStart() }; return }
+        tableView.deselectRow(at: path, animated: !UIAccessibility.isReduceMotionEnabled)
         guard !starting, !recording, !preparingSource else { return }
         if path.section == 0 && path.row == 0 { chooseSource() }
         else if path.section == 0 && path.row == 1 {
             let alert = UIAlertController(title: "离线翻译", message: "不启用云端兜底。", preferredStyle: .alert)
             for (value, label) in [(CaptionTranslationRouter.Provider.originalOnly, "仅英文字幕"), (.apple, "Apple 本机翻译"), (.hymt, "Hy-MT2 本机翻译")] {
                 alert.addAction(UIAlertAction(title: label, style: .default) { [weak self] _ in
-                    guard let self else { return }; self.provider = value; self.router.select(value); self.prefs.set(value.rawValue, forKey: "offlineProvider"); self.tableView.reloadData()
+                    guard let self else { return }; self.provider = value; self.router.select(value); self.prefs.set(value.rawValue, forKey: "offlineProvider"); self.refresh()
                 })
             }
             alert.addAction(UIAlertAction(title: "取消", style: .cancel)); present(alert, animated: true)
-        } else if path.section == 0 && path.row == 2 { glasses.toggle(); tableView.reloadData() }
-        else if path.section == 0 && path.row == 3 { fastTranslation.toggle(); prefs.set(fastTranslation, forKey: "fastTranslation"); tableView.reloadData() }
-        else if path.section == 4 { navigationController?.pushViewController(CaptionLocalTranslation.preparationController(source: "en", target: "zh"), animated: true) }
+        } else if path.section == 0 && path.row == 2 { glasses.toggle(); refresh() }
+        else if path.section == 0 && path.row == 3 { fastTranslation.toggle(); prefs.set(fastTranslation, forKey: "fastTranslation"); refresh() }
+        else if path.section == 1 { navigationController?.pushViewController(CaptionLocalTranslation.preparationController(source: "en", target: "zh"), animated: true) }
     }
     private func chooseSource() {
         preparingSource = true
@@ -109,10 +121,10 @@ import UIKit
                 guard self.viewIfLoaded?.window != nil else { return }
                 let alert = UIAlertController(title: "收音来源", message: "蓝牙耳机需先连接手机。切换设备会停止当前会话。", preferredStyle: .alert)
                 for port in self.ports {
-                    alert.addAction(UIAlertAction(title: port.name, style: .default) { [weak self] _ in self?.port = port; self?.tableView.reloadData() })
+                    alert.addAction(UIAlertAction(title: port.name, style: .default) { [weak self] _ in self?.port = port; self?.refresh() })
                 }
                 alert.addAction(UIAlertAction(title: "取消", style: .cancel)); self.present(alert, animated: true)
-            } catch { self.mic.stop(); self.state = "无法准备麦克风，请检查系统权限和音频占用"; self.tableView.reloadData() }
+            } catch { self.mic.stop(); self.state = "无法准备麦克风，请检查系统权限和音频占用"; self.refresh() }
         }
     }
     private func confirmStart() {
@@ -122,7 +134,7 @@ import UIKit
     }
     private func start() {
         guard !starting, !recording, !preparingSource else { return }
-        starting = true; generation += 1; let epoch = generation; state = "正在校验并加载离线模型…"; tableView.reloadData()
+        starting = true; generation += 1; let epoch = generation; state = "正在校验并加载离线模型…"; refresh()
         startTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -151,7 +163,7 @@ import UIKit
                 try await self.mic.start(uid: selected.uid, format: format)
                 try Task.checkCancellation()
                 self.starting = false; self.recording = true; self.started = Date(); self.original = ""; self.translated = ""; self.translatedSource = ""; self.sent = ""; self.scheduler = CaptionTranslationScheduler(); self.scheduler.previews = self.fastTranslation; self.finalLines = []; self.showingPreview = false
-                self.state = "正在本机收音 · " + selected.name; self.tableView.reloadData()
+                self.state = "正在本机收音 · " + selected.name; self.refresh()
                 self.timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in Task { @MainActor [weak self] in self?.pump() } }
             } catch {
                 if self.generation == epoch { self.stop(error is CancellationError ? "已取消" : "启动失败：请检查麦克风权限、模型完整性及眼镜连接；可关闭同步眼镜单测收音") }
@@ -160,7 +172,7 @@ import UIKit
     }
     private func accept(_ text: String, final: Bool) {
         guard recording else { return }
-        original = text; sourceView.text = text
+        original = text; showTranscript()
         guard provider != .originalOnly else { return }
         do { try scheduler.offer(text, final: final); translateNext() }
         catch { stop("翻译积压或识别片段变化，已停止以免显示错配。可关闭快速预译或改用仅英文字幕。") }
@@ -177,11 +189,11 @@ import UIKit
                 }
                 guard self.generation == epoch, !Task.isCancelled else { return }
                 self.showTranslation(result, request: request, complete: true)
-                self.tableView.reloadSections(IndexSet(integer: 3), with: .none)
+                self.tableView.reloadSections(IndexSet(integer: 0), with: .none)
             } catch {
                 guard self.generation == epoch else { return }
                 self.state = "翻译失败（无云端兜底），英文识别继续；请检查本地语言包"
-                self.tableView.reloadSections(IndexSet(integer: 1), with: .none)
+                self.tableView.reloadSections(IndexSet(integer: 0), with: .none)
             }
             guard self.generation == epoch else { return }
             self.scheduler.complete(request); self.translateTask = nil; self.translateNext()
@@ -196,7 +208,7 @@ import UIKit
         }
         let previous = finalLines.filter { $0.0 < request.id }.suffix(1).map { $0.1 }
         translated = (previous + [value]).joined(separator: "\n")
-        targetView.text = (showingPreview ? "预译 · " : "") + translated
+        showTranscript()
     }
     private func pump() {
         guard recording else { return }
@@ -209,12 +221,11 @@ import UIKit
         guard !text.isEmpty, text != sent, Date().timeIntervalSince(lastSend) >= 0.5, status["pending"] as? Bool != true else { return }
         if CaptionHost.call("text", ["sid": sid, "text": text])["ok"] as? Bool == true { sent = text; lastSend = Date() }
     }
-    @objc private func stopTapped() { stop("已手动停止") }
     private func stop(_ reason: String) {
         generation += 1; starting = false; recording = false
         startTask?.cancel(); startTask = nil; timer?.invalidate(); timer = nil
         mic.stop(); speech.stop(); translateTask?.cancel(); translateTask = nil; router.stop(); scheduler = CaptionTranslationScheduler()
         if !sid.isEmpty { _ = CaptionHost.call("stop", ["sid": sid]); sid = "" }
-        state = reason; tableView.reloadData()
+        state = reason; refresh()
     }
 }

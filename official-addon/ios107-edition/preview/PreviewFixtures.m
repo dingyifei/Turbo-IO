@@ -154,6 +154,9 @@ UIViewController *TIOPreviewCaptionsController(NSString *fixture) {
     SEL make=NSSelectorFromString(@"makePreviewController:");
     if (![panel respondsToSelector:make]) return nil;
     id page=((id(*)(id,SEL,id))objc_msgSend)(panel,make,fixture?:@"listening");
-    return [page isKindOfClass:UIViewController.class]?[[UINavigationController alloc] initWithRootViewController:page]:nil;
+    if (![page isKindOfClass:UIViewController.class]) return nil;
+    UINavigationController *navigation=[[UINavigationController alloc] initWithRootViewController:page];
+    navigation.navigationBar.prefersLargeTitles=YES; // the hub shell does the same
+    return navigation;
 }
 #endif

@@ -31,50 +31,103 @@ import Translation
     private var lines: [String] = [], pending: [String] = []
     private var timer: Timer?, startTask: Task<Void, Never>?, translationTask: Task<Void, Never>?
     private var began = Date(), lastSend = Date.distantPast
-    private let sourceView = UITextView(), targetView = UITextView()
+    private let header = CaptionHeaderView(), footer = CaptionActionFooter()
+    private var speechReady: Bool?, translationReady: Bool?
     private var source: String { direction.hasPrefix("zh") ? "zh-Hans" : "en" }
     private var target: String { direction == "en-zh" ? "zh-Hans" : direction == "zh-en" ? "en" : source }
     private var locale: String { source == "en" ? "en-US" : "zh-CN" }
     private func t(_ en: String, _ zh: String) -> String { TAIL10n.t(en, zh) }
     public override func viewDidLoad() {
-        super.viewDidLoad(); title = t("Live captions (on-device)", "实时字幕（本机）")
+        super.viewDidLoad(); title = t("Live captions", "实时字幕"); navigationItem.largeTitleDisplayMode = .always
         if let value = prefs.string(forKey: "appleCaptionDirection"), ["en-zh", "zh-en", "en", "zh"].contains(value) { direction = value }
         hostAvailable = AppleCaptionHost.call("status")["available"] as? Bool == true
         glasses = hostAvailable && prefs.bool(forKey: "appleCaptionGlasses")
         if !hostAvailable { prefs.set(false, forKey: "appleCaptionGlasses") }
         TIODesign.styleTable(tableView)
-        for view in [sourceView, targetView] { view.isEditable = false; TIODesign.styleReadOnlyText(view) }
+        tableView.tableHeaderView = header; tableView.tableFooterView = footer
+        footer.button.addTarget(self, action: #selector(toggleSession), for: .touchUpInside)
+        refresh(); refreshResources()
         mic.onBuffer = { [weak self] buffer in self?.speech.offer(buffer) }
         mic.onFailure = { [weak self] _ in guard let self else { return }; self.stop(self.t("Microphone route changed; capture stopped.", "麦克风路由改变，已停止收音。")) }
         speech.onText = { [weak self] text, final in self?.receive(text, final: final) }
         speech.onFailure = { [weak self] _ in guard let self else { return }; self.stop(self.t("Speech capture stopped. Check resources and the microphone route.", "语音收集已停止，请检查资源和麦克风路由。")) }
         NotificationCenter.default.addObserver(self, selector: #selector(inactive), name: UIApplication.willResignActiveNotification, object: nil)
     }
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        CaptionChrome.fit(header, in: tableView); CaptionChrome.fit(footer, in: tableView, footer: true)
+    }
+    /// Reloads rows and the header/footer chrome that mirror the session state.
+    private func refresh() {
+        tableView.reloadData()
+        if active { header.statusPill.set(t("Listening on device", "正在本机收音"), kind: .ok) }
+        else if starting { header.statusPill.set(t("Starting…", "正在启动…"), kind: .warn) }
+        else { header.statusPill.set(t("Not listening", "未在收音"), kind: .neutral) }
+        header.privacyPill.set(t("Nothing leaves this iPhone", "内容不会离开此 iPhone"), kind: .neutral)
+        header.configure(sourceName: languageName(source), targetName: source == target ? nil : languageName(target),
+                         sourcePlaceholder: t("Captions appear here once you start.", "开始后，字幕会显示在这里。"),
+                         targetPlaceholder: t("The translation appears here.", "译文会显示在这里。"))
+        header.setText(source: original, target: translated)
+        let running = active || starting
+        footer.set(title: running ? t("Stop captions", "停止字幕") : t("Start captions", "开始字幕"), prominent: !running, enabled: running || !preparing)
+        view.setNeedsLayout()
+    }
+    private func languageName(_ code: String) -> String { code == "en" ? t("English", "英语") : t("Chinese", "中文") }
+    private var directionNames: [String] { [t("English → Chinese", "英语 → 中文"), t("Chinese → English", "中文 → 英语"), t("English only", "仅英语"), t("Chinese only", "仅中文")] }
+    private func showTranscript() { header.setText(source: original, target: translated); view.setNeedsLayout() }
+    @objc private func toggleSession() { if active || starting { stop(t("Stopped", "已停止")) } else if !preparing { confirm() } }
+    @objc private func glassesChanged(_ sender: UISwitch) {
+        guard hostAvailable, !active, !starting, !preparing else { sender.setOn(glasses, animated: false); return }
+        glasses = sender.isOn; prefs.set(glasses, forKey: "appleCaptionGlasses"); refresh()
+    }
+    /// Asks the system whether the speech and translation packs are already installed.
+    private func refreshResources() {
+        AppleSpeech.status(locale) { [weak self] facts in
+            Task { @MainActor in self?.speechReady = facts["installed"] as? Bool == true; self?.tableView.reloadSections([1], with: .none) }
+        }
+        #if canImport(Translation)
+        let from = source, to = target
+        Task { [weak self] in
+            if from == to { await MainActor.run { self?.translationReady = true; self?.tableView.reloadSections([1], with: .none) }; return }
+            let status = await LanguageAvailability().status(from: Locale.Language(identifier: from), to: Locale.Language(identifier: to))
+            await MainActor.run { self?.translationReady = status == .installed; self?.tableView.reloadSections([1], with: .none) }
+        }
+        #endif
+    }
     deinit { NotificationCenter.default.removeObserver(self) }
     public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); stop(t("Stopped", "已停止")) }
     @objc private func inactive() { stop(t("App is no longer active; capture stopped.", "应用已离开前台，收音已停止。")) }
-    public override func numberOfSections(in tableView: UITableView) -> Int { 5 }
-    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : section == 4 ? 2 : 1 }
+    public override func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : 2 }
     public override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        [t("Settings", "设置"), t("Session", "会话"), t("Source text", "原文"), t("Translation", "译文"), t("Resources", "资源")][section]
+        [t("Session", "会话"), t("Resources", "资源")][section]
     }
     public override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        section == 1 ? state : section == 4 ? t("Prepare the source speech and translation packs before starting. Audio is not saved. Sessions stop after 20 minutes.", "请先准备源语言的语音及翻译资源。不保存音频，会话在 20 分钟后停止。") : nil
+        section == 0 ? (state.isEmpty ? nil : state) : t("Prepare the source speech and translation packs before starting. Audio is not saved. Sessions stop after 20 minutes.", "请先准备源语言的语音及翻译资源。不保存音频，会话在 20 分钟后停止。")
     }
-    public override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { [2,3].contains(indexPath.section) ? 150 : UITableView.automaticDimension }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil); cell.textLabel?.numberOfLines = 0; cell.detailTextLabel?.numberOfLines = 0; TIODesign.styleRow(cell)
-        switch indexPath.section {
-        case 0:
-            cell.textLabel?.text = [t("Microphone", "麦克风"), t("Direction", "方向"), t("Glasses sync", "同步眼镜")][indexPath.row]
-            if indexPath.row == 0 { cell.detailTextLabel?.text = portName.isEmpty ? t("Choose input", "选择输入") : portName }
-            if indexPath.row == 1 { cell.detailTextLabel?.text = direction }
-            if indexPath.row == 2 { cell.detailTextLabel?.text = hostAvailable ? (glasses ? t("On", "开") : t("Off", "关")) : t("Glasses host unavailable; phone only", "眼镜宿主不可用，仅手机显示"); cell.isUserInteractionEnabled = hostAvailable }
-        case 1: cell.textLabel?.text = active || starting ? t("Stop", "停止") : t("Start", "开始")
-        case 2,3:
-            let view = indexPath.section == 2 ? sourceView : targetView; view.translatesAutoresizingMaskIntoConstraints = false; cell.contentView.addSubview(view)
-            NSLayoutConstraint.activate([view.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 12),view.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -12),view.topAnchor.constraint(equalTo: cell.contentView.topAnchor),view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)])
-        default: cell.textLabel?.text = indexPath.row == 0 ? t("Prepare speech pack", "准备语音资源") : t("Prepare translation pack", "准备翻译资源")
+        let unavailable = indexPath.section == 0 && indexPath.row == 2 && !hostAvailable
+        let cell = UITableViewCell(style: unavailable ? .subtitle : .value1, reuseIdentifier: nil)
+        cell.textLabel?.numberOfLines = 0; cell.detailTextLabel?.numberOfLines = 0; TIODesign.styleRow(cell)
+        if indexPath.section == 0 {
+            cell.textLabel?.text = [t("Direction", "方向"), t("Microphone", "麦克风"), t("Glasses sync", "同步眼镜")][indexPath.row]
+            switch indexPath.row {
+            case 0: cell.detailTextLabel?.text = directionNames[["en-zh","zh-en","en","zh"].firstIndex(of: direction) ?? 0]; cell.accessoryType = .disclosureIndicator
+            case 1: cell.detailTextLabel?.text = portName.isEmpty ? t("Choose input", "选择输入") : portName; cell.accessoryType = .disclosureIndicator
+            default:
+                if unavailable { cell.detailTextLabel?.text = t("Glasses host unavailable; phone only", "眼镜宿主不可用，仅手机显示") }
+                let toggle = UISwitch(); toggle.isOn = glasses; toggle.onTintColor = TIODesign.color(.accentFill)
+                toggle.isEnabled = hostAvailable && !active && !starting && !preparing
+                toggle.accessibilityLabel = t("Glasses sync", "同步眼镜")
+                toggle.addTarget(self, action: #selector(glassesChanged(_:)), for: .valueChanged)
+                cell.accessoryView = toggle; cell.selectionStyle = .none
+            }
+        } else {
+            let ready = indexPath.row == 0 ? speechReady : translationReady
+            cell.textLabel?.text = indexPath.row == 0 ? t("Speech pack", "语音资源") : t("Translation pack", "翻译资源")
+            cell.detailTextLabel?.text = ready == true ? t("Ready", "已就绪") : t("Prepare", "去准备")
+            cell.detailTextLabel?.textColor = TIODesign.color(ready == true ? .statusOk : .accent)
+            cell.accessoryType = .disclosureIndicator
         }
         return cell
     }
@@ -85,18 +138,16 @@ import Translation
         sheet.popoverPresentationController?.sourceView = view; sheet.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX, y: 100, width: 1, height: 1); present(sheet, animated: true)
     }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        if indexPath.section == 1 { if active || starting { stop(t("Stopped", "已停止")) } else { confirm() }; return }
+        tableView.deselectRow(at: indexPath, animated: !UIAccessibility.isReduceMotionEnabled)
         guard !active, !starting, !preparing else { return }
         if indexPath.section == 0 {
             switch indexPath.row {
-            case 0:
-                confirmMicrophoneSelection()
-            case 1: choose(t("Direction", "方向"), values: [t("English → Chinese", "英语 → 中文"),t("Chinese → English", "中文 → 英语"),t("English only", "仅英语"),t("Chinese only", "仅中文")]) { [weak self] index in guard let self else { return }; self.direction = ["en-zh","zh-en","en","zh"][index]; self.prefs.set(self.direction, forKey: "appleCaptionDirection"); self.tableView.reloadData() }
-            default: if hostAvailable { glasses.toggle(); prefs.set(glasses, forKey: "appleCaptionGlasses"); tableView.reloadData() }
+            case 0: choose(t("Direction", "方向"), values: directionNames) { [weak self] index in guard let self else { return }; self.direction = ["en-zh","zh-en","en","zh"][index]; self.prefs.set(self.direction, forKey: "appleCaptionDirection"); self.refresh(); self.refreshResources() }
+            case 1: confirmMicrophoneSelection()
+            default: if hostAvailable { glasses.toggle(); prefs.set(glasses, forKey: "appleCaptionGlasses"); refresh() }
             }
-        } else if indexPath.section == 4 {
-            if indexPath.row == 0 { preparing = true; AppleSpeech.prepare(locale, progress: { [weak self] fraction in guard let self else { return }; self.state = self.t("Preparing speech", "正在准备语音") + String(format: " %.0f%%", fraction * 100); self.tableView.reloadData() }, completion: { [weak self] code in guard let self else { return }; self.preparing = false; self.state = code == nil ? self.t("Speech pack ready", "语音资源已就绪") : self.t("Speech pack unavailable; check system download authorization.", "语音资源不可用，请检查系统下载授权。"); self.tableView.reloadData() }) }
+        } else {
+            if indexPath.row == 0 { preparing = true; refresh(); AppleSpeech.prepare(locale, progress: { [weak self] fraction in guard let self else { return }; self.state = self.t("Preparing speech", "正在准备语音") + String(format: " %.0f%%", fraction * 100); self.refresh() }, completion: { [weak self] code in guard let self else { return }; self.preparing = false; self.speechReady = code == nil; self.state = code == nil ? self.t("Speech pack ready", "语音资源已就绪") : self.t("Speech pack unavailable; check system download authorization.", "语音资源不可用，请检查系统下载授权。"); self.refresh() }) }
             else {
                 #if canImport(Translation)
                 navigationController?.pushViewController(UIHostingController(rootView: AppleTranslationPreparation(source: source, target: target)), animated: true)
@@ -119,7 +170,7 @@ import Translation
         // Template availability controls glasses output, not live conflict checks.
         guard AppleCaptionHost.call("inspect")["ok"] as? Bool == true else {
             state = t("Glasses are busy. End their session before inspecting microphone inputs.", "眼镜正忙，请先结束会话再查看麦克风输入。")
-            tableView.reloadData(); return
+            refresh(); return
         }
         preparing = true
         Task { [weak self] in guard let self else { return }; defer { self.preparing = false; self.mic.stop() }
@@ -128,9 +179,9 @@ import Translation
                 guard self.generation == epoch, self.viewIfLoaded?.window != nil, UIApplication.shared.applicationState == .active else { throw CancellationError() }
                 self.choose(self.t("Microphone", "麦克风"), values: self.ports.map(\.name)) { [weak self] index in
                     guard let self, self.generation == epoch, self.ports.indices.contains(index) else { return }
-                    self.portUID = self.ports[index].uid; self.portName = self.ports[index].name; self.tableView.reloadData()
+                    self.portUID = self.ports[index].uid; self.portName = self.ports[index].name; self.refresh()
                 }
-            } catch { if self.generation == epoch { self.state = self.t("Microphone permission or route unavailable.", "麦克风权限或路由不可用。"); self.tableView.reloadData() } }
+            } catch { if self.generation == epoch { self.state = self.t("Microphone permission or route unavailable.", "麦克风权限或路由不可用。"); self.refresh() } }
         }
     }
     private func confirm() {
@@ -139,7 +190,7 @@ import Translation
     }
     private func start() {
         guard !active, !starting, !preparing else { return }; starting = true; generation += 1; let epoch = generation
-        state = t("Starting on-device speech…", "正在启动本机语音…"); tableView.reloadData()
+        state = t("Starting on-device speech…", "正在启动本机语音…"); refresh()
         startTask = Task { [weak self] in guard let self else { return }
             do {
                 if self.glasses {
@@ -156,15 +207,15 @@ import Translation
                 try await self.mic.start(uid: chosen.uid, format: format); try Task.checkCancellation()
                 guard self.generation == epoch else { throw CancellationError() }
                 self.starting = false; self.active = true; self.began = Date(); self.original = ""; self.translated = ""; self.sent = ""; self.lines = []; self.pending = []; self.lastSend = .distantPast
-                self.state = self.t("Listening on device", "正在本机收音"); self.tableView.reloadData()
+                self.state = ""; self.refresh()
                 self.timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in Task { @MainActor [weak self] in self?.pump() } }
             } catch { if self.generation == epoch { self.stop(self.t("Cannot start. Prepare speech assets and check microphone permission, input route and glasses connection.", "无法启动，请准备语音资源并检查麦克风权限、输入路由和眼镜连接。")) } }
         }
     }
     private func receive(_ text: String, final: Bool) {
-        guard active || starting else { return }; original = text; sourceView.text = text
+        guard active || starting else { return }; original = text; showTranscript()
         guard final, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        if source == target { translated = ""; targetView.text = ""; return }
+        if source == target { translated = ""; showTranscript(); return }
         guard pending.count < 4 else { stop(t("Translation queue full; capture stopped.", "翻译队列已满，收音已停止。")); return }
         pending.append(text); translateNext()
     }
@@ -172,8 +223,8 @@ import Translation
         guard active, translationTask == nil, !pending.isEmpty else { return }
         let text = pending.removeFirst(), epoch = generation
         translationTask = Task { [weak self] in guard let self else { return }
-            do { let result = try await self.translator.translate(text, source: self.source, target: self.target); guard self.generation == epoch, !Task.isCancelled else { return }; self.lines.append(result); self.lines = Array(self.lines.suffix(2)); self.translated = self.lines.joined(separator: "\n"); self.targetView.text = self.translated }
-            catch { if self.generation == epoch { self.state = self.t("Prepare the translation pack; speech recognition continues.", "请准备翻译资源，语音识别继续运行。"); self.tableView.reloadData() } }
+            do { let result = try await self.translator.translate(text, source: self.source, target: self.target); guard self.generation == epoch, !Task.isCancelled else { return }; self.lines.append(result); self.lines = Array(self.lines.suffix(2)); self.translated = self.lines.joined(separator: "\n"); self.showTranscript() }
+            catch { if self.generation == epoch { self.state = self.t("Prepare the translation pack; speech recognition continues.", "请准备翻译资源，语音识别继续运行。"); self.refresh() } }
             if self.generation == epoch { self.translationTask = nil; self.translateNext() }
         }
     }
@@ -190,7 +241,7 @@ import Translation
         generation += 1; starting = false; active = false; startTask?.cancel(); startTask = nil; timer?.invalidate(); timer = nil
         mic.stop(); speech.stop(); translator.cancel(); translationTask?.cancel(); translationTask = nil; pending = []
         if !sid.isEmpty { _ = AppleCaptionHost.call("stop", ["sid": sid]); sid = "" }
-        state = reason; if isViewLoaded { tableView.reloadData() }
+        state = reason; if isViewLoaded { refresh() }
     }
 }
 #if canImport(Translation)
@@ -234,7 +285,7 @@ extension AppleCaptionPanel {
             original = "…so we can move the design review to Thursday afternoon."
             translated = "…所以我们可以把设计评审改到周四下午。"
         }
-        sourceView.text = original; targetView.text = translated; tableView.reloadData()
+        refresh()
     }
 }
 #endif
