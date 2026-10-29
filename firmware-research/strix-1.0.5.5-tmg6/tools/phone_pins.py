@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate exact candidate identity pins from an already-audited TMG5 ZIP.
+"""Generate exact candidate identity pins from an already-audited TMG6 ZIP.
 
 This does not audit executable edits, authorize flashing, or change OTA routing.
 The firmware build's separate audit remains required.
@@ -45,7 +45,7 @@ def pins_for(archive):
             raise ValueError('ZIP member set differs from manifest')
         ap = payloads['nuttx_ap.bin']
     return {
-        'name': 'TMG5',
+        'name': 'TMG6',
         'zipBytes': len(raw),
         'zipSHA256': sha256(raw),
         'apBytes': len(ap),

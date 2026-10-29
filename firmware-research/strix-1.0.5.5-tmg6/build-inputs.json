@@ -4,7 +4,7 @@
       "offset": "0x4da940",
       "address": "0x1066a940",
       "before": "90b583b0",
-      "after": "11f2a1bf",
+      "after": "11f2d1bf",
       "role": "Entry trampoline show",
       "kind": "bw",
       "target": "m8_hook_show",
@@ -14,7 +14,7 @@
       "offset": "0x4da974",
       "address": "0x1066a974",
       "before": "b0b582b0",
-      "after": "11f2acbf",
+      "after": "11f2dcbf",
       "role": "Entry trampoline hide",
       "kind": "bw",
       "target": "m8_hook_hide",
@@ -24,7 +24,7 @@
       "offset": "0x4d99fc",
       "address": "0x106699fc",
       "before": "f0b50446",
-      "after": "12f2a0bf",
+      "after": "12f2d0bf",
       "role": "Entry trampoline destroy",
       "kind": "bw",
       "target": "m8_hook_destroy",
@@ -34,7 +34,7 @@
       "offset": "0x4da6ae",
       "address": "0x1066a6ae",
       "before": "2de9f041",
-      "after": "12f29ab9",
+      "after": "12f2cab9",
       "role": "Entry trampoline wheel",
       "kind": "bw",
       "target": "m8_hook_wheel",
@@ -44,7 +44,7 @@
       "offset": "0x4daa40",
       "address": "0x1066aa40",
       "before": "b0b582b0",
-      "after": "12f224b8",
+      "after": "12f254b8",
       "role": "Entry trampoline event",
       "kind": "bw",
       "target": "m8_hook_event",
@@ -54,7 +54,7 @@
       "offset": "0x3ec04c",
       "address": "0x1057c04c",
       "before": "b0b50c46",
-      "after": "00f355be",
+      "after": "00f385be",
       "role": "Entry trampoline message",
       "kind": "bw",
       "target": "m8_hook_message",
@@ -74,7 +74,7 @@
       "offset": "0x4da1fc",
       "address": "0x1066a1fc",
       "before": "2de9f04f",
-      "after": "11f2ffbc",
+      "after": "11f22fbd",
       "role": "Entry trampoline names",
       "kind": "bw",
       "target": "m8_hook_names",
@@ -84,7 +84,7 @@
       "offset": "0x4d9cc8",
       "address": "0x10669cc8",
       "before": "2de9f047",
-      "after": "12f26aba",
+      "after": "12f29aba",
       "role": "Entry trampoline dots",
       "kind": "bw",
       "target": "m8_hook_dots",
@@ -94,7 +94,7 @@
       "offset": "0x4d9ca6",
       "address": "0x10669ca6",
       "before": "98b50446",
-      "after": "12f25bba",
+      "after": "12f28bba",
       "role": "Entry trampoline delete_dots",
       "kind": "bw",
       "target": "m8_hook_delete_dots",
@@ -104,7 +104,7 @@
       "offset": "0x4da068",
       "address": "0x1066a068",
       "before": "b0b584b0",
-      "after": "12f21cb9",
+      "after": "12f24cb9",
       "role": "Entry trampoline lottie",
       "kind": "bw",
       "target": "m8_hook_lottie",
@@ -114,7 +114,7 @@
       "offset": "0x4d9c48",
       "address": "0x10669c48",
       "before": "80b500af",
-      "after": "11f2bdbf",
+      "after": "11f2edbf",
       "role": "Entry trampoline app_id",
       "kind": "bw",
       "target": "m8_hook_app_id",
@@ -124,7 +124,7 @@
       "offset": "0x4da02a",
       "address": "0x1066a02a",
       "before": "2de9f041",
-      "after": "12f28bb8",
+      "after": "12f2bbb8",
       "role": "Entry trampoline refresh_label",
       "kind": "bw",
       "target": "m8_hook_refresh_label",
@@ -134,7 +134,7 @@
       "offset": "0x4d8d8c",
       "address": "0x10668d8c",
       "before": "f0b585b0",
-      "after": "18f236bb",
+      "after": "18f24ebe",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x4d984a",
       "address": "0x1066984a",
       "before": "0628a8bf",
-      "after": "1bf2cbbe",
+      "after": "1cf2b3bb",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x4d9860",
       "address": "0x10669860",
       "before": "1e22a0f10f03",
-      "after": "1bf2c4be00bf",
+      "after": "1cf2acbb00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -164,7 +164,7 @@
       "offset": "0x4da42c",
       "address": "0x1066a42c",
       "before": "2de9f04f",
-      "after": "12f2cab8",
+      "after": "12f2fab8",
       "role": "Menu replacement label_frame",
       "kind": "bw",
       "target": "m8_hook_label_frame",
@@ -174,7 +174,7 @@
       "offset": "0x4da780",
       "address": "0x1066a780",
       "before": "0629a8bf",
-      "after": "11f2b6bf",
+      "after": "11f2e6bf",
       "role": "Menu replacement label_index",
       "kind": "bw",
       "target": "m8_hook_label_index",
@@ -184,7 +184,7 @@
       "offset": "0x4d9e54",
       "address": "0x10669e54",
       "before": "2de9f04f",
-      "after": "12f258bc",
+      "after": "12f288bc",
       "role": "Menu replacement indicator",
       "kind": "bw",
       "target": "m8_hook_indicator",
@@ -194,7 +194,7 @@
       "offset": "0x4da148",
       "address": "0x1066a148",
       "before": "b0b50446",
-      "after": "11f245bc",
+      "after": "11f275bc",
       "role": "Menu replacement frame",
       "kind": "bw",
       "target": "m8_hook_frame",
@@ -204,7 +204,7 @@
       "offset": "0x4da17e",
       "address": "0x1066a17e",
       "before": "80b5b3ee0e7a",
-      "after": "11f2ebbb00bf",
+      "after": "11f21bbc00bf",
       "role": "Menu replacement render_slide",
       "kind": "bw",
       "target": "m8_hook_render_slide",
@@ -214,7 +214,7 @@
       "offset": "0x4d6cdc",
       "address": "0x10666cdc",
       "before": "fc204bf02dff",
-      "after": "1ef238fc00bf",
+      "after": "1ff220f900bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -224,7 +224,7 @@
       "offset": "0x4d6d06",
       "address": "0x10666d06",
       "before": "02f04dff",
-      "after": "15f293fd",
+      "after": "15f2c3fd",
       "role": "Initialize tail after new stock constructor",
       "kind": "bl",
       "target": "m8_hook_ctor",
@@ -244,23 +244,23 @@
       "offset": "0x3da186",
       "address": "0x1056a186",
       "before": "00241f48204b84610360",
-      "after": "1bf31ffa00bf00bf00bf",
+      "after": "1bf307ff00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 146752,
+  "moduleBytes": 149184,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "8dae273806c95bc26496f4909b4376b2148179baa5f4de68552d5723306b5b41",
+  "moduleSHA256": "1b70f69ce306904bd0e0aafa0eb801e33d919ff3c1391085d38eaf2eec77cc1d",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7355400,
+  "APBytes": 7357832,
   "archive": {
-    "name": "StrixOS-1.0.5.5-TurboIO-TMG5-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8810174,
-    "sha256": "6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef",
-    "md5": "d24846a05d430c702a2834ac363fdfd0"
+    "name": "StrixOS-1.0.5.5-TurboIO-TMG6-CANDIDATE-NOT-APPROVED.zip",
+    "bytes": 8812233,
+    "sha256": "06927af943f06463b5bff1c10df0bcbd326c110280ef4f9ec22ac7b2b44a48d4",
+    "md5": "184eec202ee79999b3c9e81416cbdde1"
   },
   "sources": [
     {
@@ -329,11 +329,11 @@
     },
     {
       "source": "diagnostics-v1/diagnostics.c",
-      "sha256": "c023dc41f6e9fba25a1ea3d464bee140d3fd7522678ad9c35465117135e8e1be"
+      "sha256": "9c4738fe0365a52c44e1974d958e09aed3e32d255b114bd380fd2502167d6fad"
     },
     {
       "source": "diagnostics-v1/diagnostics_service.c",
-      "sha256": "4538d2195d2b9ca004d9913b9cfb3721ad5060ae411060f7268741e3453b7de7"
+      "sha256": "71216f2d6a8fe4845c3a016e597bfcde79d8a8926c4e1bd933827ddd5d1be0bf"
     },
     {
       "source": "diagnostics-v1/native_light.c",
@@ -401,31 +401,31 @@
     },
     {
       "source": "music-runtime-v1/music.c",
-      "sha256": "d6a94496938ff246d84c1a1cbf2a5ba5daa5f4361b45094951efbce55443713a"
+      "sha256": "e21698f9e129a85d3ca26f4ebfc86cdde557659abd1f29744dbacee6957c6be4"
     },
     {
       "source": "music-runtime-v1/music_service.c",
-      "sha256": "00cb491e56910f04e8c193076d80e926c65bebfa230850bc2a7a8342a2b1920e"
+      "sha256": "3d02cd1218cdf43f7b19e3cde9c6da42e15a6459f60d1d578f14fc67f14a4b5d"
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
-      "sha256": "3a6c98bc83f6eeca222b17b4da2dff261e32f59496b4cd83b33e8d204378fe2c"
+      "sha256": "aff54f70501465a0d0022b11b3bfd90dfa1b8f904752d4d74ef4363bacfd8c78"
     },
     {
       "source": "navigation-runtime-v1/nav_runtime.c",
-      "sha256": "a980efeeff0d4442d13b45fa1e817adaf5eb25b381e05e864bb5791f31396f59"
+      "sha256": "dddb569c634874dbf09e2bc81380c20a0a4970c41ce2db4bdf5c16b42ecf51f9"
     },
     {
       "source": "navigation-runtime-v1/nav_service.c",
-      "sha256": "2a36b2b94c8da2a5b346727a3761badc0aab5a0a5c4bbb9fb559ec9043a7b682"
+      "sha256": "e4576d5209af822ddda4563d4c183fd3150cd1867279802ec5303037eb54ee3e"
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
-      "sha256": "e6b1b06d95ce2fe189becfa219af838b35ea2c99ace54861d25143dd9f97e709"
+      "sha256": "402f6be62f2492d410df46e7d88ac61319fb127ce01b927082a3851247ba379d"
     },
     {
       "source": "navigation-runtime-v1/nav_visual.c",
-      "sha256": "db18b80dd8f91182e343e165902424df13cc820fde2673221bd0c20d4777b222"
+      "sha256": "7f657fdcaf15cb16ce8ed71c5c97fca0fc2436ac1b67a6e73cf5b399cdae40e9"
     },
     {
       "source": "camera-v1/camera.c",
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "f4b0b5a0d6c638ee50e2cd61b0ea17fbcd094831b98d2f685b5c4509d40472de",
+  "APSHA256": "5726ce7a8c2c18fc5db7a04e88d43aa537129fd5526cfe5f3911741b268a0053",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

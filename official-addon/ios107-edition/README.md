@@ -1,5 +1,21 @@
 # iOS 1.0.7（230）· APP107 兼容适配
 
+## TMG6 candidate — current development branch
+
+TMG6 supersedes the historical candidate sections below. ZIP SHA256: `06927af943f06463b5bff1c10df0bcbd326c110280ef4f9ec22ac7b2b44a48d4`; AP size: 7,357,832 bytes; AP MD5: `d524b992d05e2fa0f06d3d484923c845`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence; device acceptance remains NOT RUN.
+
+C10 remains compatible with TMG5 glasses: the new Passing message requires navigation capability mask `0x08`. TMG6 shows the full forward route within the visible map, a five-pixel route with a seven-pixel black halo, a larger fixed heading-up car marker, a fixed full-road-name line, smooth stock-family scale text, and three non-overlapping lyric slots capped at two lines each. Phone word segmentation supplies safe ellipsis boundaries. Host EN/ZH previews use macOS surrogate fonts; actual stock font appearance remains a human device check. Knob observation: approximately 2000 raw counts per full rotation; wheel behavior is unchanged.
+
+**Human-only TMG5 → TMG6 checklist:**
+
+1. Install the separately signed C10 package manually and confirm the bundled candidate hash above. Turn RayNeo Auto Update on and then off once, and end display/navigation/music sessions before using the existing firmware wizard.
+2. Download the exact bundled TMG6 candidate in RayNeo and stop at **Ready to install**. Require a fresh supported version observation (at most 120 seconds old) before the existing single confirmation.
+3. Confirm exactly once in the existing wizard, keep both devices powered and connected, and wait for the glasses to reboot. No automatic worker installation or flashing is authorized.
+4. Restart the phone app after flashing. Check TMG6 identity, full-route pixels before each of two turns, EN/ZH Passing fallback and long-name ellipsis, scale/distance readability, marker centering, and long EN/ZH lyrics. Recheck tiles, captions, speech speed, and existing music controls.
+5. Roll back manually to C9 plus ZIP5, or C8 plus ZIP4, using the same guarded OTA process. Signed packages and host previews do not establish hardware acceptance.
+
+OTA routing, hash/freshness checks, the single-confirmation policy, boot/NAND paths, and wheel scaling remain unchanged. The FW6 retained-call checker is byte-identical to FW5, including only the existing `tm_rotate` exception.
+
 ## TMG5 candidate — current development branch
 
 TMG5 supersedes the historical candidate sections below. The exact candidate ZIP SHA256 is `6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef`; AP size is 7,355,400 bytes and AP MD5 is `8ece02af435fb8643c444ca5d412a2fe`. Two clean builds match byte for byte, with 25 existing patch sites and 14 unchanged stock payloads. This is build/host evidence; physical acceptance remains unrun.

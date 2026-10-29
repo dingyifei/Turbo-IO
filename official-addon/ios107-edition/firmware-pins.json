@@ -1,12 +1,12 @@
 {
-  "name": "TMG5",
-  "zipBytes": 8810174,
-  "zipSHA256": "6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef",
-  "apBytes": 7355400,
-  "apSHA256": "f4b0b5a0d6c638ee50e2cd61b0ea17fbcd094831b98d2f685b5c4509d40472de",
-  "apMD5": "8ece02af435fb8643c444ca5d412a2fe",
+  "name": "TMG6",
+  "zipBytes": 8812233,
+  "zipSHA256": "06927af943f06463b5bff1c10df0bcbd326c110280ef4f9ec22ac7b2b44a48d4",
+  "apBytes": 7357832,
+  "apSHA256": "5726ce7a8c2c18fc5db7a04e88d43aa537129fd5526cfe5f3911741b268a0053",
+  "apMD5": "d524b992d05e2fa0f06d3d484923c845",
   "manifestBytes": 2700,
-  "manifestSHA256": "2da4ab0384f4cd1092a6a3af3ae9f45e9599e9a539ce1ab1895896a6fc84007e",
-  "payloadBytes": 16970893,
+  "manifestSHA256": "2ff3eda1a940ed3e5eb58fed7f9d419be15b65fbbdca33649e2df3ef70cda66d",
+  "payloadBytes": 16973325,
   "payloadSlices": 339
 }
