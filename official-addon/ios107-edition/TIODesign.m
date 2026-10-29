@@ -192,6 +192,21 @@ void TIODesignStyleRow(UITableViewCell *c){
  UIView *selected=[UIView new];selected.backgroundColor=TIODesignColor(TIODesignColorAccentSoft);c.selectedBackgroundView=selected;
 }
 
+UIView *TIODesignValueAccessory(NSString *value){
+ UILabel *label=[UILabel new];label.text=value;label.font=TIODesignFont(TIODesignTextStyleBody);
+ label.textColor=TIODesignColor(TIODesignColorLabelSecondary);label.adjustsFontForContentSizeCategory=YES;
+ UIImageSymbolConfiguration *symbol=[UIImageSymbolConfiguration configurationWithFont:TIODesignFontWeight(TIODesignTextStyleFootnote,UIFontWeightSemibold)];
+ UIImageView *chevron=[[UIImageView alloc]initWithImage:[UIImage systemImageNamed:@"chevron.right" withConfiguration:symbol]];
+ chevron.tintColor=TIODesignColor(TIODesignColorLabelTertiary);chevron.contentMode=UIViewContentModeCenter;
+ [chevron setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+ UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[label,chevron]];
+ stack.axis=UILayoutConstraintAxisHorizontal;stack.alignment=UIStackViewAlignmentCenter;stack.spacing=TIOSpace2;
+ CGSize size=[stack systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+ stack.frame=CGRectMake(0,0,ceil(size.width),MAX(ceil(size.height),TIOHitMin));
+ stack.isAccessibilityElement=NO;stack.accessibilityElementsHidden=YES;
+ return stack;
+}
+
 void TIODesignStyleHeaderLabel(UILabel *label){
  label.font=TIODesignFont(TIODesignTextStyleFootnote);
  label.textColor=TIODesignColor(TIODesignColorLabelSecondary);label.adjustsFontForContentSizeCategory=YES;

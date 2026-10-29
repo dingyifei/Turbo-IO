@@ -445,7 +445,7 @@
 {"key":"hub.status.tools","en":"Search, to-dos, knowledge","zh":"搜索、待办、知识库"}
 {"key":"hub.status.tts.off","en":"Off","zh":"已关闭"}
 {"key":"hub.status.tts.on","en":"On-device voice","zh":"本机语音"}
-{"key":"hub.status.ttsSpeed","en":"%.3g× · English and Chinese","zh":"%.3g× · 中英文通用"}
+{"key":"hub.status.ttsSpeed","en":"English and Chinese","zh":"中英文通用"}
 {"key":"hub.title","en":"Turbo","zh":"Turbo"}
 {"key":"hub.title.singleImageTest","en":"Single image test","zh":"单张传图测试"}
 {"key":"hub.ttsTest.off.message","en":"Turn on “Read answers aloud” first.","zh":"请打开“回答同步朗读”开关。"}

@@ -573,7 +573,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 #endif
     else if ([key isEqual:@"api"]) status=[Prefs stringForKey:@"model"]?:TIOText(@"hub.status.api.unset");
     else if ([key isEqual:@"tts"]) status=TIOText(TTSOn()?@"hub.status.tts.on":@"hub.status.tts.off");
-    else if ([key isEqual:@"ttsSpeed"]) status=[NSString stringWithFormat:TIOText(@"hub.status.ttsSpeed"),TIOVoiceTTSSpeedMultiplier(Prefs)];
+    else if ([key isEqual:@"ttsSpeed"]) status=TIOText(@"hub.status.ttsSpeed");
     else if ([key isEqual:@"search"]) status=TIOText(ReadKey(@"https://api.search.tinyfish.ai").length?@"hub.status.search.ready":@"hub.status.search.nokey");
     else if ([key isEqual:@"knowledge"]) status=TIOText([TIOSelectedAgent() isEqual:@"Codex"]?@"hub.status.knowledge.codex":@"hub.status.knowledge.none");
     else if ([key isEqual:@"assistantMore"]) status=TIOText(@"hub.status.more");
@@ -604,7 +604,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"search"]) {pref=@"tinyfishEnabled";action=@selector(searchToggle:);}
     else if ([key isEqual:@"capture"]) {pref=@"captureFinalText";action=@selector(capture:);}
     if (pref) {UISwitch *control=[UISwitch new];control.on=[Prefs boolForKey:pref];control.enabled=enabled;[control addTarget:self action:action forControlEvents:UIControlEventValueChanged];return control;}
-    if ([key isEqual:@"ttsSpeed"]) {UIButton *control=[UIButton buttonWithType:UIButtonTypeSystem];control.frame=CGRectMake(0,0,64,TIOHitMin);[control setTitle:[NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)] forState:UIControlStateNormal];control.accessibilityIdentifier=@"tts-speed";[control addTarget:self action:@selector(ttsSpeed) forControlEvents:UIControlEventTouchUpInside];return control;}
+    if ([key isEqual:@"ttsSpeed"]) return TIODesignValueAccessory([NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)]);
     if ([key isEqual:@"agent"]) {__weak typeof(self) weak=self;return TIOAgentPicker(^{[weak.tableView reloadData];});}
     if ([key isEqual:@"ttsTest"]) {
         UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:TIOText(@"播放") forState:UIControlStateNormal];button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,TIOHitMin);
@@ -620,7 +620,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     cell.accessoryView=[self accessoryForKey:key];
     // Toggle rows read as one element: "Read answers aloud, switch, on".
     if ([cell.accessoryView isKindOfClass:UISwitch.class]) cell.accessoryView.accessibilityLabel=row[@"title"];
-    if ([key isEqual:@"ttsSpeed"]) {cell.accessoryView.accessibilityLabel=row[@"title"];cell.accessoryView.accessibilityValue=[NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)];}
+    if ([key isEqual:@"ttsSpeed"]) {cell.accessibilityValue=[NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)];cell.accessibilityTraits|=UIAccessibilityTraitButton;}
     if (!cell.accessoryView && ![@[@"status",@"prompt",@"tools",@"ttsTest"] containsObject:key]) cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     cell.accessibilityIdentifier=[@"hub-" stringByAppendingString:key];
     return cell;

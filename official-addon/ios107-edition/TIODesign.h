@@ -95,6 +95,10 @@ FOUNDATION_EXPORT void TIODesignStyleSurface(UIView *view);
 /* 30pt hub icon tile, one image per section (0 Glasses, 1 Assistant, 2 Media,
  * 3 Developer) with light and dark variants. Decorative: hide it from VoiceOver. */
 FOUNDATION_EXPORT UIImage *TIODesignHubIcon(NSString *symbol, NSInteger section);
+/* Trailing value plus disclosure chevron for a settings row ("1.2x >"): body in
+ * label-secondary. Not interactive and hidden from VoiceOver; the row speaks the
+ * value through accessibilityValue. Fixed to the label's size at call time. */
+FOUNDATION_EXPORT UIView *TIODesignValueAccessory(NSString *value);
 
 #pragma mark Status and empty state
 
