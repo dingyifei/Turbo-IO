@@ -145,6 +145,7 @@ typedef NS_ENUM(NSInteger, TMMusicSection) { TMMusicSectionNowPlaying, TMMusicSe
     cell.accessoryView = nil;
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+    TIODesignStyleRow(cell);   /* text styles, wrapping and the standard row padding for every row, long diagnostics included */
     return cell;
 }
 
