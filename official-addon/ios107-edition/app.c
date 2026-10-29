@@ -48,7 +48,10 @@ TAPEvent tap_event(TAPState *s,unsigned key,uint32_t now){
  const TAPDocument *d=s->document;unsigned buttons[12],count=0;
  for(unsigned i=d->first[s->page];i<d->first[s->page]+d->size[s->page];i++)if(d->items[i].kind==2)buttons[count++]=i;
  if(!count)return e;if(s->focus>=count)s->focus=0;
- if(key==TAP_NEXT||key==TAP_PREVIOUS){if(s->wheeled&&(uint32_t)(now-s->last_wheel)<180)return e;s->wheeled=true;s->last_wheel=now;s->focus=(s->focus+count+(key==TAP_NEXT?1:-1))%count;e.type=TAP_FOCUS_CHANGED;}
+ if(key==TAP_NEXT||key==TAP_PREVIOUS){if(s->wheeled&&(uint32_t)(now-s->last_wheel)<180)return e;s->wheeled=true;s->last_wheel=now;
+  /* FocusCaret: one item per wheel step, clamped at the ends (no wrap); a step that cannot move reports nothing. */
+  unsigned next=key==TAP_NEXT?(s->focus+1<count?s->focus+1:s->focus):(s->focus?s->focus-1:0);
+  if(next!=s->focus){s->focus=next;e.type=TAP_FOCUS_CHANGED;}}
  if(key==TAP_PRESS){e.component=buttons[s->focus];const TAPItem *q=&d->items[e.component];e.type=q->action;
   if(q->action==1){s->page=q->target;s->focus=0;}
   if(q->action==3)tap_stop(s);
