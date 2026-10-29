@@ -235,10 +235,11 @@ static void CompareMusicBoard(NSString *html,Host *host){
  assert(matched==4&&art&&art->art&&art->w==36&&art->h==36&&art->x==40&&[s containsString:@"width: 68px; height: 68px; box-shadow: inset 0 0 0 4px #007700"]);
  printf("PASS board LensMusic (proposed, halved): %u text rows and the 36 px tile match; band, size, intensity, x and y within tolerance\n",matched);
 }
-static void BuildMusic(Host *h,bool zh,uint32_t now,TIOHint *hint,const uint8_t *tile){
+static void BuildMusic(Host *h,bool zh,uint32_t now,TIOHint *hint,const uint8_t *tile,bool longLine){
  create(h,h);
  const char *track=zh?"街头 · 灯笼乐队":"Streets \xc2\xb7 The Lanterns",*curRaw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方":"The morning light is falling",*nextRaw=zh?"在清晨再次回想起那些温暖的故事":"on the streets we used to know";
- static char cur[244],next[244];tn_text_two_lines(curRaw,TIO_CORE_W,TM_CUR_FONT,cur,sizeof cur);tm_one_line(nextRaw,TIO_CORE_W,TM_NEXT_FONT,next,sizeof next);
+ if(longLine){curRaw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方然后在清晨的光里再次回想起那些温暖而漫长的故事直到夜幕降临":"The morning light is falling on the streets we used to know and every window glows with the stories of the city we have loved for years";nextRaw=zh?"在清晨再次回想起那些温暖的故事和我们一起走过的每一条安静的小路直到天亮":"Streets of gold and silver rivers running through the evening light of every city we have ever known";}
+ static char cur[244],next[244];tm_two_lines(curRaw,TM_CUR_FONT,cur,sizeof cur);tm_one_line(nextRaw,TIO_CORE_W,TM_NEXT_FONT,next,sizeof next);
  TIORect a=tm_art_rect(),t=tm_track_rect(),n=tm_next_rect(),c=tm_cur_rect();
  Widget *w=Add(h,KPixels,a.x,a.y,a.w,a.h,0,0,TIO_BAND_T,NULL);w->pixels=tile;w->art=true;
  bool hintOn=tio_hint_visible(hint,now);
@@ -252,16 +253,25 @@ static void Lyrics(NSString *dir,NSString *board,bool zh){
  for(unsigned i=0;i<sizeof tile;i++)assert(tile[i]<=TM_ART_LEVEL&&blank[i]<=TM_ART_LEVEL);assert(blank[18*TM_ART+18]==0&&blank[0]==TM_ART_LEVEL&&tile[0]==TM_ART_LEVEL);
  TIOHint hint;tio_hint_init(&hint);tio_hint_enter(&hint,1000);
  const struct {uint32_t now;const char *tag;const uint8_t *pix;} shots[]={{1000,"-hint",tile},{3850,"-hint-fade",tile},{4000,"",tile},{4500,"-nocover",blank}};
- for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){Host *host=calloc(1,sizeof *host);assert(host);BuildMusic(host,zh,shots[i].now,&hint,shots[i].pix);
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){Host *host=calloc(1,sizeof *host);assert(host);BuildMusic(host,zh,shots[i].now,&hint,shots[i].pix,false);
   char name[48];snprintf(name,sizeof name,"lyrics%s-%s",shots[i].tag,zh?"zh":"en");Gate(host,name,true);
   Widget *track=&host->w[2];if(!strcmp(shots[i].tag,"-hint"))assert(track->color==TIO_LENS_HIGH&&track->font==TIO_FONT_LABEL);if(!strcmp(shots[i].tag,"-hint-fade"))assert(track->color>0&&track->color<TIO_LENS_HIGH);
   if(!strcmp(shots[i].tag,"")){assert(track->color==TIO_LENS_MID&&host->w[3].color==TIO_LENS_HIGH&&host->w[4].color==TIO_LENS_FULL);if(!zh)CompareMusicBoard(board,host);}
   // Ordering: current lyric lowest, next above it, track on top; at most two lines of 24 px in the current-lyric box.
   assert(host->w[2].y<host->w[3].y&&host->w[3].y+host->w[3].h<=host->w[4].y&&host->w[4].y+host->w[4].h==TIO_PAGE_B1);
-  unsigned lines=1;for(const char *p=host->w[4].text;*p;p++)lines+=*p=='\n';assert(lines<=2&&tn_text_width(host->w[3].text,strlen(host->w[3].text),TM_NEXT_FONT)<=TIO_CORE_W);
+  unsigned lines=1;for(const char *p=host->w[4].text;*p;p++)lines+=*p=='\n';assert(lines<=2&&tm_width(host->w[3].text,strlen(host->w[3].text),TM_NEXT_FONT)<=TIO_CORE_W);
+  // The current-lyric label is the lens core wide, and no wrapped row is estimated wider than it.
+  assert(host->w[4].w==TIO_CORE_W&&host->w[4].x==TIO_CORE_X0&&host->w[3].w==TIO_CORE_W);
+  {const char *row=host->w[4].text;while(*row){const char *e=strchr(row,'\n');size_t n=e?(size_t)(e-row):strlen(row);assert(tm_width(row,n,TM_CUR_FONT)<=TIO_CORE_W);row+=n+(e?1:0);}}
   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ // Long lines: two-line cap with an ellipsis, rows within the core, label still TIO_CORE_W wide.
+ for(unsigned z=0;z<2;z++){language=z;Host *host=calloc(1,sizeof *host);assert(host);BuildMusic(host,z,4000,&hint,tile,true);char name[48];snprintf(name,sizeof name,"lyrics-long-%s",z?"zh":"en");Gate(host,name,true);
+  assert(host->w[4].w==TIO_CORE_W);unsigned lines=1;for(const char *p=host->w[4].text;*p;p++)lines+=*p=='\n';assert(lines==2&&strstr(host->w[4].text,"\xe2\x80\xa6"));
+  const char *row=host->w[4].text;while(*row){const char *e=strchr(row,'\n');size_t n=e?(size_t)(e-row):strlen(row);assert(tm_width(row,n,TM_CUR_FONT)<=TIO_CORE_W);row+=n+(e?1:0);}
+  assert(!strchr(host->w[3].text,'\n')&&strstr(host->w[3].text,"\xe2\x80\xa6"));Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ language=zh;
  // A next lyric too long for one line ends in an ellipsis and never wraps.
- char one[244];tm_one_line("Streets of gold and silver rivers running through the evening light of every city we have ever known",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strchr(one,'\n')&&strstr(one,"\xe2\x80\xa6")&&tn_text_width(one,strlen(one),TM_NEXT_FONT)<=TIO_CORE_W);
+ char one[244];tm_one_line("Streets of gold and silver rivers running through the evening light of every city we have ever known",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strchr(one,'\n')&&strstr(one,"\xe2\x80\xa6")&&tm_width(one,strlen(one),TM_NEXT_FONT)<=TIO_CORE_W);
  tm_one_line("short",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strcmp(one,"short"));
  tm_one_line("",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!*one);
 }

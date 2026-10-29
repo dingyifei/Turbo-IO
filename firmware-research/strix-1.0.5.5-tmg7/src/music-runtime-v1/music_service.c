@@ -68,7 +68,7 @@ static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root
  if(c->waiting){copy_text(cur,sizeof cur,tio_text(TT_MUSIC_PICK,lang));}
  else {int line=tm_line(&c->music,now);tm_text(&c->music,line,cur,sizeof cur);tm_text(&c->music,line+1,next,sizeof next);
   if(!c->music.lyrics_ready)copy_text(cur,sizeof cur,tio_text(TT_MUSIC_LYRICS,lang));}
- tn_text_two_lines(cur,TIO_CORE_W,TM_CUR_FONT,f->current,sizeof f->current);tm_one_line(next,TIO_CORE_W,TM_NEXT_FONT,f->next,sizeof f->next);
+ tm_two_lines(cur,TM_CUR_FONT,f->current,sizeof f->current);tm_one_line(next,TIO_CORE_W,TM_NEXT_FONT,f->next,sizeof f->next);
  /* Band T: the control hint (lens-high, fading) for TIO_HINT_MS after entry and every input, else the track in lens-mid. */
  bool hint=tio_hint_visible(&c->hint,now);uint32_t color=hint?tio_hint_color(&c->hint,now):TIO_LENS_MID;
  if(hint)copy_text(f->track,sizeof f->track,tio_text(c->music.playing?TT_MUSIC_CONTROLS_PAUSE:TT_MUSIC_CONTROLS_PLAY,lang));
