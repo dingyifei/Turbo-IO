@@ -4,6 +4,7 @@
 #import "SubtitleHUDCore.h"
 #import "NavigationSubtitleHUD.h"
 #import "ResearchUI.h"
+#import "TIODesign.h"
 #import "ProtocolContext.h"
 #import <objc/message.h>
 static __weak id Plugin;
@@ -132,7 +133,7 @@ void TIOSubtitleObserveEvent(NSDictionary *event){
     if(p.row>=4&&p.row<=6)c.detailTextLabel.text=TIOText(@"mode3 / status0：测试同一句文字更新；观察覆盖还是追加、是否闪屏。检测到字幕音频消息立即停止；没有音频包不等于全链路未采音。");
     BOOL ready=[Trial.phase isEqual:@"ready"];
     BOOL on=p.row==0||p.row==1||(p.row==2&&(!Trial.active||[@[@"stopping",@"uncertain"] containsObject:Trial.phase]))||(p.row==3&&Available()&&ConfirmedIdle&&Now()-ConfirmedAt<120&&!Trial.active)||(p.row>=4&&p.row<=6&&ready&&Trial.frame==(NSUInteger)(p.row-4))||(p.row==7&&Trial.active);
-    c.userInteractionEnabled=on;c.textLabel.textColor=on?UIColor.labelColor:UIColor.secondaryLabelColor;return c;
+    c.userInteractionEnabled=on;c.textLabel.textColor=on?TIODesignColor(TIODesignColorLabel):TIODesignColor(TIODesignColorLabelSecondary);return c;
 }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{
     [t deselectRowAtIndexPath:p animated:YES];
