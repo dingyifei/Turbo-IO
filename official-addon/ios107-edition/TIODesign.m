@@ -220,7 +220,10 @@ void TIODesignStyleTable(UITableViewController *c){
  TIODesignTableTheme *proxy=objc_getAssociatedObject(t,&ThemeKey);
  if(!proxy){proxy=[TIODesignTableTheme new];objc_setAssociatedObject(t,&ThemeKey,proxy,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}
  if(t.delegate!=proxy){proxy.original=t.delegate;t.delegate=proxy;}
- c.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeNever;
+ /* The hub root keeps its large title; pushed pages use standard titles. */
+ UINavigationController *nav=c.navigationController;
+ BOOL root=nav&&nav.viewControllers.firstObject==c&&nav.navigationBar.prefersLargeTitles;
+ c.navigationItem.largeTitleDisplayMode=root?UINavigationItemLargeTitleDisplayModeAlways:UINavigationItemLargeTitleDisplayModeNever;
 }
 
 /* Normalize only standard system surfaces in our navigation subtree. Preview

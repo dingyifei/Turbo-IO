@@ -34,6 +34,8 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "ResearchUI.h"
 #import <math.h>
 #import "TIOConfirm.h"
+#import "TIODesign.h"
+#import "ProtocolContext.h"
 #import "OTAWizardModel.h"
 #import "ExperimentalOTAGuard.h"
 #import "Brightness.h"
@@ -402,6 +404,40 @@ static void AlwaysOnHook(id self,SEL cmd,id value) {
     dispatch_async(ArchiveQueue,^{NSError *error=nil;BOOL ok=[Archive recordText:text round:identity role:role at:NSDate.date error:&error];dispatch_async(dispatch_get_main_queue(),^{Diagnostic=ok?TIOText(@"全天智记最终文字已保存到扩展本机归档"):TIOText(@"全天智记归档失败，官方数据未改");});});
 }
 
+// Leading glasses card: name, firmware build and whether the RayNeo app has
+// reported a device. Words plus a symbol; battery is not read passively.
+// stacked is set from the accessibility content size: the pill drops under the labels.
+static UIView *TIOHubStatusCard(NSString *name,NSString *detail,TIODesignStatus status,NSString *word,BOOL stacked) {
+    UIView *card=[UIView new];
+    card.backgroundColor=TIODesignColor(TIODesignColorBgRaised);
+    card.layer.cornerRadius=TIORadiusLG;card.layer.cornerCurve=kCACornerCurveContinuous;
+    UIView *tile=[UIView new];tile.backgroundColor=TIODesignColor(TIODesignColorAccentSoft);tile.layer.cornerRadius=24;
+    UIImageView *glyph=[[UIImageView alloc]initWithImage:[UIImage systemImageNamed:@"eyeglasses" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular]]];
+    glyph.tintColor=TIODesignColor(TIODesignColorAccent);glyph.contentMode=UIViewContentModeScaleAspectFit;
+    glyph.translatesAutoresizingMaskIntoConstraints=NO;tile.translatesAutoresizingMaskIntoConstraints=NO;[tile addSubview:glyph];
+    [NSLayoutConstraint activateConstraints:@[[tile.widthAnchor constraintEqualToConstant:48],[tile.heightAnchor constraintEqualToConstant:48],
+        [glyph.centerXAnchor constraintEqualToAnchor:tile.centerXAnchor],[glyph.centerYAnchor constraintEqualToAnchor:tile.centerYAnchor]]];
+    UILabel *title=[UILabel new],*sub=[UILabel new];
+    title.text=name;title.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightSemibold);title.textColor=TIODesignColor(TIODesignColorLabel);
+    sub.text=detail;sub.font=TIODesignFont(TIODesignTextStyleSubheadline);sub.textColor=TIODesignColor(TIODesignColorLabelSecondary);
+    for (UILabel *l in @[title,sub]) {l.numberOfLines=0;l.adjustsFontForContentSizeCategory=YES;}
+    UIStackView *labels=[[UIStackView alloc]initWithArrangedSubviews:@[title,sub]];labels.axis=UILayoutConstraintAxisVertical;labels.spacing=TIOSpace1/2;
+    [labels setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    UIView *pill=TIODesignStatusPill(status,word);
+    UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[tile,labels,pill]];
+    stack.axis=stacked?UILayoutConstraintAxisVertical:UILayoutConstraintAxisHorizontal;
+    stack.alignment=stacked?UIStackViewAlignmentLeading:UIStackViewAlignmentCenter;stack.spacing=TIOSpace3+TIOSpace1/2;
+    [pill setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    stack.translatesAutoresizingMaskIntoConstraints=NO;[card addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:card.topAnchor constant:TIOSpace4],[stack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-TIOSpace4],
+        [stack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:TIOSpace4],[stack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-TIOSpace4],
+        [card.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin]]];
+    // One element; the pill's word is part of the sentence.
+    card.isAccessibilityElement=YES;card.accessibilityLabel=[NSString stringWithFormat:@"%@, %@, %@",name,[NSString stringWithFormat:TIOText(@"hub.card.firmware"),detail],word];
+    card.accessibilityTraits=UIAccessibilityTraitStaticText;card.accessibilityIdentifier=@"hub-glasses-card";
+    return card;
+}
+
 @interface TIOPanel : UITableViewController
 @property(nonatomic) TIORequest *testRequest;
 @property(nonatomic,copy) NSString *page;
@@ -430,6 +466,28 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     for (NSDictionary *row in TIOHubCatalog()) if ([row[@"key"] isEqual:key]) return row;
     return nil;
 }
+- (void)updateCard {
+    if (self.page.length) {self.tableView.tableHeaderView=nil;return;}
+    NSString *code=@"";
+    for (NSDictionary *row in TIOHubCatalog()) if ([row[@"key"] isEqual:@"experimentalOTA"]) code=row[@"code"];
+    BOOL seen=TIOProtocolDevice().length>0;
+    UIView *card=TIOHubStatusCard(TIOText(@"hub.card.name"),code,
+        seen?TIODesignStatusOk:TIODesignStatusNeutral,TIOText(seen?@"hub.card.detected":@"hub.card.notDetected"),
+        UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory));
+    UIView *holder=[UIView new];card.translatesAutoresizingMaskIntoConstraints=NO;[holder addSubview:card];
+    [NSLayoutConstraint activateConstraints:@[[card.topAnchor constraintEqualToAnchor:holder.topAnchor constant:TIOSpace2],[card.bottomAnchor constraintEqualToAnchor:holder.bottomAnchor],
+        [card.leadingAnchor constraintEqualToAnchor:holder.layoutMarginsGuide.leadingAnchor],[card.trailingAnchor constraintEqualToAnchor:holder.layoutMarginsGuide.trailingAnchor]]];
+    holder.layoutMargins=UIEdgeInsetsMake(0,TIOSpace4,0,TIOSpace4);
+    self.tableView.tableHeaderView=holder;[self fitHeader];
+}
+- (void)fitHeader {
+    UIView *header=self.tableView.tableHeaderView;CGFloat width=self.tableView.bounds.size.width;
+    if (!header||width<=0) return;
+    CGSize size=[header systemLayoutSizeFittingSize:CGSizeMake(width,UILayoutFittingCompressedSize.height) withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    if (fabs(header.frame.size.height-size.height)>.5||fabs(header.frame.size.width-width)>.5) {header.frame=CGRectMake(0,0,width,size.height);self.tableView.tableHeaderView=header;}
+}
+- (void)viewDidLayoutSubviews {[super viewDidLayoutSubviews];[self fitHeader];}
+- (void)traitCollectionDidChange:(UITraitCollection *)previous {[super traitCollectionDidChange:previous];if(!self.page.length)[self updateCard];}
 - (void)refresh {
     self.sections=TIOHubSections(self.page);
     self.title=self.page.length ? ([self catalogRowForKey:self.page][@"title"] ?: TIOText(@"hub.title")) : TIOText(@"hub.title");
@@ -451,13 +509,14 @@ static NSString *TIOHubBoundStatus(NSString *value) {
         }
         TIOAttachInfo(self,TIOText(@"hub.info.title"),body);
     }
+    [self updateCard];
     [self.tableView reloadData];
 }
 - (void)viewDidLoad {
     [super viewDidLoad];self.page=self.page?:@"";TIOStyleResearchTable(self);
     self.tableView.tableHeaderView=nil;
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(cancelPanelTest) name:@"TIOResearchClosed" object:nil];
-    for (NSString *name in @[@"TIOHubReload",TIOUILanguageDidChangeNotification,UIApplicationDidBecomeActiveNotification])
+    for (NSString *name in @[@"TIOHubReload",TIOUILanguageDidChangeNotification,UIApplicationDidBecomeActiveNotification,TIOProtocolDeviceDidChangeNotification])
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refresh) name:name object:nil];
     [self refresh];
 }
@@ -482,7 +541,10 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     });
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    return !self.page.length && [self.sections[section][@"section"] integerValue]==TIOHubSectionDeveloper ? 40 : UITableViewAutomaticDimension;
+    if (self.page.length || [self.sections[section][@"section"] integerValue]!=TIOHubSectionDeveloper) return UITableViewAutomaticDimension;
+    UIView *fold=[self tableView:tableView viewForHeaderInSection:section];
+    CGSize size=[fold systemLayoutSizeFittingSize:CGSizeMake(tableView.bounds.size.width,UILayoutFittingCompressedSize.height) withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    return MAX(TIOHitMin,ceil(size.height));
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     NSDictionary *group=self.sections[section];
@@ -542,10 +604,10 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"search"]) {pref=@"tinyfishEnabled";action=@selector(searchToggle:);}
     else if ([key isEqual:@"capture"]) {pref=@"captureFinalText";action=@selector(capture:);}
     if (pref) {UISwitch *control=[UISwitch new];control.on=[Prefs boolForKey:pref];control.enabled=enabled;[control addTarget:self action:action forControlEvents:UIControlEventValueChanged];return control;}
-    if ([key isEqual:@"ttsSpeed"]) {UIButton *control=[UIButton buttonWithType:UIButtonTypeSystem];control.frame=CGRectMake(0,0,64,32);[control setTitle:[NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)] forState:UIControlStateNormal];control.accessibilityIdentifier=@"tts-speed";[control addTarget:self action:@selector(ttsSpeed) forControlEvents:UIControlEventTouchUpInside];return control;}
+    if ([key isEqual:@"ttsSpeed"]) {UIButton *control=[UIButton buttonWithType:UIButtonTypeSystem];control.frame=CGRectMake(0,0,64,TIOHitMin);[control setTitle:[NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)] forState:UIControlStateNormal];control.accessibilityIdentifier=@"tts-speed";[control addTarget:self action:@selector(ttsSpeed) forControlEvents:UIControlEventTouchUpInside];return control;}
     if ([key isEqual:@"agent"]) {__weak typeof(self) weak=self;return TIOAgentPicker(^{[weak.tableView reloadData];});}
     if ([key isEqual:@"ttsTest"]) {
-        UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:TIOText(@"播放") forState:UIControlStateNormal];button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,44);
+        UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];[button setTitle:TIOText(@"播放") forState:UIControlStateNormal];button.accessibilityIdentifier=@"research-tts-play-button";button.frame=CGRectMake(0,0,58,TIOHitMin);
         [button addTarget:self action:@selector(testTTS) forControlEvents:UIControlEventTouchUpInside];return button;
     }
     return nil;
@@ -556,6 +618,9 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     cell.textLabel.text=row[@"title"];cell.detailTextLabel.text=[self statusForKey:key];
     cell.imageView.image=TIOHubIcon(row[@"icon"],[row[@"section"] integerValue]);
     cell.accessoryView=[self accessoryForKey:key];
+    // Toggle rows read as one element: "Read answers aloud, switch, on".
+    if ([cell.accessoryView isKindOfClass:UISwitch.class]) cell.accessoryView.accessibilityLabel=row[@"title"];
+    if ([key isEqual:@"ttsSpeed"]) {cell.accessoryView.accessibilityLabel=row[@"title"];cell.accessoryView.accessibilityValue=[NSString stringWithFormat:@"%.3g×",TIOVoiceTTSSpeedMultiplier(Prefs)];}
     if (!cell.accessoryView && ![@[@"status",@"prompt",@"tools",@"ttsTest"] containsObject:key]) cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     cell.accessibilityIdentifier=[@"hub-" stringByAppendingString:key];
     return cell;
@@ -755,8 +820,8 @@ static BOOL VersionMatches(void) {
 static void AddEntry(void) {
     UIViewController *top=TopController();UIWindow *window=top.view.window;if(!window)return;
     if(TIOInsideTurboHub(top)){Entry.hidden=YES;return;}
-    if(!Entry){Entry=[UIButton buttonWithType:UIButtonTypeSystem];[Entry setTitle:TIOText(@"hub.entry") forState:UIControlStateNormal];Entry.accessibilityLabel=TIOText(@"hub.title");Entry.backgroundColor=UIColor.systemIndigoColor;[Entry setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];Entry.layer.cornerRadius=20;[Entry addTarget:TIOEntryTarget.class action:@selector(show) forControlEvents:UIControlEventTouchUpInside];}
-    Entry.hidden=NO;Entry.frame=CGRectMake(window.bounds.size.width-66,window.safeAreaInsets.top+80,54,40);[window addSubview:Entry];
+    if(!Entry){Entry=[UIButton buttonWithType:UIButtonTypeSystem];[Entry setTitle:TIOText(@"hub.entry") forState:UIControlStateNormal];Entry.accessibilityLabel=TIOText(@"hub.title");Entry.backgroundColor=TIODesignColor(TIODesignColorAccentFill);[Entry setTitleColor:TIODesignColor(TIODesignColorOnAccent) forState:UIControlStateNormal];Entry.titleLabel.font=TIODesignFontWeight(TIODesignTextStyleSubheadline,UIFontWeightSemibold);Entry.layer.cornerRadius=TIOHitMin/2;[Entry addTarget:TIOEntryTarget.class action:@selector(show) forControlEvents:UIControlEventTouchUpInside];}
+    Entry.hidden=NO;Entry.frame=CGRectMake(window.bounds.size.width-70,window.safeAreaInsets.top+80,58,TIOHitMin);[window addSubview:Entry];
     if(VersionMatches())TIOStartHomeTabBridge(Entry,^{[TIOEntryTarget show];});
 }
 __attribute__((constructor)) static void Load(void) {

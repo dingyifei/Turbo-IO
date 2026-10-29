@@ -38,12 +38,13 @@ UIView *TIOFoldHeader(NSString *title,BOOL expanded,void(^toggle)(void)){
  UIButtonConfiguration *c=[UIButtonConfiguration plainButtonConfiguration];
  c.title=title;
  c.image=[UIImage systemImageNamed:expanded?@"chevron.down":@"chevron.right"
-                    withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12]];
- c.imagePlacement=NSDirectionalRectEdgeTrailing;c.imagePadding=12;
- c.baseForegroundColor=UIColor.secondaryLabelColor;
- c.contentInsets=NSDirectionalEdgeInsetsMake(8,20,6,20);
- c.titleTextAttributesTransformer=^NSDictionary *(NSDictionary *a){NSMutableDictionary *m=[a mutableCopy];m[NSFontAttributeName]=Font(13,UIFontWeightSemibold);return m;};
+                    withConfiguration:[UIImageSymbolConfiguration configurationWithTextStyle:UIFontTextStyleFootnote]];
+ c.imagePlacement=NSDirectionalRectEdgeTrailing;c.imagePadding=TIOSpace3;
+ c.baseForegroundColor=TIODesignColor(TIODesignColorLabelSecondary);
+ c.contentInsets=NSDirectionalEdgeInsetsMake(TIOSpace2,TIOSpace5,TIOSpace2,TIOSpace5);
+ c.titleTextAttributesTransformer=^NSDictionary *(NSDictionary *a){NSMutableDictionary *m=[a mutableCopy];m[NSFontAttributeName]=TIODesignFontWeight(TIODesignTextStyleFootnote,UIFontWeightSemibold);return m;};
  b.configuration=c;b.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeading;
+ [b.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
  NSString *labelFormat=TIOText(expanded?@"hub.fold.expanded":@"hub.fold.collapsed");
  b.accessibilityLabel=[NSString stringWithFormat:labelFormat,title];
  b.accessibilityIdentifier=@"hub-section-developer";
@@ -61,7 +62,17 @@ UIViewController *TIOFocusController(void){return [TIOFocus new];}
 @interface TIOHubNavigation:UINavigationController<UINavigationControllerDelegate>
 @end
 @implementation TIOHubNavigation
-- (void)viewDidLoad{[super viewDidLoad];self.delegate=self;self.view.tintColor=TIOAccent();UINavigationBarAppearance *a=[UINavigationBarAppearance new];[a configureWithDefaultBackground];a.backgroundColor=[TIOPaper() colorWithAlphaComponent:.92];a.shadowColor=UIColor.clearColor;a.titleTextAttributes=@{NSForegroundColorAttributeName:TIOInk(),NSFontAttributeName:Font(17,UIFontWeightMedium)};self.navigationBar.standardAppearance=a;self.navigationBar.scrollEdgeAppearance=a;}
+- (void)viewDidLoad{
+ [super viewDidLoad];self.delegate=self;self.view.tintColor=TIOAccent();
+ self.navigationBar.prefersLargeTitles=YES;
+ NSDictionary *title=@{NSForegroundColorAttributeName:TIOInk(),NSFontAttributeName:TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightMedium)};
+ NSDictionary *large=@{NSForegroundColorAttributeName:TIOInk(),NSFontAttributeName:TIODesignFontWeight(TIODesignTextStyleLargeTitle,UIFontWeightBold)};
+ UINavigationBarAppearance *a=[UINavigationBarAppearance new];[a configureWithDefaultBackground];
+ a.backgroundColor=[TIOPaper() colorWithAlphaComponent:.92];a.shadowColor=UIColor.clearColor;a.titleTextAttributes=title;a.largeTitleTextAttributes=large;
+ UINavigationBarAppearance *edge=[UINavigationBarAppearance new];[edge configureWithTransparentBackground];
+ edge.shadowColor=UIColor.clearColor;edge.titleTextAttributes=title;edge.largeTitleTextAttributes=large;
+ self.navigationBar.standardAppearance=a;self.navigationBar.scrollEdgeAppearance=edge;
+}
 - (void)closeResearch{TIOCloseResearch(self);}
 - (void)ensureCloseForController:(UIViewController *)v{
  NSMutableArray<UIBarButtonItem *> *info=[NSMutableArray new],*other=[NSMutableArray new];
@@ -80,7 +91,8 @@ UIViewController *TIOFocusController(void){return [TIOFocus new];}
 }
 - (void)navigationController:(UINavigationController *)n willShowViewController:(UIViewController *)v animated:(BOOL)animated{
  v.view.tintColor=TIOAccent();TIOStyleFeatureSurface(v.view);
- v.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeNever;
+ // Only the hub root has the large title; sub-pages push with standard titles.
+ v.navigationItem.largeTitleDisplayMode=(v==self.viewControllers.firstObject)?UINavigationItemLargeTitleDisplayModeAlways:UINavigationItemLargeTitleDisplayModeNever;
  if([v isKindOfClass:UITableViewController.class])TIOStyleResearchTable((UITableViewController *)v);
  [self ensureCloseForController:v];
 }
