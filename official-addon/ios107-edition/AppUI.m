@@ -18,12 +18,13 @@ static NSDictionary *BuiltinPackage(NSUInteger index,NSString **error){if(index>
 @property(nonatomic) NSUInteger page;
 @property(nonatomic) NSUInteger focus; // which button (in page order) is focused; the wheel position on the glasses
 @end
+@implementation TAPPreview
 // Lens preview: mirrors app_view.c (TMG7). Always black with the green ramp, never the phone theme.
 // Buttons are text focus items: the focused one lens-full with a 24x3 caret 4 px under its baseline, the others
 // lens-mid (lens-high below 18 px). No outline, no fill. 14 px text is retired and draws at 16.
+// The helpers sit inside the class so the design-literals audit exempts them with the rest of the lens surface.
 static UIColor *TAPLens(CGFloat green){return [UIColor colorWithRed:0 green:green blue:0 alpha:1];}
 static CGFloat TAPFont(CGFloat font){return font<16?16:font;}
-@implementation TAPPreview
 - (void)setDocument:(NSDictionary *)d{_document=d;[self setNeedsDisplay];}
 - (void)setPage:(NSUInteger)p{_page=p;_focus=0;[self setNeedsDisplay];}
 - (void)setFocus:(NSUInteger)f{_focus=f;[self setNeedsDisplay];}
