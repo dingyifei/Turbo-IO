@@ -19,9 +19,12 @@ static inline TIORect tm_art_rect(void){TIOSpan t=tio_band(TIO_SURFACE_PAGE,TIO_
 /* The track label sits right of the tile on the tile's centre line; the hint takes the core row instead. */
 static inline TIORect tm_track_rect(void){TIORect a=tm_art_rect();int h=TIO_LINE(TM_TRACK_FONT);int x=a.x+a.w+TM_ROW_GAP;return (TIORect){x,a.y+(a.h-h)/2,TIO_CORE_X1-x,h};}
 static inline TIORect tm_next_rect(void){TIOSpan m=tio_band(TIO_SURFACE_PAGE,TIO_BAND_M);return (TIORect){TIO_CORE_X0,m.y0+20,TIO_CORE_W,TIO_LINE(TM_NEXT_FONT)};}   /* 76: the board's row */
-/* Two lines of 24 px (28 each) fill band B, bottom-aligned on its edge. */
+/* Two lines of 24 px (28 each) fill band B. A one-line lyric is bottom-aligned on the band's edge, the line closest to the eye's
+ * resting line of sight (LyricStack, PriorityBands): tm_cur_rect_for() sizes the box to the wrapped line count. */
 _Static_assert(TIO_CORE_W==460,"the current-lyric label is the lens core wide");
 static inline TIORect tm_cur_rect(void){TIOSpan b=tio_band(TIO_SURFACE_PAGE,TIO_BAND_B);int h=2*TIO_LINE(TM_CUR_FONT);return (TIORect){TIO_CORE_X0,b.y1-h,TIO_CORE_W,h};}
+static inline unsigned tm_lines(const char *wrapped){unsigned n=1;for(;*wrapped;wrapped++)if(*wrapped=='\n')n++;return n>2?2:n;}
+static inline TIORect tm_cur_rect_for(const char *wrapped){TIOSpan b=tio_band(TIO_SURFACE_PAGE,TIO_BAND_B);int h=(int)tm_lines(wrapped)*TIO_LINE(TM_CUR_FONT);return (TIORect){TIO_CORE_X0,b.y1-h,TIO_CORE_W,h};}
 /* Lyric advance estimate. The nav bound (3/4 em for every Latin glyph) wraps a 28 character line at about 240 px
  * in a 460 px core; lyrics use a class-based estimate that still errs wide (the label clips at the core edge):
  * narrow glyphs 0.4 em, capitals 0.75 em, wide W M m w @ and all non-Latin 1 em, other Latin 0.6 em. */

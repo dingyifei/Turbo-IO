@@ -77,6 +77,7 @@ static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root
   f->track[n]=0;}
  tm_art_tile(c->music.cover_ready?c->music.cover:NULL,f->pixels);
  c->api.buffer(NULL,c->canvas,f->pixels,TM_ART,TM_ART);
+ {TIORect r=tm_cur_rect_for(f->current);c->api.place(NULL,c->labels[TM_CURRENT],r.x,r.y,r.w,r.h);}   /* bottom-aligned on band B: one line sits on the bottom row */
  c->api.text_static(NULL,c->labels[TM_CURRENT],f->current);c->api.text_static(NULL,c->labels[TM_NEXT],f->next);c->api.text_static(NULL,c->labels[TM_TRACK],f->track);
  if(c->api.color&&color!=c->track_color){c->api.color(NULL,c->labels[TM_TRACK],color);c->track_color=color;}
  c->front=1-c->front;c->last_frame=now;return true;
