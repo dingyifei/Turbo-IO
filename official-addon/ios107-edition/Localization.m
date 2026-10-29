@@ -320,6 +320,8 @@ static const TIOStringRow Rows[]={
     {"create_todo已调用官方入口；等待真实列表，不宣称创建成功","create_todo called through the RayNeo app entry point; waiting for the real list; not claiming success",NULL},
     {"create_todo未确认唯一新ID，结果未知；禁止重试","create_todo did not confirm a unique new ID; result unknown; do not retry",NULL},
     {"create_todo调用异常，结果未知；禁止重试","create_todo call raised an exception; result unknown; do not retry",NULL},
+    {"editor.crop.preview","Icon preview","图标预览"},
+    {"editor.crop.threshold","Brightness threshold","亮度阈值"},
     {"hub.aboutMe.placeholder","e.g. Call me Alex. I design products in Toronto.","例如：叫我小李，在多伦多做产品设计。"},
     {"hub.alert.aboutMe.message","Optional background the model may use, such as how to address you, your job or your city.","可选。供模型参考的背景信息，如称呼、职业或城市。"},
     {"hub.alert.api.message","Enter the full HTTPS /chat/completions URL.","填写完整 HTTPS /chat/completions 地址。"},

@@ -18,7 +18,7 @@ mkdir -p "$shots"
 screens=("$@")
 [[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles runtime knob voice nav nav-active captions)
 for screen in "${screens[@]}"; do
-  case "$screen" in hub|ota|music|tiles|runtime|knob|voice|nav|nav-active|captions|tokens) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
+  case "$screen" in hub|ota|music|tiles|runtime|knob|voice|nav|nav-active|captions|tokens|push-*|editor-*) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
 done
 
 # The matrix every screen is shot in (tmg4-check.py asserts the same one):

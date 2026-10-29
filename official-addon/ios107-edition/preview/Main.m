@@ -6,6 +6,8 @@
 #import "MenuLayoutUI.h"
 #import "TDPhoneUI.h"
 #import "ResearchUI.h"
+#import "EditorUI.h"
+#import "EditorCrop.h"
 #import "TIODesign.h"
 #include <stdio.h>
 // Design-system gallery (docs/design-system): every token as TIODesign renders
@@ -363,18 +365,26 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
         fprintf(stderr,"PREVIEW_OTA_FIXTURE %s %s\n",fixture.UTF8String,json.UTF8String);
         fflush(stderr);
     }
-    [[NSUserDefaults.alloc initWithSuiteName:@"io.turboio.research.preview"] setBool:HasArgument(@"--expand-developer") forKey:@"hubDeveloperExpanded"];
+    // push-<hub row key> opens that row's screen from the hub; developer rows need the fold open.
+    BOOL pushScreen=[screen hasPrefix:@"push-"];
+    [[NSUserDefaults.alloc initWithSuiteName:@"io.turboio.research.preview"] setBool:HasArgument(@"--expand-developer")||pushScreen forKey:@"hubDeveloperExpanded"];
     TIOSetUILanguageOverride(@"auto");
     dispatch_async(dispatch_get_main_queue(),^{
         UIViewController *presented=nil;
         UINavigationController *navigation=nil;
-        if (wizard || HasArgument(@"--hub") || ([screen isEqual:@"hub"]||[screen isEqual:@"voice"])) {
+        if (wizard || HasArgument(@"--hub") || ([screen isEqual:@"hub"]||[screen isEqual:@"voice"]||pushScreen)) {
             if (wizard) TIOOTAWizardUseFixture(fixture?:@"ready-authorize");
             UIViewController *hub=TIOCreateTurboPreview();
             if ([hub isKindOfClass:UINavigationController.class]) {
                 navigation=(UINavigationController *)hub;
                 presented=hub;
             }
+        } else if ([screen hasPrefix:@"editor-"]) {
+            // Pages of the dashboard editor that no hub row opens directly.
+            UIViewController *page=TCEPreviewController([screen substringFromIndex:7]);
+            if ([page isKindOfClass:UINavigationController.class]) navigation=(UINavigationController *)page;
+            else if (page) navigation=TIOCreateTurboHub(page);
+            presented=navigation;
         } else if ([screen isEqual:@"tokens"]) {DesignSelfTest();navigation=[[UINavigationController alloc]initWithRootViewController:TokensSample()];presented=navigation;
         } else if ([screen isEqual:@"nav"]||[screen isEqual:@"nav-active"]) {
             // The real TIOMapKitNavigationPanel with a stub route; nav-active is the navigating state (End shown).
@@ -413,8 +423,8 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             fflush(stderr);
             if (wizard) {
                 [navigation pushViewController:TIOExperimentalOTAController() animated:NO];
-            } else if ([screen isEqual:@"hub"] || HasArgument(@"--hub")) {
-                NSString *key=Argument(@"--push");
+            } else if ([screen isEqual:@"hub"] || pushScreen || HasArgument(@"--hub")) {
+                NSString *key=pushScreen?[screen substringFromIndex:5]:Argument(@"--push");
                 if (key) SelectHubKey(navigation,key);
             }
             if([screen isEqual:@"tiles"]||[screen isEqual:@"knob"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);if(table){[table scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1] atScrollPosition:UITableViewScrollPositionTop animated:NO];CGPoint offset=table.contentOffset;offset.y=MAX(-table.adjustedContentInset.top,offset.y-36);[table setContentOffset:offset animated:NO];}});

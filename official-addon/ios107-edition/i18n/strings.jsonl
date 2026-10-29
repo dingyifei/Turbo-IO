@@ -2152,3 +2152,5 @@
 {"key":"ota.state.blocked","en":"Blocked","zh":"受阻"}
 {"key":"ota.state.attention","en":"Needs attention","zh":"需要处理"}
 {"key":"ota.state.pending","en":"Checking","zh":"检查中"}
+{"key":"editor.crop.preview","en":"Icon preview","zh":"图标预览"}
+{"key":"editor.crop.threshold","en":"Brightness threshold","zh":"亮度阈值"}
