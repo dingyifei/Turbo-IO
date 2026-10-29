@@ -27,6 +27,8 @@ bool tf_view_open(TFView *,const TNWidgets *,void *,void *);
 void tf_view_enter(TFView *,uint32_t now);
 void tf_view_input(TFView *,uint32_t now);
 /* True when the hint colour changed since the last draw (the 250 ms tick redraws then). */
+/* True while the control hint is lit or fading. */
+bool tf_view_hint(const TFView *,uint32_t now);
 bool tf_view_due(const TFView *,uint32_t now,bool compact);
 bool tf_view_draw(TFView *,const TFocus *,bool compact,uint32_t now);
 bool tf_view_close(TFView *);

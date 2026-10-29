@@ -67,13 +67,13 @@ static void tick(void *t){TFControl *c=ptr(t,12);if(!c||c->magic!=TF_MAGIC)retur
   if(c->state.pending&&c->completion_seen!=c->state.completion_id){c->completion_seen=c->state.completion_id;c->completion_time=now;}
   if(c->state.pending&&c->state.notified_id!=c->state.completion_id&&(uint32_t)(now-c->completion_time)<300000&&auto_enter(c,now,true)){c->state.notified_id=c->state.completion_id;}
   if(screen&&!c->screen&&(c->state.status==TF_RUNNING||c->state.status==TF_PAUSED)){(void)auto_enter(c,now,false);}
-  if(c->view){bool compact=c->state.status==TF_RUNNING&&(uint32_t)(now-c->shown)>=3000;
+  if(c->view){bool compact=c->state.status==TF_RUNNING&&(uint32_t)(now-c->shown)>=3000&&!tf_view_hint(c->view,now);   /* a wheel turn or press lights the hint, so the full page shows for it */
    if(screen&&(c->state.dirty||compact!=c->compact||tf_view_due(c->view,now,compact))&&tf_view_draw(c->view,&c->state,compact,now)){c->state.dirty=false;c->compact=compact;}
    if((uint32_t)(now-c->shown)>=10000)release(c);
   }
  }
  c->screen=focus_screen_on();
- stream_timer_period(t,c->view&&c->screen?250:1000);
+ stream_timer_period(t,c->view&&c->screen?(tf_view_hint(c->view,now)?50:250):1000);   /* 50 ms while the hint fades: gone at 3000 ms, not at the next 250 ms tick */
  if(paired()&&(c->state.status==TF_RUNNING||c->state.status==TF_PAUSED||c->state.pending)&&(uint32_t)(now-c->last_emit)>=5000){c->last_emit=now;emit(c,TF_OK,NULL);}
 }
 TFSlot *tf_slot_create(void *app){TFSlot *s=stream_memalign(8,sizeof *s);if(s){memset(s,0,sizeof *s);s->app=app;}return s;}
@@ -81,7 +81,8 @@ void tf_slot_hidden(TFSlot *s){TFControl *c=control(false);if(c&&c->slot==s&&!c-
 void tf_slot_destroy(TFSlot *s){if(!s)return;TFControl *c=control(false);if(c&&c->slot==s){hide(c);c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tf_slot_visible(TFSlot *s){TFControl *c=control(false);return c&&c->slot==s&&c->view;}
 bool tf_slot_open(TFSlot *s){return enter(control(true),s,stream_tick());}
-void tf_slot_wheel(TFSlot *s,int delta){TFControl *c=control(false);if(!c||c->slot!=s||!c->view||c->closing)return;int step=wr_input_wheel(&c->input,delta,stream_tick());if(!step||c->state.status==TF_RUNNING||c->state.status==TF_PAUSED)return;tf_view_input(c->view,stream_tick());unsigned secs=c->state.duration_s;c->state.duration_s=step>0?(secs<1500?1500:secs<2700?2700:900):(secs>1500?1500:secs>900?900:2700);c->state.remaining_ms=c->state.duration_s*1000;c->state.dirty=true;}
+void tf_slot_wheel(TFSlot *s,int delta){TFControl *c=control(false);if(!c||c->slot!=s||!c->view||c->closing)return;int step=wr_input_wheel(&c->input,delta,stream_tick());if(!step)return;tf_view_input(c->view,stream_tick());stream_timer_period(c->timer,50);   /* any wheel step re-lights the control hint (TransientHint) */
+ if(c->state.status==TF_RUNNING||c->state.status==TF_PAUSED)return;unsigned secs=c->state.duration_s;c->state.duration_s=step>0?(secs<1500?1500:secs<2700?2700:900):(secs>1500?1500:secs>900?900:2700);c->state.remaining_ms=c->state.duration_s*1000;c->state.dirty=true;}
 bool tf_handle_event(void *e){TFControl *c=control(false);if(!c||!c->view||c->closing||!owns(c)||native_event_code(e)!=0xe)return false;unsigned key=native_event_key(e);uint32_t now=stream_tick();
  if(key==0x3b){TNNavSlot *n=navslot(c->app);if(n)n->back_until=now+700;c->backed=true;c->last_back=now;if(tf_local(&c->state,TF_STOP,now,0,0))emit(c,TF_OK,NULL);hide(c);}
  else if(key==0x3a){if(c->backed&&(uint32_t)(now-c->last_back)<700){nav_stop_event(e);return true;}if(!focus_screen_on()||!c->state.peek){(void)enter(c,c->slot,now);}else if(wr_input_press(&c->input,now)){unsigned op=c->state.status==TF_RUNNING?TF_PAUSE:c->state.status==TF_PAUSED?TF_RESUME:TF_START;unsigned phase=0,seconds=c->state.duration_s;if(c->state.status==TF_DONE){phase=c->state.phase?0:(c->state.completed%4==0?2:1);seconds=phase==2?900:phase==1?300:1500;}tf_local(&c->state,op,now,seconds,phase);c->shown=now;(void)enter(c,c->slot,now);emit(c,TF_OK,NULL);}}

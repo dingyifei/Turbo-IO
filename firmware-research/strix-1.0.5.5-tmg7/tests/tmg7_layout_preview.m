@@ -367,6 +367,10 @@ static void Focus(NSString *dir,NSString *board,bool zh){
   {"-done",4000,TF_DONE,0,4,0,1500,false,false},{"-ready",4000,TF_IDLE,0,0,1500,1500,false,false},{"-long",4000,TF_RUNNING,0,3,7200,7200,false,false}};
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){typeof(shots[0]) *sh=&shots[i];Host *host=calloc(1,sizeof *host);assert(host);create(host,host);
   TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TFView *v=calloc(1,sizeof *v);assert(v);assert(tf_view_open(v,&api,host,host));tf_view_enter(v,1000);
+  if(i==0){   // the hint lifetime the service ticks on: entry, then every wheel step or press (also while the timer runs), gone at 3000 ms
+   assert(tf_view_hint(v,1000)&&tf_view_hint(v,3999)&&!tf_view_hint(v,4000)&&!tf_view_hint(v,9000));
+   tf_view_input(v,9000);assert(tf_view_hint(v,9000)&&tf_view_hint(v,11999)&&!tf_view_hint(v,12000));}
+  if(i==0)tf_view_enter(v,1000);
   TFocus st;tf_init(&st,0);st.status=sh->status;st.phase=sh->phase;st.completed=sh->completed;st.remaining_ms=sh->remaining_s*1000;st.duration_s=sh->duration_s;
   assert(tf_view_draw(v,&st,sh->compact,sh->now));
   char name[48];snprintf(name,sizeof name,"focus%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);

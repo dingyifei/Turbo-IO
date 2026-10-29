@@ -27,6 +27,8 @@ bool tf_view_open(TFView *v,const TNWidgets *api,void *surface,void *parent){if(
 void tf_view_enter(TFView *v,uint32_t now){if(v)tio_hint_enter(&v->hint,now);}
 void tf_view_input(TFView *v,uint32_t now){if(v)tio_hint_input(&v->hint,now);}
 static uint32_t title_color(const TFView *v,uint32_t now,bool compact){return !compact&&tio_hint_visible(&v->hint,now)?tio_hint_color(&v->hint,now):TIO_LENS_MID;}
+/* True while the control hint is lit (lit or fading): the service ticks fast then, so the fade steps show and the hint is gone at 3000 ms. */
+bool tf_view_hint(const TFView *v,uint32_t now){return v&&v->open&&tio_hint_visible(&v->hint,now);}
 bool tf_view_due(const TFView *v,uint32_t now,bool compact){return v&&v->open&&title_color(v,now,compact)!=v->title_color;}
 bool tf_view_draw(TFView *v,const TFocus *s,bool compact,uint32_t now){unsigned lang=tio_lang();if(!v||!v->open||!v->root||!v->api.idle(v->api.ctx))return false;unsigned b=v->bank^1;memset(v->text[b],0,sizeof v->text[b]);
  const bool hint=!compact&&tio_hint_visible(&v->hint,now);
