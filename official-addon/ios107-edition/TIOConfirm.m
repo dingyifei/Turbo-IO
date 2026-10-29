@@ -144,7 +144,7 @@ void TIOChoose(UIViewController *from, NSString *title, NSString *message,
     NSString *_body;
 }
 - (instancetype)initWithTitle:(NSString *)title body:(NSString *)body {
-    if ((self=[super init])) { self.title=title; _body=[body copy]; self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark; }
+    if ((self=[super init])) { self.title=title; _body=[body copy]; }
     return self;
 }
 - (void)loadView {
@@ -192,7 +192,6 @@ void TIOChoose(UIViewController *from, NSString *title, NSString *message,
     if (!presenter) return;
     TIOInfoSheet *sheet=[[TIOInfoSheet alloc] initWithTitle:self.infoTitle body:self.infoBody];
     UINavigationController *navigation=[[UINavigationController alloc] initWithRootViewController:sheet];
-    navigation.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
     navigation.navigationBar.prefersLargeTitles=NO;
     navigation.modalPresentationStyle=UIModalPresentationPageSheet;
     UISheetPresentationController *presentation=navigation.sheetPresentationController;

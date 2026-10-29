@@ -248,7 +248,7 @@ static UIImage *RenderHubTile(UIColor *fill,UIColor *ink,NSString *name,UITraitC
  if(!glyph)glyph=[UIImage systemImageNamed:@"circle" withConfiguration:config];
  glyph=[glyph imageWithTintColor:[ink resolvedColorWithTraitCollection:traits] renderingMode:UIImageRenderingModeAlwaysOriginal];
  UIColor *resolved=[fill resolvedColorWithTraitCollection:traits];
- UIGraphicsImageRendererFormat *format=[UIGraphicsImageRendererFormat preferredFormat];format.scale=0;format.opaque=NO;
+ UIGraphicsImageRendererFormat *format=[UIGraphicsImageRendererFormat preferredFormat];format.scale=traits.displayScale>0?traits.displayScale:UITraitCollection.currentTraitCollection.displayScale;if(format.scale<1)format.scale=2;format.opaque=NO;
  CGFloat tile=TIOIconTile;
  UIGraphicsImageRenderer *renderer=[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(tile,tile) format:format];
  UIImage *image=[renderer imageWithActions:^(UIGraphicsImageRendererContext *context){
@@ -271,8 +271,10 @@ UIImage *TIODesignHubIcon(NSString *symbol, NSInteger section){
  UIColor *fill=TIODesignColor(section==0?TIODesignColorAccentFill:section==1?TIODesignColorTileAssistant:
                               section==2?TIODesignColorTileMedia:TIODesignColorTileDeveloper);
  UIColor *ink=section==0?TIODesignColor(TIODesignColorOnAccent):UIColor.whiteColor;
- UITraitCollection *lightTraits=[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleLight];
- UITraitCollection *darkTraits=[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark];
+  CGFloat displayScale=UITraitCollection.currentTraitCollection.displayScale;if(displayScale<1)displayScale=2;
+  UITraitCollection *scale=[UITraitCollection traitCollectionWithDisplayScale:displayScale];
+  UITraitCollection *lightTraits=[UITraitCollection traitCollectionWithTraitsFromCollections:@[scale,[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleLight]]];
+  UITraitCollection *darkTraits=[UITraitCollection traitCollectionWithTraitsFromCollections:@[scale,[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark]]];
  UIImage *light=RenderHubTile(fill,ink,name,lightTraits),*dark=RenderHubTile(fill,ink,name,darkTraits);
  [light.imageAsset registerImage:dark withTraitCollection:darkTraits];
  [cache setObject:light forKey:key];return light;

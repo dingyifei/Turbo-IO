@@ -1,5 +1,6 @@
 #import "EditorUI.h"
 #import "TIOLanguage.h"
+#import "TIODesign.h"
 #import "EditorCanvas.h"
 #import "EditorCodec.h"
 #import "EditorTransport.h"
@@ -51,7 +52,7 @@ static NSNumber *Integer(NSString *s){NSScanner *scan=[NSScanner scannerWithStri
 @end
 @implementation TCEEditor
 - (UIButton *)button:(NSString *)title action:(SEL)sel primary:(BOOL)primary{UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];[b setTitle:title forState:UIControlStateNormal];[b addTarget:self action:sel forControlEvents:UIControlEventTouchUpInside];TIOStyleAction(b,primary,NO);[b.heightAnchor constraintGreaterThanOrEqualToConstant:46].active=YES;return b;}
-- (void)viewDidLoad{[super viewDidLoad];self.title=_draft[@"name"];self.view.backgroundColor=TIOPaper();self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;_undo=[NSMutableArray new];_redo=[NSMutableArray new];self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:TIOText(@"更多") style:UIBarButtonItemStylePlain target:self action:@selector(more)];
+- (void)viewDidLoad{[super viewDidLoad];self.title=_draft[@"name"];self.view.backgroundColor=TIOPaper();_undo=[NSMutableArray new];_redo=[NSMutableArray new];self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:TIOText(@"更多") style:UIBarButtonItemStylePlain target:self action:@selector(more)];
  UIScrollView *scroll=[UIScrollView new];scroll.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:scroll];[NSLayoutConstraint activateConstraints:@[[scroll.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[scroll.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],[scroll.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],[scroll.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]]];
  _hint=[UILabel new];_hint.numberOfLines=0;_hint.font=[UIFont systemFontOfSize:13];_hint.textColor=UIColor.secondaryLabelColor;
  _canvas=[TCECanvas new];_canvas.editable=YES;_canvas.draft=_draft;__weak typeof(self) weak=self;_canvas.change=^(NSDictionary *d){[weak commit:d];};_canvas.selection=^(NSString *s){[weak refresh];};[_canvas.heightAnchor constraintEqualToAnchor:_canvas.widthAnchor multiplier:194.0/256].active=YES;
@@ -102,10 +103,10 @@ static NSNumber *Integer(NSString *s){NSScanner *scan=[NSScanner scannerWithStri
 @property(copy)void(^created)(NSDictionary *);
 @end
 @implementation TCEGenerate
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"AI 生成卡片");self.view.backgroundColor=TIOPaper();self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"AI 生成卡片");self.view.backgroundColor=TIOPaper();
  UIScrollView *scroll=[UIScrollView new];scroll.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:scroll];[NSLayoutConstraint activateConstraints:@[[scroll.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],[scroll.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor],[scroll.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[scroll.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]]];
  UILabel *intro=[UILabel new];intro.text=TIOText(@"说说你想看什么\n例如：一张专注卡，显示今天读书30分钟，目标60分钟，带书本图标和进度条。");intro.font=[UIFont systemFontOfSize:17];intro.textColor=TIOInk();intro.numberOfLines=0;
- _input=[UITextView new];_input.font=[UIFont systemFontOfSize:17];_input.backgroundColor=[UIColor colorWithWhite:.15 alpha:1];_input.textColor=TIOInk();_input.layer.cornerRadius=16;_input.textContainerInset=UIEdgeInsetsMake(14,12,14,12);[_input.heightAnchor constraintEqualToConstant:160].active=YES;_input.accessibilityLabel=TIOText(@"描述卡片需求");
+ _input=[UITextView new];_input.font=[UIFont systemFontOfSize:17];_input.backgroundColor=TIODesignColor(TIODesignColorBgRaised);_input.textColor=TIOInk();_input.layer.cornerRadius=16;_input.textContainerInset=UIEdgeInsetsMake(14,12,14,12);[_input.heightAnchor constraintEqualToConstant:160].active=YES;_input.accessibilityLabel=TIOText(@"描述卡片需求");
  _generate=[UIButton buttonWithType:UIButtonTypeSystem];[_generate setTitle:TIOText(@"生成可编辑预览") forState:UIControlStateNormal];TIOStyleAction(_generate,YES,NO);[_generate.heightAnchor constraintEqualToConstant:50].active=YES;[_generate addTarget:self action:@selector(run) forControlEvents:UIControlEventTouchUpInside];
  _message=[UILabel new];_message.text=TIOText(@"复用「模型与对话」中的自定义模型。仅发送本次描述与组件约束，不发送聊天记录、图标原图或账户数据。生成内容是静态草稿，不能查询实时额度；不会自动发送到眼镜。");_message.textColor=UIColor.secondaryLabelColor;_message.font=[UIFont systemFontOfSize:14];_message.numberOfLines=0;
  UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[intro,_input,_generate,_message]];stack.axis=UILayoutConstraintAxisVertical;stack.spacing=20;stack.translatesAutoresizingMaskIntoConstraints=NO;[scroll addSubview:stack];[NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:20],[stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-24],[stack.leadingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.leadingAnchor constant:20],[stack.trailingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.trailingAnchor constant:-20]]];}

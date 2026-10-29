@@ -19,7 +19,7 @@ static BOOL Ready(NSString *peer){return UIApplication.sharedApplication.applica
 @property BOOL started,visible;
 @end
 @implementation TCEBackendReview
-- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"发布预览");self.view.backgroundColor=TIOPaper();self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
+- (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"发布预览");self.view.backgroundColor=TIOPaper();
  TCECanvas *canvas=[TCECanvas new];canvas.draft=_job[@"document"];canvas.editable=NO;[canvas.heightAnchor constraintEqualToAnchor:canvas.widthAnchor multiplier:194.0/256].active=YES;
  _status=[UILabel new];_status.font=[UIFont systemFontOfSize:14];_status.textColor=TIOInk();_status.numberOfLines=0;_status.text=[NSString stringWithFormat:TIOText(@"%@ · 版本 %@\n来源：%@\n仅发布此快照，保留其他卡片，不改变排序。"),_job[@"document"][@"name"],_job[@"revision"],_settings[@"origin"]];
  UILabel *label=[UILabel new];label.text=TIOText(@"我已安装配套 TCE1 固件");label.numberOfLines=0;label.textColor=TIOInk();_firmware=[UISwitch new];_firmware.onTintColor=TIOAccent();UIStackView *row=[[UIStackView alloc]initWithArrangedSubviews:@[label,_firmware]];row.spacing=12;

@@ -31,7 +31,6 @@ void TIOCloseResearch(UIViewController *source){
 }
 void TIOStyleResearchCell(UITableViewCell *c){TIODesignStyleRow(c);}
 void TIOStyleResearchTable(UITableViewController *c){
- c.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
  TIODesignStyleTable(c);
 }
 UIView *TIOFoldHeader(NSString *title,BOOL expanded,void(^toggle)(void)){
@@ -62,7 +61,7 @@ UIViewController *TIOFocusController(void){return [TIOFocus new];}
 @interface TIOHubNavigation:UINavigationController<UINavigationControllerDelegate>
 @end
 @implementation TIOHubNavigation
-- (void)viewDidLoad{[super viewDidLoad];self.delegate=self;self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;self.view.tintColor=TIOAccent();UINavigationBarAppearance *a=[UINavigationBarAppearance new];[a configureWithDefaultBackground];a.backgroundColor=[TIOPaper() colorWithAlphaComponent:.92];a.shadowColor=UIColor.clearColor;a.titleTextAttributes=@{NSForegroundColorAttributeName:TIOInk(),NSFontAttributeName:Font(17,UIFontWeightMedium)};self.navigationBar.standardAppearance=a;self.navigationBar.scrollEdgeAppearance=a;}
+- (void)viewDidLoad{[super viewDidLoad];self.delegate=self;self.view.tintColor=TIOAccent();UINavigationBarAppearance *a=[UINavigationBarAppearance new];[a configureWithDefaultBackground];a.backgroundColor=[TIOPaper() colorWithAlphaComponent:.92];a.shadowColor=UIColor.clearColor;a.titleTextAttributes=@{NSForegroundColorAttributeName:TIOInk(),NSFontAttributeName:Font(17,UIFontWeightMedium)};self.navigationBar.standardAppearance=a;self.navigationBar.scrollEdgeAppearance=a;}
 - (void)closeResearch{TIOCloseResearch(self);}
 - (void)ensureCloseForController:(UIViewController *)v{
  NSMutableArray<UIBarButtonItem *> *info=[NSMutableArray new],*other=[NSMutableArray new];
@@ -80,7 +79,6 @@ UIViewController *TIOFocusController(void){return [TIOFocus new];}
  v.navigationItem.rightBarButtonItems=items;
 }
 - (void)navigationController:(UINavigationController *)n willShowViewController:(UIViewController *)v animated:(BOOL)animated{
- v.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
  v.view.tintColor=TIOAccent();TIOStyleFeatureSurface(v.view);
  v.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeNever;
  if([v isKindOfClass:UITableViewController.class])TIOStyleResearchTable((UITableViewController *)v);
@@ -99,7 +97,6 @@ UINavigationController *TIOCreateTurboHub(UIViewController *root){
  NSCAssert(root!=nil,@"Turbo hub requires a root controller");
  TIOHubNavigation *hub=[[TIOHubNavigation alloc]initWithRootViewController:root];
  hub.modalPresentationStyle=UIModalPresentationFullScreen;
- hub.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
  hub.view.tag=7920;
  return hub;
 }

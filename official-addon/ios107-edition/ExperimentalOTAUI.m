@@ -131,7 +131,6 @@ static NSString *ShortStatus(NSString *value) {
     [super viewDidLoad];
     self.title=TIOText(@"ota.title");
     self.view.backgroundColor=TIOPaper();
-    self.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
     TIOAttachInfo(self,TIOText(@"ota.info.title"),TIOFormat(@"ota.info.body",FirmwareName()));
     [self buildTable];
     [self buildActionBar];
@@ -221,7 +220,7 @@ static NSString *ShortStatus(NSString *value) {
 }
 
 - (void)buildActionBar {
-    UIVisualEffectView *bar=[[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark]];
+    UIVisualEffectView *bar=[[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial]];
     self.actionBar=bar;bar.translatesAutoresizingMaskIntoConstraints=NO;
     [self.view addSubview:bar];
     UIView *hairline=[UIView new];hairline.translatesAutoresizingMaskIntoConstraints=NO;
