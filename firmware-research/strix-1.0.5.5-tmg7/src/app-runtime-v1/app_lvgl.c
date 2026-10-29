@@ -42,7 +42,8 @@ static void *image(void *c,void *parent,const uint8_t *pixels,unsigned w,unsigne
 static void place(void *c,void *o,unsigned x,unsigned y,unsigned w,unsigned h){(void)c;tio_lv_obj_set_size(o,(int)w,(int)h);native_align(o,1,(int)x,(int)y);}
 static void visible(void *c,void *o,bool value){(void)c;m8_native_api.hidden(o,!value);}
 static void destroy(void *c,void *o){(void)c;m8_native_api.delete_root(o);}
+static void tint(void *c,void *o,uint32_t color){(void)c;native_text_color(o,color,0);}
 bool tap_lvgl_bind(TAPLVGL *a,TAPView *owner,TAPWidgets *out){
  if(!a||!owner||!out||owner->root||owner->retiring)return false;
- a->owner=owner;a->root=NULL;*out=(TAPWidgets){a,idle,root,text,rect,image,place,visible,destroy};return true;
+ a->owner=owner;a->root=NULL;*out=(TAPWidgets){a,idle,root,text,rect,image,place,visible,destroy,tint};return true;
 }

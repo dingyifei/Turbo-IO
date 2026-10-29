@@ -10,7 +10,7 @@ import json
 import re
 import stat
 import zipfile
-from .contracts import Fault, canonical, digest, exact, integer
+from .contracts import LENS_MIN_FONT, Fault, canonical, digest, exact, integer
 
 MAX_UNPACKED = 20_480
 MAX_ZIP = 24_576
@@ -51,7 +51,7 @@ def _validate_app(doc):
             raise Fault('app_asset', 'Invalid image encoding') from None
         if len(raw) != asset['width']*asset['height']//8 or base64.b64encode(raw).decode() != asset['pixels']:
             raise Fault('app_asset', 'Image dimensions/encoding mismatch')
-    pages, links, count, peak = set(), [], 0, 0
+    pages, links, count, peak, retired = set(), [], 0, 0, 0
     for page in doc['pages']:
         exact(page, ['id', 'components']); name(page['id'])
         if page['id'] in pages:
@@ -80,6 +80,7 @@ def _validate_app(doc):
                 text(c['text'], 96); integer(c['font'], 14, 28)
                 if c['font'] not in (14, 16, 18, 20, 24, 28) or c['h'] < c['font']+4:
                     raise Fault('app_font', 'Unsupported font or insufficient height')
+                retired += c['font'] < LENS_MIN_FONT
             if kind == 'progress':
                 integer(c['value'], 0, 100)
             if kind == 'image':
@@ -104,7 +105,7 @@ def _validate_app(doc):
     if peak > MAX_PIXELS:
         raise Fault('app_pixels', 'Decoded image budget exceeds 32 KiB')
     return {'valid': True, 'schema': 'TAP1-draft', 'components': count, 'pages': len(pages),
-            'peakImageBytes': peak, 'imageBudgetExcludesLVGLHeap': True,
+            'peakImageBytes': peak, 'retiredFonts': retired, 'imageBudgetExcludesLVGLHeap': True,
             'runtimeAvailable': False, 'physicalVerified': False}
 
 

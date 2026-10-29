@@ -75,12 +75,12 @@ def snapshot_doc(ident,snapshot=None,version=1):
     except ValueError:raise Fault('snapshot_time','observedAt must include an ISO timezone') from None
     short=lambda s:s if len(s)<=21 else s[:20]+'…'
     rows=snapshot['lines'];badge='离线示例 · 非实时' if demo else '数据快照 · 非实时'
-    home=[c('icon','image',18,48,48,48,asset='icon'),t('title',r[1],18,8,300,24),t('badge',badge,338,12,185,16)]
-    home += [t('line_'+str(i),short(s),86,48+i*26,434,18) for i,s in enumerate(rows[:3])]
+    home=[c('icon','image',18,52,48,48,asset='icon'),t('title',r[1],18,12,300,24),t('badge',badge,338,14,185,16)]
+    home += [t('line_'+str(i),short(s),86,52+i*26,434,18) for i,s in enumerate(rows[:3])]
     home += [button('detail','详情与时间',18,140,244,'detail'),button('exit','退出',278,140,244,'system')]
-    detail=[t('title',short(snapshot['headline']),18,6,504,20)]
-    detail += [t('row_'+str(i),s,18,34+i*22,504,16) for i,s in enumerate(rows)]
-    detail += [t('time',('演示数据' if demo else '快照时间')+' '+observed.strftime('%m-%d %H:%M %z'),18,124,504,14),button('back','返回概览',18,146,244,'home'),button('exit','退出',278,146,244,'system')]
+    detail=[t('title',short(snapshot['headline']),18,12,504,20)]
+    detail += [t('row_'+str(i),s,18,38+i*22,504,16) for i,s in enumerate(rows)]
+    detail += [t('time',('演示数据' if demo else '快照时间')+' '+observed.strftime('%m-%d %H:%M %z'),18,126,504,16,20),button('back','返回概览',18,146,244,'home'),button('exit','退出',278,146,244,'system')]
     doc=document('mcp_'+ident,r[1]+' · 示例' if demo else r[1],[page('home',*home),page('detail',*detail)],{'icon':icon(RECIPES.index(r))})
     doc['version']=version;read_package(build_package(doc));return doc
 

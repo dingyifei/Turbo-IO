@@ -1,4 +1,5 @@
 #include "../common-v1/tio_text.h"
+#include "../common-v1/tio_ui.h"
 #include "app_shelf.h"
 #include <string.h>
 static void w16(uint8_t *p,unsigned v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8);}
@@ -9,10 +10,10 @@ bool tap_shelf_open(TAPRunner *r){unsigned lang=tio_lang();
  if(!r||!r->store||r->view.root||r->view.retiring||r->closing||r->state.active||r->slot!=-1)return false;
  // The generated document follows the same decoder and resource checks as ZIP.
  uint8_t *p=r->wire;memset(p,0,16);memcpy(p,"TAP1",4);p[4]=1;w16(p+6,5);w16(p+14,5);size_t n=16;
- n+=item(p+n,false,16,4,508,26,tio_text(TT_SHELF_TITLE,lang));
+ n+=item(p+n,false,TIO_CORE_X0,TIO_PAGE_T0,TIO_CORE_W,24,tio_text(TT_SHELF_TITLE,lang));
  for(unsigned i=0;i<4;i++){
   TAPSlot *s=&r->store->slots[i];bool installed=s->present&&!s->tombstone;
-  n+=item(p+n,installed,16+260*(i%2),42+66*(i/2),248,50,installed?s->name:tio_text(TT_SHELF_EMPTY,lang));
+  n+=item(p+n,installed,TIO_CORE_X0+230*(i%2),44+64*(i/2),230,50,installed?s->name:tio_text(TT_SHELF_EMPTY,lang));
  }
  for(unsigned i=0;i<4;i++)p[8+i]=(uint8_t)(n>>(8*i));
  if(!tap_parse(p,n,&r->document)||!tap_view_open(&r->view,&r->widgets,r->parent,&r->document,0))return false;

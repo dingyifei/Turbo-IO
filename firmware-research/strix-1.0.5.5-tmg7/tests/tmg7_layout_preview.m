@@ -14,6 +14,7 @@
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
 #include "../src/common-v1/tio_caret.h"
+#include "../src/app-runtime-v1/app_view.h"
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
@@ -167,8 +168,64 @@ static void AppPages(NSString *dir,NSString *board){
  unsigned words=0;for(const char *p=App[0].hint;*p;p++)if(*p!=' '&&(p==App[0].hint||p[-1]==' ')&&strncmp(p,"·",2))words++;assert(words<=TIO_HINT_MAX_WORDS_EN);
 }
 
-// ---- Navigation (LensNav, tmg7(2)) ---------------
 static void Put16(uint8_t *p,int n){p[0]=n;p[1]=n>>8;}
+// ---- Mini-app runtime (app-runtime-v1, tmg7(9)): the production app_view.c drawing real TAP1 wire through mock widgets ----
+// TAP1 carries no intensity: plain text is lens-full, kind 2 buttons are focus items (focused lens-full, idle lens-mid, caret 24x3).
+static void *rtRoot(void *p,void *parent){(void)parent;return create(p,p);}
+static void *rtText(void *p,void *parent,const char *s,unsigned size){(void)parent;Widget *w=create(p,p);w->kind=KText;w->font=size;w->text=strdup(s);return w;}
+static void *rtRect(void *p,void *parent,uint32_t c,bool outline){(void)parent;(void)outline;Widget *w=create(p,p);w->kind=KRect;w->color=c;return w;}
+static void *rtImage(void *p,void *parent,const uint8_t *px,unsigned w,unsigned h){(void)parent;Widget *o=create(p,p);o->kind=KPixels;o->pixels=px;o->w=(int)w;o->h=(int)h;o->ramp=w==TAP_CARET_W&&h==TAP_CARET_H;return o;}
+static void rtPlace(void *p,void *o,unsigned x,unsigned y,unsigned w,unsigned h){(void)p;Widget *v=o;v->x=(int)x;v->y=(int)y;v->w=(int)w;v->h=(int)h;}
+static void rtTint(void *p,void *o,uint32_t c){(void)p;((Widget *)o)->color=c;}
+static size_t Item(uint8_t *p,int kind,int font,int action,int x,int y,int w,int h,const char *s){
+ size_t l=strlen(s);memset(p,0,16);p[0]=kind;p[1]=font;p[2]=action;Put16(p+4,x);Put16(p+6,y);Put16(p+8,w);Put16(p+10,h);Put16(p+14,(int)l);memcpy(p+16,s,l);return 16+l;}
+// The LensApp board as TAP1: title, three actions in band M, the readout lowest in band B.
+static size_t CommuteWire(uint8_t *wire,bool zh){
+ const AppCopy *c=&App[zh];memset(wire,0,16);memcpy(wire,"TAP1",4);wire[4]=1;Put16(wire+6,7);Put16(wire+14,7);size_t n=16;
+ n+=Item(wire+n,1,TIO_FONT_LABEL,0,TIO_CORE_X0,25,TIO_CORE_W,TIO_LINE(TIO_FONT_LABEL),c->title);
+ for(unsigned i=0;i<3;i++)n+=Item(wire+n,2,TIO_FONT_BODY,3,ItemX[i],76,ItemW[i],TIO_LINE(TIO_FONT_BODY),c->items[i]);
+ n+=Item(wire+n,1,TIO_FONT_TITLE,0,TIO_CORE_X0,122,100,TIO_LINE(TIO_FONT_TITLE),c->value);   // TAP1 has no 32 px size: 24 px readout
+ n+=Item(wire+n,1,TIO_FONT_TITLE,0,150,122,350,TIO_LINE(TIO_FONT_TITLE),c->unit);
+ n+=Item(wire+n,1,TIO_FONT_MIN,0,TIO_CORE_X0,152,TIO_CORE_W,TIO_LINE(TIO_FONT_MIN),c->detail);
+ for(unsigned i=0;i<4;i++)wire[8+i]=(uint8_t)(n>>(8*i));return n;
+}
+// Open one page of `wire` for every focus position, gate it, save the PNGs. `strict` = the page follows the bands and the core.
+static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,bool strict,bool save_all){
+ TAPDocument *d=calloc(1,sizeof *d);assert(tap_parse(wire,n,d));
+ for(unsigned page=0;page<d->pages;page++){
+  unsigned buttons=0;for(unsigned i=d->first[page];i<d->first[page]+d->size[page];i++)buttons+=d->items[i].kind==2;
+  for(unsigned focus=0;focus<(buttons?buttons:1);focus++){
+   Host *host=calloc(1,sizeof *host);TAPView *v=calloc(1,sizeof *v);create(host,host);
+   TAPWidgets api={host,idle,rtRoot,rtText,rtRect,rtImage,rtPlace,visible,destroy,rtTint};
+   assert(tap_view_open(v,&api,host,d,page));assert(!buttons||tap_view_focus(v,focus));
+   char name[96];snprintf(name,sizeof name,"%s-p%u%s%u",tag,page,buttons>1?"-f":"",focus);if(buttons<=1)snprintf(name,sizeof name,"%s-p%u",tag,page);
+   unsigned mask=Check(host,name,false);
+   if(!strict)mask&=~(VBand|VCore);   // gallery content keeps its 18 px margins and free vertical flow; reserved rows, 16 px floor, panels and overlap still apply
+   if(mask){Check(host,name,true);printf("FAIL layout %s mask 0x%x\n",name,mask);assert(0);}
+   unsigned carets=0;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind==KPixels&&w->ramp&&w->shown){carets++;assert(w->w==24&&w->h==3);}   // exactly one 24x3 caret, none when the page has no button
+    assert(w->kind!=KRect||w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK||!w->shown);}
+   assert(carets==(buttons?1u:0u));
+   printf("PASS layout %s: %u focus items, reserved rows empty, 16 px floor, no outlines or panels\n",name,buttons);
+   if(save_all||focus==0)Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);
+   if(strict&&buttons==3&&focus<3){   // board: actions at x 40/200/300, y 76, 20 px; focused full, others mid; caret top 101
+    unsigned b=0;Widget *caret=NULL;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind==KPixels&&w->ramp)caret=w;
+     if(w->kind==KText&&w->font==TIO_FONT_BODY){assert(w->x==ItemX[b]&&w->y==76);assert(w->color==(b==focus?TIO_LENS_FULL:TIO_LENS_MID));b++;}}
+    assert(b==3&&caret&&caret->x==ItemX[focus]&&caret->y==101);}
+   assert(tap_view_close(v));
+   for(unsigned k=1;k<host->count;k++)free((void *)(host->w[k].kind==KText?host->w[k].text:NULL));
+   free(v);free(host);}
+ }
+ free(d);
+}
+static void AppRuntime(NSString *dir,NSString *board,int argc,char **argv){
+ NSString *s=[NSString stringWithContentsOfFile:board encoding:NSUTF8StringEncoding error:nil];assert(s&&[s containsString:@"top: 202px; width: 48px; height: 6px"]&&[s containsString:@"const xs = [80, 400, 600]"]);   // caret 202/2 = 101 under actions at 152/2 = 76
+ for(unsigned z=0;z<2;z++){language=z;uint8_t wire[512];size_t n=CommuteWire(wire,z);RunWire(dir,z?"app-rt-zh":"app-rt-en",wire,n,true,true);}
+ for(int i=3;i<argc;i++){   // NAME=file.tap: current gallery and example packages from dashboard-service, as encoded by the SDK
+  char *eq=strchr(argv[i],'=');assert(eq);char tag[48];snprintf(tag,sizeof tag,"app-%.*s",(int)(eq-argv[i]),argv[i]);
+  FILE *f=fopen(eq+1,"rb");assert(f);uint8_t *wire=malloc(20480);size_t n=fread(wire,1,20480,f);fclose(f);RunWire(dir,tag,wire,n,false,false);free(wire);}
+}
+
+// ---- Navigation (LensNav, tmg7(2)) ---------------
 #define W(p) ((Widget *)(p))
 static void color(void *p,void *o,uint32_t rgb){(void)p;Widget *w=o;w->color=rgb;w->fading=rgb!=0&&rgb<TIO_LENS_HIGH&&rgb!=TIO_LENS_MID;}   // between steps = a fading hint
 // Compare an EN page with its board's proposed column (board drawn at 2x): same text, size, intensity and band; x and y within 6 px.
@@ -409,6 +466,6 @@ static void Menu(NSString *dir,NSString *board,bool zh){
   (void)fm_view_step(v,2400);assert(!v->moving&&caret->x==92-12);assert(fm_view_close(v));free(v);free(host);}
  gSurface=TIO_SURFACE_PAGE;
 }
-int main(int argc,char **argv){@autoreleasepool{assert(argc==3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);
+int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);
  puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}

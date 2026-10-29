@@ -11,6 +11,16 @@ from jsonschema import Draft202012Validator
 
 SCHEMA = json.loads(Path(__file__).with_name("card.schema.json").read_text())
 VALIDATOR = Draft202012Validator(SCHEMA)
+# TMG7: 14 px text is retired. The wire and the schemas still carry 14 (existing packages and cards decode
+# unchanged); the glasses draw it at the smallest accepted size >= 16.
+LENS_MIN_FONT = 16
+
+
+def render_font(font):
+    """Size the glasses actually draw for a declared font size."""
+    return max(font, LENS_MIN_FONT)
+
+
 DATA_FIELDS = {"text": {"text"}, "progress": {"value"}, "barChart": {"points"},
                "lineChart": {"points"}, "image": {"pixels"}}
 
@@ -53,7 +63,7 @@ def validate(doc):
     if len(doc["name"].encode()) > 60:
         raise Fault("name_limit", "Card name exceeds 60 UTF-8 bytes")
     seen = set()
-    pixels = images = charts = 0
+    pixels = images = charts = retired = 0
     wire = 8
     for c in doc["components"]:
         if c["id"] in seen:
@@ -72,6 +82,7 @@ def validate(doc):
             if h < c["font"] + 4 or w < 16:
                 raise Fault("text_bounds", "Text requires height >= font + 4 and width >= 16")
             wire += len(c["text"].encode())
+            retired += c["font"] < LENS_MIN_FONT
         if kind in ("icon", "image"):
             images += 1
             pixels += w*h
@@ -97,7 +108,7 @@ def validate(doc):
                 integer(value, 0, 100)
     if images > 4 or charts > 2 or pixels > 32768 or wire > 2048:
         raise Fault("resource_budget", "Card exceeds component/pixel/wire budget")
-    return {"valid": True, "wireBytes": wire, "pixelBytes": pixels,
+    return {"valid": True, "wireBytes": wire, "pixelBytes": pixels, "retiredFonts": retired,
             "physicalVerified": False, "requiresFirmware": "TCE1"}
 
 
@@ -134,7 +145,7 @@ TEMPLATES = [
                     dict(id="cpu_bar", kind="progress", x=12, y=80, w=224, h=8, value=25),
                     text("ram_label", "RAM 50%", 12, 106, 224),
                     dict(id="ram_bar", kind="progress", x=12, y=136, w=224, h=8, value=50),
-                    text("updated", "示例 · 未连接数据源", 12, 164, 224, 14)]},
+                    text("updated", "示例 · 未连接数据源", 12, 164, 224, 16)]},
     {"schema": 1, "id": "turbo_ui_card_reading", "name": "今日阅读 · 示例",
      "components": [dict(id="book", kind="icon", x=12, y=12, w=32, h=32, icon=8),
                     text("title", "今日阅读 示例", 54, 16, 184),

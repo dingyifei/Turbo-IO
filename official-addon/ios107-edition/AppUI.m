@@ -16,21 +16,35 @@ static NSDictionary *BuiltinPackage(NSUInteger index,NSString **error){if(index>
 @interface TAPPreview:UIView
 @property(nonatomic,strong) NSDictionary *document;
 @property(nonatomic) NSUInteger page;
+@property(nonatomic) NSUInteger focus; // which button (in page order) is focused; the wheel position on the glasses
 @end
+// Lens preview: mirrors app_view.c (TMG7). Always black with the green ramp, never the phone theme.
+// Buttons are text focus items: the focused one lens-full with a 24x3 caret 4 px under its baseline, the others
+// lens-mid (lens-high below 18 px). No outline, no fill. 14 px text is retired and draws at 16.
+static UIColor *TAPLens(CGFloat green){return [UIColor colorWithRed:0 green:green blue:0 alpha:1];}
+static CGFloat TAPFont(CGFloat font){return font<16?16:font;}
 @implementation TAPPreview
 - (void)setDocument:(NSDictionary *)d{_document=d;[self setNeedsDisplay];}
-- (void)setPage:(NSUInteger)p{_page=p;[self setNeedsDisplay];}
+- (void)setPage:(NSUInteger)p{_page=p;_focus=0;[self setNeedsDisplay];}
+- (void)setFocus:(NSUInteger)f{_focus=f;[self setNeedsDisplay];}
 - (void)drawRect:(CGRect)rect{
  CGContextRef ctx=UIGraphicsGetCurrentContext();[UIColor.blackColor setFill];UIRectFill(self.bounds);NSArray *pages=_document[@"pages"];if(_page>=pages.count)return;
- CGContextSaveGState(ctx);CGFloat scale=self.bounds.size.width/540;CGContextScaleCTM(ctx,scale,scale);UIColor *green=[UIColor colorWithRed:.17 green:1 blue:.25 alpha:1];BOOL focused=NO;
- for(NSDictionary *c in pages[_page][@"components"]){CGRect r=CGRectMake([c[@"x"]doubleValue],[c[@"y"]doubleValue],[c[@"w"]doubleValue],[c[@"h"]doubleValue]);NSString *kind=c[@"kind"];CGContextSaveGState(ctx);CGContextClipToRect(ctx,r);
-  if([kind isEqual:@"text"]||[kind isEqual:@"button"]){if([kind isEqual:@"button"]){[green setStroke];UIBezierPath *p=[UIBezierPath bezierPathWithRect:CGRectInset(r,.5,.5)];p.lineWidth=focused?1:2;[p stroke];focused=YES;}
-   NSMutableParagraphStyle *style=[NSMutableParagraphStyle new];style.lineBreakMode=NSLineBreakByClipping;[c[@"text"]drawInRect:r withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:[c[@"font"]doubleValue]],NSForegroundColorAttributeName:green,NSParagraphStyleAttributeName:style}];
-  }else if([kind isEqual:@"frame"]){[green setStroke];[[UIBezierPath bezierPathWithRect:CGRectInset(r,.5,.5)]stroke];}
-  else if([kind isEqual:@"progress"]){[[green colorWithAlphaComponent:.2]setFill];UIRectFill(r);r.size.width*=[c[@"value"]doubleValue]/100;[green setFill];UIRectFill(r);}
-  else if([kind isEqual:@"image"]){NSDictionary *a=_document[@"assets"][c[@"asset"]];NSData *data=[[NSData alloc]initWithBase64EncodedString:a[@"pixels"] options:0];const uint8_t *b=data.bytes;unsigned w=[a[@"width"]unsignedIntValue],h=[a[@"height"]unsignedIntValue];if(w&&data.length==w*h/8){[green setFill];for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(b[y*(w/8)+x/8]&(128>>(x%8)))UIRectFill(CGRectMake(r.origin.x+x,r.origin.y+y,1,1));}}
+ CGContextSaveGState(ctx);CGFloat scale=self.bounds.size.width/540;CGContextScaleCTM(ctx,scale,scale);
+ UIColor *full=TAPLens(1),*high=TAPLens(176/255.0),*mid=TAPLens(119/255.0),*track=TAPLens(56/255.0);NSUInteger button=0;CGRect caret=CGRectNull;
+ for(NSDictionary *c in pages[_page][@"components"]){CGRect r=CGRectMake([c[@"x"]doubleValue],[c[@"y"]doubleValue],[c[@"w"]doubleValue],[c[@"h"]doubleValue]);NSString *kind=c[@"kind"];BOOL label=[kind isEqual:@"text"]||[kind isEqual:@"button"];
+  if(label)r.size.height=MIN(MAX(r.size.height,TAPFont([c[@"font"]doubleValue])+4),180-r.origin.y); // the box grows with a retired size, as on the glasses
+  CGContextSaveGState(ctx);CGContextClipToRect(ctx,r);
+  if(label){
+   CGFloat font=TAPFont([c[@"font"]doubleValue]);UIColor *color=full;
+   if([kind isEqual:@"button"]){BOOL on=button++==_focus;color=on?full:(font>=18?mid:high);if(on)caret=CGRectMake(r.origin.x,MIN(r.origin.y+font+1+4,180-3),24,3);}
+   NSMutableParagraphStyle *style=[NSMutableParagraphStyle new];style.lineBreakMode=NSLineBreakByClipping;[c[@"text"]drawInRect:r withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:font],NSForegroundColorAttributeName:color,NSParagraphStyleAttributeName:style}];
+  }else if([kind isEqual:@"frame"]){[mid setStroke];[[UIBezierPath bezierPathWithRect:CGRectInset(r,.5,.5)]stroke];}
+  else if([kind isEqual:@"progress"]){[track setFill];UIRectFill(r);r.size.width*=[c[@"value"]doubleValue]/100;[full setFill];UIRectFill(r);}
+  else if([kind isEqual:@"image"]){NSDictionary *a=_document[@"assets"][c[@"asset"]];NSData *data=[[NSData alloc]initWithBase64EncodedString:a[@"pixels"] options:0];const uint8_t *b=data.bytes;unsigned w=[a[@"width"]unsignedIntValue],h=[a[@"height"]unsignedIntValue];if(w&&data.length==w*h/8){[full setFill];for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(b[y*(w/8)+x/8]&(128>>(x%8)))UIRectFill(CGRectMake(r.origin.x+x,r.origin.y+y,1,1));}}
   CGContextRestoreGState(ctx);
- }CGContextRestoreGState(ctx);
+ }
+ if(!CGRectIsNull(caret)){[full setFill];[[UIBezierPath bezierPathWithRoundedRect:caret cornerRadius:2]fill];}
+ CGContextRestoreGState(ctx);
 }
 @end
 @interface TAPReview:UIViewController
