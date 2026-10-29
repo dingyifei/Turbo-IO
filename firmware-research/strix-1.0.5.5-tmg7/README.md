@@ -17,7 +17,7 @@ Modules removed at TMG4 stay removed: ride (didi-v1), English (context-english-v
 
 `python3 tests/tmg7_host_test.py --out DIR` runs the tokens test at 22..27 px/deg, the mini-app runtime test, the navigation core and view tests, the menu grid test and the layout gate. The layout gate renders every page in English and Chinese to PNG and checks each widget against its band, the reserved rows, the 16 px floor and the no-filled-panel rule. The phone `test.py` in `official-addon/ios107-edition` now targets this tree: it audits the supplied ZIP with this tree's `build.py`, runs the tmg7 host group, and checks the shared sources against the phone copies. Its `pins` group stays red for a ZIP7 until the phone is re-pinned to ZIP7. Each source edit needs a repin (`build.py --repin`) and a copy of the repin output into `build-inputs.json`.
 
-Phone pins still name TMG6 until the final ZIP7 pin step. Navigation `Passing`, the knob observation and the older candidate records below are historical.
+Phone pins name TMG7 and the exact ZIP7 hash (`tools/phone_pins.py`, name `TMG7`); the phone stays compatible with TMG6 glasses because the wire protocol and runtime identity are unchanged. Navigation `Passing`, the knob observation and the older candidate records below are historical.
 
 # TMG6 candidate (historical)
 

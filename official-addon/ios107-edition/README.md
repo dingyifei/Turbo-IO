@@ -1,6 +1,19 @@
 # iOS 1.0.7（230）· APP107 兼容适配
 
-## TMG6 candidate — current development branch
+## TMG7 candidate — current development branch
+
+TMG7 supersedes the historical candidate sections below. ZIP SHA256: `ecb5fd7dcb7340c76b00ee609fe84f2a66fc66eaa565b1cda1900a086f0d6e0d`; ZIP bytes: 8,813,936; AP size: 7,359,688 bytes; AP SHA256: `2025ac057a9cd8e06c2fcd5368e1a03e93b94b0d62cb1fb519cbb4df3872a7a1`; AP MD5: `0a5aee80a8b477d99ac091e9a2d7f6b1`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence only; the candidate is not approved, not flashed, and no glasses were contacted.
+
+TMG7 re-lays navigation, music, focus timer, the main menu, the camera hint and the mini-app runtime to the design system. The wire protocol, capability masks and runtime build identity are unchanged, so C11 stays fully compatible with TMG6 glasses (and TMG5 as before) and pins only the exact TMG7 ZIP for the wizard. The glasses still report the TMG6 runtime build identity after flashing; the ZIP hash is the TMG7 identity.
+
+**Human-only TMG6 → TMG7 checklist:**
+
+1. Install the separately signed C11 package manually and confirm the bundled candidate hash above. Turn RayNeo Auto Update on and then off once, and end display/navigation/music sessions before using the existing firmware wizard.
+2. Download the exact bundled TMG7 candidate in RayNeo and stop at **Ready to install**. Require a fresh supported version observation (at most 120 seconds old) before the existing single confirmation. No automatic worker installation or flashing is authorized.
+3. After the glasses reboot, restart the phone app and check each re-laid page: map clipped at the lens edge, music lyrics on one or two lines, focus timer, the menu caret and focused name, the transient camera hint, and mini-app caret focus. The 16 px lens-mid text legibility and the caret visibility are device checks.
+4. Roll back manually to C10 plus ZIP6, or C9 plus ZIP5, using the same guarded OTA process. Host previews do not establish hardware acceptance.
+
+## TMG6 candidate (superseded by TMG7)
 
 TMG6 supersedes the historical candidate sections below. ZIP SHA256: `a134c0f9d8550cdd5b53559e4857e27ca92ec8b168543d2c357cbc1e3fbe4d6e`; AP size: 7,357,832 bytes; AP MD5: `55d933ad07b474535ed0389b09d0ddf3`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence; device acceptance remains NOT RUN.
 

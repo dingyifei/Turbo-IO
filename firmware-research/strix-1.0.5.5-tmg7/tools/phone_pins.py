@@ -45,7 +45,7 @@ def pins_for(archive):
             raise ValueError('ZIP member set differs from manifest')
         ap = payloads['nuttx_ap.bin']
     return {
-        'name': 'TMG6',
+        'name': 'TMG7',
         'zipBytes': len(raw),
         'zipSHA256': sha256(raw),
         'apBytes': len(ap),
