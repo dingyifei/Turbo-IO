@@ -99,6 +99,12 @@ FOUNDATION_EXPORT UIImage *TIODesignHubIcon(NSString *symbol, NSInteger section)
  * label-secondary. Not interactive and hidden from VoiceOver; the row speaks the
  * value through accessibilityValue. Fixed to the label's size at call time. */
 FOUNDATION_EXPORT UIView *TIODesignValueAccessory(NSString *value);
+/* Wraps a segmented control so it still works at accessibility text sizes: the
+ * control keeps its value, target-actions and tag, and is shown as is at normal
+ * sizes. From the first accessibility size, or when its titles do not fit the width, it is
+ * hidden and the same choice is a menu button (at least 44 pt) carrying the segment titles. label names the
+ * choice for VoiceOver, for example "Countdown". Use the returned view in layout. */
+FOUNDATION_EXPORT UIView *TIODesignSegmentedChoice(UISegmentedControl *control, NSString *label);
 
 #pragma mark Status and empty state
 

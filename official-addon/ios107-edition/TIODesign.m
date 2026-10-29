@@ -207,6 +207,57 @@ UIView *TIODesignValueAccessory(NSString *value){
  return stack;
 }
 
+@interface TIODesignSegmentedHost:UIView
+@property(nonatomic,strong) UISegmentedControl *control;
+@property(nonatomic,strong) UIButton *menuButton;
+@property(nonatomic,copy) NSString *choiceLabel;
+@end
+@implementation TIODesignSegmentedHost
+- (instancetype)initWithControl:(UISegmentedControl *)control label:(NSString *)label{
+ self=[super initWithFrame:CGRectZero];if(!self)return nil;
+ _control=control;_choiceLabel=[label copy];
+ UIButtonConfiguration *c=UIButtonConfiguration.tintedButtonConfiguration;
+ c.baseForegroundColor=TIODesignColor(TIODesignColorAccent);c.background.backgroundColor=TIODesignColor(TIODesignColorAccentSoft);
+ c.cornerStyle=UIButtonConfigurationCornerStyleCapsule;c.image=[UIImage systemImageNamed:@"chevron.up.chevron.down"];
+ c.imagePlacement=NSDirectionalRectEdgeTrailing;c.imagePadding=TIOSpace2;
+ _menuButton=[UIButton buttonWithType:UIButtonTypeSystem];_menuButton.configuration=c;_menuButton.showsMenuAsPrimaryAction=YES;
+ [_menuButton.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
+ [control.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
+ UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:@[control,_menuButton]];stack.axis=UILayoutConstraintAxisVertical;
+ stack.translatesAutoresizingMaskIntoConstraints=NO;[self addSubview:stack];
+ [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:self.topAnchor],[stack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],[stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],[stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor]]];
+ [self update];return self;
+}
+- (void)traitCollectionDidChange:(UITraitCollection *)previous{[super traitCollectionDidChange:previous];[self update];}
+- (void)layoutSubviews{[super layoutSubviews];[self update];}
+- (void)update{
+ BOOL ax=UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+ UIFont *font=TIODesignFont(TIODesignTextStyleSubheadline);
+ [_control setTitleTextAttributes:@{NSFontAttributeName:font} forState:UIControlStateNormal];
+ [_control setTitleTextAttributes:@{NSFontAttributeName:font} forState:UIControlStateSelected];
+ _control.apportionsSegmentWidthsByContent=YES;
+ // Menu when the text size is an accessibility size, or when the titles do not fit on one line at this width.
+ CGFloat need=[_control sizeThatFits:CGSizeMake(CGFLOAT_MAX,TIOHitMin)].width;
+ BOOL menu=ax||(self.bounds.size.width>0&&need>self.bounds.size.width+.5);
+ _control.hidden=menu;_menuButton.hidden=!menu;if(!menu)return;
+ NSInteger selected=_control.selectedSegmentIndex;NSString *title=selected>=0?[_control titleForSegmentAtIndex:selected]:@"";
+ UIButtonConfiguration *c=_menuButton.configuration;if(![c.title isEqual:title]){c.title=title;_menuButton.configuration=c;}
+ _menuButton.accessibilityLabel=_choiceLabel;_menuButton.accessibilityValue=title;
+ NSMutableArray<UIAction *> *actions=[NSMutableArray new];__weak typeof(self) weak=self;
+ for(NSInteger index=0;index<_control.numberOfSegments;index++){
+  UIAction *action=[UIAction actionWithTitle:[_control titleForSegmentAtIndex:index]?:@"" image:nil identifier:nil handler:^(UIAction *x){
+   TIODesignSegmentedHost *strong=weak;if(!strong)return;
+   strong.control.selectedSegmentIndex=index;[strong.control sendActionsForControlEvents:UIControlEventValueChanged];[strong update];
+  }];
+  action.state=index==selected?UIMenuElementStateOn:UIMenuElementStateOff;[actions addObject:action];
+ }
+ _menuButton.menu=[UIMenu menuWithChildren:actions];
+}
+@end
+UIView *TIODesignSegmentedChoice(UISegmentedControl *control, NSString *label){
+ return [[TIODesignSegmentedHost alloc]initWithControl:control label:label];
+}
+
 void TIODesignStyleHeaderLabel(UILabel *label){
  label.font=TIODesignFont(TIODesignTextStyleFootnote);
  label.textColor=TIODesignColor(TIODesignColorLabelSecondary);label.adjustsFontForContentSizeCategory=YES;
