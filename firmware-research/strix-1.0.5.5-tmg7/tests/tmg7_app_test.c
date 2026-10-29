@@ -5,6 +5,7 @@
 // encoded from the committed Gallery_commute.zip before the design-system update). It must decode with the unchanged parser
 // and then draw with caret focus items and no 14 px text. Each MORE.tap (current gallery wire) must satisfy the same rules.
 #include "../src/app-runtime-v1/app_view.h"
+#include "../src/app-runtime-v1/app_runner.h"
 #include "../src/common-v1/tio_caret.h"
 #include <assert.h>
 #include <stdio.h>
@@ -61,6 +62,37 @@ static void CheckPage(const TAPDocument *d,unsigned page,const char *name){
  free(v);free(h);
 }
 
+// FocusCaret: a long press goes back. Off the entry page it returns to the entry page with focus 0; only the entry page exits.
+// Drives the real TAPRunner (event, view reopen) and the bare tap_event state machine over every page-switch button of the wire.
+static void CheckBack(const TAPDocument *d,const char *name){
+ unsigned entry=d->entry,tested=0;
+ for(unsigned j=d->first[entry];j<d->first[entry]+d->size[entry];j++){
+  const TAPItem *go=&d->items[j];if(go->kind!=2||go->action!=1)continue;
+  unsigned index=0;for(unsigned k=d->first[entry];k<j;k++)index+=d->items[k].kind==2;
+  // The bare state machine.
+  TAPState s;assert(tap_start(&s,d));s.focus=(uint8_t)index;
+  TAPEvent e=tap_event(&s,TAP_PRESS,1000);assert(e.type==TAP_PAGE_CHANGED&&s.page==go->target&&s.focus==0);
+  e=tap_event(&s,TAP_LONG_PRESS,2000);assert(e.type==TAP_PAGE_CHANGED&&s.page==entry&&s.focus==0&&s.active);
+  e=tap_event(&s,TAP_LONG_PRESS,3000);assert(e.type==TAP_EXIT&&!s.active);
+  // The runner: the view is rebuilt for each page and the second long press closes the app.
+  H *h=calloc(1,sizeof *h);TAPRunner *r=calloc(1,sizeof *r);TAPStore *st=calloc(1,sizeof *st);assert(h&&r&&st);TAPWidgets a=api(h);
+  tap_runner_init(r,st,&a,h);r->document=*d;assert(tap_view_open(&r->view,&r->widgets,h,&r->document,entry));r->slot=0;assert(tap_start(&r->state,&r->document));
+  r->state.focus=(uint8_t)index;assert(tap_view_focus(&r->view,index));
+  e=tap_runner_event(r,TAP_PRESS,1000);assert(e.type==TAP_PAGE_CHANGED&&r->state.page==go->target&&r->view.root&&r->state.active);
+  unsigned detail_buttons=buttons(d,go->target,(const TAPItem *[12]){0});
+  e=tap_runner_event(r,TAP_LONG_PRESS,2000);assert(e.type==TAP_PAGE_CHANGED&&r->state.page==entry&&r->state.focus==0&&r->view.root&&r->state.active&&r->slot==0);
+  if(buttons(d,entry,(const TAPItem *[12]){0}))assert(caret(h)->shown);
+  e=tap_runner_event(r,TAP_LONG_PRESS,3000);assert(e.type==TAP_EXIT&&!r->state.active&&r->slot==-1&&!r->view.root&&!r->closing);
+  // A long press is always accepted on the entry page, also while the renderer is busy; it never leaves a half-open tree.
+  r->document=*d;assert(tap_start(&r->state,&r->document)&&tap_view_open(&r->view,&r->widgets,h,&r->document,entry));r->slot=0;h->busy=true;
+  e=tap_runner_event(r,TAP_LONG_PRESS,4000);assert(e.type==TAP_EXIT&&!r->state.active);
+  h->busy=false;(void)tap_runner_poll(r);assert(!r->view.root);
+  free(st);free(r);free(h);tested++;
+  printf("PASS %s back: long press on page %u (%u buttons) returns to the overview, then exits\n",name,go->target,detail_buttons);
+ }
+ if(d->pages>1)assert(tested||!buttons(d,entry,(const TAPItem *[12]){0}));
+}
+
 static void CheckWire(const char *path,bool legacy){
  size_t n;uint8_t *wire=file(path,&n);TAPDocument *d=calloc(1,sizeof *d);assert(d&&tap_parse(wire,n,d));
  bool has14=false,button=false;for(unsigned i=0;i<d->count;i++){has14|=d->items[i].font==14;button|=d->items[i].kind==2;}
@@ -83,6 +115,7 @@ static void CheckWire(const char *path,bool legacy){
    for(unsigned i=buttons-1;i>0;i--){t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_FOCUS_CHANGED&&s.focus==i-1);}
    t+=200;e=tap_event(&s,TAP_PREVIOUS,t);assert(e.type==TAP_NO_EVENT&&s.focus==0);}       // first item: stays, no wrap to the last
  }
+ if(!legacy)CheckBack(d,path);
  free(d);free(wire);
 }
 

@@ -45,7 +45,7 @@ def main():
     # Mini-app runtime: TAP1 wire from the committed legacy gallery fixture and the current gallery/examples (encoded by the
     # dashboard-service SDK, which needs only the standard library plus jsonschema).
     exe = a.out / 'tmg7-app'
-    run(cc + [FW / 'tests/tmg7_app_test.c', src / 'app-runtime-v1/app.c', src / 'app-runtime-v1/app_view.c', '-o', exe], a.out / 'tmg7-app-build.log')
+    run(cc + [FW / 'tests/tmg7_app_test.c', src / 'app-runtime-v1/app.c', src / 'app-runtime-v1/app_view.c', src / 'app-runtime-v1/app_runner.c', src / 'app-runtime-v1/app_store.c', '-o', exe], a.out / 'tmg7-app-build.log')
     wires = a.out / 'app-wire'
     wires.mkdir(exist_ok=True)
     legacy_tap = wires / 'gallery_commute_legacy.tap.bin'

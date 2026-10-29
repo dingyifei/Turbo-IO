@@ -44,7 +44,8 @@ void tap_stop(TAPState *s){if(s)memset(s,0,sizeof *s);}
 bool tap_start(TAPState *s,const TAPDocument *d){if(!s||!d||!d->pages||d->pages>4||d->entry>=d->pages)return false;tap_stop(s);s->document=d;s->page=d->entry;s->active=true;return true;}
 TAPEvent tap_event(TAPState *s,unsigned key,uint32_t now){
  TAPEvent e={0,0};if(!s||!s->active)return e;
- if(key==TAP_LONG_PRESS){tap_stop(s);e.type=TAP_EXIT;return e;}
+ /* FocusCaret: a long press goes back. Off the entry page it returns to the entry page (focus 0); on the entry page it exits. */
+ if(key==TAP_LONG_PRESS){if(s->page!=s->document->entry){s->page=s->document->entry;s->focus=0;e.type=TAP_PAGE_CHANGED;return e;}tap_stop(s);e.type=TAP_EXIT;return e;}
  const TAPDocument *d=s->document;unsigned buttons[12],count=0;
  for(unsigned i=d->first[s->page];i<d->first[s->page]+d->size[s->page];i++)if(d->items[i].kind==2)buttons[count++]=i;
  if(!count)return e;if(s->focus>=count)s->focus=0;

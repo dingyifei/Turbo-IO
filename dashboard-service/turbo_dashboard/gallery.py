@@ -77,7 +77,8 @@ def snapshot_doc(ident,snapshot=None,version=1):
     rows=snapshot['lines'];badge='离线示例 · 非实时' if demo else '数据快照 · 非实时'
     # TMG7 layout (LensApp board, PriorityBands, FocusCaret). Rows 0-12 and 172-180 stay empty; every item sits in one band:
     # T 12-56, M 56-112, B 112-172. Priority rises toward the bottom, the actions sit in M, and there is no Exit or Back
-    # button (a long press exits; the detail page is reached from the overview and needs no way back). TAP1 has no
+    # button (a long press goes back: from the detail page it returns to the overview on TMG7 glasses and from the overview it exits;
+    # TMG6 glasses exit from either page). TAP1 has no
     # intensity: text draws lens-full, buttons lens-mid until focused.
     em=lambda text:sum(1.0 if ord(ch)>=0x2e80 else .6 for ch in text)
     line=lambda id,text,x,y,w,font:t(id,text,x,y,w,font,font+4)

@@ -21,7 +21,8 @@ int tap_runner_start(TAPRunner *r,unsigned slot){
 TAPEvent tap_runner_event(TAPRunner *r,unsigned key,uint32_t now){
  TAPEvent none={0,0};if(!r||r->closing||!r->state.active)return none;
  if(!r->view.root){tap_runner_close(r);return (TAPEvent){TAP_EXIT,0};}
- if(key==TAP_LONG_PRESS){tap_runner_close(r);return (TAPEvent){TAP_EXIT,0};}
+ // A long press on the entry page exits at once. Off the entry page it goes back to the entry page through tap_event (below).
+ if(key==TAP_LONG_PRESS&&r->state.page==r->document.entry){tap_runner_close(r);return (TAPEvent){TAP_EXIT,0};}
  if(!r->widgets.idle(r->widgets.ctx))return none;
  TAPState previous=r->state;TAPEvent event=tap_event(&r->state,key,now);
  if(event.type==TAP_PAGE_CHANGED){
