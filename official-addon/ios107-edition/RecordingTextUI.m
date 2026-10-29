@@ -6,6 +6,7 @@
 #import "RecordingText.h"
 #import "ResearchUI.h"
 #import "TIOConfirm.h"
+#import "TIODesign.h"
 
 static NSString *const TextDomain=@"io.turboio.official-private-addon";
 static NSUserDefaults *TextPrefs(void){return [[NSUserDefaults alloc]initWithSuiteName:TextDomain];}
@@ -66,13 +67,13 @@ static void ShareText(UIViewController *vc,NSURL *file){if(!file){TextAlert(vc,T
 @end
 @implementation TIORecordingTextPanel
 - (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"文字整理");self.view.backgroundColor=TIOPaper();
-    self.info=[UILabel new];self.info.text=TIOText(@"保留官方 ASR。导入或粘贴完整转写，确认后仅上传文字；不覆盖官方内容。");self.info.numberOfLines=0;self.info.font=[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-    self.editor=[UITextView new];self.editor.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];self.editor.text=self.initialText?:@"";
+    self.info=[UILabel new];self.info.text=TIOText(@"保留官方 ASR。导入或粘贴完整转写，确认后仅上传文字；不覆盖官方内容。");self.info.numberOfLines=0;self.info.font=TIODesignFont(TIODesignTextStyleFootnote);
+    self.editor=[UITextView new];self.editor.font=TIODesignFont(TIODesignTextStyleBody);self.editor.text=self.initialText?:@"";
     UIButton *run=[UIButton buttonWithType:UIButtonTypeSystem];[run setTitle:TIOText(@"用当前自有模型整理") forState:UIControlStateNormal];[run addTarget:self action:@selector(confirm) forControlEvents:UIControlEventTouchUpInside];
     UIButton *share=[UIButton buttonWithType:UIButtonTypeSystem];[share setTitle:TIOText(@"分享整理结果 Markdown") forState:UIControlStateNormal];[share addTarget:self action:@selector(shareResult) forControlEvents:UIControlEventTouchUpInside];
     UIButton *cancel=[UIButton buttonWithType:UIButtonTypeSystem];[cancel setTitle:TIOText(@"取消本次整理") forState:UIControlStateNormal];[cancel addTarget:self action:@selector(cancelJob) forControlEvents:UIControlEventTouchUpInside];
     self.runButton=run;self.shareButton=share;self.cancelButton=cancel;self.editor.delegate=self;[self updateActions];
-    self.info.adjustsFontForContentSizeCategory=YES;self.info.textColor=UIColor.secondaryLabelColor;self.editor.adjustsFontForContentSizeCategory=YES;self.editor.textColor=TIOInk();self.editor.backgroundColor=[TIOInk()colorWithAlphaComponent:.05];self.editor.layer.cornerRadius=16;self.editor.textContainerInset=UIEdgeInsetsMake(14,12,14,12);self.editor.accessibilityLabel=TIOText(@"完整转写文字");
+    self.info.adjustsFontForContentSizeCategory=YES;self.info.textColor=TIODesignColor(TIODesignColorLabelSecondary);self.editor.adjustsFontForContentSizeCategory=YES;self.editor.textColor=TIOInk();self.editor.backgroundColor=TIODesignColor(TIODesignColorBgRaised);self.editor.layer.cornerRadius=16;self.editor.textContainerInset=UIEdgeInsetsMake(14,12,14,12);self.editor.accessibilityLabel=TIOText(@"完整转写文字");
     self.view.backgroundColor=TIOPaper();
     run.configuration=UIButtonConfiguration.filledButtonConfiguration;share.configuration=UIButtonConfiguration.tintedButtonConfiguration;cancel.configuration=UIButtonConfiguration.plainButtonConfiguration;
     for(UIButton *b in @[run,share,cancel]){UIButtonConfiguration *config=b.configuration;config.contentInsets=NSDirectionalEdgeInsetsMake(12,16,12,16);b.configuration=config;b.titleLabel.adjustsFontForContentSizeCategory=YES;}
@@ -116,6 +117,6 @@ static NSString *CapturedLifelogText(void){
 - (void)viewDidLoad{[super viewDidLoad];self.title=TIOText(@"已保存智记文字");TIOStyleResearchTable(self);TIOAttachInfo(self,TIOText(@"记下的片段"),TIOText(@"仅展示扩展已保存的内容，不冒充历史全量。"));}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{return 2;}
 - (NSString *)tableView:(UITableView *)t titleForFooterInSection:(NSInteger)s{return TIOText(@"只包含在“资料”页开启保存后收到的最终文字，不代表官方历史全量。音频保存与分享请返回资料页直接打开。");}
-- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];TIOStyleResearchCell(c);c.textLabel.text=@[TIOText(@"导出已保存文字 Markdown"),TIOText(@"用自有模型整理已保存文字"),TIOText(@"原音频导出（尚未接通）")][ip.row];c.detailTextLabel.numberOfLines=0;c.detailTextLabel.text=@[TIOText(@"本机独立副本 · AirDrop / 存储到文件"),TIOText(@"先预览范围，再确认发送文字"),TIOText(@"等待确认官方缓存文件与会话关联")][ip.row];if(ip.row==2){c.textLabel.textColor=UIColor.secondaryLabelColor;c.selectionStyle=UITableViewCellSelectionStyleNone;}else c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return c;}
+- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];TIOStyleResearchCell(c);c.textLabel.text=@[TIOText(@"导出已保存文字 Markdown"),TIOText(@"用自有模型整理已保存文字"),TIOText(@"原音频导出（尚未接通）")][ip.row];c.detailTextLabel.numberOfLines=0;c.detailTextLabel.text=@[TIOText(@"本机独立副本 · AirDrop / 存储到文件"),TIOText(@"先预览范围，再确认发送文字"),TIOText(@"等待确认官方缓存文件与会话关联")][ip.row];if(ip.row==2){c.textLabel.textColor=TIODesignColor(TIODesignColorLabelSecondary);c.selectionStyle=UITableViewCellSelectionStyleNone;}else c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return c;}
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)ip{[t deselectRowAtIndexPath:ip animated:YES];if(ip.row==2)return;dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{NSString *text=CapturedLifelogText();NSURL *file=ip.row==0&&text?SaveText(/*i18n:keep*/@"全天智记.md",text):nil;dispatch_async(dispatch_get_main_queue(),^{if(!text){TextAlert(self,TIOText(@"尚无扩展保存的最终文字。先在研究菜单开启旁路保存，再使用官方全天智记；旧历史还不能自动导出。"));return;}if(ip.row==0)ShareText(self,file);else {TIORecordingTextPanel *p=[TIORecordingTextPanel new];p.initialText=text;[self.navigationController pushViewController:p animated:YES];}});});}
 @end
