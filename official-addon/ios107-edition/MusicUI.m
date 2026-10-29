@@ -4,6 +4,7 @@
 #import "SpotifyAuth.h"
 #import "SpotifySignIn.h"
 #import "TIOLanguage.h"
+#import "TIODesign.h"
 
 @interface TMMusicPanel : UITableViewController
 @property(nonatomic,strong) NSTimer *refreshTimer;
@@ -18,6 +19,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = TIOText(@"music.title");
+    TIODesignStyleTable(self);
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 56;
     __weak typeof(self) weakSelf = self;
@@ -69,65 +71,77 @@
         [self syncStructureAndReload];
         return;
     }
-    if (!signedIn || self.tableView.numberOfSections < 2 || [self.tableView numberOfRowsInSection:1] != 3) return;
-    [self.tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:0 inSection:1],
-        [NSIndexPath indexPathForRow:1 inSection:1], [NSIndexPath indexPathForRow:2 inSection:1]]
+    NSInteger now = [self indexOfKind:TMMusicSectionNowPlaying];
+    if (!signedIn || now == NSNotFound || self.tableView.numberOfSections <= now || [self.tableView numberOfRowsInSection:now] != 3) return;
+    [self.tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:0 inSection:now],
+        [NSIndexPath indexPathForRow:1 inSection:now], [NSIndexPath indexPathForRow:2 inSection:now]]
         withRowAnimation:UITableViewRowAnimationNone];
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return TMSpotifyAuth.shared.signedIn ? 5 : 4;
+/* Board order: now playing (signed in), Glasses (incl. lyrics), Spotify (one
+ * Client ID row), Developer (redirect URI, callback diagnostics). */
+typedef NS_ENUM(NSInteger, TMMusicSection) { TMMusicSectionNowPlaying, TMMusicSectionGlasses, TMMusicSectionSpotify, TMMusicSectionDeveloper };
+
+- (NSArray<NSNumber *> *)sections {
+    NSMutableArray *list = [NSMutableArray array];
+    if (TMSpotifyAuth.shared.signedIn) [list addObject:@(TMMusicSectionNowPlaying)];
+    [list addObject:@(TMMusicSectionGlasses)];
+    [list addObject:@(TMMusicSectionSpotify)];
+    [list addObject:@(TMMusicSectionDeveloper)];
+    return list;
 }
 
+- (TMMusicSection)kindOfSection:(NSInteger)section { return (TMMusicSection)[self.sections[section] integerValue]; }
+
+- (NSInteger)indexOfKind:(TMMusicSection)kind { return [self.sections indexOfObject:@(kind)]; }
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.sections.count; }
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    BOOL signedIn = TMSpotifyAuth.shared.signedIn;
-    BOOL configured = self.isConfigured;
-    if (section == 0) return configured && signedIn ? 2 : 1;
-    if (signedIn && section == 1) return 3;
-    NSInteger offset = signedIn ? 1 : 0;
-    if (section == 1 + offset) return 2;
-    if (section == 2 + offset) return 1;
-    if (section == 3 + offset) {
+    switch ([self kindOfSection:section]) {
+        case TMMusicSectionNowPlaying: return 3;
+        case TMMusicSectionGlasses: return 3;
+        case TMMusicSectionSpotify:
+            if (!self.isConfigured) return 1;
+            return TMSpotifyAuth.shared.signedIn ? 3 : 2;
+        case TMMusicSectionDeveloper:
 #if TIO_DISPLAY_DIAGNOSTICS
-        return 3;
+            return 2;
 #else
-        return 2;
+            return 1;
 #endif
     }
     return 0;
 }
 
-- (NSInteger)nowPlayingSection { return 1; }
-- (NSInteger)glassesSection { return TMSpotifyAuth.shared.signedIn ? 2 : 1; }
-- (NSInteger)lyricsSection { return TMSpotifyAuth.shared.signedIn ? 3 : 2; }
-- (NSInteger)advancedSection { return TMSpotifyAuth.shared.signedIn ? 4 : 3; }
-
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) return TIOText(@"music.spotify");
-    if (TMSpotifyAuth.shared.signedIn && section == 1) return TIOText(@"music.nowPlaying");
-    if (section == self.glassesSection) return TIOText(@"music.glasses");
-    if (section == self.lyricsSection) return TIOText(@"music.lyrics");
-    if (section == self.advancedSection) return TIOText(@"music.advanced");
+    switch ([self kindOfSection:section]) {
+        case TMMusicSectionNowPlaying: return TIOText(@"music.nowPlaying");
+        case TMMusicSectionGlasses: return TIOText(@"music.glasses");
+        case TMMusicSectionSpotify: return TIOText(@"music.spotify");
+        case TMMusicSectionDeveloper: return TIOText(@"hub.section.developer");
+    }
     return nil;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) {
+    TMMusicSection kind = [self kindOfSection:section];
+    if (kind == TMMusicSectionSpotify) {
         if (self.footerError.length) return self.footerError;
         NSString *redirect = TMSpotifyAuth.shared.redirect ?: TMSpotifyDefaultRedirect;
         NSString *help = TIOText(@"music.clientID.help");
         return [NSString stringWithFormat:help, redirect];
     }
-    if (section == self.lyricsSection) return TIOText(@"music.lyrics.footer");
+    if (kind == TMMusicSectionGlasses) return TIOText(@"music.lyrics.footer");
     return nil;
 }
 
 - (UITableViewCell *)basicCell:(NSString *)reuse {
     UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:reuse];
     if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:reuse];
-    cell.textLabel.textColor = UIColor.labelColor;
-    cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
-    cell.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+    cell.textLabel.textColor = TIODesignColor(TIODesignColorLabel);
+    cell.detailTextLabel.textColor = TIODesignColor(TIODesignColorLabelSecondary);
+    cell.backgroundColor = TIODesignColor(TIODesignColorBgRaised);
     cell.accessoryView = nil;
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
@@ -137,34 +151,43 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSInteger s = indexPath.section, r = indexPath.row;
     BOOL signedIn = TMSpotifyAuth.shared.signedIn;
-    if (s == 0) {
-        if (!self.isConfigured) {
+    TMMusicSection kind = [self kindOfSection:s];
+    if (kind == TMMusicSectionSpotify) {
+        if (r == 0) {
+            /* The single Client ID row (masked once set). */
             UITableViewCell *cell = [self basicCell:@"client-id"];
             cell.textLabel.text = TIOText(@"music.clientID");
-            cell.detailTextLabel.text = TIOText(@"music.clientID.notSet");
+            NSString *value = TMSpotifyAuth.shared.clientID ?: @"";
+            cell.detailTextLabel.text = self.isConfigured && value.length >= 8 ?
+                [NSString stringWithFormat:@"%@…%@", [value substringToIndex:4], [value substringFromIndex:value.length - 4]] :
+                TIOText(@"music.clientID.notSet");
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            cell.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", cell.textLabel.text, cell.detailTextLabel.text];
+            cell.accessibilityTraits |= UIAccessibilityTraitButton;
             return cell;
         }
         if (!signedIn) {
             UITableViewCell *cell = [self basicCell:@"connect"];
             cell.textLabel.text = TIOText(@"music.connect");
-            cell.textLabel.textColor = self.view.tintColor;
+            cell.textLabel.textColor = TIODesignColor(TIODesignColorAccent);
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            cell.accessibilityTraits |= UIAccessibilityTraitButton;
             return cell;
         }
         UITableViewCell *cell = [self basicCell:@"account"];
-        if (r == 0) {
+        if (r == 1) {
             cell.textLabel.text = TIOText(@"music.connected");
             cell.accessoryType = UITableViewCellAccessoryCheckmark;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
         } else {
             cell.textLabel.text = TIOText(@"music.signOut");
-            cell.textLabel.textColor = UIColor.systemRedColor;
+            cell.textLabel.textColor = TIODesignColor(TIODesignColorStatusDanger);
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            cell.accessibilityTraits |= UIAccessibilityTraitButton;
         }
         return cell;
     }
-    if (signedIn && s == 1) {
+    if (kind == TMMusicSectionNowPlaying) {
         TMPlayer *player = TMPlayer.shared;
         if (r == 0) {
             UITableViewCell *cell = [self basicCell:@"now-playing"];
@@ -182,7 +205,7 @@
                 cell.imageView.image = scaled;
             } else {
                 cell.imageView.image = [UIImage systemImageNamed:@"music.note"];
-                cell.imageView.tintColor = UIColor.secondaryLabelColor;
+                cell.imageView.tintColor = TIODesignColor(TIODesignColorLabelSecondary);
             }
             cell.imageView.layer.cornerRadius = 8;
             cell.imageView.clipsToBounds = YES;
@@ -207,7 +230,7 @@
                 [button setImage:[UIImage systemImageNamed:symbols[i]] forState:UIControlStateNormal];
                 button.accessibilityLabel = labels[i];
                 button.tag = i;
-                button.tintColor = self.view.tintColor;
+                button.tintColor = TIODesignColor(TIODesignColorAccent);
                 [button addTarget:self action:@selector(controlTapped:) forControlEvents:UIControlEventTouchUpInside];
                 [stack addArrangedSubview:button];
             }
@@ -219,20 +242,19 @@
                 [stack.trailingAnchor constraintEqualToAnchor:cell.contentView.layoutMarginsGuide.trailingAnchor],
                 [stack.topAnchor constraintEqualToAnchor:cell.contentView.layoutMarginsGuide.topAnchor],
                 [stack.bottomAnchor constraintEqualToAnchor:cell.contentView.layoutMarginsGuide.bottomAnchor],
-                [stack.heightAnchor constraintEqualToConstant:40]
+                [stack.heightAnchor constraintGreaterThanOrEqualToConstant:44]
             ]];
             return cell;
         }
         UITableViewCell *cell = [self basicCell:@"status"];
         cell.textLabel.text = [NSString stringWithFormat:@"%@ · %@", player.status ?: TIOText(@"music.status.network"), player.bridgeStatus ?: @""];
-        cell.textLabel.textColor = UIColor.secondaryLabelColor;
+        cell.textLabel.textColor = TIODesignColor(TIODesignColorLabelSecondary);
         cell.textLabel.numberOfLines = 2;
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
 
-    NSInteger glassesSection = self.glassesSection;
-    if (s == glassesSection && r == 0) {
+    if (kind == TMMusicSectionGlasses && r == 0) {
         UITableViewCell *cell = [self basicCell:@"glasses"];
         cell.textLabel.text = TIOText(@"music.showOnGlasses");
         UISwitch *toggle = [UISwitch new];
@@ -243,7 +265,7 @@
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
-    if (s == glassesSection && r == 1) {
+    if (kind == TMMusicSectionGlasses && r == 1) {
         UITableViewCell *cell = [self basicCell:@"timeout"];
         cell.textLabel.text = TIOText(@"music.timeout");
         UISegmentedControl *segments = [[UISegmentedControl alloc] initWithItems:@[
@@ -255,7 +277,7 @@
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
-    if (s == self.lyricsSection) {
+    if (kind == TMMusicSectionGlasses && r == 2) {
         UITableViewCell *cell = [self basicCell:@"lyrics-toggle"];
         cell.textLabel.text = TIOText(@"music.lyrics.toggle");
         UISwitch *toggle = [UISwitch new];
@@ -266,15 +288,7 @@
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
-    if (s == self.advancedSection && r == 0) {
-        UITableViewCell *cell = [self basicCell:@"advanced-client-id"];
-        cell.textLabel.text = TIOText(@"music.clientID");
-        NSString *value = TMSpotifyAuth.shared.clientID ?: @"";
-        cell.detailTextLabel.text = value.length >= 8 ? [NSString stringWithFormat:@"%@…%@", [value substringToIndex:4], [value substringFromIndex:value.length - 4]] : TIOText(@"music.clientID.notSet");
-        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-        return cell;
-    }
-    if (s == self.advancedSection && r == 1) {
+    if (kind == TMMusicSectionDeveloper && r == 0) {
         UITableViewCell *cell = [self basicCell:@"redirect"];
         cell.textLabel.text = TIOText(@"music.redirect");
         cell.detailTextLabel.text = TMSpotifyAuth.shared.redirect ?: TMSpotifyDefaultRedirect;
@@ -282,7 +296,7 @@
         return cell;
     }
 #if TIO_DISPLAY_DIAGNOSTICS
-    if (s == self.advancedSection && r == 2) {
+    if (kind == TMMusicSectionDeveloper && r == 1) {
         UITableViewCell *cell = [self basicCell:@"callback-diagnostics"];
         cell.textLabel.text = TIOText(@"music.callback.copy");
         cell.detailTextLabel.text = TMSpotifyAuth.shared.callbackDiagnostics.length ? TMSpotifyAuth.shared.callbackDiagnostics : TIOText(@"music.callback.none");
@@ -349,8 +363,9 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     NSInteger s = indexPath.section, r = indexPath.row;
-    if (s == 0) {
-        if (!self.isConfigured) { [self showClientIDEditor]; return; }
+    TMMusicSection kind = [self kindOfSection:s];
+    if (kind == TMMusicSectionSpotify) {
+        if (r == 0) { [self showClientIDEditor]; return; }
         if (!TMSpotifyAuth.shared.signedIn) {
             __weak typeof(self) weakSelf = self;
             TMSpotifySignIn(self, ^(NSString *error) {
@@ -365,14 +380,13 @@
             });
             return;
         }
-        if (r == 1) [self confirmSignOut];
+        if (r == 2) [self confirmSignOut];
         return;
     }
-    if (s == self.advancedSection) {
-        if (r == 0) [self showClientIDEditor];
-        else if (r == 1) [self chooseRedirect];
+    if (kind == TMMusicSectionDeveloper) {
+        if (r == 0) [self chooseRedirect];
 #if TIO_DISPLAY_DIAGNOSTICS
-        else if (r == 2 && TMSpotifyAuth.shared.callbackDiagnostics.length) {
+        else if (r == 1 && TMSpotifyAuth.shared.callbackDiagnostics.length) {
             UIPasteboard.generalPasteboard.string = TMSpotifyAuth.shared.callbackDiagnostics;
         }
 #endif
