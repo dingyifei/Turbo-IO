@@ -5,17 +5,21 @@
 TMG7 forks frozen TMG6 (`../strix-1.0.5.5-tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, runtime build identity, the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
 
 - Shared tokens in `src/common-v1` (lens intensity ramp, bands, 40..500 core, caret, 16 px text floor) with a transient hint helper that fades and hides.
-- Navigation (LensNav): the map is clipped to the lens core and the fixed clock footer is gone (removed at TMG6).
-- Music (LensMusic): current and next lyric labels are core width, lyric lines wrap to two rows with an ellipsis, and the control hint is transient.
+- Navigation (LensNav): the distance and instruction have fixed slots (x 84 and 196) that never move or resize, the map is the board's x 372..520 window (canvas at x 348, car within 3 px of the window centre, columns outside it blanked), the turn glyph has a 7 px stroke, and the fixed clock footer is gone (removed at TMG6).
+- Music (LensMusic): current and next lyric labels are core width, lyric lines wrap to two rows with an ellipsis, a one-line current lyric sits on the bottom row of band B, and the control hint is transient.
 - Main menu (LensMenu): status row, page dots, 24x3 caret, one focused name in the bottom band, two- and three-row grids. Tile and index math is unchanged.
-- Camera control hint is transient.
-- Mini-app runtime: buttons are caret focus items and 14 px text draws at 16. The TAP1 wire format is unchanged and older packages still decode.
+- Camera control hint is transient and is lit again when the camera session goes live. Focus hint: every wheel step lights it (also while the timer runs) and it is gone at 3000 ms (50 ms service tick while it fades).
+- Mini-app runtime: buttons are caret focus items (wheel focus clamps at the ends, no wrap; the caret snaps, the TAP runner has no tick to slide it), 14 px text draws at 16, and the My Apps shelf follows the bands. The 20 gallery apps are re-laid to the bands with no Exit or Back item. The TAP1 wire format is unchanged and older packages still decode.
 
 Modules removed at TMG4 stay removed: ride (didi-v1), English (context-english-v1), dots (dots-v1) and reader (weread-v1). None is restored here.
 
 ## Host gates
 
+The tokens in `tio_ui.h` rescale with `TIO_PPD_X10`, but the page layouts are fitted to 24.8 px/deg only (measured: the menu bands break below 24.6, music's core-width assert holds only at 24.8, the turn glyph leaves band B from 25.4). Each page therefore refuses to build at any other value (`TIO_PAGES_CHECK`), and the host test proves it. If the measured ppd differs, the pages must be re-laid, not just that one number changed.
+
 `python3 tests/tmg7_host_test.py --out DIR` runs the tokens test at 22..27 px/deg, the mini-app runtime test, the navigation core and view tests, the menu grid test and the layout gate. The layout gate renders every page in English and Chinese to PNG and checks each widget against its band, the reserved rows, the 16 px floor and the no-filled-panel rule. The phone `test.py` in `official-addon/ios107-edition` now targets this tree: it audits the supplied ZIP with this tree's `build.py`, runs the tmg7 host group, and checks the shared sources against the phone copies. Its `pins` group stays red for a ZIP7 until the phone is re-pinned to ZIP7. Each source edit needs a repin (`build.py --repin`) and a copy of the repin output into `build-inputs.json`.
+
+After the flash the glasses report the TMG6 firmware name and capabilities (the wire and runtime identity are unchanged, so a `firmware: TMG6` status reads the same before and after). The proof that TMG7 is running is the status `build` field, the build identity in `identity.sha256` of the build output: `7bdca491ca49911df9faf4cb6f55d7a5c905ed69c11151bd063aff68ce22dba6` for the current ZIP7 (TMG6: `83b82fab9fe9356de62570deff5878b9cfc292b3037998088664e87bd90d8644`).
 
 Phone pins name TMG7 and the exact ZIP7 hash (`tools/phone_pins.py`, name `TMG7`); the phone stays compatible with TMG6 glasses because the wire protocol and runtime identity are unchanged. Navigation `Passing`, the knob observation and the older candidate records below are historical.
 
