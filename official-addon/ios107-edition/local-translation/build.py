@@ -50,7 +50,7 @@ def main():
     libs += [native/('llama-build/ggml/src/lib'+n+'.a') for n in ('ggml', 'ggml-cpu', 'ggml-base')]
     units = ['RealtimeText', 'LocalTranslation', 'HyMTLocalTranslation', 'CaptionTranslationRouter',
              'LocalTranslationPanel', 'HyMTPerformanceProbe', 'CaptionAudioPipeline', 'MicrophoneInput',
-             'ParakeetSpeech', 'OfflineCaptionPanel', 'CaptionSegmenter']
+             'ParakeetSpeech', 'OfflineCaptionPanel', 'CaptionSegmenter', 'TIODesign']
     run(['xcrun', '--sdk', 'iphoneos', 'swiftc', '-swift-version', '6', '-O', '-parse-as-library',
          '-import-objc-header', SRC/'HyMTBridge.h', '-target', 'arm64-apple-ios26.0', '-sdk', sdk,
          '-I', products, '-I', fluid/'Sources/FastClusterWrapper/include',

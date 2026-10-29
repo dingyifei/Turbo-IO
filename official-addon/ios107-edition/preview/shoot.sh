@@ -18,7 +18,7 @@ mkdir -p "$shots"
 screens=("$@")
 [[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles runtime knob voice nav)
 for screen in "${screens[@]}"; do
-  case "$screen" in hub|ota|music|tiles|runtime|knob|voice|nav) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
+  case "$screen" in hub|ota|music|tiles|runtime|knob|voice|nav|tokens) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
 done
 
 udid_file="$inputs/preview-sim.udid"

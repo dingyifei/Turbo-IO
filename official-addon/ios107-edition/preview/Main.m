@@ -6,6 +6,7 @@
 #import "MenuLayoutUI.h"
 #import "TDPhoneUI.h"
 #import "ResearchUI.h"
+#import "TIODesign.h"
 #include <stdio.h>
 #import "nav_map.h"
 static UIViewController *NavigationSample(void){
@@ -13,6 +14,92 @@ static UIViewController *NavigationSample(void){
  TNRPoint points[]={{-280,-200},{-280,300},{-400,240},{400,240},{-400,-80},{400,-80},{0,-200},{0,80},{180,80},{180,300}};memcpy(d->points,points,sizeof points);d->paths[0]=(TNRPath){0,2,2,0,0,0};d->paths[1]=(TNRPath){2,2,3,0,0,0};d->paths[2]=(TNRPath){4,2,4,0,0,0};d->paths[3]=(TNRPath){6,4,6,0,0,0};
  uint8_t pixels[TNR_W*TNR_H];tnr_draw(&s,0,pixels);CGColorSpaceRef color=CGColorSpaceCreateDeviceGray();CGDataProviderRef provider=CGDataProviderCreateWithCFData((__bridge CFDataRef)[NSData dataWithBytes:pixels length:sizeof pixels]);CGImageRef image=CGImageCreate(TNR_W,TNR_H,8,8,TNR_W,color,kCGImageAlphaNone,provider,NULL,false,kCGRenderingIntentDefault);
  UIViewController *page=[UIViewController new];page.title=TIOText(@"hub.row.navigation");page.view.backgroundColor=UIColor.systemBackgroundColor;UIImageView *view=[[UIImageView alloc]initWithImage:[UIImage imageWithCGImage:image]];view.translatesAutoresizingMaskIntoConstraints=NO;view.layer.magnificationFilter=kCAFilterNearest;[page.view addSubview:view];[NSLayoutConstraint activateConstraints:@[[view.centerXAnchor constraintEqualToAnchor:page.view.centerXAnchor],[view.centerYAnchor constraintEqualToAnchor:page.view.centerYAnchor],[view.widthAnchor constraintEqualToAnchor:page.view.widthAnchor constant:-32],[view.heightAnchor constraintEqualToAnchor:view.widthAnchor multiplier:.75]]];CGImageRelease(image);CGDataProviderRelease(provider);CGColorSpaceRelease(color);return page;
+}
+
+
+// Design-system gallery (docs/design-system): every token as TIODesign renders
+// it, following the system appearance. DESIGN_SELFTEST compares the compiled
+// UIKit values with the token tables.
+static BOOL SameRGB(UIColor *color,UITraitCollection *traits,uint32_t want){
+ CGFloat r=0,g=0,b=0,a=0;[[color resolvedColorWithTraitCollection:traits] getRed:&r green:&g blue:&b alpha:&a];
+ uint32_t got=((uint32_t)lround(r*255)<<16)|((uint32_t)lround(g*255)<<8)|(uint32_t)lround(b*255);
+ return got==want&&a==1;
+}
+static void DesignSelfTest(void){
+ int bad=0;
+ UITraitCollection *light=[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleLight];
+ UITraitCollection *dark=[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark];
+ for(NSInteger i=0;i<TIODesignColorTokenCount;i++){
+  UIColor *c=TIODesignColor((TIODesignColorToken)i);
+  if(!SameRGB(c,light,TIODesignColorRGB((TIODesignColorToken)i,NO))){bad++;fprintf(stderr,"DESIGN_BAD light %s\n",TIODesignColorName((TIODesignColorToken)i).UTF8String);}
+  if(!SameRGB(c,dark,TIODesignColorRGB((TIODesignColorToken)i,YES))){bad++;fprintf(stderr,"DESIGN_BAD dark %s\n",TIODesignColorName((TIODesignColorToken)i).UTF8String);}
+ }
+ UITraitCollection *large=[UITraitCollection traitCollectionWithPreferredContentSizeCategory:UIContentSizeCategoryLarge];
+ UITraitCollection *ax5=[UITraitCollection traitCollectionWithPreferredContentSizeCategory:UIContentSizeCategoryAccessibilityExtraExtraExtraLarge];
+ for(NSInteger i=0;i<TIODesignTextStyleCount;i++){
+  UIFont *f=TIODesignFontForTraits((TIODesignTextStyle)i,large);
+  NSInteger css=TIODesignTextStyleCSSWeight((TIODesignTextStyle)i);
+  NSString *name=f.fontName.lowercaseString;
+  BOOL faceOK=css>=700?[name containsString:@"bold"]&&![name containsString:@"semibold"]:css>=600?[name containsString:@"semibold"]:css>=500?[name containsString:@"medium"]:(![name containsString:@"bold"]&&![name containsString:@"medium"]);
+  if(fabs(f.pointSize-TIODesignTextStyleSize((TIODesignTextStyle)i))>.01||!faceOK){bad++;fprintf(stderr,"DESIGN_BAD font %ld %.2f %s\n",(long)i,f.pointSize,f.fontName.UTF8String);}
+  if(TIODesignFontForTraits((TIODesignTextStyle)i,ax5).pointSize<=f.pointSize){bad++;fprintf(stderr,"DESIGN_BAD scaling %ld\n",(long)i);}
+ }
+ for(NSInteger section=0;section<4;section++){
+  UIImage *icon=TIODesignHubIcon(@"gearshape",section);
+  uint32_t fills[4][2]={{TIODesignColorRGB(TIODesignColorAccentFill,NO),TIODesignColorRGB(TIODesignColorAccentFill,YES)},
+   {TIODesignColorRGB(TIODesignColorTileAssistant,NO),TIODesignColorRGB(TIODesignColorTileAssistant,YES)},
+   {TIODesignColorRGB(TIODesignColorTileMedia,NO),TIODesignColorRGB(TIODesignColorTileMedia,YES)},
+   {TIODesignColorRGB(TIODesignColorTileDeveloper,NO),TIODesignColorRGB(TIODesignColorTileDeveloper,YES)}};
+  for(int mode=0;mode<2;mode++){
+   UIImage *variant=[icon.imageAsset imageWithTraitCollection:mode?dark:light];
+   UIGraphicsImageRenderer *r=[[UIGraphicsImageRenderer alloc]initWithSize:variant.size];
+   UIImage *flat=[r imageWithActions:^(UIGraphicsImageRendererContext *ctx){[variant drawAtPoint:CGPointZero];}];
+   CGImageRef cg=flat.CGImage;CGDataProviderRef provider=CGImageGetDataProvider(cg);NSData *bytes=(__bridge_transfer NSData *)CGDataProviderCopyData(provider);
+   const uint8_t *px=bytes.bytes;size_t row=CGImageGetBytesPerRow(cg),bpp=CGImageGetBitsPerPixel(cg)/8;size_t x=(size_t)(3*flat.scale),y=(size_t)(15*flat.scale);
+   const uint8_t *q=px+y*row+x*bpp;
+   BOOL bgra=(CGImageGetBitmapInfo(cg)&kCGBitmapByteOrderMask)==kCGBitmapByteOrder32Little;
+   uint32_t got=bgra?((uint32_t)q[2]<<16)|((uint32_t)q[1]<<8)|q[0]:((uint32_t)q[0]<<16)|((uint32_t)q[1]<<8)|q[2];
+   if(got!=fills[section][mode]){bad++;fprintf(stderr,"DESIGN_BAD hub icon section %ld %s got %06x want %06x\n",(long)section,mode?"dark":"light",got,fills[section][mode]);}
+  }
+ }
+ fprintf(stderr,"DESIGN_SELFTEST %s %d\n",bad?"FAIL":"PASS",bad);fflush(stderr);
+}
+
+static UILabel *GalleryLabel(NSString *text,TIODesignTextStyle style,TIODesignColorToken color){
+ UILabel *l=[UILabel new];l.text=text;l.font=TIODesignFont(style);l.textColor=TIODesignColor(color);l.numberOfLines=0;l.adjustsFontForContentSizeCategory=YES;return l;
+}
+static UIViewController *TokensSample(void){
+ UIViewController *page=[UIViewController new];page.title=@"Design tokens";page.view.backgroundColor=TIODesignColor(TIODesignColorBg);
+ UIScrollView *scroll=[UIScrollView new];scroll.translatesAutoresizingMaskIntoConstraints=NO;[page.view addSubview:scroll];
+ UIStackView *stack=[UIStackView new];stack.axis=UILayoutConstraintAxisVertical;stack.spacing=TIOSpace4;stack.translatesAutoresizingMaskIntoConstraints=NO;
+ stack.layoutMarginsRelativeArrangement=YES;stack.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(TIOSpace4,TIOSpace4,TIOSpace8,TIOSpace4);[scroll addSubview:stack];
+ [NSLayoutConstraint activateConstraints:@[
+  [scroll.topAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.topAnchor],[scroll.bottomAnchor constraintEqualToAnchor:page.view.bottomAnchor],
+  [scroll.leadingAnchor constraintEqualToAnchor:page.view.leadingAnchor],[scroll.trailingAnchor constraintEqualToAnchor:page.view.trailingAnchor],
+  [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor],[stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor],
+  [stack.leadingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.leadingAnchor],[stack.trailingAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.trailingAnchor]]];
+ NSArray<NSString *> *styles=@[@"Large title",@"Title 2",@"Title 3",@"Headline",@"Body",@"Subheadline",@"Footnote",@"Caption"];
+ for(NSInteger i=0;i<TIODesignTextStyleCount;i++)[stack addArrangedSubview:GalleryLabel(styles[i],(TIODesignTextStyle)i,TIODesignColorLabel)];
+ [stack addArrangedSubview:GalleryLabel(@"Secondary label",TIODesignTextStyleSubheadline,TIODesignColorLabelSecondary)];
+ UIStackView *swatches=[UIStackView new];swatches.spacing=TIOSpace2;swatches.distribution=UIStackViewDistributionFillEqually;
+ TIODesignColorToken swatchTokens[]={TIODesignColorBgRaised,TIODesignColorBgSunken,TIODesignColorAccent,TIODesignColorAccentSoft,TIODesignColorStatusOk,TIODesignColorStatusWarn,TIODesignColorStatusDanger};
+ for(size_t i=0;i<sizeof swatchTokens/sizeof *swatchTokens;i++){
+  UIView *v=[UIView new];v.backgroundColor=TIODesignColor(swatchTokens[i]);v.layer.cornerRadius=TIORadiusSM;v.layer.borderWidth=1;v.layer.borderColor=TIODesignColor(TIODesignColorSeparator).CGColor;
+  [v.heightAnchor constraintEqualToConstant:TIOHitMin].active=YES;[swatches addArrangedSubview:v];
+ }
+ [stack addArrangedSubview:swatches];
+ NSArray *roles=@[@"Start navigation",@"Open Apple Maps",@"Remove route",@"Erase everything"];
+ for(NSInteger i=0;i<4;i++){UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];[b setTitle:roles[i] forState:UIControlStateNormal];b.translatesAutoresizingMaskIntoConstraints=NO;TIODesignStyleButton(b,(TIODesignButtonRole)i);b.accessibilityIdentifier=[NSString stringWithFormat:@"tokens-button-%ld",(long)i];[stack addArrangedSubview:b];}
+ UIStackView *pills=[UIStackView new];pills.axis=UILayoutConstraintAxisVertical;pills.spacing=TIOSpace2;pills.alignment=UIStackViewAlignmentLeading;
+ [pills addArrangedSubview:TIODesignStatusPill(TIODesignStatusOk,@"Connected")];[pills addArrangedSubview:TIODesignStatusPill(TIODesignStatusWarn,@"Update ready")];
+ [pills addArrangedSubview:TIODesignStatusPill(TIODesignStatusDanger,@"Failed")];[pills addArrangedSubview:TIODesignStatusPill(TIODesignStatusNeutral,@"Idle")];
+ [stack addArrangedSubview:pills];
+ UITableViewCell *row=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];row.textLabel.text=@"Show on glasses";row.detailTextLabel.text=@"Apple Maps turn-by-turn";
+ row.accessoryType=UITableViewCellAccessoryDisclosureIndicator;TIODesignStyleRow(row);row.layer.cornerRadius=TIORadiusLG/2;row.clipsToBounds=YES;[row.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin+TIOSpace4].active=YES;[stack addArrangedSubview:row];
+ UILabel *glasses=[UILabel new];glasses.text=@"Turn right";glasses.font=TIODesignLegacyFont(TIOLensTitleSize,UIFontWeightMedium);glasses.textColor=TIODesignColor(TIODesignColorLensFull);glasses.textAlignment=NSTextAlignmentCenter;
+ UIView *lens=TIODesignLensPreviewCard(glasses,@"Glasses preview: Turn right in 100 metres",NO);[stack addArrangedSubview:lens];
+ [stack addArrangedSubview:TIODesignEmptyState(@"eyeglasses",@"Glasses not connected",@"Turn them on and bring them near the phone.",@"Open settings",^{})];
+ return page;
 }
 
 extern UIViewController *TIOCreateTurboPreview(void);
@@ -292,6 +379,7 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
                 navigation=(UINavigationController *)hub;
                 presented=hub;
             }
+        } else if ([screen isEqual:@"tokens"]) {DesignSelfTest();navigation=[[UINavigationController alloc]initWithRootViewController:TokensSample()];presented=navigation;
         } else if ([screen isEqual:@"nav"]) {navigation=[[UINavigationController alloc]initWithRootViewController:NavigationSample()];presented=navigation;
         } else if ([screen isEqual:@"ota"]) {
             UIViewController *page=TIOExperimentalOTAController();
@@ -328,6 +416,7 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             if([screen isEqual:@"tiles"]||[screen isEqual:@"knob"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);if(table){[table scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1] atScrollPosition:UITableViewScrollPositionTop animated:NO];CGPoint offset=table.contentOffset;offset.y=MAX(-table.adjustedContentInset.top,offset.y-36);[table setContentOffset:offset animated:NO];}});
             if([screen isEqual:@"tiles"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.7*NSEC_PER_SEC)),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);[table.delegate tableView:table didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:2]];});
             if([screen isEqual:@"voice"])dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{UITableView *table=FindTable(navigation.topViewController);id<UITableViewDataSource> ds=table.dataSource;for(NSInteger section=0;section<[ds numberOfSectionsInTableView:table];section++)for(NSInteger row=0;row<[ds tableView:table numberOfRowsInSection:section];row++){NSIndexPath *ip=[NSIndexPath indexPathForRow:row inSection:section];if([[[ds tableView:table cellForRowAtIndexPath:ip] accessibilityIdentifier] isEqual:@"hub-ttsSpeed"])[table scrollToRowAtIndexPath:ip atScrollPosition:UITableViewScrollPositionMiddle animated:NO];}});
+            if ([screen isEqual:@"tokens"]&&HasArgument(@"--scroll-bottom")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{Visit(navigation.topViewController.view,^(UIView *v){if([v isKindOfClass:UIScrollView.class]&&![v isKindOfClass:UITableView.class]){UIScrollView *sv=(UIScrollView *)v;[sv setContentOffset:CGPointMake(0,MAX(0,sv.contentSize.height-sv.bounds.size.height+sv.adjustedContentInset.bottom)) animated:NO];}});});
             if (HasArgument(@"--scroll-bottom")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/2),dispatch_get_main_queue(),^{ScrollHubBottom(navigation);});
             if (HasArgument(@"--report")) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{WriteReport(navigation,presented);});
         }];

@@ -146,6 +146,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   HomeTabLayout.m \
   HomeTabBridge.m \
   ResearchCatalog.m \
+  TIODesign.m \
   ResearchUI.m \
   TIOConfirm.m \
   OTAWizardModel.m \

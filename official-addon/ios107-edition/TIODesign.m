@@ -1,0 +1,375 @@
+#import "TIODesign.h"
+#import <objc/runtime.h>
+
+#pragma mark Colors
+
+typedef struct { const char *name; uint32_t light; uint32_t dark; } TIODesignColorRow;
+#define TIO_DESIGN_COLOR_ROW(Id,name,light,dark) {name,light,dark},
+static const TIODesignColorRow ColorRows[]={TIO_DESIGN_COLORS(TIO_DESIGN_COLOR_ROW)};
+#undef TIO_DESIGN_COLOR_ROW
+
+static UIColor *RGB(uint32_t value){
+ return [UIColor colorWithRed:((value>>16)&255)/255.0 green:((value>>8)&255)/255.0 blue:(value&255)/255.0 alpha:1];
+}
+
+UIColor *TIODesignColor(TIODesignColorToken token){
+ static UIColor *cache[TIODesignColorTokenCount];static dispatch_once_t once;
+ dispatch_once(&once,^{
+  for(NSInteger i=0;i<TIODesignColorTokenCount;i++){
+   uint32_t light=ColorRows[i].light,dark=ColorRows[i].dark;
+   if(light==dark)cache[i]=RGB(light);
+   else cache[i]=[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits){
+    return RGB(traits.userInterfaceStyle==UIUserInterfaceStyleDark?dark:light);
+   }];
+  }
+ });
+ return (token>=0&&token<TIODesignColorTokenCount)?cache[token]:cache[TIODesignColorLabel];
+}
+NSString *TIODesignColorName(TIODesignColorToken token){
+ return (token>=0&&token<TIODesignColorTokenCount)?@(ColorRows[token].name):@"";
+}
+UIColor *TIODesignColorNamed(NSString *name){
+ for(NSInteger i=0;i<TIODesignColorTokenCount;i++)if(strcmp(ColorRows[i].name,name.UTF8String)==0)return TIODesignColor((TIODesignColorToken)i);
+ return nil;
+}
+uint32_t TIODesignColorRGB(TIODesignColorToken token, BOOL dark){
+ if(token<0||token>=TIODesignColorTokenCount)return 0;
+ return dark?ColorRows[token].dark:ColorRows[token].light;
+}
+
+#pragma mark Type
+
+typedef struct { const char *name; CGFloat size; CGFloat line; NSInteger weight; CGFloat tracking; } TIODesignTypeRow;
+#define TIO_DESIGN_TYPE_ROW(Id,name,size,line,weight,tracking) {name,size,line,weight,tracking},
+static const TIODesignTypeRow TypeRows[]={TIO_DESIGN_TYPES(TIO_DESIGN_TYPE_ROW)};
+#undef TIO_DESIGN_TYPE_ROW
+
+static UIFontWeight WeightForCSS(NSInteger css){
+ return css>=700?UIFontWeightBold:css>=600?UIFontWeightSemibold:css>=500?UIFontWeightMedium:UIFontWeightRegular;
+}
+static UIFontTextStyle SystemStyle(TIODesignTextStyle style){
+ switch(style){
+  case TIODesignTextStyleLargeTitle:return UIFontTextStyleLargeTitle;
+  case TIODesignTextStyleTitle2:return UIFontTextStyleTitle2;
+  case TIODesignTextStyleTitle3:return UIFontTextStyleTitle3;
+  case TIODesignTextStyleHeadline:return UIFontTextStyleHeadline;
+  case TIODesignTextStyleSubheadline:return UIFontTextStyleSubheadline;
+  case TIODesignTextStyleFootnote:return UIFontTextStyleFootnote;
+  case TIODesignTextStyleCaption:return UIFontTextStyleCaption1;
+  default:return UIFontTextStyleBody;
+ }
+}
+static const TIODesignTypeRow *TypeRow(TIODesignTextStyle style){
+ return &TypeRows[(style>=0&&style<TIODesignTextStyleCount)?style:TIODesignTextStyleBody];
+}
+static UIFont *ScaledFont(TIODesignTextStyle style,UIFont *base,UITraitCollection *traits){
+ UIFontMetrics *metrics=[UIFontMetrics metricsForTextStyle:SystemStyle(style)];
+ return traits?[metrics scaledFontForFont:base compatibleWithTraitCollection:traits]:[metrics scaledFontForFont:base];
+}
+UIFont *TIODesignFontForTraits(TIODesignTextStyle style, UITraitCollection *traits){
+ const TIODesignTypeRow *row=TypeRow(style);
+ return ScaledFont(style,[UIFont systemFontOfSize:row->size weight:WeightForCSS(row->weight)],traits);
+}
+UIFont *TIODesignFont(TIODesignTextStyle style){return TIODesignFontForTraits(style,nil);}
+UIFont *TIODesignFontWeight(TIODesignTextStyle style, UIFontWeight weight){
+ return ScaledFont(style,[UIFont systemFontOfSize:TypeRow(style)->size weight:weight],nil);
+}
+UIFont *TIODesignMonospacedDigitFont(TIODesignTextStyle style){
+ const TIODesignTypeRow *row=TypeRow(style);
+ return ScaledFont(style,[UIFont monospacedDigitSystemFontOfSize:row->size weight:WeightForCSS(row->weight)],nil);
+}
+NSString *TIODesignTextStyleName(TIODesignTextStyle style){return @(TypeRow(style)->name);}
+CGFloat TIODesignTextStyleSize(TIODesignTextStyle style){return TypeRow(style)->size;}
+CGFloat TIODesignTextStyleLineHeight(TIODesignTextStyle style){return TypeRow(style)->line;}
+UIFontWeight TIODesignTextStyleWeight(TIODesignTextStyle style){return WeightForCSS(TypeRow(style)->weight);}
+NSInteger TIODesignTextStyleCSSWeight(TIODesignTextStyle style){return TypeRow(style)->weight;}
+CGFloat TIODesignTextStyleTracking(TIODesignTextStyle style){return TypeRow(style)->tracking;}
+UIFont *TIODesignLegacyFont(CGFloat size, UIFontWeight weight){
+ return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:size weight:weight]];
+}
+
+#pragma mark Numbers
+
+typedef struct { const char *name; CGFloat first; CGFloat second; BOOL pair; } TIODesignNumberRow;
+#define TIO_DESIGN_NUMBER_1(Id,name,value) {name,(value),0,NO},
+#define TIO_DESIGN_NUMBER_2(name,A,a,B,b) {name,(a),(b),YES},
+static const TIODesignNumberRow NumberRows[]={
+ TIO_DESIGN_NUMBERS_1(TIO_DESIGN_NUMBER_1)
+ TIO_DESIGN_NUMBERS_2(TIO_DESIGN_NUMBER_2)
+};
+#undef TIO_DESIGN_NUMBER_1
+#undef TIO_DESIGN_NUMBER_2
+BOOL TIODesignNumber(NSString *name, CGFloat *first, CGFloat *second){
+ for(size_t i=0;i<sizeof NumberRows/sizeof *NumberRows;i++){
+  if(strcmp(NumberRows[i].name,name.UTF8String)!=0)continue;
+  if(first)*first=NumberRows[i].first;
+  if(second)*second=NumberRows[i].second;
+  return YES;
+ }
+ return NO;
+}
+NSArray<NSString *> *TIODesignNumberNames(void){
+ NSMutableArray *names=[NSMutableArray new];
+ for(size_t i=0;i<sizeof NumberRows/sizeof *NumberRows;i++)[names addObject:@(NumberRows[i].name)];
+ return names;
+}
+
+#pragma mark Motion
+
+BOOL TIODesignReduceMotion(void){return UIAccessibilityIsReduceMotionEnabled();}
+void TIODesignAnimate(NSTimeInterval duration, void (^animations)(void), void (^completion)(BOOL finished)){
+ if(TIODesignReduceMotion()||duration<=0){
+  animations();if(completion)completion(YES);return;
+ }
+ [UIView animateWithDuration:duration delay:0 options:UIViewAnimationOptionCurveEaseOut animations:animations completion:completion];
+}
+
+#pragma mark Buttons
+
+void TIODesignStyleButton(UIButton *button, TIODesignButtonRole role){
+ NSString *title=button.configuration.title?:[button titleForState:UIControlStateNormal];
+ UIButtonConfiguration *c;
+ UIColor *accent=TIODesignColor(TIODesignColorAccent),*danger=TIODesignColor(TIODesignColorStatusDanger);
+ switch(role){
+  case TIODesignButtonPrimary:
+   c=UIButtonConfiguration.filledButtonConfiguration;
+   c.baseBackgroundColor=TIODesignColor(TIODesignColorAccentFill);c.baseForegroundColor=TIODesignColor(TIODesignColorOnAccent);break;
+  case TIODesignButtonDestructiveFilled:
+   c=UIButtonConfiguration.filledButtonConfiguration;
+   c.baseBackgroundColor=danger;c.baseForegroundColor=UIColor.whiteColor;break;
+  case TIODesignButtonDestructive:
+   c=UIButtonConfiguration.plainButtonConfiguration;c.baseForegroundColor=danger;break;
+  case TIODesignButtonSecondary:default:
+   c=UIButtonConfiguration.tintedButtonConfiguration;
+   c.baseForegroundColor=accent;c.background.backgroundColor=TIODesignColor(TIODesignColorAccentSoft);break;
+ }
+ c.title=title;c.cornerStyle=UIButtonConfigurationCornerStyleCapsule;
+ /* 14 + 22 pt headline line + 14 = 50 pt before Dynamic Type grows it. */
+ c.contentInsets=NSDirectionalEdgeInsetsMake(14,TIOSpace5,14,TIOSpace5);
+ c.titleTextAttributesTransformer=^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attributes){
+  NSMutableDictionary *m=[attributes mutableCopy];m[NSFontAttributeName]=TIODesignFont(TIODesignTextStyleHeadline);return m;
+ };
+ button.configuration=c;button.titleLabel.adjustsFontForContentSizeCategory=YES;
+ button.tintColor=accent;
+ /* Floor the height only for Auto Layout buttons: a frame-based button keeps its frame. */
+ static NSString *const floorID=@"TIODesign.buttonHeight";
+ if(!button.translatesAutoresizingMaskIntoConstraints){
+  BOOL found=NO;for(NSLayoutConstraint *k in button.constraints)if([k.identifier isEqualToString:floorID]){found=YES;break;}
+  if(!found){NSLayoutConstraint *k=[button.heightAnchor constraintGreaterThanOrEqualToConstant:TIOButtonHeight];k.identifier=floorID;k.active=YES;}
+ }
+}
+
+#pragma mark Lists
+
+static BOOL IsWarning(UIColor *color){
+ return [color isEqual:UIColor.systemRedColor]||[color isEqual:UIColor.systemOrangeColor]||
+        [color isEqual:TIODesignColor(TIODesignColorStatusDanger)]||[color isEqual:TIODesignColor(TIODesignColorStatusWarn)];
+}
+static UIColor *WarningToken(UIColor *color){
+ if([color isEqual:UIColor.systemRedColor])return TIODesignColor(TIODesignColorStatusDanger);
+ if([color isEqual:UIColor.systemOrangeColor])return TIODesignColor(TIODesignColorStatusWarn);
+ return color;
+}
+
+void TIODesignStyleRow(UITableViewCell *c){
+ UIColor *original=c.textLabel.textColor;BOOL disabled=(c.accessibilityTraits&UIAccessibilityTraitNotEnabled)!=0;
+ BOOL warning=IsWarning(original);
+ UIColor *tertiary=TIODesignColor(TIODesignColorLabelTertiary),*accent=TIODesignColor(TIODesignColorAccent);
+ c.backgroundColor=TIODesignColor(TIODesignColorBgRaised);
+ c.textLabel.textColor=disabled?tertiary:warning?WarningToken(original):TIODesignColor(TIODesignColorLabel);
+ c.textLabel.font=TIODesignFont(TIODesignTextStyleBody);c.detailTextLabel.font=TIODesignFont(TIODesignTextStyleSubheadline);
+ c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;
+ c.textLabel.adjustsFontForContentSizeCategory=c.detailTextLabel.adjustsFontForContentSizeCategory=YES;
+ UIColor *detail=c.detailTextLabel.textColor;
+ c.detailTextLabel.textColor=IsWarning(detail)?WarningToken(detail):TIODesignColor(TIODesignColorLabelSecondary);
+ c.imageView.tintColor=disabled?tertiary:warning?WarningToken(original):accent;c.tintColor=accent;
+ c.contentView.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(TIOSpace3,TIOSpace4,TIOSpace3,TIOSpace4);
+ if([c.accessoryView isKindOfClass:UISwitch.class])((UISwitch *)c.accessoryView).onTintColor=accent;
+ UIView *selected=[UIView new];selected.backgroundColor=TIODesignColor(TIODesignColorAccentSoft);c.selectedBackgroundView=selected;
+}
+
+void TIODesignStyleHeaderLabel(UILabel *label){
+ label.font=TIODesignFont(TIODesignTextStyleFootnote);
+ label.textColor=TIODesignColor(TIODesignColorLabelSecondary);label.adjustsFontForContentSizeCategory=YES;
+}
+
+/* Per-table proxy, retained by that table, weak original delegate. No global
+ * UIKit swizzling, no host-app appearance changes and no gesture interception. */
+@interface TIODesignTableTheme:NSObject<UITableViewDelegate>
+@property(nonatomic,weak) id<UITableViewDelegate> original;
+@end
+@implementation TIODesignTableTheme
+- (BOOL)respondsToSelector:(SEL)s{return [super respondsToSelector:s]||[self.original respondsToSelector:s];}
+- (id)forwardingTargetForSelector:(SEL)s{return [self.original respondsToSelector:s]?self.original:[super forwardingTargetForSelector:s];}
+- (void)tableView:(UITableView *)t willDisplayHeaderView:(UIView *)view forSection:(NSInteger)section{
+ if([self.original respondsToSelector:_cmd])[self.original tableView:t willDisplayHeaderView:view forSection:section];
+ if([view isKindOfClass:UITableViewHeaderFooterView.class])TIODesignStyleHeaderLabel(((UITableViewHeaderFooterView *)view).textLabel);
+}
+- (void)tableView:(UITableView *)t willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)p{
+ if([self.original respondsToSelector:_cmd])[self.original tableView:t willDisplayCell:c forRowAtIndexPath:p];
+ TIODesignStyleRow(c);
+}
+@end
+static char ThemeKey;
+void TIODesignStyleTable(UITableViewController *c){
+ UIColor *accent=TIODesignColor(TIODesignColorAccent);
+ UITableView *t=c.tableView;t.backgroundColor=TIODesignColor(TIODesignColorBg);t.tintColor=accent;c.view.tintColor=accent;
+ t.rowHeight=UITableViewAutomaticDimension;t.estimatedRowHeight=56;t.sectionHeaderTopPadding=TIOSpace3;
+ t.cellLayoutMarginsFollowReadableWidth=YES;t.separatorColor=TIODesignColor(TIODesignColorSeparator);
+ t.keyboardDismissMode=UIScrollViewKeyboardDismissModeInteractive;
+ TIODesignTableTheme *proxy=objc_getAssociatedObject(t,&ThemeKey);
+ if(!proxy){proxy=[TIODesignTableTheme new];objc_setAssociatedObject(t,&ThemeKey,proxy,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}
+ if(t.delegate!=proxy){proxy.original=t.delegate;t.delegate=proxy;}
+ c.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeNever;
+}
+
+/* Normalize only standard system surfaces in our navigation subtree. Preview
+ * canvases, maps, status colors and custom image rendering remain untouched. */
+void TIODesignStyleSurface(UIView *view){
+ UIColor *bg=view.backgroundColor,*accent=TIODesignColor(TIODesignColorAccent);
+ if([bg isEqual:UIColor.systemBackgroundColor]||[bg isEqual:UIColor.systemGroupedBackgroundColor])view.backgroundColor=TIODesignColor(TIODesignColorBg);
+ else if([bg isEqual:UIColor.secondarySystemGroupedBackgroundColor])view.backgroundColor=TIODesignColor(TIODesignColorBgRaised);
+ if([view isKindOfClass:UITextView.class]){UITextView *text=(id)view;text.tintColor=accent;text.adjustsFontForContentSizeCategory=YES;}
+ if([view isKindOfClass:UITextField.class]){UITextField *field=(id)view;field.tintColor=accent;field.textColor=TIODesignColor(TIODesignColorLabel);}
+ if([view isKindOfClass:UIButton.class]){
+  UIButton *button=(id)view;UIButtonConfiguration *c=button.configuration;
+  if([c.baseBackgroundColor isEqual:UIColor.systemIndigoColor]||[c.baseBackgroundColor isEqual:UIColor.systemBlueColor]){
+   c.baseBackgroundColor=TIODesignColor(TIODesignColorAccentFill);c.baseForegroundColor=TIODesignColor(TIODesignColorOnAccent);button.configuration=c;
+  }
+ }
+ for(UIView *child in view.subviews)TIODesignStyleSurface(child);
+}
+
+#pragma mark Hub icon
+
+static UIImage *RenderHubTile(UIColor *fill,UIColor *ink,NSString *name,UITraitCollection *traits){
+ UIImageSymbolConfiguration *config=[UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
+ UIImage *glyph=[UIImage systemImageNamed:name withConfiguration:config];
+ if(!glyph)glyph=[UIImage systemImageNamed:@"circle" withConfiguration:config];
+ glyph=[glyph imageWithTintColor:[ink resolvedColorWithTraitCollection:traits] renderingMode:UIImageRenderingModeAlwaysOriginal];
+ UIColor *resolved=[fill resolvedColorWithTraitCollection:traits];
+ UIGraphicsImageRendererFormat *format=[UIGraphicsImageRendererFormat preferredFormat];format.scale=0;format.opaque=NO;
+ CGFloat tile=TIOIconTile;
+ UIGraphicsImageRenderer *renderer=[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(tile,tile) format:format];
+ UIImage *image=[renderer imageWithActions:^(UIGraphicsImageRendererContext *context){
+  [resolved setFill];[[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0,0,tile,tile) cornerRadius:TIORadiusSM] fill];
+  CGSize size=glyph.size;
+  if(size.width>0&&size.height>0){
+   CGFloat scale=MIN(20/size.width,20/size.height);size=CGSizeMake(size.width*scale,size.height*scale);
+   [glyph drawInRect:CGRectMake((tile-size.width)/2,(tile-size.height)/2,size.width,size.height)];
+  }
+ }];
+ return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+UIImage *TIODesignHubIcon(NSString *symbol, NSInteger section){
+ static NSCache<NSString *,UIImage *> *cache;static dispatch_once_t once;
+ dispatch_once(&once,^{cache=[NSCache new];cache.countLimit=128;});
+ NSString *name=symbol.length?symbol:@"circle";
+ NSString *key=[NSString stringWithFormat:@"%@|%ld",name,(long)section];
+ UIImage *cached=[cache objectForKey:key];if(cached)return cached;
+ UIColor *fill=TIODesignColor(section==0?TIODesignColorAccentFill:section==1?TIODesignColorTileAssistant:
+                              section==2?TIODesignColorTileMedia:TIODesignColorTileDeveloper);
+ UIColor *ink=section==0?TIODesignColor(TIODesignColorOnAccent):UIColor.whiteColor;
+ UITraitCollection *lightTraits=[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleLight];
+ UITraitCollection *darkTraits=[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark];
+ UIImage *light=RenderHubTile(fill,ink,name,lightTraits),*dark=RenderHubTile(fill,ink,name,darkTraits);
+ [light.imageAsset registerImage:dark withTraitCollection:darkTraits];
+ [cache setObject:light forKey:key];return light;
+}
+
+#pragma mark Status and empty state
+
+/* A capsule: the radius is clamped to half the height, because a 999 pt mask would clip everything. */
+@interface TIODesignPillView:UIStackView
+@end
+@implementation TIODesignPillView
+- (void)layoutSubviews{[super layoutSubviews];self.layer.cornerRadius=MIN(TIORadiusPill,CGRectGetHeight(self.bounds)/2);}
+@end
+
+UIView *TIODesignStatusPill(TIODesignStatus status, NSString *word){
+ UIColor *color;NSString *symbol;
+ switch(status){
+  case TIODesignStatusOk:color=TIODesignColor(TIODesignColorStatusOk);symbol=@"checkmark.circle.fill";break;
+  case TIODesignStatusWarn:color=TIODesignColor(TIODesignColorStatusWarn);symbol=@"exclamationmark.triangle.fill";break;
+  case TIODesignStatusDanger:color=TIODesignColor(TIODesignColorStatusDanger);symbol=@"xmark.octagon.fill";break;
+  default:color=TIODesignColor(TIODesignColorLabelSecondary);symbol=@"circle.fill";break;
+ }
+ UIImageSymbolConfiguration *config=[UIImageSymbolConfiguration configurationWithTextStyle:UIFontTextStyleFootnote scale:UIImageSymbolScaleSmall];
+ UIImageView *icon=[[UIImageView alloc]initWithImage:[UIImage systemImageNamed:symbol withConfiguration:config]];
+ icon.tintColor=color;icon.contentMode=UIViewContentModeScaleAspectFit;icon.isAccessibilityElement=NO;icon.accessibilityElementsHidden=YES;
+ [icon setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+ UILabel *label=[UILabel new];label.text=word;label.font=TIODesignFontWeight(TIODesignTextStyleFootnote,UIFontWeightSemibold);
+ label.textColor=color;label.adjustsFontForContentSizeCategory=YES;label.numberOfLines=0;
+ UIStackView *stack=[[TIODesignPillView alloc]initWithArrangedSubviews:@[icon,label]];
+ stack.axis=UILayoutConstraintAxisHorizontal;stack.alignment=UIStackViewAlignmentCenter;stack.spacing=TIOSpace1;
+ stack.layoutMarginsRelativeArrangement=YES;stack.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(TIOSpace1,TIOSpace2,TIOSpace1,TIOSpace2);
+ stack.backgroundColor=status==TIODesignStatusNeutral?TIODesignColor(TIODesignColorBgSunken):[color colorWithAlphaComponent:.15];
+ stack.layer.cornerCurve=kCACornerCurveContinuous;stack.layer.masksToBounds=YES;
+ [stack setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+ stack.isAccessibilityElement=YES;stack.accessibilityLabel=word;stack.accessibilityTraits=UIAccessibilityTraitStaticText;
+ return stack;
+}
+
+UIView *TIODesignEmptyState(NSString *symbol, NSString *title, NSString *detail, NSString *actionTitle, void (^action)(void)){
+ UIImageSymbolConfiguration *config=[UIImageSymbolConfiguration configurationWithPointSize:38 weight:UIImageSymbolWeightRegular];
+ UIImageView *icon=[[UIImageView alloc]initWithImage:[UIImage systemImageNamed:symbol withConfiguration:config]];
+ icon.tintColor=TIODesignColor(TIODesignColorAccent);icon.contentMode=UIViewContentModeScaleAspectFit;
+ icon.isAccessibilityElement=NO;icon.accessibilityElementsHidden=YES;
+ UILabel *name=[UILabel new],*text=[UILabel new];
+ name.text=title;name.font=TIODesignFont(TIODesignTextStyleTitle3);name.textColor=TIODesignColor(TIODesignColorLabel);
+ text.text=detail;text.font=TIODesignFont(TIODesignTextStyleSubheadline);text.textColor=TIODesignColor(TIODesignColorLabelSecondary);
+ for(UILabel *l in @[name,text]){l.numberOfLines=0;l.textAlignment=NSTextAlignmentCenter;l.adjustsFontForContentSizeCategory=YES;}
+ name.accessibilityTraits|=UIAccessibilityTraitHeader;
+ NSMutableArray *rows=[@[icon,name,text] mutableCopy];
+ if(actionTitle.length&&action){
+  UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];
+  UIButtonConfiguration *c=[UIButtonConfiguration plainButtonConfiguration];
+  c.title=actionTitle;c.baseForegroundColor=TIODesignColor(TIODesignColorAccent);
+  c.contentInsets=NSDirectionalEdgeInsetsMake(TIOSpace3,TIOSpace4,TIOSpace3,TIOSpace4);
+  c.titleTextAttributesTransformer=^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attributes){
+   NSMutableDictionary *m=[attributes mutableCopy];m[NSFontAttributeName]=TIODesignFont(TIODesignTextStyleHeadline);return m;
+  };
+  button.configuration=c;button.titleLabel.adjustsFontForContentSizeCategory=YES;
+  [button.heightAnchor constraintGreaterThanOrEqualToConstant:TIOHitMin].active=YES;
+  void (^handler)(void)=[action copy];
+  [button addAction:[UIAction actionWithHandler:^(UIAction *a){handler();}] forControlEvents:UIControlEventTouchUpInside];
+  [rows addObject:button];
+ }
+ UIStackView *stack=[[UIStackView alloc]initWithArrangedSubviews:rows];
+ stack.axis=UILayoutConstraintAxisVertical;stack.alignment=UIStackViewAlignmentCenter;stack.spacing=TIOSpace3;
+ stack.layoutMarginsRelativeArrangement=YES;
+ stack.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(TIOSpace6,TIOSpace6,TIOSpace6,TIOSpace6);
+ return stack;
+}
+
+#pragma mark Lens preview
+
+void TIODesignStyleLensPreview(UIView *surface, NSString *summary){
+ surface.overrideUserInterfaceStyle=UIUserInterfaceStyleDark;
+ surface.backgroundColor=TIODesignColor(TIODesignColorLensBlack);
+ surface.layer.cornerRadius=TIORadiusMD;surface.layer.cornerCurve=kCACornerCurveContinuous;surface.clipsToBounds=YES;
+ surface.isAccessibilityElement=YES;surface.accessibilityLabel=summary;surface.accessibilityTraits=UIAccessibilityTraitImage;
+}
+
+UIView *TIODesignLensPreviewCard(UIView *content, NSString *summary, BOOL menu){
+ UIView *card=[UIView new];
+ card.backgroundColor=TIODesignColor(TIODesignColorBgRaised);
+ card.layer.cornerRadius=TIORadiusMD;card.layer.cornerCurve=kCACornerCurveContinuous;
+ UIView *surface=[UIView new];surface.translatesAutoresizingMaskIntoConstraints=NO;
+ TIODesignStyleLensPreview(surface,summary);
+ [card addSubview:surface];
+ if(content){
+  content.translatesAutoresizingMaskIntoConstraints=NO;[surface addSubview:content];
+  [NSLayoutConstraint activateConstraints:@[
+   [content.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor],[content.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
+   [content.topAnchor constraintEqualToAnchor:surface.topAnchor],[content.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor]]];
+ }
+ [NSLayoutConstraint activateConstraints:@[
+  [surface.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:TIOSpace3],
+  [surface.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-TIOSpace3],
+  [surface.topAnchor constraintEqualToAnchor:card.topAnchor constant:TIOSpace3],
+  [surface.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-TIOSpace3],
+  [surface.heightAnchor constraintEqualToAnchor:surface.widthAnchor multiplier:(menu?TIOLensMenuH:TIOLensPageH)/TIOLensPageW]]];
+ return card;
+}

@@ -295,6 +295,11 @@
     "tests/TMG6NavigationTests.m": {
       "status": "run",
       "group": "tmg6-navigation"
+    },
+    "TIODesignTests.m": {
+      "status": "run",
+      "group": "tio-design",
+      "note": "Host test: compiled TIODesign.inc tables equal docs/design-system/tokens.json."
     }
   }
 }

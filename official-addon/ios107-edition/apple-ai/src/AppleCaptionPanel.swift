@@ -42,7 +42,8 @@ import Translation
         hostAvailable = AppleCaptionHost.call("status")["available"] as? Bool == true
         glasses = hostAvailable && prefs.bool(forKey: "appleCaptionGlasses")
         if !hostAvailable { prefs.set(false, forKey: "appleCaptionGlasses") }
-        for view in [sourceView, targetView] { view.isEditable = false; view.font = .preferredFont(forTextStyle: .body) }
+        TIODesign.styleTable(tableView)
+        for view in [sourceView, targetView] { view.isEditable = false; TIODesign.styleReadOnlyText(view) }
         mic.onBuffer = { [weak self] buffer in self?.speech.offer(buffer) }
         mic.onFailure = { [weak self] _ in guard let self else { return }; self.stop(self.t("Microphone route changed; capture stopped.", "麦克风路由改变，已停止收音。")) }
         speech.onText = { [weak self] text, final in self?.receive(text, final: final) }
@@ -62,7 +63,7 @@ import Translation
     }
     public override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { [2,3].contains(indexPath.section) ? 150 : UITableView.automaticDimension }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil); cell.textLabel?.numberOfLines = 0; cell.detailTextLabel?.numberOfLines = 0
+        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil); cell.textLabel?.numberOfLines = 0; cell.detailTextLabel?.numberOfLines = 0; TIODesign.styleRow(cell)
         switch indexPath.section {
         case 0:
             cell.textLabel?.text = [t("Microphone", "麦克风"), t("Direction", "方向"), t("Glasses sync", "同步眼镜")][indexPath.row]

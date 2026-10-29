@@ -25,13 +25,13 @@ import UIKit
 
     override func viewDidLoad() {
         super.viewDidLoad(); title = "英语离线字幕"
-        view.backgroundColor = .systemGroupedBackground
+        TIODesign.styleTable(tableView)
         provider = CaptionTranslationRouter.Provider(rawValue: prefs.string(forKey: "offlineProvider") ?? "apple") ?? .apple
         router.select(provider)
         fastTranslation = prefs.object(forKey: "fastTranslation") == nil ? true : prefs.bool(forKey: "fastTranslation")
         // Leave CPU headroom for capture and CoreML while running both engines.
         router.hymtThreads = min(4, ProcessInfo.processInfo.activeProcessorCount)
-        for view in [sourceView, targetView] { view.isEditable = false; view.font = .preferredFont(forTextStyle: .body); view.backgroundColor = .clear }
+        for view in [sourceView, targetView] { view.isEditable = false; TIODesign.styleReadOnlyText(view) }
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "停止", style: .plain, target: self, action: #selector(stopTapped))
         speech.onText = { [weak self] text, final in self?.accept(text, final: final) }
         speech.onFailure = { [weak self] code in self?.stop("识别已停止：" + code) }
@@ -63,14 +63,14 @@ import UIKit
     override func tableView(_ tableView: UITableView, heightForRowAt path: IndexPath) -> CGFloat { path.section == 2 || path.section == 3 ? 150 : 64 }
     override func tableView(_ tableView: UITableView, cellForRowAt path: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
-        cell.detailTextLabel?.textColor = .secondaryLabel; cell.detailTextLabel?.numberOfLines = 2
+        TIODesign.styleRow(cell); cell.detailTextLabel?.numberOfLines = 2
         if path.section == 0 {
             cell.textLabel?.text = ["收音来源", "翻译方式", "同步眼镜字幕", "快速预译"][path.row]
             cell.detailTextLabel?.text = path.row == 0 ? (port?.name ?? "默认手机麦克风 · 点击选择") : path.row == 1 ? providerName : path.row == 2 ? (glasses ? "开启 · 仅显示，不启用眼镜录音" : "关闭 · 仅在手机显示") : (fastTranslation ? "开启 · 不等整句，边说边修正" : "关闭 · 等稳定语块后翻译")
             cell.accessoryType = .disclosureIndicator
         } else if path.section == 1 {
             cell.textLabel?.text = recording ? "停止收音与显示" : starting ? "正在准备… 点击取消" : "开始英语离线字幕"
-            cell.textLabel?.textColor = recording || starting ? .systemRed : .systemIndigo
+            cell.textLabel?.textColor = recording || starting ? TIODesign.color(.statusDanger) : TIODesign.color(.accent)
             cell.imageView?.image = UIImage(systemName: recording ? "stop.circle.fill" : "mic.circle.fill")
             cell.accessibilityIdentifier = "turbo.offline.start"
         } else if path.section == 2 || path.section == 3 {
