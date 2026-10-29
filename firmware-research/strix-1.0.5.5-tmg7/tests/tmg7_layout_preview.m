@@ -15,6 +15,7 @@
 #include "../src/common-v1/tio_hint.h"
 #include "../src/common-v1/tio_caret.h"
 #include "../src/app-runtime-v1/app_view.h"
+#include "../src/app-runtime-v1/app_shelf.h"
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
@@ -216,6 +217,15 @@ static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,b
    free(v);free(host);}
  }
  free(d);
+}
+// The firmware-built My Apps shelf (app_shelf.c), strict: title in band T, two caret focus items in band M and two in band B.
+static void Shelf(NSString *dir){
+ for(unsigned z=0;z<2;z++){language=z;
+  for(unsigned installed=0;installed<=4;installed+=2){TAPStore *st=calloc(1,sizeof *st);assert(st);
+   for(unsigned i=0;i<4;i++){TAPSlot *s=&st->slots[i];s->present=i<installed;snprintf(s->name,sizeof s->name,z?"%s":"%s",i==1?(z?"通勤助手 · 今日班次与换乘":"Commute · today's trains and transfers"):(z?"番茄时钟":"Focus"));}
+   uint8_t wire[512];size_t n=tap_shelf_wire(wire,st,z);char tag[32];snprintf(tag,sizeof tag,"shelf%u-%s",installed,z?"zh":"en");
+   RunWire(dir,tag,wire,n,true,true);free(st);}
+ }
 }
 static void AppRuntime(NSString *dir,NSString *board,int argc,char **argv){
  NSString *s=[NSString stringWithContentsOfFile:board encoding:NSUTF8StringEncoding error:nil];assert(s&&[s containsString:@"top: 202px; width: 48px; height: 6px"]&&[s containsString:@"const xs = [80, 400, 600]"]);   // caret 202/2 = 101 under actions at 152/2 = 76
@@ -477,5 +487,5 @@ static void Menu(NSString *dir,NSString *board,bool zh){
  gSurface=TIO_SURFACE_PAGE;
 }
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);
  puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}
