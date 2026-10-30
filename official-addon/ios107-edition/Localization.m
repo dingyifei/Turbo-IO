@@ -901,6 +901,7 @@ static const TIOStringRow Rows[]={
     {"tmg4.tiles.title","Tile order and visibility","入口顺序与显示"},
     {"tmg4.tiles.unavailable","Open the glasses launcher first, then read again. Requires TMG4.","请先打开眼镜主菜单再重新读取，需要 TMG4。"},
     {"tmg4.tiles.uncertain","No verified acknowledgment. Open the glasses menu and read again; no automatic retry.","未收到有效确认。请打开眼镜菜单并重新读取，不会自动重试。"},
+    {"tmg8.knob.detent","One item per 300-count detent, about 6.7 items per turn at 2000 counts per turn. Lists wrap from the last item to the first.","每 300 计数为一格，移动一项；每圈约 6.7 项（按每圈 2000 计数）。列表从最后一项回到第一项。"},
     {"tmg8.layout.carouselNeedsTMG8","The carousel needs glasses firmware TMG8. Nothing was sent.","轮播需要 TMG8 眼镜固件，未发送任何设置。"},
     {"tmg8.layout.confirmedCarousel","Confirmed by glasses: carousel, one item at a time%@","眼镜已确认：轮播 · 每次一项%@"},
     {"tmg8.layout.footer.carousel","One app at a time, with its status. Turn the knob to move; it wraps from the last app to the first.","一次显示一个应用及其状态。转动旋钮切换，从最后一个应用会回到第一个。"},

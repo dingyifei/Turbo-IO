@@ -39,7 +39,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{(void)tableView;return 5;}
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{(void)tableView;return section==0?8:section==1?5:section==2?3:section==3?Rows().count:3;}
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section{(void)tableView;return @[TIOText(@"tmg4.runtime.status"),TIOText(@"tmg4.knob.title"),TIOText(@"采集"),TIOText(@"资源与耗时"),TIOText(@"诊断完整性")][section];}
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section{(void)tableView;return section==0?TIOText(@"tmg4.runtime.footer"):section==1?TIOText(@"tmg4.knob.instructions"):nil;}
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section{(void)tableView;return section==0?TIOText(@"tmg4.runtime.footer"):section==1?[NSString stringWithFormat:@"%@\n\n%@",TIOText(@"tmg4.knob.instructions"),TIOText(@"tmg8.knob.detent")]:nil;}
 /* Start, Finish and Cancel are capsule buttons: the one that moves the measurement forward is filled,
  * Cancel is soft, and an action that does not apply right now is dimmed and not tappable. */
 - (void)styleKnobAction:(UITableViewCell *)c row:(NSInteger)row status:(NSDictionary *)status calibration:(NSDictionary *)cal{
