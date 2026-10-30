@@ -74,8 +74,8 @@ void TDCObserveEvent(NSDictionary *e){
 - (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return 6;}
 - (UITableViewCell *)tableView:(UITableView *)v cellForRowAtIndexPath:(NSIndexPath *)p{
  UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;
- c.textLabel.text=@[TIOText(@"演示数据 · 258×196 单卡"),TIOText(/*i18n:ui*/@"读取当前卡片顺序"),TIOText(@"发送测试卡并排第一"),TIOText(@"切换演示数值，验证进度条"),TIOText(@"移除本测试卡"),TIOText(Note)][p.row];
- if(p.row==0)c.detailTextLabel.text=TIOText(@"需先刷入 TDC1 固件。Codex 99%；Claude 5h 90% / Weekly 85%；MacBook Pro · M5 Max，RAM可用37.5/128GB，SSD可用1.4/2TB。这不是账户实时报表。时间、电池不改，待办顺延。");
+ c.textLabel.text=@[TIOText(@"tmg8.card.title"),TIOText(/*i18n:ui*/@"读取当前卡片顺序"),TIOText(@"发送测试卡并排第一"),TIOText(@"切换演示数值，验证进度条"),TIOText(@"移除本测试卡"),TIOText(Note)][p.row];
+ if(p.row==0)c.detailTextLabel.text=TIOText(@"tmg8.card.detail");
  if(p.row==3)c.detailTextLabel.text=TIOText(@"25% / 50% / 75%，RAM 64/128GB；再次点发送恢复原值。");
  TIOStyleResearchCell(c);c.selectionStyle=p.row==0||p.row==5?UITableViewCellSelectionStyleNone:UITableViewCellSelectionStyleDefault;return c;
 }
