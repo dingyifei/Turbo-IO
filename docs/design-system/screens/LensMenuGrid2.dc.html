@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses menu grid v2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1160px; height: 640px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 12px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Proposed · TMG8 grid layout, 2 rows (540 × 220) · outline icons and state dots · {{focusName}} focused</div>
+  <div role="img" aria-label="Grid menu with outline icons; a small dot marks apps that are running" style="width: 1080px; height: 440px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <div style="position: absolute; left: 0; top: 0; width: 540px; height: 220px; transform: scale(2); transform-origin: 0 0;">
+      <div style="position: absolute; left: 40px; top: 22px; font-size: 16px; line-height: 1; color: #007700;">10:00</div>
+      <svg style="position: absolute; left: 470px; top: 23px;" width="30" height="14" viewBox="0 0 30 14" aria-hidden="true"><rect x="1" y="1" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="4" y="4" width="15" height="6" fill="#007700"/><rect x="26" y="4" width="2" height="6" fill="#007700"/></svg>
+      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="6">
+      <div style="position: absolute; left: {{t.x}}px; top: {{t.y}}px; width: {{t.s}}px; height: {{t.s}}px;">
+        <svg width="100%" height="100%" viewBox="0 0 48 48" aria-hidden="true"><path d="{{t.d}}" fill="none" stroke="{{t.c}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <sc-if value="{{t.dot}}" hint-placeholder-val="{{false}}"><div style="position: absolute; left: {{t.dx}}px; top: {{t.dy}}px; width: 5px; height: 5px; border-radius: 50%; background: #007700;"></div></sc-if>
+      <div style="position: absolute; left: {{t.lx}}px; width: 120px; top: {{t.ly}}px; text-align: center; font-size: 14px; line-height: 1; color: #007700; opacity: {{t.lo}};">{{t.name}}</div>
+      </sc-for>
+      <div style="position: absolute; left: {{caretX}}px; top: {{caretY}}px; width: 24px; height: 3px; border-radius: 1.5px; background: #00ff00;"></div>
+      <div style="position: absolute; left: 0; width: 540px; top: 184px; text-align: center; font-size: 24px; line-height: 1; font-weight: 500; color: #00ff00;">{{focusName}}</div>
+    </div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 228px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 344px; width: 1012px; height: 76px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 424px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 80px; font-size: 20px; font-weight: 700; color: #ff7a1a;">T</div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 354px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <button onClick="{{back}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c3020; color: #dbf67a;">◀ Wheel back</button>
+    <button onClick="{{fwd}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c3020; color: #dbf67a;">Wheel forward ▶</button>
+    <span style="width: 16px;"></span>
+    <sc-for list="{{scen}}" as="s" hint-placeholder-count="3">
+    <button onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: {{s.bg}}; color: {{s.fg}};">{{s.label}}</button>
+    </sc-for>
+  </div>
+  <div style="font-size: 13px; line-height: 18px; color: #a39fa8;">Same grid as TMG7 with the new outline icons. A 5 px mid-intensity dot marks a tile with live state (playing, timer running, navigating). It doesn't show for "Phone not connected". The grid also wraps, and moves one tile per 300 counts.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":false},"$preview":{"width":1160,"height":640}}'>
+const TILES = [{"k": "music", "name": "Music", "d": "M10 35a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M28 31a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M20 35V11l18-4v24", "cx": 92, "cy": 76}, {"k": "navigation", "name": "Navigation", "d": "M41 7L8 21.5l14 4.5 4.5 14z", "cx": 270, "cy": 76}, {"k": "pomodoro", "name": "Pomodoro", "d": "M10 28a14 14 0 1 0 28 0a14 14 0 1 0 -28 0M24 14c-2-4-6-6-10-5 1 4 5 6 10 5zM24 14c2-4 6-6 10-5-1 4-5 6-10 5zM24 14V8M24 28v-6M24 28l4 3", "cx": 448, "cy": 76}, {"k": "camera", "name": "Camera", "d": "M11 14h6l3-5h8l3 5h6a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V19a5 5 0 0 1 5-5zM17 27a7 7 0 1 0 14 0a7 7 0 1 0 -14 0", "cx": 92, "cy": 133}, {"k": "my-apps", "name": "My apps", "d": "M11.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM11.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5z", "cx": 270, "cy": 133}, {"k": "recorder", "name": "Recorder", "d": "M24 6h0a6 6 0 0 1 6 6v10a6 6 0 0 1 -6 6h-0a6 6 0 0 1 -6 -6v-10a6 6 0 0 1 6 -6zM11 22a13 13 0 0 0 26 0M24 35v6M17 41h14", "cx": 448, "cy": 133}];
+const STATUS = {
+  live: { navigation: '1.2 km to go', music: 'Playing · Blinding Lights', pomodoro: '18:42 left' },
+  idle: {},
+  phoneoff: { navigation: 'Phone not connected', music: 'Phone not connected', pomodoro: '18:42 left' }
+};
+const SCEN = [['live', 'Something running'], ['idle', 'Nothing running'], ['phoneoff', 'Phone not connected']];
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { focus: 1, scen: 'live' }; }
+  renderVals() {
+    const n = TILES.length, f = this.state.focus, scen = this.state.scen, st = STATUS[scen];
+    const tiles = TILES.map((t, i) => {
+      const on = i === f, s = on ? 32 : 30;
+      const running = !!st[t.k] && st[t.k] !== 'Phone not connected';
+      return { d: t.d, name: t.name, s, c: on ? '#00ff00' : '#007700', x: t.cx - s / 2, y: t.cy - s / 2,
+        dot: running, dx: t.cx + 17, dy: t.cy - 20, lx: t.cx - 60, ly: t.cy + 20, lo: on ? 0 : 1 };
+    });
+    return {
+      bands: this.props.bands ?? false,
+      tiles,
+      focusName: TILES[f].name,
+      caretX: TILES[f].cx - 12, caretY: TILES[f].cy + 20,
+      back: () => this.setState({ focus: (f - 1 + n) % n }),
+      fwd: () => this.setState({ focus: (f + 1) % n }),
+      scen: SCEN.map(([k, label]) => ({ label, on: String(k === scen), bg: k === scen ? '#dbf67a' : '#2c2630', fg: k === scen ? '#17131b' : '#f0ede5', pick: () => this.setState({ scen: k }) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

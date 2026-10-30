@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone menu layout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1320px; height: 970px; box-sizing: border-box; padding: 40px; display: flex; gap: 32px; background: #e9e9ee; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <sc-for list="{{phones}}" as="p" hint-placeholder-count="3">
+  <div style="display: flex; flex-direction: column; gap: 12px; width: 390px;">
+    <div style="font-size: 13px; font-weight: 600; color: #3a3a3c; letter-spacing: .02em;">Proposed C12 · {{p.caption}}</div>
+    <div style="width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; background: {{p.bg}}; color: {{p.label}}; box-shadow: 0 0 0 1px {{p.sep}};">
+      <div style="height: 54px;"></div>
+      <div style="display: flex; align-items: center; padding: 0 4px; height: 44px;">
+        <button aria-label="Back to Turbo" style="height: 44px; border: 0; background: transparent; color: {{p.accent}}; display: flex; align-items: center; gap: 4px; font-size: 17px; padding: 0 8px;"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="{{p.accent}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Turbo</button>
+      </div>
+      <div style="padding: 2px 20px 12px; font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: .4px;">Menu layout</div>
+      <div style="margin: 0 16px; padding: 16px; border-radius: 26px; background: {{p.raised}}; display: flex; flex-direction: column; gap: 10px;">
+        <div role="img" aria-label="{{p.previewLabel}}" style="height: 120px; border-radius: 12px; background: #000000; overflow: hidden;">
+          <svg width="100%" height="120" viewBox="0 0 540 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <text x="40" y="38" font-size="16" fill="#007700">10:00</text>
+            <rect x="470" y="24" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="473" y="27" width="15" height="6" fill="#007700"/>
+            <sc-for list="{{p.icons}}" as="it" hint-placeholder-count="6">
+            <g transform="translate({{it.x}} {{it.y}}) scale({{it.k}})" opacity="{{it.o}}"><path d="{{it.d}}" fill="none" stroke="{{it.c}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+            </sc-for>
+            <text x="270" y="{{p.nameY}}" text-anchor="middle" font-size="24" font-weight="500" fill="#00ff00">{{p.focusName}}</text>
+            <text x="270" y="159" text-anchor="middle" font-size="16" fill="#00b000">{{p.status}}</text>
+          </svg>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: {{p.sec}};"><span>On your glasses · approximate</span><span>540 × 220</span></div>
+      </div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Layout</div>
+      <div style="margin: 0 16px; padding: 2px; border-radius: 9px; background: {{p.sunken}}; display: flex; height: 32px;" role="radiogroup" aria-label="Menu layout">
+        <sc-for list="{{p.segs}}" as="s" hint-placeholder-count="3">
+        <button role="radio" aria-checked="{{s.on}}" aria-disabled="{{s.disabled}}" onClick="{{s.pick}}" style="flex: 1; border: 0; border-radius: 7px; background: {{s.bg}}; color: {{s.fg}}; font-size: 13px; font-weight: 600; box-shadow: {{s.shadow}};">{{s.label}}</button>
+        </sc-for>
+      </div>
+      <div style="padding: 8px 36px 0; font-size: 13px; line-height: 18px; color: {{p.sec}};">{{p.footer}}</div>
+      <div style="padding: 22px 36px 7px; font-size: 13px; color: {{p.sec}};">Tiles</div>
+      <div style="margin: 0 16px; border-radius: 26px; background: {{p.raised}}; overflow: hidden;">
+        <sc-for list="{{p.tiles}}" as="t" hint-placeholder-count="4">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 16px; box-shadow: inset 0 -1px 0 {{p.sep}};">
+          <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><path d="M1 1h16M1 6h16M1 11h16" stroke="{{p.ter}}" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span style="flex: 1; font-size: 17px;">{{t}}</span>
+          <span role="switch" aria-checked="true" aria-label="{{t}}" style="width: 51px; height: 31px; border-radius: 999px; background: {{p.accent}}; position: relative; flex: none;"><span style="position: absolute; right: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,.25);"></span></span>
+        </div>
+        </sc-for>
+      </div>
+      <div style="position: absolute; left: 16px; right: 16px; bottom: 34px; display: flex; flex-direction: column; gap: 10px;">
+        <button style="height: 50px; border-radius: 999px; border: 0; background: {{p.fill}}; color: {{p.on}}; font-size: 17px; font-weight: 600;">Save to glasses</button>
+      </div>
+    </div>
+  </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":970}}'>
+const APPS = [{"name": "Navigation", "d": "M41 7L8 21.5l14 4.5 4.5 14z"}, {"name": "Music", "d": "M10 35a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M28 31a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M20 35V11l18-4v24"}, {"name": "Pomodoro", "d": "M10 28a14 14 0 1 0 28 0a14 14 0 1 0 -28 0M24 14c-2-4-6-6-10-5 1 4 5 6 10 5zM24 14c2-4 6-6 10-5-1 4-5 6-10 5zM24 14V8M24 28v-6M24 28l4 3"}, {"name": "Camera", "d": "M11 14h6l3-5h8l3 5h6a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V19a5 5 0 0 1 5-5zM17 27a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"}, {"name": "My apps", "d": "M11.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM11.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5z"}, {"name": "Recorder", "d": "M24 6h0a6 6 0 0 1 6 6v10a6 6 0 0 1 -6 6h-0a6 6 0 0 1 -6 -6v-10a6 6 0 0 1 6 -6zM11 22a13 13 0 0 0 26 0M24 35v6M17 41h14"}];
+const THEMES = {
+  light: { bg: '#f2f2f7', raised: '#ffffff', sunken: '#e5e5ea', label: '#000000', sec: '#6c6c70', ter: '#8a8a8e', sep: '#c6c6c8', accent: '#4d6c00', fill: '#4d6c00', on: '#ffffff', segOn: '#ffffff' },
+  dark: { bg: '#17131b', raised: '#221d25', sunken: '#2c2630', label: '#f0ede5', sec: '#a39fa8', ter: '#766f7c', sep: '#3a3340', accent: '#dbf67a', fill: '#dbf67a', on: '#17131b', segOn: '#4a4350' }
+};
+const SEGS = [['carousel', 'Carousel'], ['rows2', '2 rows'], ['rows3', '3 rows']];
+function lens(layout) {
+  const f = 1;
+  if (layout === 'carousel') {
+    const slots = [[-1, 48, '#007700', 146], [0, 80, '#00ff00', 270], [1, 48, '#007700', 394], [2, 36, '#003800', 484], [-2, 36, '#003800', 56]];
+    return { icons: slots.map(([d, s, c, cx]) => { const a = APPS[(f + d + APPS.length) % APPS.length]; return { d: a.d, c, k: s / 48, x: cx - s / 2, y: 68 - s / 2, o: 1 }; }),
+      nameY: 202, status: 'Playing · Blinding Lights' };
+  }
+  const rows = layout === 'rows2' ? 2 : 3, s = rows === 2 ? 30 : 26, cols = [92, 270, 448];
+  const ys = rows === 2 ? [76, 133] : [70, 112, 154];
+  const icons = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < 3; c++) {
+    const i = r * 3 + c; if (i >= APPS.length) continue;
+    const on = i === f, z = on ? s + 2 : s;
+    icons.push({ d: APPS[i].d, c: on ? '#00ff00' : '#007700', k: z / 48, x: cols[c] - z / 2, y: ys[r] - z / 2, o: 1 });
+  }
+  return { icons, nameY: 204, status: '' };
+}
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { layout: 'carousel' }; }
+  renderVals() {
+    const L = this.state.layout;
+    const mk = (theme, fw, caption) => {
+      const t = THEMES[theme], tmg8 = fw === 'TMG8';
+      const layout = !tmg8 && L === 'carousel' ? 'rows2' : L;
+      const lv = lens(layout);
+      return Object.assign({}, t, lv, {
+        caption,
+        focusName: APPS[1].name,
+        previewLabel: 'Glasses menu preview, ' + (layout === 'carousel' ? 'carousel' : layout === 'rows2' ? '2 rows' : '3 rows') + ', Music focused',
+        footer: tmg8
+          ? (layout === 'carousel' ? 'One app at a time, with its status. Turn the knob to move; it wraps from the last app to the first.' : 'All apps on a grid. A small dot marks apps that are running.')
+          : 'Carousel needs glasses firmware TMG8. These glasses run TMG7.',
+        tiles: ['Music', 'Navigation', 'Pomodoro', 'Camera'],
+        segs: SEGS.map(([k, label]) => {
+          const disabled = !tmg8 && k === 'carousel', on = k === layout;
+          return { label, on: String(on), disabled: String(disabled),
+            bg: on ? t.segOn : 'transparent', fg: disabled ? t.ter : t.label,
+            shadow: on ? '0 3px 8px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04)' : 'none',
+            pick: () => { if (!disabled) this.setState({ layout: k }); } };
+        })
+      });
+    };
+    return { phones: [mk('light', 'TMG8', 'Light · glasses on TMG8'), mk('dark', 'TMG8', 'Dark · glasses on TMG8'), mk('light', 'TMG7', 'Light · glasses on TMG7')] };
+  }
+}
+</script>
+</body>
+</html>

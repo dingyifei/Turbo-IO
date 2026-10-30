@@ -11,4 +11,5 @@ The layout grid every glasses page uses: a reserved top strip, then bands T, M a
 - Nothing goes in y 0–12 or y 172–180.
 - A spatial element (the navigation map) may span bands in the right column, anchored to the bottom of B.
 - The menu (540×220) uses the same order: status in T (y 12–56), the icon grid in M (y 56–172), and the focused item's label in B (y 172–212), with y 212–220 reserved.
+- The carousel menu layout (TMG8) keeps that order: clock and battery in T, the focused 80px icon (rising from T into M, between the clock and battery) with its live status line (`lens-high`) under it in M, and the focused name in B. Neighbours are 48px `lens-mid` and 36px `lens-track`. 80px is the largest icon size that keeps every glyph under `lens-peak-max`.
 - In firmware these come from `tio_ui.h` (`TIO_BAND_T`, `TIO_BAND_M`, `TIO_BAND_B`), all derived from `TIO_PPD`.

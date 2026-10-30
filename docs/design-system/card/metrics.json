@@ -1,0 +1,20 @@
+{
+ "current": {
+  "lit_share": 0.198,
+  "total_light": 4858.94,
+  "total_light_per_px": 0.098,
+  "peak_25": 0.395,
+  "peak_25_reencoded": 0.656,
+  "peak_25_encoded": 0.477,
+  "v_centre": 90.861
+ },
+ "proposed": {
+  "lit_share": 0.142,
+  "total_light": 2045.384,
+  "total_light_per_px": 0.041,
+  "peak_25": 0.338,
+  "peak_25_reencoded": 0.61,
+  "peak_25_encoded": 0.389,
+  "v_centre": 128.109
+ }
+}

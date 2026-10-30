@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses wake screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1600px; height: 900px; box-sizing: border-box; padding: 40px; display: flex; gap: 40px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif; color: #f0ede5;">
+  <div style="width: 600px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="font-size: 22px; line-height: 30px; font-weight: 600;">Wake screen: what we know, and what a redesign needs</div>
+    <div style="font-size: 15px; line-height: 22px;">It is the stock launcher's <b>BoardView</b> (BoardView.cpp in nuttx_ap.bin):</div>
+    <div style="font-size: 15px; line-height: 22px; color: #a39fa8;">
+      • <b style="color:#f0ede5">SysinfoWidget</b>: date, weather, battery, connection, the LifeLog icon<br>
+      • <b style="color:#f0ede5">Card stack</b> with page dots: Weather, To-do, Schedule, Stock, Mail, World clock, and A2UI cards (ours goes here)<br>
+      • <b style="color:#f0ede5">Minimal mode</b>: a large clock plus battery<br>
+      • A lottie overlay when the knob wakes the glasses
+    </div>
+    <div style="font-size: 15px; line-height: 22px;"><b>What we control today:</b> only the inside of our 256 × 194 card slot (the dc_text hook). The clock, date, battery, weather, dots and the layout are all stock.</div>
+    <div style="font-size: 15px; line-height: 22px;"><b>To redesign the rest:</b></div>
+    <div style="font-size: 15px; line-height: 22px; color: #a39fa8;">
+      1. A photo of the current wake screen through the lens. There is no screenshot or render anywhere, and positions, fonts and intensities are unknown.<br>
+      2. Static RE of the 1.0.5.5 addresses for BoardView, SysinfoWidget and MinimalClockWidget (they're named in the 1.0.4.12 symbols). Read-only, no device.<br>
+      3. New patch sites, at least one per redrawn widget. That's beyond TMG8's "no new sites" rule, so it would be its own line (TMG9), with its own audit and OTA cross-check.
+    </div>
+    <div style="font-size: 13px; line-height: 19px; color: #a39fa8;">The sketch on the right is a target to aim the RE at, not a spec. It follows the design system: the time is the primary item, at the bottom in lens-hero; date and weather are ambient, in band T; the card slot keeps its stock size, so the A2UI cards (ours and RayNeo's) still fit.</div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Target sketch · 540 × 220 (stock geometry unknown)</div>
+    <svg width="1080" height="440" viewBox="0 0 540 220" role="img" aria-label="Wake screen sketch: date and weather at the top left, the time large at the bottom left, the card on the right" style="border-radius: 16px; background: #000; display: block;">
+      <text x="40" y="35" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif" font-size="18" fill="#007700">Thu 30 Oct</text>
+      <g fill="none" stroke="#007700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M44 62a6 6 0 0 1 11-3 5 5 0 0 1 1 10H45a4 4 0 0 1-1-7z"/></g>
+      <text x="64" y="71" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif" font-size="18" fill="#007700">14° · rain at 16:00</text>
+      <svg x="226" y="23" width="30" height="14" viewBox="0 0 30 14"><rect x="1" y="1" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="4" y="4" width="15" height="6" fill="#007700"/><rect x="26" y="4" width="2" height="6" fill="#007700"/></svg>
+      <text x="40" y="168" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif" font-size="48" font-weight="500" fill="#00ff00">10:00</text>
+      <rect x="276" y="13" width="256" height="194" rx="8" fill="none" stroke="#ff7a1a" stroke-width="1" stroke-dasharray="4 4"/>
+      <g transform="translate(276 13)"><text x="6" y="24.7" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#007700" text-anchor="start">MacBook Pro · M5 Max</text><text x="6" y="46.7" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#00b000" text-anchor="start">RAM 37.5 of 128 GB free</text><text x="6" y="66.7" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#00b000" text-anchor="start">SSD 1.4 of 2 TB free</text><text x="6" y="122.7" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#007700" text-anchor="start">Codex 7d</text><text x="6" y="157.4" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" fill="#00ff00" text-anchor="start">99%</text><rect x="6" y="172" width="70" height="3" rx="1.5" fill="#003800"/><rect x="6" y="172" width="69" height="3" rx="1.5" fill="#00b000"/><text x="89" y="122.7" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#007700" text-anchor="start">Claude 5h</text><text x="89" y="157.4" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" fill="#00ff00" text-anchor="start">90%</text><rect x="89" y="172" width="70" height="3" rx="1.5" fill="#003800"/><rect x="89" y="172" width="63" height="3" rx="1.5" fill="#00b000"/><text x="172" y="122.7" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#007700" text-anchor="start">Claude 7d</text><text x="172" y="157.4" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" fill="#00ff00" text-anchor="start">85%</text><rect x="172" y="172" width="70" height="3" rx="1.5" fill="#003800"/><rect x="172" y="172" width="60" height="3" rx="1.5" fill="#00b000"/><text x="250" y="184.9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#00ff00" text-anchor="start"></text></g>
+      <circle cx="404" cy="214" r="2" fill="#00b000"/><circle cx="412" cy="214" r="2" fill="#003800"/><circle cx="420" cy="214" r="2" fill="#003800"/>
+    </svg>
+    <div style="font-size: 13px; color: #a39fa8;">Orange dashed box: the stock A2UI card slot (256 × 194); it shows the proposed dashboard card. The dots page through the card stack.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

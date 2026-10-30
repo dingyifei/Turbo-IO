@@ -17,6 +17,10 @@
   {
    "id": "glasses",
    "name": "Glasses"
+  },
+  {
+   "id": "round2",
+   "name": "Round 2"
   }
  ],
  "boards": {
@@ -125,7 +129,7 @@
    "y": 2000,
    "w": 1160,
    "h": 560,
-   "title": "Glasses · Reader",
+   "title": "Glasses · Reader (feature removed in TMG4)",
    "page": "glasses",
    "is_interactive": true
   },
@@ -134,7 +138,7 @@
    "y": 2000,
    "w": 1160,
    "h": 560,
-   "title": "Glasses · Ride",
+   "title": "Glasses · Ride (feature removed in TMG4)",
    "page": "glasses",
    "is_interactive": true
   },
@@ -143,7 +147,7 @@
    "y": 2680,
    "w": 1160,
    "h": 560,
-   "title": "Glasses · English",
+   "title": "Glasses · English (feature removed in TMG4)",
    "page": "glasses",
    "is_interactive": true
   },
@@ -173,6 +177,66 @@
    "title": "Glasses · Captions",
    "page": "glasses",
    "is_interactive": true
+  },
+  "LensMenuCarousel.dc.html": {
+   "x": 0,
+   "y": 300,
+   "w": 1160,
+   "h": 640,
+   "title": "Round 2 · Glasses · Menu carousel",
+   "page": "round2",
+   "is_interactive": true
+  },
+  "LensMenuGrid2.dc.html": {
+   "x": 1640,
+   "y": 300,
+   "w": 1160,
+   "h": 640,
+   "title": "Round 2 · Glasses · Menu grid v2",
+   "page": "round2",
+   "is_interactive": true
+  },
+  "IconSheet.dc.html": {
+   "x": 0,
+   "y": 1060,
+   "w": 2380,
+   "h": 1400,
+   "title": "Round 2 · Glasses · Icon sheet",
+   "page": "round2"
+  },
+  "PhoneMenuLayout.dc.html": {
+   "x": 0,
+   "y": 2580,
+   "w": 1320,
+   "h": 970,
+   "title": "Round 2 · Phone · Menu layout",
+   "page": "round2",
+   "is_interactive": true
+  },
+  "OptionANavTitle.dc.html": {
+   "x": 0,
+   "y": 3700,
+   "w": 1160,
+   "h": 1240,
+   "title": "Round 2 · Option A · Navigation title (chosen)",
+   "page": "round2",
+   "is_interactive": true
+  },
+  "LensDashCard.dc.html": {
+   "x": 0,
+   "y": 5060,
+   "w": 1200,
+   "h": 860,
+   "title": "Round 2 · Glasses · Dashboard card",
+   "page": "round2"
+  },
+  "LensWake.dc.html": {
+   "x": 1640,
+   "y": 5060,
+   "w": 1600,
+   "h": 900,
+   "title": "Round 2 · Glasses · Wake screen (needs RE)",
+   "page": "round2"
   }
  },
  "order": [
@@ -193,7 +257,14 @@
   "LensEnglish.dc.html",
   "LensApp.dc.html",
   "LensVoice.dc.html",
-  "LensCaptions.dc.html"
+  "LensCaptions.dc.html",
+  "LensMenuCarousel.dc.html",
+  "LensMenuGrid2.dc.html",
+  "IconSheet.dc.html",
+  "PhoneMenuLayout.dc.html",
+  "OptionANavTitle.dc.html",
+  "LensDashCard.dc.html",
+  "LensWake.dc.html"
  ],
  "notes": {
   "phone-title": {
@@ -311,7 +382,7 @@
   "n-lensreader": {
    "x": 1200,
    "y": 2000,
-   "text": "Reader is the exception to one primary item: running text fills M and B at 20px. Position and chapter are ambient in T.",
+   "text": "Not built: this feature was removed in TMG4 and is absent from FW6/FW7. The board is kept for reference only. Reader is the exception to one primary item: running text fills M and B at 20px. Position and chapter are ambient in T.",
    "w": 320,
    "fill": "teal",
    "page": "glasses"
@@ -319,7 +390,7 @@
   "n-lensride": {
    "x": 2840,
    "y": 2000,
-   "text": "Ride. The arrival time and plate, the two things you check at the curb, go in band B. The car description goes in M and the trip state in T.",
+   "text": "Not built: this feature was removed in TMG4 and is absent from FW6/FW7. The board is kept for reference only. Ride. The arrival time and plate, the two things you check at the curb, go in band B. The car description goes in M and the trip state in T.",
    "w": 320,
    "fill": "teal",
    "page": "glasses"
@@ -327,7 +398,7 @@
   "n-lensenglish": {
    "x": 1200,
    "y": 2680,
-   "text": "English. The word and its meaning go in B, the example sentence in M, and the deck position in T.",
+   "text": "Not built: this feature was removed in TMG4 and is absent from FW6/FW7. The board is kept for reference only. English. The word and its meaning go in B, the example sentence in M, and the deck position in T.",
    "w": 320,
    "fill": "teal",
    "page": "glasses"
@@ -355,6 +426,62 @@
    "w": 320,
    "fill": "teal",
    "page": "glasses"
+  },
+  "round2-title": {
+   "x": 0,
+   "y": 0,
+   "text": "Round 2 (TMG8 + C12): carousel menu, live tile status, a 2× faster knob with wrap, and calmer outline icons. For review before any code.",
+   "kind": "title1",
+   "maxW": 3560,
+   "page": "round2"
+  },
+  "n-r2-carousel": {
+   "x": 1200,
+   "y": 300,
+   "text": "Carousel (new third layout, next to 2 rows and 3 rows). Album-library style: the focused app is an 80 px icon that rises into the empty space beside the clock, with its live status under it at lens-high and its name in band B, as in every menu. Neighbours are dimmed so the eye lands on one thing. Use the buttons to wheel through all 13 apps; it wraps. Status is only what the glasses already know (music, timer, navigation, phone link); stock apps show their name only.",
+   "w": 340,
+   "fill": "green",
+   "page": "round2"
+  },
+  "n-r2-grid": {
+   "x": 2840,
+   "y": 300,
+   "text": "Grid v2. The same TMG7 grid with outline icons, plus a small mid-intensity dot on tiles with live state. The focused name stays in band B. It moves one tile per 300 counts and wraps.",
+   "w": 340,
+   "fill": "green",
+   "page": "round2"
+  },
+  "n-r2-icons": {
+   "x": 2420,
+   "y": 1060,
+   "text": "Icons. Solid fills made the brightest 1° square up to 0.84; outlines bring every icon under 0.45 (0.38 max at 64 px). This answers \"the icons are too bright\". The SVGs become the committed source, and an encoder test regenerates focus_menu_icons.h byte for byte.",
+   "w": 340,
+   "fill": "green",
+   "page": "round2"
+  },
+  "n-r2-phone": {
+   "x": 1360,
+   "y": 2580,
+   "text": "Phone · Menu layout. A segmented control (Carousel, 2 rows, 3 rows) above the tile list, and the lens preview follows the choice. On TMG7 glasses Carousel is greyed out with the reason underneath; TMG7 never receives the new layout value. Tap the segments to try it.",
+   "w": 340,
+   "fill": "green",
+   "page": "round2"
+  },
+  "r2-titles": {
+   "x": 0,
+   "y": 3580,
+   "text": "Title options. Chosen: A, navigation title. While a route runs, the next turn shows in band T of the glasses home (carousel and grid), and the carousel icon steps from 80 to 64 px. B (a shared title bar with the phone) was not chosen and is not included.",
+   "kind": "title2",
+   "maxW": 3600,
+   "page": "round2"
+  },
+  "r2-home": {
+   "x": 0,
+   "y": 4960,
+   "text": "Home / dashboard. The dashboard card can be redesigned now inside TMG8 (only card.c changes). The rest of the wake screen is stock and needs a photo, RE and new patch sites, so it would be a separate line.",
+   "kind": "title2",
+   "maxW": 3600,
+   "page": "round2"
   }
  },
  "designSystems": [

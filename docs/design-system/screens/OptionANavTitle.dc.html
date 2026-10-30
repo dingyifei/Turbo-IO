@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Option A navigation title</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1160px; height: 1240px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 12px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 22px; line-height: 30px; font-weight: 600; color: #f0ede5;">Option A · Navigation title: while a route runs, the next turn stays visible at the top of the home screen</div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Carousel · route running · Music focused</div>
+  <div role="img" aria-label="Carousel with the next turn, 200 metres right onto Market Street, across the top" style="width: 1080px; height: 440px; position: relative; overflow: hidden; border-radius: 16px; background: #000000; flex: none;">
+    <div style="position: absolute; left: 0; top: 0; width: 540px; height: 220px; transform: scale(2); transform-origin: 0 0;">
+      <div style="position: absolute; left: 40px; top: 21px; font-size: 18px; line-height: 1; color: #007700;">10:00</div>
+      <sc-if value="{{route}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; width: 540px; top: 20px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 18px; line-height: 1; color: #00b000;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V11a3 3 0 0 1 3-3h10M15 4l4 4-4 4" fill="none" stroke="#00b000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>200 m · Market St</span></div>
+      </sc-if>
+      <svg style="position: absolute; left: 470px; top: 24px;" width="30" height="14" viewBox="0 0 30 14" aria-hidden="true"><rect x="1" y="1" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="4" y="4" width="15" height="6" fill="#007700"/><rect x="26" y="4" width="2" height="6" fill="#007700"/></svg>
+      <sc-for list="{{car}}" as="it" hint-placeholder-count="13">
+      <div style="position: absolute; left: {{it.x}}px; top: {{it.y}}px; width: {{it.s}}px; height: {{it.s}}px; opacity: {{it.o}}; transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease, opacity 160ms ease;">
+        <svg width="100%" height="100%" viewBox="0 0 48 48" aria-hidden="true"><path d="{{it.d}}" fill="none" stroke="{{it.c}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <sc-if value="{{it.dot}}" hint-placeholder-val="{{false}}"><div style="position: absolute; left: {{it.dx}}px; top: {{it.dy}}px; width: 5px; height: 5px; border-radius: 50%; background: #007700;"></div></sc-if>
+      </sc-for>
+      <div style="position: absolute; left: 258px; top: 127px; width: 24px; height: 3px; border-radius: 1.5px; background: #00ff00;"></div>
+      <div style="position: absolute; left: 0; width: 540px; top: 140px; text-align: center; font-size: 16px; line-height: 1; color: #00b000;">{{carStatus}}</div>
+      <div style="position: absolute; left: 0; width: 540px; top: 180px; text-align: center; font-size: 24px; line-height: 1; font-weight: 500; color: #00ff00;">{{carName}}</div>
+    </div>
+  </div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Grid (2 rows) · route running · Navigation focused</div>
+  <div role="img" aria-label="Grid with the same next-turn line across the top" style="width: 1080px; height: 440px; position: relative; overflow: hidden; border-radius: 16px; background: #000000; flex: none;">
+    <div style="position: absolute; left: 0; top: 0; width: 540px; height: 220px; transform: scale(2); transform-origin: 0 0;">
+      <div style="position: absolute; left: 40px; top: 21px; font-size: 18px; line-height: 1; color: #007700;">10:00</div>
+      <sc-if value="{{route}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; width: 540px; top: 20px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 18px; line-height: 1; color: #00b000;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V11a3 3 0 0 1 3-3h10M15 4l4 4-4 4" fill="none" stroke="#00b000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>200 m · Market St</span></div>
+      </sc-if>
+      <svg style="position: absolute; left: 470px; top: 24px;" width="30" height="14" viewBox="0 0 30 14" aria-hidden="true"><rect x="1" y="1" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="4" y="4" width="15" height="6" fill="#007700"/><rect x="26" y="4" width="2" height="6" fill="#007700"/></svg>
+      <sc-for list="{{grid}}" as="it" hint-placeholder-count="6">
+      <div style="position: absolute; left: {{it.x}}px; top: {{it.y}}px; width: {{it.s}}px; height: {{it.s}}px; opacity: {{it.o}}; transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease, opacity 160ms ease;">
+        <svg width="100%" height="100%" viewBox="0 0 48 48" aria-hidden="true"><path d="{{it.d}}" fill="none" stroke="{{it.c}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <sc-if value="{{it.dot}}" hint-placeholder-val="{{false}}"><div style="position: absolute; left: {{it.dx}}px; top: {{it.dy}}px; width: 5px; height: 5px; border-radius: 50%; background: #007700;"></div></sc-if>
+      </sc-for>
+      <sc-for list="{{labels}}" as="t" hint-placeholder-count="5"><div style="position: absolute; left: {{t.x}}px; width: 120px; top: {{t.y}}px; text-align: center; font-size: 14px; line-height: 1; color: #007700;">{{t.name}}</div></sc-for>
+      <div style="position: absolute; left: 258px; top: 96px; width: 24px; height: 3px; border-radius: 1.5px; background: #00ff00;"></div>
+      <div style="position: absolute; left: 0; width: 540px; top: 184px; text-align: center; font-size: 24px; line-height: 1; font-weight: 500; color: #00ff00;">Navigation</div>
+    </div>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <button onClick="{{back}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c3020; color: #dbf67a;">◀ Wheel back</button>
+    <button onClick="{{fwd}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c3020; color: #dbf67a;">Wheel forward ▶</button>
+    <span style="width: 16px;"></span>
+    <button onClick="{{toggle}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c2630; color: #f0ede5;">{{toggleLabel}}</button>
+  </div>
+  <div style="font-size: 13px; line-height: 19px; color: #a39fa8;">Cost: the carousel's centre icon goes back to 64 px (band T is needed for the turn line). The line uses data the glasses already have (nav_service: manoeuvre, distance, road), updates at most once a second in a fixed slot, and disappears when the route ends or goes stale. On pages other than Navigation it would stay off, so it only lives on the home screen.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1160,"height":1240}}'>
+const APPS = [{"k": "navigation", "name": "Navigation", "d": "M41 7L8 21.5l14 4.5 4.5 14z"}, {"k": "music", "name": "Music", "d": "M10 35a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M28 31a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M20 35V11l18-4v24"}, {"k": "pomodoro", "name": "Pomodoro", "d": "M10 28a14 14 0 1 0 28 0a14 14 0 1 0 -28 0M24 14c-2-4-6-6-10-5 1 4 5 6 10 5zM24 14c2-4 6-6 10-5-1 4-5 6-10 5zM24 14V8M24 28v-6M24 28l4 3"}, {"k": "camera", "name": "Camera", "d": "M11 14h6l3-5h8l3 5h6a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V19a5 5 0 0 1 5-5zM17 27a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"}, {"k": "my-apps", "name": "My apps", "d": "M11.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM11.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5z"}, {"k": "recorder", "name": "Recorder", "d": "M24 6h0a6 6 0 0 1 6 6v10a6 6 0 0 1 -6 6h-0a6 6 0 0 1 -6 -6v-10a6 6 0 0 1 6 -6zM11 22a13 13 0 0 0 26 0M24 35v6M17 41h14"}, {"k": "live-captions", "name": "Live captions", "d": "M12 9h24a6 6 0 0 1 6 6v12a6 6 0 0 1-6 6H22l-8 7v-7h-2a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6zM14 18h20M14 25h12"}, {"k": "live-assist", "name": "Live assist", "d": "M24 6c1.6 10.4 7.6 16.4 18 18-10.4 1.6-16.4 7.6-18 18-1.6-10.4-7.6-16.4-18-18 10.4-1.6 16.4-7.6 18-18z"}, {"k": "todo", "name": "To-do", "d": "M15 9h18a4 4 0 0 1 4 4v25a4 4 0 0 1 -4 4h-18a4 4 0 0 1 -4 -4v-25a4 4 0 0 1 4 -4zM20 5h8a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-3a2 2 0 0 1 2 -2zM17 27l5 5 9-10"}, {"k": "teleprompter", "name": "Teleprompter", "d": "M11 7h26a4 4 0 0 1 4 4v26a4 4 0 0 1 -4 4h-26a4 4 0 0 1 -4 -4v-26a4 4 0 0 1 4 -4zM14 30h20M14 37h12M24 23V12M19 17l5-5 5 5"}, {"k": "lifelog", "name": "Lifelog", "d": "M15 6h21a3 3 0 0 1 3 3v30a3 3 0 0 1 -3 3h-21a3 3 0 0 1 -3 -3v-30a3 3 0 0 1 3 -3zM8 13h6M8 21h6M8 29h6M8 37h6M21 20v8M25.5 16v16M30 19v10M34.5 22v4"}, {"k": "do-not-disturb", "name": "Do not disturb", "d": "M30 7a17 17 0 1 0 11 25 13.5 13.5 0 0 1-11-25z"}, {"k": "display-test", "name": "Display test", "d": "M9 9h30a3 3 0 0 1 3 3v24a3 3 0 0 1 -3 3h-30a3 3 0 0 1 -3 -3v-24a3 3 0 0 1 3 -3zM16 24a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M24 9v6M24 33v6M6 24h6M36 24h6"}];
+const BY = Object.fromEntries(APPS.map(a => [a.k, a]));
+function carousel(f, big) {
+  const n = APPS.length, SLOT = big ? [[80, '#00ff00'], [48, '#007700'], [36, '#003800']] : [[64, '#00ff00'], [40, '#007700'], [32, '#003800']];
+  const DX = big ? [0, 124, 214, 300] : [0, 118, 206, 290], cy = big ? 68 : 92;
+  return APPS.map((a, i) => {
+    let d = ((i - f) % n + n) % n; if (d > n / 2) d -= n;
+    const ad = Math.min(Math.abs(d), 3), [s, c] = SLOT[Math.min(ad, 2)];
+    return { d: a.d, s, c, x: 270 + Math.sign(d) * DX[ad] - s / 2, y: cy - s / 2, o: ad >= 3 ? 0 : 1, dot: false, dx: 0, dy: 0 };
+  });
+}
+const GRID = ["music", "navigation", "pomodoro", "camera", "my-apps", "recorder"], COLS = [92, 270, 448], ROWS = [76, 133];
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { focus: 1, route: true }; }
+  renderVals() {
+    const f = this.state.focus, n = APPS.length, route = this.state.route;
+    const st = { navigation: route ? '1.2 km to go' : '', music: 'Playing · Blinding Lights', pomodoro: '18:42 left' };
+    const grid = GRID.map((k, i) => { const on = k === 'navigation', s = on ? 32 : 30, cx = COLS[i % 3], cy = ROWS[Math.floor(i / 3)];
+      return { d: BY[k].d, s, c: on ? '#00ff00' : '#007700', x: cx - s / 2, y: cy - s / 2, o: 1, dot: !!st[k], dx: cx + 17, dy: cy - 20 }; });
+    return {
+      route, car: carousel(f, false), carName: APPS[f].name, carStatus: st[APPS[f].k] || '', grid,
+      labels: GRID.map((k, i) => ({ k, name: BY[k].name, x: COLS[i % 3] - 60, y: ROWS[Math.floor(i / 3)] + 20 })).filter(t => t.k !== 'navigation'),
+      back: () => this.setState({ focus: (f - 1 + n) % n }), fwd: () => this.setState({ focus: (f + 1) % n }),
+      toggle: () => this.setState({ route: !route }), toggleLabel: route ? 'End route' : 'Start route'
+    };
+  }
+}
+</script>
+</body>
+</html>

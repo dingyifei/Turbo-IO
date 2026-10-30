@@ -95,6 +95,15 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
 
 **7. Update rate.** Navigation data arrives at no more than 1 Hz, so layout must not reflow on each update. Fix the slots and change only the text inside them.
 
+**8. Brightness is measured, not judged.** Glare comes from local hot spots, such as a dense filled glyph, not from total light. The rule:
+- No 1° square may average more than `lens-peak-max` (0.45) in linear light (the mean of level^2.2 over a 25×25 px window).
+- The one band-B primary readout (the turn arrow, the hero timer) may reach `lens-peak-max-primary` (0.65).
+- Unfocused art stays at or below `lens-peak-max-unfocused` (0.20).
+- Mini-app art outside band B is capped at `lens-mid`.
+- Every host render passes the brightness gate, using the same metric as the Lens Brightness Audit dashboard.
+
+**9. Knob.** Every list moves one item per `lens-wheel-detent` (300 raw counts, about 6.7 items per turn) and wraps from the last item to the first. Input lockouts are 200 ms on pages and 500 ms in music.
+
 ## Iconography
 
 - **Phone:** SF Symbols only, in `label` or `accent`.
@@ -102,7 +111,7 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
   - Tile colors by section: Glasses `accent-fill`/`on-accent`, Assistant `tile-assistant`, Media `tile-media`, Developer `tile-developer`, each with a white glyph.
   - No custom image icons.
 - **Glasses:**
-  - Menu icons are the existing 17 four-bit 48×48 glyphs (`focus_menu_icons.h`), drawn at 32 or 40px.
+  - Menu icons are 13 outline glyphs on a 48×48 grid with a 2.6-unit round stroke and no fills. The SVG sources are the single source of truth, encoded to 4 bpp in `focus_menu_icons.h`. They are drawn at 80px (carousel centre), 48 and 36px (carousel neighbours), 32px (2-row grid) or 28px (3-row grid). The focused peak is at most 0.44 at 80px, under `lens-peak-max`; larger sizes thicken the strokes past it.
   - App and card icons are 1-bit (`mono1-msb`).
   - Turn arrows are drawn as 64×64 strokes 8px wide.
   - All of them are single-ink `lens-full`, or `lens-mid` when unfocused.

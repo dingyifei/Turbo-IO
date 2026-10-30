@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses menu carousel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1160px; height: 640px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 12px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif;">
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Proposed · TMG8 carousel layout (540 × 220) · {{focusName}} focused · {{pos}}</div>
+  <div role="img" aria-label="Carousel menu: {{focusName}} in the centre, the apps before and after it dimmed at the sides" style="width: 1080px; height: 440px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+    <div style="position: absolute; left: 0; top: 0; width: 540px; height: 220px; transform: scale(2); transform-origin: 0 0;">
+      <div style="position: absolute; left: 40px; top: 22px; font-size: 16px; line-height: 1; color: #007700;">10:00</div>
+      <svg style="position: absolute; left: 470px; top: 23px;" width="30" height="14" viewBox="0 0 30 14" aria-hidden="true"><rect x="1" y="1" width="24" height="12" rx="2" fill="none" stroke="#007700" stroke-width="2"/><rect x="4" y="4" width="15" height="6" fill="#007700"/><rect x="26" y="4" width="2" height="6" fill="#007700"/></svg>
+      <sc-for list="{{items}}" as="it" hint-placeholder-count="13">
+      <div style="position: absolute; left: {{it.x}}px; top: {{it.y}}px; width: {{it.s}}px; height: {{it.s}}px; opacity: {{it.o}}; transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease, opacity 160ms ease;">
+        <svg width="100%" height="100%" viewBox="0 0 48 48" aria-hidden="true"><path d="{{it.d}}" fill="none" stroke="{{it.c}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 160ms ease;"/></svg>
+      </div>
+      </sc-for>
+      <div style="position: absolute; left: 258px; top: {{caretY}}px; width: 24px; height: 3px; border-radius: 1.5px; background: #00ff00; transition: top 160ms ease;"></div>
+      <sc-if value="{{route}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; width: 540px; top: 20px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 18px; line-height: 1; color: #00b000;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V11a3 3 0 0 1 3-3h10M15 4l4 4-4 4" fill="none" stroke="#00b000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>200 m · Market St</span></div>
+      </sc-if>
+      <div style="position: absolute; left: 0; width: 540px; top: 180px; text-align: center; font-size: 24px; line-height: 1; font-weight: 500; color: #00ff00;">{{focusName}}</div>
+      <div style="position: absolute; left: 0; width: 540px; top: {{statusY}}px; text-align: center; font-size: 16px; line-height: 1; color: #00b000;">{{status}}</div>
+    </div>
+    <sc-if value="{{bands}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; left: 32px; top: 24px; width: 1012px; height: 84px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 112px; width: 1012px; height: 228px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 32px; top: 344px; width: 1012px; height: 76px; border: 2px dashed #ff7a1a;"></div>
+      <div style="position: absolute; left: 0; top: 424px; width: 1080px; height: 16px; background: rgba(255,122,26,.18);"></div>
+      <div style="position: absolute; right: 44px; top: 80px; font-size: 20px; font-weight: 700; color: #ff7a1a;">T</div>
+      <div style="position: absolute; right: 44px; top: 122px; font-size: 20px; font-weight: 700; color: #ff7a1a;">M</div>
+      <div style="position: absolute; right: 44px; top: 354px; font-size: 20px; font-weight: 700; color: #ff7a1a;">B</div>
+    </sc-if>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <button onClick="{{back}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c3020; color: #dbf67a;">◀ Wheel back</button>
+    <button onClick="{{fwd}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: #2c3020; color: #dbf67a;">Wheel forward ▶</button>
+    <span style="width: 16px;"></span>
+    <sc-for list="{{scen}}" as="s" hint-placeholder-count="3">
+    <button onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; background: {{s.bg}}; color: {{s.fg}};">{{s.label}}</button>
+    </sc-for>
+  </div>
+  <div style="font-size: 13px; line-height: 18px; color: #a39fa8;">One app per 300 knob counts (about 6.7 per turn, so all 13 in two turns), wrapping from the last app to the first. Navigation title (option A): while a route runs, the next turn sits in band T and the centre icon shrinks to 64 px to make room. Otherwise the icon is 80 px at full, rising into the empty space beside the clock; neighbours 48 px at mid (0x77); outer 36 px at track (0x38). 80 px is the largest size where every icon stays under lens-peak-max (max 0.44); at 88 px the strokes get thick enough to reach 0.48. The name sits in band B (as in every menu) and the status line in band M at lens-high. Status shows only what the glasses already know.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bands":{"editor":"boolean","default":false},"$preview":{"width":1160,"height":640}}'>
+const APPS = [{"k": "navigation", "name": "Navigation", "d": "M41 7L8 21.5l14 4.5 4.5 14z"}, {"k": "music", "name": "Music", "d": "M10 35a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M28 31a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M20 35V11l18-4v24"}, {"k": "pomodoro", "name": "Pomodoro", "d": "M10 28a14 14 0 1 0 28 0a14 14 0 1 0 -28 0M24 14c-2-4-6-6-10-5 1 4 5 6 10 5zM24 14c2-4 6-6 10-5-1 4-5 6-10 5zM24 14V8M24 28v-6M24 28l4 3"}, {"k": "camera", "name": "Camera", "d": "M11 14h6l3-5h8l3 5h6a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V19a5 5 0 0 1 5-5zM17 27a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"}, {"k": "my-apps", "name": "My apps", "d": "M11.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 8h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM11.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5zM30.5 27h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5z"}, {"k": "recorder", "name": "Recorder", "d": "M24 6h0a6 6 0 0 1 6 6v10a6 6 0 0 1 -6 6h-0a6 6 0 0 1 -6 -6v-10a6 6 0 0 1 6 -6zM11 22a13 13 0 0 0 26 0M24 35v6M17 41h14"}, {"k": "live-captions", "name": "Live captions", "d": "M12 9h24a6 6 0 0 1 6 6v12a6 6 0 0 1-6 6H22l-8 7v-7h-2a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6zM14 18h20M14 25h12"}, {"k": "live-assist", "name": "Live assist", "d": "M24 6c1.6 10.4 7.6 16.4 18 18-10.4 1.6-16.4 7.6-18 18-1.6-10.4-7.6-16.4-18-18 10.4-1.6 16.4-7.6 18-18z"}, {"k": "todo", "name": "To-do", "d": "M15 9h18a4 4 0 0 1 4 4v25a4 4 0 0 1 -4 4h-18a4 4 0 0 1 -4 -4v-25a4 4 0 0 1 4 -4zM20 5h8a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-3a2 2 0 0 1 2 -2zM17 27l5 5 9-10"}, {"k": "teleprompter", "name": "Teleprompter", "d": "M11 7h26a4 4 0 0 1 4 4v26a4 4 0 0 1 -4 4h-26a4 4 0 0 1 -4 -4v-26a4 4 0 0 1 4 -4zM14 30h20M14 37h12M24 23V12M19 17l5-5 5 5"}, {"k": "lifelog", "name": "Lifelog", "d": "M15 6h21a3 3 0 0 1 3 3v30a3 3 0 0 1 -3 3h-21a3 3 0 0 1 -3 -3v-30a3 3 0 0 1 3 -3zM8 13h6M8 21h6M8 29h6M8 37h6M21 20v8M25.5 16v16M30 19v10M34.5 22v4"}, {"k": "do-not-disturb", "name": "Do not disturb", "d": "M30 7a17 17 0 1 0 11 25 13.5 13.5 0 0 1-11-25z"}, {"k": "display-test", "name": "Display test", "d": "M9 9h30a3 3 0 0 1 3 3v24a3 3 0 0 1 -3 3h-30a3 3 0 0 1 -3 -3v-24a3 3 0 0 1 3 -3zM16 24a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M24 9v6M24 33v6M6 24h6M36 24h6"}];
+const STATUS = {
+  live: { navigation: '1.2 km to go', music: 'Playing · Blinding Lights', pomodoro: '18:42 left' },
+  idle: {},
+  phoneoff: { navigation: 'Phone not connected', music: 'Phone not connected', pomodoro: '18:42 left' }
+};
+const SCEN = [['live', 'Something running'], ['idle', 'Nothing running'], ['phoneoff', 'Phone not connected']];
+const BIG = { slot: [[80, '#00ff00'], [48, '#007700'], [36, '#003800']], dx: [0, 124, 214, 300], cy: 68, caret: 114, status: 146 };
+const SMALL = { slot: [[64, '#00ff00'], [40, '#007700'], [32, '#003800']], dx: [0, 118, 206, 290], cy: 92, caret: 127, status: 140 };
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { focus: 1, scen: 'live' }; }
+  renderVals() {
+    const n = APPS.length, f = this.state.focus, st = STATUS[this.state.scen], route = this.state.scen === 'live', L = route ? SMALL : BIG;
+    const items = APPS.map((a, i) => {
+      let d = ((i - f) % n + n) % n; if (d > n / 2) d -= n;
+      const ad = Math.min(Math.abs(d), 3);
+      const [s, c] = L.slot[Math.min(ad, 2)];
+      const cx = 270 + Math.sign(d) * L.dx[ad];
+      return { d: a.d, s, c, x: cx - s / 2, y: L.cy - s / 2, o: ad >= 3 ? 0 : 1 };
+    });
+    return {
+      bands: this.props.bands ?? false,
+      items, route, caretY: L.caret, statusY: L.status,
+      focusName: APPS[f].name,
+      pos: (f + 1) + ' of ' + n,
+      status: st[APPS[f].k] || '',
+      back: () => this.setState({ focus: (f - 1 + n) % n }),
+      fwd: () => this.setState({ focus: (f + 1) % n }),
+      scen: SCEN.map(([k, label]) => ({ label, on: String(k === this.state.scen), bg: k === this.state.scen ? '#dbf67a' : '#2c2630', fg: k === this.state.scen ? '#17131b' : '#f0ede5', pick: () => this.setState({ scen: k }) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

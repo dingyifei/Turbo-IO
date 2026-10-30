@@ -55,7 +55,9 @@
  X1(LensPPD,"lens-ppd",24.8) X1(LensPageW,"lens-page-w",540) X1(LensPageH,"lens-page-h",180) \
  X1(LensMenuH,"lens-menu-h",220) X1(LensReserveTop,"lens-reserve-top",12) \
  X1(LensReserveBottom,"lens-reserve-bottom",8) X1(LensInsetX,"lens-inset-x",16) \
- X1(LensHintMs,"lens-hint-ms",3000) X1(LensMoveMs,"lens-move-ms",160)
+ X1(LensHintMs,"lens-hint-ms",3000) X1(LensMoveMs,"lens-move-ms",160) \
+ X1(LensPeakMax,"lens-peak-max",0.45) X1(LensPeakMaxPrimary,"lens-peak-max-primary",0.65) \
+ X1(LensPeakMaxUnfocused,"lens-peak-max-unfocused",0.20) X1(LensWheelDetent,"lens-wheel-detent",300)
 
 /* Pairs: X2(token name, first suffix, first, second suffix, second). Bands and
  * the core zone are (start, end) rows or columns; the caret is (width, height);
