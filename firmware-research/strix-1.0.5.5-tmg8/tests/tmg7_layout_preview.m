@@ -847,6 +847,26 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
  gSurface=TIO_SURFACE_PAGE;
 }
 
+// ---- TMG8 menu matrix: every layout x route on/off x phone linked/unlinked x language, with the tile that shows all of it (Navigation) focused ----
+// menu-matrix-<layout>-<route|noroute>-<linked|unlinked>-<lang>.png. A route with the phone unlinked draws no title (nt_title needs the link) and the
+// carousel stays at its no-route geometry; every combination goes through the same layout and brightness gate as the rest.
+static const TSLive kRouteUnlinked={.phone=false,.pomodoro=true,.pomodoro_ms=18*60000+42000,.nav_active=true,.nav_remaining_m=1200,.nav_turn=true,.nav_icon=TN_RIGHT,.nav_turn_m=200,.nav_road="Market St"};
+static void MenuMatrix(NSString *dir,bool zh){
+ language=zh;gSurface=TIO_SURFACE_MENU;unsigned made=0;
+ static const struct {const char *tag;unsigned rows;} layouts[]={{"carousel",FM_CAROUSEL},{"rows2",2},{"rows3",3}};
+ for(unsigned l=0;l<3;l++)for(unsigned r=0;r<2;r++)for(unsigned k=0;k<2;k++){
+  const bool route=r==0,linked=k==0;const TSLive *live=route?(linked?&kRoute:&kRouteUnlinked):(linked?&kLive:&kOffline);
+  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);
+  TTConfig config;TTVisible tiles;assert(tt_unrank(0,0,&config)&&tt_compact(&config,&tiles));const unsigned sel=8;assert(tiles.count>sel);
+  if(layouts[l].rows==FM_CAROUSEL){TSState st;memset(&st,0,sizeof st);ts_state(tiles.ids[sel],live,language,&st);BuildCarousel(host,v,0,sel,route&&linked,live,st.line[0]?st.line:NULL);}
+  else BuildMenu(host,v,layouts[l].rows,0,sel,live);
+  char name[96];snprintf(name,sizeof name,"menu-matrix-%s-%s-%s-%s",layouts[l].tag,route?"route":"noroute",linked?"linked":"unlinked",zh?"zh":"en");Gate(host,name,true);
+  CheckTitle(host,v,live);assert(v->title_on==(route&&linked));
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(fm_view_close(v));free(v);free(host);made++;}
+ assert(made==12);gSurface=TIO_SURFACE_PAGE;
+ printf("PASS tmg8 menu matrix (%s): carousel, 2 rows, 3 rows x route on/off x phone linked/unlinked\n",zh?"ZH":"EN");
+}
+
 // ---- Dashboard card (LensDashCard, tmg8): the production dc_render (src/dashboard-v1/card.c) with host widgets, 256x194 -------------------------
 // The card is a raster on the wake screen, not a lens surface: it has its own 6 px safe area and no bands, so it is checked against the board's
 // proposed SVG (strings, sizes, intensities, positions) and measured with MeasureRaster like every other render. native.c draws the same boxes.
@@ -933,7 +953,7 @@ static void Card(NSString *dir,NSString *board){
  gCard=NULL;free(host);
 }
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);NSString *cardBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensDashCard.dc.html"];Card(dir,cardBoard);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);MenuMatrix(dir,false);MenuMatrix(dir,true);NSString *cardBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensDashCard.dc.html"];Card(dir,cardBoard);
  {const char *env=getenv("TIO_BRIGHTNESS_JSON");WriteBrightness(env&&*env?[NSString stringWithUTF8String:env]:[dir stringByAppendingPathComponent:@"brightness.json"]);
   unsigned bad=0;for(unsigned i=0;i<gRowCount;i++)bad+=gRows[i].bad!=0;
   if(bad){printf("FAIL brightness gate: %u of %u renders over the 1 degree limits (0.45, band-B primary 0.65, unfocused icons 0.20)\n",bad,gRowCount);return 1;}

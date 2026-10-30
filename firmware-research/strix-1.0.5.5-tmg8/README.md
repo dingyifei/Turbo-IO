@@ -2,7 +2,7 @@
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below. Before the Round 2 commits land it builds the same AP as TMG7. The phone pins stay on TMG7 until the ZIP8 re-pin. The TMG7 sections below are historical until updated; the test files keep their tmg7 names until the test-retarget step.
+TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below. Before the Round 2 commits land it builds the same AP as TMG7. The phone pins stay on TMG7 until the ZIP8 re-pin. The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
 
 ## TMG8 caps bit and the carousel layout value
 
@@ -117,6 +117,15 @@ Only text that does not fit step 4 ends in an ellipsis (about 140 CJK characters
 ## Menu icon art (Round 2)
 
 The 13 menu icons are the Round 2 set. Sources and masters live in `assets/menu-icons/` (`svg/NN-name.svg` is the source of truth; `png/NN-name.png` are 48x48 masters rasterised with `rsvg-convert -w 48 -h 48 -b black`, version recorded in `assets/menu-icons/README.md`). `tools/encode_icons.py` turns the masters into `src/focus-v1/focus_menu_icons.h` (4 bpp, even pixel high nibble, 24 B stride, nibble = level/17; 13 x 1152 B, `sizeof fm_icon4 == 14976` unchanged). `tests/tmg8_icons_test.py` (the `tmg8-icons` group in the phone `test.py`) proves the committed header is byte-identical to the regeneration from the masters. Gains are unchanged: unfocused 0x77, focused 0xFF. The art is the only change in this step; the carousel sizes (80 / 48 / 36 px) come with the carousel layout.
+
+## Host gates, previews and the phone test.py (TMG8)
+
+`python3 tests/tmg7_host_test.py --out DIR [--brightness PATH]` is the TMG8 host gate (the file keeps its TMG7 name). Beyond the TMG7 list in the "Host gates" section below it runs the carousel and tile-state menu tests, `src/dashboard-v1/test_card.c`, the layout gate over every page, the SDK samples and the 20 gallery packages, the brightness gate (`brightness.json`, see "Brightness gate" above) and its independent cross-check.
+
+- **Previews.** The layout gate writes every render to `DIR/preview/*.png`, English and Chinese, at the device size: every page, the focus, lyrics (all fit steps), navigation, dashboard card, mini-app and shelf renders, and the menu in all three layouts. The host run for the candidate is kept at `logs/tmg8/final-preview/`.
+- **Menu matrix.** `menu-matrix-<layout>-<route|noroute>-<linked|unlinked>-<en|zh>.png` renders carousel, 2 rows and 3 rows (layout) with the Navigation tile focused, with a live route or none, and with the phone linked or not, 24 files. Each goes through the same layout and brightness gate as every other render. Linked with a route shows the band-T turn title (the carousel moves to its route geometry); unlinked shows "Phone not connected" and no title even though the route data is present, and no state dots in the grid for the phone-fed tiles. The host script fails if any of the 24 files is missing.
+- **DS1 layout tests are unchanged.** Bands, reserved rows, 16 px text floor and the no-filled-panel rule are enforced on every widget of every render, the menu matrix included.
+- **Phone `test.py`** (`official-addon/ios107-edition`) now audits the supplied ZIP with this tree's `build.py`, runs the `tmg8-host` group (one run; the TMG7 host group is gone with the TMG7 retarget) and the `tmg8-*` and `tmg4-*` groups against this tree, and compares the phone's shared-source copies with this tree. The `pins` and `archive` groups need ZIP8 pins and stay red until the phone is re-pinned (phone pins stay TMG7 until the ZIP8 step). Any source edit needs a repin (`build.py --repin`) copied into `build-inputs.json`.
 
 # TMG7 candidate (design-system fork)
 

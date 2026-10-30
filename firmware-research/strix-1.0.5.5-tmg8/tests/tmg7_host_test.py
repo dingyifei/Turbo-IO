@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""TMG7 host gate: design tokens, transient hint, focus caret and page layout.
+"""TMG8 host gate (file keeps its TMG7 name): design tokens, transient hint, focus caret and page layout.
 
 Builds tests/tmg7_ui_test.c (tokens, hint, caret) with ASan/UBSan at the default 24.8 px/deg and at other
 ppd values 22..27; the page layouts are fitted to 24.8 only and must refuse any other value. Then builds and runs the layout gate
 (tests/tmg7_layout_preview.m), which renders every page EN and ZH to PNG and checks each
 widget against its band, the reserved rows, the 16 px text floor and the no-filled-panel rule.
-TMG8: the same run measures every render's 1 degree peak and lit share (the brightness gate, tests/lens_brightness.h), fails above
+TMG8 adds the carousel, the live tile state, the navigation title, the lyric fit and the dashboard card to the layout gate, and a menu matrix (every layout x route x phone link x language). The same run measures every render's 1 degree peak and lit share (the brightness gate, tests/lens_brightness.h), fails above
 0.45 (band-B primary 0.65, unfocused icons 0.20) and writes brightness.json (--brightness PATH, default OUT/brightness.json); then
 tests/tmg8_brightness_test.py cross-checks the metric and a sample of the renders against an independent implementation.
 No device I/O."""
@@ -103,8 +103,15 @@ def main():
     layout = run([exe, a.out / 'preview', a.board] + ['%s=%s' % (p.stem, p) for p in paths], a.out / 'tmg7-layout.log', env)
     if 'PASS tmg7 layout gate' not in layout or 'PASS tmg8 brightness gate' not in layout or 'PASS board LensDashCard' not in layout:
         sys.exit('tmg7 layout gate did not report PASS')
+    # TMG8 menu matrix: 3 layouts x route on/off x phone linked/unlinked x EN/ZH, every one rendered to PNG by the layout gate.
+    if layout.count('PASS tmg8 menu matrix') != 2:
+        sys.exit('tmg8 menu matrix did not report PASS for EN and ZH')
+    want = ['menu-matrix-%s-%s-%s-%s.png' % (l, r, k, z) for l in ('carousel', 'rows2', 'rows3') for r in ('route', 'noroute') for k in ('linked', 'unlinked') for z in ('en', 'zh')]
+    missing = [w for w in want if not (a.out / 'preview' / w).is_file()]
+    if missing:
+        sys.exit('menu matrix renders missing: ' + ', '.join(missing))
     if 'PASS tmg8 brightness checks' not in run(['python3', '-I', FW / 'tests/tmg8_brightness_test.py', '--out', a.out / 'brightness', '--planes', planes, '--json', bright], a.out / 'tmg8-brightness.log'):
         sys.exit('tmg8 brightness checks did not report PASS')
-    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, menu grid, mini-app runtime, layout EN/ZH, TMG8 brightness gate)')
+    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, menu grid, mini-app runtime, layout EN/ZH, TMG8 menu matrix, TMG8 brightness gate)')
 
 main()

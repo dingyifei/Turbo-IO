@@ -23,8 +23,7 @@ for file,entry in manifest.items():
     raise SystemExit('invalid manifest entry: '+file)
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
-FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg7'
-FW8=ROOT/'firmware-research/strix-1.0.5.5-tmg8'  # TMG8 tests that do not exist in FW7; the whole group moves to FW8 at the test-retarget step
+FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg8'   # the active tree (the FW4 name is historical); TMG7 is frozen and no longer tested here
 FW=FW4
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
@@ -69,19 +68,18 @@ def ctest(name,files,inc):
         raise RuntimeError(name+' did not report PASS')
 seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
-    run('tmg7-host',['python3','-I',FW4/'tests/tmg7_host_test.py','--out',out/'tmg7-host'])
-    run('tmg8-host',['python3','-I',FW8/'tests/tmg7_host_test.py','--out',out/'tmg8-host','--brightness',out/'tmg8-host/brightness.json'])   # TMG8 layout gate plus the brightness gate over every host render (moves to FW4=FW8 at the test-retarget step)
+    run('tmg8-host',['python3','-I',FW4/'tests/tmg7_host_test.py','--out',out/'tmg8-host','--brightness',out/'tmg8-host/brightness.json'])   # tokens, app runtime, nav, menu grid and carousel, card, layout EN/ZH, brightness gate (the script keeps its tmg7 name)
     ctest('tmg6-passing',[FW4/'tests/tmg6_passing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
-    ctest('tmg8-caps',[FW8/'tests/tmg8_caps_test.c',FW8/'src/menu-grid-v2/menu_config.c',FW8/'src/diagnostics-v1/diagnostics.c'],FW8/'src')
-    ctest('tmg8-wheel',[FW8/'tests/tmg8_wheel_test.c'],FW8/'src')
-    ctest('tmg8-music-input',[FW8/'src/music-runtime-v1/music_input_test.c'],FW8/'src/music-runtime-v1')
-    run('tmg8-icons',['python3','-I',FW8/'tests/tmg8_icons_test.py'])
-    run('tmg8-brightness',['python3','-I',FW8/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
-    ctest('tmg8-lyrics',[FW8/'tests/tmg8_lyrics_test.c'],FW8/'src')
-    ctest('tmg8-tile-state',[FW8/'tests/tmg8_tile_state_test.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')
-    ctest('tmg8-nav-title',[FW8/'tests/tmg8_nav_title_test.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')
-    ctest('tmg8-nav-background',[FW8/'tests/tmg8_nav_background_test.c',FW8/'src/navigation-runtime-v1/nav_runtime.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')
+    ctest('tmg8-caps',[FW4/'tests/tmg8_caps_test.c',FW4/'src/menu-grid-v2/menu_config.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src')
+    ctest('tmg8-wheel',[FW4/'tests/tmg8_wheel_test.c'],FW4/'src')
+    ctest('tmg8-music-input',[FW4/'src/music-runtime-v1/music_input_test.c'],FW4/'src/music-runtime-v1')
+    run('tmg8-icons',['python3','-I',FW4/'tests/tmg8_icons_test.py'])
+    run('tmg8-brightness',['python3','-I',FW4/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
+    ctest('tmg8-lyrics',[FW4/'tests/tmg8_lyrics_test.c'],FW4/'src')
+    ctest('tmg8-tile-state',[FW4/'tests/tmg8_tile_state_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
+    ctest('tmg8-nav-title',[FW4/'tests/tmg8_nav_title_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
+    ctest('tmg8-nav-background',[FW4/'tests/tmg8_nav_background_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
     ctest('tmg4-timer-wrap',[FW4/'tests/timer_wrap_test.c',FW4/'src/menu-grid-v2/tile_config.c',FW4/'src/menu-grid-v2/menu_config.c'],FW4/'src')
