@@ -85,6 +85,16 @@ int main(void){
  /* Trailing and repeated spaces: no phantom row. */
  check("The morning light   ",1,false);assert(lines_of("The morning light      ")==1);check("   leading",1,false);
  {char sp[300];memset(sp,'a',40);memset(sp+40,' ',60);memcpy(sp+100,"tail",5);check(sp,0,false);}
+ /* A trailing space (an untrimmed CR or LF turns into one) never changes the fit: it is not text, so it adds no row, no step and does not hide the next lyric. */
+ {const char *base="so on love we are baby hold stars my love in never stars lights on is";
+  char b0[TM_CUR_RAW],b1[TM_CUR_RAW],o0[TM_CUR_CAP],o1[TM_CUR_CAP];strcpy(b0,base);strcpy(b1,base);strcat(b1," ");
+  TMFit f0=tm_fit_current(b0,o0,sizeof o0),f1=tm_fit_current(b1,o1,sizeof o1);
+  assert(f0.step==1&&f0.lines==2&&f0.next&&f1.step==f0.step&&f1.lines==f0.lines&&f1.next==f0.next&&!strcmp(o0,o1));}
+ for(unsigned it=0;it<3000;it++){   /* the same for any text with 1..3 spaces appended, Latin and Chinese */
+  char b0[TM_CUR_RAW],b1[TM_CUR_RAW],o0[TM_CUR_CAP],o1[TM_CUR_CAP];unsigned n=1+(unsigned)(rand()%140);
+  if(it&1)cjk(b0,n);else latin(b0,n,1+(unsigned)(rand()%7));if(!b0[0])continue;strcpy(b1,b0);for(unsigned k=1+(unsigned)(rand()%3);k;k--)strcat(b1," ");
+  TMFit f0=tm_fit_current(b0,o0,sizeof o0),f1=tm_fit_current(b1,o1,sizeof o1);
+  assert(f0.step==f1.step&&f0.lines==f1.lines&&f0.next==f1.next&&!strcmp(o0,o1));}
  /* Empty and tiny input: one empty row, next shown, nothing breaks. */
  {char out[TM_CUR_CAP];TMFit f=tm_fit_current("",out,sizeof out);assert(!*out&&f.step==1&&f.lines==1&&f.next);f=tm_fit_current("   ",out,sizeof out);assert(!*out&&f.step==1&&f.lines==1);}
  /* Step boundaries: one more character moves a line to the next step; the first character past a step never leaves an ellipsis. */

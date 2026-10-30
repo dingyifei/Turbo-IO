@@ -60,7 +60,8 @@ static inline void tm_clean(char *s){
 /* Wrap `s` (at most TM_CUR_RAW-1 bytes) onto at most `rows` rows of `width`. Returns true when all of it fits. Without `ellipsis` a text that does not
  * fit returns false (out holds the rows that did); with it the last row is cut at a whole character and ends in an ellipsis. */
 static inline bool tm_rows_with(const char *s,unsigned width,unsigned font,unsigned rows,bool ellipsis,char *out,size_t cap,TMAdvance adv){
- size_t n=0;while(n<TM_CUR_RAW-1&&s[n])n++;size_t at=0,used=0;if(!cap)return false;out[0]=0;bool fits=true;
+ size_t n=0;while(n<TM_CUR_RAW-1&&s[n])n++;while(n&&s[n-1]==' ')n--;   /* trailing spaces are not text: they must not count as an overflow or push the last word to a new row */
+ size_t at=0,used=0;if(!cap)return false;out[0]=0;bool fits=true;
  for(unsigned row=0;row<rows&&at<n;row++){
   while(at<n&&s[at]==' ')at++;size_t end=at,last=at;unsigned w=0;
   while(end<n){uint32_t c;unsigned k=tn_text_unit(s+end,n-end,&c);if(!k)break;unsigned a=adv(c,font);if(w+a>width)break;w+=a;end+=k;if(c==' '||c>=0x2e80)last=end;}
