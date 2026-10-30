@@ -10,6 +10,8 @@
  * focused tile's status line (16 px, lens-high) at y 146 (140), the name in band B. The focus is a fractional position: an item at signed
  * distance r from it is drawn at the geometry interpolated at |r| (knots 0..3, gone at 3), so a wheel step, a wrap and an interrupted step are
  * the same slide. The six visible items take canvas slots in order of |r| (the centre 80 px, the next at most 64, ...), which bounds retained pixels.
+ * TMG8 navigation title (OptionANavTitle.dc.html): while a route is live the next turn (an 18 px arrow and "<distance> · <road>", lens-high) is centred in band T of both
+ * layouts, in a fixed slot between the clock and the battery (nav_title.h); the grid's page dots (same band) are hidden meanwhile and the carousel row moves down (fm_view_route).
  * TMG4: bounded six/nine-cell renderer over the active tile map, no per-frame heap, bounded packed artwork.
  * All retained text and pixels live with the view. Write/swap only while idle.
  * Stock selection is authoritative; rapid input replaces, never queues, motion.
@@ -71,6 +73,19 @@ static void dots(uint8_t *out,unsigned pages,unsigned page){
  }
 }
 
+/* Navigation title (nav_title.h): the group (arrow, gap, text) is centred on x 270 inside x NT_X0..NT_X1 and vertically on the clock's row. Needs a laid-out frame.
+ * The text box is the width estimate (errs wide, so the label never clips) and the text is left-aligned in it, so the gap to the arrow is exactly NT_GAP; the group is
+ * centred on 7/8 of the estimate, which is closer to the real glyph width. */
+static void title_place(FMView *v){
+ const bool on=v->title_on&&v->selected>=0;
+ v->api.visible(v->api.ctx,v->title_arrow,on);v->api.visible(v->api.ctx,v->title_text,on);if(!on)return;
+ const TIOSpan t=tio_band(TIO_SURFACE_MENU,TIO_BAND_T);const int row=t.y0+(t.y1-t.y0-(int)TIO_LINE(TIO_FONT_LABEL))/2;
+ int w=(int)v->title_w;if(w>NT_TEXT_W)w=NT_TEXT_W;if(w<1)w=1;
+ int x=TIO_PAGE_W/2-(NT_ARROW+NT_GAP+w*7/8)/2;if(x<NT_X0)x=NT_X0;if(x+NT_ARROW+NT_GAP+w>NT_X1)x=NT_X1-NT_ARROW-NT_GAP-w;
+ v->api.place(v->api.ctx,v->title_arrow,x,row+((int)TIO_LINE(TIO_FONT_LABEL)-NT_ARROW)/2,NT_ARROW,NT_ARROW);
+ v->api.place(v->api.ctx,v->title_text,x+NT_ARROW+NT_GAP,row,w,(int)TIO_LINE(TIO_FONT_LABEL));
+}
+
 /* ---- Carousel -------------------------------------------------------------------------------------------------------- */
 typedef struct {unsigned idx,a;int r;} CarItem;
 static int knot(const int *k,unsigned a){if(a>=768)return k[3];unsigned i=a>>8,f=a&255;return k[i]+(k[i+1]-k[i])*(int)f/256;}
@@ -129,7 +144,7 @@ static void render_car(FMView *v,uint32_t now){
  }
  for(unsigned i=FM_SLOTS;i<FM_CELLS;i++)v->api.visible(v->api.ctx,v->icons[i],false);
  for(unsigned i=0;i<FM_CELLS;i++){v->api.visible(v->api.ctx,v->labels[i],false);v->api.visible(v->api.ctx,v->dots[i],false);}   /* the status line replaces the grid's state dots */
- v->api.visible(v->api.ctx,v->page,false);
+ v->api.visible(v->api.ctx,v->page,false);title_place(v);
  v->api.place(v->api.ctx,v->line,TIO_CORE_X0,mix(car_line_y[0],car_line_y[1],w),TIO_CORE_W,(int)TIO_LINE(TIO_FONT_MIN));
  v->api.visible(v->api.ctx,v->line,v->line_text[v->line_bank][0]!=0);
  v->api.text_static(v->api.ctx,v->name,tio_text(names[v->tiles.ids[v->selected]],lang));
@@ -155,7 +170,7 @@ static void render_grid(FMView *v,uint32_t now){
  }
  v->api.text_static(v->api.ctx,v->name,tio_text(names[v->tiles.ids[v->selected]],lang));
  dots(v->pager[bank],(v->tiles.count+cells-1)/cells,(unsigned)v->selected/cells);
- v->api.buffer(v->api.ctx,v->page,v->pager[bank],FM_PAGER_W,FM_PAGER_H);v->api.visible(v->api.ctx,v->page,true);v->api.visible(v->api.ctx,v->line,false);v->api.visible(v->api.ctx,v->root,true);
+ v->api.buffer(v->api.ctx,v->page,v->pager[bank],FM_PAGER_W,FM_PAGER_H);v->api.visible(v->api.ctx,v->page,!v->title_on);v->api.visible(v->api.ctx,v->line,false);title_place(v);v->api.visible(v->api.ctx,v->root,true);
  v->bank=bank;v->last_draw=now;v->dirty=false;
 }
 static void render(FMView *v,uint32_t now){if(v->rows==FM_CAROUSEL)render_car(v,now);else render_grid(v,now);}
@@ -166,13 +181,16 @@ bool fm_view_open(FMView *v,const TNWidgets *api,void *parent,bool (*attach)(voi
  if(!attach(v->root,owner)){api->destroy(api->ctx,v->root);v->root=NULL;return false;}
  api->place(api->ctx,v->root,0,0,540,220);v->rows=3;
  v->caret=api->canvas(api->ctx,v->root);v->status=api->label(api->ctx,v->root,TIO_FONT_LABEL);v->battery=api->label(api->ctx,v->root,TIO_FONT_LABEL);v->name=api->label(api->ctx,v->root,TIO_FONT_TITLE);v->page=api->canvas(api->ctx,v->root);v->line=api->label(api->ctx,v->root,TIO_FONT_MIN);
- if(!v->caret||!v->status||!v->battery||!v->name||!v->page||!v->line)goto failed;
+ v->title_arrow=api->canvas(api->ctx,v->root);v->title_text=api->label(api->ctx,v->root,TIO_FONT_LABEL);
+ if(!v->caret||!v->status||!v->battery||!v->name||!v->page||!v->line||!v->title_arrow||!v->title_text)goto failed;
  const TIOSpan t=tio_band(TIO_SURFACE_MENU,TIO_BAND_T);int row=t.y0+(t.y1-t.y0-(int)TIO_LINE(TIO_FONT_LABEL))/2;
  api->place(api->ctx,v->caret,0,0,FM_CARET_W,FM_CARET_H);
- api->place(api->ctx,v->status,TIO_CORE_X0,row,100,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->status,TIO_LENS_MID);
- api->place(api->ctx,v->battery,TIO_CORE_X1-100,row,100,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->battery,TIO_LENS_MID);
+ api->place(api->ctx,v->status,TIO_CORE_X0,row,NT_STATUS_W,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->status,TIO_LENS_MID);   /* 64 px each: "10:00" and "100%" are about 50, and the title slot lies between the two boxes */
+ api->place(api->ctx,v->battery,TIO_CORE_X1-NT_STATUS_W,row,NT_STATUS_W,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->battery,TIO_LENS_MID);
  api->place(api->ctx,v->name,TIO_CORE_X0,TIO_MENU_B1-(int)TIO_LINE(TIO_FONT_TITLE)-3,TIO_CORE_W,(int)TIO_LINE(TIO_FONT_TITLE));
  api->place(api->ctx,v->line,TIO_CORE_X0,car_line_y[0],TIO_CORE_W,(int)TIO_LINE(TIO_FONT_MIN));tint(v,v->line,TIO_LENS_HIGH);if(api->clip_text)api->clip_text(api->ctx,v->line);api->visible(api->ctx,v->line,false);   /* carousel status line: 16 px, lens-high, band M under the focused icon */
+ api->place(api->ctx,v->title_arrow,NT_X0,row,NT_ARROW,NT_ARROW);api->place(api->ctx,v->title_text,NT_X0+NT_ARROW+NT_GAP,row,NT_TEXT_W,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->title_text,TIO_LENS_HIGH);if(api->clip_text)api->clip_text(api->ctx,v->title_text);
+ api->visible(api->ctx,v->title_arrow,false);api->visible(api->ctx,v->title_text,false);   /* navigation title: lens-high 18 px, hidden until a route is live */
  api->place(api->ctx,v->page,(540-FM_PAGER_W)/2,row+(int)TIO_LINE(TIO_FONT_LABEL)/2-FM_PAGER_H-3,FM_PAGER_W,FM_PAGER_H);
  /* The state dot: a 5 px lens-mid disc, drawn once into one 8x5 buffer that all nine dot canvases show (hidden until a tile has live state). */
  for(unsigned y=0;y<FM_STATE_H;y++)for(unsigned x=0;x<FM_STATE_DOT;x++){bool corner=(y==0||y==FM_STATE_H-1)&&(x==0||x==FM_STATE_DOT-1);v->state_px[y*FM_STATE_W+x]=corner?0:(uint8_t)FM_LEVEL(TIO_LENS_MID);}
@@ -237,6 +255,21 @@ bool fm_view_line(FMView *v,const char *text){
  v->api.text_static(v->api.ctx,v->line,v->line_text[b]);v->line_bank=b;if(v->rows==FM_CAROUSEL)v->dirty=true;return true;   /* the grid keeps the text but draws no line */
 }
 void fm_view_reduce_motion(FMView *v,bool on){if(v)v->reduce_motion=on;}
+/* Navigation title hook. Hiding is immediate; a changed arrow or text waits for NT_MIN_MS since the last write (1 Hz at most, the next refresh retries).
+ * The text is banked like the status line (the label keeps a pointer); the arrow is redrawn into the idle bank. Needs an idle renderer. */
+bool fm_view_title(FMView *v,const NTTitle *t,uint32_t now){
+ if(!v||!v->root||!t)return false;
+ if(!t->on||t->icon>=TN_ICON_COUNT||!t->text[0]){if(v->title_on){v->title_on=false;v->dirty=true;}return true;}
+ size_t n=0;while(n<NT_TEXT_MAX-1&&t->text[n])n++;
+ if(v->title_on&&v->title_icon==t->icon&&strlen(v->title_line[v->title_bank])==n&&!memcmp(v->title_line[v->title_bank],t->text,n))return true;
+ if(v->title_on&&(uint32_t)(now-v->title_at)<NT_MIN_MS)return true;
+ if(!v->api.idle(v->api.ctx))return false;
+ const unsigned b=v->title_bank^1;
+ memcpy(v->title_line[b],t->text,n);v->title_line[b][n]=0;
+ nt_glyph(v->title_px[b],t->icon,FM_LEVEL(TIO_LENS_HIGH));
+ v->api.buffer(v->api.ctx,v->title_arrow,v->title_px[b],NT_ARROW,NT_ARROW);v->api.text_static(v->api.ctx,v->title_text,v->title_line[b]);
+ v->title_bank=b;v->title_icon=t->icon;v->title_w=t->width;v->title_on=true;v->title_at=now;v->dirty=true;return true;
+}
 /* State dots (grid only; the carousel has the status line instead). Recorded in any layout, redrawn only when the set changes. */
 bool fm_view_active(FMView *v,unsigned mask){
  if(!v||!v->root)return false;mask&=(1u<<FM_ITEMS)-1;if(v->live_mask==mask)return true;

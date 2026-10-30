@@ -4,13 +4,14 @@
 #include "../src/focus-v1/focus_menu_icons.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 typedef struct {bool idle;unsigned made,fail,destroyed,text_calls;const char *texts[64];bool visible[64];int x[64],y[64],w[64],h[64];const uint8_t *buf[64];unsigned bw[64],bh[64];} Fake;
 static bool idle(void *ctx){return ((Fake *)ctx)->idle;}
 static void *create(void *ctx,void *parent){(void)parent;Fake *f=ctx;unsigned n=++f->made;return n==f->fail?NULL:(void *)(uintptr_t)n;}
 static void *label(void *ctx,void *parent,unsigned font){assert(font==16||font==18||font==24);return create(ctx,parent);}   /* cell names and the carousel status line 16, status 18, focused name 24 */
 static void place(void *ctx,void *obj,int x,int y,int w,int h){assert(x>=0&&y>=0&&w>0&&h>0&&x+w<=540&&y+h<=220);Fake *f=ctx;uintptr_t k=(uintptr_t)obj;f->x[k]=x;f->y[k]=y;f->w[k]=w;f->h[k]=h;}
-static void buffer(void *ctx,void *obj,const uint8_t *p,unsigned w,unsigned h){Fake *f=ctx;assert(p);assert((w==32&&h==32)||(w==28&&h==28)||(w==FM_CARET_W&&h==FM_CARET_H)||(w==36&&h==4)||(w==FM_STATE_W&&h==FM_STATE_H)||(w==h&&w>=32&&w<=80));f->buf[(uintptr_t)obj]=p;f->bw[(uintptr_t)obj]=w;f->bh[(uintptr_t)obj]=h;}
+static void buffer(void *ctx,void *obj,const uint8_t *p,unsigned w,unsigned h){Fake *f=ctx;assert(p);assert((w==32&&h==32)||(w==28&&h==28)||(w==FM_CARET_W&&h==FM_CARET_H)||(w==36&&h==4)||(w==FM_STATE_W&&h==FM_STATE_H)||(w==NT_ARROW&&h==NT_ARROW)||(w==h&&w>=32&&w<=80));f->buf[(uintptr_t)obj]=p;f->bw[(uintptr_t)obj]=w;f->bh[(uintptr_t)obj]=h;}
 static void text(void *ctx,void *obj,const char *s){Fake *f=ctx;assert(strlen(s)<FM_LINE_MAX);f->texts[(uintptr_t)obj]=s;f->text_calls++;}
 static void visible(void *ctx,void *obj,bool show){((Fake *)ctx)->visible[(uintptr_t)obj]=show;}
 static void destroy(void *ctx,void *obj){assert(obj);((Fake *)ctx)->destroyed++;}
@@ -221,9 +222,66 @@ static void state_dots(Fake *f,FMView *v){
  assert(fm_view_rows(v,3));assert(fm_view_active(v,0));
  FMView closed;memset(&closed,0,sizeof closed);assert(!fm_view_active(&closed,1)&&!fm_view_active(NULL,1));
 }
+/* ---- TMG8 navigation title (OptionANavTitle.dc.html): the next turn in band T of every layout --------------------------------------------- */
+static void nav_title_view(Fake *f,FMView *v){
+ TTConfig config;TTVisible tiles;uint32_t clock=900000;
+ const uintptr_t ar=(uintptr_t)v->title_arrow,tx=(uintptr_t)v->title_text,page=(uintptr_t)v->page,status=(uintptr_t)v->status,battery=(uintptr_t)v->battery;
+ TSLive l;memset(&l,0,sizeof l);l.phone=true;l.nav_active=true;l.nav_turn=true;l.nav_icon=TN_RIGHT;l.nav_turn_m=200;strcpy(l.nav_road,"Market St");
+ NTTitle on;nt_title(&l,&on);assert(on.on);
+ TSLive l2=l;l2.nav_turn_m=190;strcpy(l2.nav_road,"Market St");NTTitle on2;nt_title(&l2,&on2);assert(on2.on&&strcmp(on.text,on2.text));
+ NTTitle off;memset(&off,0,sizeof off);
+ assert(tt_unrank(0,0,&config)&&tt_compact(&config,&tiles));assert(fm_view_tiles(v,&tiles));
+ for(unsigned layout=0;layout<3;layout++){
+  const unsigned rows=layout==0?FM_CAROUSEL:layout==1?2:3;assert(fm_view_rows(v,rows));assert(fm_view_title(v,&off,clock));
+  settle(v,2,&clock);assert(!v->title_on&&!f->visible[ar]&&!f->visible[tx]);                       /* nothing without a route */
+  clock+=1000;assert(fm_view_title(v,&on,clock)&&v->title_on&&v->dirty);assert(fm_view_step(v,clock+20));
+  assert(f->visible[ar]&&f->visible[tx]&&!v->dirty&&!strcmp(f->texts[tx],on.text));
+  /* Band T, 18 px arrow and 18 px text on the clock's row, group centred on x 270, clear of the clock and battery boxes. */
+  assert(f->w[ar]==NT_ARROW&&f->h[ar]==NT_ARROW&&f->bw[ar]==NT_ARROW&&f->bh[ar]==NT_ARROW&&f->buf[ar]==v->title_px[v->title_bank]);
+  assert(f->h[tx]==TIO_LINE(TIO_FONT_LABEL)&&f->w[tx]==(int)on.width&&f->y[tx]==f->y[status]&&f->y[tx]==f->y[battery]);
+  assert(f->y[ar]>=TIO_MENU_T0&&f->y[ar]+f->h[ar]<=TIO_MENU_T1&&f->y[tx]>=TIO_MENU_T0&&f->y[tx]+f->h[tx]<=TIO_MENU_T1);
+  assert(f->y[ar]+f->h[ar]/2==f->y[tx]+f->h[tx]/2);                                            /* arrow and text share a centre line */
+  assert(f->x[tx]==f->x[ar]+NT_ARROW+NT_GAP&&f->x[ar]>=NT_X0&&f->x[tx]+f->w[tx]<=NT_X1);
+  {int mid=(f->x[ar]+f->x[tx]+f->w[tx])/2;assert(abs(mid-270)<=f->w[tx]/8+2);}
+  assert(f->x[status]+f->w[status]<=f->x[ar]&&f->x[tx]+f->w[tx]<=f->x[battery]);              /* no box overlaps the clock or the battery */
+  {unsigned peak=0,lit=0;for(unsigned q=0;q<NT_ARROW*NT_ARROW;q++){if(f->buf[ar][q]>peak)peak=f->buf[ar][q];lit+=f->buf[ar][q]>16;}assert(peak==0xb0&&lit>=14);}   /* lens-high arrow */
+  if(rows!=FM_CAROUSEL)assert(!f->visible[page]);                                              /* the page dots share band T: hidden while the title shows */
+  /* A longer text keeps the group centred and inside the slot. */
+  {TSLive ll=l;strcpy(ll.nav_road,"Martin Luther King Jr. Boulevard South Extension");NTTitle t;nt_title(&ll,&t);clock+=1000;assert(fm_view_title(v,&t,clock)&&fm_view_step(v,clock+20));
+   assert(f->w[tx]==(int)t.width&&f->x[ar]>=NT_X0&&f->x[tx]+f->w[tx]<=NT_X1&&f->w[tx]<=NT_TEXT_W&&!strcmp(f->texts[tx],t.text));
+   int mid=(f->x[ar]+f->x[tx]+f->w[tx])/2;assert(abs(mid-270)<=f->w[tx]/8+2);}
+  /* At most one content change per second, a fixed slot (the same y), nothing rewritten when unchanged. */
+  clock+=1000;assert(fm_view_title(v,&on,clock)&&fm_view_step(v,clock+20));const int ax=f->x[ar],ay=f->y[ar];const char *shown=f->texts[tx];   /* the label keeps a pointer: a rewrite is a new pointer */
+  assert(fm_view_title(v,&on,clock+30)&&f->texts[tx]==shown);                                    /* unchanged: no rewrite */
+  assert(fm_view_title(v,&on2,clock+500)&&f->texts[tx]==shown&&!strcmp(shown,on.text));          /* changed within a second: held */
+  assert(fm_view_title(v,&on2,clock+999)&&f->texts[tx]==shown);
+  assert(fm_view_title(v,&on2,clock+1000)&&f->texts[tx]!=shown&&!strcmp(f->texts[tx],on2.text));   /* a second after the last write */
+  (void)fm_view_step(v,clock+1020);assert(f->y[ar]==ay&&f->y[tx]==f->y[status]&&abs(f->x[ar]-ax)<=3);   /* same slot, the group shifts only by the text width */
+  assert(fm_view_title(v,&on,clock+1500)&&!strcmp(f->texts[tx],on2.text));                        /* and held again */
+  /* A busy renderer leaves it as it was and asks to retry; hiding needs no renderer. */
+  f->idle=false;assert(!fm_view_title(v,&on,clock+2100)&&!strcmp(f->texts[tx],on2.text));assert(fm_view_title(v,&off,clock+2100)&&!v->title_on);f->idle=true;
+  assert(fm_view_step(v,clock+2200)&&!f->visible[ar]&&!f->visible[tx]);                           /* route ended / stale / disconnected: gone at once */
+  if(rows!=FM_CAROUSEL)assert(f->visible[page]);                                                  /* the page dots return */
+  assert(fm_view_title(v,&off,clock+2300)&&!v->dirty);                                           /* hiding again does nothing */
+  /* Showing again is not held back by the last write. */
+  assert(fm_view_title(v,&on,clock+2300)&&v->title_on&&fm_view_step(v,clock+2400)&&f->visible[ar]&&f->visible[tx]&&!strcmp(f->texts[tx],on.text));
+  clock+=3000;
+  /* The carousel row makes room: with the route flag the icons sit under band T (top >= 56), clear of the title. */
+  if(rows==FM_CAROUSEL){assert(fm_view_route(v,true,clock));(void)fm_view_step(v,clock+300);settle(v,2,&clock);
+   for(unsigned i=0;i<FM_CELLS;i++){const uintptr_t o=(uintptr_t)v->icons[i];if(f->visible[o]){assert(f->y[o]>=TIO_MENU_T1);assert(f->y[o]>=f->y[ar]+f->h[ar]);}}
+   assert(fm_view_route(v,false,clock));(void)fm_view_step(v,clock+300);}
+  assert(fm_view_title(v,&off,clock));(void)fm_view_step(v,clock+10);
+ }
+ /* Not drawn without a laid-out frame; a closed view refuses. */
+ assert(fm_view_title(v,&on,clock+5000));fm_view_suspend(v);assert(fm_view_update(v,1,0,0,clock+6000));assert(f->visible[ar]);assert(fm_view_title(v,&off,clock+7000));
+ assert(!fm_view_title(NULL,&on,0)&&!fm_view_title(v,NULL,0));
+ {FMView closed;memset(&closed,0,sizeof closed);assert(!fm_view_title(&closed,&on,0));}
+ {NTTitle bad=on;bad.icon=TN_ICON_COUNT;assert(fm_view_title(v,&off,clock+8000));assert(fm_view_title(v,&bad,clock+9000)&&!v->title_on);}   /* an unknown manoeuvre is not shown */
+ {NTTitle empty=on;empty.text[0]=0;assert(fm_view_title(v,&empty,clock+9500)&&!v->title_on);}
+}
 int main(void){
  Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy,NULL,NULL};
- assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==34);   /* root, 6 widgets, and per cell an icon, a name and a state dot */
+ assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==36);   /* root, 8 widgets (caret, clock, battery, name, page dots, status line, title arrow and text), and per cell an icon, a name and a state dot */
  assert(fm_view_update(&view,8,1704067200,75,0));assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,0)));
  for(unsigned j=0;j<9;j++)assert(f.texts[(uintptr_t)view.labels[j]]&&f.visible[(uintptr_t)view.icons[j]]&&!f.visible[(uintptr_t)view.labels[j]]);   /* three rows: icons only, names live in band B */
  const char *before=f.texts[(uintptr_t)view.labels[8]];unsigned calls=f.text_calls;g_lang=1;
@@ -246,8 +304,9 @@ int main(void){
  wrap_motion(&view);
  carousel(&f,&view);
  state_dots(&f,&view);
+ nav_title_view(&f,&view);
  f.idle=false;assert(!fm_view_update(&view,0,0,0,5000)&&!fm_view_close(&view));f.idle=true;
  assert(fm_view_close(&view)&&f.destroyed==1);
- for(unsigned fail=1;fail<=34;fail++){f=(Fake){.idle=true,.fail=fail};assert(!fm_view_open(&view,&api,&f,attach,&f));assert(!view.root);assert(f.destroyed==(fail==1?0:1));}
- puts("PASS focus_grid: LensMenu bands, caret and single focused name, mapped rows/pages/labels, 16/120/160ms timer wrap, interrupted motion, bounds and allocation failures; TMG8 carousel geometry with and without a route, slide, wrap, canvas bounds, status line, Reduce Motion; TMG8 live tile state dots");
+ for(unsigned fail=1;fail<=36;fail++){f=(Fake){.idle=true,.fail=fail};assert(!fm_view_open(&view,&api,&f,attach,&f));assert(!view.root);assert(f.destroyed==(fail==1?0:1));}
+ puts("PASS focus_grid: LensMenu bands, caret and single focused name, mapped rows/pages/labels, 16/120/160ms timer wrap, interrupted motion, bounds and allocation failures; TMG8 carousel geometry with and without a route, slide, wrap, canvas bounds, status line, Reduce Motion; TMG8 live tile state dots; TMG8 navigation title in band T of every layout");
 }

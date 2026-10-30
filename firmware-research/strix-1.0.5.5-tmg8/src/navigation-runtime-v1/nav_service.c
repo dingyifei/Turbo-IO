@@ -115,8 +115,13 @@ TNNavSlot *tn_slot_create(void *app){TNNavSlot *s=stream_memalign(8,sizeof *s);i
 void tn_slot_hidden(TNNavSlot *s){if(s&&s->control)retire(s->control);}
 void tn_slot_destroy(TNNavSlot *s){if(!s)return;Control *c=s->control;if(c){retire(c);c->retired=true;c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tn_slot_visible(TNNavSlot *s){Control *c=s?s->control:NULL;return c&&c->view;}
-/* Tile state: a live, connected route session and the metres left. Read only. */
-void tn_slot_live(TNNavSlot *s,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;out->nav_active=c->runtime.active&&c->runtime.connected;out->nav_stale=c->runtime.stale;out->nav_remaining_m=c->runtime.scene.remaining_m;}
+/* Tile state and the menu's navigation title: a live, connected route session, the metres left and the next turn (icon, distance, road). Read only.
+ * nav_turn means the session is connected and not stale; the road is copied bounded and NUL-terminated. */
+_Static_assert(TS_ROAD_MAX==TN_ROAD_MAX,"the menu's road buffer matches the scene's");
+void tn_slot_live(TNNavSlot *s,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;out->nav_active=c->runtime.active&&c->runtime.connected;out->nav_stale=c->runtime.stale;out->nav_remaining_m=c->runtime.scene.remaining_m;
+ out->nav_turn=false;if(!out->nav_active||out->nav_stale)return;
+ const TNScene *sc=&c->runtime.scene;out->nav_icon=sc->icon;out->nav_turn_m=sc->distance_m;
+ unsigned n=0;while(n<TS_ROAD_MAX&&sc->road[n]){out->nav_road[n]=sc->road[n];n++;}out->nav_road[n]=0;out->nav_turn=true;}
 bool tn_slot_open(TNNavSlot *s){Control *c=control(s);if(!c||!safe_home()||c->runtime.active)return false;
  TNScene empty;memset(&empty,0,sizeof empty);{const char *label=tio_text(TT_NAV_START,tio_lang());size_t n=strlen(label);if(n>TN_TURN_MAX)n=TN_TURN_MAX;memcpy(empty.turn,label,n);empty.turn[n]=0;};
  if(!enter(c,&empty))return false;c->waiting=true;c->waiting_since=stream_tick();

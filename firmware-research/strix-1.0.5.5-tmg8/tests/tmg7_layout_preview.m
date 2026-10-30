@@ -11,6 +11,7 @@
 #include "../src/focus-v1/focus_view.h"
 #include "../src/focus-v1/focus_menu.h"
 #include "../src/focus-v1/tile_state.h"
+#include "../src/focus-v1/nav_title.h"
 #include "../src/common-v1/tio_text.h"
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
@@ -431,6 +432,15 @@ static const TSLive kLive={.phone=true,.pomodoro=true,.pomodoro_ms=18*60000+4200
 static const TSLive kIdle={.phone=true};
 static const TSLive kOffline={.phone=false,.pomodoro=true,.pomodoro_ms=18*60000+42000};
 static const TSLive kCamera={.phone=true,.camera=true};
+// TMG8 navigation title fixtures (OptionANavTitle.dc.html): the production nt_title over a stubbed nav_service turn. Same running state as kLive plus the next turn.
+#define ROUTE_BASE .phone=true,.pomodoro=true,.pomodoro_ms=18*60000+42000,.music_playing=true,.music_age_ms=1000,.music_title="Blinding Lights",.nav_active=true,.nav_remaining_m=1200,.nav_turn=true
+static const TSLive kRoute={ROUTE_BASE,.nav_icon=TN_RIGHT,.nav_turn_m=200,.nav_road="Market St"};                                                   // the board
+static const TSLive kRouteLong={ROUTE_BASE,.nav_icon=TN_LEFT,.nav_turn_m=1500,.nav_road="Martin Luther King Jr. Boulevard South Extension"};       // cut at a word boundary
+static const TSLive kRouteWord={ROUTE_BASE,.nav_icon=TN_UTURN,.nav_turn_m=80,.nav_road="Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch"};   // one long word: cut at a character
+static const TSLive kRouteCjk={ROUTE_BASE,.nav_icon=TN_SLIGHT_RIGHT,.nav_turn_m=350,.nav_road="\xe4\xba\xba\xe6\xb0\x91\xe5\xa4\xa7\xe9\x81\x93\xe4\xb8\x8e\xe4\xb8\xad\xe5\xb1\xb1\xe4\xb8\x9c\xe8\xb7\xaf\xe4\xba\xa4\xe5\x8f\x89\xe5\x8f\xa3\xe5\x8d\x97\xe4\xbe\xa7\xe8\xbe\x85\xe8\xb7\xaf"};   // no spaces
+static const TSLive kRouteRound={ROUTE_BASE,.nav_icon=TN_ROUNDABOUT,.nav_turn_m=950,.nav_road=""};                                                    // no road name: the distance alone
+// What fm_sync does with the turn: the title and, for the carousel, the route flag that makes room for it.
+static void ApplyTitle(FMView *v,const TSLive *live,uint32_t now){NTTitle t;nt_title(live,&t);assert(fm_view_route(v,t.on,now));assert(fm_view_title(v,&t,now));}
 static unsigned LiveMask(const TTVisible *tiles,const TSLive *live){unsigned m=0;for(unsigned r=0;r<tiles->count;r++){TSState st;ts_state(tiles->ids[r],live,language,&st);if(st.active)m|=1u<<tiles->ids[r];}return m;}
 // Fixture: the settled menu for `rows` x 3 cells, `hide` (0..31) hides stock tiles 7..11, `selected` is the compact index.
 static void BuildMenu(Host *host,FMView *v,unsigned rows,unsigned hide,unsigned selected,const TSLive *live){
@@ -440,7 +450,8 @@ static void BuildMenu(Host *host,FMView *v,unsigned rows,unsigned hide,unsigned 
  assert(fm_view_update(v,(int)selected,946684800+10*3600,82,1000));
  for(unsigned i=0;i<FM_CELLS;i++){W(v->labels[i])->ambient=true;W(v->icons[i])->ramp=true;W(v->dots[i])->ramp=true;}W(v->caret)->ramp=true;W(v->page)->ramp=true;
  for(unsigned i=0;i<FM_CELLS;i++)W(v->labels[i])->align=1;W(v->battery)->align=2;W(v->name)->align=1;   // mirrors fm_show: menu_text_align centre / right / centre
- if(live){assert(fm_view_active(v,LiveMask(&tiles,live)));(void)fm_view_step(v,1100);assert(!v->dirty);}   // the 1 Hz refresh found running tiles: state dots
+ if(live){assert(fm_view_active(v,LiveMask(&tiles,live)));(void)fm_view_step(v,1100);assert(!v->dirty);   // the 1 Hz refresh found running tiles: state dots
+  ApplyTitle(v,live,1200);(void)fm_view_step(v,1300);assert(!v->dirty);}                                      // and a route: the next turn in band T
 }
 // Compare the fixture (EN, 8 tiles, two pages, second cell focused) with the board's proposed column (drawn at 2x).
 static void CompareMenuBoard(NSString *html,Host *host,FMView *v){
@@ -495,6 +506,30 @@ static void CheckStatusBoard(NSString *path){
  if([html containsString:@"dx: t.cx"]){assert([html containsString:@"dx: t.cx + 17, dy: t.cy - 20"]&&[html containsString:@"width: 5px; height: 5px"]&&[html containsString:@"background: #007700"]);}   // the grid board's dot: 5 px, lens-mid, (cx+17, cy-20)
  printf("PASS board STATUS (%s): live, idle and phone-off strings and dots match the production tile state\n",path.lastPathComponent.UTF8String);
 }
+// The navigation title widgets against the production text and the slot rules (nav_title.h); hidden when no route.
+static void CheckTitle(Host *host,FMView *v,const TSLive *live){
+ NTTitle t;nt_title(live,&t);Widget *ar=W(v->title_arrow),*tx=W(v->title_text);assert(ar->shown==t.on&&tx->shown==t.on&&v->title_on==t.on&&v->route==t.on);
+ if(!t.on)return;
+ assert(tx->kind==KText&&tx->font==TIO_FONT_LABEL&&tx->color==TIO_LENS_HIGH&&tx->clip&&tx->align==0&&!strcmp(tx->text,t.text)&&utf8_ok(tx->text));   // 18 px, lens-high, centred in its box
+ assert(ar->kind==KPixels&&ar->w==NT_ARROW&&ar->h==NT_ARROW);{uint8_t peak=0;for(int q=0;q<ar->w*ar->h;q++)if(ar->pixels[q]>peak)peak=ar->pixels[q];assert(peak==(TIO_LENS_HIGH>>8&255u));}
+ assert(tio_band_of(TIO_SURFACE_MENU,tx->y,tx->h)==TIO_BAND_T&&tio_band_of(TIO_SURFACE_MENU,ar->y,ar->h)==TIO_BAND_T&&ar->y+ar->h/2==tx->y+tx->h/2);
+ assert(ar->x>=NT_X0&&tx->x+tx->w<=NT_X1&&tx->w<=NT_TEXT_W&&tx->x-(ar->x+ar->w)==NT_GAP);                                                  // inside the slot, 6 px gap
+ {int mid=(ar->x+tx->x+tx->w)/2;assert(abs(mid-270)<=tx->w/8+2);}                                                                                 // the group is centred on x 270
+ {NSString *s=[NSString stringWithUTF8String:tx->text];int ink=(int)ceil([s sizeWithAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:18]}].width);assert(ink<=tx->w);}   // the estimate errs wide: the real text fits its box
+ Widget *clock=W(v->status),*battery=W(v->battery);assert(clock->x+clock->w<=ar->x&&tx->x+tx->w<=battery->x);                                 // clear of the clock and the battery boxes
+ for(unsigned i=0;i<FM_CELLS;i++)if(W(v->icons[i])->shown){assert(!overlap(W(v->icons[i]),ar)&&!overlap(W(v->icons[i]),tx));}
+ if(v->rows!=FM_CAROUSEL)assert(!W(v->page)->shown);                                                                                         // the page dots share band T
+ (void)host;
+}
+// The board's title line (OptionANavTitle.dc.html): 18 px arrow, 6 px gap, 18 px lens-high text "200 m · Market St", centred, on the top row.
+static void CheckTitleBoard(NSString *path,FMView *v){
+ NSString *h=[NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];assert(h);
+ assert([h containsString:@"top: 20px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 18px; line-height: 1; color: #00b000;\"><svg width=\"18\" height=\"18\""]);
+ assert([h containsString:@"<span>200 m \u00b7 Market St</span>"]);
+ NTTitle t;nt_title(&kRoute,&t);assert(!strcmp(t.text,"200 m \xc2\xb7 Market St")&&NT_GAP==6&&NT_ARROW==18&&TIO_FONT_LABEL==18&&TIO_LENS_HIGH==0x00b000u);
+ Widget *tx=W(v->title_text);assert(abs(tx->y-20)<=3);                                                                                          // same row as the clock (board 21), within the board tolerance
+ printf("PASS board OptionANavTitle: 18 px arrow, 6 px gap, 18 px lens-high \"200 m \u00b7 Market St\", centred on the top row\n");
+}
 static void Menu(NSString *dir,NSString *board,bool zh){
  language=zh;gSurface=TIO_SURFACE_MENU;
  {Host h={0};create(&h,&h);Add(&h,KText,40,205,100,20,16,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&(VReserved|VBand));   // the gate guards the menu's bottom strip
@@ -509,10 +544,17 @@ static void Menu(NSString *dir,NSString *board,bool zh){
   {"-live",2,0,8,&kLive},       // LensMenuGrid2: a dot on navigation, music and pomodoro
   {"-live-offline",2,0,8,&kOffline},   // phone not connected: no dot for navigation and music, the local timer keeps its dot
   {"-live-camera",2,0,12,&kCamera},
-  {"-live-rows3",3,0,8,&kLive}};
+  {"-live-rows3",3,0,8,&kLive},
+  {"-route",2,0,8,&kRoute},         // OptionANavTitle: the next turn centred in band T above the grid, page dots gone
+  {"-route-long",2,0,1,&kRouteLong},   // a long road: cut at a word boundary
+  {"-route-word",2,0,9,&kRouteWord},   // one long word: cut at a character
+  {"-route-cjk",2,0,12,&kRouteCjk},    // no spaces: cut after a character
+  {"-route-nameless",2,0,10,&kRouteRound},   // no road name: the distance alone
+  {"-route-rows3",3,0,8,&kRoute}};
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
   Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
   BuildMenu(host,v,sh->rows,sh->hide,sh->selected,sh->live);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  CheckTitle(host,v,sh->live?sh->live:&kIdle);if(!zh&&!strcmp(sh->tag,"-route"))CheckTitleBoard([[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"OptionANavTitle.dc.html"],v);
   const unsigned cells=sh->rows*3,cell=sh->selected%cells;TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
   Widget *status=W(v->status),*battery=W(v->battery),*nm=W(v->name),*caret=W(v->caret),*dots=W(v->page);
   // Status row: time and battery in lens-mid, band T, no wordmark; focused name once in B in lens-full; nothing else carries it.
@@ -558,14 +600,14 @@ static void Menu(NSString *dir,NSString *board,bool zh){
 // ---- TMG8 carousel (LensMenuCarousel.dc.html): the real FMView with rows == FM_CAROUSEL on mock widgets --------------------
 // Fixture: `selected` is the compact index, `route` slides the row down for the navigation title, `line` is the focused tile's status line.
 // The status line is the production tile state (tile_state.h, EN and ZH) over the board's three scenarios.
-static void BuildCarousel(Host *host,FMView *v,unsigned hide,unsigned selected,bool route,const char *line){
+static void BuildCarousel(Host *host,FMView *v,unsigned hide,unsigned selected,bool route,const TSLive *live,const char *line){
  create(host,host);TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};
  assert(fm_view_open(v,&api,host,attach_ok,host));
  TTConfig config;TTVisible tiles;assert(tt_unrank(0,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,FM_CAROUSEL)&&fm_view_tiles(v,&tiles));
  assert(fm_view_update(v,(int)selected,946684800+10*3600,82,1000));
  for(unsigned i=0;i<FM_CELLS;i++){W(v->labels[i])->ambient=true;W(v->icons[i])->ramp=true;W(v->icons[i])->span=true;}W(v->caret)->ramp=true;W(v->page)->ramp=true;   // span: the 80 px icon rises from band M into T (PriorityBands: carousel line)
  for(unsigned i=0;i<FM_CELLS;i++)W(v->labels[i])->align=1;W(v->battery)->align=2;W(v->name)->align=1;W(v->line)->align=1;   // mirrors fm_show: menu_text_align centre / right / centre
- if(route){assert(fm_view_route(v,true,1100));(void)fm_view_step(v,1400);}
+ if(live){ApplyTitle(v,live,1100);(void)fm_view_step(v,1400);}assert(v->route==route&&v->title_on==route);   // a live turn: the row moves down and the title shows
  if(line){assert(fm_view_line(v,line));(void)fm_view_step(v,1500);}
  (void)fm_view_step(v,1600);assert(!v->moving&&!v->dirty);
 }
@@ -597,7 +639,12 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
  if(!zh)CheckStatusBoard(board);
  struct {const char *tag;unsigned hide,selected;bool route;const TSLive *live;} shots[]={
   {"-carousel",0,9,false,&kLive},                                // board default scene: Music with a live track
-  {"-carousel-route",0,8,true,&kLive},                           // Navigation with a route: row down, room for the title in band T
+  {"-carousel-route",0,8,true,&kRoute},                          // Navigation with a route: row down, the next turn in band T (OptionANavTitle)
+  {"-carousel-route-music",0,9,true,&kRoute},                    // the title shows whichever tile is focused; the music line stays under the icon
+  {"-carousel-route-long",0,9,true,&kRouteLong},                 // a long road: cut at a word boundary
+  {"-carousel-route-word",0,10,true,&kRouteWord},                // one long word: cut at a character
+  {"-carousel-route-cjk",0,3,true,&kRouteCjk},                   // no spaces: cut after a character
+  {"-carousel-route-nameless",0,12,true,&kRouteRound},           // no road name: the distance alone
   {"-carousel-pomodoro",0,10,false,&kLive},                      // the timer
   {"-carousel-idle",0,9,false,&kIdle},                           // nothing running: name only
   {"-carousel-stock",0,3,false,&kLive},                          // a stock app: name only whatever runs
@@ -612,7 +659,8 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
   TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
   TSState state;memset(&state,0,sizeof state);if(sh->live)ts_state(tiles.ids[sh->selected],sh->live,language,&state);
   const char *lineText=state.line[0]?state.line:NULL;                                                                       // what the glasses would write for the focused tile
-  BuildCarousel(host,v,sh->hide,sh->selected,sh->route,lineText);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  BuildCarousel(host,v,sh->hide,sh->selected,sh->route,sh->live,lineText);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  CheckTitle(host,v,sh->live?sh->live:&kIdle);if(!zh&&!strcmp(sh->tag,"-carousel-route"))CheckTitleBoard([[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"OptionANavTitle.dc.html"],v);
   Widget *status=W(v->status),*battery=W(v->battery),*nm=W(v->name),*caret=W(v->caret),*line=W(v->line);
   assert(!strcmp(status->text,"10:00")&&!strcmp(battery->text,"82%")&&status->color==TIO_LENS_MID&&battery->color==TIO_LENS_MID&&status->font==TIO_FONT_LABEL);   // clock and battery in band T
   assert(tio_band_of(TIO_SURFACE_MENU,status->y,status->h)==TIO_BAND_T&&tio_band_of(TIO_SURFACE_MENU,battery->y,battery->h)==TIO_BAND_T);

@@ -7,6 +7,7 @@
 #include "../menu-grid-v2/tile_native.h"
 #include "focus_service.h"
 #include "tile_state.h"
+#include "nav_title.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
@@ -63,7 +64,9 @@ static void tile_live(void *app,uint32_t now,TSLive *live){
 }
 static bool live_sync(FMControl *c,void *app,int index,uint32_t now){
  if(index<0||(unsigned)index>=c->view.tiles.count)return false;
- TSLive live;TSState st;tile_live(app,now,&live);const unsigned lang=tio_lang();unsigned mask=0;
+ TSLive live;TSState st;NTTitle title;tile_live(app,now,&live);const unsigned lang=tio_lang();unsigned mask=0;
+ nt_title(&live,&title);(void)fm_view_route(&c->view,title.on,now);   /* the carousel makes room in band T for the next turn */
+ if(!fm_view_title(&c->view,&title,now))return false;
  for(unsigned r=0;r<c->view.tiles.count;r++){unsigned id=c->view.tiles.ids[r];ts_state(id,&live,lang,&st);if(st.active)mask|=1u<<id;}
  (void)fm_view_active(&c->view,mask);
  ts_state(c->view.tiles.ids[index],&live,lang,&st);return fm_view_line(&c->view,st.line);

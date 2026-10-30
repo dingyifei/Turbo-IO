@@ -3,6 +3,7 @@
 #include "../navigation-runtime-v1/nav_view.h"
 #include "../music-runtime-v1/menu_tiles.h"
 #include "../menu-grid-v2/tile_config.h"
+#include "nav_title.h"
 /* TMG7 LensMenu (docs/design-system/screens/LensMenu.dc.html, halved): status in band T, the icon grid in band M,
  * the focused name once in band B. A 24x3 caret under the focused icon replaces the 52 px ring.
  * TMG8 adds the live tile state: a 5 px lens-mid dot at the upper right of every grid icon whose tile has live state, and the focused tile's status line in the carousel.
@@ -18,7 +19,7 @@ enum { FM_ITEMS=TIO_MENU_ITEMS, FM_CELLS=9, FM_ICON=32, FM_CARET_W=24, FM_CARET_
 #define FM_CAR_OFFSETS {0,6400,10496,12800,14592,15936}
 #define FM_CAR_BANK 17280u
 typedef struct {
- TTVisible tiles;TNWidgets api;void *root,*icons[FM_CELLS],*labels[FM_CELLS],*dots[FM_CELLS],*caret,*status,*battery,*name,*page,*line;
+ TTVisible tiles;TNWidgets api;void *root,*icons[FM_CELLS],*labels[FM_CELLS],*dots[FM_CELLS],*caret,*status,*battery,*name,*page,*line,*title_arrow,*title_text;
  union {_Alignas(64) uint8_t pixels[2][FM_CELLS][FM_ICON*FM_ICON];_Alignas(64) uint8_t cpixels[2][FM_CAR_BANK];};
  _Alignas(64) uint8_t caret_px[FM_CARET_W*FM_CARET_H];
  _Alignas(64) uint8_t state_px[FM_STATE_W*FM_STATE_H];   /* the one state dot, shared by the nine dot canvases */
@@ -30,6 +31,9 @@ typedef struct {
  /* Carousel state: position in item units (8.8 fixed point, unwrapped while a move runs), route weight (0 none .. 256 route). */
  int car_p,car_from_p,car_to_p;unsigned car_w,car_from_w,car_to_w;bool route,reduce_motion,dirty;
  char line_text[2][FM_LINE_MAX];unsigned line_bank;
+ /* Navigation title (band T, both layouts): the arrow canvas and the text label, banked so a rewrite never touches what is shown. */
+ _Alignas(64) uint8_t title_px[2][NT_ARROW*NT_ARROW];char title_line[2][NT_TEXT_MAX];
+ unsigned title_bank,title_w;uint8_t title_icon;bool title_on;uint32_t title_at;
 } FMView;
 bool fm_view_open(FMView *,const TNWidgets *,void *,bool (*)(void *,void *),void *);
 bool fm_view_update(FMView *,int,int64_t,int,uint32_t);
@@ -41,6 +45,10 @@ bool fm_view_rows(FMView *,unsigned);                /* 1 carousel, 2 or 3 grid 
 bool fm_view_route(FMView *,bool,uint32_t);
 bool fm_view_line(FMView *,const char *);
 void fm_view_reduce_motion(FMView *,bool);
+/* Navigation title hook (nav_title.h): the next turn, centred in band T, in both layouts. `on` false hides it at once; a changed arrow or text
+ * is applied at most once per NT_MIN_MS (an earlier change is picked up by the next refresh), in a fixed slot. Needs an idle renderer. The route
+ * flag that makes room in the carousel is fm_view_route; the grid does not move. While the title is shown the page dots are hidden (same band). */
+bool fm_view_title(FMView *,const NTTitle *,uint32_t);
 /* Live tile state (tile_state.h): bit per tile id with a running state. The grid shows a dot on those tiles; nothing is rewritten when the mask is unchanged. */
 bool fm_view_active(FMView *,unsigned);
 bool fm_view_tiles(FMView *,const TTVisible *);

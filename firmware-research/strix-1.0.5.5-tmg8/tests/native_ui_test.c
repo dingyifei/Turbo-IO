@@ -47,7 +47,7 @@ static bool nav_bonded(void *l){(void)l;return link_up;}
 static int nav_connection(unsigned which){assert(which==0x80);return link_up?1:0;}
 static void tf_live(uint32_t t,TSLive *o){(void)t;o->pomodoro=fixture.pomodoro;o->pomodoro_ms=fixture.pomodoro_ms;}
 static void tm_slot_live(void *s,uint32_t t,TSLive *o){assert(s==&music_slot);(void)t;o->music_playing=fixture.music_playing;o->music_age_ms=fixture.music_age_ms;o->music_title=fixture.music_title;}
-static void tn_slot_live(TNNavSlot *s,TSLive *o){assert(s==&nav);o->nav_active=fixture.nav_active;o->nav_stale=fixture.nav_stale;o->nav_remaining_m=fixture.nav_remaining_m;}
+static void tn_slot_live(TNNavSlot *s,TSLive *o){assert(s==&nav);o->nav_active=fixture.nav_active;o->nav_stale=fixture.nav_stale;o->nav_remaining_m=fixture.nav_remaining_m;o->nav_turn=fixture.nav_turn;o->nav_icon=fixture.nav_icon;o->nav_turn_m=fixture.nav_turn_m;memcpy(o->nav_road,fixture.nav_road,sizeof o->nav_road);}
 static void tc_slot_live(void *s,TSLive *o){assert(s==&camera_slot);o->camera=fixture.camera;}
 static void *fm_system(void *p){return p;}
 static void *fm_battery_monitor(void *p){return p;}
@@ -95,6 +95,25 @@ int main(void){
   GO(TIO_TILE_CAMERA);assert(DOTS()==((1u<<TIO_TILE_CAMERA)));
   link_up=false;fixture.camera=false;fixture.nav_active=false;GO(TIO_TILE_NAVIGATION);assert(control.view.live_mask==(1u<<TIO_TILE_FOCUS));assert(DOTS()==(1u<<TIO_TILE_FOCUS));
   fixture=(TSLive){0};link_up=true;GO(TIO_TILE_NAVIGATION);assert(control.view.live_mask==0&&DOTS()==0);
+  /* TMG8 navigation title (OptionANavTitle): the production live_sync turns the stubbed nav_service turn into the band T title and the carousel route flag. */
+  {const uintptr_t tt=(uintptr_t)control.view.title_text,ta=(uintptr_t)control.view.title_arrow,pg=(uintptr_t)control.view.page;
+   #define TITLE(want) do{if(*(want)){assert(control.view.title_on&&shown[tt]&&shown[ta]&&!strcmp(texts[tt],want));}else assert(!control.view.title_on&&!shown[tt]&&!shown[ta]);}while(0)
+   link_up=true;fixture=(TSLive){.nav_active=true,.nav_turn=true,.nav_icon=TN_LEFT,.nav_turn_m=200};strcpy(fixture.nav_road,"Market St");
+   control.desired_rows=FM_CAROUSEL;GO(TIO_TILE_MUSIC);TITLE("200 m \xc2\xb7 Market St");assert(control.view.route);   /* shown on any tile, the row makes room */
+   fixture.nav_turn_m=150;GO(TIO_TILE_MUSIC);TITLE("150 m \xc2\xb7 Market St");                                      /* the next 1 Hz refresh rewrites it */
+   {const char *kept=texts[tt];fixture.nav_turn_m=149;now+=300;fm_sync(app);assert(texts[tt]==kept);now+=1000;fm_sync(app);assert(texts[tt]==kept&&!strcmp(kept,"150 m \xc2\xb7 Market St"));}   /* 149 m rounds to 150 m: unchanged, never rewritten */
+   fixture.nav_turn_m=1500;strcpy(fixture.nav_road,"Martin Luther King Jr. Boulevard South Extension");GO(TIO_TILE_FOCUS);assert(control.view.title_on&&control.view.title_w<=NT_TEXT_W&&strstr(texts[tt],"1.5 km")&&strstr(texts[tt],"\xe2\x80\xa6"));
+   fixture.nav_turn_m=200;strcpy(fixture.nav_road,"Market St");GO(TIO_TILE_NAVIGATION);TITLE("200 m \xc2\xb7 Market St");
+   /* the grid shows it too and gives up the page dots */
+   control.desired_rows=2;GO(TIO_TILE_NAVIGATION);TITLE("200 m \xc2\xb7 Market St");assert(control.view.rows==2&&!shown[pg]);
+   /* stale, no route, no phone: hidden at once and the carousel row returns */
+   fixture.nav_stale=true;GO(TIO_TILE_NAVIGATION);TITLE("");assert(shown[pg]);fixture.nav_stale=false;GO(TIO_TILE_NAVIGATION);TITLE("200 m \xc2\xb7 Market St");
+   fixture.nav_turn=false;GO(TIO_TILE_NAVIGATION);TITLE("");
+   fixture.nav_turn=true;now+=1100;GO(TIO_TILE_NAVIGATION);TITLE("200 m \xc2\xb7 Market St");link_up=false;GO(TIO_TILE_NAVIGATION);TITLE("");
+   link_up=true;fixture.nav_active=false;GO(TIO_TILE_NAVIGATION);TITLE("");
+   control.desired_rows=FM_CAROUSEL;fixture.nav_active=true;GO(TIO_TILE_NAVIGATION);TITLE("200 m \xc2\xb7 Market St");assert(control.view.route);fixture.nav_active=false;GO(TIO_TILE_NAVIGATION);TITLE("");assert(!control.view.route);
+   fixture=(TSLive){0};
+  }
   /* a renderer that is busy leaves everything as it was and retries */
   fixture.pomodoro=true;fixture.pomodoro_ms=5000;control.desired_rows=FM_CAROUSEL;GO(TIO_TILE_FOCUS);
  }
