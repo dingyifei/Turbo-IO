@@ -60,6 +60,7 @@ static NSString *AddonUILanguage(void){NSString *l=NSLocale.preferredLanguages.f
 #endif
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
+#import "ClenchLabUI.h"
 #endif
 #if TIO_DISPLAY_PHONE
 #import "DisplayPhoneUI.h"
@@ -727,6 +728,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 #endif
 #if TIO_IMAGE_RX_LAB
     else if ([key isEqual:@"imageRXLab"]) screen=TIOImageUploadLabController();
+    else if ([key isEqual:@"clenchLab"]) screen=TIOClenchLabController();
 #endif
     else if ([key isEqual:@"dashboardCard"]) screen=TDCDashboardController();
     else if ([key isEqual:@"a2ui"]) screen=TIOA2UIController();
@@ -869,6 +871,9 @@ __attribute__((constructor)) static void Load(void) {
                 ^{id instance=((id(*)(id,SEL))objc_msgSend)(helper,NSSelectorFromString(@"shared"));if(instance)((void(*)(id,SEL))objc_msgSend)(instance,NSSelectorFromString(@"stopWorkflow"));});
 #endif
             if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
+#if TIO_IMAGE_RX_LAB
+            TIOClenchLabInstallRecovery();
+#endif
             TCCameraReportLoaded();
             NSMutableString *loadInfo=[NSMutableString stringWithFormat:@"setup reached; hooks=%d; version=%d; voiceClass=%d; alwaysOnClass=%d\n",valid,VersionMatches(),voice!=Nil,ao!=Nil];
 #if TIO_DISPLAY_PHONE

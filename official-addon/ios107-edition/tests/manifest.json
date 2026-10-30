@@ -13,6 +13,10 @@
       "status": "run",
       "group": "alwayson-ogg"
     },
+    "ClenchLabTests.m": {
+      "status": "run",
+      "group": "clench-lab"
+    },
     "DashboardCardTests.m": {
       "status": "run",
       "group": "dashboard-card"

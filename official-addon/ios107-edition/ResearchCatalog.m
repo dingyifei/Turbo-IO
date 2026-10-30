@@ -62,6 +62,7 @@ static const TIOHubRowDefinition Rows[] = {
 #endif
 #if TIO_IMAGE_RX_LAB
     {@"imageRXLab", @"photo", TIOHubSectionDeveloper, @"", @"N8W FIX 01"},
+    {@"clenchLab", @"waveform.and.magnifyingglass", TIOHubSectionDeveloper, @"", @"CLENCH A1"},
 #endif
     {@"dashboardCard", @"chart.bar.xaxis", TIOHubSectionDeveloper, @"", @"TDC1"},
     {@"a2ui", @"rectangle.on.rectangle", TIOHubSectionDeveloper, @"", @"A2UI 7392/8642"},

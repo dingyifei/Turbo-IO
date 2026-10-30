@@ -225,6 +225,13 @@ test('recording-exports',['RecordingExportsTests.m', 'RecordingExports.m'],argv=
 test('recording-text',['RecordingTextTests.m', 'RecordingText.m'],argv=[],extra=['-fmodules'])
 test('alwayson-audio',['AlwaysOnAudioTests.m', 'AlwaysOnAudioFiles.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])
 test('alwayson-ogg',['AlwaysOnOggTests.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])
+# Clench Lab model (TIO_IMAGE_RX_LAB). Also writes one complete synthetic session under build/tests/clench-sample/
+# for a separate run of the offline session validator; this group does not import or run that validator.
+clench_sample=out/'clench-sample'
+if only is None or 'clench-lab' in only:
+    import shutil
+    shutil.rmtree(clench_sample,ignore_errors=True)
+test('clench-lab',['ClenchLabTests.m','ClenchLab.m','A2UIProtocol.m','AlwaysOnAudioFiles.m','AlwaysOnOgg.m'],argv=[clench_sample],extra=['-fmodules','-lz','-DTIO_IMAGE_RX_LAB=1','-DNSHomeDirectory=TIOTestHome'])
 test('subtitle-hud',['SubtitleHUDTests.m', 'SubtitleHUDCore.m'],argv=[],extra=['-fmodules'])
 test('hometab',['HomeTabLayoutTests.m', 'HomeTabLayout.m'],argv=[],extra=['-fmodules'])
 test('tio-design',['TIODesignTests.m'],argv=[ROOT/'docs/design-system/tokens.json'])

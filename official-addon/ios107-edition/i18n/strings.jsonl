@@ -2162,3 +2162,106 @@
 {"key":"camera.countdown","en":"Countdown","zh":"倒计时"}
 {"key":"focus.duration","en":"Timer length","zh":"计时时长"}
 {"key":"focus.target","en":"Run timer on","zh":"计时位置"}
+{"key":"hub.row.clenchLab","en":"Clench Lab","zh":"咬合实验"}
+{"key":"clench.section.status","en":"Status","zh":"状态"}
+{"key":"clench.section.setup","en":"Setup","zh":"设置"}
+{"key":"clench.section.capture","en":"Capture","zh":"采集"}
+{"key":"clench.section.sessions","en":"Sessions","zh":"记录"}
+{"key":"clench.section.wake","en":"Voice wake-up","zh":"语音唤醒"}
+{"key":"clench.phase.idle","en":"Ready","zh":"就绪"}
+{"key":"clench.phase.capturing","en":"Capturing","zh":"采集中"}
+{"key":"clench.phase.stopping","en":"Stop LifeLog now","zh":"请停止 LifeLog"}
+{"key":"clench.phase.pending","en":"Action needed","zh":"需要处理"}
+{"key":"clench.phase.saved","en":"Saved","zh":"已保存"}
+{"key":"clench.status.idle","en":"Choose a label, then tap Start. You start and stop LifeLog yourself in the official app.","zh":"先选择标签，再点开始。LifeLog 由你在官方 App 中自行开始和停止。"}
+{"key":"clench.status.officialUnavailable","en":"Official audio status unavailable","zh":"官方音频状态不可用"}
+{"key":"clench.status.capturing","en":"%ld s left. Marks: %ld. Packets: %ld. Dropped: %ld. Official packets: %@.","zh":"剩余 %ld 秒。标记：%ld。数据包：%ld。丢弃：%ld。官方数据包：%@。"}
+{"key":"clench.status.stopping","en":"Stop LifeLog in the official app now. Receiving ends in %ld s. Marks: %ld.","zh":"请立即在官方 App 中停止 LifeLog。%ld 秒后停止接收。标记：%ld。"}
+{"key":"clench.status.saved","en":"%@, %ld s, %ld marks, %ld packets.","zh":"%@，%ld 秒，%ld 个标记，%ld 个数据包。"}
+{"key":"clench.pending.title","en":"LifeLog stop not confirmed","zh":"LifeLog 停止未确认"}
+{"key":"clench.pending.detail.stop","en":"Stop LifeLog in the official app. Start stays off until the stop is seen or you confirm it.","zh":"请在官方 App 中停止 LifeLog。在检测到停止或你确认之前，无法开始新的采集。"}
+{"key":"clench.pending.detail.dump","en":"The official audio debug settings are not back to what they were. Retry to restore them.","zh":"官方音频调试设置尚未恢复原样。请重试恢复。"}
+{"key":"clench.pending.retry","en":"Retry restore and check","zh":"重试恢复并检查"}
+{"key":"clench.pending.confirm","en":"I stopped LifeLog","zh":"我已停止 LifeLog"}
+{"key":"clench.pending.confirm.title","en":"Confirm LifeLog stopped?","zh":"确认 LifeLog 已停止？"}
+{"key":"clench.pending.confirm.message","en":"Only confirm after you checked the official app or the glasses. Clench Lab cannot see the glasses' state.","zh":"请在检查官方 App 或眼镜后再确认。咬合实验无法读取眼镜的状态。"}
+{"key":"clench.pending.confirm.action","en":"Confirm","zh":"确认"}
+{"key":"clench.pending.resolved","en":"Resolved.","zh":"已处理。"}
+{"key":"clench.pending.unresolved","en":"Still not resolved. Check the official app and try again.","zh":"仍未处理。请检查官方 App 后重试。"}
+{"key":"clench.source.title","en":"Source","zh":"来源"}
+{"key":"clench.source.lifelog","en":"LifeLog (passive)","zh":"LifeLog（被动）"}
+{"key":"clench.source.detail","en":"Clench Lab only listens. It never starts or stops LifeLog on the glasses.","zh":"咬合实验只做监听，不会在眼镜上开始或停止 LifeLog。"}
+{"key":"clench.label.title","en":"Label","zh":"标签"}
+{"key":"clench.label.choose","en":"Choose","zh":"选择"}
+{"key":"clench.label.double-tap","en":"Double clench","zh":"双次咬合"}
+{"key":"clench.label.single-tap","en":"Single clench","zh":"单次咬合"}
+{"key":"clench.label.true-clench","en":"Hold clench","zh":"持续咬合"}
+{"key":"clench.label.chew","en":"Chewing","zh":"咀嚼"}
+{"key":"clench.label.talk","en":"Talking","zh":"说话"}
+{"key":"clench.label.walk","en":"Walking","zh":"走路"}
+{"key":"clench.label.tap-temple","en":"Tap temple","zh":"轻敲镜腿"}
+{"key":"clench.label.silence","en":"Silence","zh":"安静"}
+{"key":"clench.start","en":"Start","zh":"开始"}
+{"key":"clench.stop","en":"Stop","zh":"停止"}
+{"key":"clench.mark","en":"Mark","zh":"标记"}
+{"key":"clench.mark.count","en":"Mark (%ld)","zh":"标记（%ld）"}
+{"key":"clench.capture.footer.idle","en":"After Start, open the official app and start LifeLog. Stop it within 120 seconds; receiving ends at 125 seconds.","zh":"点开始后，打开官方 App 并开始 LifeLog。请在 120 秒内停止；125 秒时停止接收。"}
+{"key":"clench.capture.footer.active","en":"Tap Mark at each event. Leaving the app or changing glasses ends the capture.","zh":"每次动作时点标记。离开 App 或更换眼镜会结束采集。"}
+{"key":"clench.consent.title","en":"Record LifeLog audio?","zh":"录制 LifeLog 音频？"}
+{"key":"clench.consent.message","en":"Audio from the glasses' microphones is stored on this phone only. The official audio debug settings are turned on for this session and restored afterwards, so the official app also keeps its own debug audio and event files in its debug folder. Deleting a Lab session does not remove those.","zh":"眼镜麦克风的音频只保存在这台手机上。本次采集期间会打开官方音频调试设置，结束后恢复原样，因此官方 App 也会在它的调试文件夹中保留自己的调试音频和事件文件。删除实验记录不会删除这些文件。"}
+{"key":"clench.consent.action","en":"Start","zh":"开始"}
+{"key":"clench.started.title","en":"Now start LifeLog","zh":"现在开始 LifeLog"}
+{"key":"clench.started.message","en":"Open the official app and start LifeLog. Come back to mark events. You will be asked to stop it at 120 seconds.","zh":"打开官方 App 并开始 LifeLog，然后回来标记动作。120 秒时会提醒你停止。"}
+{"key":"clench.stopPrompt.title","en":"Stop LifeLog now","zh":"请立即停止 LifeLog"}
+{"key":"clench.stopPrompt.message","en":"Stop LifeLog in the official app. The official audio debug settings are restored.","zh":"请在官方 App 中停止 LifeLog。官方音频调试设置已恢复。"}
+{"key":"clench.stopPrompt.restoreFailed","en":"Stop LifeLog in the official app. The official audio debug settings could not be restored; retry in Clench Lab.","zh":"请在官方 App 中停止 LifeLog。官方音频调试设置未能恢复，请在咬合实验中重试。"}
+{"key":"clench.error.busy","en":"A capture is already running.","zh":"已有采集在进行。"}
+{"key":"clench.error.pending","en":"Resolve the earlier session first.","zh":"请先处理之前的记录。"}
+{"key":"clench.error.label","en":"Choose a label first.","zh":"请先选择标签。"}
+{"key":"clench.error.source","en":"This source is not available.","zh":"此来源不可用。"}
+{"key":"clench.error.device","en":"Connect the glasses first.","zh":"请先连接眼镜。"}
+{"key":"clench.error.dump-unavailable","en":"Official audio debug status is unavailable.","zh":"官方音频调试状态不可用。"}
+{"key":"clench.error.dump-enable-failed","en":"Official audio debug settings could not be turned on. Nothing was recorded.","zh":"无法打开官方音频调试设置，未录制任何内容。"}
+{"key":"clench.error.storage","en":"Could not save on this phone.","zh":"无法保存到这台手机。"}
+{"key":"clench.error.inactive","en":"Not available right now. Keep the app open and wait for any update to finish.","zh":"当前不可用。请保持 App 打开，并等待更新完成。"}
+{"key":"clench.sessions.empty","en":"No sessions yet","zh":"暂无记录"}
+{"key":"clench.sessions.row","en":"%@, %ld s","zh":"%@，%ld 秒"}
+{"key":"clench.sessions.detail","en":"%ld marks, %ld packets. %@","zh":"%ld 个标记，%ld 个数据包。%@"}
+{"key":"clench.sessions.dump.waiting","en":"Official audio not attached yet","zh":"尚未附加官方音频"}
+{"key":"clench.sessions.dump.none","en":"No official audio found","zh":"未找到官方音频"}
+{"key":"clench.sessions.dump.attached","en":"%ld official audio files","zh":"%ld 个官方音频文件"}
+{"key":"clench.sessions.stopPending","en":"LifeLog stop not confirmed","zh":"LifeLog 停止未确认"}
+{"key":"clench.sessions.incompleteTitle","en":"Incomplete session","zh":"不完整的记录"}
+{"key":"clench.sessions.incomplete","en":"Never finished. It cannot be shared; delete it.","zh":"未完成，无法分享，请删除。"}
+{"key":"clench.sessions.interrupted","en":"Interrupted: the app ended during the capture. Saved up to its last checkpoint.","zh":"已中断：采集期间 App 已退出。已保存到最后一个检查点。"}
+{"key":"clench.action.share","en":"Share","zh":"分享"}
+{"key":"clench.action.attach","en":"Attach official audio","zh":"附加官方音频"}
+{"key":"clench.action.delete","en":"Delete","zh":"删除"}
+{"key":"clench.delete.title","en":"Delete session?","zh":"删除记录？"}
+{"key":"clench.delete.message","en":"The audio and marks of this session are removed from this phone.","zh":"本次记录的音频和标记将从这台手机删除。"}
+{"key":"clench.delete.action","en":"Delete","zh":"删除"}
+{"key":"clench.share.blocked","en":"Stop the capture and resolve the LifeLog stop first.","zh":"请先结束采集并处理 LifeLog 停止。"}
+{"key":"clench.share.failed","en":"Could not prepare the file.","zh":"无法准备文件。"}
+{"key":"clench.attach.blocked","en":"Stop LifeLog in the official app first.","zh":"请先在官方 App 中停止 LifeLog。"}
+{"key":"clench.attach.done","en":"Attached %ld files and %ld events.","zh":"已附加 %ld 个文件和 %ld 条事件。"}
+{"key":"clench.attach.already","en":"Official audio was already attached to this session. Nothing new was copied.","zh":"此记录已附加过官方音频，未复制新的内容。"}
+{"key":"clench.attach.failed","en":"Could not attach official audio.","zh":"无法附加官方音频。"}
+{"key":"clench.wake.off","en":"Turn voice wake-up off","zh":"关闭语音唤醒"}
+{"key":"clench.wake.off.detail","en":"Only the wake word is turned off; the microphones stay on.","zh":"只关闭唤醒词，麦克风保持开启。"}
+{"key":"clench.wake.restore","en":"Restore voice wake-up","zh":"恢复语音唤醒"}
+{"key":"clench.wake.restore.detail","en":"Turns voice wake-up back on.","zh":"重新打开语音唤醒。"}
+{"key":"clench.wake.last","en":"Last sent: mode %ld at %@","zh":"上次发送：模式 %ld，%@"}
+{"key":"clench.wake.never","en":"Nothing sent from Clench Lab yet","zh":"咬合实验尚未发送"}
+{"key":"clench.wake.unavailable","en":"Connect the glasses and keep the app open.","zh":"请连接眼镜并保持 App 打开。"}
+{"key":"clench.wake.capturing","en":"Stop the capture first. A change made during a session would not be recorded in it.","zh":"请先停止采集。会话期间的更改不会记录到该会话中。"}
+{"key":"clench.wake.confirm.title","en":"Turn voice wake-up off?","zh":"关闭语音唤醒？"}
+{"key":"clench.wake.confirm.message","en":"The glasses stop listening for the wake word until you restore it here or in the official app.","zh":"眼镜将不再监听唤醒词，直到你在这里或官方 App 中恢复。"}
+{"key":"clench.wake.confirm.action","en":"Turn off","zh":"关闭"}
+{"key":"clench.wake.sent","en":"Sent. The glasses do not confirm this setting.","zh":"已发送。眼镜不会回传此设置的确认。"}
+{"key":"clench.wake.failed","en":"Could not send.","zh":"发送失败。"}
+{"key":"clench.wake.footer","en":"Sent only: the glasses do not report this setting back, so the row shows what was last sent, not the glasses' state.","zh":"仅发送：眼镜不会回报此设置，因此这里显示的是上次发送的内容，而不是眼镜的状态。"}
+{"key":"clench.footer.privacy","en":"Lab sessions stay on this phone, are not backed up, and leave it only when you share them. The official app's own debug audio and event files stay in its debug folder; deleting a session here does not remove them.","zh":"实验记录只保存在这台手机上，不会备份，只有你分享时才会离开手机。官方 App 自己的调试音频和事件文件保留在它的调试文件夹中，在这里删除记录不会删除它们。"}
+{"key":"clench.sessions.dump.retry","en":"%ld official audio files so far. Some could not be copied yet: attach again.","zh":"目前已附加 %ld 个官方音频文件。部分文件暂时无法复制，请再次附加。"}
+{"key":"clench.attach.partial","en":"Attached %ld files and %ld events. Some official files could not be copied yet. Attach again in a moment.","zh":"已附加 %ld 个文件和 %ld 条事件。部分官方文件暂时无法复制，请稍后再次附加。"}
+{"key":"clench.attach.settling","en":"Checking that LifeLog has stopped on these glasses. Official audio is attached in a few seconds.","zh":"正在确认这副眼镜上的 LifeLog 已停止。几秒后附加官方音频。"}
+{"key":"clench.delete.busy","en":"This session is being attached or exported. Delete it when that has finished.","zh":"此记录正在附加或导出，完成后再删除。"}

@@ -3,6 +3,7 @@
 #import "TodoRuntime.h"
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadUI.h"
+#import "ClenchLab.h"
 #endif
 #if TIO_DISPLAY_PHONE
 #import "DisplayPhoneUI.h"
@@ -54,12 +55,19 @@ static void MethodHook(id self,SEL cmd,id call,id result){
     PriorMethod(self,cmd,call,result);
 }
 static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
+#if TIO_IMAGE_RX_LAB
+    // Clench Lab: counts only, never consumes; idle cost is one atomic load. Arrival is read before any decode.
+    NSTimeInterval clenchArrival=0;if(TIOClenchTapActive()){clenchArrival=NSProcessInfo.processInfo.systemUptime;@try{TIOClenchTapChannel(channel,[message isKindOfClass:NSData.class]?message.length:0);}@catch(__unused id e){}}
+#endif
     if([channel isKindOfClass:NSString.class]&&[channel.lowercaseString containsString:@"rayneonet"]&&message.length<262144){
         Class cls=NSClassFromString(@"FlutterStandardMethodCodec");
         @try{if([cls respondsToSelector:@selector(sharedInstance)]){id codec=((id(*)(id,SEL))objc_msgSend)(cls,@selector(sharedInstance));id event=((id(*)(id,SEL,id))objc_msgSend)(codec,NSSelectorFromString(@"decodeEnvelope:"),message);
             if([event isKindOfClass:NSDictionary.class]){dispatch_async(dispatch_get_main_queue(),^{TCCameraObserveConnection(event);});NSMutableDictionary *copy=[event mutableCopy];id original=copy[@"message"];if([original isKindOfClass:NSDictionary.class]){NSMutableDictionary *m=[original mutableCopy];NSData *data=Data(m[@"payload"]);if(data)m[@"payload"]=data;copy[@"message"]=m;}
 #if TIO_DISPLAY_PHONE
                 TDPDiagEnvelope(copy);
+#endif
+#if TIO_IMAGE_RX_LAB
+                TIOClenchTapEvent(copy,clenchArrival); // copies what it keeps; the event continues unchanged
 #endif
                 if(TIOGlassesLogConsumeEvent(copy)){if(reply)((void(^)(NSData *))reply)(nil);return;}}
 #if TIO_IMAGE_RX_LAB || TIO_DISPLAY_PHONE

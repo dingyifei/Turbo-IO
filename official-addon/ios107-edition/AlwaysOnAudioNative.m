@@ -23,3 +23,9 @@ BOOL TIOAOSetAudioSaving(BOOL enabled){
         BOOL ok=((BOOL(*)(id,SEL,id))objc_msgSend)(c,sel,args);NSDictionary *s=TIOAOStatus();return ok&&s&&[s[@"dumpEnabled"] boolValue]==enabled&&(!enabled||(![s[@"dumpEvents"] boolValue]&&[s[@"dumpRealtimeAudio"] boolValue]&&[s[@"dumpCachedAudio"] boolValue]));
     }@catch(NSException *e){return NO;}
 }
+BOOL TIOAOConfigureDump(NSDictionary *config){
+    if(!NSThread.isMainThread||![config isKindOfClass:NSDictionary.class]||config.count!=4)return NO;NSMutableDictionary *args=[NSMutableDictionary new];
+    for(NSString *k in @[@"enabled",@"realtime",@"cached",@"events"]){id v=config[k];if(![v isKindOfClass:NSNumber.class])return NO;args[k]=@([v boolValue]);}
+    id c=NativeController();SEL sel=NSSelectorFromString(@"configureDumpWithArguments:");Method m=c?class_getInstanceMethod(object_getClass(c),sel):NULL;char *r=m?method_copyReturnType(m):NULL,*a=m?method_copyArgumentType(m,2):NULL;BOOL valid=m&&method_getNumberOfArguments(m)==3&&r&&(r[0]=='B'||r[0]=='c')&&a&&a[0]=='@';free(r);free(a);if(!valid)return NO;
+    @try{return ((BOOL(*)(id,SEL,id))objc_msgSend)(c,sel,args);}@catch(NSException *e){return NO;}
+}

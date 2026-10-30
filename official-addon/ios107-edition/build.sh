@@ -36,8 +36,15 @@ if [[ ${TIO_IMAGE_RX_LAB:-0} == 1 ]]; then
   ImageUpload.m \
   ImageUploadTransport.m \
   ImageUploadNative.m \
-  ImageUploadUI.m)
+  ImageUploadUI.m \
+  ClenchLab.m \
+  ClenchLabUI.m)
   [[ ${TIO_IMAGE_RX_WIDE:-0} != 1 ]] || image_options+=(-DTIO_IMAGE_RX_WIDE=1)
+  # Clench Lab manifests record the build commit: short SHA plus -dirty, else unknown.
+  clench_commit=$(git rev-parse --short=12 HEAD 2>/dev/null || true)
+  if [[ -n "$clench_commit" && -n "$(git status --porcelain 2>/dev/null | head -n 1)" ]]; then clench_commit="$clench_commit-dirty"; fi
+  [[ "$clench_commit" =~ ^[0-9a-f]{7,40}(-dirty)?$ ]] || clench_commit=unknown
+  image_options+=("-DTIO_BUILD_COMMIT=\"$clench_commit\"")
 fi
 # Opt-in diagnostic for the iOS 16 jailbreak injector's chained-fixup stall.
 # Keep the normal embedded build unchanged until the device comparison passes.
