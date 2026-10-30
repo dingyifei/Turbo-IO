@@ -77,7 +77,8 @@ static void dots(uint8_t *out,unsigned pages,unsigned page){
  * The text box is the width estimate (errs wide, so the label never clips) and the text is left-aligned in it, so the gap to the arrow is exactly NT_GAP; the group is
  * centred on 7/8 of the estimate, which is closer to the real glyph width. */
 static void title_place(FMView *v){
- const bool on=v->title_on&&v->selected>=0;
+ /* In the carousel the title waits for the slide to the route geometry to finish: until then the 80 px centre icon still reaches up into the title row. */
+ const bool on=v->title_on&&v->selected>=0&&!(v->rows==FM_CAROUSEL&&v->car_w<v->car_to_w);
  v->api.visible(v->api.ctx,v->title_arrow,on);v->api.visible(v->api.ctx,v->title_text,on);if(!on)return;
  const TIOSpan t=tio_band(TIO_SURFACE_MENU,TIO_BAND_T);const int row=t.y0+(t.y1-t.y0-(int)TIO_LINE(TIO_FONT_LABEL))/2;
  int w=(int)v->title_w;if(w>NT_TEXT_W)w=NT_TEXT_W;if(w<1)w=1;

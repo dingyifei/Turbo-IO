@@ -267,7 +267,9 @@ static void nav_title_view(Fake *f,FMView *v){
   assert(fm_view_title(v,&on,clock+2300)&&v->title_on&&fm_view_step(v,clock+2400)&&f->visible[ar]&&f->visible[tx]&&!strcmp(f->texts[tx],on.text));
   clock+=3000;
   /* The carousel row makes room: with the route flag the icons sit under band T (top >= 56), clear of the title. */
-  if(rows==FM_CAROUSEL){assert(fm_view_route(v,true,clock));(void)fm_view_step(v,clock+300);settle(v,2,&clock);
+  if(rows==FM_CAROUSEL){assert(fm_view_route(v,true,clock));
+   assert(v->moving&&v->title_on&&fm_view_step(v,clock+40)&&!f->visible[ar]&&!f->visible[tx]);   /* the title waits while the 80 px centre icon still reaches into band T */
+   (void)fm_view_step(v,clock+300);settle(v,2,&clock);assert(v->car_w==256&&f->visible[ar]&&f->visible[tx]);   /* and shows once the slide has finished */
    for(unsigned i=0;i<FM_CELLS;i++){const uintptr_t o=(uintptr_t)v->icons[i];if(f->visible[o]){assert(f->y[o]>=TIO_MENU_T1);assert(f->y[o]>=f->y[ar]+f->h[ar]);}}
    assert(fm_view_route(v,false,clock));(void)fm_view_step(v,clock+300);}
   assert(fm_view_title(v,&off,clock));(void)fm_view_step(v,clock+10);
