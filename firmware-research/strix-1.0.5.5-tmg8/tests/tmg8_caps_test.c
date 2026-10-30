@@ -25,10 +25,13 @@ int main(void){
  assert((TD_CAPS_TMG6&TD_CAP_NAV_PASSING)&&(TD_CAPS_TMG8&TD_CAP_NAV_PASSING)); /* TMG8 keeps every TMG6/TMG7 bit */
  TDSample s={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1,.caps=TD_CAPS_TMG8,.detent=TK_DETENT_RAW},d;uint8_t wire[TD_WIRE_BYTES];
  assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.caps==TD_CAPS_TMG8&&(d.caps&TD_CAP_MENU_CAROUSEL));
+ /* The detent follows the bit: 300 with it, the legacy 600 without it, never the other way round. */
+ s.detent=TK_DETENT_LEGACY;assert(!td_encode(&s,wire,sizeof wire));s.detent=TK_DETENT_RAW;
+ s.caps=TD_CAPS_TMG6;assert(!td_encode(&s,wire,sizeof wire));s.detent=TK_DETENT_LEGACY;
  s.caps=TD_CAPS_TMG6;assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&!(d.caps&TD_CAP_MENU_CAROUSEL)); /* a TMG7 status still decodes */
- s.caps=TD_CAPS_TMG8|(1u<<10);assert(!td_encode(&s,wire,sizeof wire)); /* nothing beyond the TMG8 bit */
- s.build=TD_BUILD_TMG5;s.caps=TD_CAPS_TMG5|TD_CAP_MENU_CAROUSEL;assert(!td_encode(&s,wire,sizeof wire)); /* older builds never claim it */
- TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample sample;assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&sample)&&sample.caps==TD_CAPS_TMG8);
+ s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG8|(1u<<10);assert(!td_encode(&s,wire,sizeof wire)); /* nothing beyond the TMG8 bit */
+ s.build=TD_BUILD_TMG5;s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG5|TD_CAP_MENU_CAROUSEL;assert(!td_encode(&s,wire,sizeof wire)); /* older builds never claim it */
+ TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample sample;assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&sample)&&sample.caps==TD_CAPS_TMG8&&sample.detent==300u);
 
  /* Command codec: the caps byte is wire byte 7. */
  uint8_t raw[32];TMLCommand q,set1={.op=TML_SET,.request=2,.client=7,.token=32,.rows=TML_CAROUSEL,.caps=TML_PEER_TMG8};

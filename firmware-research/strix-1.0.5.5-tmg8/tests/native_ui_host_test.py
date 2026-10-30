@@ -13,7 +13,7 @@ def main():
         focus=(FW/'src/focus-v1/focus_menu_native.c').read_text()
         control=next(line for line in focus.splitlines() if line.startswith('typedef struct {FMView view;'))
         sync=focus[focus.index('void fm_sync(void *app)'):focus.index('\nvoid fm_show(void *app)')]
-        (out/'focus_native_sync.inc').write_text(control+'\n'+sync+'\n')
+        (out/'focus_native_sync.inc').write_text('#include "common-v1/menu_wheel.h"\n'+control+'\n'+sync+'\n')
         menu=(FW/'src/music-runtime-v1/menu10.c').read_text()
         lifecycle=menu[menu.index('void m8_hook_hide(void *app)'):menu.index('\nvoid m8_hook_wheel(void *app')]
         event=menu[menu.index('bool m8_hook_event(void *app,void *event)'):menu.index('\nvoid tio_hook_file(')]

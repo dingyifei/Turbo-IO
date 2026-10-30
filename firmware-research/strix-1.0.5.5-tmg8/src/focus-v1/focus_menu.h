@@ -27,4 +27,6 @@ void fm_show(void *app);
 void fm_hide(void *app);
 void fm_destroy(void *app);
 void fm_sync(void *app);
+/* Knob wrap (menu_wheel.h): the item to jump to, or -1 to let the stock carousel take the scaled delta. */
+int fm_wheel_wrap(void *app,int index,int count,int delta,uint32_t now);
 #endif

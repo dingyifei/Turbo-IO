@@ -4,7 +4,7 @@
 #include <assert.h>
 static uint32_t SampleBuild=TD_BUILD_TMG4,SampleCaps=TD_CAPS_ALL;
 static NSData *Packet(TDCommand q,unsigned kind,unsigned state,int64_t net,uint64_t absolute){
- TDSample s={.build=SampleBuild,.kind=kind,.session=q.session,.sequence=q.sequence,.caps=SampleCaps,.detent=600,.extension_valid=7,.nand_total=128000,.nand_available=64000,.tile_generation=5,.language=1,.language_source=2,.settings_flags=3,.valid=1u<<TD_LV_USED};s.values[TD_LV_USED]=1024;memset(s.build_sha,0xab,32);
+ TDSample s={.build=SampleBuild,.kind=kind,.session=q.session,.sequence=q.sequence,.caps=SampleCaps,.detent=(SampleCaps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY,.extension_valid=7,.nand_total=128000,.nand_available=64000,.tile_generation=5,.language=1,.language_source=2,.settings_flags=3,.valid=1u<<TD_LV_USED};s.values[TD_LV_USED]=1024;memset(s.build_sha,0xab,32);
  if(state){s.extension_valid|=TD_EXT_CALIBRATION;s.calibration_state=state;s.calibration_window=q.session;s.calibration_elapsed=2000;s.calibration_samples=8;s.calibration_net=net;s.calibration_absolute=absolute;s.calibration_sequence=q.sequence;}
  uint8_t bytes[TD_WIRE_BYTES];assert(td_encode(&s,bytes,sizeof bytes));return [NSData dataWithBytes:bytes length:sizeof bytes];
 }

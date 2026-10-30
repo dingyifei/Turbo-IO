@@ -1,5 +1,6 @@
 #include "../common-v1/tio_text.h"
 #include "menu_tiles.h"
+#include "../common-v1/menu_wheel.h"
 #include "../menu-grid-v2/tile_native.h"
 #include "../diagnostics-v1/runtime_native.h"
 #include "../menu-grid-v2/menu_config.h"
@@ -283,7 +284,13 @@ void m8_hook_wheel(void *app,int delta){
   if(tf_slot_visible(focus(app))){tf_slot_wheel(focus(app),delta);return;}
   if(tm_slot_visible(music(app))){tm_slot_wheel(music(app),delta);return;}
   if(tail(app)->page||tn_slot_visible(slot(app)))return;
-  stock_wheel(app,delta);
+  /* One item per 300 counts: the stock carousel needs 600, so it gets 2x. Wrap last <-> first in every layout. */
+  int target=fm_wheel_wrap(app,(int)*word(app,0x88),(int)fm_tile_count(),delta,stream_tick());
+  if(target>=0){
+    *(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET)=(float)target;native_snap(app);
+    m8_hook_label_index(app,target);(void)m8_hook_frame(app,tio_frame_start(target));return;
+  }
+  stock_wheel(app,tio_menu_wheel_scaled(delta));
 }
 bool m8_hook_event(void *app,void *event){
   if(native_event_code(event)!=0xe || native_event_key(event)!=0x3a)return stock_event(app,event);

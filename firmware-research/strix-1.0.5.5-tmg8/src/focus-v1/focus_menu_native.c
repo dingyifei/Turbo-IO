@@ -10,6 +10,7 @@
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
 #include "../menu8-renderer.h"
+#include "../common-v1/menu_wheel.h"
 #include <string.h>
 extern const M8RenderAPI m8_native_api;
 extern void *stream_memalign(size_t,size_t),stream_free(void *);
@@ -23,7 +24,7 @@ extern bool native_has_flag(void *,uint32_t);
 extern void *nav_monitors(void),*fm_system(void *),*fm_battery_monitor(void *);
 extern int64_t fm_local_time(void *);
 extern int fm_battery_level(void *);
-typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;} FMControl;
+typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;TIOMenuWrap wrap;} FMControl;
 _Static_assert(sizeof(FMControl)<=32768,"nine-cell menu retained storage capped at 32 KiB");
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
@@ -89,3 +90,5 @@ void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
 }
 void fm_hide(void *app){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;if(c){c->enabled=false;c->selection=-1;fm_view_suspend(&c->view);if(c->view.root)c->view.api.visible(c->view.api.ctx,c->view.root,false);}}
 void fm_destroy(void *app){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;if(!c)return;s->quad=NULL;c->app=NULL;c->closing=true;c->enabled=false;(void)dispose(c);/* idle: remove our child now; busy: parent callback + deferred retirement */}
+/* Knob wrap state lives in the heap controller (the owner tail and .bss are fixed). No controller, no wrap. */
+int fm_wheel_wrap(void *app,int index,int count,int delta,uint32_t now){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;return c&&!c->closing?tio_menu_wheel_wrap(&c->wrap,index,count,delta,now):-1;}

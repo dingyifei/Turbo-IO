@@ -47,6 +47,14 @@
 #define TIO_MENU_M1 TIO_EDGE(6935,TIO_MENU_H-TIO_RESERVE_BOTTOM)  /* 172 */
 #define TIO_MENU_B1 TIO_EDGE(8548,TIO_MENU_H-TIO_RESERVE_BOTTOM)  /* 212 */
 
+/* Knob (tokens lens-wheel-detent, README rule 9): one item per 300 raw counts (about 6.7 per turn at ~2000 counts/turn).
+ * Pages (wheel_input.h, music_input.h) step once per detent; the menu doubles the stock delta (menu_wheel.h) because the
+ * stock carousel needs 600 raw units per item. diagnostics-v1/knob_calibration.h repeats the number as TK_DETENT_RAW so the
+ * phone can share it; menu_wheel.h static-asserts they agree. Lockouts after a step: 200 ms on pages, 500 ms in music. */
+#define TIO_WHEEL_DETENT_RAW 300
+#define TIO_WHEEL_LOCK_PAGE_MS 200u
+#define TIO_WHEEL_LOCK_MUSIC_MS 500u
+
 /* Horizontal zones. Primary text stays inside the core (binocular overlap). */
 #define TIO_INSET_X TIO_PX(645)                       /* 16: glyph and ambient side inset */
 #define TIO_CORE_X0 TIO_PX(1613)                      /* 40 */
