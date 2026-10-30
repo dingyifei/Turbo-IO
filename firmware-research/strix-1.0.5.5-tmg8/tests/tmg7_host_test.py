@@ -83,10 +83,16 @@ def main():
     run(cc + [FW / 'tests/focus_grid_test.c', src / 'focus-v1/focus_menu.c', src / 'common-v1/tio_text.c', src / 'menu-grid-v2/tile_config.c', '-o', exe], a.out / 'tmg7-grid-build.log')
     if 'PASS focus_grid' not in run([exe], a.out / 'tmg7-grid.log'):
         sys.exit('tmg7-grid did not report PASS')
+    # TMG8 dashboard card (src/dashboard-v1): the TDC1 parser, the Round 2 layout against the board's numbers, allocation failure and fuzz
+    # (mock widgets, ASan/UBSan). Its render goes through the layout gate below and the brightness gate.
+    exe = a.out / 'tmg8-card'
+    run(cc + [src / 'dashboard-v1/test_card.c', src / 'dashboard-v1/card.c', '-o', exe], a.out / 'tmg8-card-build.log')
+    if 'dashboard parser/layout/allocation-failure/fuzz: PASS' not in run([exe], a.out / 'tmg8-card.log'):
+        sys.exit('tmg8-card did not report PASS')
     exe = a.out / 'tmg7-layout'
     run(['xcrun', 'clang', '-fobjc-arc', '-fblocks', '-O1', '-g', '-fsanitize=address,undefined', '-framework', 'AppKit',
          FW / 'tests/tmg7_layout_preview.m', src / 'navigation-runtime-v1/nav_view.c', src / 'navigation-runtime-v1/nav_visual.c',
-         src / 'navigation-runtime-v1/nav_runtime.c', src / 'music-runtime-v1/music.c', src / 'focus-v1/focus_view.c', src / 'focus-v1/focus.c', src / 'focus-v1/focus_menu.c', src / 'menu-grid-v2/tile_config.c', src / 'common-v1/tio_text.c', src / 'app-runtime-v1/app.c', src / 'app-runtime-v1/app_view.c', src / 'app-runtime-v1/app_shelf.c', '-o', exe],
+         src / 'navigation-runtime-v1/nav_runtime.c', src / 'music-runtime-v1/music.c', src / 'focus-v1/focus_view.c', src / 'focus-v1/focus.c', src / 'focus-v1/focus_menu.c', src / 'menu-grid-v2/tile_config.c', src / 'common-v1/tio_text.c', src / 'app-runtime-v1/app.c', src / 'app-runtime-v1/app_view.c', src / 'app-runtime-v1/app_shelf.c', src / 'dashboard-v1/card.c', '-o', exe],
         a.out / 'tmg7-layout-build.log')
     bright = (a.brightness or a.out / 'brightness.json').resolve()
     planes = a.out / 'brightness-planes'
@@ -95,7 +101,7 @@ def main():
         old.unlink()
     env = dict(os.environ, TIO_BRIGHTNESS_JSON=str(bright), TIO_BRIGHTNESS_PLANES=str(planes))
     layout = run([exe, a.out / 'preview', a.board] + ['%s=%s' % (p.stem, p) for p in paths], a.out / 'tmg7-layout.log', env)
-    if 'PASS tmg7 layout gate' not in layout or 'PASS tmg8 brightness gate' not in layout:
+    if 'PASS tmg7 layout gate' not in layout or 'PASS tmg8 brightness gate' not in layout or 'PASS board LensDashCard' not in layout:
         sys.exit('tmg7 layout gate did not report PASS')
     if 'PASS tmg8 brightness checks' not in run(['python3', '-I', FW / 'tests/tmg8_brightness_test.py', '--out', a.out / 'brightness', '--planes', planes, '--json', bright], a.out / 'tmg8-brightness.log'):
         sys.exit('tmg8 brightness checks did not report PASS')

@@ -12,6 +12,7 @@
 #include "../src/focus-v1/focus_menu.h"
 #include "../src/focus-v1/tile_state.h"
 #include "../src/focus-v1/nav_title.h"
+#include "../src/dashboard-v1/card.h"
 #include "../src/common-v1/tio_text.h"
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
@@ -122,7 +123,10 @@ static void Measure(const Host *host,const char *name){
 static BRow *MeasureRaster(const char *name,const char *page,const char *lang,int w,int h,const uint8_t *green){
  assert(gRowCount<sizeof gRows/sizeof *gRows);BRow *r=&gRows[gRowCount++];memset(r,0,sizeof *r);
  snprintf(r->screen,sizeof r->screen,"%s",name);snprintf(r->page,sizeof r->page,"%s",page);snprintf(r->lang,sizeof r->lang,"%s",lang);
- lb_metrics(green,w,h,&r->all);r->pn=r->all.peak;r->bad=Judge(r);if(r->bad)printf("BRIGHT %s: %.3f at (%d,%d) (max 0.45) mask 0x%x\n",name,r->all.peak,r->all.peak_x,r->all.peak_y,r->bad);return r;
+ lb_metrics(green,w,h,&r->all);r->pn=r->all.peak;r->bad=Judge(r);
+ {const char *dump=getenv("TIO_BRIGHTNESS_PLANES");if(dump&&*dump&&strncmp(name,"selftest",8)){   // the plane as binary PGM, for the independent cross-check in tmg7_host_test.py
+  NSString *f=[[NSString stringWithUTF8String:dump] stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.pgm",name]];NSMutableData *d=[NSMutableData dataWithData:[[NSString stringWithFormat:@"P5\n%d %d\n255\n",w,h] dataUsingEncoding:NSASCIIStringEncoding]];
+  [d appendBytes:green length:(NSUInteger)w*h];assert([d writeToFile:f atomically:YES]);}}if(r->bad)printf("BRIGHT %s: %.3f at (%d,%d) (max 0.45) mask 0x%x\n",name,r->all.peak,r->all.peak_x,r->all.peak_y,r->bad);return r;
 }
 // brightness.json: one row per render with the dashboard's field names; the rest-of-screen, primary and unfocused peaks and the verdict follow.
 static void WriteBrightness(NSString *path){
@@ -802,8 +806,94 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(fm_view_close(v));free(v);free(host);(void)tiles;(void)peaks;}
  gSurface=TIO_SURFACE_PAGE;
 }
+
+// ---- Dashboard card (LensDashCard, tmg8): the production dc_render (src/dashboard-v1/card.c) with host widgets, 256x194 -------------------------
+// The card is a raster on the wake screen, not a lens surface: it has its own 6 px safe area and no bands, so it is checked against the board's
+// proposed SVG (strings, sizes, intensities, positions) and measured with MeasureRaster like every other render. native.c draws the same boxes.
+typedef struct {bool text;int x,y,w,h;unsigned size,color;char s[64];} CardItem;
+typedef struct {CardItem it[24];unsigned n;} CardHost;
+static CardHost *gCard;
+static void *cardRoot(void *p){assert(p&&gCard);gCard->n=0;return gCard;}
+static bool cardText(void *p,int x,int y,int w,int h,unsigned size,unsigned c,const char *s){
+ assert(p==gCard&&gCard->n<24&&strlen(s)<64);gCard->it[gCard->n++]=(CardItem){true,x,y,w,h,size,c,{0}};strcpy(gCard->it[gCard->n-1].s,s);return true;}
+static bool cardBar(void *p,int x,int y,int w,unsigned pct){   // track, then the fill: the same rounding as native.c bar()
+ assert(p==gCard&&gCard->n<23&&pct<=100);gCard->it[gCard->n++]=(CardItem){false,x,y,w,DC_BAR_H,0,DC_TRACK,{0}};
+ int fill=(w*(int)pct+50)/100;if(fill)gCard->it[gCard->n++]=(CardItem){false,x,y,fill,DC_BAR_H,0,DC_HIGH,{0}};return true;}
+static void cardDestroy(void *p){assert(p==gCard);gCard->n=0;}
+static void CardPlane(const CardHost *c,uint8_t *g){
+ CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();uint8_t *rgba=calloc((size_t)DC_W*DC_H,4);
+ CGContextRef cg=CGBitmapContextCreate(rgba,DC_W,DC_H,8,DC_W*4,cs,kCGImageAlphaPremultipliedLast);CGColorSpaceRelease(cs);
+ CGContextSetAllowsFontSmoothing(cg,false);CGContextSetShouldSmoothFonts(cg,false);CGContextTranslateCTM(cg,0,DC_H);CGContextScaleCTM(cg,1,-1);
+ NSGraphicsContext *ctx=[NSGraphicsContext graphicsContextWithCGContext:cg flipped:YES];[NSGraphicsContext saveGraphicsState];[NSGraphicsContext setCurrentContext:ctx];
+ for(unsigned i=0;i<c->n;i++){const CardItem *w=&c->it[i];NSRect rect=NSMakeRect(w->x,w->y,w->w,w->h);[NSGraphicsContext saveGraphicsState];NSRectClip(rect);
+  if(!w->text){[Ink(w->color) setFill];[[NSBezierPath bezierPathWithRoundedRect:rect xRadius:1 yRadius:1] fill];}
+  else{NSMutableParagraphStyle *ps=[NSMutableParagraphStyle new];ps.lineBreakMode=NSLineBreakByClipping;
+   [[NSString stringWithUTF8String:w->s] drawInRect:rect withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:w->size],NSForegroundColorAttributeName:Ink(w->color),NSParagraphStyleAttributeName:ps}];}
+  [NSGraphicsContext restoreGraphicsState];}
+ [NSGraphicsContext restoreGraphicsState];CGContextRelease(cg);for(int k=0;k<DC_W*DC_H;k++)g[k]=rgba[k*4+1];free(rgba);
+}
+static void CardSave(const uint8_t *g,NSString *path){   // 2x, like the boards
+ NSBitmapImageRep *b=[[NSBitmapImageRep alloc]initWithBitmapDataPlanes:NULL pixelsWide:DC_W*2 pixelsHigh:DC_H*2 bitsPerSample:8 samplesPerPixel:3 hasAlpha:NO isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:DC_W*2*3 bitsPerPixel:24];
+ for(int y=0;y<DC_H*2;y++)for(int x=0;x<DC_W*2;x++){uint8_t *q=b.bitmapData+y*b.bytesPerRow+x*3;q[0]=0;q[1]=g[(y/2)*DC_W+x/2];q[2]=0;}
+ assert([[b representationUsingType:NSBitmapImageFileTypePNG properties:@{}] writeToFile:path atomically:YES]);
+}
+// The proposed SVG of the board: text (x, baseline, size, fill, content) and rects (x, y, w, h, fill), background excluded.
+static void CompareCardBoard(NSString *html,const CardHost *c){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSRange r=[s rangeOfString:@"aria-label=\"Proposed"];assert(r.location!=NSNotFound);s=[s substringFromIndex:r.location];s=[s substringToIndex:[s rangeOfString:@"</svg>"].location];
+ NSRegularExpression *tre=[NSRegularExpression regularExpressionWithPattern:@"<text x=\"([\\d.]+)\" y=\"([\\d.]+)\"[^>]*?font-size=\"(\\d+)\" fill=\"#([0-9a-f]{6})\"[^>]*>([^<]+)</text>" options:0 error:nil];
+ NSRegularExpression *rre=[NSRegularExpression regularExpressionWithPattern:@"<rect x=\"([\\d.]+)\" y=\"([\\d.]+)\" width=\"([\\d.]+)\" height=\"([\\d.]+)\"[^>]*fill=\"#([0-9a-f]{6})\"" options:0 error:nil];
+ unsigned texts=0,rects=0,have=0,haveRects=0;for(unsigned i=0;i<c->n;i++){if(c->it[i].text)have++;else haveRects++;}
+ for(NSTextCheckingResult *m in [tre matchesInString:s options:0 range:NSMakeRange(0,s.length)]){
+  double x=[[s substringWithRange:[m rangeAtIndex:1]] doubleValue],base=[[s substringWithRange:[m rangeAtIndex:2]] doubleValue];int size=[[s substringWithRange:[m rangeAtIndex:3]] intValue];
+  uint32_t col=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:4]] UTF8String],NULL,16);NSString *t=[s substringWithRange:[m rangeAtIndex:5]];
+  const CardItem *w=NULL;for(unsigned i=0;i<c->n&&!w;i++)if(c->it[i].text&&[t isEqualToString:[NSString stringWithUTF8String:c->it[i].s]])w=&c->it[i];
+  if(!w){printf("board text without card item: %s\n",t.UTF8String);assert(0);}
+  texts++;   // the box top is the baseline minus 0.92 of the size, as the board's own (reconstructed) renderer places text
+  if(!(fabs(w->x-x)<0.5&&fabs(w->y+0.92*size-base)<1.0&&(int)w->size==size&&w->color==col)){printf("card mismatch %s: board (%.1f,%.1f %d px %06x) card (%d,%d %u px %06x)\n",t.UTF8String,x,base,size,col,w->x,w->y,w->size,w->color);assert(0);}
+ }
+ NSArray *rm=[rre matchesInString:s options:0 range:NSMakeRange(0,s.length)];
+ for(NSTextCheckingResult *m in rm){
+  double x=[[s substringWithRange:[m rangeAtIndex:1]] doubleValue],y=[[s substringWithRange:[m rangeAtIndex:2]] doubleValue],w=[[s substringWithRange:[m rangeAtIndex:3]] doubleValue],h=[[s substringWithRange:[m rangeAtIndex:4]] doubleValue];
+  uint32_t col=(uint32_t)strtoul([[s substringWithRange:[m rangeAtIndex:5]] UTF8String],NULL,16);if(w==DC_W&&h==DC_H)continue;   // the background
+  bool found=false;for(unsigned i=0;i<c->n&&!found;i++){const CardItem *q=&c->it[i];found=!q->text&&q->x==x&&q->y==y&&q->w==w&&q->h==h&&q->color==col;}
+  if(!found){printf("board rect without card item: %.0f,%.0f %.0fx%.0f %06x\n",x,y,w,h,col);assert(0);}
+  rects++;}
+ assert(texts==have&&rects==haveRects&&texts==9&&rects==6);   // nothing on the card that the board does not draw, nothing on the board that the card omits
+ printf("PASS board LensDashCard (proposed): %u strings and %u bar rects match in text, size, intensity and position\n",texts,rects);
+}
+static void Card(NSString *dir,NSString *board){
+ CardHost *host=calloc(1,sizeof *host);assert(host);gCard=host;const DCAPI api={cardRoot,cardText,cardBar,cardDestroy};
+ struct {const char *tag,*wire;} shots[]={
+  {"card-en","TDC1;99;90;85;375;1280;1400;2000;0;1;2"},     // the board's values
+  {"card-alt-en","TDC1;25;50;75;640;1280;1000;2000;0;1;2"},   // the phone's second demo text
+  {"card-100-en","TDC1;100;100;100;1280;1280;2000;2000;0;0;0"},   // the widest numbers: three 100%
+  {"card-zero-en","TDC1;0;0;0;1;99999;1;99999;2;2;2"},        // the longest storage strings, empty bars
+  {"card-full-en","TDC1;100;100;100;99999;99999;99999;99999;0;0;0"}};
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
+  DCValues v;assert(dc_parse(shots[i].wire,strlen(shots[i].wire),&v));assert(dc_render(&api,(void *)1,&v));
+  assert(host->n>=9+3);
+  // Layout rules of the card: the 6 px safe area, the 16 px floor, only the lens ladder, no fill that is not a track or a bar, text inside its column.
+  for(unsigned k=0;k<host->n;k++){const CardItem *w=&host->it[k];
+   assert(w->x>=DC_SAFE&&w->y>=DC_SAFE&&w->x+w->w<=DC_W-DC_SAFE&&w->y+w->h<=DC_H-DC_SAFE);
+   if(w->text){assert(w->size>=TIO_FONT_MIN&&(w->color==TIO_LENS_MID||w->color==TIO_LENS_HIGH||w->color==TIO_LENS_FULL)&&!strstr(w->s,"left"));
+    // The text must fit its box. Two measures: the device advance estimate of music_layout.h (it errs wide, 0.6 em per Latin glyph) and the
+    // macOS surrogate font, which the previews are drawn in. The estimate is only printed for the record; the surrogate width gates.
+    unsigned est=tm_width(w->s,strlen(w->s),w->size);
+    int ink=(int)ceil([[NSString stringWithUTF8String:w->s] sizeWithAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:w->size]}].width);
+    if(est>(unsigned)w->w||ink>w->w)printf("note card %s: %s measures %d px (device estimate %u) in a %d px box%s\n",shots[i].tag,w->s,ink,est,w->w,ink>w->w?" CLIPS":"");
+    if(strcmp(shots[i].tag,"card-zero-en")&&strcmp(shots[i].tag,"card-full-en"))assert(ink<=w->w);}   // the two extreme-storage fixtures may clip: the longest strings the parser accepts
+   else assert(w->h==DC_BAR_H&&(w->color==DC_TRACK||w->color==DC_HIGH)&&w->w<=DC_BAR_W);}
+  uint8_t *g=calloc(DC_W*DC_H,1);assert(g);CardPlane(host,g);
+  BRow *row=MeasureRaster(shots[i].tag,"card","en",DC_W,DC_H,g);
+  printf("card %s: 1 degree peak %.3f, lit %.1f%%\n",shots[i].tag,row->all.peak,row->all.lit_pct);
+  CardSave(g,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",shots[i].tag]]);free(g);
+  if(!i)CompareCardBoard(board,host);
+  host->n=0;}
+ gCard=NULL;free(host);
+}
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);NSString *cardBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensDashCard.dc.html"];Card(dir,cardBoard);
  {const char *env=getenv("TIO_BRIGHTNESS_JSON");WriteBrightness(env&&*env?[NSString stringWithUTF8String:env]:[dir stringByAppendingPathComponent:@"brightness.json"]);
   unsigned bad=0;for(unsigned i=0;i<gRowCount;i++)bad+=gRows[i].bad!=0;
   if(bad){printf("FAIL brightness gate: %u of %u renders over the 1 degree limits (0.45, band-B primary 0.65, unfocused icons 0.20)\n",bad,gRowCount);return 1;}
