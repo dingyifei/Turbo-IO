@@ -52,10 +52,10 @@ bool tap_view_open(TAPView *v,const TAPWidgets *a,void *parent,const TAPDocument
   }else if(q->kind==3){
    o=a->rect(a->ctx,v->root,0x003800,false);if(!o)goto failed;place(v,o,q);
    unsigned fill=(q->w*q->param+50)/100;
-   if(fill){o=a->rect(a->ctx,v->root,0x00ff00,false);if(!o)goto failed;a->place(a->ctx,o,q->x,q->y,fill,q->h);}continue;
+   if(fill){o=a->rect(a->ctx,v->root,TAP_ART_BAND_B(q->y,q->h)?TIO_LENS_FULL:TIO_LENS_MID,false);if(!o)goto failed;a->place(a->ctx,o,q->x,q->y,fill,q->h);}continue;
   }else if(q->kind==4){
    uintptr_t base=(uintptr_t)v->pixels;unsigned offset=(unsigned)(((base+v->used+63)&~(uintptr_t)63)-base),bytes=q->w*q->h;if(offset+bytes>sizeof v->pixels)goto failed;
-   uint8_t *pixels=v->pixels+offset;for(unsigned b=0;b<bytes;b++)pixels[b]=(q->data[b/8]&(128>>(b%8)))?255:0;
+   uint8_t *pixels=v->pixels+offset,level=TAP_ART_BAND_B(q->y,q->h)?255:TAP_ART_LEVEL;for(unsigned b=0;b<bytes;b++)pixels[b]=(q->data[b/8]&(128>>(b%8)))?level:0;
    v->used=offset+bytes;o=a->image(a->ctx,v->root,pixels,q->w,q->h);
   }else if(q->kind==5)o=a->rect(a->ctx,v->root,0x007700,true); // authored frame; the focus ring is gone
   if(!o)goto failed;place(v,o,q);

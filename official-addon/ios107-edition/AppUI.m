@@ -25,6 +25,8 @@ static NSDictionary *BuiltinPackage(NSUInteger index,NSString **error){if(index>
 // The helpers sit inside the class so the design-literals audit exempts them with the rest of the lens surface.
 static UIColor *TAPLens(CGFloat green){return [UIColor colorWithRed:0 green:green blue:0 alpha:1];}
 static CGFloat TAPFont(CGFloat font){return font<16?16:font;}
+// TMG8 brightness rule (app_view.h TAP_ART_BAND_B): imagery and the progress fill are lens-mid unless the item lies wholly in band B (y 112..172).
+static BOOL TAPInBandB(CGRect r){return r.origin.y>=112&&CGRectGetMaxY(r)<=172;}
 - (void)setDocument:(NSDictionary *)d{_document=d;[self setNeedsDisplay];}
 - (void)setPage:(NSUInteger)p{_page=p;_focus=0;[self setNeedsDisplay];}
 - (void)setFocus:(NSUInteger)f{_focus=f;[self setNeedsDisplay];}
@@ -40,8 +42,8 @@ static CGFloat TAPFont(CGFloat font){return font<16?16:font;}
    if([kind isEqual:@"button"]){BOOL on=button++==_focus;color=on?full:(font>=18?mid:high);if(on)caret=CGRectMake(r.origin.x,MIN(r.origin.y+font+1+4,180-3),24,3);}
    NSMutableParagraphStyle *style=[NSMutableParagraphStyle new];style.lineBreakMode=NSLineBreakByClipping;[c[@"text"]drawInRect:r withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:font],NSForegroundColorAttributeName:color,NSParagraphStyleAttributeName:style}];
   }else if([kind isEqual:@"frame"]){[mid setStroke];[[UIBezierPath bezierPathWithRect:CGRectInset(r,.5,.5)]stroke];}
-  else if([kind isEqual:@"progress"]){[track setFill];UIRectFill(r);r.size.width*=[c[@"value"]doubleValue]/100;[full setFill];UIRectFill(r);}
-  else if([kind isEqual:@"image"]){NSDictionary *a=_document[@"assets"][c[@"asset"]];NSData *data=[[NSData alloc]initWithBase64EncodedString:a[@"pixels"] options:0];const uint8_t *b=data.bytes;unsigned w=[a[@"width"]unsignedIntValue],h=[a[@"height"]unsignedIntValue];if(w&&data.length==w*h/8){[full setFill];for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(b[y*(w/8)+x/8]&(128>>(x%8)))UIRectFill(CGRectMake(r.origin.x+x,r.origin.y+y,1,1));}}
+  else if([kind isEqual:@"progress"]){UIColor *fill=TAPInBandB(r)?full:mid;[track setFill];UIRectFill(r);r.size.width*=[c[@"value"]doubleValue]/100;[fill setFill];UIRectFill(r);}
+  else if([kind isEqual:@"image"]){NSDictionary *a=_document[@"assets"][c[@"asset"]];NSData *data=[[NSData alloc]initWithBase64EncodedString:a[@"pixels"] options:0];const uint8_t *b=data.bytes;unsigned w=[a[@"width"]unsignedIntValue],h=[a[@"height"]unsignedIntValue];if(w&&data.length==w*h/8){[TAPInBandB(r)?full:mid setFill];for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(b[y*(w/8)+x/8]&(128>>(x%8)))UIRectFill(CGRectMake(r.origin.x+x,r.origin.y+y,1,1));}}
   CGContextRestoreGState(ctx);
  }
  if(!CGRectIsNull(caret)){[full setFill];[[UIBezierPath bezierPathWithRoundedRect:caret cornerRadius:2]fill];}

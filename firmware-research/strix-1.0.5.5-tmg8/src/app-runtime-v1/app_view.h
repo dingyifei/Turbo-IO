@@ -1,6 +1,7 @@
 #ifndef TURBO_APP_VIEW_H
 #define TURBO_APP_VIEW_H
 #include "app.h"
+#include "../common-v1/tio_ui.h"
 // UI-thread-only adapter contract. Native glue must copy label text synchronously,
 // create a hidden root, and destroy all children before returning from destroy.
 typedef struct {
@@ -17,6 +18,11 @@ typedef struct {
 } TAPWidgets;
 // TMG7 FocusCaret (docs/design-system/components/FocusCaret): kind 2 buttons are text focus items, the focused one in
 // lens-full with a 24x3 caret under its baseline, the others lens-mid (lens-high below 18 px). No outline, no fill.
+// TMG8 brightness rule (docs/design-system lens-peak-max): mini-app imagery and the progress fill are drawn no brighter than lens-mid
+// (green 0x77) unless the item lies wholly in band B (y 112..172), where the primary readout may be full. Text and the caret are not capped here.
+// The phone's TAPPreview applies the same rule (AppUI.m).
+#define TAP_ART_LEVEL (TIO_LENS_MID>>8&255u)
+#define TAP_ART_BAND_B(y,h) ((y)>=(unsigned)TIO_PAGE_M1&&(y)+(h)<=(unsigned)TIO_PAGE_B1)
 #define TAP_CARET_W 24
 #define TAP_CARET_H 3
 #define TAP_PLAIN_MAX 8

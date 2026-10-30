@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {int kind,x,y,w,h;unsigned font;uint32_t color;bool shown,outline,deleted;char text[100];unsigned recolors;} W;
+typedef struct {int kind,x,y,w,h;unsigned font;uint32_t color;bool shown,outline,deleted;char text[100];unsigned recolors,peak;} W;
 enum {WRoot=1,WText,WRect,WImage};
 typedef struct {W w[80];unsigned n,outlines,images,rects;bool busy;} H;
 static bool idle(void *c){return !((H *)c)->busy;}
@@ -20,7 +20,7 @@ static W *mk(H *h,int kind){assert(h->n<80);W *w=&h->w[h->n++];memset(w,0,sizeof
 static void *root(void *c,void *parent){(void)parent;return mk(c,WRoot);}
 static void *text(void *c,void *parent,const char *s,unsigned size){(void)parent;W *w=mk(c,WText);w->font=size;w->color=TIO_LENS_FULL;assert(strlen(s)<sizeof w->text);strcpy(w->text,s);return w;}
 static void *rect(void *c,void *parent,uint32_t color,bool outline){(void)parent;H *h=c;W *w=mk(h,WRect);w->color=color;w->outline=outline;h->rects++;if(outline)h->outlines++;return w;}
-static void *image(void *c,void *parent,const uint8_t *px,unsigned w,unsigned h){(void)parent;assert(px&&!((uintptr_t)px&63)&&w&&h&&w<=128&&h<=128&&!(w&7));W *o=mk(c,WImage);((H *)c)->images++;o->w=(int)w;o->h=(int)h;o->color=px[1*w+w/2];return o;}
+static void *image(void *c,void *parent,const uint8_t *px,unsigned w,unsigned h){(void)parent;assert(px&&!((uintptr_t)px&63)&&w&&h&&w<=128&&h<=128&&!(w&7));W *o=mk(c,WImage);((H *)c)->images++;o->w=(int)w;o->h=(int)h;o->color=px[1*w+w/2];for(unsigned k=0;k<w*h;k++)if(px[k]>o->peak)o->peak=px[k];return o;}
 static void place(void *c,void *o,unsigned x,unsigned y,unsigned w,unsigned h){(void)c;W *v=o;assert(x+w<=540&&y+h<=180);v->x=(int)x;v->y=(int)y;v->w=(int)w;v->h=(int)h;}
 static void visible(void *c,void *o,bool s){(void)c;((W *)o)->shown=s;}
 static void destroy(void *c,void *o){H *h=c;(void)o;for(unsigned i=0;i<h->n;i++){h->w[i].shown=false;h->w[i].deleted=true;}}
@@ -144,7 +144,36 @@ static void Synthetic(void){
  printf("PASS synthetic page: 14 px drawn at 16 with a grown box, 28 px unchanged, one authored frame outline, 16 px idle lens-high, caret clamped to the canvas\n");
 }
 
+
+// TMG8 brightness rule: imagery and the progress fill are capped at lens-mid (0x77) unless the item lies wholly in band B (y 112..172).
+// Lit pixels are exactly the cap, never above it; the track and the caret are untouched. An item that straddles a band edge is capped.
+static size_t artItem(uint8_t *p,int kind,int x,int y,int w,int h,int param){
+ size_t data=kind==4?(size_t)w*h/8:0;memset(p,0,16+data);p[0]=(uint8_t)kind;p[4]=(uint8_t)x;p[5]=(uint8_t)(x>>8);p[6]=(uint8_t)y;p[8]=(uint8_t)w;p[10]=(uint8_t)h;p[12]=(uint8_t)param;p[14]=(uint8_t)data;p[15]=(uint8_t)(data>>8);
+ memset(p+16,0xff,data);return 16+data;
+}
+static void ArtCap(void){
+ static const struct {int y,h;} rows[]={{14,64},{40,48},{100,8},{104,16},{111,8},{112,8},{120,48},{156,16},{164,16},{164,8},{172,8},{100,72}};
+ unsigned inB=0,capped=0;
+ for(unsigned i=0;i<sizeof rows/sizeof *rows;i++){
+  const int y=rows[i].y,ih=rows[i].h;const bool band=y>=112&&y+ih<=172,pband=y>=112&&y+4<=172;
+  uint8_t wire[400];memset(wire,0,sizeof wire);memcpy(wire,"TAP1",4);wire[4]=1;wire[6]=2;wire[14]=2;size_t n=16;
+  if(y+ih>180)continue;
+  n+=artItem(wire+n,4,40,y,8,ih,0);n+=artItem(wire+n,3,100,y,200,4,50);
+  for(unsigned k=0;k<4;k++)wire[8+k]=(uint8_t)(n>>(8*k));
+  TAPDocument *d=calloc(1,sizeof *d);assert(tap_parse(wire,n,d));
+  H *h=calloc(1,sizeof *h);TAPView *v=calloc(1,sizeof *v);TAPWidgets a=api(h);assert(tap_view_open(v,&a,h,d,0));
+  const W *img=NULL,*track=NULL,*fill=NULL;for(unsigned k=0;k<h->n;k++){const W *w=&h->w[k];
+   if(w->kind==WImage&&w->w==8)img=w;if(w->kind==WRect&&w->color==TIO_LENS_TRACK)track=w;if(w->kind==WRect&&w->color!=TIO_LENS_TRACK)fill=w;}
+  assert(img&&track&&fill&&img->peak==(band?255u:TAP_ART_LEVEL));
+  assert(fill->color==(pband?TIO_LENS_FULL:TIO_LENS_MID)&&fill->w==100&&track->w==200&&track->color==TIO_LENS_TRACK);
+  assert(TAP_ART_BAND_B((unsigned)y,(unsigned)ih)==band&&TAP_ART_LEVEL==0x77&&TIO_LENS_MID==0x007700u);
+  inB+=band;capped+=!band;assert(tap_view_close(v));free(v);free(h);free(d);
+ }
+ assert(inB>=2&&capped>=6);
+ printf("PASS art cap: images and progress fill are 0x77 outside band B (%u cases), full only wholly inside band B (%u cases)\n",capped,inB);
+}
+
 int main(int argc,char **argv){
- assert(argc>=2);Synthetic();CheckWire(argv[1],true);for(int i=2;i<argc;i++)CheckWire(argv[i],false);
+ assert(argc>=2);Synthetic();ArtCap();CheckWire(argv[1],true);for(int i=2;i<argc;i++)CheckWire(argv[i],false);
  printf("PASS tmg7 app runtime: TAP1 wire decoded unchanged, kind 2 buttons are caret focus items, 14 px retired\n");return 0;
 }

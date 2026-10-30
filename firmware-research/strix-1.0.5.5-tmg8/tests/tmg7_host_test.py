@@ -5,8 +5,11 @@ Builds tests/tmg7_ui_test.c (tokens, hint, caret) with ASan/UBSan at the default
 ppd values 22..27; the page layouts are fitted to 24.8 only and must refuse any other value. Then builds and runs the layout gate
 (tests/tmg7_layout_preview.m), which renders every page EN and ZH to PNG and checks each
 widget against its band, the reserved rows, the 16 px text floor and the no-filled-panel rule.
+TMG8: the same run measures every render's 1 degree peak and lit share (the brightness gate, tests/lens_brightness.h), fails above
+0.45 (band-B primary 0.65, unfocused icons 0.20) and writes brightness.json (--brightness PATH, default OUT/brightness.json); then
+tests/tmg8_brightness_test.py cross-checks the metric and a sample of the renders against an independent implementation.
 No device I/O."""
-import argparse, base64, io, json, subprocess, sys, zipfile
+import argparse, base64, io, json, os, subprocess, sys, zipfile
 from pathlib import Path
 
 FW = Path(__file__).resolve().parents[1]
@@ -15,8 +18,8 @@ DS = FW.parents[1] / 'dashboard-service'
 LEGACY_TAP_B64 = DS / 'tests/fixtures/gallery_commute_legacy.tap.b64'   # committed as base64 text: the source audit rejects binaries
 PPD_X10 = (220, 230, 240, 248, 260, 270)   # tokens only; the pages build at 248 alone
 
-def run(cmd, log):
-    r = subprocess.run(list(map(str, cmd)), capture_output=True, text=True, timeout=240)
+def run(cmd, log, env=None):
+    r = subprocess.run(list(map(str, cmd)), capture_output=True, text=True, timeout=240, env=env)
     log.write_text(r.stdout + r.stderr)
     if r.returncode:
         sys.exit('FAIL ' + ' '.join(map(str, cmd[:3])) + '\n' + r.stdout + r.stderr)
@@ -26,6 +29,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', type=Path, required=True, help='scratch and preview directory')
     ap.add_argument('--board', type=Path, default=BOARD)
+    ap.add_argument('--brightness', type=Path, help='where to write brightness.json (default: OUT/brightness.json)')
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     cc = ['xcrun', 'clang', '-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined', '-I', FW / 'src']
@@ -56,6 +60,10 @@ def main():
     gallery = json.loads(zipfile.ZipFile(FW.parents[1] / 'app-gallery/Gallery_commute.zip').read('app.json'))
     sdk = examples()
     docs = {'gallery-commute': gallery, 'sdk-weather': sdk['TurboAppSDKWeather'], 'sdk-music': sdk['TurboAppSDKMusic'], 'sdk-brief': sdk['TurboAppSDKExample']}
+    # TMG8: every committed gallery package goes through the runtime and the brightness gate too (the commute package is also checked strictly above).
+    for z in sorted((FW.parents[1] / 'app-gallery').glob('Gallery_*.zip')):
+        if z.stem != 'Gallery_commute':
+            docs['gal-' + z.stem[len('Gallery_'):]] = json.loads(zipfile.ZipFile(z).read('app.json'))
     paths = []
     for name, doc in docs.items():
         (wires / (name + '.tap')).write_bytes(encode(doc))
@@ -80,8 +88,17 @@ def main():
          FW / 'tests/tmg7_layout_preview.m', src / 'navigation-runtime-v1/nav_view.c', src / 'navigation-runtime-v1/nav_visual.c',
          src / 'navigation-runtime-v1/nav_runtime.c', src / 'music-runtime-v1/music.c', src / 'focus-v1/focus_view.c', src / 'focus-v1/focus.c', src / 'focus-v1/focus_menu.c', src / 'menu-grid-v2/tile_config.c', src / 'common-v1/tio_text.c', src / 'app-runtime-v1/app.c', src / 'app-runtime-v1/app_view.c', src / 'app-runtime-v1/app_shelf.c', '-o', exe],
         a.out / 'tmg7-layout-build.log')
-    if 'PASS tmg7 layout gate' not in run([exe, a.out / 'preview', a.board] + ['%s=%s' % (p.stem, p) for p in paths], a.out / 'tmg7-layout.log'):
+    bright = (a.brightness or a.out / 'brightness.json').resolve()
+    planes = a.out / 'brightness-planes'
+    planes.mkdir(exist_ok=True)
+    for old in planes.glob('*.pgm'):
+        old.unlink()
+    env = dict(os.environ, TIO_BRIGHTNESS_JSON=str(bright), TIO_BRIGHTNESS_PLANES=str(planes))
+    layout = run([exe, a.out / 'preview', a.board] + ['%s=%s' % (p.stem, p) for p in paths], a.out / 'tmg7-layout.log', env)
+    if 'PASS tmg7 layout gate' not in layout or 'PASS tmg8 brightness gate' not in layout:
         sys.exit('tmg7 layout gate did not report PASS')
-    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, menu grid, mini-app runtime, layout EN/ZH)')
+    if 'PASS tmg8 brightness checks' not in run(['python3', '-I', FW / 'tests/tmg8_brightness_test.py', '--out', a.out / 'brightness', '--planes', planes, '--json', bright], a.out / 'tmg8-brightness.log'):
+        sys.exit('tmg8 brightness checks did not report PASS')
+    print('PASS tmg7 host (tokens at ppd 22..27, hint, caret, navigation core and view, menu grid, mini-app runtime, layout EN/ZH, TMG8 brightness gate)')
 
 main()

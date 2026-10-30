@@ -18,11 +18,13 @@
 #include "../src/common-v1/tio_caret.h"
 #include "../src/app-runtime-v1/app_view.h"
 #include "../src/app-runtime-v1/app_shelf.h"
+#include "lens_brightness.h"
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
 enum {KText,KPixels,KRect};
-typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading,art,ambient,ramp;int align;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
+enum {CNormal,CPrimary,CUnfocused};   // brightness classes (lens_brightness.h): CPrimary = band-B readout (nav arrow, focus hero timer), CUnfocused = a non-focused menu icon
+typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading,art,ambient,ramp;int align;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;int cls;} Widget;
 typedef struct {Widget w[48];unsigned count;bool busy;} Host;
 enum {VReserved=1,VBand=2,VFont=4,VPanel=8,VCore=16,VColor=32,VOverlap=64,VCanvas=128,VBox=256};
 static unsigned language;
@@ -37,7 +39,7 @@ static void text(void *p,void *o,const char *s){(void)p;((Widget *)o)->text=s;}
 static void visible(void *p,void *o,bool show){(void)p;((Widget *)o)->shown=show;}
 static void destroy(void *p,void *o){(void)p;((Widget *)o)->shown=false;}
 static void cliptext(void *p,void *o){(void)p;((Widget *)o)->clip=true;}
-static NSColor *Ink(uint32_t c){return [NSColor colorWithRed:0 green:((c>>8)&255)/255.0 blue:0 alpha:1];}
+static NSColor *Ink(uint32_t c){return [NSColor colorWithDeviceRed:0 green:((c>>8)&255)/255.0 blue:0 alpha:1];}
 static void Save(Host *host,NSString *path){
  NSImage *im=[[NSImage alloc]initWithSize:NSMakeSize(540,tio_surface_h(gSurface))];[im lockFocusFlipped:YES];[NSColor.blackColor setFill];NSRectFill(NSMakeRect(0,0,540,tio_surface_h(gSurface)));
  for(unsigned i=1;i<host->count;i++){Widget *w=&host->w[i];if(!w->shown)continue;NSRect rect=NSMakeRect(w->x,w->y,w->w,w->h);
@@ -49,6 +51,120 @@ static void Save(Host *host,NSString *path){
   [NSGraphicsContext restoreGraphicsState];
  }
  [im unlockFocus];NSBitmapImageRep *rep=[NSBitmapImageRep imageRepWithData:im.TIFFRepresentation];assert([[rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}] writeToFile:path atomically:YES]);
+}
+
+
+// ---- Brightness gate (TMG8, lens_brightness.h): every host render is measured at device resolution --------------------------------
+// The render is repainted at 1x into a green plane (text and tracks through AppKit with font smoothing off, canvases blitted exactly),
+// once whole and once per class. Limits: 0.45 for everything (lens-peak-max); a widget of CPrimary that lies wholly in band B may
+// reach 0.65 (the nav arrow, the focus hero timer); a CUnfocused menu icon in the glyph zone must stay at or below 0.20. The class of a
+// widget is its fixture flag AND its region, never the file that draws it. Rows go to brightness.json for the dashboard.
+static Widget *Add(Host *h,int kind,int x,int y,int w,int ht,unsigned font,uint32_t color,int band,const char *s);
+typedef struct {char screen[72],page[16],lang[4];LBMetrics all;double pn,pp,pu;bool hasp,hasu;unsigned bad;} BRow;
+enum {BNormal=1,BPrimary=2,BUnfocused=4,BWhole=8};   // violated rule
+static BRow gRows[640];static unsigned gRowCount;static bool gLiveBrightness=true;
+static int EffClass(const Widget *w){
+ TIORect r={w->x,w->y,w->w,w->h};
+ if(w->cls==CPrimary&&w->kind==KPixels&&w->pixels){   // a canvas counts by its ink: the lit rows and columns, not the transparent margin of its box
+  int x0=w->w,x1=-1,y0=w->h,y1=-1;for(int y=0;y<w->h;y++)for(int x=0;x<w->w;x++)if(w->pixels[y*w->w+x]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  if(x1>=0)r=(TIORect){w->x+x0,w->y+y0,x1-x0+1,y1-y0+1};}
+ if(w->cls==CPrimary&&tio_rect_in_band(gSurface,TIO_BAND_B,r))return CPrimary;                                   // only wholly inside band B
+ if(w->cls==CUnfocused&&gSurface==TIO_SURFACE_MENU&&w->kind==KPixels&&r.y>=TIO_MENU_T0&&r.y+r.h<=TIO_MENU_M1)return CUnfocused;   // glyph zone of the menu
+ return CNormal;
+}
+static void Plane(const Host *host,int cls,uint8_t *g,int H){   // cls < 0: every widget
+ memset(g,0,(size_t)540*H);
+ CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();uint8_t *rgba=calloc((size_t)540*H,4);
+ CGContextRef cg=CGBitmapContextCreate(rgba,540,H,8,540*4,cs,kCGImageAlphaPremultipliedLast);CGColorSpaceRelease(cs);
+ CGContextSetAllowsFontSmoothing(cg,false);CGContextSetShouldSmoothFonts(cg,false);CGContextTranslateCTM(cg,0,H);CGContextScaleCTM(cg,1,-1);
+ NSGraphicsContext *ctx=[NSGraphicsContext graphicsContextWithCGContext:cg flipped:YES];[NSGraphicsContext saveGraphicsState];[NSGraphicsContext setCurrentContext:ctx];
+ for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(!w->shown||(cls>=0&&EffClass(w)!=cls)||w->pixels)continue;
+  NSRect rect=NSMakeRect(w->x,w->y,w->w,w->h);[NSGraphicsContext saveGraphicsState];NSRectClip(rect);
+  if(w->kind==KRect){[Ink(w->color) setFill];[[NSBezierPath bezierPathWithRoundedRect:rect xRadius:TIO_RADIUS_XS yRadius:TIO_RADIUS_XS] fill];}
+  if(w->text&&*w->text&&w->kind==KText){NSString *s=[NSString stringWithUTF8String:w->text];assert(s);NSMutableParagraphStyle *ps=[NSMutableParagraphStyle new];ps.lineBreakMode=NSLineBreakByClipping;ps.alignment=w->align==1?NSTextAlignmentCenter:w->align==2?NSTextAlignmentRight:NSTextAlignmentLeft;
+   [s drawInRect:rect withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:w->font],NSForegroundColorAttributeName:Ink(w->color?w->color:TIO_LENS_FULL),NSParagraphStyleAttributeName:ps}];}
+  [NSGraphicsContext restoreGraphicsState];}
+ [NSGraphicsContext restoreGraphicsState];CGContextRelease(cg);
+ for(int k=0;k<540*H;k++)g[k]=rgba[k*4+1];free(rgba);
+ for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(!w->shown||(cls>=0&&EffClass(w)!=cls)||!w->pixels)continue;   // canvases: exact levels, clipped to the surface
+  for(int y=0;y<w->h;y++)for(int x=0;x<w->w;x++){int X=w->x+x,Y=w->y+y;if(X<0||Y<0||X>=540||Y>=H)continue;uint8_t v=w->pixels[y*w->w+x];if(v>g[Y*540+X])g[Y*540+X]=v;}}
+}
+static bool HasClass(const Host *host,int cls){for(unsigned i=1;i<host->count;i++)if(host->w[i].shown&&EffClass(&host->w[i])==cls)return true;return false;}
+// The rule, on measured numbers: whole <= 0.45 (0.65 when a band-B primary is present), the rest-of-screen <= 0.45, primary <= 0.65, unfocused <= 0.20.
+static unsigned Judge(const BRow *r){
+ unsigned bad=0;const double eps=1e-9;
+ if(r->pn>LB_PEAK_MAX+eps)bad|=BNormal;
+ if(r->hasp&&r->pp>LB_PEAK_MAX_PRIMARY+eps)bad|=BPrimary;
+ if(r->hasu&&r->pu>LB_PEAK_MAX_UNFOCUSED+eps)bad|=BUnfocused;
+ if(r->all.peak>(r->hasp?LB_PEAK_MAX_PRIMARY:LB_PEAK_MAX)+eps)bad|=BWhole;
+ return bad;
+}
+static const char *PageOf(const char *name,char *out,size_t n){size_t k=0;while(name[k]&&name[k]!='-'&&k+1<n){out[k]=name[k];k++;}while(k&&out[k-1]>='0'&&out[k-1]<='9')k--;out[k]=0;return out;}
+static bool Cjk(const Host *host){for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(!w->text)continue;for(const unsigned char *p=(const unsigned char *)w->text;*p;p++)if((*p>=0xe3&&*p<=0xe9)||*p==0xef)return true;}return false;}
+static void Measure(const Host *host,const char *name){
+ if(!gLiveBrightness)return;
+ const int H=tio_surface_h(gSurface);uint8_t *g=malloc((size_t)540*H);assert(g&&gRowCount<sizeof gRows/sizeof *gRows);
+ BRow *r=&gRows[gRowCount++];memset(r,0,sizeof *r);snprintf(r->screen,sizeof r->screen,"%s",name);PageOf(name,r->page,sizeof r->page);
+ size_t L=strlen(name);snprintf(r->lang,sizeof r->lang,"%s",L>3&&!strcmp(name+L-3,"-en")?"en":L>3&&!strcmp(name+L-3,"-zh")?"zh":Cjk(host)?"zh":"en");
+ Plane(host,-1,g,H);lb_metrics(g,540,H,&r->all);
+ {const char *dump=getenv("TIO_BRIGHTNESS_PLANES");if(dump&&*dump){   // the green plane as binary PGM, for the independent cross-check in tmg7_host_test.py
+  NSString *f=[[NSString stringWithUTF8String:dump] stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.pgm",name]];NSMutableData *d=[NSMutableData dataWithData:[[NSString stringWithFormat:@"P5\n540 %d\n255\n",H] dataUsingEncoding:NSASCIIStringEncoding]];
+  [d appendBytes:g length:(NSUInteger)540*H];assert([d writeToFile:f atomically:YES]);}}
+ r->hasp=HasClass(host,CPrimary);r->hasu=HasClass(host,CUnfocused);
+ LBMetrics m;Plane(host,CNormal,g,H);lb_metrics(g,540,H,&m);r->pn=m.peak;
+ if(r->hasp){Plane(host,CPrimary,g,H);lb_metrics(g,540,H,&m);r->pp=m.peak;}
+ if(r->hasu){Plane(host,CUnfocused,g,H);lb_metrics(g,540,H,&m);r->pu=m.peak;}
+ free(g);r->bad=Judge(r);
+ if(r->bad)printf("BRIGHT %s: whole %.3f at (%d,%d), rest %.3f (max 0.45)%s%s mask 0x%x\n",name,r->all.peak,r->all.peak_x,r->all.peak_y,r->pn,r->hasp?" primary ":"",r->hasp?(r->pp>LB_PEAK_MAX_PRIMARY+1e-9?"over 0.65":"ok"):"",r->bad);
+}
+// A render that is not a Host (the dashboard card is a raster, 256x194): the same metric, no classes, the 0.45 limit. The card step calls this
+// with its green plane and its row joins brightness.json and the verdict like every other render.
+static BRow *MeasureRaster(const char *name,const char *page,const char *lang,int w,int h,const uint8_t *green){
+ assert(gRowCount<sizeof gRows/sizeof *gRows);BRow *r=&gRows[gRowCount++];memset(r,0,sizeof *r);
+ snprintf(r->screen,sizeof r->screen,"%s",name);snprintf(r->page,sizeof r->page,"%s",page);snprintf(r->lang,sizeof r->lang,"%s",lang);
+ lb_metrics(green,w,h,&r->all);r->pn=r->all.peak;r->bad=Judge(r);if(r->bad)printf("BRIGHT %s: %.3f at (%d,%d) (max 0.45) mask 0x%x\n",name,r->all.peak,r->all.peak_x,r->all.peak_y,r->bad);return r;
+}
+// brightness.json: one row per render with the dashboard's field names; the rest-of-screen, primary and unfocused peaks and the verdict follow.
+static void WriteBrightness(NSString *path){
+ NSMutableString *j=[NSMutableString stringWithString:@"[\n"];
+ for(unsigned i=0;i<gRowCount;i++){const BRow *r=&gRows[i];
+  [j appendFormat:@" {\"screen\": \"%s\", \"version\": \"tmg8\", \"page\": \"%s\", \"lang\": \"%s\", \"lit_pct\": %.3f, \"light\": %.4f, \"peak_1deg\": %.4f, \"peak_x\": %d, \"peak_y\": %d, \"center_y\": %.2f, \"peak_rest\": %.4f, \"peak_primary\": %@, \"peak_unfocused\": %@, \"limit\": %.2f, \"pass\": %@}%s\n",
+   r->screen,r->page,r->lang,r->all.lit_pct,r->all.light,r->all.peak,r->all.peak_x,r->all.peak_y,r->all.center_y,r->pn,r->hasp?[NSString stringWithFormat:@"%.4f",r->pp]:@"null",r->hasu?[NSString stringWithFormat:@"%.4f",r->pu]:@"null",r->hasp?LB_PEAK_MAX_PRIMARY:LB_PEAK_MAX,r->bad?@"false":@"true",i+1<gRowCount?",":""];}
+ [j appendString:@"]\n"];assert([j writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil]);
+}
+// The gate must catch each defect and accept each exception only in its own region.
+static void BrightSelfTest(void){
+ static uint8_t block[48*48];const uint8_t levels[]={255,194,150,128,119,56};
+ { // known peaks: a flat block of level g gives (g/255)^2.2 in a 25x25 window; the whole-image helper agrees with the closed form
+  for(unsigned i=0;i<sizeof levels;i++){memset(block,levels[i],sizeof block);LBMetrics m;lb_metrics(block,48,48,&m);assert(fabs(m.peak-pow(levels[i]/255.0,2.2))<1e-12&&m.peak_x==0&&m.peak_y==0&&fabs(m.lit_pct-100)<1e-9&&fabs(m.center_y-24)<1e-9);}
+  uint8_t none[30*30]={0};LBMetrics m;lb_metrics(none,30,30,&m);assert(m.peak==0&&m.lit_pct==0&&m.center_y==-1);
+  uint8_t spot[40*40]={0};spot[20*40+30]=255;lb_metrics(spot,40,40,&m);assert(fabs(m.peak-1.0/625)<1e-12&&m.peak_x>=6&&m.peak_x<=15&&m.peak_y==0&&fabs(m.center_y-20.5)<1e-9);}   // first max in raster order
+ for(int sf=0;sf<2;sf++){   // the band-B exception holds on the page surface (band B = y 112..172) and no other band
+  gSurface=sf?TIO_SURFACE_MENU:TIO_SURFACE_PAGE;Host h={0};
+  #define MKH(cls_,lvl,y_) do{h=(Host){0};create(&h,&h);Widget *a=Add(&h,KPixels,40,y_,48,48,0,0,-1,NULL);memset(block,lvl,sizeof block);a->pixels=block;a->cls=cls_;a->span=true;}while(0)
+  const int yB=sf?150:116,yM=sf?60:40;   // 48 px canvases wholly in band B / wholly in M (menu band B = 172..212)
+  (void)yB;
+  MKH(CNormal,255,yM);BRow r;memset(&r,0,sizeof r);{uint8_t *g=malloc((size_t)540*tio_surface_h(gSurface));Plane(&h,-1,g,tio_surface_h(gSurface));lb_metrics(g,540,tio_surface_h(gSurface),&r.all);Plane(&h,CNormal,g,tio_surface_h(gSurface));LBMetrics m;lb_metrics(g,540,tio_surface_h(gSurface),&m);r.pn=m.peak;free(g);}
+  assert(Judge(&r)&(BNormal|BWhole));                                            // a full-level block fails
+  MKH(CNormal,194,yM);memset(&r,0,sizeof r);{uint8_t *g=malloc((size_t)540*tio_surface_h(gSurface));Plane(&h,-1,g,tio_surface_h(gSurface));lb_metrics(g,540,tio_surface_h(gSurface),&r.all);Plane(&h,CNormal,g,tio_surface_h(gSurface));LBMetrics m;lb_metrics(g,540,tio_surface_h(gSurface),&m);r.pn=m.peak;free(g);}
+  assert(Judge(&r)&(BNormal|BWhole));                                            // 194 gives 0.55: over 0.45 unless it is a band-B primary
+  MKH(CPrimary,194,yM);assert(!HasClass(&h,CPrimary));                           // flagged primary but not in band B: ordinary
+  #undef MKH
+ }
+ gSurface=TIO_SURFACE_PAGE;
+ {Host h={0};create(&h,&h);Widget *a=Add(&h,KPixels,40,120,48,48,0,0,TIO_BAND_B,NULL);memset(block,194,sizeof block);a->pixels=block;a->cls=CPrimary;assert(HasClass(&h,CPrimary));   // wholly in band B: allowed up to 0.65
+  BRow r;memset(&r,0,sizeof r);r.hasp=true;uint8_t *g=malloc((size_t)540*180);Plane(&h,-1,g,180);lb_metrics(g,540,180,&r.all);Plane(&h,CPrimary,g,180);LBMetrics m;lb_metrics(g,540,180,&m);r.pp=m.peak;free(g);
+  assert(fabs(r.pp-pow(194/255.0,2.2))<1e-9&&Judge(&r)==0);
+  a->y=110;assert(!HasClass(&h,CPrimary));                                       // one row above band B: no longer primary
+  memset(block,255,sizeof block);a->y=120;r.pp=1;assert(Judge(&r)&BPrimary);}    // 1.0 is over 0.65 even in band B
+ gSurface=TIO_SURFACE_MENU;
+ {Host h={0};create(&h,&h);Widget *a=Add(&h,KPixels,40,16,32,32,0,0,TIO_BAND_M,NULL);a->span=true;a->cls=CUnfocused;memset(block,119,sizeof block);a->pixels=block;assert(HasClass(&h,CUnfocused));
+  BRow r;memset(&r,0,sizeof r);r.hasu=true;r.pu=pow(119/255.0,2.2);assert(Judge(&r)==0);r.pu=pow(128/255.0,2.2);assert(Judge(&r)&BUnfocused);   // 0x77 passes 0.20, 0x80 does not
+  a->y=190;assert(!HasClass(&h,CUnfocused));}                                    // outside the glyph zone: ordinary
+ gSurface=TIO_SURFACE_PAGE;
+ {static uint8_t card[256*194];memset(card,0,sizeof card);const unsigned before=gRowCount;   // a raster render joins the rows and the verdict
+  BRow *ok=MeasureRaster("selftest-card","card","en",256,194,card);assert(!ok->bad&&gRowCount==before+1);memset(card+100*256+100,255,30*256-100);
+  BRow *hot=MeasureRaster("selftest-card-hot","card","en",256,194,card);assert(hot->bad&(BNormal|BWhole));gRowCount=before;}   // self-test rows are not reported
 }
 
 // ---- Layout gate -----------------------------------------------------------------------------------------------
@@ -74,7 +190,7 @@ static unsigned Check(Host *host,const char *name,bool verbose){
   }
   if(pix&&w->art){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]>TM_ART_LEVEL){v|=VColor;break;}}   // artwork stays under lens-mid
   if(pix&&!w->span&&(r.x<TIO_INSET_X||r.x+r.w>TIO_PAGE_W-TIO_INSET_X))v|=VCore;   // glyphs may use the side insets, not the edge
-  if(rect&&!(r.h<=TIO_TRACK_H&&(w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK)))v|=VPanel;   // only carets and tracks are filled
+  if(rect&&!(r.h<=TIO_TRACK_H&&(w->color==TIO_LENS_FULL||w->color==TIO_LENS_MID||w->color==TIO_LENS_TRACK)))v|=VPanel;   // only carets, tracks and progress fills are filled (a fill outside band B is lens-mid: the TMG8 art cap)
   bool track=pix&&!w->ramp&&r.h<=TIO_TRACK_H;if(track){for(int k=0;k<r.w*r.h;k++)if(w->pixels[k]!=TF_TRACK_LEVEL&&w->pixels[k]!=TF_FILL_LEVEL){v|=VColor;break;}}   // progress track: only track and full levels
   if(pix&&!w->art&&!w->ramp&&!track&&r.w*r.h>=32*32){   // ramp = the existing pictogram art, kept by the design system (README: menu icons), not a panel
   unsigned lit=0;for(int k=0;k<r.w*r.h;k++)lit+=w->pixels[k]>16;if(lit*2>(unsigned)(r.w*r.h))v|=VPanel;}  // no solid canvases
@@ -85,7 +201,8 @@ static unsigned Check(Host *host,const char *name,bool verbose){
  return mask;
 }
 static void Gate(Host *host,const char *name,bool relaid){
- unsigned mask=Check(host,name,false);
+
+ unsigned mask=Check(host,name,false);Measure(host,name);
  if(relaid){if(mask)Check(host,name,true);assert(mask==0);printf("PASS layout %s: bands, reserved rows, 16 px floor, no panels\n",name);}
  else{assert(mask!=0);printf("PENDING layout %s: TMG6 layout still in place (violations 0x%x), re-laid by a later tmg7 commit\n",name,mask);}
 }
@@ -205,11 +322,11 @@ static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,b
    TAPWidgets api={host,idle,rtRoot,rtText,rtRect,rtImage,rtPlace,visible,destroy,rtTint};
    assert(tap_view_open(v,&api,host,d,page));if(AfterOpen)assert(AfterOpen(v));assert(!buttons||tap_view_focus(v,focus));
    char name[96];snprintf(name,sizeof name,"%s-p%u%s%u",tag,page,buttons>1?"-f":"",focus);if(buttons<=1)snprintf(name,sizeof name,"%s-p%u",tag,page);
-   unsigned mask=Check(host,name,false);
+   unsigned mask=Check(host,name,false);Measure(host,name);
    if(!strict)mask&=~(VBand|VCore);   // gallery content keeps its 18 px margins and free vertical flow; reserved rows, 16 px floor, panels and overlap still apply
    if(mask){Check(host,name,true);printf("FAIL layout %s mask 0x%x\n",name,mask);assert(0);}
    unsigned carets=0;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind==KPixels&&w->ramp&&w->shown){carets++;assert(w->w==24&&w->h==3);}   // exactly one 24x3 caret, none when the page has no button
-    assert(w->kind!=KRect||w->color==TIO_LENS_FULL||w->color==TIO_LENS_TRACK||!w->shown);}
+    assert(w->kind!=KRect||w->color==TIO_LENS_FULL||w->color==TIO_LENS_MID||w->color==TIO_LENS_TRACK||!w->shown);}
    assert(carets==(buttons?1u:0u));
    printf("PASS layout %s: %u focus items, reserved rows empty, 16 px floor, no outlines or panels\n",name,buttons);
    if(save_all||focus==0)Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);
@@ -302,7 +419,8 @@ static void Nav(NSString *dir,NSString *board,bool zh,bool longer){
  Widget *scale=W(v->scale);assert(scale->shown&&scale->font==TIO_FONT_MIN&&!strcmp(scale->text,"100 m")&&scale->color==TIO_LENS_HIGH);
  assert(scale->x>=372&&scale->x+scale->w<=520);   // the readout is inside the board's window, left-aligned with the bar
  Widget *trip=W(v->trip[0])->shown?W(v->trip[0]):W(v->trip[1]);assert(trip->shown&&!strcmp(trip->text,zh?"1.2 km \xc2\xb7 10分钟 \xc2\xb7 10:10":"1.2 km \xc2\xb7 10 min \xc2\xb7 10:10")&&trip->color==TIO_LENS_HIGH);
- Widget *dist=W(v->distance);assert(dist->shown&&dist->font==TIO_FONT_PRIMARY&&dist->color==TIO_LENS_FULL&&!strcmp(dist->text,"100 m"));
+ Widget *dist=W(v->distance);W(v->icon)->cls=CPrimary;   // the turn arrow is the band-B primary readout
+ assert(dist->shown&&dist->font==TIO_FONT_PRIMARY&&dist->color==TIO_LENS_FULL&&!strcmp(dist->text,"100 m"));
  unsigned turns=0;for(unsigned i=0;i<TN_TURN_SIZES;i++)if(W(v->turn[i])->shown){Widget *t=W(v->turn[i]);turns++;assert(t->color==TIO_LENS_FULL&&t->x>=dist->x+dist->w&&t->x+t->w<=W(v->map)->x);}assert(turns==1);
  assert(((Widget *)v->road)->shown&&((Widget *)v->road)->color==TIO_LENS_HIGH);
  unsigned before=host.count;for(unsigned heading=0;heading<360;heading++){uint8_t pose[14]={1,0,0,0};Put16(pose+8,heading);assert(tn_view_map(v,TNR_POSE2,pose,sizeof pose,heading+1));assert(tn_view_map_tick(v,heading+1));assert(host.count==before);const uint8_t *raster=((Widget *)v->map)->pixels;assert(raster[87*192+96]>=250&&raster[109*192+104]>=250);for(unsigned i=0;i<TN_PASS_SIZES;i++)assert(W(v->pass[i])->y==TIO_PAGE_T0+((TIO_PAGE_T1-TIO_PAGE_T0)-TIO_LINE(W(v->pass[i])->font))/2);}
@@ -409,7 +527,7 @@ static void Focus(NSString *dir,NSString *board,bool zh){
    tf_view_input(v,9000);assert(tf_view_hint(v,9000)&&tf_view_hint(v,11999)&&!tf_view_hint(v,12000));}
   if(i==0)tf_view_enter(v,1000);
   TFocus st;tf_init(&st,0);st.status=sh->status;st.phase=sh->phase;st.completed=sh->completed;st.remaining_ms=sh->remaining_s*1000;st.duration_s=sh->duration_s;
-  assert(tf_view_draw(v,&st,sh->compact,sh->now));
+  assert(tf_view_draw(v,&st,sh->compact,sh->now));W(v->labels[TF_L_TIME])->cls=CPrimary;   // the hero timer is the band-B primary readout
   char name[48];snprintf(name,sizeof name,"focus%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
   Widget *title=W(v->labels[TF_L_TITLE]),*count=W(v->labels[TF_L_COUNT]),*status=W(v->labels[TF_L_STATUS]),*time=W(v->labels[TF_L_TIME]);
   assert(time->font==TIO_FONT_HERO&&time->color==TIO_LENS_FULL&&status->font==TIO_FONT_BODY&&status->color==TIO_LENS_HIGH&&title->font==TIO_FONT_LABEL);
@@ -452,6 +570,7 @@ static void BuildMenu(Host *host,FMView *v,unsigned rows,unsigned hide,unsigned 
  for(unsigned i=0;i<FM_CELLS;i++)W(v->labels[i])->align=1;W(v->battery)->align=2;W(v->name)->align=1;   // mirrors fm_show: menu_text_align centre / right / centre
  if(live){assert(fm_view_active(v,LiveMask(&tiles,live)));(void)fm_view_step(v,1100);assert(!v->dirty);   // the 1 Hz refresh found running tiles: state dots
   ApplyTitle(v,live,1200);(void)fm_view_step(v,1300);assert(!v->dirty);}                                      // and a route: the next turn in band T
+ for(unsigned k=0;k<FM_CELLS;k++)if(k!=selected%(rows*3))W(v->icons[k])->cls=CUnfocused;   // every icon but the focused cell: brightness class
 }
 // Compare the fixture (EN, 8 tiles, two pages, second cell focused) with the board's proposed column (drawn at 2x).
 static void CompareMenuBoard(NSString *html,Host *host,FMView *v){
@@ -610,6 +729,7 @@ static void BuildCarousel(Host *host,FMView *v,unsigned hide,unsigned selected,b
  if(live){ApplyTitle(v,live,1100);(void)fm_view_step(v,1400);}assert(v->route==route&&v->title_on==route);   // a live turn: the row moves down and the title shows
  if(line){assert(fm_view_line(v,line));(void)fm_view_step(v,1500);}
  (void)fm_view_step(v,1600);assert(!v->moving&&!v->dirty);
+ for(unsigned k=0;k<FM_CELLS;k++){Widget *ic=W(v->icons[k]);if(ic->shown&&ic->x+ic->w/2!=270)ic->cls=CUnfocused;}   // the neighbours and the outer pair: brightness class
 }
 static NSDictionary *BoardGeometry(NSString *html,NSString *name){   // the board's `const BIG = {...}` / `const SMALL = {...}` geometry tables
  NSRange r=[html rangeOfString:[NSString stringWithFormat:@"const %@ = {",name]];assert(r.location!=NSNotFound);
@@ -683,5 +803,9 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
  gSurface=TIO_SURFACE_PAGE;
 }
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);
+ {const char *env=getenv("TIO_BRIGHTNESS_JSON");WriteBrightness(env&&*env?[NSString stringWithUTF8String:env]:[dir stringByAppendingPathComponent:@"brightness.json"]);
+  unsigned bad=0;for(unsigned i=0;i<gRowCount;i++)bad+=gRows[i].bad!=0;
+  if(bad){printf("FAIL brightness gate: %u of %u renders over the 1 degree limits (0.45, band-B primary 0.65, unfocused icons 0.20)\n",bad,gRowCount);return 1;}
+  printf("PASS tmg8 brightness gate: %u renders, 1 degree peak (25x25 px, L^2.2) at most 0.45, band-B primary at most 0.65, unfocused icons at most 0.20\n",gRowCount);}
  puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}
