@@ -458,26 +458,36 @@ static void CompareMusicBoard(NSString *html,Host *host){
  assert(matched==4&&art&&art->art&&art->w==36&&art->h==36&&art->x==40&&[s containsString:@"width: 68px; height: 68px; box-shadow: inset 0 0 0 4px #007700"]);
  printf("PASS board LensMusic (proposed, halved): %u text rows and the 36 px tile match; band, size, intensity, x and y within tolerance\n",matched);
 }
-static void BuildMusic(Host *h,bool zh,uint32_t now,TIOHint *hint,const uint8_t *tile,bool longLine){
+// The current lyric goes through the production fit (tm_fit_current) and rect; the service applies exactly this to its labels. `fit` reports the step.
+static TMFit BuildMusic(Host *h,bool zh,uint32_t now,TIOHint *hint,const uint8_t *tile,const char *curRaw,const char *nextRaw){
  create(h,h);
- const char *track=zh?"街头 · 灯笼乐队":"Streets \xc2\xb7 The Lanterns",*curRaw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方":"The morning light is falling",*nextRaw=zh?"在清晨再次回想起那些温暖的故事":"on the streets we used to know";
- if(longLine){curRaw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方然后在清晨的光里再次回想起那些温暖而漫长的故事直到夜幕降临":"The morning light is falling on the streets we used to know and every window glows with the stories of the city we have loved for years";nextRaw=zh?"在清晨再次回想起那些温暖的故事和我们一起走过的每一条安静的小路直到天亮":"Streets of gold and silver rivers running through the evening light of every city we have ever known";}
- static char cur[244],next[244];tm_two_lines(curRaw,TM_CUR_FONT,cur,sizeof cur);tm_one_line(nextRaw,TIO_CORE_W,TM_NEXT_FONT,next,sizeof next);
- TIORect a=tm_art_rect(),t=tm_track_rect(),n=tm_next_rect(),c=tm_cur_rect_for(cur);
+ const char *track=zh?"街头 · 灯笼乐队":"Streets \xc2\xb7 The Lanterns";
+ static char cur[TM_CUR_CAP],next[244],raw[TM_CUR_RAW];snprintf(raw,sizeof raw,"%s",curRaw);tm_clean(raw);
+ TMFit fit=tm_fit_current(raw,cur,sizeof cur);tm_one_line(nextRaw,TIO_CORE_W,TM_NEXT_FONT,next,sizeof next);
+ TIORect a=tm_art_rect(),t=tm_track_rect(),n=tm_next_rect(),c=tm_cur_rect_for(&fit);
  Widget *w=Add(h,KPixels,a.x,a.y,a.w,a.h,0,0,TIO_BAND_T,NULL);w->pixels=tile;w->art=true;
  bool hintOn=tio_hint_visible(hint,now);
  w=Add(h,KText,t.x,t.y,t.w,t.h,TM_TRACK_FONT,hintOn?tio_hint_color(hint,now):TIO_LENS_MID,TIO_BAND_T,hintOn?(zh?"滚轮：上/下首 · 单击：暂停":"Wheel: Prev / Next | Tap: Pause"):track);w->fading=hintOn&&tio_hint_alpha(hint,now)<255;w->clip=true;
- w=Add(h,KText,n.x,n.y,n.w,n.h,TM_NEXT_FONT,TIO_LENS_HIGH,TIO_BAND_M,next);w->clip=true;
- w=Add(h,KText,c.x,c.y,c.w,c.h,TM_CUR_FONT,TIO_LENS_FULL,TIO_BAND_B,cur);w->clip=true;
+ w=Add(h,KText,n.x,n.y,n.w,n.h,TM_NEXT_FONT,TIO_LENS_HIGH,TIO_BAND_M,next);w->clip=true;w->shown=fit.next;   // hidden, not removed, past two lines: the widget index stays
+ w=Add(h,KText,c.x,c.y,c.w,c.h,fit.font,TIO_LENS_FULL,TIO_BAND_B,cur);w->clip=true;w->span=c.y<tio_band(TIO_SURFACE_PAGE,TIO_BAND_B).y0;   // past two lines the box grows up into band M
+ return fit;
 }
+// Chinese and Latin fixtures for each step. Chinese is cut from one passage by character count: 19 characters fit a 24 px row, 23 a 20 px row, 28 a 16 px row.
+static const char *kZhPassage="沿着熟悉的街道慢慢走过每一个曾经相遇的地方然后在清晨的光里再次回想起那些温暖而漫长的故事直到夜幕降临城市里的灯火一盏一盏亮起我们唱过的歌还在耳边回响每一扇窗后面都藏着一段难忘的时光无论走到多远都会记得这条回家的路和那些陪我们长大的人还有那个夏天没有说出口的话夜里的风吹过空荡荡的站台远处传来熟悉的旋律我们在人群里相视而笑把所有的遗憾都唱成了歌直到天边泛起第一缕微光也不愿意说再见";
+static const char *kEnPassage="The morning light is falling on the streets we used to know and every window glows with the stories of the city we have loved for years and all the nights we sang along until the sun came up over the harbour and the ferries began to run again past the old stone pier where we first learned the words to every song that the radio would play on the long road home and the lights of the harbour went out one by one while we stood there singing the last chorus again and again until the morning came";
+static const char *Fixture(bool zh,unsigned chars){   // the first `chars` characters of the passage
+ static char buf[2][TM_CUR_RAW];char *o=buf[zh];const char *p=zh?kZhPassage:kEnPassage;size_t n=0;
+ for(unsigned i=0;i<chars&&*p;i++){unsigned k=zh?3:1;memcpy(o+n,p,k);n+=k;p+=k;}
+ while(n&&o[n-1]==' ')n--;o[n]=0;return o;}
 static void Lyrics(NSString *dir,NSString *board,bool zh){
  language=zh;static uint8_t cover[TM_COVER_BYTES],tile[TM_ART*TM_ART],blank[TM_ART*TM_ART];for(unsigned i=0;i<sizeof cover;i++)cover[i]=(uint8_t)((i%144)*2+i/144);   // full-range cover: the tile must still cap at lens-mid
  tm_art_tile(cover,tile);tm_art_tile(NULL,blank);
  for(unsigned i=0;i<sizeof tile;i++)assert(tile[i]<=TM_ART_LEVEL&&blank[i]<=TM_ART_LEVEL);assert(blank[18*TM_ART+18]==0&&blank[0]==TM_ART_LEVEL&&tile[0]==TM_ART_LEVEL);
  TIOHint hint;tio_hint_init(&hint);tio_hint_enter(&hint,1000);
+ const char *curRaw=zh?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方":"The morning light is falling",*nextRaw=zh?"在清晨再次回想起那些温暖的故事":"on the streets we used to know";
  const struct {uint32_t now;const char *tag;const uint8_t *pix;} shots[]={{1000,"-hint",tile},{3850,"-hint-fade",tile},{4000,"",tile},{4500,"-nocover",blank}};
- for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){Host *host=calloc(1,sizeof *host);assert(host);BuildMusic(host,zh,shots[i].now,&hint,shots[i].pix,false);
-  char name[48];snprintf(name,sizeof name,"lyrics%s-%s",shots[i].tag,zh?"zh":"en");Gate(host,name,true);
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){Host *host=calloc(1,sizeof *host);assert(host);TMFit fit=BuildMusic(host,zh,shots[i].now,&hint,shots[i].pix,curRaw,nextRaw);
+  char name[48];snprintf(name,sizeof name,"lyrics%s-%s",shots[i].tag,zh?"zh":"en");Gate(host,name,true);assert(fit.step==1&&fit.next&&host->w[3].shown);
   Widget *track=&host->w[2];if(!strcmp(shots[i].tag,"-hint"))assert(track->color==TIO_LENS_HIGH&&track->font==TIO_FONT_LABEL);if(!strcmp(shots[i].tag,"-hint-fade"))assert(track->color>0&&track->color<TIO_LENS_HIGH);
   if(!strcmp(shots[i].tag,"")){assert(track->color==TIO_LENS_MID&&host->w[3].color==TIO_LENS_HIGH&&host->w[4].color==TIO_LENS_FULL);if(!zh)CompareMusicBoard(board,host);}
   // Ordering: current lyric lowest, next above it, track on top; at most two lines of 24 px in the current-lyric box.
@@ -487,11 +497,41 @@ static void Lyrics(NSString *dir,NSString *board,bool zh){
   assert(host->w[4].w==TIO_CORE_W&&host->w[4].x==TIO_CORE_X0&&host->w[3].w==TIO_CORE_W);
   {const char *row=host->w[4].text;while(*row){const char *e=strchr(row,'\n');size_t n=e?(size_t)(e-row):strlen(row);assert(tm_width(row,n,TM_CUR_FONT)<=TIO_CORE_W);row+=n+(e?1:0);}}
   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
- // Long lines: two-line cap with an ellipsis, rows within the core, label still TIO_CORE_W wide.
- for(unsigned z=0;z<2;z++){language=z;Host *host=calloc(1,sizeof *host);assert(host);BuildMusic(host,z,4000,&hint,tile,true);char name[48];snprintf(name,sizeof name,"lyrics-long-%s",z?"zh":"en");Gate(host,name,true);
-  assert(host->w[4].w==TIO_CORE_W);unsigned lines=1;for(const char *p=host->w[4].text;*p;p++)lines+=*p=='\n';assert(lines==2&&host->w[4].h==2*TIO_LINE(TM_CUR_FONT)&&strstr(host->w[4].text,"\xe2\x80\xa6"));
-  const char *row=host->w[4].text;while(*row){const char *e=strchr(row,'\n');size_t n=e?(size_t)(e-row):strlen(row);assert(tm_width(row,n,TM_CUR_FONT)<=TIO_CORE_W);row+=n+(e?1:0);}
-  assert(!strchr(host->w[3].text,'\n')&&strstr(host->w[3].text,"\xe2\x80\xa6"));Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ // The current lyric is never truncated (LyricStack): one render per fit step, plus the case past step 4. `chars` are cut from one passage per language.
+ // lines: the rows the board of the rule expects; next: whether the next lyric's row is still shown.
+ const struct {const char *tag;unsigned chars_en,chars_zh,step,lines_min,lines_max;bool over;} cases[]={
+  {"-2line",  59, 30, 1, 2, 2, false},   // fills band B, next lyric shown
+  {"-3line",  82, 50, 2, 3, 3, false},   // grows into band M, next hidden
+  {"-4line", 112, 72, 2, 4, 4, false},   // reaches y 60
+  {"-small", 150, 88, 3, 4, 4, false},   // 4 lines of 20 px
+  {"-min",   200,130, 4, 5, 5, false},   // 5 lines of 16 px
+  {"-over",  330,185, 4, 5, 5, true}};   // past step 4: the only case with an ellipsis
+ for(unsigned i=0;i<sizeof cases/sizeof *cases;i++){language=zh;Host *host=calloc(1,sizeof *host);assert(host);
+  const char *cur=Fixture(zh,zh?cases[i].chars_zh:cases[i].chars_en);
+  TMFit fit=BuildMusic(host,zh,4000,&hint,tile,cur,nextRaw);char name[48];snprintf(name,sizeof name,"lyrics%s-%s",cases[i].tag,zh?"zh":"en");Gate(host,name,true);
+  Widget *n=&host->w[3],*c=&host->w[4];unsigned lines=1;for(const char *p=c->text;*p;p++)lines+=*p=='\n';
+  if(fit.step!=cases[i].step||lines<cases[i].lines_min||lines>cases[i].lines_max){printf("lyrics fixture %s %s: step %u lines %u, want step %u lines %u..%u\n",cases[i].tag,zh?"zh":"en",fit.step,lines,cases[i].step,cases[i].lines_min,cases[i].lines_max);assert(0);}
+  assert(lines==fit.lines&&c->font==fit.font&&c->w==TIO_CORE_W&&c->x==TIO_CORE_X0&&c->h==(int)lines*TIO_LINE(c->font));
+  assert(!!strstr(c->text,"\xe2\x80\xa6")==cases[i].over);                                       // an ellipsis exactly when it does not fit step 4
+  assert(n->shown==(lines<=2)&&n->shown==fit.next);                                              // the next row is hidden exactly when there are more than two lines
+  assert(c->y+c->h==TIO_PAGE_B1&&c->y>=60&&c->y>=tio_band(TIO_SURFACE_PAGE,TIO_BAND_M).y0);       // bottom-aligned on y 172, inside bands M and B, never above y 60
+  assert(c->y>=host->w[2].y+host->w[2].h);                                                       // clear of the track in band T
+  if(n->shown)assert(n->y+n->h<=c->y);
+  {const char *row=c->text;while(*row){const char *e=strchr(row,'\n');size_t k=e?(size_t)(e-row):strlen(row);assert(tm_width(row,k,c->font)<=TIO_CORE_W);row+=k+(e?1:0);}}
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ // lyrics-long-*: the earlier long fixtures (a long lyric and a long next lyric), now whole in band M and B with the next row hidden.
+ for(unsigned z=zh;z<=zh;z++){language=z;Host *host=calloc(1,sizeof *host);assert(host);
+  const char *longCur=z?"沿着熟悉的街道慢慢走过每一个曾经相遇的地方然后在清晨的光里再次回想起那些温暖而漫长的故事直到夜幕降临":"The morning light is falling on the streets we used to know and every window glows with the stories of the city we have loved for years",
+   *longNext=z?"在清晨再次回想起那些温暖的故事和我们一起走过的每一条安静的小路直到天亮":"Streets of gold and silver rivers running through the evening light of every city we have ever known";
+  TMFit fit=BuildMusic(host,z,4000,&hint,tile,longCur,longNext);char name[48];snprintf(name,sizeof name,"lyrics-long-%s",z?"zh":"en");Gate(host,name,true);
+  assert(host->w[4].w==TIO_CORE_W&&fit.step>=2&&!fit.next&&!host->w[3].shown&&!strstr(host->w[4].text,"\xe2\x80\xa6"));
+  const char *row=host->w[4].text;while(*row){const char *e=strchr(row,'\n');size_t n=e?(size_t)(e-row):strlen(row);assert(tm_width(row,n,fit.font)<=TIO_CORE_W);row+=n+(e?1:0);}
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
+ // A next lyric too long for one line keeps its ellipsis while the current one fits band B, and never wraps.
+ {language=zh;Host *host=calloc(1,sizeof *host);assert(host);const char *longNext=zh?"在清晨再次回想起那些温暖的故事和我们一起走过的每一条安静的小路直到天亮":"Streets of gold and silver rivers running through the evening light of every city we have ever known";
+  TMFit fit=BuildMusic(host,zh,4000,&hint,tile,curRaw,longNext);char name[48];snprintf(name,sizeof name,"lyrics-nextlong-%s",zh?"zh":"en");Gate(host,name,true);
+  assert(fit.next&&host->w[3].shown&&!strchr(host->w[3].text,'\n')&&strstr(host->w[3].text,"\xe2\x80\xa6")&&tm_width(host->w[3].text,strlen(host->w[3].text),TM_NEXT_FONT)<=TIO_CORE_W);
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);free(host);}
  language=zh;
  // A next lyric too long for one line ends in an ellipsis and never wraps.
  char one[244];tm_one_line("Streets of gold and silver rivers running through the evening light of every city we have ever known",TIO_CORE_W,TM_NEXT_FONT,one,sizeof one);assert(!strchr(one,'\n')&&strstr(one,"\xe2\x80\xa6")&&tm_width(one,strlen(one),TM_NEXT_FONT)<=TIO_CORE_W);

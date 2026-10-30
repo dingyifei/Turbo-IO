@@ -78,6 +78,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg8-music-input',[FW8/'src/music-runtime-v1/music_input_test.c'],FW8/'src/music-runtime-v1')
     run('tmg8-icons',['python3','-I',FW8/'tests/tmg8_icons_test.py'])
     run('tmg8-brightness',['python3','-I',FW8/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
+    ctest('tmg8-lyrics',[FW8/'tests/tmg8_lyrics_test.c'],FW8/'src')
     ctest('tmg8-tile-state',[FW8/'tests/tmg8_tile_state_test.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')
     ctest('tmg8-nav-title',[FW8/'tests/tmg8_nav_title_test.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')
     ctest('tmg8-nav-background',[FW8/'tests/tmg8_nav_background_test.c',FW8/'src/navigation-runtime-v1/nav_runtime.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')

@@ -15,15 +15,17 @@
 #define TM_CURRENT 0u
 #define TM_NEXT 1u
 #define TM_TRACK 2u
-#define TM_LABELS 3u
+#define TM_CURRENT20 3u   /* the current lyric's other two fonts: one label per font, only the fitted one is shown */
+#define TM_CURRENT16 4u
+#define TM_LABELS 5u
 typedef struct {
  _Alignas(64) uint8_t pixels[TM_ART*TM_ART];
- char track[184],current[244],next[244];
+ char track[184],current[TM_CUR_CAP],next[244];
 } Frame;
 typedef struct {
- TMMusic music;TNWidgets api;TMMusicSlot *slot;void *app,*timer,*root,*canvas,*labels[TM_LABELS],*bar;
+ char raw[TM_CUR_RAW];TMMusic music;TNWidgets api;TMMusicSlot *slot;void *app,*timer,*root,*canvas,*labels[TM_LABELS],*bar;
  Frame frames[2];unsigned front;uint32_t token,last_frame,last_check,last_event,last_wheel;
- uint32_t request_id,track_color;TIOHint hint;uint8_t event,event_tries;bool retired,closing,waiting,focus_transition;TMInput input;
+ uint32_t request_id,track_color;TIOHint hint;uint8_t event,event_tries,shown_slot;bool shown_ok,shown_next,retired,closing,waiting,focus_transition;TMInput input;
 } Control;
 extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_create(void (*)(void *),uint32_t,void *);
 extern void stream_timer_delete(void *),*stream_event_user(void *),*stream_add_event(void *,void (*)(void *),uint32_t,void *);
@@ -64,11 +66,11 @@ static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root
  Frame *f=&c->frames[1-c->front];
  /* LensMusic: current line (band B) and the line after it (band M); the previous line is dropped.
   * The artwork tile, label pointers and colours switch together only while DMA is idle. */
- char cur[244]={0},next[244]={0};
- if(c->waiting){copy_text(cur,sizeof cur,tio_text(TT_MUSIC_PICK,lang));}
- else {int line=tm_line(&c->music,now);tm_text(&c->music,line,cur,sizeof cur);tm_text(&c->music,line+1,next,sizeof next);
-  if(!c->music.lyrics_ready)copy_text(cur,sizeof cur,tio_text(TT_MUSIC_LYRICS,lang));}
- tm_two_lines(cur,TM_CUR_FONT,f->current,sizeof f->current);tm_one_line(next,TIO_CORE_W,TM_NEXT_FONT,f->next,sizeof f->next);
+ char *cur=c->raw;char next[244]={0};cur[0]=0;
+ if(c->waiting){copy_text(cur,TM_CUR_RAW,tio_text(TT_MUSIC_PICK,lang));}
+ else {int line=tm_line(&c->music,now);tm_text(&c->music,line,cur,TM_CUR_RAW);tm_text(&c->music,line+1,next,sizeof next);
+  if(!c->music.lyrics_ready)copy_text(cur,TM_CUR_RAW,tio_text(TT_MUSIC_LYRICS,lang));}
+ tm_clean(cur);tm_clean(next);TMFit fit=tm_fit_current(cur,f->current,sizeof f->current);tm_one_line(next,TIO_CORE_W,TM_NEXT_FONT,f->next,sizeof f->next);
  /* Band T: the control hint (lens-high, fading) for TIO_HINT_MS after entry and every input, else the track in lens-mid. */
  bool hint=tio_hint_visible(&c->hint,now);uint32_t color=hint?tio_hint_color(&c->hint,now):TIO_LENS_MID;
  if(hint)copy_text(f->track,sizeof f->track,tio_text(c->music.playing?TT_MUSIC_CONTROLS_PAUSE:TT_MUSIC_CONTROLS_PLAY,lang));
@@ -77,8 +79,16 @@ static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root
   f->track[n]=0;}
  tm_art_tile(c->music.cover_ready?c->music.cover:NULL,f->pixels);
  c->api.buffer(NULL,c->canvas,f->pixels,TM_ART,TM_ART);
- {TIORect r=tm_cur_rect_for(f->current);c->api.place(NULL,c->labels[TM_CURRENT],r.x,r.y,r.w,r.h);}   /* bottom-aligned on band B: one line sits on the bottom row */
- c->api.text_static(NULL,c->labels[TM_CURRENT],f->current);c->api.text_static(NULL,c->labels[TM_NEXT],f->next);c->api.text_static(NULL,c->labels[TM_TRACK],f->track);
+ /* The current lyric is never truncated (LyricStack): the label of the fitted font takes the box, bottom-aligned on band B, growing up into
+  * band M past two lines; the others are hidden and emptied. The next lyric's row is hidden whenever the lyric needs more than two lines. */
+ {static const unsigned cur_label[TM_CUR_SLOTS]={TM_CURRENT,TM_CURRENT20,TM_CURRENT16};const unsigned on=tm_cur_slot(fit.font);TIORect r=tm_cur_rect_for(&fit);
+  /* Visibility is only written when the fit changes (this runs every 33 ms); hidden labels get an empty text so they never point at a retired frame. */
+  if(!c->shown_ok||c->shown_slot!=on||c->shown_next!=fit.next){
+   for(unsigned i=0;i<TM_CUR_SLOTS;i++){void *l=c->labels[cur_label[i]];if(i!=on)c->api.text_static(NULL,l,"");c->api.visible(NULL,l,i==on);}
+   if(!fit.next)c->api.text_static(NULL,c->labels[TM_NEXT],"");c->api.visible(NULL,c->labels[TM_NEXT],fit.next);
+   c->shown_slot=(uint8_t)on;c->shown_next=fit.next;c->shown_ok=true;}
+  c->api.place(NULL,c->labels[cur_label[on]],r.x,r.y,r.w,r.h);c->api.text_static(NULL,c->labels[cur_label[on]],f->current);}
+ if(fit.next)c->api.text_static(NULL,c->labels[TM_NEXT],f->next);c->api.text_static(NULL,c->labels[TM_TRACK],f->track);
  if(c->api.color&&color!=c->track_color){c->api.color(NULL,c->labels[TM_TRACK],color);c->track_color=color;}
  c->front=1-c->front;c->last_frame=now;return true;
 }
@@ -92,12 +102,13 @@ static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
  if(!owns(c)||c->closing||!paired()||!c->api.idle(NULL))return false;c->root=c->api.root(NULL,ptr(c->app,4));if(!c->root)return false;
  c->api.place(NULL,c->root,0,0,540,180);c->canvas=c->api.canvas(NULL,c->root);if(!c->canvas)goto fail;
  {TIORect a=tm_art_rect();c->api.place(NULL,c->canvas,a.x,a.y,a.w,a.h);}
- {const unsigned fonts[TM_LABELS]={TM_CUR_FONT,TM_NEXT_FONT,TM_TRACK_FONT};const TIORect rects[TM_LABELS]={tm_cur_rect(),tm_next_rect(),tm_track_rect()};
-  const uint32_t colors[TM_LABELS]={TIO_LENS_FULL,TIO_LENS_HIGH,TIO_LENS_MID};
+ {const unsigned fonts[TM_LABELS]={TM_CUR_FONT,TM_NEXT_FONT,TM_TRACK_FONT,TIO_FONT_BODY,TIO_FONT_MIN};
+  const TIORect rects[TM_LABELS]={tm_cur_rect(0),tm_next_rect(),tm_track_rect(),tm_cur_rect(1),tm_cur_rect(2)};
+  const uint32_t colors[TM_LABELS]={TIO_LENS_FULL,TIO_LENS_HIGH,TIO_LENS_MID,TIO_LENS_FULL,TIO_LENS_FULL};
   for(unsigned i=0;i<TM_LABELS;i++){c->labels[i]=c->api.label(NULL,c->root,fonts[i]);if(!c->labels[i])goto fail;
    c->api.place(NULL,c->labels[i],rects[i].x,rects[i].y,rects[i].w,rects[i].h);if(c->api.clip_text)c->api.clip_text(NULL,c->labels[i]);
    if(c->api.color)c->api.color(NULL,c->labels[i],colors[i]);}}
- c->track_color=TIO_LENS_MID;tio_hint_init(&c->hint);tio_hint_enter(&c->hint,stream_tick());
+ c->shown_ok=false;c->track_color=TIO_LENS_MID;tio_hint_init(&c->hint);tio_hint_enter(&c->hint,stream_tick());
  if(!stream_add_event(c->root,deleted,0x24,c))goto fail;
  if(!render(c,stream_tick()))goto fail;c->api.visible(NULL,c->root,true);if(!wake(c))goto fail;return true;
  fail:c->api.destroy(NULL,c->root);c->root=NULL;release(c);return false;
