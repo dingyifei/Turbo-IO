@@ -6,16 +6,16 @@ import {inspectedHost} from './host-compatibility.mjs';
 import {inspectMachO,addEmbeddedLoad} from './macho-embed.mjs';
 import {patch,verifyRoute} from './patch-route.mjs';
 const info={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Runner',CFBundleShortVersionString:'1.0.7',CFBundleVersion:'230'};
-const options={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios107-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',firmware:'/example/TMG7.zip'};
+const options={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios107-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',firmware:'/example/TMG8.zip'};
 test('exact new version, build and UUID; mismatches rejected',()=>{
  assert.ok(inspectedHost(info,'410defdbf93739eaacf2f616abff9d0b'));
  assert.equal(inspectedHost({...info,CFBundleVersion:'231'},'410defdbf93739eaacf2f616abff9d0b'),null);
  assert.equal(inspectedHost(info,'98a03b57e8163ba19778e55fabe8d762'),null);
 });
-test('TMG7 OTA packaging is available by default; other candidates rejected',()=>{
+test('TMG8 OTA packaging is available by default; other candidates rejected',()=>{
  validateOptions(options);
- validateOptions({...options,'experimental-ota':'TMG7'});
- for(const flag of ['TMG6','TMG5','TMG4','TMG3','TMG2','TMIG1','enabled',''])assert.throws(()=>validateOptions({...options,'experimental-ota':flag}));
+ validateOptions({...options,'experimental-ota':'TMG8'});
+ for(const flag of ['TMG7','TMG6','TMG5','TMG4','TMG3','TMG2','TMIG1','enabled',''])assert.throws(()=>validateOptions({...options,'experimental-ota':flag}));
  assert.throws(()=>validateOptions({...options,firmware:undefined}));
  assert.throws(()=>validateOptions({...options,bundle:'example.other'}));
 });
@@ -46,9 +46,9 @@ test('phone gates require exact host, healthy source and inspected new offsets',
 test('exact firmware resource, not a flash authorization',t=>{
  const p=process.env.IOS107_TEST_FIRMWARE;if(!p)return t.skip('set IOS107_TEST_FIRMWARE');
  const b=fs.readFileSync(p),sym='_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap';
- validateResearchPair(sym,'TMG7',b);const bad=Buffer.from(b);bad[bad.length-1]^=1;
- assert.throws(()=>validateResearchPair(sym,'TMG7',bad));
- assert.throws(()=>validateResearchPair('', 'TMG7',b));
+ validateResearchPair(sym,'TMG8',b);const bad=Buffer.from(b);bad[bad.length-1]^=1;
+ assert.throws(()=>validateResearchPair(sym,'TMG8',bad));
+ assert.throws(()=>validateResearchPair('', 'TMG8',b));
 });
 test('real decrypted original input and loader preservation',t=>{
  const runner=process.env.IOS107_TEST_RUNNER,image=process.env.IOS107_TEST_APP_IMAGE;

@@ -2,7 +2,7 @@
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below. Before the Round 2 commits land it builds the same AP as TMG7. The phone pins stay on TMG7 until the ZIP8 re-pin. The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
+TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below. Before the Round 2 commits land it builds the same AP as TMG7. The phone pins name TMG8 and the exact ZIP8 below (re-pinned at `tmg8(12)`). The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
 
 ## TMG8 caps bit and the carousel layout value
 
@@ -125,7 +125,7 @@ The 13 menu icons are the Round 2 set. Sources and masters live in `assets/menu-
 - **Previews.** The layout gate writes every render to `DIR/preview/*.png`, English and Chinese, at the device size: every page, the focus, lyrics (all fit steps), navigation, dashboard card, mini-app and shelf renders, and the menu in all three layouts. The host run for the candidate is kept at `logs/tmg8/final-preview/`.
 - **Menu matrix.** `menu-matrix-<layout>-<route|noroute>-<linked|unlinked>-<en|zh>.png` renders carousel, 2 rows and 3 rows (layout) with the Navigation tile focused, with a live route or none, and with the phone linked or not, 24 files. Each goes through the same layout and brightness gate as every other render. Linked with a route shows the band-T turn title (the carousel moves to its route geometry); unlinked shows "Phone not connected" and no title even though the route data is present, and no state dots in the grid for the phone-fed tiles. The host script fails if any of the 24 files is missing.
 - **DS1 layout tests are unchanged.** Bands, reserved rows, 16 px text floor and the no-filled-panel rule are enforced on every widget of every render, the menu matrix included.
-- **Phone `test.py`** (`official-addon/ios107-edition`) now audits the supplied ZIP with this tree's `build.py`, runs the `tmg8-host` group (one run; the TMG7 host group is gone with the TMG7 retarget) and the `tmg8-*` and `tmg4-*` groups against this tree, and compares the phone's shared-source copies with this tree. The `pins` and `archive` groups need ZIP8 pins and stay red until the phone is re-pinned (phone pins stay TMG7 until the ZIP8 step). Any source edit needs a repin (`build.py --repin`) copied into `build-inputs.json`.
+- **Phone `test.py`** (`official-addon/ios107-edition`) now audits the supplied ZIP with this tree's `build.py`, runs the `tmg8-host` group (one run; the TMG7 host group is gone with the TMG7 retarget) and the `tmg8-*` and `tmg4-*` groups against this tree, and compares the phone's shared-source copies with this tree. The `pins` and `archive` groups check the ZIP8 pins and need `--firmware` to be the ZIP8 below. Any source edit needs a repin (`build.py --repin`) copied into `build-inputs.json`.
 
 # TMG7 candidate (design-system fork)
 
@@ -141,6 +141,17 @@ TMG7 forks frozen TMG6 (`../strix-1.0.5.5-tmg6`) and re-lays every glasses page 
 - Mini-app runtime: buttons are caret focus items (wheel focus clamps at the ends, no wrap; the caret snaps, the TAP runner has no tick to slide it), 14 px text draws at 16, and the My Apps shelf follows the bands (title and empty slots re-tinted to lens-mid after the page opens, two 222 px columns with a 16 px gutter). The 20 gallery apps are re-laid to the bands with no Exit or Back item: a long press goes back (from a detail page to the overview, and from the overview out of the app), so a detail page is never a dead end. TMG6 glasses, which are frozen, exit the app from either page. The TAP1 wire format is unchanged and older packages still decode.
 
 Modules removed at TMG4 stay removed: ride (didi-v1), English (context-english-v1), dots (dots-v1) and reader (weread-v1). None is restored here.
+
+## ZIP8 candidate (reproducible, pinned)
+
+Path (outside the repository, not tracked): `turboio-inputs/tmg8/StrixOS-1.0.5.5-TurboIO-TMG8-CANDIDATE-NOT-APPROVED.zip`, built from two fresh clean builds that are byte-identical, with `tmg8/SHA256SUMS`.
+
+| Payload | Bytes | SHA-256 | MD5 |
+| --- | ---: | --- | --- |
+| ZIP | 8819060 | `76cac17dfbddbee5683c5a4e4f40b81d98f4d2706f21a460277093cf416f24e5` | `5e11b517675ea664c84a90e3b0c875d7` |
+| AP | 7368072 | `83fdc0988ec60a45f00a7febfe5195864065aa4692cc17cea6651c6da721cb32` | `b80d48cc1d3b6aebacdc596a27c042f6` |
+
+The audit confirms 25 patch sites, the sole raw edit unchanged (`0x4d9bec 0721->0d21`), 14 unchanged stock payloads, 7 preserved startup descriptors and an AP below 9.6 MB. The build-identity sha256 (status `build` field) is `1af3a0a347e01567dd89f9d73528603e43711a6a20826b282f2ae9ff26593190`; the glasses also report caps bit 9 (`TD_CAP_MENU_CAROUSEL`), which TMG7 never sets. The phone pins (`firmware-pins.json`, `FirmwarePins.h`) are generated by `tools/phone_pins.py` from this ZIP and are keyed to the exact bytes; C12 keeps accepting TMG7 and TMG6 glasses because only the optional caps bit and the carousel layout value (gated on it) differ on the wire.
 
 ## Host gates
 
