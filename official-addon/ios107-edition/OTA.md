@@ -2,7 +2,7 @@
 
 ## TMG8 candidate — in progress (Round 2)
 
-The phone pins stay on the exact TMG7 ZIP until the ZIP8 re-pin. TMG8 adds one capability bit and one layout value, and nothing else on the wire: the glasses report `TD_CAP_MENU_CAROUSEL` (bit 9, `0x200`) in the status caps (`TD_CAPS_TMG8`; the build field stays `TD_BUILD_TMG6`), and the menu layout record accepts 1 (carousel) besides the grid row counts 2 and 3. The phone writes 1 only after the connected glasses' last status sample carries the bit (a SET with wire byte 7 = 1, the only non-zero use of that byte); TMG7 and TMG6 glasses never receive it, and C12 stays fully compatible with them. TMG8 does not draw the carousel in this step: a stored 1 shows the 2-row grid. Rollback is C11 plus ZIP7. Details: `firmware-research/strix-1.0.5.5-tmg8/README.md`.
+The phone pins stay on the exact TMG7 ZIP until the ZIP8 re-pin. TMG8 adds one capability bit and one layout value, and nothing else on the wire: the glasses report `TD_CAP_MENU_CAROUSEL` (bit 9, `0x200`) in the status caps (`TD_CAPS_TMG8`; the build field stays `TD_BUILD_TMG6`), and the menu layout record accepts 1 (carousel) besides the grid row counts 2 and 3. The phone writes 1 only after the connected glasses' last status sample carries the bit (a SET with wire byte 7 = 1, the only non-zero use of that byte); TMG7 and TMG6 glasses never receive it, and C12 stays fully compatible with them. TMG8 glasses draw the carousel for a stored 1 (one row of 80 / 48 / 36 px icons, a status line, the focused name; the wheel moves one item per 300 counts and wraps). Rollback is C11 plus ZIP7. Details: `firmware-research/strix-1.0.5.5-tmg8/README.md`.
 
 ## TMG7 candidate — current development branch
 

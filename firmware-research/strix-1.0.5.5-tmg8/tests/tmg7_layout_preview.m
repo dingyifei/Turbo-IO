@@ -509,6 +509,77 @@ static void Menu(NSString *dir,NSString *board,bool zh){
   (void)fm_view_step(v,2400);assert(!v->moving&&caret->x==92-12);assert(fm_view_close(v));free(v);free(host);}
  gSurface=TIO_SURFACE_PAGE;
 }
+// ---- TMG8 carousel (LensMenuCarousel.dc.html): the real FMView with rows == FM_CAROUSEL on mock widgets --------------------
+// Fixture: `selected` is the compact index, `route` slides the row down for the navigation title, `line` is the focused tile's status line.
+// (The status strings here are fixtures from the board; the live tile state and its ZH strings come with the tile-state step.)
+static void BuildCarousel(Host *host,FMView *v,unsigned hide,unsigned selected,bool route,const char *line){
+ create(host,host);TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};
+ assert(fm_view_open(v,&api,host,attach_ok,host));
+ TTConfig config;TTVisible tiles;assert(tt_unrank(0,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,FM_CAROUSEL)&&fm_view_tiles(v,&tiles));
+ assert(fm_view_update(v,(int)selected,946684800+10*3600,82,1000));
+ for(unsigned i=0;i<FM_CELLS;i++){W(v->labels[i])->ambient=true;W(v->icons[i])->ramp=true;W(v->icons[i])->span=true;}W(v->caret)->ramp=true;W(v->page)->ramp=true;   // span: the 80 px icon rises from band M into T (PriorityBands: carousel line)
+ for(unsigned i=0;i<FM_CELLS;i++)W(v->labels[i])->align=1;W(v->battery)->align=2;W(v->name)->align=1;W(v->line)->align=1;   // mirrors fm_show: menu_text_align centre / right / centre
+ if(route){assert(fm_view_route(v,true,1100));(void)fm_view_step(v,1400);}
+ if(line){assert(fm_view_line(v,line));(void)fm_view_step(v,1500);}
+ (void)fm_view_step(v,1600);assert(!v->moving&&!v->dirty);
+}
+static NSDictionary *BoardGeometry(NSString *html,NSString *name){   // the board's `const BIG = {...}` / `const SMALL = {...}` geometry tables
+ NSRange r=[html rangeOfString:[NSString stringWithFormat:@"const %@ = {",name]];assert(r.location!=NSNotFound);
+ NSString *t=[html substringFromIndex:r.location];t=[t substringToIndex:[t rangeOfString:@"};"].location];
+ NSMutableArray *sizes=[NSMutableArray array];
+ for(NSTextCheckingResult *m in [[NSRegularExpression regularExpressionWithPattern:@"\\[(\\d+), '#" options:0 error:nil] matchesInString:t options:0 range:NSMakeRange(0,t.length)])[sizes addObject:@([[t substringWithRange:[m rangeAtIndex:1]] intValue])];
+ NSTextCheckingResult *dx=[[NSRegularExpression regularExpressionWithPattern:@"dx: \\[(\\d+), (\\d+), (\\d+), (\\d+)\\]" options:0 error:nil] firstMatchInString:t options:0 range:NSMakeRange(0,t.length)];assert(dx&&sizes.count==3);
+ NSMutableDictionary *d=[@{@"sizes":sizes,@"dx":@[@([[t substringWithRange:[dx rangeAtIndex:2]] intValue]),@([[t substringWithRange:[dx rangeAtIndex:3]] intValue])]} mutableCopy];
+ for(NSString *key in @[@"cy",@"caret",@"status"]){NSTextCheckingResult *m=[[NSRegularExpression regularExpressionWithPattern:[key stringByAppendingString:@": (\\d+)"] options:0 error:nil] firstMatchInString:t options:0 range:NSMakeRange(0,t.length)];assert(m);d[key]=@([[t substringWithRange:[m rangeAtIndex:1]] intValue]);}
+ return d;
+}
+// Settled carousel against the board: five icons at the board's sizes, offsets and row, the caret, the status line and the name.
+static void CompareCarouselBoard(NSString *html,FMView *v,bool route){
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ NSDictionary *g=BoardGeometry(s,route?@"SMALL":@"BIG");NSArray *sz=g[@"sizes"],*dx=g[@"dx"];
+ Widget *ic[5];unsigned n=0;for(unsigned i=0;i<FM_CELLS;i++)if(W(v->icons[i])->shown){assert(n<5);ic[n++]=W(v->icons[i]);}assert(n==5);
+ for(unsigned a=0;a<5;a++)for(unsigned b=a+1;b<5;b++)if(ic[b]->x<ic[a]->x){Widget *t=ic[a];ic[a]=ic[b];ic[b]=t;}
+ const int want_dx[5]={-[dx[1] intValue],-[dx[0] intValue],0,[dx[0] intValue],[dx[1] intValue]},want_size[5]={[sz[2] intValue],[sz[1] intValue],[sz[0] intValue],[sz[1] intValue],[sz[2] intValue]};
+ for(unsigned i=0;i<5;i++){assert(ic[i]->w==want_size[i]&&ic[i]->h==want_size[i]&&ic[i]->x+ic[i]->w/2==270+want_dx[i]&&ic[i]->y+ic[i]->h/2==[g[@"cy"] intValue]);}
+ Widget *caret=W(v->caret),*line=W(v->line),*name=W(v->name);
+ assert(caret->x==258&&caret->w==24&&caret->h==3&&caret->y==[g[@"caret"] intValue]&&line->y==[g[@"status"] intValue]&&line->font==16&&line->color==TIO_LENS_HIGH);
+ assert(name->font==24&&abs(name->y-180)<=6&&name->x+name->w/2==270&&tio_band_of(TIO_SURFACE_MENU,name->y,name->h)==TIO_BAND_B);
+ printf("PASS board LensMenuCarousel (%s): icon sizes, offsets, row, caret, status line and name match\n",route?"route":"no route");
+}
+static void Carousel(NSString *dir,NSString *board,bool zh){
+ language=zh;gSurface=TIO_SURFACE_MENU;
+ struct {const char *tag;unsigned hide,selected;bool route;const char *line;} shots[]={
+  {"-carousel",0,9,false,"Playing · Blinding Lights"},          // board default scene: Music with a live track
+  {"-carousel-route",0,8,true,"1.2 km to go"},                   // Navigation with a route: row down, room for the title in band T
+  {"-carousel-idle",0,3,false,NULL},                             // nothing running: no status line
+  {"-carousel-offline",0,10,false,"Phone not connected"},
+  {"-carousel-first",0,0,false,NULL},                            // wraps: the last tiles sit to the left of the first
+  {"-carousel-last",0,12,false,NULL},
+  {"-carousel-8",31,4,false,"18:42 left"}};                      // eight tiles: the neighbours at +-3 are distinct from +-2
+ for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
+  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
+  BuildCarousel(host,v,sh->hide,sh->selected,sh->route,sh->line);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
+  Widget *status=W(v->status),*battery=W(v->battery),*nm=W(v->name),*caret=W(v->caret),*line=W(v->line);
+  assert(!strcmp(status->text,"10:00")&&!strcmp(battery->text,"82%")&&status->color==TIO_LENS_MID&&battery->color==TIO_LENS_MID&&status->font==TIO_FONT_LABEL);   // clock and battery in band T
+  assert(tio_band_of(TIO_SURFACE_MENU,status->y,status->h)==TIO_BAND_T&&tio_band_of(TIO_SURFACE_MENU,battery->y,battery->h)==TIO_BAND_T);
+  assert(nm->font==TIO_FONT_TITLE&&nm->color==0&&strlen(nm->text)>0&&!W(v->page)->shown);                                  // the name once, in B, full; no page dots
+  assert(line->shown==(sh->line!=NULL)&&(!sh->line||(!strcmp(line->text,sh->line)&&line->font==TIO_FONT_MIN&&line->color==TIO_LENS_HIGH&&tio_band_of(TIO_SURFACE_MENU,line->y,line->h)==TIO_BAND_M)));
+  for(unsigned k=0;k<FM_CELLS;k++)assert(!W(v->labels[k])->shown);                                                       // ambient names are a grid feature
+  // Icons: five, never above 80 px, in the glyph zone (side insets to the bottom of band M), none touching the clock, battery, status line or caret; focused full, the rest dimmer.
+  unsigned shown=0;uint8_t peaks[FM_CELLS];Widget *centre=NULL;
+  for(unsigned k=0;k<FM_CELLS;k++){Widget *ic=W(v->icons[k]);if(!ic->shown)continue;shown++;assert(ic->w==ic->h&&ic->w<=80&&ic->x>=TIO_INSET_X&&ic->x+ic->w<=TIO_PAGE_W-TIO_INSET_X&&ic->y>=TIO_RESERVE_TOP&&ic->y+ic->h<=TIO_MENU_M1);
+   uint8_t peak=0;for(int q=0;q<ic->w*ic->h;q++)if(ic->pixels[q]>peak)peak=ic->pixels[q];peaks[k]=peak;if(ic->x+ic->w/2==270)centre=ic;
+   for(Widget *o=host->w+1;o<host->w+host->count;o++){if(!o->shown||o==ic||o->kind!=KText||!o->text||!*o->text)continue;   // the drawn text, not its box (the clock box is 100 px, its ink about 45)
+    int ink=(int)ceil([[NSString stringWithUTF8String:o->text] sizeWithAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:o->font]}].width);if(ink>o->w)ink=o->w;
+    Widget t=*o;t.w=ink;t.x=o->align==1?o->x+(o->w-ink)/2:o->align==2?o->x+o->w-ink:o->x;assert(!overlap(ic,&t));}
+   assert(!overlap(ic,caret));
+   if(ic->x+ic->w/2==270)assert(peak>=250);else if(abs(ic->x+ic->w/2-270)<=124)assert(peak<=(TIO_LENS_MID>>8&255u));else assert(peak<=(TIO_LENS_TRACK>>8&255u));}
+  assert(shown==5&&centre&&caret->x+12==centre->x+centre->w/2&&caret->y>=centre->y+centre->h+3);
+  if(!zh)CompareCarouselBoard(board,v,sh->route);
+  Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(fm_view_close(v));free(v);free(host);(void)tiles;(void)peaks;}
+ gSurface=TIO_SURFACE_PAGE;
+}
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);
  puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}

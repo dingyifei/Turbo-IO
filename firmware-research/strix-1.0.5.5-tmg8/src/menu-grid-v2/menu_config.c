@@ -4,7 +4,6 @@ static uint32_t u32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(u
 static void w32(uint8_t *p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(i*8));}
 uint32_t tml_crc(const uint8_t *p,size_t n){uint32_t c=~0u;for(size_t i=0;i<n;i++){c^=p[i];for(unsigned b=0;b<8;b++)c=(c>>1)^(0xedb88320u&-(c&1));}return ~c;}
 static bool rows_ok(unsigned n){return n==TML_CAROUSEL||n==2||n==3;}
-unsigned tml_grid_rows(unsigned layout){return layout==TML_CAROUSEL?2:layout;}
 bool tml_decode(const uint8_t *p,size_t n,TMLCommand *q){
  if(!p||!q||n!=32||memcmp(p,"TMG2",4)||p[4]!=1||p[5]>1||p[7]>TML_PEER_TMG8||u32(p+24)||!u32(p+8)||!u32(p+20)||u32(p+28)!=tml_crc(p,28))return false;
  *q=(TMLCommand){u32(p+8),u32(p+12),u32(p+16),u32(p+20),p[5],p[6],p[7]};

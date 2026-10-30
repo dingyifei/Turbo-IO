@@ -25,7 +25,7 @@ extern void *nav_monitors(void),*fm_system(void *),*fm_battery_monitor(void *);
 extern int64_t fm_local_time(void *);
 extern int fm_battery_level(void *);
 typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;TIOMenuWrap wrap;} FMControl;
-_Static_assert(sizeof(FMControl)<=32768,"nine-cell menu retained storage capped at 32 KiB");
+_Static_assert(sizeof(FMControl)<=40960,"menu retained storage (nine grid cells or six carousel slots, two banks) capped at 40 KiB");
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
@@ -50,7 +50,7 @@ static void tick(void *t){FMControl *c=ptr(t,12);if(!c)return;
  * cannot accumulate another frame buffer before the previous one is safe. */
 static bool room(void){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return true;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+8);if(cb==tick){FMControl *c=ptr(t,12);return c&&c->timer==t&&c->closing&&!c->app&&dispose(c);}}return false;}
 void fm_relayout(unsigned rows){
- if(rows!=2&&rows!=3)return;void *t=NULL;
+ if(rows<1||rows>3)return;   /* 1 carousel, 2 or 3 grid rows */void *t=NULL;
  for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;if(*(void (**)(void *))((uint8_t *)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->desired_rows=rows;return;}}
  /* No active launcher: the persisted value is loaded when it next opens. */
 }
@@ -82,7 +82,7 @@ void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
   if(!fm_view_open(&c->view,&api,ptr(app,4),attach_deleted,c)){stream_free(c);return;}
   c->desired_rows=fm_menu_rows();TTVisible active;fm_tile_snapshot(&active);(void)fm_view_tiles(&c->view,&active);
   for(unsigned i=0;i<FM_CELLS;i++)menu_text_align(c->view.labels[i],2,0);
-  menu_text_align(c->view.battery,3,0);menu_text_align(c->view.name,2,0); /* battery right-aligned to the core edge, focused name centred in band B */
+  menu_text_align(c->view.line,2,0);menu_text_align(c->view.battery,3,0);menu_text_align(c->view.name,2,0); /* battery right-aligned to the core edge, focused name centred in band B */
   c->timer=stream_timer_create(tick,100,c);if(!c->timer){fm_view_close(&c->view);stream_free(c);return;}
   s->quad=c;
  }

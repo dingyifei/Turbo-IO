@@ -52,5 +52,7 @@ int main(void){
  fm_sync(app);assert(control.selection==7&&control.view.selected==7&&!strcmp(texts[(uintptr_t)control.view.labels[7]],tio_text(TT_GRID_DISPLAY,0)));
  assert(tt_unrank(719,0xf80,&c)&&tt_compact(&c,&desired));pending=true;now++;fm_sync(app);
  assert(active.count==8&&control.view.selected==7&&control.selection==7);assert(!strcmp(texts[(uintptr_t)control.view.labels[7]],tio_text(TT_TILE_CAMERA,0)));assert(!shown[(uintptr_t)control.view.labels[8]]);
+ control.desired_rows=FM_CAROUSEL;now+=1000;fm_sync(app);assert(control.view.rows==FM_CAROUSEL&&control.view.selected==7&&control.selection==7&&!shown[(uintptr_t)control.view.page]);   /* a stored layout 1 reaches the view */
+ control.desired_rows=2;now+=1000;fm_sync(app);assert(control.view.rows==2&&shown[(uintptr_t)control.view.page]);
  puts("PASS native fm_sync: unchanged selected rank immediately redraws changed canonical tiles before dispatch");
 }

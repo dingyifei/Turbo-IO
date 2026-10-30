@@ -53,7 +53,7 @@ static Control *find(void){
 unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
 unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
  c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);if(tlg_state_load(&c->language,&tls_io))fm_language_changed();c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
- }return c?tml_grid_rows(c->menu.stored.rows):3;} /* a stored carousel (1) draws as the 2-row grid until the carousel layout exists */
+ }return c?c->menu.stored.rows:3;} /* 1 carousel, 2 or 3 grid rows; tml_load only returns those */
 void fm_tile_snapshot(TTVisible *out){Control *c=find();if(c){*out=c->active;return;}TTConfig defaults;tt_default(&defaults);(void)tt_compact(&defaults,out);}
 unsigned fm_tile_count(void){Control *c=find();return c?c->active.count:13;}
 unsigned fm_tile_id(unsigned rank){Control *c=find();if(c)return rank<c->active.count?c->active.ids[rank]:255;return rank<13?rank:255;}
@@ -128,7 +128,7 @@ void tgr_native_message(const TIONativeMessage *m){
   unsigned r=tml_accept(&c->menu,&layout,stream_tick(),layout.op==TML_QUERY?tap_random():0,allowed(),&tml_io);
   /* IO failure may have committed a valid inactive bank: reconcile actual state,
    * but never report success until flush/fsync/readback all passed. */
-  fm_relayout(tml_grid_rows(c->menu.stored.rows));
+  fm_relayout(c->menu.stored.rows);
   uint8_t out[74];tml_reply(raw,&c->menu,&layout,r);tml_carrier(out,raw,true);
   (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
  }

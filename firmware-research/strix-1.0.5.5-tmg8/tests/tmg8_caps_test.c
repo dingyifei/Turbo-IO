@@ -57,7 +57,6 @@ int main(void){
  assert(exchange(&st,&io,(TMLCommand){.op=TML_QUERY,.request=1,.client=7},1002,32)==TML_OK);
  assert(exchange(&st,&io,set1,1003,0)==TML_OK&&disk.writes==1&&st.stored.rows==1&&st.stored.generation==1);
  TMLStored loaded=tml_load(&io);assert(loaded.rows==1&&loaded.generation==1&&loaded.readable); /* the record survives a reboot */
- assert(tml_grid_rows(1)==2&&tml_grid_rows(2)==2&&tml_grid_rows(3)==3); /* until the carousel is drawn, 1 shows the 2-row grid */
  uint8_t reply[32];TMLCommand echo=set1;tml_reply(reply,&st,&echo,TML_OK);assert(reply[6]==1&&reply[7]==TML_OK);
  assert(exchange(&st,&io,(TMLCommand){.op=TML_QUERY,.request=4,.client=7},1004,33)==TML_OK);
  assert(exchange(&st,&io,(TMLCommand){.op=TML_SET,.request=5,.client=7,.token=33,.generation=1,.rows=3},1005,0)==TML_OK&&tml_load(&io).rows==3); /* back to a grid */

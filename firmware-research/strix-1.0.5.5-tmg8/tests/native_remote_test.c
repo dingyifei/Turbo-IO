@@ -51,7 +51,7 @@ unsigned tgr_group_send(void *p,uint32_t key){(void)p;(void)key;return 0;}
 void tgr_raw_wheel(const void *p){int32_t delta;memcpy(&delta,p,sizeof delta);raw_callbacks++;assert(find()->knob.state==TK_CANCELED&&find()->synthetic_depth);tgr_knob_observe(app,delta,now_ms);}
 void tgr_sim_wheel(int delta){assert(delta==1||delta==-1);simulated_steps++;}
 void fm_language_changed(void){}
-void fm_relayout(unsigned rows){assert(rows==2||rows==3);}
+void fm_relayout(unsigned rows){assert(rows>=1&&rows<=3);}
 void fm_sync(void *p){if(!fm_tiles_busy()&&render_idle&&awake&&!detail_open)(void)fm_tiles_apply(p);}
 void native_snap(void *p){assert(p==app);if(snaps<4){snap_count[snaps]=*(uint32_t *)(app+0xa0);snap_selected[snaps]=*(uint32_t *)(app+0x88);}snaps++;fm_sync(p);}
 int tdp_rnlink_send(unsigned business,const uint8_t *p,unsigned n,void *ctx){assert(business==15&&n==74&&!ctx);memcpy(reply_wire,p,n);return 0;}

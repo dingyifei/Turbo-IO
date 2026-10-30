@@ -17,11 +17,10 @@ bool tml_decode(const uint8_t *,size_t,TMLCommand *);
 void tml_encode(uint8_t *,const TMLCommand *);
 size_t tml_carrier(uint8_t *,const uint8_t *,bool);
 bool tml_uncarrier(const uint8_t *,size_t,uint8_t *,bool);
-unsigned tml_grid_rows(unsigned layout); /* Grid rows to draw for a stored layout value: the carousel falls back to 2 rows until it is drawn. */
 TMLStored tml_load(const TMLIO *);
 bool tml_store(const TMLIO *,TMLStored *,unsigned);
 unsigned tml_accept(TMLState *,const TMLCommand *,uint32_t,uint32_t,bool,const TMLIO *);
 void tml_reply(uint8_t *,const TMLState *,const TMLCommand *,unsigned);
-unsigned fm_menu_rows(void);
+unsigned fm_menu_rows(void); /* the stored layout value: 1 carousel, 2 or 3 grid rows */
 void fm_relayout(unsigned);
 #endif

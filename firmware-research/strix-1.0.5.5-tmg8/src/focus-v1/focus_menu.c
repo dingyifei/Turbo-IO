@@ -5,6 +5,11 @@
  * band M (y 56-172): the icon grid, unfocused icons and 16 px names in lens-mid, the focused icon in lens-full
  *   with a 24x3 caret where its name would be (three-row mode keeps icons only: names do not fit the band);
  * band B (y 172-212): the focused name once, 24 px, lens-full, centred. No ring, no wordmark, nothing in the reserved rows.
+ * TMG8 carousel (LensMenuCarousel.dc.html, rows==FM_CAROUSEL): the same bands. Clock and battery in T; one row of icons at cy 68 (no route) or
+ * 92 (route): 80/48/36 px at dx 0/124/214 (route 64/40/32 at 0/118/206), lens-full / lens-mid / lens-track, the 24x3 caret at y 114 (127), the
+ * focused tile's status line (16 px, lens-high) at y 146 (140), the name in band B. The focus is a fractional position: an item at signed
+ * distance r from it is drawn at the geometry interpolated at |r| (knots 0..3, gone at 3), so a wheel step, a wrap and an interrupted step are
+ * the same slide. The six visible items take canvas slots in order of |r| (the centre 80 px, the next at most 64, ...), which bounds retained pixels.
  * TMG4: bounded six/nine-cell renderer over the active tile map, no per-frame heap, bounded packed artwork.
  * All retained text and pixels live with the view. Write/swap only while idle.
  * Stock selection is authoritative; rapid input replaces, never queues, motion.
@@ -28,6 +33,14 @@ static int center(unsigned cell){return 92+178*(int)(cell%3);}
 static int top(const FMView *v,unsigned cell){return TIO_MENU_T1+2+(int)(cell/3)*(v->rows==3?FM_PITCH3:FM_PITCH2);}
 static int caret_left(unsigned cell){return center(cell)-FM_CARET_W/2;}
 static int caret_top(const FMView *v,unsigned cell){return top(v,cell)+(int)icon_size(v)+FM_CARET_GAP;}
+enum { FM_CAR_CX=270, FM_CAR_MAX=80, FM_MOVE_MS=160 };
+static const unsigned car_side[FM_SLOTS]=FM_CAR_SIDES,car_at[FM_SLOTS]=FM_CAR_OFFSETS;
+_Static_assert(36*36<=FM_CAR_BANK-15936&&15936%64==0&&FM_CAR_BANK%64==0,"carousel slots fit one 64-aligned bank");
+_Static_assert(80*80<=6400&&64*64<=10496-6400&&48*48<=12800-10496&&42*42<=14592-12800&&36*36<=15936-14592&&36*36<=FM_CAR_BANK-15936,"carousel slot capacities");
+/* Geometry knots by |r| = 0,1,2,3 items from the focus: [0] without a route, [1] with one (OptionA nav title in band T). */
+static const int car_size[2][4]={{80,48,36,36},{64,40,32,32}},car_dx[2][4]={{0,124,214,300},{0,118,206,290}};
+static const int car_cy[2]={68,92},car_caret_y[2]={114,127},car_line_y[2]={146,140};
+static const int car_gain[4]={(int)FM_LEVEL(TIO_LENS_FULL),(int)FM_LEVEL(TIO_LENS_MID),(int)FM_LEVEL(TIO_LENS_TRACK),0};
 static unsigned ease(uint32_t elapsed,unsigned duration){if(elapsed>=duration)return 256;unsigned t=(unsigned)(elapsed*256/duration),r=256-t;return 256-r*r*r/65536;}
 static int mix(int a,int b,unsigned q){return a+(b-a)*(int)q/256;}
 static void sample(FMView *v,uint32_t now){
@@ -54,7 +67,72 @@ static void dots(uint8_t *out,unsigned pages,unsigned page){
   at+=w+FM_DOT_GAP;
  }
 }
-static void render(FMView *v,uint32_t now){
+
+/* ---- Carousel -------------------------------------------------------------------------------------------------------- */
+typedef struct {unsigned idx,a;int r;} CarItem;
+static int knot(const int *k,unsigned a){if(a>=768)return k[3];unsigned i=a>>8,f=a&255;return k[i]+(k[i+1]-k[i])*(int)f/256;}
+static unsigned car_count(const FMView *v){return v->tiles.count?v->tiles.count:1;}
+static int car_norm(const FMView *v,int p){int n=(int)car_count(v)*256;return ((p%n)+n)%n;}
+/* The six items that can be on screen for position p (8.8 item units), nearest first. */
+static void car_order(const FMView *v,int p,CarItem it[FM_SLOTS]){
+ const int n=(int)car_count(v);p=car_norm(v,p);const int base=p>>8,frac=p&255;
+ for(int j=0;j<FM_SLOTS;j++){int s=j-2,r=s*256-frac;it[j]=(CarItem){(unsigned)(((base+s)%n+n)%n),(unsigned)(r<0?-r:r),r};}
+ for(int j=1;j<FM_SLOTS;j++){CarItem x=it[j];int k=j;while(k>0&&it[k-1].a>x.a){it[k]=it[k-1];k--;}it[k]=x;}
+}
+static void car_sample(FMView *v,uint32_t now){
+ unsigned q=v->moving?ease((uint32_t)(now-v->started),FM_MOVE_MS):256;
+ v->car_p=mix(v->car_from_p,v->car_to_p,q);v->car_w=(unsigned)mix((int)v->car_from_w,(int)v->car_to_w,q);
+ v->caret_x=FM_CAR_CX-FM_CARET_W/2;v->caret_y=mix(car_caret_y[0],car_caret_y[1],v->car_w);
+ if(q==256){v->moving=false;v->car_p=v->car_from_p=v->car_to_p=car_norm(v,v->car_to_p);v->car_w=v->car_from_w=v->car_to_w;}
+}
+/* Bilinear scale of the 48x48 4 bpp art to size x size (size <= 80) at brightness `gain` (255 = the art's own lens-full). */
+static void car_icon(uint8_t *out,unsigned index,unsigned size,unsigned gain){
+ if(size>FM_CAR_MAX)size=FM_CAR_MAX;if(!size)return;
+ const unsigned char *packed=fm_icon4[index];uint8_t x0[FM_CAR_MAX],wx[FM_CAR_MAX];
+ for(unsigned x=0;x<size;x++){int c=(int)((2*x+1)*6144/size)-128;if(c<0)c=0;if(c>47*256)c=47*256;x0[x]=(uint8_t)(c>>8);wx[x]=(uint8_t)(c&255);}
+ for(unsigned y=0;y<size;y++){
+  int c=(int)((2*y+1)*6144/size)-128;if(c<0)c=0;if(c>47*256)c=47*256;unsigned y0=(unsigned)c>>8,y1=y0<47?y0+1:47,wy=(unsigned)c&255;
+  for(unsigned x=0;x<size;x++){
+   unsigned xa=x0[x],xb=xa<47?xa+1:47,fx=wx[x];
+   unsigned p00=y0*48+xa,p01=y0*48+xb,p10=y1*48+xa,p11=y1*48+xb;
+   unsigned a=(packed[p00/2]>>(p00%2?0:4))&15,b=(packed[p01/2]>>(p01%2?0:4))&15,c2=(packed[p10/2]>>(p10%2?0:4))&15,d=(packed[p11/2]>>(p11%2?0:4))&15;
+   unsigned sum=((a*(256-fx)+b*fx)*(256-wy)+(c2*(256-fx)+d*fx)*wy),level=(sum*17+32768)>>16;
+   out[y*size+x]=(uint8_t)(level*gain/255);
+  }
+ }
+}
+static void car_retarget(FMView *v,int old,int selected,uint32_t now){
+ const int N=(int)car_count(v)*256,target=selected*256;const unsigned w=v->route?256:0;
+ if(old<0){v->car_p=v->car_from_p=v->car_to_p=target;v->car_w=v->car_from_w=v->car_to_w=w;v->moving=false;return;}
+ car_sample(v,now);int cur=car_norm(v,v->car_p),d=target-cur;if(d>N/2)d-=N;if(d<=-N/2)d+=N;
+ v->car_from_w=v->car_w;v->car_to_w=w;
+ if(v->reduce_motion){v->car_p=v->car_from_p=v->car_to_p=target;v->car_w=v->car_from_w=v->car_to_w;v->moving=false;return;}   /* Reduce Motion: snap */
+ v->car_from_p=cur;v->car_to_p=cur+d;v->started=now;v->moving=true;
+}
+static void render_car(FMView *v,uint32_t now){
+ unsigned lang=tio_lang();car_sample(v,now);const unsigned bank=v->bank^1,w=v->car_w;CarItem it[FM_SLOTS];car_order(v,v->car_p,it);
+ const int cy=mix(car_cy[0],car_cy[1],w);
+ v->api.place(v->api.ctx,v->caret,v->caret_x,v->caret_y,FM_CARET_W,FM_CARET_H);
+ for(unsigned k=0;k<FM_SLOTS;k++){
+  unsigned size=(unsigned)mix(knot(car_size[0],it[k].a),knot(car_size[1],it[k].a),w);if(size>car_side[k])size=car_side[k];
+  unsigned gain=(unsigned)knot(car_gain,it[k].a);int dx=mix(knot(car_dx[0],it[k].a),knot(car_dx[1],it[k].a),w);
+  int x=FM_CAR_CX+(it[k].r<0?-dx:dx)-(int)size/2,y=cy-(int)size/2;
+  /* Fully dim, or outside the side insets (the glyph zone): not drawn. Positions between knots are continuous, so this only trims the fade-out. */
+  bool show=gain>0&&size>=8&&x>=TIO_INSET_X&&x+(int)size<=TIO_PAGE_W-TIO_INSET_X;
+  v->api.visible(v->api.ctx,v->icons[k],show);if(!show)continue;
+  uint8_t *out=v->cpixels[bank]+car_at[k];
+  car_icon(out,v->tiles.ids[it[k].idx],size,gain);
+  v->api.place(v->api.ctx,v->icons[k],x,y,size,size);v->api.buffer(v->api.ctx,v->icons[k],out,size,size);
+ }
+ for(unsigned i=FM_SLOTS;i<FM_CELLS;i++)v->api.visible(v->api.ctx,v->icons[i],false);
+ for(unsigned i=0;i<FM_CELLS;i++)v->api.visible(v->api.ctx,v->labels[i],false);
+ v->api.visible(v->api.ctx,v->page,false);
+ v->api.place(v->api.ctx,v->line,TIO_CORE_X0,mix(car_line_y[0],car_line_y[1],w),TIO_CORE_W,(int)TIO_LINE(TIO_FONT_MIN));
+ v->api.visible(v->api.ctx,v->line,v->line_text[v->line_bank][0]!=0);
+ v->api.text_static(v->api.ctx,v->name,tio_text(names[v->tiles.ids[v->selected]],lang));
+ v->api.visible(v->api.ctx,v->root,true);v->bank=bank;v->last_draw=now;v->dirty=false;
+}
+static void render_grid(FMView *v,uint32_t now){
  unsigned lang=tio_lang();
  sample(v,now);unsigned bank=v->bank^1;unsigned q=v->page_motion?ease(now-v->started,120):256;
  int offset=v->page_motion?mix(v->page_offset,0,q):0;unsigned fade=v->page_motion?192+q/4:256;
@@ -72,22 +150,24 @@ static void render(FMView *v,uint32_t now){
  }
  v->api.text_static(v->api.ctx,v->name,tio_text(names[v->tiles.ids[v->selected]],lang));
  dots(v->pager[bank],(v->tiles.count+cells-1)/cells,(unsigned)v->selected/cells);
- v->api.buffer(v->api.ctx,v->page,v->pager[bank],FM_PAGER_W,FM_PAGER_H);v->api.visible(v->api.ctx,v->root,true);
- v->bank=bank;v->last_draw=now;
+ v->api.buffer(v->api.ctx,v->page,v->pager[bank],FM_PAGER_W,FM_PAGER_H);v->api.visible(v->api.ctx,v->page,true);v->api.visible(v->api.ctx,v->line,false);v->api.visible(v->api.ctx,v->root,true);
+ v->bank=bank;v->last_draw=now;v->dirty=false;
 }
+static void render(FMView *v,uint32_t now){if(v->rows==FM_CAROUSEL)render_car(v,now);else render_grid(v,now);}
 static void tint(FMView *v,void *label,uint32_t rgb){if(v->api.color)v->api.color(v->api.ctx,label,rgb);}
 bool fm_view_open(FMView *v,const TNWidgets *api,void *parent,bool (*attach)(void *,void *),void *owner){
  if(!v||!api||!attach||!api->idle(api->ctx))return false;memset(v,0,sizeof *v);v->api=*api;v->selected=-1;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&v->tiles);
  v->root=api->root(api->ctx,parent);if(!v->root)return false;
  if(!attach(v->root,owner)){api->destroy(api->ctx,v->root);v->root=NULL;return false;}
  api->place(api->ctx,v->root,0,0,540,220);v->rows=3;
- v->caret=api->canvas(api->ctx,v->root);v->status=api->label(api->ctx,v->root,TIO_FONT_LABEL);v->battery=api->label(api->ctx,v->root,TIO_FONT_LABEL);v->name=api->label(api->ctx,v->root,TIO_FONT_TITLE);v->page=api->canvas(api->ctx,v->root);
- if(!v->caret||!v->status||!v->battery||!v->name||!v->page)goto failed;
+ v->caret=api->canvas(api->ctx,v->root);v->status=api->label(api->ctx,v->root,TIO_FONT_LABEL);v->battery=api->label(api->ctx,v->root,TIO_FONT_LABEL);v->name=api->label(api->ctx,v->root,TIO_FONT_TITLE);v->page=api->canvas(api->ctx,v->root);v->line=api->label(api->ctx,v->root,TIO_FONT_MIN);
+ if(!v->caret||!v->status||!v->battery||!v->name||!v->page||!v->line)goto failed;
  const TIOSpan t=tio_band(TIO_SURFACE_MENU,TIO_BAND_T);int row=t.y0+(t.y1-t.y0-(int)TIO_LINE(TIO_FONT_LABEL))/2;
  api->place(api->ctx,v->caret,0,0,FM_CARET_W,FM_CARET_H);
  api->place(api->ctx,v->status,TIO_CORE_X0,row,100,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->status,TIO_LENS_MID);
  api->place(api->ctx,v->battery,TIO_CORE_X1-100,row,100,(int)TIO_LINE(TIO_FONT_LABEL));tint(v,v->battery,TIO_LENS_MID);
  api->place(api->ctx,v->name,TIO_CORE_X0,TIO_MENU_B1-(int)TIO_LINE(TIO_FONT_TITLE)-3,TIO_CORE_W,(int)TIO_LINE(TIO_FONT_TITLE));
+ api->place(api->ctx,v->line,TIO_CORE_X0,car_line_y[0],TIO_CORE_W,(int)TIO_LINE(TIO_FONT_MIN));tint(v,v->line,TIO_LENS_HIGH);if(api->clip_text)api->clip_text(api->ctx,v->line);api->visible(api->ctx,v->line,false);   /* carousel status line: 16 px, lens-high, band M under the focused icon */
  api->place(api->ctx,v->page,(540-FM_PAGER_W)/2,row+(int)TIO_LINE(TIO_FONT_LABEL)/2-FM_PAGER_H-3,FM_PAGER_W,FM_PAGER_H);
  for(unsigned i=0;i<FM_CELLS;i++){v->icons[i]=api->canvas(api->ctx,v->root);v->labels[i]=api->label(api->ctx,v->root,TIO_FONT_MIN);if(!v->icons[i]||!v->labels[i])goto failed;tint(v,v->labels[i],TIO_LENS_MID);}
  v->rows=0;if(!fm_view_rows(v,3))goto failed;
@@ -100,8 +180,8 @@ bool fm_view_tiles(FMView *v,const TTVisible *tiles){
  for(unsigned id=0;id<13;id++)if(!(seen&(1u<<id))&&tiles->rank[id]!=255)return false;
  if(v->tiles.count!=tiles->count||memcmp(v->tiles.ids,tiles->ids,13)){v->tiles=*tiles;fm_view_suspend(v);}return true;
 }
-bool fm_view_rows(FMView *v,unsigned rows){
- if(!v||!v->root||(rows!=2&&rows!=3)||!v->api.idle(v->api.ctx))return false;
+bool fm_view_rows(FMView *v,unsigned rows){   /* 1 carousel, 2 or 3 grid rows */
+ if(!v||!v->root||rows<1||rows>3||!v->api.idle(v->api.ctx))return false;
  if(v->rows==rows)return true;
  v->rows=rows;fm_view_suspend(v);
  /* Renderer idle before touching retained caret/pixel memory. The 24x3 caret is lens-full with its four corner pixels cut (radius 2). */
@@ -116,17 +196,37 @@ bool fm_view_update(FMView *v,int selected,int64_t local,int battery,uint32_t no
  if(battery>=0&&battery<=100){unsigned at=0;if(battery==100)pct[at++]='1';if(battery>=10)pct[at++]='0'+battery/10%10;pct[at++]='0'+battery%10;pct[at++]='%';pct[at]=0;}
  v->api.text_static(v->api.ctx,v->status,h);v->api.text_static(v->api.ctx,v->battery,pct);v->header_bank=b;
  if(selected!=v->selected){
-  int old=v->selected;bool page=old>=0&&(unsigned)old/per(v)!=(unsigned)selected/per(v);
+  int old=v->selected;
+  if(v->rows==FM_CAROUSEL){car_retarget(v,old,selected,now);v->selected=selected;render(v,now);return true;}
+  bool page=old>=0&&(unsigned)old/per(v)!=(unsigned)selected/per(v);
   if(old>=0)sample(v,now);
   v->selected=selected;unsigned cell=(unsigned)selected%per(v);
   if(old<0||page){v->caret_x=caret_left(cell);v->caret_y=caret_top(v,cell);for(unsigned i=0;i<FM_CELLS;i++)v->weights[i]=i==cell?256:0;}
   v->from_x=v->caret_x;v->from_y=v->caret_y;for(unsigned i=0;i<FM_CELLS;i++)v->from_weights[i]=v->weights[i];
-  v->page_motion=page;v->page_offset=page?(selected>old?10:-10):0;v->started=now;v->moving=old>=0;
+  v->page_motion=page&&!v->reduce_motion;v->page_offset=v->page_motion?(selected>old?10:-10):0;v->started=now;v->moving=old>=0&&!v->reduce_motion;
   render(v,now);
- }else if(v->moving){if((uint32_t)(now-v->last_draw)>=16)render(v,now);}
+ }else if(v->moving||v->dirty){if((uint32_t)(now-v->last_draw)>=16)render(v,now);}
  else v->api.visible(v->api.ctx,v->root,true);
  return true;
 }
-bool fm_view_step(FMView *v,uint32_t now){if(!v||!v->root||!v->moving||(uint32_t)(now-v->last_draw)<16||!v->api.idle(v->api.ctx))return false;render(v,now);return true;}
-void fm_view_suspend(FMView *v){if(v){v->moving=false;v->page_motion=false;v->selected=-1;}}
+bool fm_view_step(FMView *v,uint32_t now){if(!v||!v->root||v->selected<0||!(v->moving||v->dirty)||(uint32_t)(now-v->last_draw)<16||!v->api.idle(v->api.ctx))return false;render(v,now);return true;}
+void fm_view_suspend(FMView *v){if(v){v->moving=false;v->page_motion=false;v->selected=-1;v->dirty=false;}}
+/* Route hook (navigation title active): the carousel makes room in band T. Called from the UI thread at the 1 Hz nav refresh. */
+bool fm_view_route(FMView *v,bool on,uint32_t now){
+ if(!v||!v->root)return false;if(v->route==on)return true;v->route=on;
+ if(v->rows!=FM_CAROUSEL||v->selected<0)return true;   /* picked up when the carousel is next laid out */
+ car_sample(v,now);v->car_from_p=v->car_p;v->car_from_w=v->car_w;v->car_to_w=on?256:0;
+ if(v->reduce_motion){v->car_p=v->car_from_p=v->car_to_p;v->car_w=v->car_from_w=v->car_to_w;v->moving=false;}else{v->started=now;v->moving=true;}
+ v->dirty=true;return true;
+}
+/* Status line hook: the focused tile's live state. Cut at a UTF-8 character boundary, empty hides it. Needs an idle renderer. */
+bool fm_view_line(FMView *v,const char *text){
+ if(!v||!v->root)return false;if(!text)text="";
+ size_t n=strlen(text);if(n>=FM_LINE_MAX){n=FM_LINE_MAX-1;while(n&&((uint8_t)text[n]&0xC0)==0x80)n--;}
+ if(strlen(v->line_text[v->line_bank])==n&&!memcmp(v->line_text[v->line_bank],text,n))return true;
+ if(!v->api.idle(v->api.ctx))return false;
+ unsigned b=v->line_bank^1;memcpy(v->line_text[b],text,n);v->line_text[b][n]=0;
+ v->api.text_static(v->api.ctx,v->line,v->line_text[b]);v->line_bank=b;v->dirty=true;return true;
+}
+void fm_view_reduce_motion(FMView *v,bool on){if(v)v->reduce_motion=on;}
 bool fm_view_close(FMView *v){if(!v||!v->root)return true;if(!v->api.idle(v->api.ctx))return false;void *root=v->root;v->root=NULL;v->moving=false;v->api.destroy(v->api.ctx,root);return true;}
