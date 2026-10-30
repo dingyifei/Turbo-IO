@@ -28,11 +28,11 @@ static void GlassesCaps(void){@autoreleasepool{
  for(unsigned tmg8=0;tmg8<2;tmg8++){
   __block double now=100;__block TDCommand sent;__block NSString *peer=@"caps-peer";__block __weak TDRuntimeSession *weak=nil;
   TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return peer;} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){sent=q;weak.fileBusy=YES;return YES;}];weak=r;
-  assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps); // nothing is known before a status sample
+  assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // nothing is known before a status sample
   assert([r query]);SampleBuild=TD_BUILD_TMG6;SampleCaps=tmg8?TD_CAPS_TMG8:TD_CAPS_TMG6;now=101;
   assert([r receive:Packet(sent,TD_STATUS,0,0,0) device:peer]);
-  assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==(tmg8!=0)&&(r.glassesCaps&TD_CAP_NAV_PASSING));
-  peer=@"another-glasses";assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps); // another peer inherits nothing
+  assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==(tmg8!=0)&&(r.glassesCaps&TD_CAP_NAV_PASSING)&&[r.glassesFirmware isEqual:@"TMG6"]); // TMG6, TMG7 and TMG8 share the build field
+  peer=@"another-glasses";assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // another peer inherits nothing
  }
  SampleBuild=TD_BUILD_TMG4;SampleCaps=TD_CAPS_ALL;
 }}

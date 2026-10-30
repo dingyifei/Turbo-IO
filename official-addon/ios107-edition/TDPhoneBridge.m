@@ -82,6 +82,7 @@
 @end
 static TDDriver *Driver;
 uint32_t TDGlassesCaps(void){return Driver&&[Driver.peer isEqual:TIOProtocolDevice()]?[Driver.runtime glassesCaps]:0;}
+NSString *TDGlassesFirmware(void){return Driver&&[Driver.peer isEqual:TIOProtocolDevice()]?[Driver.runtime glassesFirmware]:nil;}
 BOOL TDGlassesReportTMG8Caps(void){return (TDGlassesCaps()&TD_CAP_MENU_CAROUSEL)!=0;}
 BOOL TDGlassesCapsRefresh(void){
  if(!Driver.task&&(!Driver||![Driver.peer isEqual:TIOProtocolDevice()])){[Driver.run stop:@"peer_context_changed"];Driver=[TDDriver new];}

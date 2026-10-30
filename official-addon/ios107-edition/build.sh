@@ -109,6 +109,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   LanguageFlagRuntime.m \
   MenuLayout.m \
   MenuLayoutUI.m \
+  MenuLens.m \
   menu_config.c \
   tile_config.c \
   Brightness.m \

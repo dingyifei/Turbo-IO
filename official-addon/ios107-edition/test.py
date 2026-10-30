@@ -149,6 +149,7 @@ test('tmg5-roads',['RoadMap.m','nav_runtime.c','tests/TMG5RoadFilterTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('glasses-file',['tests/GlassesFileTransportTests.m','TIOGlassesFileTransport.m','tests/diagnostic_stub.m','tests/fixtures/wp8/LegacyFocusTransport.m','tests/fixtures/wp8/LegacyMusicTransport.m','tests/fixtures/wp8/LegacyTDTransport.m','focus.c','music.c','command.c','diagnostics.c'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
+test('menu-lens',['tests/MenuLensTests.m','MenuLens.m'],extra=['-framework','CoreGraphics'])
 test('tile-layout',['tests/TileLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
 if only is None or 'tile-layout' in only:
     run('tile-roundtrip',['python3','-I',P/'tests/tile_roundtrip.py',out/'tile-roundtrip'])

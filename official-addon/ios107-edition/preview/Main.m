@@ -194,10 +194,23 @@ static NSDictionary *ReportFor(UIViewController *controller) {
                                @"selected":@((view.accessibilityTraits&UIAccessibilityTraitSelected)!=0)}];
         }
     });
+    // The menu layout screen: its segmented control, the lens preview's VoiceOver summary and the footnote under the control.
+    __block NSDictionary *layout=@{};
+    Visit(controller.view,^(UIView *view){
+        if([view.accessibilityIdentifier isEqual:@"layout-segments"]&&[view isKindOfClass:UISegmentedControl.class]){
+            UISegmentedControl *control=(UISegmentedControl *)view;NSMutableArray *segments=[NSMutableArray array];
+            for(NSInteger i=0;i<control.numberOfSegments;i++)[segments addObject:@{@"title":[control titleForSegmentAtIndex:i]?:@"",@"enabled":@([control isEnabledForSegmentAtIndex:i]),@"selected":@(control.selectedSegmentIndex==i)}];
+            NSMutableDictionary *facts=[layout mutableCopy];facts[@"segments"]=segments;layout=facts;
+        }
+        if([view.accessibilityIdentifier isEqual:@"layout-preview"]){
+            NSMutableDictionary *facts=[layout mutableCopy];facts[@"preview"]=view.accessibilityLabel?:@"";facts[@"previewIsElement"]=@(view.isAccessibilityElement);layout=facts;
+        }
+    });
+    if(layout.count&&table){NSMutableDictionary *facts=[layout mutableCopy];facts[@"footer"]=[table.dataSource respondsToSelector:@selector(tableView:titleForFooterInSection:)]?[table.dataSource tableView:table titleForFooterInSection:1]?:@"":@"";layout=facts;}
     NSString *screen=controller.navigationItem.title?:controller.title?:@"";
     NSString *style=controller.traitCollection.userInterfaceStyle==UIUserInterfaceStyleDark?@"dark":controller.traitCollection.userInterfaceStyle==UIUserInterfaceStyleLight?@"light":@"unspecified";
     return @{@"screen":screen,@"controllerClass":NSStringFromClass(controller.class),@"navigation":TIOPreviewNavigationFacts(controller),
-             @"interfaceStyle":style,@"contentSizeCategory":controller.traitCollection.preferredContentSizeCategory?:@"",@"subtitle":subtitle,
+             @"interfaceStyle":style,@"contentSizeCategory":controller.traitCollection.preferredContentSizeCategory?:@"",@"subtitle":subtitle,@"layout":layout,
              @"preferredLanguage":NSLocale.preferredLanguages.firstObject?:@"",@"deviceIO":@NO,@"hardwareValidated":@NO,
              @"sections":sections,@"buttons":buttons,@"steps":steps,@"editing":@(table.editing),@"selectionWhileEditing":@(table.allowsSelectionDuringEditing)};
 }
@@ -404,6 +417,10 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             presented=navigation;
         } else if ([screen isEqual:@"tiles"]) {
             UIViewController *page=TIOTileEditorPreviewController();
+            if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
+        } else if ([screen isEqual:@"layout"] || [screen isEqual:@"layout-tmg7"]) {
+            // The real menu layout screen with canned glasses: layout = TMG8 glasses (carousel stored), layout-tmg7 = older glasses.
+            UIViewController *page=TIOMenuLayoutPreviewController([screen isEqual:@"layout"]?@"tmg8":@"tmg7");
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"runtime"] || [screen isEqual:@"knob"]) {
             NSString *runtimeFixture=Argument(@"--runtime-fixture")?:([screen isEqual:@"knob"]?@"completed":@"normal");

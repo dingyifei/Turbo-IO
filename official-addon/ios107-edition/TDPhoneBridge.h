@@ -8,3 +8,5 @@ uint32_t TDGlassesCaps(void);
 BOOL TDGlassesReportTMG8Caps(void);
 /* Asks the glasses for a status sample so the two calls above can answer; false when a request cannot start now. */
 BOOL TDGlassesCapsRefresh(void);
+/* The firmware label of the connected glasses from their last status sample ("TMG6" covers TMG6 and TMG7), nil when unknown. */
+NSString *TDGlassesFirmware(void);

@@ -16,9 +16,9 @@ shots="$PWD/build/preview-shots"
 [[ -x "$app/TurboPreview" ]] || { echo 'PREVIEW SHOOT FAIL: build preview first' >&2; exit 1; }
 mkdir -p "$shots"
 screens=("$@")
-[[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles runtime knob voice nav nav-active captions push-focus push-camera push-developerApps push-dashboardEditor editor-draft editor-ai editor-crop push-recordings push-subtitleHUD push-imageRXLab push-clenchLab)
+[[ ${#screens[@]} -gt 0 ]] || screens=(hub ota music tiles layout layout-tmg7 runtime knob voice nav nav-active captions push-focus push-camera push-developerApps push-dashboardEditor editor-draft editor-ai editor-crop push-recordings push-subtitleHUD push-imageRXLab push-clenchLab)
 for screen in "${screens[@]}"; do
-  case "$screen" in hub|ota|music|tiles|runtime|knob|voice|nav|nav-active|captions|tokens|push-*|editor-*) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
+  case "$screen" in hub|ota|music|tiles|layout|layout-tmg7|runtime|knob|voice|nav|nav-active|captions|tokens|push-*|editor-*) ;; *) echo "Unknown preview screen: $screen" >&2; exit 2;; esac
 done
 
 # The matrix every screen is shot in (tmg4-check.py asserts the same one):

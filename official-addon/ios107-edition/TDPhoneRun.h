@@ -43,6 +43,9 @@
 - (uint32_t)glassesCaps;
 /* YES when the connected glasses report the TMG8 caps bit ("glasses report TMG8 caps"). */
 - (BOOL)glassesReportTMG8Caps;
+/* The firmware label of the last validated status sample of the current peer ("TMG6" for a TMG6 or TMG7 build, which share
+ * a build field; "TMG5"; "TMG4"), or nil until one arrives and again as soon as the peer changes. */
+- (NSString *)glassesFirmware;
 @property(nonatomic) BOOL fileBusy;
 @property(nonatomic,readonly) BOOL pending,holdsLease;
 @property(nonatomic,readonly) NSDictionary *status;

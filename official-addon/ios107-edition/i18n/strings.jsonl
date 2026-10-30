@@ -2267,3 +2267,15 @@
 {"key":"clench.delete.busy","en":"This session is being attached or exported. Delete it when that has finished.","zh":"此记录正在附加或导出，完成后再删除。"}
 {"key":"tmg8.layout.carouselNeedsTMG8","en":"The carousel needs glasses firmware TMG8. Nothing was sent.","zh":"轮播需要 TMG8 眼镜固件，未发送任何设置。"}
 {"key":"tmg8.layout.confirmedCarousel","en":"Confirmed by glasses: carousel, one item at a time%@","zh":"眼镜已确认：轮播 · 每次一项%@"}
+{"key":"tmg8.layout.header","en":"Layout","zh":"布局"}
+{"key":"tmg8.layout.seg.carousel","en":"Carousel","zh":"轮播"}
+{"key":"tmg8.layout.seg.rows2","en":"2 rows","zh":"两排"}
+{"key":"tmg8.layout.seg.rows3","en":"3 rows","zh":"三排"}
+{"key":"tmg8.layout.previewCaption","en":"On your glasses · approximate","zh":"眼镜上的效果 · 示意"}
+{"key":"tmg8.layout.preview.a11y","en":"Glasses menu preview, %@, %@ focused","zh":"眼镜菜单预览，%@，焦点在%@"}
+{"key":"tmg8.layout.preview.status","en":"Playing · Blinding Lights","zh":"正在播放 · Blinding Lights"}
+{"key":"tmg8.layout.footer.carousel","en":"One app at a time, with its status. Turn the knob to move; it wraps from the last app to the first.","zh":"一次显示一个应用及其状态。转动旋钮切换，从最后一个应用会回到第一个。"}
+{"key":"tmg8.layout.footer.grid","en":"All apps on a grid. A small dot marks apps that are running.","zh":"所有应用排成网格，小圆点表示正在运行的应用。"}
+{"key":"tmg8.layout.footer.needsTMG8","en":"Carousel needs glasses firmware TMG8. These glasses run %@.","zh":"轮播需要 TMG8 眼镜固件。这副眼镜运行 %@。"}
+{"key":"tmg8.layout.footer.unread","en":"Carousel needs glasses firmware TMG8. Read the glasses layout to check their version.","zh":"轮播需要 TMG8 眼镜固件。请读取眼镜布局以确认版本。"}
+{"key":"tmg8.layout.version.tmg6","en":"TMG6 or TMG7","zh":"TMG6 或 TMG7"}

@@ -262,7 +262,9 @@ UIView *TIODesignValueAccessory(NSString *value){
    TIODesignSegmentedHost *strong=weak;if(!strong)return;
    strong.control.selectedSegmentIndex=index;[strong.control sendActionsForControlEvents:UIControlEventValueChanged];[strong update];
   }];
-  action.state=index==selected?UIMenuElementStateOn:UIMenuElementStateOff;[actions addObject:action];
+  action.state=index==selected?UIMenuElementStateOn:UIMenuElementStateOff;
+  if(![_control isEnabledForSegmentAtIndex:index])action.attributes=UIMenuElementAttributesDisabled; /* a disabled segment is a disabled menu item */
+  [actions addObject:action];
  }
  _menuButton.menu=[UIMenu menuWithChildren:actions];
 }

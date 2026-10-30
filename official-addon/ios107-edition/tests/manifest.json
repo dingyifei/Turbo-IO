@@ -264,6 +264,10 @@
       "status": "run",
       "group": "glasses-file"
     },
+    "tests/MenuLensTests.m": {
+      "status": "run",
+      "group": "menu-lens"
+    },
     "tests/TileLayoutTests.m": {
       "status": "run",
       "group": "tile-layout"

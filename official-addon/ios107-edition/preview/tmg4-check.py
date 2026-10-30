@@ -16,7 +16,10 @@ STANDARD_SIZE='UICTContentSizeCategoryL'
 AX_SIZE='UICTContentSizeCategoryAccessibilityXXXL'
 TABLE_SCREENS=('tiles','runtime','knob')
 # Screens whose navigation title is localized today; the others only assert the process language.
-LOCALIZED_TITLE=('tiles','runtime','knob','captions')
+LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')
+# The menu layout screen with canned TMG8 glasses (carousel stored) and with older glasses (three rows, Carousel disabled).
+LAYOUT_SCREENS=('layout','layout-tmg7')
+SEGMENTS={'en':['Carousel','2 rows','3 rows'],'zh-Hans':['轮播','两排','三排']}
 PANELS={'nav':'TIOMapKitNavigationPanel','nav-active':'TIOMapKitNavigationPanel','captions':'TIOAppleCaptionPanel'}
 
 def han(s):return any('㐀'<=c<='鿿' for c in s)
@@ -43,6 +46,19 @@ def check_table(screen,report,lang,stem,size):
         assert '600' in sections[0]['rows'][6]['status']
         assert {r['id'] for r in sections[1]['rows'][2:]}=={'knob-start','knob-finish','knob-cancel'}
         if screen=='knob':assert '4800' in sections[1]['rows'][1]['status'],'completed one-turn fixture missing'
+def check_layout(screen,report,lang,stem):
+    facts=report['layout'];segments=facts['segments'];tmg8=screen=='layout'
+    assert [x['title'] for x in segments]==SEGMENTS[lang],'segment titles in '+str(stem)+': '+str([x['title'] for x in segments])
+    assert [x['selected'] for x in segments]==([True,False,False] if tmg8 else [False,False,True]),'wrong selected layout in '+str(stem)
+    assert [x['enabled'] for x in segments]==([True,True,True] if tmg8 else [False,True,True]),'Carousel must be enabled only for TMG8 glasses: '+str(stem)
+    assert facts['previewIsElement'] and facts['preview'].strip(),'lens preview must be one VoiceOver element: '+str(stem)
+    assert SEGMENTS[lang][0 if tmg8 else 2] in facts['preview'],'preview summary does not name the layout: '+str(stem)
+    text=' '.join([facts['preview'],facts['footer']]+[r[k] for s in report['sections'] for r in s['rows'] for k in ('title','status')])
+    assert 'tmg8.' not in text and 'tmg4.' not in text,'untranslated key in '+str(stem)
+    assert (han(facts['footer']) if lang=='zh-Hans' else not han(facts['footer'])),'footnote language in '+str(stem)
+    if tmg8:assert 'TMG8' not in facts['footer'],'TMG8 glasses must not be told to need TMG8: '+str(stem)
+    else:assert 'TMG8' in facts['footer'] and 'TMG6' in facts['footer'] and 'TMG7' in facts['footer'],'older glasses footnote must name TMG8 and the version they run: '+str(stem)
+    assert len(report['sections'])==5 and any(r['id']=='layout-read' for s in report['sections'] for r in s['rows']),'sections in '+str(stem)
 def check_panel(screen,report,stem):
     assert report['controllerClass']==PANELS[screen],'not the real panel in '+str(stem)+': '+report['controllerClass']
     if screen in ('nav','nav-active'):
@@ -68,6 +84,7 @@ def check(root,screens):
             assert report['contentSizeCategory']==size,'wrong text size in '+str(stem)+': '+report['contentSizeCategory']
             if screen in LOCALIZED_TITLE:assert not han(report['screen']) if lang=='en' else han(report['screen']),'wrong UI language: '+str(stem)
             if screen in TABLE_SCREENS:check_table(screen,report,lang,stem,size)
+            if screen in LAYOUT_SCREENS:check_layout(screen,report,lang,stem)
             if screen in PANELS:check_panel(screen,report,stem)
             sha=hashlib.sha256(png.read_bytes()).hexdigest();shas[(lang,look,size)]=sha
             receipts.append({'screen':screen,'language':lang,'appearance':look,'contentSize':size,'sha256':sha,'sections':len(report['sections'])})
