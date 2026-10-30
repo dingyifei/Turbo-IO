@@ -5,10 +5,12 @@
 #include "../menu-grid-v2/tile_config.h"
 /* TMG7 LensMenu (docs/design-system/screens/LensMenu.dc.html, halved): status in band T, the icon grid in band M,
  * the focused name once in band B. A 24x3 caret under the focused icon replaces the 52 px ring.
+ * TMG8 adds the live tile state: a 5 px lens-mid dot at the upper right of every grid icon whose tile has live state, and the focused tile's status line in the carousel.
  * TMG8 adds the carousel (rows == FM_CAROUSEL, LensMenuCarousel.dc.html): one row of 80/48/36 px icons that slide on the
  * wheel, a status line under the focused icon, the name in band B. It reuses the same widgets: icons[0..5] are the six
  * visible slots, ranked by distance from the focus, and the grid cell storage is a union with the carousel storage. */
-enum { FM_ITEMS=TIO_MENU_ITEMS, FM_CELLS=9, FM_ICON=32, FM_CARET_W=24, FM_CARET_H=3, FM_CAROUSEL=1, FM_SLOTS=6, FM_LINE_MAX=96 };
+enum { FM_ITEMS=TIO_MENU_ITEMS, FM_CELLS=9, FM_ICON=32, FM_CARET_W=24, FM_CARET_H=3, FM_CAROUSEL=1, FM_SLOTS=6, FM_LINE_MAX=96,
+ FM_STATE_DOT=5, FM_STATE_W=8, FM_STATE_H=5 };   /* grid state dot: 5 px disc in an 8x5 canvas (rows stay 8 byte wide) */
 /* Carousel canvas capacity per slot rank (side length in px, nearest to the focus first) and the byte offset of each slot in one
  * bank. Slot k is the k-th nearest item to the (fractional) focus: 80 px at the centre, at most 64 for the second, then 48, 42, 36, 36.
  * Offsets are 64 byte aligned like every other retained canvas. */
@@ -16,11 +18,12 @@ enum { FM_ITEMS=TIO_MENU_ITEMS, FM_CELLS=9, FM_ICON=32, FM_CARET_W=24, FM_CARET_
 #define FM_CAR_OFFSETS {0,6400,10496,12800,14592,15936}
 #define FM_CAR_BANK 17280u
 typedef struct {
- TTVisible tiles;TNWidgets api;void *root,*icons[FM_CELLS],*labels[FM_CELLS],*caret,*status,*battery,*name,*page,*line;
+ TTVisible tiles;TNWidgets api;void *root,*icons[FM_CELLS],*labels[FM_CELLS],*dots[FM_CELLS],*caret,*status,*battery,*name,*page,*line;
  union {_Alignas(64) uint8_t pixels[2][FM_CELLS][FM_ICON*FM_ICON];_Alignas(64) uint8_t cpixels[2][FM_CAR_BANK];};
  _Alignas(64) uint8_t caret_px[FM_CARET_W*FM_CARET_H];
+ _Alignas(64) uint8_t state_px[FM_STATE_W*FM_STATE_H];   /* the one state dot, shared by the nine dot canvases */
  _Alignas(64) uint8_t pager[2][36*4];
- char header[2][48];unsigned bank,header_bank,rows;
+ char header[2][48];unsigned bank,header_bank,rows,live_mask;   /* live_mask: bit per tile id that has live state */
  int selected,caret_x,caret_y,from_x,from_y,page_offset;
  unsigned weights[FM_CELLS],from_weights[FM_CELLS];
  uint32_t started,last_draw;bool moving,page_motion;
@@ -38,6 +41,8 @@ bool fm_view_rows(FMView *,unsigned);                /* 1 carousel, 2 or 3 grid 
 bool fm_view_route(FMView *,bool,uint32_t);
 bool fm_view_line(FMView *,const char *);
 void fm_view_reduce_motion(FMView *,bool);
+/* Live tile state (tile_state.h): bit per tile id with a running state. The grid shows a dot on those tiles; nothing is rewritten when the mask is unchanged. */
+bool fm_view_active(FMView *,unsigned);
 bool fm_view_tiles(FMView *,const TTVisible *);
 void fm_view_suspend(FMView *);
 bool fm_view_close(FMView *);

@@ -76,6 +76,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg8-wheel',[FW8/'tests/tmg8_wheel_test.c'],FW8/'src')
     ctest('tmg8-music-input',[FW8/'src/music-runtime-v1/music_input_test.c'],FW8/'src/music-runtime-v1')
     run('tmg8-icons',['python3','-I',FW8/'tests/tmg8_icons_test.py'])
+    ctest('tmg8-tile-state',[FW8/'tests/tmg8_tile_state_test.c',FW8/'src/common-v1/tio_text.c'],FW8/'src')
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
     ctest('tmg4-timer-wrap',[FW4/'tests/timer_wrap_test.c',FW4/'src/menu-grid-v2/tile_config.c',FW4/'src/menu-grid-v2/menu_config.c'],FW4/'src')

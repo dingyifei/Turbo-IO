@@ -33,6 +33,9 @@ static int center(unsigned cell){return 92+178*(int)(cell%3);}
 static int top(const FMView *v,unsigned cell){return TIO_MENU_T1+2+(int)(cell/3)*(v->rows==3?FM_PITCH3:FM_PITCH2);}
 static int caret_left(unsigned cell){return center(cell)-FM_CARET_W/2;}
 static int caret_top(const FMView *v,unsigned cell){return top(v,cell)+(int)icon_size(v)+FM_CARET_GAP;}
+/* State dot (LensMenuGrid2): 1 px right of the icon box and 4 px above it, i.e. (cx+17, cy-20) for the 32 px icon; never above band M. */
+enum { FM_STATE_GAP=1, FM_STATE_RISE=4 };
+static int state_top(const FMView *v,unsigned cell){int y=top(v,cell)-FM_STATE_RISE;return y<TIO_MENU_T1?TIO_MENU_T1:y;}
 enum { FM_CAR_CX=270, FM_CAR_MAX=80, FM_MOVE_MS=160 };
 static const unsigned car_side[FM_SLOTS]=FM_CAR_SIDES,car_at[FM_SLOTS]=FM_CAR_OFFSETS;
 _Static_assert(36*36<=FM_CAR_BANK-15936&&15936%64==0&&FM_CAR_BANK%64==0,"carousel slots fit one 64-aligned bank");
@@ -125,7 +128,7 @@ static void render_car(FMView *v,uint32_t now){
   v->api.place(v->api.ctx,v->icons[k],x,y,size,size);v->api.buffer(v->api.ctx,v->icons[k],out,size,size);
  }
  for(unsigned i=FM_SLOTS;i<FM_CELLS;i++)v->api.visible(v->api.ctx,v->icons[i],false);
- for(unsigned i=0;i<FM_CELLS;i++)v->api.visible(v->api.ctx,v->labels[i],false);
+ for(unsigned i=0;i<FM_CELLS;i++){v->api.visible(v->api.ctx,v->labels[i],false);v->api.visible(v->api.ctx,v->dots[i],false);}   /* the status line replaces the grid's state dots */
  v->api.visible(v->api.ctx,v->page,false);
  v->api.place(v->api.ctx,v->line,TIO_CORE_X0,mix(car_line_y[0],car_line_y[1],w),TIO_CORE_W,(int)TIO_LINE(TIO_FONT_MIN));
  v->api.visible(v->api.ctx,v->line,v->line_text[v->line_bank][0]!=0);
@@ -141,7 +144,9 @@ static void render_grid(FMView *v,uint32_t now){
  for(unsigned i=0;i<FM_CELLS;i++){
   unsigned index=(unsigned)v->selected/cells*cells+i;bool show=i<cells&&index<v->tiles.count;
   v->api.visible(v->api.ctx,v->icons[i],show);v->api.visible(v->api.ctx,v->labels[i],show&&named&&i!=cell); /* the focused name lives in band B */
+  bool dot=show&&(v->live_mask>>v->tiles.ids[index]&1);v->api.visible(v->api.ctx,v->dots[i],dot);
   if(!show)continue;
+  if(dot)v->api.place(v->api.ctx,v->dots[i],center(i)+(int)size/2+FM_STATE_GAP+offset,state_top(v,i),FM_STATE_W,FM_STATE_H);
   icon(v->pixels[bank][i],v->tiles.ids[index],v->weights[i],fade,size);
   v->api.place(v->api.ctx,v->icons[i],center(i)-(int)size/2+offset,top(v,i),size,size);
   v->api.buffer(v->api.ctx,v->icons[i],v->pixels[bank][i],size,size);
@@ -169,7 +174,10 @@ bool fm_view_open(FMView *v,const TNWidgets *api,void *parent,bool (*attach)(voi
  api->place(api->ctx,v->name,TIO_CORE_X0,TIO_MENU_B1-(int)TIO_LINE(TIO_FONT_TITLE)-3,TIO_CORE_W,(int)TIO_LINE(TIO_FONT_TITLE));
  api->place(api->ctx,v->line,TIO_CORE_X0,car_line_y[0],TIO_CORE_W,(int)TIO_LINE(TIO_FONT_MIN));tint(v,v->line,TIO_LENS_HIGH);if(api->clip_text)api->clip_text(api->ctx,v->line);api->visible(api->ctx,v->line,false);   /* carousel status line: 16 px, lens-high, band M under the focused icon */
  api->place(api->ctx,v->page,(540-FM_PAGER_W)/2,row+(int)TIO_LINE(TIO_FONT_LABEL)/2-FM_PAGER_H-3,FM_PAGER_W,FM_PAGER_H);
- for(unsigned i=0;i<FM_CELLS;i++){v->icons[i]=api->canvas(api->ctx,v->root);v->labels[i]=api->label(api->ctx,v->root,TIO_FONT_MIN);if(!v->icons[i]||!v->labels[i])goto failed;tint(v,v->labels[i],TIO_LENS_MID);}
+ /* The state dot: a 5 px lens-mid disc, drawn once into one 8x5 buffer that all nine dot canvases show (hidden until a tile has live state). */
+ for(unsigned y=0;y<FM_STATE_H;y++)for(unsigned x=0;x<FM_STATE_DOT;x++){bool corner=(y==0||y==FM_STATE_H-1)&&(x==0||x==FM_STATE_DOT-1);v->state_px[y*FM_STATE_W+x]=corner?0:(uint8_t)FM_LEVEL(TIO_LENS_MID);}
+ for(unsigned i=0;i<FM_CELLS;i++){v->icons[i]=api->canvas(api->ctx,v->root);v->labels[i]=api->label(api->ctx,v->root,TIO_FONT_MIN);v->dots[i]=api->canvas(api->ctx,v->root);if(!v->icons[i]||!v->labels[i]||!v->dots[i])goto failed;tint(v,v->labels[i],TIO_LENS_MID);
+  api->place(api->ctx,v->dots[i],0,0,FM_STATE_W,FM_STATE_H);api->buffer(api->ctx,v->dots[i],v->state_px,FM_STATE_W,FM_STATE_H);api->visible(api->ctx,v->dots[i],false);}
  v->rows=0;if(!fm_view_rows(v,3))goto failed;
  api->visible(api->ctx,v->root,false);return true;
 failed:api->destroy(api->ctx,v->root);v->root=NULL;return false;
@@ -226,7 +234,12 @@ bool fm_view_line(FMView *v,const char *text){
  if(strlen(v->line_text[v->line_bank])==n&&!memcmp(v->line_text[v->line_bank],text,n))return true;
  if(!v->api.idle(v->api.ctx))return false;
  unsigned b=v->line_bank^1;memcpy(v->line_text[b],text,n);v->line_text[b][n]=0;
- v->api.text_static(v->api.ctx,v->line,v->line_text[b]);v->line_bank=b;v->dirty=true;return true;
+ v->api.text_static(v->api.ctx,v->line,v->line_text[b]);v->line_bank=b;if(v->rows==FM_CAROUSEL)v->dirty=true;return true;   /* the grid keeps the text but draws no line */
 }
 void fm_view_reduce_motion(FMView *v,bool on){if(v)v->reduce_motion=on;}
+/* State dots (grid only; the carousel has the status line instead). Recorded in any layout, redrawn only when the set changes. */
+bool fm_view_active(FMView *v,unsigned mask){
+ if(!v||!v->root)return false;mask&=(1u<<FM_ITEMS)-1;if(v->live_mask==mask)return true;
+ v->live_mask=mask;if(v->rows!=FM_CAROUSEL)v->dirty=true;return true;
+}
 bool fm_view_close(FMView *v){if(!v||!v->root)return true;if(!v->api.idle(v->api.ctx))return false;void *root=v->root;v->root=NULL;v->moving=false;v->api.destroy(v->api.ctx,root);return true;}

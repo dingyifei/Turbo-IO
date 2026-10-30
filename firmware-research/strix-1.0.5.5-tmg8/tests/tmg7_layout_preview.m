@@ -10,6 +10,7 @@
 #include "../src/music-runtime-v1/music_layout.h"
 #include "../src/focus-v1/focus_view.h"
 #include "../src/focus-v1/focus_menu.h"
+#include "../src/focus-v1/tile_state.h"
 #include "../src/common-v1/tio_text.h"
 #include "../src/common-v1/tio_ui.h"
 #include "../src/common-v1/tio_hint.h"
@@ -21,13 +22,13 @@
 #include <math.h>
 enum {KText,KPixels,KRect};
 typedef struct {int x,y,w,h;unsigned font;bool shown,clip,span,fading,art,ambient,ramp;int align;const char *text;const uint8_t *pixels;int kind,band;uint32_t color;} Widget;
-typedef struct {Widget w[32];unsigned count;bool busy;} Host;
+typedef struct {Widget w[48];unsigned count;bool busy;} Host;
 enum {VReserved=1,VBand=2,VFont=4,VPanel=8,VCore=16,VColor=32,VOverlap=64,VCanvas=128,VBox=256};
 static unsigned language;
 static TIOSurface gSurface=TIO_SURFACE_PAGE;   // surface the gate and the PNG writer use: 540x180 pages, 540x220 menu
 unsigned tio_lang(void){return language;}
 static bool idle(void *p){return !((Host *)p)->busy;}
-static void *create(void *p,void *parent){assert(parent);Host *h=p;assert(h->count<32);Widget *w=&h->w[h->count++];w->shown=true;w->band=-1;return w;}
+static void *create(void *p,void *parent){assert(parent);Host *h=p;assert(h->count<48);Widget *w=&h->w[h->count++];w->shown=true;w->band=-1;return w;}
 static void *label(void *p,void *parent,unsigned font){Widget *w=create(p,parent);w->font=font;return w;}
 static void place(void *p,void *o,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);Widget *v=o;v->x=x;v->y=y;v->w=w;v->h=h;}
 static void buffer(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
@@ -425,14 +426,21 @@ static void Focus(NSString *dir,NSString *board,bool zh){
 }
 // ---- Menu (LensMenu, tmg7(7)): the real FMView on mock widgets -------------------------------------------------------------
 static bool attach_ok(void *o,void *owner){return o&&owner;}
+// TMG8 live tile state fixtures: the board's three scenarios (LensMenuCarousel.dc.html / LensMenuGrid2.dc.html STATUS), through the production ts_state.
+static const TSLive kLive={.phone=true,.pomodoro=true,.pomodoro_ms=18*60000+42000,.music_playing=true,.music_age_ms=1000,.music_title="Blinding Lights",.nav_active=true,.nav_remaining_m=1200};
+static const TSLive kIdle={.phone=true};
+static const TSLive kOffline={.phone=false,.pomodoro=true,.pomodoro_ms=18*60000+42000};
+static const TSLive kCamera={.phone=true,.camera=true};
+static unsigned LiveMask(const TTVisible *tiles,const TSLive *live){unsigned m=0;for(unsigned r=0;r<tiles->count;r++){TSState st;ts_state(tiles->ids[r],live,language,&st);if(st.active)m|=1u<<tiles->ids[r];}return m;}
 // Fixture: the settled menu for `rows` x 3 cells, `hide` (0..31) hides stock tiles 7..11, `selected` is the compact index.
-static void BuildMenu(Host *host,FMView *v,unsigned rows,unsigned hide,unsigned selected){
+static void BuildMenu(Host *host,FMView *v,unsigned rows,unsigned hide,unsigned selected,const TSLive *live){
  create(host,host);TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};
  assert(fm_view_open(v,&api,host,attach_ok,host));
  TTConfig config;TTVisible tiles;assert(tt_unrank(0,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,rows)&&fm_view_tiles(v,&tiles));
  assert(fm_view_update(v,(int)selected,946684800+10*3600,82,1000));
- for(unsigned i=0;i<FM_CELLS;i++){W(v->labels[i])->ambient=true;W(v->icons[i])->ramp=true;}W(v->caret)->ramp=true;W(v->page)->ramp=true;
+ for(unsigned i=0;i<FM_CELLS;i++){W(v->labels[i])->ambient=true;W(v->icons[i])->ramp=true;W(v->dots[i])->ramp=true;}W(v->caret)->ramp=true;W(v->page)->ramp=true;
  for(unsigned i=0;i<FM_CELLS;i++)W(v->labels[i])->align=1;W(v->battery)->align=2;W(v->name)->align=1;   // mirrors fm_show: menu_text_align centre / right / centre
+ if(live){assert(fm_view_active(v,LiveMask(&tiles,live)));(void)fm_view_step(v,1100);assert(!v->dirty);}   // the 1 Hz refresh found running tiles: state dots
 }
 // Compare the fixture (EN, 8 tiles, two pages, second cell focused) with the board's proposed column (drawn at 2x).
 static void CompareMenuBoard(NSString *html,Host *host,FMView *v){
@@ -468,20 +476,43 @@ static void CompareMenuBoard(NSString *html,Host *host,FMView *v){
  assert(seen==7);
  printf("PASS board LensMenu (proposed, halved): status row, five grid names, focused name in band B, 24x3 caret and page dots match\n");(void)host;
 }
+static bool utf8_ok(const char *s){const unsigned char *p=(const unsigned char *)s;while(*p){unsigned a=*p++,n;if(a<128)continue;n=a>=0xc2&&a<=0xdf?1:a>=0xe0&&a<=0xef?2:a>=0xf0&&a<=0xf4?3:99;if(n==99)return false;for(unsigned j=0;j<n;j++)if((*p++&0xc0)!=0x80)return false;}return true;}
+// The boards' STATUS table (EN) against the production strings: three scenarios x navigation, music, pomodoro. A dot only where something runs.
+static void CheckStatusBoard(NSString *path){
+ NSString *html=[NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];assert(html);
+ NSRange r=[html rangeOfString:@"const STATUS = {"];assert(r.location!=NSNotFound);NSString *t=[html substringFromIndex:r.location];t=[t substringToIndex:[t rangeOfString:@"};"].location];
+ const struct {NSString *key;const TSLive *live;} scen[]={{@"live",&kLive},{@"idle",&kIdle},{@"phoneoff",&kOffline}};
+ const struct {NSString *key;unsigned id;} tiles[]={{@"navigation",TIO_TILE_NAVIGATION},{@"music",TIO_TILE_MUSIC},{@"pomodoro",TIO_TILE_FOCUS}};
+ for(unsigned i=0;i<3;i++){
+  NSRange sr=[t rangeOfString:[scen[i].key stringByAppendingString:@": {"]];assert(sr.location!=NSNotFound);NSString *body=[t substringFromIndex:NSMaxRange(sr)];body=[body substringToIndex:[body rangeOfString:@"}"].location];
+  for(unsigned k=0;k<3;k++){
+   NSTextCheckingResult *m=[[NSRegularExpression regularExpressionWithPattern:[tiles[k].key stringByAppendingString:@": '([^']*)'"] options:0 error:nil] firstMatchInString:body options:0 range:NSMakeRange(0,body.length)];
+   NSString *want=m?[body substringWithRange:[m rangeAtIndex:1]]:@"";TSState st;ts_state(tiles[k].id,scen[i].live,0,&st);
+   NSString *got=[NSString stringWithUTF8String:st.line];if(![got isEqualToString:want]){NSLog(@"board %@/%@: want '%@' got '%@'",scen[i].key,tiles[k].key,want,got);assert(0);}
+   assert(st.active==(want.length&&![want isEqualToString:@"Phone not connected"]));
+  }
+ }
+ if([html containsString:@"dx: t.cx"]){assert([html containsString:@"dx: t.cx + 17, dy: t.cy - 20"]&&[html containsString:@"width: 5px; height: 5px"]&&[html containsString:@"background: #007700"]);}   // the grid board's dot: 5 px, lens-mid, (cx+17, cy-20)
+ printf("PASS board STATUS (%s): live, idle and phone-off strings and dots match the production tile state\n",path.lastPathComponent.UTF8String);
+}
 static void Menu(NSString *dir,NSString *board,bool zh){
  language=zh;gSurface=TIO_SURFACE_MENU;
  {Host h={0};create(&h,&h);Add(&h,KText,40,205,100,20,16,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&(VReserved|VBand));   // the gate guards the menu's bottom strip
   h=(Host){0};create(&h,&h);Add(&h,KText,40,200,100,28,24,TIO_LENS_FULL,TIO_BAND_B,"a");assert(Check(&h,"x",false)&VCanvas);}
- struct {const char *tag;unsigned rows,hide,selected;} shots[]={
-  {"",2,31,1},             // board: 8 tiles, two pages, second icon focused
-  {"-all",2,0,8},          // 13 tiles, Navigation focused on page 2
-  {"-wide",2,0,7},         // "Do Not Disturb" in an outer column next to the focused icon
-  {"-camera",2,0,12},      // Camera, alone on page 3
-  {"-rows3",3,0,4},        // dense grid: icons only, name in band B
-  {"-rows3-p2",3,0,11}};
+ struct {const char *tag;unsigned rows,hide,selected;const TSLive *live;} shots[]={
+  {"",2,31,1,NULL},             // board: 8 tiles, two pages, second icon focused
+  {"-all",2,0,8,NULL},          // 13 tiles, Navigation focused on page 2
+  {"-wide",2,0,7,NULL},         // "Do Not Disturb" in an outer column next to the focused icon
+  {"-camera",2,0,12,NULL},      // Camera, alone on page 3
+  {"-rows3",3,0,4,NULL},        // dense grid: icons only, name in band B
+  {"-rows3-p2",3,0,11,NULL},
+  {"-live",2,0,8,&kLive},       // LensMenuGrid2: a dot on navigation, music and pomodoro
+  {"-live-offline",2,0,8,&kOffline},   // phone not connected: no dot for navigation and music, the local timer keeps its dot
+  {"-live-camera",2,0,12,&kCamera},
+  {"-live-rows3",3,0,8,&kLive}};
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
   Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
-  BuildMenu(host,v,sh->rows,sh->hide,sh->selected);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
+  BuildMenu(host,v,sh->rows,sh->hide,sh->selected,sh->live);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
   const unsigned cells=sh->rows*3,cell=sh->selected%cells;TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
   Widget *status=W(v->status),*battery=W(v->battery),*nm=W(v->name),*caret=W(v->caret),*dots=W(v->page);
   // Status row: time and battery in lens-mid, band T, no wordmark; focused name once in B in lens-full; nothing else carries it.
@@ -497,12 +528,27 @@ static void Menu(NSString *dir,NSString *board,bool zh){
   {unsigned pages=(tiles.count+cells-1)/cells,hi=0,mid=0;for(int q=0;q<dots->w*dots->h;q++){uint8_t g=dots->pixels[q];assert(g==0||g==(TIO_LENS_HIGH>>8&255u)||g==(TIO_LENS_MID>>8&255u));hi+=g==(TIO_LENS_HIGH>>8&255u);mid+=g==(TIO_LENS_MID>>8&255u);}
    assert(hi==12*4-4&&mid==(pages-1)*(4*4-4));}
   assert(caret->y>=W(v->icons[cell])->y+W(v->icons[cell])->h&&caret->x+12==W(v->icons[cell])->x+W(v->icons[cell])->w/2);
+  // State dots (LensMenuGrid2): a 5 px lens-mid disc 1 px right of and 4 px above the icon box ((cx+17, cy-20) for the 32 px icon), only where something runs.
+  {const unsigned mask=sh->live?LiveMask(&tiles,sh->live):0;unsigned on=0;Widget *lines=W(v->line);assert(!lines->shown);
+   for(unsigned k=0;k<FM_CELLS;k++){Widget *d=W(v->dots[k]);unsigned at=sh->selected/cells*cells+k;const bool want=k<cells&&at<tiles.count&&(mask>>tiles.ids[at]&1);assert(d->shown==want);if(!want)continue;on++;
+    Widget *ic=W(v->icons[k]);unsigned lit=0;int x0=99,y0=99,x1=-1,y1=-1;
+    for(int y=0;y<d->h;y++)for(int x=0;x<d->w;x++){uint8_t g=d->pixels[y*d->w+x];assert(g==0||g==(TIO_LENS_MID>>8&255u));if(g){lit++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+    assert(lit==21&&x0==0&&y0==0&&x1==4&&y1==4);                                                 // a 5x5 disc with its corners cut
+    const int cx=ic->x+ic->w/2,cy=ic->y+ic->h/2,top=ic->y-4<TIO_MENU_T1?TIO_MENU_T1:ic->y-4;
+    assert(d->x==cx+ic->w/2+1&&d->y==top);
+    if(sh->rows==2){assert(ic->w==32&&d->x==cx+17&&d->y==(cy-20<TIO_MENU_T1?TIO_MENU_T1:cy-20));}
+    assert(tio_band_of(TIO_SURFACE_MENU,d->y,5)==TIO_BAND_M&&d->x>=TIO_CORE_X0&&d->x+5<=TIO_CORE_X1);
+    for(unsigned o=0;o<FM_CELLS;o++){Widget *oi=W(v->icons[o]),*ol=W(v->labels[o]);if(oi->shown)assert(!(d->x<oi->x+oi->w&&oi->x<d->x+5&&d->y<oi->y+oi->h&&oi->y<d->y+5));
+     if(ol->shown)assert(!(d->x<ol->x+ol->w&&ol->x<d->x+5&&d->y<ol->y+ol->h-TIO_TEXT_PAD&&ol->y<d->y+5));}   // not on an icon, not on a name's 16 px glyph row
+    assert(!(d->x<caret->x+caret->w&&caret->x<d->x+5&&d->y<caret->y+caret->h&&caret->y<d->y+5));}
+   unsigned want_on=0;for(unsigned k=0;k<cells;k++){unsigned at=sh->selected/cells*cells+k;if(at<tiles.count&&(mask>>tiles.ids[at]&1))want_on++;}assert(on==want_on);
+   if(!strcmp(sh->tag,"-live")){assert(on==3);}if(!strcmp(sh->tag,"-live-offline")){assert(on==1);}}
   if(!strcmp(sh->tag,"")&&!zh)CompareMenuBoard(board,host,v);
   if(!strcmp(sh->tag,"-wide")){Widget *l=W(v->labels[0]);assert(l->shown&&!strcmp(l->text,tio_text(TT_GRID_6,zh))&&l->x>=TIO_INSET_X);   // the longest name fits its column
    if(!zh){NSDictionary *a=@{NSFontAttributeName:[NSFont systemFontOfSize:16]};assert([[NSString stringWithUTF8String:l->text] sizeWithAttributes:a].width<=l->w);}}
   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(fm_view_close(v));free(v);free(host);}
  // Wheel step: the caret slides in lens-move-ms (cubic ease-out) and a newer target replaces it; the name changes at once.
- {Host *host=calloc(1,sizeof *host);FMView *v=calloc(1,sizeof *v);BuildMenu(host,v,2,0,1);
+ {Host *host=calloc(1,sizeof *host);FMView *v=calloc(1,sizeof *v);BuildMenu(host,v,2,0,1,NULL);
   Widget *caret=W(v->caret);int x1=caret->x,y1=caret->y;assert(fm_view_update(v,2,946684800+10*3600,82,2000));assert(!strcmp(W(v->name)->text,tio_text(TT_GRID_2,zh)));
   assert(fm_view_step(v,2080));int mid=caret->x;assert(mid>x1&&mid<x1+178&&caret->y==y1);
   assert(fm_view_update(v,0,946684800+10*3600,82,2090));assert(fm_view_step(v,2110)&&caret->x<x1+178);   // retargeted from where it is, never queued
@@ -511,7 +557,7 @@ static void Menu(NSString *dir,NSString *board,bool zh){
 }
 // ---- TMG8 carousel (LensMenuCarousel.dc.html): the real FMView with rows == FM_CAROUSEL on mock widgets --------------------
 // Fixture: `selected` is the compact index, `route` slides the row down for the navigation title, `line` is the focused tile's status line.
-// (The status strings here are fixtures from the board; the live tile state and its ZH strings come with the tile-state step.)
+// The status line is the production tile state (tile_state.h, EN and ZH) over the board's three scenarios.
 static void BuildCarousel(Host *host,FMView *v,unsigned hide,unsigned selected,bool route,const char *line){
  create(host,host);TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};
  assert(fm_view_open(v,&api,host,attach_ok,host));
@@ -548,24 +594,32 @@ static void CompareCarouselBoard(NSString *html,FMView *v,bool route){
 }
 static void Carousel(NSString *dir,NSString *board,bool zh){
  language=zh;gSurface=TIO_SURFACE_MENU;
- struct {const char *tag;unsigned hide,selected;bool route;const char *line;} shots[]={
-  {"-carousel",0,9,false,"Playing · Blinding Lights"},          // board default scene: Music with a live track
-  {"-carousel-route",0,8,true,"1.2 km to go"},                   // Navigation with a route: row down, room for the title in band T
-  {"-carousel-idle",0,3,false,NULL},                             // nothing running: no status line
-  {"-carousel-offline",0,10,false,"Phone not connected"},
+ if(!zh)CheckStatusBoard(board);
+ struct {const char *tag;unsigned hide,selected;bool route;const TSLive *live;} shots[]={
+  {"-carousel",0,9,false,&kLive},                                // board default scene: Music with a live track
+  {"-carousel-route",0,8,true,&kLive},                           // Navigation with a route: row down, room for the title in band T
+  {"-carousel-pomodoro",0,10,false,&kLive},                      // the timer
+  {"-carousel-idle",0,9,false,&kIdle},                           // nothing running: name only
+  {"-carousel-stock",0,3,false,&kLive},                          // a stock app: name only whatever runs
+  {"-carousel-offline",0,8,false,&kOffline},                     // phone not connected (navigation)
+  {"-carousel-offline-music",0,9,false,&kOffline},
+  {"-carousel-offline-pomodoro",0,10,false,&kOffline},           // the timer is local: it keeps its line
   {"-carousel-first",0,0,false,NULL},                            // wraps: the last tiles sit to the left of the first
   {"-carousel-last",0,12,false,NULL},
-  {"-carousel-8",31,4,false,"18:42 left"}};                      // eight tiles: the neighbours at +-3 are distinct from +-2
+  {"-carousel-8",31,4,false,NULL}};                              // eight tiles: the neighbours at +-3 are distinct from +-2
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
   Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
-  BuildCarousel(host,v,sh->hide,sh->selected,sh->route,sh->line);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
   TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
+  TSState state;memset(&state,0,sizeof state);if(sh->live)ts_state(tiles.ids[sh->selected],sh->live,language,&state);
+  const char *lineText=state.line[0]?state.line:NULL;                                                                       // what the glasses would write for the focused tile
+  BuildCarousel(host,v,sh->hide,sh->selected,sh->route,lineText);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
   Widget *status=W(v->status),*battery=W(v->battery),*nm=W(v->name),*caret=W(v->caret),*line=W(v->line);
   assert(!strcmp(status->text,"10:00")&&!strcmp(battery->text,"82%")&&status->color==TIO_LENS_MID&&battery->color==TIO_LENS_MID&&status->font==TIO_FONT_LABEL);   // clock and battery in band T
   assert(tio_band_of(TIO_SURFACE_MENU,status->y,status->h)==TIO_BAND_T&&tio_band_of(TIO_SURFACE_MENU,battery->y,battery->h)==TIO_BAND_T);
   assert(nm->font==TIO_FONT_TITLE&&nm->color==0&&strlen(nm->text)>0&&!W(v->page)->shown);                                  // the name once, in B, full; no page dots
-  assert(line->shown==(sh->line!=NULL)&&(!sh->line||(!strcmp(line->text,sh->line)&&line->font==TIO_FONT_MIN&&line->color==TIO_LENS_HIGH&&tio_band_of(TIO_SURFACE_MENU,line->y,line->h)==TIO_BAND_M)));
-  for(unsigned k=0;k<FM_CELLS;k++)assert(!W(v->labels[k])->shown);                                                       // ambient names are a grid feature
+  assert(line->shown==(lineText!=NULL)&&(!lineText||(!strcmp(line->text,lineText)&&line->font==TIO_FONT_MIN&&line->color==TIO_LENS_HIGH&&tio_band_of(TIO_SURFACE_MENU,line->y,line->h)==TIO_BAND_M)));
+  if(lineText)assert(utf8_ok(lineText)&&tm_width(lineText,strlen(lineText),TIO_FONT_MIN)<=TIO_CORE_W);                      // one line inside the 460 px core
+  for(unsigned k=0;k<FM_CELLS;k++){assert(!W(v->labels[k])->shown&&!W(v->dots[k])->shown);}                                // ambient names and state dots are grid features
   // Icons: five, never above 80 px, in the glyph zone (side insets to the bottom of band M), none touching the clock, battery, status line or caret; focused full, the rest dimmer.
   unsigned shown=0;uint8_t peaks[FM_CELLS];Widget *centre=NULL;
   for(unsigned k=0;k<FM_CELLS;k++){Widget *ic=W(v->icons[k]);if(!ic->shown)continue;shown++;assert(ic->w==ic->h&&ic->w<=80&&ic->x>=TIO_INSET_X&&ic->x+ic->w<=TIO_PAGE_W-TIO_INSET_X&&ic->y>=TIO_RESERVE_TOP&&ic->y+ic->h<=TIO_MENU_M1);
@@ -581,5 +635,5 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
  gSurface=TIO_SURFACE_PAGE;
 }
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);
  puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}

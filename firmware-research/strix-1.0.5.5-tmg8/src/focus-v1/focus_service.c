@@ -80,6 +80,10 @@ TFSlot *tf_slot_create(void *app){TFSlot *s=stream_memalign(8,sizeof *s);if(s){m
 void tf_slot_hidden(TFSlot *s){TFControl *c=control(false);if(c&&c->slot==s&&!c->transitioning)hide(c);}
 void tf_slot_destroy(TFSlot *s){if(!s)return;TFControl *c=control(false);if(c&&c->slot==s){hide(c);c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tf_slot_visible(TFSlot *s){TFControl *c=control(false);return c&&c->slot==s&&c->view;}
+/* Tile state: the timer runs whichever page is up, so this reads the singleton, not a slot. Time left is the stored value minus the ticks since the last update. */
+void tf_live(uint32_t now,TSLive *out){TFControl *c=control(false);if(!c||!out)return;
+ const bool running=c->state.status==TF_RUNNING;if(!running&&c->state.status!=TF_PAUSED)return;
+ uint32_t left=c->state.remaining_ms,dt=running?(uint32_t)(now-c->state.last_tick):0;out->pomodoro=true;out->pomodoro_ms=dt>=left?0:left-dt;}
 bool tf_slot_open(TFSlot *s){return enter(control(true),s,stream_tick());}
 void tf_slot_wheel(TFSlot *s,int delta){TFControl *c=control(false);if(!c||c->slot!=s||!c->view||c->closing)return;int step=wr_input_wheel(&c->input,delta,stream_tick());if(!step)return;tf_view_input(c->view,stream_tick());stream_timer_period(c->timer,50);   /* any wheel step re-lights the control hint (TransientHint) */
  if(c->state.status==TF_RUNNING||c->state.status==TF_PAUSED)return;unsigned secs=c->state.duration_s;c->state.duration_s=step>0?(secs<1500?1500:secs<2700?2700:900):(secs>1500?1500:secs>900?900:2700);c->state.remaining_ms=c->state.duration_s*1000;c->state.dirty=true;}

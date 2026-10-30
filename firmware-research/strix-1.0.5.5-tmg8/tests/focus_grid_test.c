@@ -10,7 +10,7 @@ static bool idle(void *ctx){return ((Fake *)ctx)->idle;}
 static void *create(void *ctx,void *parent){(void)parent;Fake *f=ctx;unsigned n=++f->made;return n==f->fail?NULL:(void *)(uintptr_t)n;}
 static void *label(void *ctx,void *parent,unsigned font){assert(font==16||font==18||font==24);return create(ctx,parent);}   /* cell names and the carousel status line 16, status 18, focused name 24 */
 static void place(void *ctx,void *obj,int x,int y,int w,int h){assert(x>=0&&y>=0&&w>0&&h>0&&x+w<=540&&y+h<=220);Fake *f=ctx;uintptr_t k=(uintptr_t)obj;f->x[k]=x;f->y[k]=y;f->w[k]=w;f->h[k]=h;}
-static void buffer(void *ctx,void *obj,const uint8_t *p,unsigned w,unsigned h){Fake *f=ctx;assert(p);assert((w==32&&h==32)||(w==28&&h==28)||(w==FM_CARET_W&&h==FM_CARET_H)||(w==36&&h==4)||(w==h&&w>=32&&w<=80));f->buf[(uintptr_t)obj]=p;f->bw[(uintptr_t)obj]=w;f->bh[(uintptr_t)obj]=h;}
+static void buffer(void *ctx,void *obj,const uint8_t *p,unsigned w,unsigned h){Fake *f=ctx;assert(p);assert((w==32&&h==32)||(w==28&&h==28)||(w==FM_CARET_W&&h==FM_CARET_H)||(w==36&&h==4)||(w==FM_STATE_W&&h==FM_STATE_H)||(w==h&&w>=32&&w<=80));f->buf[(uintptr_t)obj]=p;f->bw[(uintptr_t)obj]=w;f->bh[(uintptr_t)obj]=h;}
 static void text(void *ctx,void *obj,const char *s){Fake *f=ctx;assert(strlen(s)<FM_LINE_MAX);f->texts[(uintptr_t)obj]=s;f->text_calls++;}
 static void visible(void *ctx,void *obj,bool show){((Fake *)ctx)->visible[(uintptr_t)obj]=show;}
 static void destroy(void *ctx,void *obj){assert(obj);((Fake *)ctx)->destroyed++;}
@@ -175,9 +175,55 @@ static void carousel(Fake *f,FMView *v){
  assert(fm_view_line(v,"x"));assert(fm_view_rows(v,3));settle(v,2,&clock);assert(!f->visible[line]);assert(fm_view_route(v,true,clock));assert(v->route);assert(fm_view_route(v,false,clock));
  assert(!fm_view_rows(v,0)&&!fm_view_rows(v,4)&&fm_view_rows(v,1));
 }
+/* ---- TMG8 live tile state: the grid's state dots (LensMenuGrid2.dc.html: 5 px lens-mid disc at (cx+17, cy-20)) ------------------------------ */
+static bool boxes_overlap(int ax,int ay,int aw,int ah,int bx,int by,int bw,int bh){return ax<bx+bw&&bx<ax+aw&&ay<by+bh&&by<ay+ah;}
+static void state_dots(Fake *f,FMView *v){
+ TTConfig config;TTVisible tiles;uint32_t clock=500000;
+ /* The shared dot art: a 5 px disc (corners cut) at lens-mid inside an 8x5 buffer, nothing brighter, nothing outside the disc. */
+ {unsigned lit=0;for(unsigned y=0;y<FM_STATE_H;y++)for(unsigned x=0;x<FM_STATE_W;x++){uint8_t p=v->state_px[y*FM_STATE_W+x];assert(p==0||p==0x77);if(p){lit++;assert(x<FM_STATE_DOT);}}assert(lit==21);
+  assert(v->state_px[0]==0&&v->state_px[4]==0&&v->state_px[4*8]==0&&v->state_px[4*8+4]==0&&v->state_px[2*8+2]==0x77);}
+ for(unsigned rows=2;rows<=3;rows++)for(unsigned rank=0;rank<720;rank+=239)for(unsigned hide=0;hide<32;hide+=9){
+  assert(tt_unrank(rank,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,rows)&&fm_view_tiles(v,&tiles));
+  for(unsigned pattern=0;pattern<4;pattern++){
+   unsigned mask=pattern==0?0:pattern==1?(1u<<TIO_TILE_FOCUS):pattern==2?((1u<<TIO_TILE_MUSIC)|(1u<<TIO_TILE_NAVIGATION)|(1u<<TIO_TILE_FOCUS)):0x1fffu;
+   assert(fm_view_active(v,mask));
+   for(unsigned sel=0;sel<tiles.count;sel+=2){
+    settle(v,(int)sel,&clock);const unsigned per=rows*3,size=rows==3?28:32;
+    for(unsigned cell=0;cell<9;cell++){
+     const uintptr_t d=(uintptr_t)v->dots[cell],o=(uintptr_t)v->icons[cell];unsigned at=sel/per*per+cell;bool show=cell<per&&at<tiles.count;
+     assert(f->visible[d]==(show&&(mask>>tiles.ids[at]&1)));
+     if(!f->visible[d])continue;
+     assert(f->w[d]==8&&f->h[d]==5&&f->buf[d]==v->state_px&&f->bw[d]==8&&f->bh[d]==5);
+     assert(f->x[d]==f->x[o]+(int)size+1);                              /* 1 px right of the icon box: cx+17 for the 32 px icon */
+     assert(f->y[d]==(f->y[o]-4<TIO_MENU_T1?TIO_MENU_T1:f->y[o]-4));      /* 4 px above it (cy-20), never above band M */
+     assert(f->y[d]>=TIO_MENU_T1&&f->y[d]+f->h[d]<=TIO_MENU_M1&&f->x[d]>=TIO_INSET_X&&f->x[d]+f->w[d]<=540-TIO_INSET_X);
+     for(unsigned other=0;other<9;other++){
+      const uintptr_t oo=(uintptr_t)v->icons[other],ol=(uintptr_t)v->labels[other];
+      if(f->visible[oo])assert(!boxes_overlap(f->x[d],f->y[d],5,5,f->x[oo],f->y[oo],f->w[oo],f->h[oo]));   /* the lit disc touches no icon */
+      if(f->visible[ol])assert(!boxes_overlap(f->x[d],f->y[d],5,5,f->x[ol],f->y[ol],f->w[ol],f->h[ol]-TIO_TEXT_PAD));   /* the 16 px glyph row; the 4 px pad below it is empty */
+     }
+     assert(!boxes_overlap(f->x[d],f->y[d],5,5,f->x[(uintptr_t)v->caret],f->y[(uintptr_t)v->caret],24,3));
+    }
+   }
+  }
+ }
+ /* Exact board position for the 2-row grid: centres 92/270/448, first row top 58. */
+ assert(tt_unrank(0,0,&config)&&tt_compact(&config,&tiles));assert(fm_view_tiles(v,&tiles)&&fm_view_rows(v,2)&&fm_view_active(v,0x1fffu));settle(v,0,&clock);
+ for(unsigned cell=0;cell<6;cell++){const uintptr_t d=(uintptr_t)v->dots[cell];int cx=92+178*(int)(cell%3),cy=(cell<3?58:116)+16;assert(f->x[d]==cx+17);assert(f->y[d]==(cell<3?TIO_MENU_T1:cy-20));}
+ /* Redraw only on a change. */
+ settle(v,0,&clock);assert(fm_view_active(v,0x1fffu)&&!v->dirty);assert(fm_view_active(v,0)&&v->dirty);clock+=100;assert(fm_view_step(v,clock));assert(!v->dirty);
+ for(unsigned cell=0;cell<9;cell++)assert(!f->visible[(uintptr_t)v->dots[cell]]);
+ assert(fm_view_active(v,(1u<<13)|(1u<<TIO_TILE_FOCUS))&&v->live_mask==(1u<<TIO_TILE_FOCUS));   /* only the 13 tile bits count */
+ /* A status line in the grid is recorded but does not redraw anything. */
+ settle(v,1,&clock);assert(fm_view_line(v,"18:42 left")&&!v->dirty);assert(!f->visible[(uintptr_t)v->line]);assert(fm_view_line(v,""));
+ /* The carousel draws no dots: it has the status line. */
+ assert(fm_view_rows(v,FM_CAROUSEL));settle(v,2,&clock);for(unsigned cell=0;cell<9;cell++)assert(!f->visible[(uintptr_t)v->dots[cell]]);assert(fm_view_active(v,0)&&!v->dirty);
+ assert(fm_view_rows(v,3));assert(fm_view_active(v,0));
+ FMView closed;memset(&closed,0,sizeof closed);assert(!fm_view_active(&closed,1)&&!fm_view_active(NULL,1));
+}
 int main(void){
  Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy,NULL,NULL};
- assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==25);
+ assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==34);   /* root, 6 widgets, and per cell an icon, a name and a state dot */
  assert(fm_view_update(&view,8,1704067200,75,0));assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,0)));
  for(unsigned j=0;j<9;j++)assert(f.texts[(uintptr_t)view.labels[j]]&&f.visible[(uintptr_t)view.icons[j]]&&!f.visible[(uintptr_t)view.labels[j]]);   /* three rows: icons only, names live in band B */
  const char *before=f.texts[(uintptr_t)view.labels[8]];unsigned calls=f.text_calls;g_lang=1;
@@ -199,8 +245,9 @@ int main(void){
  assert(!fm_view_update(&view,-1,0,0,5000)&&!fm_view_update(&view,13,0,0,5000));
  wrap_motion(&view);
  carousel(&f,&view);
+ state_dots(&f,&view);
  f.idle=false;assert(!fm_view_update(&view,0,0,0,5000)&&!fm_view_close(&view));f.idle=true;
  assert(fm_view_close(&view)&&f.destroyed==1);
- for(unsigned fail=1;fail<=25;fail++){f=(Fake){.idle=true,.fail=fail};assert(!fm_view_open(&view,&api,&f,attach,&f));assert(!view.root);assert(f.destroyed==(fail==1?0:1));}
- puts("PASS focus_grid: LensMenu bands, caret and single focused name, mapped rows/pages/labels, 16/120/160ms timer wrap, interrupted motion, bounds and allocation failures; TMG8 carousel geometry with and without a route, slide, wrap, canvas bounds, status line, Reduce Motion");
+ for(unsigned fail=1;fail<=34;fail++){f=(Fake){.idle=true,.fail=fail};assert(!fm_view_open(&view,&api,&f,attach,&f));assert(!view.root);assert(f.destroyed==(fail==1?0:1));}
+ puts("PASS focus_grid: LensMenu bands, caret and single focused name, mapped rows/pages/labels, 16/120/160ms timer wrap, interrupted motion, bounds and allocation failures; TMG8 carousel geometry with and without a route, slide, wrap, canvas bounds, status line, Reduce Motion; TMG8 live tile state dots");
 }

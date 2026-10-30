@@ -6,6 +6,7 @@
 #include "../menu-grid-v2/menu_config.h"
 #include "../menu-grid-v2/tile_native.h"
 #include "focus_service.h"
+#include "tile_state.h"
 #include "../navigation-runtime-v1/nav_lvgl.h"
 #include "../navigation-runtime-v1/menu9.h"
 #include "../music-runtime-v1/music_service.h"
@@ -21,10 +22,13 @@ extern uint32_t stream_tick(void);
 extern void stream_timer_period(void *,uint32_t),menu_text_align(void *,int,uint32_t);
 extern bool focus_screen_on(void);
 extern bool native_has_flag(void *,uint32_t);
-extern void *nav_monitors(void),*fm_system(void *),*fm_battery_monitor(void *);
+extern void *nav_monitors(void),*fm_system(void *),*fm_battery_monitor(void *),*nav_link(void *);
+extern bool nav_bonded(void *);
+extern int nav_connection(unsigned);
 extern int64_t fm_local_time(void *);
 extern int fm_battery_level(void *);
 typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;TIOMenuWrap wrap;} FMControl;
+_Static_assert(TS_LINE_MAX==FM_LINE_MAX,"the tile status line fits the view line buffer");
 _Static_assert(sizeof(FMControl)<=40960,"menu retained storage (nine grid cells or six carousel slots, two banks) capped at 40 KiB");
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
@@ -49,6 +53,21 @@ static void tick(void *t){FMControl *c=ptr(t,12);if(!c)return;
 /* At most one menu controller, including deferred retirees. A new native menu
  * cannot accumulate another frame buffer before the previous one is safe. */
 static bool room(void){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return true;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+8);if(cb==tick){FMControl *c=ptr(t,12);return c&&c->timer==t&&c->closing&&!c->app&&dispose(c);}}return false;}
+/* Live tile state (read only). One snapshot of what the services already keep, then the text for the focused tile (carousel line) and the
+ * mask of tiles with a running state (grid dots). Runs on the 1 Hz refresh and whenever the focus moves, never per frame. */
+static bool phone_linked(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static void tile_live(void *app,uint32_t now,TSLive *live){
+ memset(live,0,sizeof *live);live->phone=phone_linked();tf_live(now,live);
+ TNNavSlot *s=slot(app);if(!s)return;
+ tm_slot_live(s->music,now,live);tn_slot_live(s,live);tc_slot_live(s->camera,live);
+}
+static bool live_sync(FMControl *c,void *app,int index,uint32_t now){
+ if(index<0||(unsigned)index>=c->view.tiles.count)return false;
+ TSLive live;TSState st;tile_live(app,now,&live);const unsigned lang=tio_lang();unsigned mask=0;
+ for(unsigned r=0;r<c->view.tiles.count;r++){unsigned id=c->view.tiles.ids[r];ts_state(id,&live,lang,&st);if(st.active)mask|=1u<<id;}
+ (void)fm_view_active(&c->view,mask);
+ ts_state(c->view.tiles.ids[index],&live,lang,&st);return fm_view_line(&c->view,st.line);
+}
 void fm_relayout(unsigned rows){
  if(rows<1||rows>3)return;   /* 1 carousel, 2 or 3 grid rows */void *t=NULL;
  for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;if(*(void (**)(void *))((uint8_t *)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->desired_rows=rows;return;}}
@@ -75,6 +94,7 @@ void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMContr
  if(index==c->selection&&(uint32_t)(now-c->refreshed)<1000){(void)fm_view_step(&c->view,now);return;}
  void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*battery=mon?fm_battery_monitor(mon):NULL;
  int64_t local=sys?fm_local_time(sys):0;int level=battery?fm_battery_level(battery):-1;
+ if(!live_sync(c,app,index,now))return;   /* before the redraw, so the line and the focus change in one frame */
  if(fm_view_update(&c->view,index,local,level,now)){c->selection=index;c->refreshed=now;if(c->view.moving)stream_timer_period(c->timer,16);}
 }
 void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad;

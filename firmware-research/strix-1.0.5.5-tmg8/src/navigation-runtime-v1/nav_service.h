@@ -1,6 +1,7 @@
 #ifndef TURBO_NAV_SERVICE_H
 #define TURBO_NAV_SERVICE_H
 #include "../image-upload-test/native_file_bridge.h"
+#include "../focus-v1/tile_live.h"
 typedef struct {void *row,*label,*icon,*dot,*app,*control;
 #if TIO_MUSIC_RUNTIME
  void *music;
@@ -22,6 +23,7 @@ static inline bool tf_back_blocked(TNNavSlot *s,uint32_t now){return s&&s->back_
 TNNavSlot *tn_slot_create(void *app);
 void tn_slot_destroy(TNNavSlot *),tn_slot_hidden(TNNavSlot *);
 bool tn_slot_visible(TNNavSlot *),tn_slot_open(TNNavSlot *);
+void tn_slot_live(TNNavSlot *,TSLive *);   /* read-only snapshot for the menu tile state */
 TIOImageResult tn_file_receive(const TIONativeFile *,TIOCopyEnqueue);
 bool tn_message_is_ours(const TIONativeMessage *);
 void tn_message_dispatch(const TIONativeMessage *);

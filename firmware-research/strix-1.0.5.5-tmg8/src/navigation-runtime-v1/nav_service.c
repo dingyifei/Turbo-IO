@@ -115,6 +115,8 @@ TNNavSlot *tn_slot_create(void *app){TNNavSlot *s=stream_memalign(8,sizeof *s);i
 void tn_slot_hidden(TNNavSlot *s){if(s&&s->control)retire(s->control);}
 void tn_slot_destroy(TNNavSlot *s){if(!s)return;Control *c=s->control;if(c){retire(c);c->retired=true;c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tn_slot_visible(TNNavSlot *s){Control *c=s?s->control:NULL;return c&&c->view;}
+/* Tile state: a live, connected route session and the metres left. Read only. */
+void tn_slot_live(TNNavSlot *s,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;out->nav_active=c->runtime.active&&c->runtime.connected;out->nav_stale=c->runtime.stale;out->nav_remaining_m=c->runtime.scene.remaining_m;}
 bool tn_slot_open(TNNavSlot *s){Control *c=control(s);if(!c||!safe_home()||c->runtime.active)return false;
  TNScene empty;memset(&empty,0,sizeof empty);{const char *label=tio_text(TT_NAV_START,tio_lang());size_t n=strlen(label);if(n>TN_TURN_MAX)n=TN_TURN_MAX;memcpy(empty.turn,label,n);empty.turn[n]=0;};
  if(!enter(c,&empty))return false;c->waiting=true;c->waiting_since=stream_tick();

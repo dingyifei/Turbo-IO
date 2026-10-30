@@ -117,6 +117,8 @@ TMMusicSlot *tm_slot_create(void *app){TMMusicSlot *s=stream_memalign(8,sizeof *
 void tm_slot_hidden(TMMusicSlot *s){if(s&&s->control){Control *c=s->control;if(c->focus_transition&&!c->root&&!c->retired)return;close_view(c,false);}}
 void tm_slot_destroy(TMMusicSlot *s){if(!s)return;Control *c=s->control;if(c){close_view(c,false);c->retired=true;c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tm_slot_visible(TMMusicSlot *s){Control *c=s?s->control:NULL;return c&&c->root;}
+/* Tile state: the last playing flag and title the phone sent, and how long ago it last spoke. Read only. */
+void tm_slot_live(TMMusicSlot *s,uint32_t now,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;out->music_playing=c->music.playing;out->music_age_ms=(uint32_t)(now-c->music.last_contact);out->music_title=c->music.title;}
 bool tm_slot_open(TMMusicSlot *s){Control *c=control(s);if(!c)return false;c->waiting=!c->music.active;if(!enter(c))return false;request(c,TM_RESUME);return true;}
 void tm_slot_wheel(TMMusicSlot *s,int delta){Control *c=s?s->control:NULL;if(!c||!c->root||c->closing)return;tio_hint_input(&c->hint,stream_tick());int step=tm_input_wheel(&c->input,delta,stream_tick());if(step)request(c,step>0?TM_NEXT:TM_PREV);}
 bool tm_handle_event(void *e){void *vm=stream_event_user(e);TMMusicSlot *s=slot_of(ptr(vm,0x10));Control *c=s?s->control:NULL;if(!c||!c->root||!owns(c)||native_event_code(e)!=0xe)return false;unsigned key=native_event_key(e);

@@ -68,6 +68,8 @@ TCSlot *tc_slot_create(void *app){TCSlot *s=stream_memalign(8,sizeof *s);if(s){m
 void tc_slot_hidden(TCSlot *s){TCControl *c=s?s->control:NULL;if(c&&!c->transitioning){event(c,TC_EXIT,0);close_page(c);}}
 void tc_slot_destroy(TCSlot *s){if(!s)return;TCControl *c=s->control;if(c){event(c,TC_EXIT,0);close_page(c);c->slot=NULL;c->app=NULL;(void)dispose(c);}stream_free(s);}
 bool tc_native_visible(void *app){TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;return c&&c->root&&!c->closing;}
+/* Tile state: the phone camera session is open. Read only. */
+void tc_slot_live(TCSlot *s,TSLive *out){TCControl *c=s?s->control:NULL;if(c&&out)out->camera=c->sid&&!c->closing;}
 bool tc_slot_open(TCSlot *s){
  if(!s||!s->app||!home()||other(s->app)||ptr(manager(),0x10)!=s->app||!tn_lvgl_widgets().idle(NULL))return false;
  TCControl *c=s->control;if(c&&c->root&&!c->closing)return true;

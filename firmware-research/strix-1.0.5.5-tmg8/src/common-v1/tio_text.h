@@ -60,6 +60,12 @@ enum TIOTextKey {
  TT_NAV_LEFT,
  TT_NAV_HOUR,
  TT_NAV_MIN,
+ /* TMG8 live tile state (focus-v1/tile_state.h): {} is replaced by the figure */
+ TT_STATE_PLAYING,
+ TT_STATE_TIME_LEFT,
+ TT_STATE_KM_TO_GO,
+ TT_STATE_M_TO_GO,
+ TT_STATE_PHONE_OFF,
  TT_COUNT
 };
 const char *tio_text(unsigned key,unsigned lang);
