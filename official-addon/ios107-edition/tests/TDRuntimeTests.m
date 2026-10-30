@@ -32,7 +32,10 @@ static void GlassesCaps(void){@autoreleasepool{
   assert([r query]);SampleBuild=TD_BUILD_TMG6;SampleCaps=tmg8?TD_CAPS_TMG8:TD_CAPS_TMG6;now=101;
   assert([r receive:Packet(sent,TD_STATUS,0,0,0) device:peer]);
   assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==(tmg8!=0)&&(r.glassesCaps&TD_CAP_NAV_PASSING)&&[r.glassesFirmware isEqual:@"TMG6"]); // TMG6, TMG7 and TMG8 share the build field
-  peer=@"another-glasses";assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // another peer inherits nothing
+  now=101+TDGlassesCapsFreshSeconds;assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==(tmg8!=0)); // still fresh at the edge
+  now=101+TDGlassesCapsFreshSeconds+1;assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // a stale sample (a reflash in between) says nothing, not even the TMG8 bit
+  now=100;assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps); // a clock that went backwards is not fresh either
+  now=102;peer=@"another-glasses";assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // another peer inherits nothing
  }
  SampleBuild=TD_BUILD_TMG4;SampleCaps=TD_CAPS_ALL;
 }}

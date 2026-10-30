@@ -38,13 +38,17 @@
 // Passive guard: never polls, cancels, or sends a queued command.
 - (BOOL)idleForOTA;
 - (BOOL)receive:(NSData *)packet device:(NSString *)device;
-/* Capability bits (diagnostics.h TD_CAP_*) from the last validated status sample of the current peer; 0 until one arrives
- * and again as soon as the peer changes. A TMG7 or older peer never sets TD_CAP_MENU_CAROUSEL (the TMG8 bit). */
+/* A status sample says what the glasses can do only for this long: a reflash in between would change the caps bit, and a stale TMG8 bit must
+ * not let a carousel layout reach a TMG7 decoder. The menu layout screen asks again well inside it (TDGlassesCapsRefreshSeconds). */
+#define TDGlassesCapsFreshSeconds 300
+#define TDGlassesCapsRefreshSeconds 120
+/* Capability bits (diagnostics.h TD_CAP_*) from the last validated status sample of the current peer; 0 until one arrives,
+ * once it is older than TDGlassesCapsFreshSeconds, and again as soon as the peer changes. A TMG7 or older peer never sets TD_CAP_MENU_CAROUSEL (the TMG8 bit). */
 - (uint32_t)glassesCaps;
 /* YES when the connected glasses report the TMG8 caps bit ("glasses report TMG8 caps"). */
 - (BOOL)glassesReportTMG8Caps;
 /* The firmware label of the last validated status sample of the current peer ("TMG6" for a TMG6 or TMG7 build, which share
- * a build field; "TMG5"; "TMG4"), or nil until one arrives and again as soon as the peer changes. */
+ * a build field; "TMG5"; "TMG4"), or nil until one arrives, once it is older than TDGlassesCapsFreshSeconds, and again as soon as the peer changes. */
 - (NSString *)glassesFirmware;
 @property(nonatomic) BOOL fileBusy;
 @property(nonatomic,readonly) BOOL pending,holdsLease;

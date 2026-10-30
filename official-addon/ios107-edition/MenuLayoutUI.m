@@ -7,6 +7,7 @@
 #import "TIODesign.h"
 #import "MenuLens.h"
 #import "TDPhoneBridge.h"
+#import "TDPhoneRun.h"
 #include "menu_config.h"
 #import <objc/message.h>
 static TIOMenuLayoutLink *Link(void){
@@ -84,6 +85,7 @@ static void LensText(NSString *text,UIFont *font,UIColor *color,CGFloat x,CGFloa
 @property(nonatomic,strong) UILabel *caption;
 @property(nonatomic,strong) NSTimer *poll;
 @property(nonatomic) NSUInteger pick,known; /* the layout shown and chosen, and the last one the glasses confirmed */
+@property(nonatomic) NSTimeInterval capsAsked; /* uptime of the last status request for the caps bit */
 @property(nonatomic) BOOL syncedCaps; /* the caps bit the last sync read: a stored carousel is drawn differently with and without it */
 @end
 enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,SectionCount};
@@ -103,12 +105,18 @@ enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,Sect
 }
 - (void)viewWillAppear:(BOOL)animated{
  [super viewWillAppear:animated];[self refresh];
- __weak typeof(self) w=self;[self.poll invalidate];self.poll=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t){[w render];}];
+ __weak typeof(self) w=self;[self.poll invalidate];self.poll=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t){[w tick];}];
 }
 - (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[self.poll invalidate];self.poll=nil;[self.link cancel];}
 - (void)refresh{
  __weak typeof(self) w=self;
- [self.link query:^{typeof(self) s=w;[s sync];[s render];[s.tableView reloadData];if(s.refreshCaps)s.refreshCaps();}];[self render];[self.tableView reloadData];
+ [self.link query:^{typeof(self) s=w;[s sync];[s render];[s.tableView reloadData];[s askCaps];}];[self render];[self.tableView reloadData];
+}
+/* The status sample that carries the caps bit goes stale (TDGlassesCapsFreshSeconds); ask again well before, so the Carousel segment does not flip off on a long visit. */
+- (void)askCaps{self.capsAsked=NSProcessInfo.processInfo.systemUptime;if(self.refreshCaps)self.refreshCaps();}
+- (void)tick{
+ [self render];
+ if(!self.link.busy&&NSProcessInfo.processInfo.systemUptime-self.capsAsked>=TDGlassesCapsRefreshSeconds)[self askCaps];
 }
 /* The layout the glasses confirmed, as it is drawn: a stored carousel on a peer without the TMG8 bit draws as the 2-row grid. */
 - (NSUInteger)confirmed{NSUInteger rows=self.link.rows;if(rows==TML_CAROUSEL&&!self.link.glassesReportTMG8Caps)rows=2;return rows>=1&&rows<=3?rows:0;}
