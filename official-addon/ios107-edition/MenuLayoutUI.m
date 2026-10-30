@@ -110,7 +110,7 @@ enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,Sect
  [self.link query:^{typeof(self) s=w;[s sync];[s render];[s.tableView reloadData];if(s.refreshCaps)s.refreshCaps();}];[self render];[self.tableView reloadData];
 }
 /* The layout the glasses confirmed, as it is drawn: a stored carousel on a peer without the TMG8 bit draws as the 2-row grid. */
-- (NSUInteger)confirmed{NSUInteger rows=self.link.rows;if(rows==TML_CAROUSEL&&!self.link.glassesReportTMG8Caps)rows=tml_grid_rows((unsigned)rows);return rows>=1&&rows<=3?rows:0;}
+- (NSUInteger)confirmed{NSUInteger rows=self.link.rows;if(rows==TML_CAROUSEL&&!self.link.glassesReportTMG8Caps)rows=2;return rows>=1&&rows<=3?rows:0;}
 - (void)sync{NSUInteger rows=[self confirmed];if(rows)self.known=rows;self.pick=rows?:(self.known?:3);}
 - (NSString *)firmwareName{
  NSString *name=self.firmware?self.firmware():nil;if(!name.length)return nil;
