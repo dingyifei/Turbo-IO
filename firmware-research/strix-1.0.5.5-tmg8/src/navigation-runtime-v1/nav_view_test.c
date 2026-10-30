@@ -89,7 +89,20 @@ int main(void){
   assert(tn_view_map(&cv,TNR_SCENE,scene,sizeof scene,0));assert(tn_view_map(&cv,TNR_POSE,pose,sizeof pose,1));assert(tn_view_map_tick(&cv,2));
   int x0=192,x1=-1;for(unsigned y=80;y<112;y++)for(unsigned x=60;x<132;x++)if(last_map[y*192+x]>=250){if((int)x<x0)x0=(int)x;if((int)x>x1)x1=(int)x;}
   assert(x1>x0&&abs(348+(x0+x1)/2-446)<=3);   /* 443 vs 446: the canvas cannot go past the page edge */
-  assert(tn_view_close(&cv));}
+  /* TMG8 background route state: the map's data survives a closed page. Saved before the page closes, fed while it is closed, restored into
+   * the next page: the restored scene takes the next pose and draws the car again; a fresh page, which has no scene, refuses that pose. */
+  {static TNRState kept;unsigned lit_before=0,lit_after=0;
+   for(unsigned i=0;i<192*144;i++)lit_before+=last_map[i]>=250;assert(lit_before>0);
+   assert(tn_view_map_save(&cv,&kept)&&kept.valid&&kept.located);
+   assert(tn_view_close(&cv));assert(!tn_view_map_save(&cv,&kept));assert(!tn_view_map_restore(&cv,&kept));   /* a closed page keeps and takes nothing */
+   uint8_t later[12]={1,0,0,0,0,0};kept.smooth=true;assert(tnr_receive(&kept,TNR_POSE,later,sizeof later,500));   /* a pose arrives while the page is closed */
+   Mock rm={0};TNWidgets ra=api(&rm);TNView rv={0};assert(tn_view_open(&rv,&ra,&rm,&cs));
+   assert(!rv.map_state.valid&&!tn_view_map(&rv,TNR_POSE,later,sizeof later,600));
+   assert(tn_view_map_restore(&rv,&kept)&&rv.map_state.valid&&rv.map_state.dirty);
+   assert(tn_view_map(&rv,TNR_POSE,later,sizeof later,700));
+   assert(tn_view_map_tick(&rv,800));for(unsigned i=0;i<192*144;i++)lit_after+=last_map[i]>=250;assert(lit_after>0);
+   assert(tn_view_close(&rv));}
+ }
  /* The turn text steps down through 24, 20, 16 px and the instruction never reaches the map. */
  strcpy(s.turn,"Continue straight and keep right at the fork");s.distance_m=100;assert(tn_view_update(&v,&s,false));
  assert(m.shown[Turn2]&&shown_of(&m,Turn0,3)==1&&m.fonts[Turn2]==TIO_FONT_MIN);

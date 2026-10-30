@@ -56,17 +56,36 @@ static bool api(const TNUI *u){return u&&u->available&&u->enter&&u->render&&u->p
 void tn_init(TNRuntime *r){if(r)memset(r,0,sizeof *r);}
 void tn_local_exit(TNRuntime *r,const TNUI *u){
  if(!r||!api(u)||!r->active)return;if(r->held)(void)u->power(u->ctx,TN_POWER_RELEASE);
- r->held=r->awake=r->active=r->connected=false;r->last_sid=r->sid;u->leave(u->ctx);
+ bool page=!r->hidden;   /* a background session has no page to leave: enter and leave stay paired */
+ r->held=r->awake=r->active=r->connected=r->hidden=false;r->last_sid=r->sid;if(page)u->leave(u->ctx);
 }
 static bool wake(TNRuntime *r,const TNUI *u){if(!u->power(u->ctx,TN_POWER_WAKE_HOLD))return false;r->held=r->awake=true;return true;}
 void tn_disconnect(TNRuntime *r,const TNUI *u){
- if(!r||!api(u)||!r->active)return;r->connected=false;r->stale=true;
+ if(!r||!api(u)||!r->active)return;
+ if(r->hidden){tn_local_exit(r,u);return;}   /* nothing on screen to keep: a background route ends with its phone */
+ r->connected=false;r->stale=true;
  if(!u->render(u->ctx,&r->scene,true)){tn_local_exit(r,u);return;}
  /* Keep the existing screen lease until 60s after the last real UPDATE.
   * Native ownership loss is a different event and must call local_exit. */
 }
+bool tn_detach(TNRuntime *r,const TNUI *u){
+ if(!r||!api(u)||!r->active||r->hidden||!r->connected||r->stale)return false;
+ if(r->held)(void)u->power(u->ctx,TN_POWER_RELEASE);
+ r->held=r->awake=r->button_valid=false;r->hidden=true;u->leave(u->ctx);return true;   /* hidden first: leave may delete the page's widgets */
+}
+bool tn_attach(TNRuntime *r,const TNUI *u,uint32_t now){
+ if(!r||!api(u)||!r->active||!r->hidden)return false;
+ if(!r->connected||r->stale||(uint32_t)(now-r->last_update)>=TN_IDLE_MS){tn_local_exit(r,u);return false;}
+ if(!u->enter(u->ctx,&r->scene))return false;
+ if(!wake(r,u)){u->leave(u->ctx);return false;}   /* still hidden; the page is closed again */
+ r->hidden=false;r->last_button=now;r->button_valid=true;return true;   /* opening the page is a button press: the usual 60 s of manual hold */
+}
 void tn_tick(TNRuntime *r,const TNUI *u,uint32_t now){
  if(!r||!api(u)||!r->active)return;
+ if(r->hidden){   /* data only: silence ends it, nothing is rendered or woken */
+  if((uint32_t)(now-r->last_update)>=TN_IDLE_MS||(r->connected&&(uint32_t)(now-r->last_link)>=TN_LINK_MS))tn_local_exit(r,u);
+  return;
+ }
  if(r->connected&&(uint32_t)(now-r->last_link)>=TN_LINK_MS)tn_disconnect(r,u);
  if(!r->active)return;
  if(!r->stale&&(uint32_t)(now-r->last_update)>=TN_IDLE_MS){r->stale=true;if(!u->render(u->ctx,&r->scene,true)){tn_local_exit(r,u);return;}}
@@ -77,7 +96,7 @@ void tn_tick(TNRuntime *r,const TNUI *u,uint32_t now){
   if(u->power(u->ctx,TN_POWER_SLEEP))r->awake=false;}
 }
 bool tn_button_wake(TNRuntime *r,const TNUI *u,uint32_t now){
- if(!r||!api(u)||!r->active)return false;tn_tick(r,u,now);if(!r->active)return false;
+ if(!r||!api(u)||!r->active||r->hidden)return false;tn_tick(r,u,now);if(!r->active)return false;
  if(!u->render(u->ctx,&r->scene,r->stale)||!wake(r,u)){tn_local_exit(r,u);return false;}
  r->last_button=now;r->button_valid=true;return true;
 }
@@ -93,9 +112,12 @@ static TNReply handle(TNRuntime *r,const TNUI *u,const uint8_t *p,size_t n,uint3
  else if(op==TN_MODE){if(n!=33||p[32]>TN_ALWAYS)return reply(r,TN_BAD_PACKET);}
  else if(n!=32)return reply(r,TN_BAD_PACKET);
  if(op==TN_START){
-  if(r->active)return reply(r,TN_BUSY);if(sid<=r->last_sid)return reply(r,TN_STALE);
+  if(r->active&&!r->hidden)return reply(r,TN_BUSY);
+  if(r->active&&sid<=r->sid)return reply(r,TN_STALE);   /* a background route is only replaced by a newer one */
+  if(sid<=r->last_sid)return reply(r,TN_STALE);
   if(!u->available(u->ctx))return reply(r,TN_BUSY);
   if(!u->enter(u->ctx,&next))return reply(r,TN_UI_FAILED);
+  if(r->hidden){r->last_sid=r->sid;r->active=r->connected=r->awake=r->held=r->hidden=false;}   /* the old data session is replaced (its power hold was released at detach) */
   memcpy(&r->scene,&next,sizeof next);r->sid=sid;r->active=r->connected=true;r->stale=r->button_valid=false;
   r->last_link=r->last_update=now;
   if(!wake(r,u)){tn_local_exit(r,u);return reply(r,TN_UI_FAILED);}
@@ -103,9 +125,9 @@ static TNReply handle(TNRuntime *r,const TNUI *u,const uint8_t *p,size_t n,uint3
   if(!r->active||sid!=r->sid)return reply(r,TN_NO_SESSION);
   if(op==TN_UPDATE){
    /* Authentication/CRC/UTF-8/bounds are checked before any UI or state mutation. */
-   if(!u->render(u->ctx,&next,false))return reply(r,TN_UI_FAILED);
+   if(!r->hidden&&!u->render(u->ctx,&next,false))return reply(r,TN_UI_FAILED);
    memcpy(&r->scene,&next,sizeof next);r->stale=false;r->connected=true;r->last_update=now;
-   if(!wake(r,u)){tn_local_exit(r,u);return reply(r,TN_UI_FAILED);}
+   if(!r->hidden&&!wake(r,u)){tn_local_exit(r,u);return reply(r,TN_UI_FAILED);}   /* hidden: plain state only, no render and no wake */
   }else if(op==TN_STOP)tn_local_exit(r,u);
   else if(op==TN_MODE)r->scene.mode=p[32];
   /* A heartbeat is liveness only: it cannot refresh old navigation or restore

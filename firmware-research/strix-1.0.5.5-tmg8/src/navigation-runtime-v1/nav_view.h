@@ -51,4 +51,9 @@ bool tn_view_clock(TNView *,int64_t local_epoch,int64_t eta_epoch,bool stale);
 bool tn_view_map(TNView *,unsigned,const uint8_t *,size_t,uint32_t);
 bool tn_view_map_tick(TNView *,uint32_t);
 bool tn_view_close(TNView *); /* false means renderer busy; retry on UI timer */
+/* TMG8 background route state: the map's data (scenes, poses, labels, scale) is plain memory. A page that closes while its route goes on hands it
+ * to the caller (tn_view_map_save, before tn_view_close), the caller keeps feeding it with tnr_receive, and a reopened page takes it back
+ * (tn_view_map_restore, after tn_view_open), so the next pose still finds its scene. Neither touches a widget. */
+bool tn_view_map_save(const TNView *,TNRState *);
+bool tn_view_map_restore(TNView *,const TNRState *);
 #endif

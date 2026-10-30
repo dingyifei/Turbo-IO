@@ -4,7 +4,8 @@
 #include <assert.h>
 static uint32_t U32(const uint8_t *p){uint32_t v;memcpy(&v,p,4);return v;}
 static NSDictionary *Frame(unsigned n){return @{@"phase":@"navigating",@"icon":@3,@"meters":@(n),@"remainingMeters":@1200,@"remainingSeconds":@600,@"road":@"测试路",@"turn":@"前方右转",@"navPoints":@[@[@100,@900],@[@100,@500],@[@900,@500]],@"navHeading":@90};}
-static NSDictionary *Ack(NSData *packet,unsigned result){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=result,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=true});if(p[5]==TN_QUERY){raw[24]=3;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"value":@0,@"mode":@0,@"data":hex}} options:0 error:nil];assert(json.length<128);uint8_t header[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:header length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"deviceId":@"test-peer",@"businessId":@15,@"payload":pb}};}
+static NSDictionary *AckAwake(NSData *packet,unsigned result,BOOL awake){const uint8_t *p=packet.bytes;uint8_t raw[32];tn_reply_encode(raw,32,(TNReply){.result=result,.sid=U32(p+8),.sequence=U32(p+12),.active=p[5]!=TN_STOP,.awake=awake});if(p[5]==TN_QUERY){raw[24]=3;uint32_t crc=tn_crc(raw,28);memcpy(raw+28,&crc,4);}NSMutableString *hex=[NSMutableString new];for(int i=0;i<32;i++)[hex appendFormat:@"%02x",raw[i]];NSData *json=[NSJSONSerialization dataWithJSONObject:@{@"cmd":@"turbo_nav_v1",@"payload":@{@"value":@0,@"mode":@0,@"data":hex}} options:0 error:nil];assert(json.length<128);uint8_t header[]={8,1,16,6,26,(uint8_t)json.length};NSMutableData *pb=[NSMutableData dataWithBytes:header length:6];[pb appendData:json];return @{@"eventType":@"messageReceived",@"message":@{@"deviceId":@"test-peer",@"businessId":@15,@"payload":pb}};}
+static NSDictionary *Ack(NSData *packet,unsigned result){return AckAwake(packet,result,YES);}
 static NSDictionary *File(NSString *task){return @{@"eventType":@"fileShareSuccess",@"device":@{@"id":@"test-peer"},@"taskId":task,@"fileName":@"turbo-navigation.tnv",@"role":@"sender"};}
 int main(int argc,char **argv){@autoreleasepool{
  TNScene scene;assert(TNVScene(Frame(80),NO,&scene));assert(scene.icon==TN_RIGHT&&scene.point_count==3);uint8_t bytes[512];size_t n=tn_encode(bytes,512,TN_START,10,1,&scene);assert(n&&n<=328&&tn_packet_valid(bytes,n));bytes[n-1]^=1;assert(!tn_packet_valid(bytes,n));
@@ -37,6 +38,27 @@ int main(int argc,char **argv){@autoreleasepool{
   for(int i=0;i<6&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE2;i++){now+=0.3;[s offer:MapFrame()];pose[4]++;[s pump];if(s.busy&&((const uint8_t *)wire.bytes)[5]!=TNR_POSE2)Settle();}
   assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TNR_POSE2);
   now+=4;[s pump];assert(s.active&&![s.status[@"failed"] boolValue]);Settle();assert(s.active&&[s.status[@"poses"] unsignedIntValue]==1);}
+
+ // TMG8 background route state. The glasses close their page (long press, launcher hidden) but keep the route: every reply stays OK and active, only
+ // awake is clear (the panel is not held). The phone has no page-closed signal, so its normal UPDATE and heartbeat cadence goes on unchanged.
+ {__block unsigned n=0;
+  s=[[TNVSession alloc]initWithDevice:@"test-peer" session:13 clock:^{return now;} sender:^(NSData *b,NSString *t,TNVSubmitted done){wire=b;task=t;submit=done;n++;} cleanup:nil];
+  void(^Settle)(BOOL)=^(BOOL awake){NSString *native=[NSString stringWithFormat:@"bg-%u",n];submit(YES,native);[s consume:AckAwake(wire,0,awake)];[s consume:File(native)];assert(!s.busy);};
+  assert([s start:Frame(90) always:NO]);Settle(YES);   // the page is open
+  unsigned base=n;
+  for(int i=0;i<40;i++){   // the page is closed: one UPDATE per changed scene, at most one a second, for 40 s of route
+   now+=1.1;[s offer:Frame(89-i)];[s pump];
+   assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TN_UPDATE&&n==base+1+(unsigned)i);
+   Settle(NO);assert(s.active&&![s.status[@"failed"] boolValue]);
+   now+=0.05;[s pump];assert(n==base+1+(unsigned)i);   // nothing more inside the same second
+  }
+  now+=10.5;[s pump];assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TN_UPDATE);Settle(NO);   // an unchanged route is refreshed every 10 s: the glasses' 60 s limit never nears
+  now+=16;[s pump];assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TN_HEARTBEAT);Settle(NO);assert(s.active);   // no fresh offer: only liveness
+  now+=1.1;[s stop];assert(s.busy&&((const uint8_t *)wire.bytes)[5]==TN_STOP);Settle(NO);assert(!s.active);   // route end from the phone
+  // Glasses without the background state (TMG7) answer the first UPDATE after a page close with NO_SESSION: the phone's session ends there.
+  s=[[TNVSession alloc]initWithDevice:@"test-peer" session:14 clock:^{return now;} sender:^(NSData *b,NSString *t,TNVSubmitted done){wire=b;task=t;submit=done;n++;} cleanup:nil];
+  assert([s start:Frame(90) always:NO]);Settle(YES);now+=1.1;[s offer:Frame(80)];[s pump];assert(s.busy);
+  submit(YES,@"closed");[s consume:Ack(wire,TN_NO_SESSION)];[s consume:File(@"closed")];assert(!s.active&&[s.status[@"failed"] boolValue]);}
  // Sender rejects wrong-peer / malformed data before touching SDK; cleanup is scoped.
  NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] isDirectory:YES];
  __block BOOL called=NO,finished=NO;
@@ -46,5 +68,5 @@ int main(int argc,char **argv){@autoreleasepool{
  NSDate *limit=[NSDate dateWithTimeIntervalSinceNow:2];while(!finished&&[limit timeIntervalSinceNow]>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];assert(called&&finished);[transport cleanup:tid];assert([[NSFileManager.defaultManager contentsOfDirectoryAtPath:root.path error:nil] count]==0);
  [NSFileManager.defaultManager removeItemAtURL:root error:nil];
  if(argc==2){NSDictionary *record=@{@"syntheticOnly":@YES,@"packets":trace};assert([[NSJSONSerialization dataWithJSONObject:record options:NSJSONWritingPrettyPrinted error:nil] writeToFile:@(argv[1]) atomically:YES]);}
- puts("PASS TNV1 codec, real SDK task binding, early file/ACK ordering, latest-only pacing, heartbeat freshness, STOP, timeout/late ACK, post-failure STOP, slow pose survives, bounded geometry, scoped transport and cleanup");
+ puts("PASS TNV1 codec, real SDK task binding, early file/ACK ordering, latest-only pacing, heartbeat freshness, STOP, timeout/late ACK, post-failure STOP, slow pose survives, glasses page closed keeps the cadence (TMG8) and a NO_SESSION reply ends it (TMG7), bounded geometry, scoped transport and cleanup");
 }return 0;}

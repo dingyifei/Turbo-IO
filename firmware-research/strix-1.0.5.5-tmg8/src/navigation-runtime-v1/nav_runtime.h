@@ -37,6 +37,7 @@ typedef struct {
  TNScene scene;
  uint32_t sid,sequence,digest,last_sid,last_link,last_update,last_button;
  bool active,connected,awake,held,stale,button_valid;
+ bool hidden; /* TMG8: the route's data session goes on while its page is closed (no UI, no power hold) */
  uint8_t last_result;
 } TNRuntime;
 typedef struct { enum TNResult result;uint32_t sid,sequence;bool active,awake,stale;uint8_t mode; } TNReply;
@@ -46,6 +47,12 @@ void tn_tick(TNRuntime *,const TNUI *,uint32_t now);
 bool tn_button_wake(TNRuntime *,const TNUI *,uint32_t now);
 void tn_disconnect(TNRuntime *,const TNUI *);
 void tn_local_exit(TNRuntime *,const TNUI *);
+/* TMG8 background route state. tn_detach closes the page (leave, power hold released) but keeps the session's data: scene, sid, sequence and
+ * the stale clocks. Updates and heartbeats go on being accepted with no render and no wake. The session ends on STOP, a new START with a newer
+ * sid, 60 s without an update, 30 s without any packet, or tn_disconnect. Returns false (nothing changed) unless the session is live and unstale.
+ * tn_attach reopens the page from the kept scene without a new handshake; false leaves the session hidden (or ended, when it went stale). */
+bool tn_detach(TNRuntime *,const TNUI *);
+bool tn_attach(TNRuntime *,const TNUI *,uint32_t now);
 size_t tn_encode(uint8_t *,size_t,enum TNOp,uint32_t sid,uint32_t sequence,const TNScene *);
 size_t tn_reply_encode(uint8_t *,size_t,TNReply);
 uint32_t tn_crc(const uint8_t *,size_t);

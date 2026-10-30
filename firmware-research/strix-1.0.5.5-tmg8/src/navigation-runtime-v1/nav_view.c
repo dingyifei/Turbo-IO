@@ -243,6 +243,12 @@ bool tn_view_map(TNView *v,unsigned op,const uint8_t *body,size_t n,uint32_t now
  if(!v||!v->open||v->retiring)return false;
  v->map_state.smooth=true;return tnr_receive(&v->map_state,op,body,n,now);
 }
+bool tn_view_map_save(const TNView *v,TNRState *out){
+ if(!v||!out||!v->open||v->retiring)return false;memcpy(out,&v->map_state,sizeof *out);return true;
+}
+bool tn_view_map_restore(TNView *v,const TNRState *in){
+ if(!v||!in||!v->open||v->retiring)return false;memcpy(&v->map_state,in,sizeof *in);v->map_state.dirty=true;return true;   /* drawn by the next map tick */
+}
 bool tn_view_map_tick(TNView *v,uint32_t now){
  if(!v||!v->open||v->retiring)return false;v->map_now=now;
  if(!tnr_needs_draw(&v->map_state,now))return true;

@@ -5,6 +5,7 @@
 #include "nav_service.h"
 #include "nav_runtime.h"
 #include "nav_lvgl.h"
+#include "nav_live.h"
 #include "menu9.h"
 #include <string.h>
 #include "../focus-v1/focus_service.h"
@@ -19,6 +20,7 @@ typedef struct {
  bool waiting,retired,pending,sent,cap_reply;
  TNReply reply;
  int64_t eta_local;
+ TNRState *stash;   /* TMG8: the map's data while the page is closed and the route goes on (non-NULL exactly while runtime.hidden) */
 } Control;
 extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_create(void (*)(void *),uint32_t,void *);
 extern void stream_timer_delete(void *),*stream_event_user(void *),*stream_add_event(void *,void (*)(void *),uint32_t,void *);
@@ -55,7 +57,9 @@ static bool available(void *ctx){Control *c=ctx;
  return !c->retired&&paired()&&safe_home()&&c->slot&&!((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page&&(!c->view||c->view->open);}
 static void deleted(void *e){Control *c=stream_event_user(e);if(!c||!c->view)return;
  c->view->root=c->view->icon=c->view->map=NULL;c->view->open=false;c->view->retiring=true;
- (void)tn_native_power(&c->power,TN_POWER_RELEASE,false);c->waiting=false;c->runtime.active=false;c->runtime.last_sid=c->runtime.sid;
+ (void)tn_native_power(&c->power,TN_POWER_RELEASE,false);c->waiting=false;
+ if(c->runtime.hidden)return;   /* our own close of a kept route's page: its data session goes on */
+ c->runtime.active=false;c->runtime.last_sid=c->runtime.sid;
 }
 static bool enter(void *ctx,const TNScene *s){
  Control *c=ctx;if(!c->slot||!safe_home())return false;
@@ -87,14 +91,45 @@ static void emit(TNReply reply){emit_caps(reply,false);}
 static void flush(Control *c){uint32_t now=stream_tick();if(!c->pending||(c->sent&&(uint32_t)(now-c->last_reply)<100))return;
  c->pending=false;c->sent=true;c->last_reply=now;emit_caps(c->reply,c->cap_reply);
 }
-static void retire(Control *c){if(!c)return;TNUI u=api(c);tn_local_exit(&c->runtime,&u);c->waiting=false;(void)tn_native_power(&c->power,TN_POWER_RELEASE,false);if(c->view)(void)tn_view_close(c->view);}
+static void drop_stash(Control *c){if(c&&c->stash){stream_free(c->stash);c->stash=NULL;}}
+/* Ends everything: the session (if any), the power hold, the page. Used when the owner goes away or nothing can be kept. */
+static void retire(Control *c){if(!c)return;TNUI u=api(c);tn_local_exit(&c->runtime,&u);c->waiting=false;(void)tn_native_power(&c->power,TN_POWER_RELEASE,false);if(c->view)(void)tn_view_close(c->view);drop_stash(c);}
+/* TMG8: the page closes (long press, the launcher hiding, the page lost to another owner). A live phone route is not ended with it: its data goes
+ * on hidden, the power hold is released as always, and no widget, display wake or timer is added. If the map's data cannot be kept (no memory) or
+ * there is no live route, it ends exactly as before. */
+static void close_page(Control *c){
+ if(!c||c->runtime.hidden)return;   /* already closed: a hidden route is not touched when the launcher hides again */
+ if(c->runtime.active&&!c->runtime.hidden&&c->runtime.connected&&!c->runtime.stale&&c->view&&c->view->open){
+  TNRState *map=stream_memalign(8,sizeof *map);
+  if(map&&tn_view_map_save(c->view,map)){
+   TNUI u=api(c);
+   if(tn_detach(&c->runtime,&u)){drop_stash(c);c->stash=map;c->waiting=false;(void)tn_native_power(&c->power,TN_POWER_RELEASE,false);return;}
+  }
+  if(map)stream_free(map);
+ }
+ retire(c);
+}
+/* Frees a closed page's widgets once the renderer is idle; a busy renderer is retried on the next tick. */
+static void reap(Control *c){
+ if(c->view&&!c->view->open){TNWidgets a=tn_lvgl_widgets();if(a.idle(a.ctx)&&tn_view_close(c->view)){TNView *v=c->view;c->view=NULL;stream_free(v);}}
+}
+/* Opening Navigation again with a route kept in the background: the page returns from the kept scene and the map from the kept data, with no new handshake. */
+static bool resume(Control *c){
+ reap(c);if(c->view)return false;   /* the last page is still being removed: try again */
+ TNUI u=api(c);bool ok=tn_attach(&c->runtime,&u,stream_tick());
+ if(ok&&c->stash&&c->view&&c->view->open)(void)tn_view_map_restore(c->view,c->stash);
+ if(!c->runtime.hidden)drop_stash(c);
+ return ok;
+}
 static void tick(void *timer){
  Control *c=*(Control **)((uint8_t *)timer+12);if(!c)return;TNUI u=api(c);uint32_t now=stream_tick();
  if((c->runtime.active||c->waiting)&&(uint32_t)(now-c->last_check)>=1000){c->last_check=now;
-  if(!owns(c)||!safe_home())retire(c);
+  if(c->runtime.hidden){if(!paired())tn_disconnect(&c->runtime,&u);}   /* a background route has no page to own; it ends with its phone link */
+  else if(!owns(c)||!safe_home())close_page(c);
   else if(!paired())tn_disconnect(&c->runtime,&u);
  }
  if(c->runtime.active)tn_tick(&c->runtime,&u,now);
+ if(!c->runtime.hidden)drop_stash(c);
  /* Text-only clock repaint: never sends packets, wakes the panel, refreshes
   * last_update, or redraws the icon/map buffers. Busy renderer is retried. */
  if(c->runtime.active&&c->view&&owns(c)&&(uint32_t)(now-c->last_clock)>=1000&&focus_screen_on())
@@ -103,8 +138,8 @@ static void tick(void *timer){
  stream_timer_period(timer,c->runtime.active&&c->view&&owns(c)&&focus_screen_on()?33:250);
  if(c->waiting&&(uint32_t)(now-c->waiting_since)>=60000){(void)power(c,TN_POWER_RELEASE);(void)power(c,TN_POWER_SLEEP);c->waiting_since=now;}
  flush(c);
- if(c->view&&!c->view->open){TNWidgets a=tn_lvgl_widgets();if(a.idle(a.ctx)&&tn_view_close(c->view)){TNView *v=c->view;c->view=NULL;stream_free(v);}}
- if(c->retired&&!c->view&&!c->pending){stream_timer_delete(timer);stream_free(c);}
+ reap(c);
+ if(c->retired&&!c->view&&!c->pending){stream_timer_delete(timer);drop_stash(c);stream_free(c);}
 }
 static Control *control(TNNavSlot *s){
  if(!s||!s->app)return NULL;if(s->control)return s->control;
@@ -112,17 +147,13 @@ static Control *control(TNNavSlot *s){
  c->timer=stream_timer_create(tick,100,c);if(!c->timer){stream_free(c);return NULL;}s->control=c;return c;
 }
 TNNavSlot *tn_slot_create(void *app){TNNavSlot *s=stream_memalign(8,sizeof *s);if(s){memset(s,0,sizeof *s);s->app=app;}return s;}
-void tn_slot_hidden(TNNavSlot *s){if(s&&s->control)retire(s->control);}
+void tn_slot_hidden(TNNavSlot *s){if(s&&s->control)close_page(s->control);}
 void tn_slot_destroy(TNNavSlot *s){if(!s)return;Control *c=s->control;if(c){retire(c);c->retired=true;c->slot=NULL;c->app=NULL;}stream_free(s);}
 bool tn_slot_visible(TNNavSlot *s){Control *c=s?s->control:NULL;return c&&c->view;}
-/* Tile state and the menu's navigation title: a live, connected route session, the metres left and the next turn (icon, distance, road). Read only.
- * nav_turn means the session is connected and not stale; the road is copied bounded and NUL-terminated. */
-_Static_assert(TS_ROAD_MAX==TN_ROAD_MAX,"the menu's road buffer matches the scene's");
-void tn_slot_live(TNNavSlot *s,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;out->nav_active=c->runtime.active&&c->runtime.connected;out->nav_stale=c->runtime.stale;out->nav_remaining_m=c->runtime.scene.remaining_m;
- out->nav_turn=false;if(!out->nav_active||out->nav_stale)return;
- const TNScene *sc=&c->runtime.scene;out->nav_icon=sc->icon;out->nav_turn_m=sc->distance_m;
- unsigned n=0;while(n<TS_ROAD_MAX&&sc->road[n]){out->nav_road[n]=sc->road[n];n++;}out->nav_road[n]=0;out->nav_turn=true;}
-bool tn_slot_open(TNNavSlot *s){Control *c=control(s);if(!c||!safe_home()||c->runtime.active)return false;
+/* Tile state and the menu's navigation title (nav_live.h): read only, plain state, valid with the page closed. */
+void tn_slot_live(TNNavSlot *s,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;tn_live_fill(&c->runtime,stream_tick(),out);}
+bool tn_slot_open(TNNavSlot *s){Control *c=control(s);if(!c||!safe_home())return false;
+ if(c->runtime.active)return c->runtime.hidden&&resume(c);   /* a route kept in the background reopens its page; a visible session has nothing to open */
  TNScene empty;memset(&empty,0,sizeof empty);{const char *label=tio_text(TT_NAV_START,tio_lang());size_t n=strlen(label);if(n>TN_TURN_MAX)n=TN_TURN_MAX;memcpy(empty.turn,label,n);empty.turn[n]=0;};
  if(!enter(c,&empty))return false;c->waiting=true;c->waiting_since=stream_tick();
  if(!power(c,TN_POWER_WAKE_HOLD)){retire(c);return false;}return true;
@@ -135,6 +166,11 @@ TIOImageResult tn_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TN_MESSAGE_ID,.data=f->data,.bytes=f->received,.mode=0};return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool tn_message_is_ours(const TIONativeMessage *m){return m&&m->id==TN_MESSAGE_ID;}
+/* A map message goes to the open page, or, with the page closed and the route kept, into the kept copy (data only, no drawing). */
+static bool map_apply(Control *c,unsigned op,const uint8_t *body,size_t n){
+ if(c->runtime.hidden){if(!c->stash)return false;c->stash->smooth=true;return tnr_receive(c->stash,op,body,n,stream_tick());}
+ return tn_view_map(c->view,op,body,n,stream_tick());
+}
 void tn_message_dispatch(const TIONativeMessage *m){
  if(!tn_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!envelope(m->data,m->bytes)||!paired())return;
  void *vm=manager();if(!vm)return;void *app=ptr(vm,0x10);
@@ -146,10 +182,10 @@ void tn_message_dispatch(const TIONativeMessage *m){
  if(raw[5]>=TNR_SCENE){
   enum TNResult result=TN_OK;
   if(!tn_packet_valid(raw,m->bytes))result=TN_BAD_PACKET;
-  else if(!c->runtime.active||sid!=c->runtime.sid||!owns(c)||!safe_home()||!c->view)result=TN_NO_SESSION;
+  else if(!c->runtime.active||sid!=c->runtime.sid||(!c->runtime.hidden&&(!owns(c)||!safe_home()||!c->view)))result=TN_NO_SESSION;
   else if(seq==c->runtime.sequence&&digest==c->runtime.digest)result=(enum TNResult)c->runtime.last_result;
   else if(seq<=c->runtime.sequence)result=TN_STALE;
-  else if(!tn_view_map(c->view,raw[5],raw+32,m->bytes-32,stream_tick()))result=TN_BAD_PACKET;
+  else if(!map_apply(c,raw[5],raw+32,m->bytes-32))result=TN_BAD_PACKET;
   else {c->runtime.sequence=seq;c->runtime.digest=digest;c->runtime.last_result=TN_OK;c->runtime.last_link=stream_tick();}
   c->reply=(TNReply){result,sid,seq,c->runtime.active,c->runtime.awake,c->runtime.stale,c->runtime.scene.mode};
  }else c->reply=tn_receive(&c->runtime,&u,m->data,m->bytes,stream_tick(),true);
@@ -166,7 +202,7 @@ void m8_hook_vm_event(void *event){
  void *vm=stream_event_user(event),*app=ptr(vm,0x10);TNNavSlot *s=slot_of(app);Control *c=s?s->control:NULL;
  if(c&&c->view&&owns(c)&&native_event_code(event)==0xe){
   unsigned key=native_event_key(event);
-  if(key==0x3b){retire(c);nav_stop_event(event);return;}
+  if(key==0x3b){close_page(c);nav_stop_event(event);return;}
   if(key==0x3a){TNUI u=api(c);if(c->runtime.active)(void)tn_button_wake(&c->runtime,&u,stream_tick());
    else if(c->waiting){c->waiting_since=stream_tick();(void)power(c,TN_POWER_WAKE_HOLD);}nav_stop_event(event);return;}
  }
