@@ -39,7 +39,14 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{(void)tableView;return 5;}
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{(void)tableView;return section==0?8:section==1?5:section==2?3:section==3?Rows().count:3;}
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section{(void)tableView;return @[TIOText(@"tmg4.runtime.status"),TIOText(@"tmg4.knob.title"),TIOText(@"采集"),TIOText(@"资源与耗时"),TIOText(@"诊断完整性")][section];}
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section{(void)tableView;return section==0?TIOText(@"tmg4.runtime.footer"):section==1?[NSString stringWithFormat:@"%@\n\n%@",TIOText(@"tmg4.knob.instructions"),TIOText(@"tmg8.knob.detent")]:nil;}
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section{(void)tableView;return section==0?TIOText(@"tmg4.runtime.footer"):section==1?[self knobFooter]:nil;}
+/* The detent line follows the glasses: the 300-count detent, about 6.7 items per turn and the wrap are TMG8 behaviour (it reports caps bit 9 and detent 300);
+ * TMG7 and older report 600 counts per item (about 3.3 per turn) and stop at the ends. Before a status sample arrives only the instructions show. */
+- (NSString *)knobFooter{
+ NSDictionary *sample=self.runtime.status[@"sample"];id caps=sample[@"caps"];NSString *instructions=TIOText(@"tmg4.knob.instructions");
+ if(![caps isKindOfClass:NSNumber.class])return instructions;
+ return [NSString stringWithFormat:@"%@\n\n%@",instructions,TIOText(([caps unsignedIntValue]&TD_CAP_MENU_CAROUSEL)?@"tmg8.knob.detent":@"tmg8.knob.detentLegacy")];
+}
 /* Start, Finish and Cancel are capsule buttons: the one that moves the measurement forward is filled,
  * Cancel is soft, and an action that does not apply right now is dimmed and not tappable. */
 - (void)styleKnobAction:(UITableViewCell *)c row:(NSInteger)row status:(NSDictionary *)status calibration:(NSDictionary *)cal{
@@ -69,7 +76,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
   else if(p.row==3){c.textLabel.text=TIOText(@"tmg4.runtime.nand");c.detailTextLabel.text=RuntimeFormat(/*i18n:id*/@"tmg4.runtime.nand.format",Bytes(sample[@"nand_total"]),Bytes(sample[@"nand_available"]));}
   else if(p.row==4){c.textLabel.text=TIOText(@"tmg4.runtime.language");id language=sample[@"language"],source=sample[@"language_source"];if(!language||language==NSNull.null)c.detailTextLabel.text=TIOText(@"未测");else c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",TIOText([language intValue]?@"tmg4.runtime.lang.zh":@"tmg4.runtime.lang.en"),TIOText([source intValue]==2?@"tmg4.runtime.saved":@"tmg4.runtime.default")];}
   else if(p.row==5){c.textLabel.text=TIOText(@"tmg4.runtime.tiles");id generation=sample[@"tile_generation"];c.detailTextLabel.text=!generation||generation==NSNull.null?TIOText(@"未测"):RuntimeFormat(/*i18n:id*/@"tmg4.runtime.tiles.format",Value(generation),TIOText(([sample[@"settings_flags"]unsignedIntValue]&4)?@"tmg4.runtime.pendingMenu":@"tmg4.runtime.applied"));}
-  else if(p.row==6){c.textLabel.text=TIOText(@"tmg4.runtime.detent");c.detailTextLabel.text=RuntimeFormat(/*i18n:id*/@"tmg4.runtime.detent.format",Value(sample[@"detent"]));}
+  else if(p.row==6){c.textLabel.text=TIOText(@"tmg4.runtime.detent");id detent=sample[@"detent"];BOOL carousel=[detent isKindOfClass:NSNumber.class]&&[detent unsignedIntValue]==300;c.detailTextLabel.text=carousel?RuntimeFormat(/*i18n:id*/@"tmg8.runtime.detent.format",Value(detent)):RuntimeFormat(/*i18n:id*/@"tmg4.runtime.detent.format",Value(detent));}
   else{c.textLabel.text=TIOText(@"tmg4.runtime.sync");c.detailTextLabel.text=TIOText(@"tmg4.runtime.syncHint");c.accessibilityIdentifier=@"language-sync";c.textLabel.textColor=TIODesignColor(TIODesignColorAccent);c.accessibilityTraits=UIAccessibilityTraitButton;c.selectionStyle=UITableViewCellSelectionStyleDefault;}
  }else if(p.section==1){
   if(p.row==0){c.textLabel.text=TIOText(@"tmg4.knob.state");NSString *state=RuntimeState(status[@"state"]);if(cal[@"state"]&&[@[@"ready",@"querying",@"finished"]containsObject:status[@"state"]]){unsigned value=[cal[@"state"]unsignedIntValue];state=TIOText(value==TK_ACTIVE?@"tmg4.runtime.state.rotating":value==TK_FINISHED?@"tmg4.runtime.state.finished":value==TK_EXPIRED?@"tmg4.runtime.state.expired":value==TK_OVERFLOW?@"tmg4.runtime.state.overflow":@"tmg4.runtime.state.canceled");}c.detailTextLabel.text=cal.count?RuntimeFormat(/*i18n:id*/@"tmg4.knob.progress",state,Value(cal[@"samples"]),Value(cal[@"net"]),Value(cal[@"absolute"])):state;}

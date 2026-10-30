@@ -2264,6 +2264,8 @@
 {"key":"clench.attach.settling","en":"Checking that LifeLog has stopped on these glasses. Official audio is attached in a few seconds.","zh":"正在确认这副眼镜上的 LifeLog 已停止。几秒后附加官方音频。"}
 {"key":"clench.delete.busy","en":"This session is being attached or exported. Delete it when that has finished.","zh":"此记录正在附加或导出，完成后再删除。"}
 {"key":"tmg8.knob.detent","en":"One item per 300-count detent, about 6.7 items per turn at 2000 counts per turn. Lists wrap from the last item to the first.","zh":"每 300 计数为一格，移动一项；每圈约 6.7 项（按每圈 2000 计数）。列表从最后一项回到第一项。"}
+{"key":"tmg8.knob.detentLegacy","en":"One item per 600-count detent, about 3.3 items per turn at 2000 counts per turn. The 300-count detent and the wrap from the last item to the first come with TMG8.","zh":"每 600 计数为一格，移动一项；每圈约 3.3 项（按每圈 2000 计数）。300 计数一格和首尾循环需要 TMG8。"}
+{"key":"tmg8.runtime.detent.format","en":"%@ raw units / step","zh":"每步 %@ 原始单位"}
 {"key":"tmg8.layout.carouselNeedsTMG8","en":"The carousel needs glasses firmware TMG8. Nothing was sent.","zh":"轮播需要 TMG8 眼镜固件，未发送任何设置。"}
 {"key":"tmg8.layout.confirmedCarousel","en":"Confirmed by glasses: carousel, one item at a time%@","zh":"眼镜已确认：轮播 · 每次一项%@"}
 {"key":"tmg8.layout.header","en":"Layout","zh":"布局"}
