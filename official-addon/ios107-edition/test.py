@@ -73,6 +73,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg6-passing',[FW4/'tests/tmg6_passing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg8-caps',[FW8/'tests/tmg8_caps_test.c',FW8/'src/menu-grid-v2/menu_config.c',FW8/'src/diagnostics-v1/diagnostics.c'],FW8/'src')
+    run('tmg8-icons',['python3','-I',FW8/'tests/tmg8_icons_test.py'])
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
     ctest('tmg4-timer-wrap',[FW4/'tests/timer_wrap_test.c',FW4/'src/menu-grid-v2/tile_config.c',FW4/'src/menu-grid-v2/menu_config.c'],FW4/'src')

@@ -253,14 +253,14 @@
   ],
   "moduleBytes": 152000,
   "moduleVA": "0x1086fec0",
-  "moduleSHA256": "e1373e71bf6f70e4f782b9e41ae494b21e612e31084e533390a438b2ffacec00",
+  "moduleSHA256": "2d97ef5f9cbd13e93bce32d6f7ccc333990f4c3f95709fef25c96d84241704c5",
   "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
   "APBytes": 7360648,
   "archive": {
     "name": "StrixOS-1.0.5.5-TurboIO-TMG8-CANDIDATE-NOT-APPROVED.zip",
-    "bytes": 8814648,
-    "sha256": "fbb47331557daa7c0b86b06a6282ae17360f3652f7dd8c2bc6e5c5b3bcc6a8a5",
-    "md5": "84efd216e3d2b4d67ef7c8d1af3c293f"
+    "bytes": 8812113,
+    "sha256": "e7149b8e9fc5c28f907b96b10f5e8d2a05195916bbb4de9d68ccdf5ffaf07496",
+    "md5": "933e15ee6b0e4b177e46a018eb5a66b3"
   },
   "sources": [
     {
@@ -461,7 +461,7 @@
     }
   ],
   "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "f8910c07c167415fe6a3bdf0394653a78c0ff1829288b13e0e050bcbc7357f66",
+  "APSHA256": "f11c17c79b753c37f5b02e17d61d09b870ddc82c560b1d248ed1969dc84b071b",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.4",
     "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"

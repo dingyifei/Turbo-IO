@@ -17,6 +17,10 @@ The only wire change in TMG8 is one capability bit and one layout value that dep
 
 Host tests: `tests/tmg8_caps_test.c` (the `tmg8-caps` group in the phone `test.py`) covers the constants, the status codec, the command codec against a copy of the frozen TMG7 decoder, the storage state machine and reboot reload; the phone `MenuLayoutTests.m` and `tests/TDRuntimeTests.m` prove that the phone never encodes 1 for a TMG7 peer and report the caps accessor.
 
+## Menu icon art (Round 2)
+
+The 13 menu icons are the Round 2 set. Sources and masters live in `assets/menu-icons/` (`svg/NN-name.svg` is the source of truth; `png/NN-name.png` are 48x48 masters rasterised with `rsvg-convert -w 48 -h 48 -b black`, version recorded in `assets/menu-icons/README.md`). `tools/encode_icons.py` turns the masters into `src/focus-v1/focus_menu_icons.h` (4 bpp, even pixel high nibble, 24 B stride, nibble = level/17; 13 x 1152 B, `sizeof fm_icon4 == 14976` unchanged). `tests/tmg8_icons_test.py` (the `tmg8-icons` group in the phone `test.py`) proves the committed header is byte-identical to the regeneration from the masters. Gains are unchanged: unfocused 0x77, focused 0xFF. The art is the only change in this step; the carousel sizes (80 / 48 / 36 px) come with the carousel layout.
+
 # TMG7 candidate (design-system fork)
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
