@@ -2,7 +2,20 @@
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Wire protocol, capabilities, runtime build identity, patch sites (25) and the sole raw edit are unchanged, so it builds the same AP as TMG7 until the Round 2 commits land. The phone pins stay on TMG7 until the ZIP8 re-pin. The TMG7 sections below are historical until updated; the test files keep their tmg7 names until the test-retarget step.
+TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below. Before the Round 2 commits land it builds the same AP as TMG7. The phone pins stay on TMG7 until the ZIP8 re-pin. The TMG7 sections below are historical until updated; the test files keep their tmg7 names until the test-retarget step.
+
+## TMG8 caps bit and the carousel layout value
+
+The only wire change in TMG8 is one capability bit and one layout value that depends on it.
+
+- **Caps bit.** `TD_CAP_MENU_CAROUSEL` is bit 9 (`0x200`) of the status `caps` word (`diagnostics.h`). `TD_CAPS_TMG8 = TD_CAPS_TMG6 | TD_CAP_MENU_CAROUSEL`. TMG8 glasses report `TD_CAPS_TMG8` in every status sample; the build field stays `TD_BUILD_TMG6` ("TMG6"), so TMG7 and TMG8 are told apart by this bit (and by the build-identity sha256), not by a new build name. TMG6 and TMG7 glasses report `TD_CAPS_TMG6` and never set it. `td_encode`/`td_decode` accept `TD_CAPS_TMG6` and `TD_CAPS_TMG8` for the TMG6 build; any other bit is still rejected.
+- **Layout value.** The menu layout record (`TMC2`, `menu_config.c`) now accepts 1 (carousel) besides the grid row counts 2 and 3. A stored 1 draws as the 2-row grid (`tml_grid_rows`) until the carousel layout lands; 2 and 3 are unchanged, and the default stays 3.
+- **Negotiation.** Value 1 is honoured only from a peer that has seen the caps bit and says so: wire byte 7 of the `TML:` command (reserved and zero up to TMG7) is `TML_PEER_TMG8` (1) on a carousel SET and zero on every other command. `tml_decode` drops a SET of 1 with byte 7 zero, any grid SET or query with byte 7 set, and any other byte 7; `tml_accept` repeats the check and answers `TML_BLOCKED` without a write. So grid SETs and queries are byte-for-byte what TMG7 accepts, and a carousel SET is something TMG7 glasses decode-reject (they drop it with no reply and no write).
+- **Phone.** The phone (`MenuLayout.m`) encodes layout 1 in one place, and only when the last status sample of the current peer carries the caps bit (`TIOMenuLayoutLink.glassesReportTMG8Caps`, `TDGlassesReportTMG8Caps()`); a TMG7 or TMG6 peer is never sent it and the write is refused with a note. A reply that confirms 1 is accepted (only TMG8 glasses can send it).
+- **Compatibility.** C12 stays fully compatible with TMG7 and TMG6 glasses. An older phone (C11 and earlier) rejects a TMG8 status sample because of the new bit; C12 is the only phone paired with ZIP8. Rollback is C11 plus ZIP7: ZIP7 does not accept a stored 1 and falls back to the default 3 rows.
+- **Not drawn yet.** This step stores and negotiates the value only; the carousel layout itself is a later commit.
+
+Host tests: `tests/tmg8_caps_test.c` (the `tmg8-caps` group in the phone `test.py`) covers the constants, the status codec, the command codec against a copy of the frozen TMG7 decoder, the storage state machine and reboot reload; the phone `MenuLayoutTests.m` and `tests/TDRuntimeTests.m` prove that the phone never encodes 1 for a TMG7 peer and report the caps accessor.
 
 # TMG7 candidate (design-system fork)
 

@@ -7,6 +7,7 @@
 #import "command.h"
 #import "MusicBridge.h"
 #import "NativeNavigation.h"
+#import "MenuLayout.h"
 #import <objc/message.h>
 @interface TDDriver:NSObject
 @property(nonatomic,strong) TDPhoneStore *store;
@@ -80,6 +81,17 @@
 }
 @end
 static TDDriver *Driver;
+uint32_t TDGlassesCaps(void){return Driver&&[Driver.peer isEqual:TIOProtocolDevice()]?[Driver.runtime glassesCaps]:0;}
+BOOL TDGlassesReportTMG8Caps(void){return (TDGlassesCaps()&TD_CAP_MENU_CAROUSEL)!=0;}
+BOOL TDGlassesCapsRefresh(void){
+ if(!Driver.task&&(!Driver||![Driver.peer isEqual:TIOProtocolDevice()])){[Driver.run stop:@"peer_context_changed"];Driver=[TDDriver new];}
+ return [Driver.runtime query];
+}
+@interface TDDriver (TIOCaps) @end
+@implementation TDDriver (TIOCaps)
+/* The menu layout link reads the glasses' capability bits from the diagnostics status; it never asks for them itself. */
++ (void)load{TIOMenuLayoutSetCapsSource(^uint32_t{return TDGlassesCaps();});}
+@end
 UIViewController *TDDiagnosticsController(void){
  if(Driver.task)return TDPhoneController(Driver.run,Driver.runtime);
  if(!Driver||![Driver.peer isEqual:TIOProtocolDevice()]){[Driver.run stop:@"peer_context_changed"];Driver=[TDDriver new];}

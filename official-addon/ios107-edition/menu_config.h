@@ -4,7 +4,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 enum { TML_QUERY=0,TML_SET=1,TML_OK=0,TML_BLOCKED=1,TML_SESSION=2,TML_STORAGE=3,TML_UNAVAILABLE=4 };
-typedef struct {uint32_t request,token,generation,client;uint8_t op,rows;} TMLCommand;
+/* Layout record values: 1 is the TMG8 carousel, 2 and 3 are the grid row counts. Value 1 is written only by a peer
+ * that has seen the TMG8 caps bit (TD_CAP_MENU_CAROUSEL) and says so in the command's caps byte (wire byte 7). Byte 7 is
+ * TML_PEER_TMG8 on a carousel SET and zero on every other command, which is exactly what TMG7 and older glasses require. */
+enum { TML_CAROUSEL=1,TML_PEER_TMG8=1 };
+typedef struct {uint32_t request,token,generation,client;uint8_t op,rows,caps;} TMLCommand;
 typedef struct {uint32_t generation;unsigned rows,bank;bool readable;} TMLStored;
 typedef struct {uint32_t token,client,issued;TMLStored stored;} TMLState;
 typedef struct {void *ctx;int (*read)(void *,unsigned,uint8_t *,size_t);bool (*write)(void *,unsigned,const uint8_t *,size_t);} TMLIO;
@@ -13,6 +17,7 @@ bool tml_decode(const uint8_t *,size_t,TMLCommand *);
 void tml_encode(uint8_t *,const TMLCommand *);
 size_t tml_carrier(uint8_t *,const uint8_t *,bool);
 bool tml_uncarrier(const uint8_t *,size_t,uint8_t *,bool);
+unsigned tml_grid_rows(unsigned layout); /* Grid rows to draw for a stored layout value: the carousel falls back to 2 rows until it is drawn. */
 TMLStored tml_load(const TMLIO *);
 bool tml_store(const TMLIO *,TMLStored *,unsigned);
 unsigned tml_accept(TMLState *,const TMLCommand *,uint32_t,uint32_t,bool,const TMLIO *);

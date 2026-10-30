@@ -1,23 +1,30 @@
 #import "MenuLayout.h"
 #import "TIOLanguage.h"
 #include "menu_config.h"
+#include "diagnostics.h"
 static uint32_t U32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
 static NSData *Reply(NSDictionary *e){
  if(![e isKindOfClass:NSDictionary.class]||![e[@"eventType"]isEqual:@"messageReceived"])return nil;
  id m=e[@"message"];if(![m isKindOfClass:NSDictionary.class]||![m[@"businessId"]isEqual:@15]||![m[@"deviceId"]isKindOfClass:NSString.class]||![m[@"payload"]isKindOfClass:NSData.class])return nil;
  NSData *wire=m[@"payload"];uint8_t p[32];
- if(!tml_uncarrier(wire.bytes,wire.length,p,true)||memcmp(p,"TMA2",4)||p[4]!=1||p[5]>1||(p[6]!=2&&p[6]!=3)||p[7]>TML_UNAVAILABLE||!U32(p+8)||!U32(p+20)||p[24]!=28||p[25]!=2||p[26]!=220||p[27]||U32(p+28)!=tml_crc(p,28))return nil;
+ if(!tml_uncarrier(wire.bytes,wire.length,p,true)||memcmp(p,"TMA2",4)||p[4]!=1||p[5]>1||p[6]<TML_CAROUSEL||p[6]>3||p[7]>TML_UNAVAILABLE||!U32(p+8)||!U32(p+20)||p[24]!=28||p[25]!=2||p[26]!=220||p[27]||U32(p+28)!=tml_crc(p,28))return nil;
  return [NSData dataWithBytes:p length:32];
 }
 BOOL TIOMenuLayoutIsReply(NSDictionary *e){return Reply(e)!=nil||TIOTileLayoutIsReply(e);}
+static TIOGlassesCapsSource CapsSource;
+void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source copy];}
 @implementation TIOMenuLayoutLink {
- NSString *(^_peerNow)(void);BOOL(^_allowed)(void);double(^_clock)(void);BOOL(^_send)(NSData *);
+ NSString *(^_peerNow)(void);BOOL(^_allowed)(void);double(^_clock)(void);BOOL(^_send)(NSData *);TIOGlassesCapsSource _caps;
  NSString *_peer,*_note;uint32_t _token,_generation,_client,_request;NSUInteger _rows,_op,_target,_epoch;
  double _confirmedAt;void(^_done)(void);
 }
 - (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(double(^)(void))clock send:(BOOL(^)(NSData *))send{
- if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_send=[send copy];_note=TIOText(@"读取眼镜布局后可切换；需 TMG4 固件");}return self;
+ return [self initWithPeer:peer allowed:allowed clock:clock caps:^uint32_t{TIOGlassesCapsSource source=CapsSource;return source?source():0;} send:send];
 }
+- (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(double(^)(void))clock caps:(TIOGlassesCapsSource)caps send:(BOOL(^)(NSData *))send{
+ if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_caps=[caps copy];_send=[send copy];_note=TIOText(@"读取眼镜布局后可切换；需 TMG4 固件");}return self;
+}
+- (BOOL)glassesReportTMG8Caps{return _caps&&[_peerNow()length]&&(_caps()&TD_CAP_MENU_CAROUSEL)!=0;}
 - (BOOL)busy{return _done!=nil;}
 - (BOOL)ready{return _token&&[_peer isEqual:_peerNow()]&&_allowed()&&_clock()-_confirmedAt<110&&_clock()>=_confirmedAt;}
 - (NSUInteger)rows{return [_peer isEqual:_peerNow()]?_rows:0;}
@@ -28,6 +35,9 @@ BOOL TIOMenuLayoutIsReply(NSDictionary *e){return Reply(e)!=nil||TIOTileLayoutIs
  NSAssert(NSThread.isMainThread,@"main only");
  if(self.busy){if(done)done();return;}
  if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;_note=TIOText(@"请连接眼镜、保持 App 前台并结束升级保护");if(done)done();return;}
+ /* The one place a layout record is encoded: value 1 and its caps byte leave the phone only for a TMG8 peer. */
+ q.caps=0;
+ if(q.op==TML_SET&&q.rows==TML_CAROUSEL){if(!self.glassesReportTMG8Caps){_token=0;_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}q.caps=TML_PEER_TMG8;}
  uint8_t raw[32],wire[74];tml_encode(raw,&q);TMLCommand verify;
  if(!tml_decode(raw,32,&verify)){_note=TIOText(@"布局请求校验失败");if(done)done();return;}
  tml_carrier(wire,raw,false);_request=q.request;_op=q.op;_target=q.rows;_done=done?[done copy]:[^(void){} copy];NSUInteger epoch=++_epoch;
@@ -40,7 +50,8 @@ BOOL TIOMenuLayoutIsReply(NSDictionary *e){return Reply(e)!=nil||TIOTileLayoutIs
  TMLCommand q={.op=TML_QUERY,.request=arc4random_uniform(UINT32_MAX-1)+1,.client=_client};[self send:q done:done];
 }
 - (void)choose:(NSUInteger)rows done:(void(^)(void))done{
- if(rows!=2&&rows!=3){if(done)done();return;}
+ if(rows!=TML_CAROUSEL&&rows!=2&&rows!=3){if(done)done();return;}
+ if(rows==TML_CAROUSEL&&!self.glassesReportTMG8Caps){_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}
  if(self.busy){if(done)done();return;}
  if(!self.ready){__weak typeof(self) w=self;[self query:^{typeof(self) s=w;if(s.ready)[s choose:rows done:done];else if(done)done();}];return;}
  TMLCommand q={.op=TML_SET,.rows=(uint8_t)rows,.request=arc4random_uniform(UINT32_MAX-1)+1,.token=_token,.generation=_generation,.client=_client};
@@ -54,7 +65,8 @@ BOOL TIOMenuLayoutIsReply(NSDictionary *e){return Reply(e)!=nil||TIOTileLayoutIs
  if(p[7]!=TML_OK){[self finish:p[7]==TML_STORAGE?TIOText(@"眼镜保存/读取失败，未确认修改；请重新读取"):p[7]==TML_SESSION?TIOText(@"设置凭证已过期，请重新读取"):TIOText(@"眼镜当前不允许修改布局（升级、折叠或非支持页面）")];return YES;}
  if((_op==TML_QUERY&&!U32(p+12))||(_op==TML_SET&&(U32(p+12)||p[6]!=_target))){[self finish:TIOText(@"布局回执不一致，请重新读取")];return YES;}
  _rows=p[6];_generation=U32(p+16);_confirmedAt=_clock();if(_op==TML_QUERY)_token=U32(p+12);
- [self finish:[NSString stringWithFormat:TIOText(@"眼镜已确认：%@排 · 每页%@项%@"),@(_rows),@(_rows*3),_op==TML_SET?TIOText(@" · 已保存"):@""]];return YES;
+ NSString *saved=_op==TML_SET?TIOText(@" · 已保存"):@"",*carousel=TIOText(@"tmg8.layout.confirmedCarousel");
+ [self finish:_rows==TML_CAROUSEL?[NSString stringWithFormat:carousel,saved]:[NSString stringWithFormat:TIOText(@"眼镜已确认：%@排 · 每页%@项%@"),@(_rows),@(_rows*3),saved]];return YES;
 }
 @end
 

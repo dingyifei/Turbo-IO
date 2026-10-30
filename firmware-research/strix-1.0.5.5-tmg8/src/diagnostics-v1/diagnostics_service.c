@@ -46,7 +46,7 @@ TIOImageResult td_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
 }
 bool td_message_is_ours(const TIONativeMessage *m){return m&&m->id==TD_MESSAGE;}
 static void reply_query(void *app,Control *c,TDCommand q,bool gate){
- TDSample s;memset(&s,0,sizeof s);s.build=TD_BUILD_TMG6;s.session=q.session;s.sequence=q.sequence;s.tick_ms=stream_tick();s.kind=q.op==TDQ_STATUS?TD_STATUS:TD_CALIBRATION;s.caps=TD_CAPS_TMG6;s.detent=TK_DETENT_RAW;s.calibration_result=gate?TK_OK:TK_BLOCKED;
+ TDSample s;memset(&s,0,sizeof s);s.build=TD_BUILD_TMG6;s.session=q.session;s.sequence=q.sequence;s.tick_ms=stream_tick();s.kind=q.op==TDQ_STATUS?TD_STATUS:TD_CALIBRATION;s.caps=TD_CAPS_TMG8;s.detent=TK_DETENT_RAW;s.calibration_result=gate?TK_OK:TK_BLOCKED;
  if(gate&&q.op==TDQ_STATUS){
   if(c){c->nand_valid=false;c->nand_total=c->nand_available=0;}
   /* One-shot RAM scratch is fixed-size heap state, not a new timer/controller. */

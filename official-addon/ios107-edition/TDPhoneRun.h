@@ -38,6 +38,11 @@
 // Passive guard: never polls, cancels, or sends a queued command.
 - (BOOL)idleForOTA;
 - (BOOL)receive:(NSData *)packet device:(NSString *)device;
+/* Capability bits (diagnostics.h TD_CAP_*) from the last validated status sample of the current peer; 0 until one arrives
+ * and again as soon as the peer changes. A TMG7 or older peer never sets TD_CAP_MENU_CAROUSEL (the TMG8 bit). */
+- (uint32_t)glassesCaps;
+/* YES when the connected glasses report the TMG8 caps bit ("glasses report TMG8 caps"). */
+- (BOOL)glassesReportTMG8Caps;
 @property(nonatomic) BOOL fileBusy;
 @property(nonatomic,readonly) BOOL pending,holdsLease;
 @property(nonatomic,readonly) NSDictionary *status;

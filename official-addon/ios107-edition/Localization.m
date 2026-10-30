@@ -901,6 +901,8 @@ static const TIOStringRow Rows[]={
     {"tmg4.tiles.title","Tile order and visibility","入口顺序与显示"},
     {"tmg4.tiles.unavailable","Open the glasses launcher first, then read again. Requires TMG4.","请先打开眼镜主菜单再重新读取，需要 TMG4。"},
     {"tmg4.tiles.uncertain","No verified acknowledgment. Open the glasses menu and read again; no automatic retry.","未收到有效确认。请打开眼镜菜单并重新读取，不会自动重试。"},
+    {"tmg8.layout.carouselNeedsTMG8","The carousel needs glasses firmware TMG8. Nothing was sent.","轮播需要 TMG8 眼镜固件，未发送任何设置。"},
+    {"tmg8.layout.confirmedCarousel","Confirmed by glasses: carousel, one item at a time%@","眼镜已确认：轮播 · 每次一项%@"},
     {"一次导出 Markdown 与 JSON","Export Markdown and JSON together",NULL},
     {"三排 · 九宫格（默认）","Three rows · 3×3 grid (default)",NULL},
     {"上一张照片还在保存，请稍候。","The previous photo is still saving. Please wait.",NULL},

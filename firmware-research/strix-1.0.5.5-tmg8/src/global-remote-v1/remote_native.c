@@ -53,7 +53,7 @@ static Control *find(void){
 unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
 unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
  c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);if(tlg_state_load(&c->language,&tls_io))fm_language_changed();c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
- }return c?c->menu.stored.rows:3;}
+ }return c?tml_grid_rows(c->menu.stored.rows):3;} /* a stored carousel (1) draws as the 2-row grid until the carousel layout exists */
 void fm_tile_snapshot(TTVisible *out){Control *c=find();if(c){*out=c->active;return;}TTConfig defaults;tt_default(&defaults);(void)tt_compact(&defaults,out);}
 unsigned fm_tile_count(void){Control *c=find();return c?c->active.count:13;}
 unsigned fm_tile_id(unsigned rank){Control *c=find();if(c)return rank<c->active.count?c->active.ids[rank]:255;return rank<13?rank:255;}
@@ -84,7 +84,7 @@ unsigned tgr_knob_command(void *app,const TDCommand *q,uint32_t now){
 void tgr_knob_cancel(void *app,uint32_t now){Control *c=find();if(c&&app&&c->menu_app==app)tk_cancel(&c->knob,now);}
 void tgr_knob_observe(void *app,int32_t delta,uint32_t now){Control *c=find();if(!c||c->knob.state!=TK_ACTIVE)return;bool ok=c->menu_app==app&&allowed()&&fm_menu_plain(app);tk_observe(&c->knob,delta,now,ok,c->synthetic_depth!=0);}
 void tgr_runtime_snapshot(TDSample *s){
- if(!s)return;s->caps=TD_CAPS_TMG6;s->detent=TK_DETENT_RAW;s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;
+ if(!s)return;s->caps=TD_CAPS_TMG8;s->detent=TK_DETENT_RAW;s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;
  s->calibration_state=0;s->calibration_window=s->calibration_elapsed=s->calibration_samples=s->calibration_sequence=0;s->calibration_net=0;s->calibration_absolute=0;
  Control *c=find();if(!c)return;
  if(c->settings_loaded){s->extension_valid|=TD_EXT_TILES|TD_EXT_LANGUAGE;s->tile_generation=c->tiles.stored.generation;s->language=c->language.lang;s->language_source=c->language.source;s->settings_flags=(c->tiles.stored.readable?1u:0u)|(c->language.stored.readable?2u:0u)|(c->pending?4u:0u);}
@@ -128,7 +128,7 @@ void tgr_native_message(const TIONativeMessage *m){
   unsigned r=tml_accept(&c->menu,&layout,stream_tick(),layout.op==TML_QUERY?tap_random():0,allowed(),&tml_io);
   /* IO failure may have committed a valid inactive bank: reconcile actual state,
    * but never report success until flush/fsync/readback all passed. */
-  fm_relayout(c->menu.stored.rows);
+  fm_relayout(tml_grid_rows(c->menu.stored.rows));
   uint8_t out[74];tml_reply(raw,&c->menu,&layout,r);tml_carrier(out,raw,true);
   (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
  }

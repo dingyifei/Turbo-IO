@@ -24,6 +24,7 @@ for file,entry in manifest.items():
 
 ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
 FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg7'
+FW8=ROOT/'firmware-research/strix-1.0.5.5-tmg8'  # TMG8 tests that do not exist in FW7; the whole group moves to FW8 at the test-retarget step
 FW=FW4
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
@@ -71,6 +72,7 @@ if only is None or 'tmg4-host' in only:
     run('tmg7-host',['python3','-I',FW4/'tests/tmg7_host_test.py','--out',out/'tmg7-host'])
     ctest('tmg6-passing',[FW4/'tests/tmg6_passing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
     ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
+    ctest('tmg8-caps',[FW8/'tests/tmg8_caps_test.c',FW8/'src/menu-grid-v2/menu_config.c',FW8/'src/diagnostics-v1/diagnostics.c'],FW8/'src')
     ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
     ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
     ctest('tmg4-timer-wrap',[FW4/'tests/timer_wrap_test.c',FW4/'src/menu-grid-v2/tile_config.c',FW4/'src/menu-grid-v2/menu_config.c'],FW4/'src')
