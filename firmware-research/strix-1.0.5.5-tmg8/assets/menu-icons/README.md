@@ -38,5 +38,6 @@ PNGs and the regenerated header together.
 Header: `fm_icon4[13][1152]`, 14976 B (`_Static_assert(sizeof fm_icon4==14976)` in `focus_menu.c`).
 Per icon: 48 rows of 24 B. Pixel `pos = row*48 + col`; an even pixel is the high nibble, an odd pixel the low nibble.
 Nibble = green level / 17 (integer division); the lens is green-only. Device gains are unchanged and applied by
-`icon()`: unfocused 0x77, focused 0xFF. The icon is drawn at any size by the existing nearest-neighbour scaler;
+`icon()`: unfocused 0x77, focused 0xFF. The grid draws the icon at 48 px with the existing nearest-neighbour `icon()` scaler; the carousel
+draws it at any size from 32 to 80 px with its own bilinear scaler (`car_icon` in `focus_menu.c`).
 80 px is the measured maximum that stays under the `lens-peak-max` 0.45.
