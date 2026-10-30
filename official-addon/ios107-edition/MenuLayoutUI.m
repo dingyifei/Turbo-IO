@@ -84,6 +84,7 @@ static void LensText(NSString *text,UIFont *font,UIColor *color,CGFloat x,CGFloa
 @property(nonatomic,strong) UILabel *caption;
 @property(nonatomic,strong) NSTimer *poll;
 @property(nonatomic) NSUInteger pick,known; /* the layout shown and chosen, and the last one the glasses confirmed */
+@property(nonatomic) BOOL syncedCaps; /* the caps bit the last sync read: a stored carousel is drawn differently with and without it */
 @end
 enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,SectionCount};
 @implementation TIOMenuLayoutUI
@@ -111,7 +112,7 @@ enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,Sect
 }
 /* The layout the glasses confirmed, as it is drawn: a stored carousel on a peer without the TMG8 bit draws as the 2-row grid. */
 - (NSUInteger)confirmed{NSUInteger rows=self.link.rows;if(rows==TML_CAROUSEL&&!self.link.glassesReportTMG8Caps)rows=2;return rows>=1&&rows<=3?rows:0;}
-- (void)sync{NSUInteger rows=[self confirmed];if(rows)self.known=rows;self.pick=rows?:(self.known?:3);}
+- (void)sync{self.syncedCaps=self.link.glassesReportTMG8Caps;NSUInteger rows=[self confirmed];if(rows)self.known=rows;self.pick=rows?:(self.known?:3);}
 - (NSString *)firmwareName{
  NSString *name=self.firmware?self.firmware():nil;if(!name.length)return nil;
  return [name isEqual:@"TMG6"]?TIOText(@"tmg8.layout.version.tmg6"):name; /* TMG6 and TMG7 share the build field */
@@ -124,7 +125,10 @@ enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,Sect
 - (NSString *)layoutName:(NSUInteger)rows{return TIOText(rows==TIOMenuLensCarousel?@"tmg8.layout.seg.carousel":rows==TIOMenuLensRows2?@"tmg8.layout.seg.rows2":@"tmg8.layout.seg.rows3");}
 /* Everything that follows the link, the caps bit or the selection; cheap and idempotent, so the poll may call it. */
 - (void)render{
- BOOL tmg8=self.link.glassesReportTMG8Caps;if(!tmg8&&self.pick==TIOMenuLensCarousel)self.pick=self.known&&self.known!=TIOMenuLensCarousel?self.known:2;
+ BOOL tmg8=self.link.glassesReportTMG8Caps;
+ /* The caps bit arrives with the status sample, usually after the layout reply: a stored carousel was read as the 2-row grid without it, so read it again once the bit changes. */
+ if(tmg8!=self.syncedCaps&&!self.link.busy)[self sync];
+ if(!tmg8&&self.pick==TIOMenuLensCarousel)self.pick=self.known&&self.known!=TIOMenuLensCarousel?self.known:2;
  [self.segments setEnabled:tmg8 forSegmentAtIndex:0];[self.segments setEnabled:YES forSegmentAtIndex:1];[self.segments setEnabled:YES forSegmentAtIndex:2];
  self.segments.enabled=!self.link.busy;
  if(self.segments.selectedSegmentIndex!=(NSInteger)self.pick-1)self.segments.selectedSegmentIndex=(NSInteger)self.pick-1;
@@ -260,15 +264,15 @@ UIViewController *TIOTileEditorPreviewController(void){
 #if TIO_UI_PREVIEW
 #include "diagnostics.h"
 /* Canned glasses for the preview gate: fixture "tmg8" reports the TMG8 caps bit and stores the carousel, any other fixture is
- * TMG7 glasses with three rows. The link, the writer guard and the codec are the real ones; only the glasses are simulated. */
+ * TMG7 glasses with three rows. As on a cold app run, the tmg8 caps bit arrives only after the layout reply (when the screen asks for the status sample). The link, the writer guard and the codec are the real ones; only the glasses are simulated. */
 UIViewController *TIOMenuLayoutPreviewController(NSString *fixture){
- BOOL tmg8=[fixture isEqual:@"tmg8"];__block unsigned rows=tmg8?TML_CAROUSEL:3,generation=7;__block __weak TIOMenuLayoutLink *weak=nil;
- TIOMenuLayoutLink *link=[[TIOMenuLayoutLink alloc]initWithPeer:^{return @"preview-layout";} allowed:^BOOL{return YES;} clock:^{return NSProcessInfo.processInfo.systemUptime;} caps:^uint32_t{return tmg8?TD_CAPS_TMG8:TD_CAPS_TMG6;} send:^BOOL(NSData *data){
+ BOOL tmg8=[fixture isEqual:@"tmg8"];__block BOOL capsKnown=NO;__block unsigned rows=tmg8?TML_CAROUSEL:3,generation=7;__block __weak TIOMenuLayoutLink *weak=nil;
+ TIOMenuLayoutLink *link=[[TIOMenuLayoutLink alloc]initWithPeer:^{return @"preview-layout";} allowed:^BOOL{return YES;} clock:^{return NSProcessInfo.processInfo.systemUptime;} caps:^uint32_t{return tmg8?(capsKnown?TD_CAPS_TMG8:0):TD_CAPS_TMG6;} send:^BOOL(NSData *data){
   TMLCommand q;uint8_t raw[32];if(!tml_uncarrier(data.bytes,data.length,raw,false)||!tml_decode(raw,32,&q))return NO;
   if(q.op==TML_SET&&q.rows!=rows){rows=q.rows;generation++;}
   TMLState state={.token=q.op==TML_QUERY?99:0,.stored={.rows=rows,.generation=generation}};uint8_t reply[32],wire[74];tml_reply(reply,&state,&q,TML_OK);tml_carrier(wire,reply,true);
   [weak consume:@{@"eventType":@"messageReceived",@"message":@{@"deviceId":@"preview-layout",@"businessId":@15,@"payload":[NSData dataWithBytes:wire length:74]}}];return YES;
  }];weak=link;
- TIOMenuLayoutUI *c=[[TIOMenuLayoutUI alloc]initWithStyle:UITableViewStyleInsetGrouped];c.link=link;c.firmware=^NSString *{return @"TMG6";};c.refreshCaps=^{};return c;
+ TIOMenuLayoutUI *c=[[TIOMenuLayoutUI alloc]initWithStyle:UITableViewStyleInsetGrouped];c.link=link;c.firmware=^NSString *{return @"TMG6";};c.refreshCaps=^{capsKnown=YES;};return c;
 }
 #endif
