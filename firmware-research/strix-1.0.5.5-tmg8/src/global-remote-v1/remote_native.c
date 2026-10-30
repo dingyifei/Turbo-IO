@@ -93,6 +93,10 @@ void tgr_runtime_snapshot(TDSample *s){
 }
 static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();tk_poll(&c->knob,stream_tick(),ok&&c->menu_app&&fm_menu_plain(c->menu_app));if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
 static void *device(unsigned type){void *p=NULL;for(unsigned j=0;j<16;j++){p=tgr_indev_next(p);if(!p)return NULL;if(tgr_indev_type(p)==type)return p;}return NULL;}
+/* Raw counts for one remote step. The launcher's menu hook (m8_hook_wheel) doubles a raw delta for the stock carousel and the TIO pages count in
+ * TK_DETENT_RAW (300) themselves, so the launcher gets 300. Every other allowed app is stock and reads the raw listener at the stock rate of 600 counts
+ * per item (TK_DETENT_LEGACY, what TMG7 injected), so a remote step still moves it one item. */
+static unsigned inject_counts(void){const char *top=nav_top_app();return top&&!strcmp(top,"com.rayneo.liteos.launcher")?TK_DETENT_RAW:TK_DETENT_LEGACY;}
 static unsigned inject(unsigned op){
  if(!allowed())return TGR_BLOCKED;
  Control *c=find();if(c)tk_cancel(&c->knob,stream_tick());
@@ -103,7 +107,8 @@ static unsigned inject(unsigned op){
   int step=op==TGR_NEXT?1:-1;
   /* Mirror hardware: raw listener first, then LVGL detent. Native raw input
    * struct is {int32 x,y; uint64 time_us}, seen in rayneo_wheel_read. */
-  struct {int32_t x,y;uint64_t time;} raw={driver[9]?step*(int)TK_DETENT_RAW:-step*(int)TK_DETENT_RAW,0,(uint64_t)stream_tick()*1000};
+  const int counts=(int)inject_counts();
+  struct {int32_t x,y;uint64_t time;} raw={driver[9]?step*counts:-step*counts,0,(uint64_t)stream_tick()*1000};
   native_report_activity();if(c)c->synthetic_depth++;tgr_raw_wheel(&raw);tgr_sim_wheel(step);if(c)c->synthetic_depth--;return TGR_OK;
  }
  void *d=device(2),*group=d?tgr_indev_group(d):NULL;if(!group)return TGR_UNAVAILABLE;

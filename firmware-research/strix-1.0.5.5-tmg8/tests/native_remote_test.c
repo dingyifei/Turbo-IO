@@ -39,7 +39,8 @@ bool nav_folded(void *p){(void)p;return false;}
 bool focus_screen_on(void){return awake;}
 bool fm_menu_plain(void *p){return p==app&&awake&&!detail_open;}
 int nav_connection(unsigned n){assert(n==0x80);return 1;}
-const char *nav_top_app(void){return "com.rayneo.liteos.launcher";}
+static const char *top_app="com.rayneo.liteos.launcher";
+const char *nav_top_app(void){return top_app;}
 void nav_screen_on(bool b){(void)b;}
 void native_report_activity(void){}
 void *tgr_indev_next(void *p){return p?NULL:encoder;}
@@ -48,7 +49,8 @@ void *tgr_indev_driver(void *p){return p;}
 unsigned tgr_indev_type(void *p){assert(p==encoder);return 4;}
 bool tgr_intercept(void *p){(void)p;return true;}
 unsigned tgr_group_send(void *p,uint32_t key){(void)p;(void)key;return 0;}
-void tgr_raw_wheel(const void *p){int32_t delta;memcpy(&delta,p,sizeof delta);raw_callbacks++;assert(find()->knob.state==TK_CANCELED&&find()->synthetic_depth);tgr_knob_observe(app,delta,now_ms);}
+static int32_t last_raw;
+void tgr_raw_wheel(const void *p){int32_t delta;memcpy(&delta,p,sizeof delta);last_raw=delta;raw_callbacks++;assert(find()->knob.state==TK_CANCELED&&find()->synthetic_depth);tgr_knob_observe(app,delta,now_ms);}
 void tgr_sim_wheel(int delta){assert(delta==1||delta==-1);simulated_steps++;}
 void fm_language_changed(void){}
 void fm_relayout(unsigned rows){assert(rows>=1&&rows<=3);}
@@ -87,6 +89,12 @@ int main(void){
  tgr_knob_observe(app,600,now_ms);assert(find()->knob.net==600);
  TDCommand kq={TDQ_KNOB_START,101,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,1200,now_ms);assert(find()->knob.net==1200&&find()->knob.samples==1);
  assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==1&&simulated_steps==1&&find()->knob.state==TK_CANCELED&&find()->knob.net==1200&&find()->synthetic_depth==0);
+ /* One remote step is 300 counts in the launcher (its hook doubles it for the stock carousel) and the stock 600 in every other allowed app, either direction. */
+ {const char *const apps[]={"com.rayneo.liteos.launcher","com.rayneo.liteos.recorder","com.rayneo.liteos.prompter","com.rayneo.liteos.aiSubtitle","com.rayneo.liteos.conversationAssist","com.rayneo.liteos.assistant","com.rayneo.liteos.todo","com.rayneo.liteos.notification"};
+  for(unsigned a=0;a<sizeof apps/sizeof *apps;a++){top_app=apps[a];const int want=a==0?300:600;
+   unsigned seen=raw_callbacks;assert(inject(TGR_PREVIOUS)==TGR_OK&&raw_callbacks==seen+1);const int32_t back=last_raw;
+   assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+2&&last_raw==-back&&(last_raw==want||last_raw==-want));}   /* equal magnitude, opposite direction */
+  top_app="com.rayneo.liteos.launcher";}
  kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
  TDSample snapshot={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);assert(snapshot.caps==TD_CAPS_TMG8);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
  kq=(TDCommand){TDQ_KNOB_START,103,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);blocked=true;timer.callback(&timer);assert(find()->knob.state==TK_CANCELED&&reads==before);blocked=false;kq.session=104;assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);detail_open=true;tgr_knob_observe(app,600,now_ms);assert(find()->knob.state==TK_CANCELED&&find()->knob.samples==0);detail_open=false;
