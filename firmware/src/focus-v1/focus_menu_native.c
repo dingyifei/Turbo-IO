@@ -31,6 +31,7 @@ extern int fm_battery_level(void *);
 typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;TIOMenuWrap wrap;} FMControl;
 _Static_assert(TS_LINE_MAX==FM_LINE_MAX,"the tile status line fits the view line buffer");
 _Static_assert(sizeof(FMControl)<=40960,"menu retained storage (nine grid cells or six carousel slots, two banks) capped at 40 KiB");
+_Static_assert(offsetof(FMControl,view)==0,"the 64 byte aligned canvas banks start at the stream_memalign(64) block");   /* TMG9: bank padding (tio_bank.h) grew FMView by 192 B, still under the cap */
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}

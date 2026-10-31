@@ -35,7 +35,10 @@ static bool idle(void *p){return !((Host *)p)->busy;}
 static void *create(void *p,void *parent){assert(parent);Host *h=p;assert(h->count<48);Widget *w=&h->w[h->count++];w->shown=true;w->band=-1;return w;}
 static void *label(void *p,void *parent,unsigned font){Widget *w=create(p,parent);w->font=font;return w;}
 static void place(void *p,void *o,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);Widget *v=o;v->x=x;v->y=y;v->w=w;v->h=h;}
-static void buffer(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
+/* Heap views are stream_memalign(64) on the glasses (their canvas banks are _Alignas(64)); the host allocates the same way so the buffer() check sees the real alignment. */
+static void *calloc64(size_t n){void *p=NULL;if(posix_memalign(&p,64,(n+63)&~(size_t)63))return NULL;memset(p,0,n);return p;}
+/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x10427cd1), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
+static void buffer(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;if(((uintptr_t)pixels&63)!=0){fprintf(stderr,"UNALIGNED canvas buffer w=%u h=%u mod64=%u\n",w,h,(unsigned)((uintptr_t)pixels&63));abort();}assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
 static void text(void *p,void *o,const char *s){(void)p;((Widget *)o)->text=s;}
 static void visible(void *p,void *o,bool show){(void)p;((Widget *)o)->shown=show;}
 static void destroy(void *p,void *o){(void)p;((Widget *)o)->shown=false;}
@@ -322,7 +325,7 @@ static void RunWire(NSString *dir,const char *tag,const uint8_t *wire,size_t n,b
  for(unsigned page=0;page<d->pages;page++){
   unsigned buttons=0;for(unsigned i=d->first[page];i<d->first[page]+d->size[page];i++)buttons+=d->items[i].kind==2;
   for(unsigned focus=0;focus<(buttons?buttons:1);focus++){
-   Host *host=calloc(1,sizeof *host);TAPView *v=calloc(1,sizeof *v);create(host,host);
+   Host *host=calloc(1,sizeof *host);TAPView *v=calloc64(sizeof *v);create(host,host);
    TAPWidgets api={host,idle,rtRoot,rtText,rtRect,rtImage,rtPlace,visible,destroy,rtTint};
    assert(tap_view_open(v,&api,host,d,page));if(AfterOpen)assert(AfterOpen(v));assert(!buttons||tap_view_focus(v,focus));
    char name[96];snprintf(name,sizeof name,"%s-p%u%s%u",tag,page,buttons>1?"-f":"",focus);if(buttons<=1)snprintf(name,sizeof name,"%s-p%u",tag,page);
@@ -358,7 +361,7 @@ static void Shelf(NSString *dir){
    AfterOpen=tap_shelf_style;RunWire(dir,tag,wire,n,true,true);AfterOpen=NULL;
    // Intensity and columns: the title and the empty slots are lens-mid (never above an unfocused app), the focused app is lens-full,
    // and the two columns are separated by a gutter of at least 16 px inside the core.
-   TAPDocument *d=calloc(1,sizeof *d);assert(tap_parse(wire,n,d));Host *host=calloc(1,sizeof *host);TAPView *v=calloc(1,sizeof *v);create(host,host);
+   TAPDocument *d=calloc(1,sizeof *d);assert(tap_parse(wire,n,d));Host *host=calloc(1,sizeof *host);TAPView *v=calloc64(sizeof *v);create(host,host);
    TAPWidgets api={host,idle,rtRoot,rtText,rtRect,rtImage,rtPlace,visible,destroy,rtTint};
    assert(tap_view_open(v,&api,host,d,0));assert(tap_shelf_style(v));if(installed)assert(tap_view_focus(v,0));
    unsigned item=0,app=0,gaps=0;for(unsigned k=1;k<host->count;k++){Widget *w=&host->w[k];if(w->kind!=KText||!w->text)continue;   // not the root or the caret
@@ -410,7 +413,7 @@ static void CompareNavBoard(NSString *html,Host *host,TNView *v){
  printf("PASS board LensNav (proposed, halved): %u text items match; band, size, intensity, x and y within tolerance, map column anchored to band B\n",matched);
 }
 static void Nav(NSString *dir,NSString *board,bool zh,bool longer){
- language=zh;Host host={0};TNWidgets api={&host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TNView *v=calloc(1,sizeof *v);assert(v);TNScene semantic={.icon=TN_RIGHT,.distance_m=100,.remaining_m=1200,.remaining_s=600};
+ language=zh;Host host={0};TNWidgets api={&host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TNView *v=calloc64(sizeof *v);assert(v);TNScene semantic={.icon=TN_RIGHT,.distance_m=100,.remaining_m=1200,.remaining_s=600};
  strcpy(semantic.turn,zh?"前方右转":"Turn right");strcpy(semantic.road,zh?"进入 市场街":"onto Market St");assert(tn_view_open(v,&api,&host,&semantic));
  uint8_t scene[104]={1,0,0,0};Put16(scene+4,320);scene[6]=4;scene[8]=11;unsigned counts[]={2,2,2,5},styles[]={0,1,4,6};for(unsigned i=0;i<4;i++){scene[16+8*i]=counts[i];scene[18+8*i]=styles[i];}
  int16_t pts[]={-600,240,600,240,300,-160,300,600,-300,200,300,600,0,0,0,160,160,160,160,320,320,320};for(unsigned i=0;i<22;i++)Put16(scene+48+i*2,pts[i]);scene[92]=1;
@@ -565,7 +568,7 @@ static void Focus(NSString *dir,NSString *board,bool zh){
   {"-compact",9000,TF_RUNNING,0,1,1122,1500,true,false},{"-paused",4000,TF_PAUSED,0,1,600,1500,false,false},{"-break",4000,TF_RUNNING,2,4,250,900,false,false},
   {"-done",4000,TF_DONE,0,4,0,1500,false,false},{"-ready",4000,TF_IDLE,0,0,1500,1500,false,false},{"-long",4000,TF_RUNNING,0,3,7200,7200,false,false}};
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){typeof(shots[0]) *sh=&shots[i];Host *host=calloc(1,sizeof *host);assert(host);create(host,host);
-  TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TFView *v=calloc(1,sizeof *v);assert(v);assert(tf_view_open(v,&api,host,host));tf_view_enter(v,1000);
+  TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};TFView *v=calloc64(sizeof *v);assert(v);assert(tf_view_open(v,&api,host,host));tf_view_enter(v,1000);
   if(i==0){   // the hint lifetime the service ticks on: entry, then every wheel step or press (also while the timer runs), gone at 3000 ms
    assert(tf_view_hint(v,1000)&&tf_view_hint(v,3999)&&!tf_view_hint(v,4000)&&!tf_view_hint(v,9000));
    tf_view_input(v,9000);assert(tf_view_hint(v,9000)&&tf_view_hint(v,11999)&&!tf_view_hint(v,12000));}
@@ -715,7 +718,7 @@ static void Menu(NSString *dir,NSString *board,bool zh){
   {"-route-nameless",2,0,10,&kRouteRound},   // no road name: the distance alone
   {"-route-rows3",3,0,8,&kRoute}};
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
-  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
+  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc64(sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
   BuildMenu(host,v,sh->rows,sh->hide,sh->selected,sh->live);char name[48];snprintf(name,sizeof name,"menu%s-%s",sh->tag,zh?"zh":"en");Gate(host,name,true);
   CheckTitle(host,v,sh->live?sh->live:&kIdle);if(!zh&&!strcmp(sh->tag,"-route"))CheckTitleBoard([[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"OptionANavTitle.dc.html"],v);
   const unsigned cells=sh->rows*3,cell=sh->selected%cells;TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
@@ -753,7 +756,7 @@ static void Menu(NSString *dir,NSString *board,bool zh){
    if(!zh){NSDictionary *a=@{NSFontAttributeName:[NSFont systemFontOfSize:16]};assert([[NSString stringWithUTF8String:l->text] sizeWithAttributes:a].width<=l->w);}}
   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);assert(fm_view_close(v));free(v);free(host);}
  // Wheel step: the caret slides in lens-move-ms (cubic ease-out) and a newer target replaces it; the name changes at once.
- {Host *host=calloc(1,sizeof *host);FMView *v=calloc(1,sizeof *v);BuildMenu(host,v,2,0,1,NULL);
+ {Host *host=calloc(1,sizeof *host);FMView *v=calloc64(sizeof *v);BuildMenu(host,v,2,0,1,NULL);
   Widget *caret=W(v->caret);int x1=caret->x,y1=caret->y;assert(fm_view_update(v,2,946684800+10*3600,82,2000));assert(!strcmp(W(v->name)->text,tio_text(TT_GRID_2,zh)));
   assert(fm_view_step(v,2080));int mid=caret->x;assert(mid>x1&&mid<x1+178&&caret->y==y1);
   assert(fm_view_update(v,0,946684800+10*3600,82,2090));assert(fm_view_step(v,2110)&&caret->x<x1+178);   // retargeted from where it is, never queued
@@ -819,7 +822,7 @@ static void Carousel(NSString *dir,NSString *board,bool zh){
   {"-carousel-last",0,12,false,NULL},
   {"-carousel-8",31,4,false,NULL}};                              // eight tiles: the neighbours at +-3 are distinct from +-2
  for(unsigned i=0;i<sizeof shots/sizeof *shots;i++){
-  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
+  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc64(sizeof *v);assert(v);const typeof(shots[0]) *sh=&shots[i];
   TTConfig config;TTVisible tiles;assert(tt_unrank(0,sh->hide<<7,&config)&&tt_compact(&config,&tiles));
   TSState state;memset(&state,0,sizeof state);if(sh->live)ts_state(tiles.ids[sh->selected],sh->live,language,&state);
   const char *lineText=state.line[0]?state.line:NULL;                                                                       // what the glasses would write for the focused tile
@@ -856,7 +859,7 @@ static void MenuMatrix(NSString *dir,bool zh){
  static const struct {const char *tag;unsigned rows;} layouts[]={{"carousel",FM_CAROUSEL},{"rows2",2},{"rows3",3}};
  for(unsigned l=0;l<3;l++)for(unsigned r=0;r<2;r++)for(unsigned k=0;k<2;k++){
   const bool route=r==0,linked=k==0;const TSLive *live=route?(linked?&kRoute:&kRouteUnlinked):(linked?&kLive:&kOffline);
-  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc(1,sizeof *v);assert(v);
+  Host *host=calloc(1,sizeof *host);assert(host);FMView *v=calloc64(sizeof *v);assert(v);
   TTConfig config;TTVisible tiles;assert(tt_unrank(0,0,&config)&&tt_compact(&config,&tiles));const unsigned sel=8;assert(tiles.count>sel);
   if(layouts[l].rows==FM_CAROUSEL){TSState st;memset(&st,0,sizeof st);ts_state(tiles.ids[sel],live,language,&st);BuildCarousel(host,v,0,sel,route&&linked,live,st.line[0]?st.line:NULL);}
   else BuildMenu(host,v,layouts[l].rows,0,sel,live);

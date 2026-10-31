@@ -4,6 +4,8 @@
 #include "../music-runtime-v1/menu_tiles.h"
 #include "../menu-grid-v2/tile_config.h"
 #include "nav_title.h"
+#include <stddef.h>
+#include "../common-v1/tio_bank.h"
 /* TMG7 LensMenu (docs/design-system/screens/LensMenu.dc.html, halved): status in band T, the icon grid in band M,
  * the focused name once in band B. A 24x3 caret under the focused icon replaces the 52 px ring.
  * TMG8 adds the live tile state: a 5 px lens-mid dot at the upper right of every grid icon whose tile has live state, and the focused tile's status line in the carousel.
@@ -23,7 +25,7 @@ typedef struct {
  union {_Alignas(64) uint8_t pixels[2][FM_CELLS][FM_ICON*FM_ICON];_Alignas(64) uint8_t cpixels[2][FM_CAR_BANK];};
  _Alignas(64) uint8_t caret_px[FM_CARET_W*FM_CARET_H];
  _Alignas(64) uint8_t state_px[FM_STATE_W*FM_STATE_H];   /* the one state dot, shared by the nine dot canvases */
- _Alignas(64) uint8_t pager[2][36*4];
+ _Alignas(64) uint8_t pager[2][FM_BANK64(36*4)];   /* bank 1 starts on a 64 byte boundary (tio_bank.h) */
  char header[2][48];unsigned bank,header_bank,rows,live_mask;   /* live_mask: bit per tile id that has live state */
  int selected,caret_x,caret_y,from_x,from_y,page_offset;
  unsigned weights[FM_CELLS],from_weights[FM_CELLS];
@@ -32,9 +34,14 @@ typedef struct {
  int car_p,car_from_p,car_to_p;unsigned car_w,car_from_w,car_to_w;bool route,reduce_motion,dirty;
  char line_text[2][FM_LINE_MAX];unsigned line_bank;
  /* Navigation title (band T, both layouts): the arrow canvas and the text label, banked so a rewrite never touches what is shown. */
- _Alignas(64) uint8_t title_px[2][NT_ARROW*NT_ARROW];char title_line[2][NT_TEXT_MAX];
+ _Alignas(64) uint8_t title_px[2][FM_BANK64(NT_ARROW*NT_ARROW)];char title_line[2][NT_TEXT_MAX];
  unsigned title_bank,title_w;uint8_t title_icon;bool title_on;uint32_t title_at;
 } FMView;
+/* Every bank of every canvas buffer starts on a 64 byte boundary (the stock draw buffer rounds the pointer up to 64, see tio_bank.h). */
+#define FM_ON64(member) (offsetof(FMView,member)%64==0&&sizeof(((FMView *)0)->member[0])%64==0)
+_Static_assert(FM_ON64(pixels)&&sizeof(((FMView *)0)->pixels[0][0])%64==0&&FM_ON64(cpixels)&&FM_ON64(pager)&&FM_ON64(title_px),"FMView canvas banks must be 64 byte aligned");
+_Static_assert(offsetof(FMView,caret_px)%64==0&&offsetof(FMView,state_px)%64==0,"FMView canvas buffers must be 64 byte aligned");
+_Static_assert(FM_CAR_BANK%64==0&&FM_BANK64(36*4)==192&&FM_BANK64(NT_ARROW*NT_ARROW)==384,"menu bank sizes");
 bool fm_view_open(FMView *,const TNWidgets *,void *,bool (*)(void *,void *),void *);
 bool fm_view_update(FMView *,int,int64_t,int,uint32_t);
 bool fm_view_step(FMView *,uint32_t);
