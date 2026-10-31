@@ -6,6 +6,16 @@
 #import "MenuLayout.h"
 #import "MenuLayoutUI.h"
 #include "knob_calibration.h"
+/* The stock UIStepper is 94 x 32 pt; its touch area is grown to the 44 pt minimum target (TIOHitMin) without changing how it looks. */
+@interface TDHitStepper:UIStepper
+@end
+@implementation TDHitStepper
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event{
+ (void)event;CGFloat grow=MAX(0,(TIOHitMin-CGRectGetHeight(self.bounds))/2);
+ return CGRectContainsPoint(CGRectInset(self.bounds,0,-grow),point);
+}
+@end
+
 @interface TDPanel:UITableViewController
 @property(nonatomic,strong) TDPhoneRun *run;
 @property(nonatomic,strong) TDRuntimeSession *runtime;
@@ -18,6 +28,7 @@
 @property(nonatomic) NSUInteger draft; /* the D chosen with the stepper; 0 = follow what the glasses report */
 @property(nonatomic) TIOKnobStepState announced;
 @property(nonatomic,weak) UIStepper *stepper;
+@property(nonatomic,copy) NSString *stepSignature; /* what the knob step section last drew, so a refresh that changes nothing there leaves the stepper alone (VoiceOver focus) */
 @property(nonatomic) BOOL previewScrollToStep; /* preview only: the knob step fixtures open on the step section, which sits below the first screen */
 @end
 enum {TDSectionStatus,TDSectionCalibration,TDSectionStep,TDSectionCapture,TDSectionResources,TDSectionIntegrity,TDSectionCount};
@@ -53,7 +64,20 @@ static NSUInteger ValidDetent(id value){NSUInteger d=[value isKindOfClass:NSNumb
 - (void)refresh{
  [self.run poll];[self.runtime poll];[self.step poll];
  [self announceStep];
- if(!self.stepper.tracking)[self.tableView reloadData]; /* a reload mid-drag would drop the stepper the finger is on */
+ if(self.stepper.tracking)return; /* a reload mid-drag would drop the stepper the finger is on */
+ /* VoiceOver adjusts the stepper without touch tracking, and a rebuilt stepper cell resets its focus: while VoiceOver runs, the step section is rebuilt
+  * only when something it shows changed. */
+ NSString *signature=[self stepDrawn];
+ if(UIAccessibilityIsVoiceOverRunning()&&[signature isEqual:self.stepSignature]){
+  NSMutableIndexSet *others=[NSMutableIndexSet indexSetWithIndexesInRange:NSMakeRange(0,TDSectionCount)];[others removeIndex:TDSectionStep];
+  [self.tableView reloadSections:others withRowAnimation:UITableViewRowAnimationNone];
+ }else [self.tableView reloadData];
+ self.stepSignature=signature;
+}
+/* Everything the knob step section draws, as one string. */
+- (NSString *)stepDrawn{
+ NSDictionary *sample=self.runtime.status[@"sample"];
+ return [NSString stringWithFormat:@"%d|%ld|%lu|%lu|%@|%@",self.step.enabled,(long)self.step.state,(unsigned long)[self effectiveDraft],(unsigned long)ValidDetent(sample[@"detent"]),[self stepResult],[self stepFooter]];
 }
 /* VoiceOver hears the end of an attempt: the result row changes, but nothing moves focus to it. */
 - (void)announceStep{
@@ -114,7 +138,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  if(row==TDStepCurrent){c.textLabel.text=TIOText(@"tmg9.knob.current");c.detailTextLabel.text=reported?StepText(reported):TIOText(@"未测");c.accessibilityIdentifier=@"knob-step-current";}
  else if(row==TDStepChoose){
   c.textLabel.text=TIOText(@"tmg9.knob.choose");c.detailTextLabel.text=StepText(draft);c.accessibilityIdentifier=@"knob-step-choose";
-  UIStepper *stepper=[UIStepper new];stepper.minimumValue=TK_DETENT_MIN;stepper.maximumValue=TK_DETENT_MAX;stepper.stepValue=TK_DETENT_STEP;stepper.value=draft;stepper.wraps=NO;stepper.enabled=enabled&&!pending;
+  UIStepper *stepper=[TDHitStepper new];stepper.minimumValue=TK_DETENT_MIN;stepper.maximumValue=TK_DETENT_MAX;stepper.stepValue=TK_DETENT_STEP;stepper.value=draft;stepper.wraps=NO;stepper.enabled=enabled&&!pending;
   stepper.accessibilityIdentifier=@"knob-step-stepper";stepper.accessibilityLabel=TIOText(@"tmg9.knob.choose");stepper.accessibilityValue=StepText(draft);stepper.accessibilityHint=TIOText(@"tmg9.knob.chooseHint");
   [stepper addTarget:self action:@selector(stepperChanged:) forControlEvents:UIControlEventValueChanged];c.accessoryView=stepper;self.stepper=stepper;
   c.isAccessibilityElement=NO;c.accessibilityElements=@[stepper]; /* the stepper carries the label and value; the cell would only repeat them */

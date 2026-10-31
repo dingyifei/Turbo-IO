@@ -1,5 +1,6 @@
 #import "ResearchCatalog.h"
 #import "TIOLanguage.h"
+#import "FirmwarePins.h"
 
 typedef struct {
     __unsafe_unretained NSString *key;
@@ -76,10 +77,10 @@ static const TIOHubRowDefinition Rows[] = {
 
 static NSString *FirmwareCode(void) {
     id value = [NSBundle.mainBundle objectForInfoDictionaryKey:@"TIOExperimentalOTABuild"];
-    if (![value isKindOfClass:NSString.class]) return @"TMG8";
+    if (![value isKindOfClass:NSString.class]) return TIO_FW_NAME;
     NSRegularExpression *pattern = [NSRegularExpression regularExpressionWithPattern:@"^TMG[0-9]+$" options:0 error:NULL];
     NSString *code = value;
-    return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : @"TMG8";
+    return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : TIO_FW_NAME;
 }
 
 NSArray<NSDictionary *> *TIOHubCatalog(void) {

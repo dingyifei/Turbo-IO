@@ -304,7 +304,9 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
  _demo=NO;++_ticket;++_viewRevision;_resumePending=NO;_sentTicket=0;
  _state=nil;_trackID=nil;_cover=nil;_gray=nil;_lyrics=[self idleLyrics];_sample=(TMClockSample){.at=TMPlayerUptime()};_fetchedAt=TMPlayerUptime();
  _status=TMSpotifyAuth.shared.signedIn?TIOText(@"music.nothing"):TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);
- [_bridge close];_pollAt=0;
+ // The glasses are only ever sent a CLOSE outside a firmware stage (an OTA stage cannot start while this bridge is active or busy, TMMusicPauseForOTA).
+ if(![TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue])[_bridge close];
+ _pollAt=0;
 }
 // What the glasses ask for while the demo song is up: Resume reopens it, play and pause move the demo clock, next and previous do nothing.
 - (void)demoEvent:(unsigned)event{

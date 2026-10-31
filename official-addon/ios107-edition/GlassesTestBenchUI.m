@@ -200,6 +200,8 @@ static NSDictionary *Row(NSString *ident,NSString *kind,NSString *title,NSString
  if(section)[self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:section.integerValue] atScrollPosition:UITableViewScrollPositionTop animated:NO];
 }
 - (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[self.poll invalidate];self.poll=nil;}
+/* The demo song is the bench's own: leaving the bench ends it, or the Music screen would keep showing it and Spotify mirroring would stay off app-wide. */
+- (void)viewDidDisappear:(BOOL)animated{[super viewDidDisappear:animated];if(self.isMovingFromParentViewController||self.isBeingDismissed||!self.navigationController)[TMPlayer.shared benchStop];}
 /* Only the status lines and the stage banner change by themselves, so rows are refreshed in place and an open stepper is not interrupted. */
 - (void)tick{
  NSArray<NSDictionary *> *old=self.sections;[self rebuild];

@@ -95,11 +95,12 @@ typedef struct {KnobDisk disk;TMLState state;uint32_t now,nonce;BOOL mute;unsign
 static KnobGlasses g; /* a global: the TMLIO below points into it, and a __block copy would move to the heap */
 static void Knob(void){@autoreleasepool{
  memset(&g,0,sizeof g);g.nonce=41;TMLIO io={&g.disk,KnobRead,KnobWrite};
- __block uint32_t caps=TD_CAPS_TMG9;__block NSString *peer=@"glasses-9";__block double now=300;__block BOOL fresh=YES,statusMute=NO;__block unsigned queries=0;
+ __block uint32_t caps=TD_CAPS_TMG9;__block NSString *peer=@"glasses-9";__block double now=300;__block BOOL fresh=YES,statusMute=NO,refuseSet=NO;__block unsigned queries=0;
  __block TIOMenuLayoutLink *link=nil;
  link=[[TIOMenuLayoutLink alloc]initWithPeer:^{return peer;} allowed:^{return YES;} clock:^{return now;} caps:^uint32_t{return caps;} send:^BOOL(NSData *wire){
   uint8_t raw[32];TMLCommand q;if(!tml_uncarrier(wire.bytes,wire.length,raw,false)||!tml_decode(raw,32,&q))return NO;
   if(g.mute)return YES;
+  if(refuseSet&&q.op==TML_SET)return NO; /* the link does not take the SET: it never leaves the phone */
   g.now+=100;unsigned result=tml_accept(&g.state,&q,g.now,g.nonce++,true,&io);if(q.op==TML_SET&&result==TML_OK)g.sets++;
   uint8_t reply[32],carrier[74];tml_reply(reply,&g.state,&q,result);tml_carrier(carrier,reply,true);
   NSDictionary *event=@{@"eventType":@"messageReceived",@"message":@{@"businessId":@15,@"deviceId":peer,@"payload":[NSData dataWithBytes:carrier length:74]}};
@@ -154,6 +155,12 @@ static void Knob(void){@autoreleasepool{
  assert([step apply:next]);spin(^BOOL{[step poll];return step.state!=TIOKnobStepPending;},5);
  assert(step.state==TIOKnobStepFailed&&sampleD==before&&tml_detent(&(TMLStored){0})==400);
  TMLStored kept=tml_load(&io);assert(tml_detent(&kept)==before);g.disk.fail_write=0;
+
+ /* The SET is refused on the phone (the link does not take it) after the query before it confirmed the layout: that query is not an answer to the SET, so
+  * Failed at once, not after the read-back window, and the link holds no confirmed layout. */
+ now+=1;[step reset];before=sampleD;next=before==350?300:350;refuseSet=YES;setsBefore=g.sets;
+ assert([step apply:next]);spin(^BOOL{return step.state!=TIOKnobStepPending;},3);
+ assert(step.state==TIOKnobStepFailed&&g.sets==setsBefore&&!link.busy&&!link.rows&&sampleD==before);refuseSet=NO;
 
  /* No reply from the glasses at all: the link gives up after 3 s (rows cleared), so Failed, nothing confirmed. */
  now+=1;[step reset];g.mute=YES;assert([step apply:next]);

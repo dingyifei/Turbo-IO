@@ -35,18 +35,20 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
 - (void)send:(TMLCommand)q done:(void(^)(void))done{
  NSAssert(NSThread.isMainThread,@"main only");
  if(self.busy){if(done)done();return;}
- if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;_note=TIOText(@"请连接眼镜、保持 App 前台并结束升级保护");if(done)done();return;}
+ if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;_rows=0;_note=TIOText(@"请连接眼镜、保持 App 前台并结束升级保护");if(done)done();return;}
  /* The one place a layout record is encoded: value 1 and its caps byte leave the phone only for a TMG8 peer, and a D-carrying SET (peer byte
   * TML_PEER_TMG9) only for a peer that reported TD_CAP_KNOB_DETENT. Queries and every other SET keep the TMG7/TMG8 form with D = 0. */
+ /* A command that is refused here, or never leaves the phone, clears the confirmed layout (_rows) with the token, so a caller never takes the value of the
+  * query that preceded it for the answer to this command (TIOKnobStep reads rows!=0 as "the glasses confirmed"). */
  q.caps=0;
  if(q.op!=TML_SET)q.detent=0;
- if(q.op==TML_SET&&q.rows==TML_CAROUSEL){if(!self.glassesReportTMG8Caps){_token=0;_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}q.caps=TML_PEER_TMG8;}
- if(q.op==TML_SET&&q.detent){if(!self.glassesReportTMG9DetentCaps||!tml_detent_valid(q.detent)){_token=0;_note=TIOText(@"tmg9.layout.detentNeedsTMG9");if(done)done();return;}q.caps=TML_PEER_TMG9;}
+ if(q.op==TML_SET&&q.rows==TML_CAROUSEL){if(!self.glassesReportTMG8Caps){_token=0;_rows=0;_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}q.caps=TML_PEER_TMG8;}
+ if(q.op==TML_SET&&q.detent){if(!self.glassesReportTMG9DetentCaps||!tml_detent_valid(q.detent)){_token=0;_rows=0;_note=TIOText(@"tmg9.layout.detentNeedsTMG9");if(done)done();return;}q.caps=TML_PEER_TMG9;}
  uint8_t raw[32],wire[74];tml_encode(raw,&q);TMLCommand verify;
- if(!tml_decode(raw,32,&verify)){_note=TIOText(@"布局请求校验失败");if(done)done();return;}
+ if(!tml_decode(raw,32,&verify)){_token=0;_rows=0;_note=TIOText(@"布局请求校验失败");if(done)done();return;}
  tml_carrier(wire,raw,false);_request=q.request;_op=q.op;_target=q.rows;_done=done?[done copy]:[^(void){} copy];NSUInteger epoch=++_epoch;
  _note=q.op==TML_QUERY?TIOText(@"正在读取眼镜布局…"):TIOText(@"等待眼镜保存布局…");
- if(!_send([NSData dataWithBytes:wire length:74])){_token=0;[self finish:TIOText(@"发送未确认，请重新读取；没有自动重试")];return;}
+ if(!_send([NSData dataWithBytes:wire length:74])){_token=0;_rows=0;[self finish:TIOText(@"发送未确认，请重新读取；没有自动重试")];return;}
  dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(self->_epoch==epoch&&self.busy){self->_token=0;self->_rows=0;[self finish:TIOText(@"眼镜未回执；需 TMG4 固件。结果未知，请重新读取，不自动重试")];}});
 }
 - (void)query:(void(^)(void))done{
@@ -100,7 +102,7 @@ const double TIOKnobStepReadbackSeconds=8,TIOKnobStepDeadlineSeconds=20;
  __weak typeof(self) weak=self;
  [_link chooseDetent:detent done:^{
   typeof(self) s=weak;if(!s||s->_epoch!=epoch||s->_state!=TIOKnobStepPending)return;
-  /* The link ends a transaction with its rows cleared when the reply was an error, never came, or the peer changed. */
+  /* The link ends a transaction with its rows cleared when the reply was an error, never came, the peer changed, or the command was refused before it was sent. */
   if(!s->_link.rows||!s.enabled){s->_state=TIOKnobStepFailed;return;}
   s->_layoutConfirmed=YES;s->_confirmedAt=s->_clock();[s poll];
  }];
