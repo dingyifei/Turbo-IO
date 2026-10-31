@@ -6,7 +6,7 @@ This is the one firmware tree. It used to be copied for every release (`firmware
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG9 is the first release built in this tree without a folder copy: `RELEASE` reads TMG9 and the frozen TMG8 tree is the tag `fw/tmg8` (ZIP8 `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`). The runtime build identity name (TD_BUILD_TMG6), the 25 patch sites and the sole raw edit stay unchanged. With one tree the phone pins (`FirmwarePins.h`, `firmware-pins.json`) follow the tree: each `tmg9(n)` commit that changes the build repins them with `tools/phone_pins.py --write`, so `test.py` audits the ZIP the tree actually builds. The final ZIP9 is the one published to `$IN/tmg9/`; the phone docs keep the ZIP8 flash steps until the TMG9 docs commit. The TMG8 and TMG7 sections below are historical.
+TMG9 is the first release built in this tree without a folder copy: `RELEASE` reads TMG9 and the frozen TMG8 tree is the tag `fw/tmg8` (ZIP8 `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`). The runtime build identity name (TD_BUILD_TMG6), the 25 patch sites and the sole raw edit stay unchanged. With one tree the phone pins (`FirmwarePins.h`, `firmware-pins.json`) follow the tree: each `tmg9(n)` commit that changes the build repins them with `tools/phone_pins.py --write`, so `test.py` audits the ZIP the tree actually builds. The final ZIP9 is the one published to `$IN/tmg9/`. The TMG8 and TMG7 sections below are historical.
 
 ### TMG9 bug 1: the wrap moves the focus (`tmg9(2)`)
 
@@ -50,7 +50,7 @@ Tests: group `tmg9-stepping` (`tests/tmg9_stepping_test.c`): pages, music and th
 
 ## TMG8 candidate (Round 2 fork)
 
-**CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
+**CANDIDATE-NOT-APPROVED. The owner flashed ZIP8 and tested it on the glasses on 2026-10-30. That check found three bugs, all fixed in TMG9: a wrap past either end of the menu did not move the focus, the navigation title arrow was shifted, and music was blocked while navigating.**
 
 TMG8 starts as a source-identical fork of frozen TMG7 (tag `fw/tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below (the status `detent` field, which already existed, reads 300 instead of 600 when that bit is set). Before the Round 2 commits land it builds the same AP as TMG7. The phone pins name TMG8 and the exact ZIP8 below (first pinned at `tmg8(12)`, moved to the rebuilt ZIP8 at `tmg8(17)`). The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
 
