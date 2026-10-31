@@ -135,12 +135,21 @@ def build_input_identity(spec, versions, flags, asset_sha):
                 entries.append([path.relative_to(HERE).as_posix(), sha(path.read_bytes())])
     # identityCarryOver: build.py is a build input, so editing it changes the identity embedded in the AP.
     # The single-tree restructure edited build.py only to move file locations and the release label, and the
-    # identity of the already reproduced ZIP8 must not move, so its contribution is carried over from the
-    # pre-restructure file. Remove the key at the next repin and build.py is hashed live again.
+    # identity of the already reproduced ZIP8 must not move, so build.py's contribution is carried over from the
+    # pre-restructure file. The carry-over is bound to one exact build.py ('live'): any other build.py fails closed,
+    # and --repin drops the key, so build.py is hashed live again from the next repin on.
     carried = spec.get('identityCarryOver', {})
     assert set(carried) <= {'build.py'}, 'identityCarryOver may only name build.py'
+    script_sha = sha((HERE/'build.py').read_bytes())
+    frozen = None
+    if 'build.py' in carried:
+        row = carried['build.py']
+        assert isinstance(row, dict) and set(row) == {'carried', 'live'}, 'identityCarryOver build.py needs exactly carried and live'
+        assert script_sha == row['live'], 'identityCarryOver stale: build.py changed since the carry-over was recorded; remove identityCarryOver and repin'
+        frozen = row['carried']
     for name in ('build.py','link.ld','trampolines.S','ImageWireFormat.h'):
-        entries.append([name, carried.get(name) or sha((HERE/name).read_bytes())])
+        digest = script_sha if name == 'build.py' else sha((HERE/name).read_bytes())
+        entries.append([name, frozen if name == 'build.py' and frozen else digest])
     descriptors = []
     for edit in spec['edits']:
         row = {key:edit.get(key) for key in ('offset','address','before','kind','target','pad')}
@@ -156,8 +165,16 @@ def build_input_identity(spec, versions, flags, asset_sha):
     return manifest, sha(canonical)
 
 
-def build(stock_path, llvm, out, repin=False, compile_only=False):
+def load_spec(repin=False):
     spec = json.loads((HERE / 'build-inputs.json').read_text())
+    if repin:
+        # A repin hashes build.py live and writes a pinned spec that no longer carries the restructure exception.
+        spec.pop('identityCarryOver', None)
+    return spec
+
+
+def build(stock_path, llvm, out, repin=False, compile_only=False):
+    spec = load_spec(repin)
     # The immutable stock baseline is required in every mode.
     stock, rows = safe_zip(stock_path, spec['stockZIP'])
     assert sha(stock['nuttx_ap.bin']) == spec['stockAP'], 'pin mismatch: stockAP'

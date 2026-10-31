@@ -23,19 +23,32 @@ def main():
         (target/'src/identity_test.c').write_text('test fixture must not affect firmware identity\n');assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original
         changed=copy.deepcopy(versions);changed['clang']+=' changed';assert build.build_input_identity(inputs,changed,flags(target),asset)[1]!=original
         assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original
-        # build.py is a build input; identityCarryOver freezes only its contribution (restructure carry-over) and nothing else.
+        # build.py is a build input; identityCarryOver freezes only its contribution (restructure carry-over), is bound to one
+        # exact build.py ('live') so it fails closed for any other file, and --repin drops it.
         script=target/'build.py';old_script=script.read_bytes();live=copy.deepcopy(inputs);live.pop('identityCarryOver',None)
         live_before=build.build_input_identity(live,versions,flags(target),asset)[1]
+        carried=copy.deepcopy(live);carried['identityCarryOver']={'build.py':{'carried':'f'*64,'live':build.sha(old_script)}}
+        carried_before=build.build_input_identity(carried,versions,flags(target),asset)[1]
+        assert carried_before!=live_before
         script.write_bytes(old_script+b'\n# changed build script\n')
         assert build.build_input_identity(live,versions,flags(target),asset)[1]!=live_before
-        carried=copy.deepcopy(live);carried['identityCarryOver']={'build.py':'f'*64}
-        carried_before=build.build_input_identity(carried,versions,flags(target),asset)[1]
-        script.write_bytes(old_script+b'\n# changed again\n')
-        assert build.build_input_identity(carried,versions,flags(target),asset)[1]==carried_before!=live_before
+        try:build.build_input_identity(carried,versions,flags(target),asset);raise SystemExit('stale carry-over accepted after build.py changed')
+        except AssertionError as error:assert 'identityCarryOver stale' in str(error),error
+        script.write_bytes(old_script)
+        assert build.build_input_identity(carried,versions,flags(target),asset)[1]==carried_before
         modified.write_bytes(modified.read_bytes()+b'\n/* changed source input */\n');assert build.build_input_identity(carried,versions,flags(target),asset)[1]!=carried_before;modified.write_bytes(old)
         extra=copy.deepcopy(carried);extra['identityCarryOver']['link.ld']='e'*64
         try:build.build_input_identity(extra,versions,flags(target),asset);raise SystemExit('carry-over of a non build.py input was accepted')
         except AssertionError:pass
+        bare=copy.deepcopy(live);bare['identityCarryOver']={'build.py':'f'*64}
+        try:build.build_input_identity(bare,versions,flags(target),asset);raise SystemExit('unbound carry-over (no live pin) was accepted')
+        except AssertionError:pass
         script.write_bytes(old_script)
-    build.HERE=FW;print('PASS identity: canonical paths, derived-pin/test exclusion, source/order/toolchain sensitivity, build.py carry-over scope and no HEAD/time dependency')
+    # The shipped carry-over is bound to the shipped build.py and to ZIP8; --repin must drop it.
+    build.HERE=FW
+    if 'identityCarryOver' in inputs:
+        assert inputs['archive']['sha256']=='effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6','identityCarryOver outlived ZIP8: remove it and repin'
+        assert inputs['identityCarryOver']['build.py']['live']==build.sha((FW/'build.py').read_bytes())
+        assert 'identityCarryOver' not in build.load_spec(True) and 'identityCarryOver' in build.load_spec(False)
+    print('PASS identity: canonical paths, derived-pin/test exclusion, source/order/toolchain sensitivity, build.py carry-over fail-closed scope, repin drop and no HEAD/time dependency')
 if __name__=='__main__':main()

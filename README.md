@@ -13,7 +13,7 @@
 ## Repository layout (2026-10 slim build)
 
 - The active phone addon is `official-addon/ios107-edition`, containing build.sh, package.mjs, test.py, local-translation/ and tests/. Parser copies and signing inputs remain external private build inputs.
-- The glasses firmware source is the single tree [`firmware/`](firmware/README.md) (release label in `firmware/RELEASE`, now TMG8). It is not copied per release: every released candidate TMG2 to TMG8 is an annotated git tag `fw/tmg2` … `fw/tmg8` (`git checkout fw/tmg3` restores that release's tree). TMG2 compatibility is retained.
+- The glasses firmware source is the single tree [`firmware/`](firmware/README.md) (release label in `firmware/RELEASE`). It is not copied per release: every released candidate TMG2 to TMG8 is an annotated git tag `fw/tmg2` … `fw/tmg8` (`git checkout fw/tmg3` restores that release's tree). TMG2 compatibility is retained.
 - Older editions and duplicated root addon sources are archived in local tag `archive/editions-2026-10`. Restore one with `git checkout archive/editions-2026-10 -- official-addon/navs3-edition`.
 - `official-addon/research/`, `knowledge-bridge/`, `tar2-airplay/`, `tar2-display/` and historical `docs/` remain.
 - The tracked root PrivateBootstrap parser files and a navs3 README pointer remain for compatibility. This cleanup does not install or flash anything.
@@ -155,7 +155,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 - 仅针对 RayNeo AI iOS 1.0.6（218）＋ Strix OS 1.0.5.5；不是新版 Android APK。已有 TMG2 无需为 NAVS3 重刷。
 - 不含 Cookie、Key、签名材料、私用 IPA、真实路线/通知/智记记录或网页阅读适配；Dots 仍未完成。
 
-**源码与构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） · [固件与刷写步骤（git 标签 `fw/tmg2`）](https://github.com/Turbo1123/Turbo-IO/tree/fw/tmg2/firmware-research) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
+**源码与构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） · [固件与刷写步骤（git 标签 `fw/tmg2`）](https://github.com/Turbo1123/Turbo-IO/blob/fw/tmg2/firmware-research/strix-1.0.5.5-tmg2/README.md) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
 
 <a id="tmig1-update"></a>
 
