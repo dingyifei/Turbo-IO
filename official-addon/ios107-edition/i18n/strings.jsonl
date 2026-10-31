@@ -453,6 +453,8 @@
 {"key":"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。","en":"knowledge_query / knowledge_query_status: %@. Codex searches WeChat archives, projects, and learning materials in read-only mode and cites sources; it does not modify the knowledge base.\n\ncreate_todo: Adds a title through the RayNeo app entry point. Confirmed only after a new ID appears in the list; no retry on timeout.\nweb_search: Public TinyFish search; internet access must be enabled.\n\nTo-do tools cannot edit, delete, complete, or set reminder times and currently do not write to knowledge base web pages. Only real voice sessions have the to-do execution context."}
 {"key":"mode3 / status0：测试同一句文字更新；观察覆盖还是追加、是否闪屏。检测到字幕音频消息立即停止；没有音频包不等于全链路未采音。","en":"mode3 / status0: Test updates to the same line of text; check whether it replaces or appends and whether the display flashes. Stop immediately if a caption audio message is detected; no audio packet does not prove that no audio was captured anywhere in the pipeline."}
 {"key":"music.advanced","en":"Advanced","zh":"高级"}
+{"key":"music.bridge.busy","en":"The glasses are on another page. Open Music on the glasses to resume.","zh":"眼镜正停在其他页面。请在眼镜上打开音乐以继续。"}
+{"key":"music.bridge.noSession","en":"The glasses closed the music page. Open Music on the glasses to resume.","zh":"眼镜已关闭音乐页。请在眼镜上打开音乐以继续。"}
 {"key":"music.callback.copy","en":"Copy Spotify callback diagnostics","zh":"复制 Spotify 回调诊断"}
 {"key":"music.callback.none","en":"No callback received this session","zh":"本次会话尚未收到回调"}
 {"key":"music.cancel","en":"Cancel","zh":"取消"}
@@ -490,7 +492,7 @@
 {"key":"music.signin.cancelled","en":"Sign-in cancelled","zh":"已取消登录"}
 {"key":"music.signin.failed","en":"Sign-in failed (%@)","zh":"登录失败（%@）"}
 {"key":"music.spotify","en":"Spotify","zh":"Spotify"}
-{"key":"music.status.blocked","en":"Navigation or a firmware transfer is using the glasses","zh":"导航或固件传输正在占用眼镜"}
+{"key":"music.status.blocked","en":"A firmware transfer is using the glasses","zh":"固件传输正在占用眼镜"}
 {"key":"music.status.config","en":"Add your Spotify Client ID","zh":"请填写 Spotify Client ID"}
 {"key":"music.status.network","en":"Can't reach Spotify","zh":"无法连接 Spotify"}
 {"key":"music.status.noDevice","en":"Open Spotify on your phone","zh":"请在手机上打开 Spotify"}
@@ -511,7 +513,7 @@
 {"key":"nav.alert.endFirst.dest","en":"End the current route before choosing a new destination.","zh":"选择新目的地前，请先结束当前路线。"}
 {"key":"nav.alert.endFirst.options","en":"Options can be changed after the current route ends.","zh":"当前路线结束后才能更改选项。"}
 {"key":"nav.alert.endFirst.title","en":"End navigation first","zh":"请先结束导航"}
-{"key":"nav.alert.glasses.message","en":"Check that the glasses are connected and idle on the home screen, then use ⋯ › Reconnect glasses. Phone navigation continues.","zh":"请确认眼镜已连接并停在主屏幕，然后使用 ⋯ › 重新连接眼镜。手机上的导航会继续。"}
+{"key":"nav.alert.glasses.message","en":"Check that the glasses are connected and idle on the home screen (close the music page if it is open), then use ⋯ › Reconnect glasses. Phone navigation continues.","zh":"请确认眼镜已连接并停在主屏幕（如果音乐页开着，请先关闭），然后使用 ⋯ › 重新连接眼镜。手机上的导航会继续。"}
 {"key":"nav.alert.glasses.title","en":"Glasses didn't start","zh":"眼镜未能启动"}
 {"key":"nav.alert.location.message","en":"Allow location access in Settings for live navigation, or use Simulate.","zh":"请在“设置”中允许定位以使用实时导航，或改用模拟。"}
 {"key":"nav.alert.location.title","en":"Location needed","zh":"需要定位"}
@@ -521,6 +523,7 @@
 {"key":"nav.alert.noResults.title","en":"No results","zh":"没有结果"}
 {"key":"nav.appleMaps","en":"Apple Maps","zh":"Apple 地图"}
 {"key":"nav.back.a11y","en":"Back to Turbo","zh":"返回 Turbo"}
+{"key":"nav.blockedByMusic","en":"The glasses music page is open. Close it on the glasses, then start navigation again.","zh":"眼镜的音乐页正开着。请先在眼镜上关闭，再重新开始导航。"}
 {"key":"nav.busy.captions","en":"Caption navigation is still running.","zh":"字幕导航仍在运行。"}
 {"key":"nav.busy.suffix","en":"Stop it, then use ⋯ › Reconnect glasses.","zh":"请先停止它，然后使用 ⋯ › 重新连接眼镜。"}
 {"key":"nav.dest.default","en":"Destination","zh":"目的地"}

@@ -308,6 +308,10 @@
       "status": "run",
       "group": "tio-design",
       "note": "Host test: compiled TIODesign.inc tables equal docs/design-system/tokens.json."
+    },
+    "tests/MusicNavigationTests.m": {
+      "status": "run",
+      "group": "music-navigation"
     }
   }
 }

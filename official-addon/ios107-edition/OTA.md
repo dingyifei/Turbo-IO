@@ -27,6 +27,13 @@ TMG8 adds one capability bit and one layout value to the wire (and the status `d
 3. After the glasses reboot, restart the phone app and check the new menu and pages: the carousel (80 / 48 / 36 px icons and its slide), the knob (one item per 300 counts, wrap at both ends), the live tile status line and grid dots, the navigation title in the menu while a route is live and the Navigation page is closed, the dashboard card, and long lyrics. The device checks listed in the TMG8 README remain open.
 4. Roll back manually to C11 plus ZIP7 using the same guarded OTA process. Host previews do not establish hardware acceptance.
 
+**Music while navigating (C13, phone only; works with TMG8 glasses).** Navigation and music no longer exclude each other on the phone. Earlier builds refused to send music whenever a navigation session was active, which also covered the TMG8 background route (page closed, route kept), so the music tile found the phone silent. Now:
+
+- Music OPEN is sent whenever no firmware stage is running. A glasses answer of BUSY to OPEN (the navigation page is on screen) or NO_SESSION to CLOCK, COVER, LYRICS or CLOSE (the music page is closed) puts the music bridge to rest: not failed, no retry loop. The glasses' own Resume request reopens it. BAD, STALE, transport errors and any other result still stop the bridge.
+- Navigation (TNV1) and music (TMU1) share one native file link, so only one file is in flight at a time. Music waits while a navigation file is in flight. Navigation gives music one non-urgent slot (a pose, a passing line or a routine UPDATE) per 1.4 s window, for at most 0.4 s, when music has a packet ready; STOP and urgent UPDATEs (a new turn icon, mode or road text) never yield, and the 8 s navigation acknowledgement deadline is unchanged.
+- The reverse gate stays: starting navigation while the glasses music page is open is refused, because the glasses refuse that START too. The phone now says so (status note and the glasses alert) instead of failing silently: close the music page on the glasses, then start navigation again.
+- OTA is unchanged: a firmware stage still blocks both, and the OTA guard still wants navigation and music idle.
+
 ## TMG7 candidate (superseded by TMG8)
 
 

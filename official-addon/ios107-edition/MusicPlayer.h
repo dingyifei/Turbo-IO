@@ -2,6 +2,9 @@
 FOUNDATION_EXPORT UIViewController *TMMusicController(void);
 FOUNDATION_EXPORT BOOL TMMusicConsume(NSDictionary *);
 FOUNDATION_EXPORT BOOL TMMusicPauseForOTA(void);
+// The shared BLE file link: one native file in flight across music and navigation.
+FOUNDATION_EXPORT BOOL TMMusicFileInFlight(void);
+FOUNDATION_EXPORT BOOL TMMusicFileWaiting(void);
 FOUNDATION_EXPORT void TMMusicPauseForVoice(void);
 @interface TMPlayer:NSObject
 + (instancetype)shared;

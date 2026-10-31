@@ -41,7 +41,8 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
  NSUInteger _revision,_pollSerial,_viewRevision,_resumeRevision,_resumeViewRevision;
  BOOL _resumePending,_lyricsEnabled,_coverLoading,_lyricsLoading;
 }
-+ (instancetype)shared{static TMPlayer *p;static dispatch_once_t once;dispatch_once(&once,^{p=[self new];});return p;}
+static TMPlayer *Live;   // set once the player exists; the navigation pump asks without creating it
++ (instancetype)shared{static TMPlayer *p;static dispatch_once_t once;dispatch_once(&once,^{p=[self new];Live=p;});return p;}
 - (instancetype)init{
  if((self=[super init])){
   NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;
@@ -51,7 +52,7 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
    SecItemDelete((__bridge CFDictionaryRef)@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,(__bridge id)kSecAttrService:@"TurboIOMusicCookiesV1",(__bridge id)kSecAttrAccount:@"netease"});
    [defaults setBool:YES forKey:@"TurboMusicNetEaseCleanedV1"];
   }
-  _bridge=[TMMusicBridge new];_ticket=1;_revision=1;
+  _bridge=[TMMusicBridge new];_bridge.peerFileInFlight=^{return TNVFileInFlight();};_ticket=1;_revision=1;
   _mode=MAX(0,MIN(2,[defaults integerForKey:@"TurboMusicDisplayModeV1"]));
   _glasses=[defaults boolForKey:@"TurboMusicGlassesV1"];
   _lyricsEnabled=[defaults boolForKey:@"TurboSpotifyLyricsV1"];
@@ -275,7 +276,9 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
  });}];
 }
 - (void)showOnGlasses{
- if(!TNVPauseForOTA()||[TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue]){_status=TIOText(@"music.status.blocked");return;}
+ // A navigation session no longer blocks music: the glasses answer OPEN with BUSY while the nav page is on screen (the bridge
+ // goes quiet and the glasses' Resume reopens), and the file link is shared packet by packet. Only a firmware stage blocks.
+ if([TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue]){_status=TIOText(@"music.status.blocked");return;}
  if(!_state){_cover=nil;_gray=nil;_lyrics=[self idleLyrics];}
  if(_sentTicket==_ticket)[_bridge reopen];else{_sentTicket=_ticket;[_bridge openWithCover:_gray lyrics:_lyrics];if(!_bridge.active)_sentTicket=0;}
 }
@@ -295,8 +298,12 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
 - (BOOL)consume:(NSDictionary *)e{return [_bridge consume:e];}
 - (BOOL)watchRemoteAvailable{return _glasses&&_state&&_bridge.active&&!_bridge.busy;}
 - (BOOL)otaIdle{return !_bridge.busy&&!_bridge.active;}
+- (BOOL)fileInFlight{return _bridge.fileInFlight;}
+- (BOOL)fileWaiting{return _bridge.waiting;}
 - (void)pauseForVoice{}
 @end
 BOOL TMMusicConsume(NSDictionary *e){return [[TMPlayer shared]consume:e];}
 BOOL TMMusicPauseForOTA(void){return [[TMPlayer shared]otaIdle];}
+BOOL TMMusicFileInFlight(void){return [Live fileInFlight];}
+BOOL TMMusicFileWaiting(void){return [Live fileWaiting];}
 void TMMusicPauseForVoice(void){[[TMPlayer shared]pauseForVoice];}
