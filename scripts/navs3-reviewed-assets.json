@@ -1,7 +1,7 @@
 {
   "files": {
     "docs/screenshots/navs3-tmg2-hero-20261019.png": "ee9a3a4f6665c39d00170ad9f100e7e9811a003890688b7ce7d6bf9194d86fb7",
-    "firmware-research/strix-1.0.5.5-tmg2/assets/animation-frames.l8": "f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d",
+    "firmware/baseline/animation-frames.l8": "f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d",
     "official-addon/navs3-edition/TurboIOArt/news.png": "e9a8e2401edbd0d86c3aee7c9af8c6789acdc177245e3feefeda55bb74ae7b68",
     "official-addon/navs3-edition/TurboIOArt/focus.png": "10c1efcf90b5c053b77dac15acae7303f66b1e809a75efe86ea380ccef76c056",
     "official-addon/navs3-edition/TurboIOArt/dashboard-editor.png": "fff2d8f0dead14a989866462e2fa4b928266336a055acb626ab83b0babb5ca3a",
