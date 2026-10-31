@@ -8,6 +8,12 @@ This is the one firmware tree. It used to be copied for every release (`firmware
 
 TMG9 is the first release built in this tree without a folder copy: `RELEASE` reads TMG9 and the frozen TMG8 tree is the tag `fw/tmg8` (ZIP8 `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`). The runtime build identity name (TD_BUILD_TMG6), the 25 patch sites and the sole raw edit stay unchanged. With one tree the phone pins (`FirmwarePins.h`, `firmware-pins.json`) follow the tree: each `tmg9(n)` commit that changes the build repins them with `tools/phone_pins.py --write`, so `test.py` audits the ZIP the tree actually builds. The final ZIP9 is the one published to `$IN/tmg9/`; the phone docs keep the ZIP8 flash steps until the TMG9 docs commit. The TMG8 and TMG7 sections below are historical.
 
+### TMG9 bug 1: the wrap moves the focus (`tmg9(2)`)
+
+On TMG8 a turn past either end of the menu animated a jump but left the highlighted item where it was. `m8_hook_wheel` wrote the target into the scroll position (`app+0xb0`) and called `native_snap`; stock `native_snap` re-seats the carousel from the selected index (`app+0x88`, through `setIndex` at 0x58e34c) and so overwrote the scroll position with the old item. TMG9 follows the pattern `remote_native.c` already uses: the hook writes `app+0x88 = target` and invalidates the shown frame (`app+0x90 = UINT32_MAX`), then calls `native_snap`, which re-seats the control and reruns the frame and label hooks, so `app+0x88`, the control index and `FMView.selected` all become the target. The 0xb0 write is gone and `eligible()` still guards the path. The grid page slide now follows the turn on a wrap (last to first slides forward, first to last backward); the carousel already takes the shortest way round. No patch site changes.
+
+Tests: `tests/tmg9_wheel_hook_test.c` and `tests/tmg9_wheel_host_test.py` (group `tmg9-wheel-hook`) slice the real `m8_hook_wheel` out of `menu10.c` and run it against a model of the stock wheel step and snap transcribed from the disassembly (0x4da6ae, 0x4da820, 0x58e34c, 0x58e90c) with the real `FMView`; the driver proves the harness is not vacuous by requiring the TMG8 body to fail it. `tests/tmg8_wheel_test.c` uses the same model instead of its former fake. Still a device check: which sign of the raw count is forward when stock setting 0x24 is not 1 (log one turn).
+
 ## TMG8 candidate (Round 2 fork)
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
@@ -88,7 +94,7 @@ Leaving the Navigation page no longer ends the route. While a phone route is act
 
 The remote's Previous/Next (`remote_native.c`, `inject_counts`) injects 300 raw counts when the launcher is on top, because its hook doubles the delta for the stock carousel and the TIO pages count in 300, and the stock 600 (`TK_DETENT_LEGACY`, what TMG7 injected) for the other seven allowed apps (recorder, prompter, subtitles, conversation assist, assistant, todo, notification), which are stock and have no doubling hook (tmg8(13); `native_remote_test.c` asserts the magnitude and direction for all eight).
 
-The status sample's `detent` is now 300 for a peer that reports the TMG8 caps bit and stays 600 (`TK_DETENT_LEGACY`) for TMG4..TMG7 samples, which the codec still accepts. Positive delta is taken as forward, as on every page, and the wrap jump (scroll position, `native_snap`, labels and frame) is host-modelled only; both need the device check. Tests: `tests/tmg8_wheel_test.c` (`tmg8-wheel`) and `src/music-runtime-v1/music_input_test.c` (`tmg8-music-input`).
+The status sample's `detent` is now 300 for a peer that reports the TMG8 caps bit and stays 600 (`TK_DETENT_LEGACY`) for TMG4..TMG7 samples, which the codec still accepts. Positive delta is taken as forward, as on every page, and the wrap jump was host-modelled only (TMG8 wrote the scroll position, which stock `native_snap` overwrote; TMG9 fixes that, see above); both need the device check. Tests: `tests/tmg8_wheel_test.c` (`tmg8-wheel`) and `src/music-runtime-v1/music_input_test.c` (`tmg8-music-input`).
 
 ## Brightness gate and the mini-app art cap (Round 2)
 

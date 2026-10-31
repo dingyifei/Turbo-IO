@@ -286,9 +286,10 @@ void m8_hook_wheel(void *app,int delta){
   if(tail(app)->page||tn_slot_visible(slot(app)))return;
   /* One item per 300 counts: the stock carousel needs 600, so it gets 2x. Wrap last <-> first in every layout. */
   int target=fm_wheel_wrap(app,(int)*word(app,0x88),(int)fm_tile_count(),delta,stream_tick());
-  if(target>=0){
-    *(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET)=(float)target;native_snap(app);
-    m8_hook_label_index(app,target);(void)m8_hook_frame(app,tio_frame_start(target));return;
+  if(target>=0&&eligible(app)){
+    /* Same path as remote_native.c: stock native_snap re-seats the carousel from the selected index (app+0x88), so that is
+     * what must change, and 0x90 (the shown frame) is invalidated so the snap reruns the frame and label hooks itself. */
+    *word(app,0x88)=(uint32_t)target;*word(app,0x90)=UINT32_MAX;native_snap(app);return;
   }
   stock_wheel(app,tio_menu_wheel_scaled(delta));
 }

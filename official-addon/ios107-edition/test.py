@@ -103,6 +103,12 @@ if only is None or 'tmg4-host' in only:
     run('tmg4-cjk',['python3','-I',FW/'tools/check_cjk.py',FW])
     groups.append('tmg4-host');print('tmg4-host: PASS')
 else:skip('tmg4-host','not selected by --only')
+# TMG9 bug 1: the REAL m8_hook_wheel (sliced from menu10.c) against a stock model transcribed from the disassembly; the TMG8 body must fail it.
+seen.add('tmg9-wheel-hook')
+if only is None or 'tmg9-wheel-hook' in only:
+    run('tmg9-wheel-hook',['python3','-I',FW/'tests/tmg9_wheel_host_test.py','--out',out/'tmg9-wheel-hook'])
+    groups.append('tmg9-wheel-hook');print('tmg9-wheel-hook: PASS')
+else:skip('tmg9-wheel-hook','not selected by --only')
 seen.add('shared-sources')
 if only is None or 'shared-sources' in only:
     pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',
