@@ -116,7 +116,7 @@ Recommendations: add `firmware-research/LICENSING.md` that classifies the conten
 
 - `THIRD_PARTY_NOTICES.md` is accurate but is a prose log ordered by date, and does not list the version and license of each shipped component in a table. A generated table (name, version, license, path, source) would be easier to audit.
 - `DEPENDENCIES.json` says its files are "not covered by the project license", which is a good statement, but it does not add the license identifier. Adding a `license` and `source` field per entry would let CI assert that no entry is missing a license.
-- A removed NetEase client adapted from Beans Music (MIT) is preserved in tag `archive/editions-2026-10`; ensure the MIT notice travels with that tag (not verified).
+- A removed NetEase client adapted from Beans Music (MIT) is preserved in commit `27ad86e`; ensure the MIT notice is present there (not verified).
 - The OSM test extracts under `official-addon/ios107-edition/tests/maps` are ODbL 1.0; notices say attribution is kept per fixture (not re-verified here).
 - AMap and HarmonyOS SDKs are downloaded at build and carry their own terms, as stated.
 - `NOTICE` says "Turbo IO contributors" with no individual name. Consider whether the copyright line should name a legal person to make relicensing and enforcement simpler.

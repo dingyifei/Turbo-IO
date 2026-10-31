@@ -1,6 +1,6 @@
 # 更新记录
 
-2026-09-22 至 2026-10-23 的更新说明与历史验收记录，从[项目首页](../README.md)移出，正文保持原样，仅修正链接。之后的固件版本见 [`firmware/`](../firmware/README.md) 和 `fw/tmgN` 标签。
+2026-09-22 至 2026-10-23 的更新说明与历史验收记录，从[项目首页](../README.md)移出，正文保持原样，只修正了链接，并把“上方”这类指向首页内容的说法改成了链接。之后的固件版本见 [`firmware/`](../firmware/README.md) 和 `fw/tmgN` 标签。
 
 <a id="updates"></a>
 
@@ -398,8 +398,8 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 - **Android 源码新增公开**：兼容官方 Android 1.0.4（195），**非 Root 设备已由用户实机验证可用**。模型/搜索/录音导出和路线文字已有研究机用户确认。模拟导航支持暂停、1/2/4/8倍速，自动测试通过，新增模拟镜片效果待验收。仍只提供源码，需自行编译签名，不是预打包成品。
 - **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。[兼容性与预览](../official-addon/docs/COMPATIBILITY_104.md)
-- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · [Android 导航](../android-addon/README.md#5-导航怎么用)
+- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · [Android 导航](../android-addon/docs/ANDROID_104_HISTORY.md#5-导航怎么用)
 
 </details>
 
-模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限上方原厂砸壳 IPA，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 [Android文档](../android-addon/README.md#2-兼容与安装边界)。
+模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限[首页列出的原厂砸壳 IPA](../README.md#ios-原厂砸壳-ipa-下载)，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 [Android文档](../android-addon/docs/ANDROID_104_HISTORY.md#2-兼容与安装边界)。

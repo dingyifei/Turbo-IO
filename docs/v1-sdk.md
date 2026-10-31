@@ -1,14 +1,14 @@
 # V1：独立 SDK 与示例客户端
 
-从[项目首页](../README.md)移出，正文保持原样，仅修正链接。
-以下主要介绍 **iOS V1 独立 SDK**，不能把其通知、Codex、录音等验收套到其他平台；Android 与鸿蒙请优先阅读上方各自教程。**鸿蒙尚未接入 Codex 工具，不能因为 iOS 已接通就认为鸿蒙也可用。**
+从[项目首页](../README.md)移出，正文保持原样，只修正了链接，并把“上方”这类指向首页内容的说法改成了链接。
+以下主要介绍 **iOS V1 独立 SDK**，不能把其通知、Codex、录音等验收套到其他平台；Android 与鸿蒙请优先阅读[首页各平台入口](../README.md#先选开发路线)。**鸿蒙尚未接入 Codex 工具，不能因为 iOS 已接通就认为鸿蒙也可用。**
 
 
-V1 是非官方 SDK 的 iOS 示例客户端与研究工具，用于独立连接、语音、录音、通知及 Agent 接入。需要自行编译、签名、配置服务；不是直接安装的消费级 App。功能与其他平台独立验收，遵循本页开头的非商业许可及隐私边界。
+V1 是非官方 SDK 的 iOS 示例客户端与研究工具，用于独立连接、语音、录音、通知及 Agent 接入。需要自行编译、签名、配置服务；不是直接安装的消费级 App。功能与其他平台独立验收，遵循[首页的非商业许可及隐私边界](../README.md#隐私与许可)。
 
 An unofficial RayNeo iO smart glasses SDK for developers, with a sample iOS client—not a ready-to-install consumer app. Build, sign and configure your own services to explore voice AI, recordings, custom notifications, Codex integration and a read-only web display observer.
 
-**V1 独立客户端连接前务必先在雷鸟官方 App 内解绑，再到手机蓝牙设置中“忽略此设备”，然后重新进入配对模式连接 Turbo IO。** 详见下方“连接前必读”。非越狱 iPhone 已由用户实机验收；Android 官方扩展另见上方路线表，Android 独立客户端仍待开发。
+**V1 独立客户端连接前务必先在雷鸟官方 App 内解绑，再到手机蓝牙设置中“忽略此设备”，然后重新进入配对模式连接 Turbo IO。** 详见下方“连接前必读”。非越狱 iPhone 已由用户实机验收；Android 官方扩展另见[首页路线表](../README.md#先选开发路线)，Android 独立客户端仍待开发。
 
 > 本项目仅面向懂 iOS 开发、签名、API 配置与基本调试的技术用户，用于互操作研究。如果希望开箱即用、不熟悉这些操作，请使用官方 App。部分功能仍在验证，欢迎一起研究和补充实测，不承诺替代官方 App 的全部功能。
 

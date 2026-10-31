@@ -18,12 +18,12 @@
 
 | 部分 | 现在是什么 | 怎么获取 |
 | --- | --- | --- |
-| **iOS 手机扩展** | 雷鸟 AI 1.0.7（230）+ [ios107-edition](official-addon/ios107-edition/README.md)，持续更新：中英双语界面、Spotify 音乐与歌词、Apple 地图（MapKit）导航、本机 Apple AI 回答、新版手机与镜片界面 | 源码；自行合并、签名、安装，**不提供合并 IPA**。原厂输入见 [IPA 下载](#ios-原厂砸壳-ipa-下载) |
+| **iOS 手机扩展** | 雷鸟 AI 1.0.7（230）+ [ios107-edition](official-addon/ios107-edition/README.md)，持续更新：中英双语界面、Spotify 音乐与歌词、Apple 地图（MapKit）导航、本机 Apple AI 回答（实验，默认关闭）、新版手机与镜片界面 | 源码；自行合并、签名、安装，**不提供合并 IPA**。原厂输入见 [IPA 下载](#ios-原厂砸壳-ipa-下载) |
 | **眼镜固件** | [`firmware/`](firmware/README.md) 单一源码树，最新候选为 **TMG8**（Strix OS 1.0.5.5）。每个版本是一个 git 标签：`fw/tmg2` … `fw/tmg8` | TMG3 起只提供源码与可复现构建，**没有公开固件 Release**；全部是候选（CANDIDATE-NOT-APPROVED） |
-| **Android** | 官方 1.0.5（201）宿主 + GUARD-07 完整插件 APK + TAP1-TEST-01 实验固件（2026-09-27），本轮未更新 | [APK / 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · [安装与刷机](android-addon/docs/INSTALL_AND_FLASH.md) |
+| **Android** | 官方 1.0.5（201）宿主 + GUARD-07 完整插件 APK + TAP1-TEST-01 实验固件（2026-09-27），之后未更新 | [APK / 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · [安装与刷机](android-addon/docs/INSTALL_AND_FLASH.md) |
 | **鸿蒙 HarmonyOS** | 已停止更新 | [历史源码与限制](harmony-sdk/README.md) |
 
-**TMG8 已在维护者自己的设备上刷入试用，发现三处问题**：菜单只能单向循环、导航标题的箭头偏移、导航进行中音乐无法播放。TMG9 正在修复，同时加入可在手机上调整的旋钮步长。公开预发布的 iOS 1.0.7 OTA 仍对应原样 TMG2（[预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019)）。
+**TMG8 已在维护者自己的设备上刷入试用，发现三处问题**：菜单只能单向循环、导航标题的箭头偏移、导航进行中音乐无法播放。计划在 TMG9 修复，同时加入可在手机上调整的旋钮步长。公开预发布的 iOS 1.0.7 OTA 仍对应原样 TMG2（[预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019)）。
 
 | 固件标签 | 主要变化 |
 | --- | --- |
@@ -35,7 +35,7 @@
 | `fw/tmg7` | 新设计系统：分区布局、焦点提示、迷你应用重新排版 |
 | `fw/tmg8` | 轮播菜单、磁贴状态行、导航标题、新的仪表盘卡片 |
 
-**手机构建与固件必须成对使用**，刷写、校验和回退只按 [OTA 教程](official-addon/ios107-edition/OTA.md)。`git show fw/tmg8` 可以看到该版本的 ZIP SHA-256、构建提交和配对的手机构建；在标签上重新构建会逐字节得到同一个 ZIP。
+**手机构建与固件必须成对使用**，刷写、校验和回退只按 [OTA 教程](official-addon/ios107-edition/OTA.md)。`git show fw/tmg8` 可以看到该版本的 ZIP SHA-256、构建提交和配对的手机构建；从 TMG3 起，在标签上重新构建会逐字节得到同一个 ZIP。
 
 其他仍有效的发布：[TVP2 / TAR2 · 540×220 原生清晰投屏](docs/TVP2_TAR2.md)（2026-10-23，仅 iOS，需要 TVP2）· [Strix OS 1.0.4.12 原厂负载归档](firmware-research/strix-1.0.4.12/stock/README.md)（不是救砖工具）。
 
@@ -43,7 +43,7 @@
 
 - **小白不要刷，日常使用请保留官方固件。** 眼镜端原生应用、自定义图形仪表盘与小应用运行时，都需要对应的实验固件；仅安装手机插件不会把这些能力加进原厂固件。已有模型接入、部分字幕等手机侧功能不因此要求刷机。已有匹配运行时后，导入兼容卡片/应用包不必每次重刷。
 - **刷机风险由使用者自行评估和承担。** 本项目按现状提供，无稳定性、回滚、救砖或售后保证；掉电、中断、错包和缺陷可能导致数据丢失或设备损坏。在适用法律允许的范围内，作者不承担由此造成的损失或责任。一次实测成功不代表你的设备安全，更不构成“不会刷死”的承诺。
-- **候选固件不是稳定版。** 名字里带 CANDIDATE-NOT-APPROVED 的 ZIP 只在维护者自己的设备上试过；不要混用不同候选的固件、手机构建或授权，也不要为了追版本逐个刷。
+- **候选固件不是稳定版。** TMG3–TMG8 候选最多只在维护者自己的设备上试过，其中 TMG3、TMG7 从未单独刷写（各版本状态见 `git show fw/tmgN`）；不要混用不同候选的固件、手机构建或授权，也不要为了追版本逐个刷。
 - **鸿蒙 HarmonyOS 不再更新。** 保留既有研究源码和历史验收，不再移植新功能、适配新固件或承诺修复现有问题。
 - **第三方服务的账号与权限请自行解决**（Spotify、模型、搜索等）。不提供账号、Cookie、Key、会员权益、代登录或风控绕过。
 - **觉得好用，再自愿打赏。** 不要在打赏前私信要求作者先增加某项功能，也不要把打赏当作功能定制或交付条件。建议可在 Issues 讨论，但不承诺采纳、排期或一对一支持；打赏后同样不产生这些义务。[微信二维码在文末](#support)。
@@ -71,7 +71,7 @@
 
 **[1.0.7（230）原厂砸壳 · 未签名](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.7-230)**（当前 ios107 扩展使用）· [1.0.6（218）](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.6-218) · [1.0.5（201）历史输入](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.5-201) · [版本索引与校验](official-apps/ios/README.md)
 
-提供的是**原厂应用的砸壳（解密）版本，未合并 Turbo IO 扩展，不是修改功能后的版本**。1.0.7 已移除全部 95 个 Mach-O 的代码签名、签名目录及商店授权元数据，不包含个人 Apple 签名信息；文件名、大小与 SHA-256 见 [1.0.7 说明](official-apps/ios/1.0.7/README.md)。下载不会直接获得 Turbo IO 功能，请按 [ios107 教程](official-addon/ios107-edition/README.md)自行合并、配置并用自己的签名安装。
+提供的是**原厂应用的砸壳（解密）版本，未合并 Turbo IO 扩展，不是修改功能后的版本**。1.0.7 已移除全部 95 个 Mach-O 的代码签名、签名目录及商店授权元数据，不包含个人 Apple 签名信息；文件名、大小与 SHA-256 见 [1.0.7 说明](official-apps/ios/1.0.7/README.md)。下载不会直接获得 Turbo IO 功能，请按 [ios107 教程](official-addon/ios107-edition/README.md)自行合并、配置并用自己的签名安装。项目不提供代砸壳或代签名服务。
 
 ### 通知与权限，先看这里
 
@@ -136,12 +136,16 @@ Key由我在本机安全填写，不索取聊天明文、不复用维护者配�
 | 路径 | 内容 |
 | --- | --- |
 | `official-addon/ios107-edition` | 当前 iOS 扩展：构建、打包、测试与 OTA 刷写流程；旧版本在提交 `27ad86e` 中保留 |
+| `official-addon/tar2-airplay` · `tar2-display` | TVP2 投屏的接收与显示模块；**AirPlay 接收模块单独采用 GPLv3**，见[许可说明](docs/LICENSING.md) |
+| `official-apps` | 原厂 App 输入的版本索引与校验（不含 Turbo IO） |
 | `firmware` | 当前眼镜固件源码（单一源码树，版本为 `fw/tmgN` 标签）；`firmware/baseline` 保存早期版本的少量构建输入 |
 | `firmware-research` | 原厂固件与研究笔记（1.0.4.12、1.0.5.5、TVP2），不参与当前构建 |
 | `android-addon` | Android 官方 App 扩展、纯 Java 测试及本地合并工具 |
 | `harmony-sdk` | 原生鸿蒙 HarmonyOS SDK 与客户端（已停止更新） |
 | `dashboard-service` · `app-gallery` · `skills` | 仪表盘与小应用 SDK、20 个模板、Agent Skill |
 | `apps` · `core-probe` · `rayneo-*` · `codex-bridge` · `display-observer` | V1 独立客户端与 Swift 模块，见 [V1 说明](docs/v1-sdk.md) |
+| `watch-remote` | Apple Watch 遥控实验 |
+| `third-party` | 第三方依赖，许可见 [第三方说明](THIRD_PARTY_NOTICES.md) |
 | `tools` · `scripts` | 离线分析工具；构建检查、打包与发布扫描脚本 |
 | `docs` | 文档，入口是 [文档索引](docs/README.md) |
 
