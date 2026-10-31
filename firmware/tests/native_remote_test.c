@@ -90,12 +90,13 @@ int main(void){
  tgr_knob_observe(app,600,now_ms);assert(find()->knob.net==600);
  TDCommand kq={TDQ_KNOB_START,101,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,1200,now_ms);assert(find()->knob.net==1200&&find()->knob.samples==1);
  assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==1&&simulated_steps==1&&find()->knob.state==TK_CANCELED&&find()->knob.net==1200&&find()->synthetic_depth==0);
- /* One remote step is 300 counts in the launcher (its hook doubles it for the stock carousel) and the stock 600 in every other allowed app, either direction. */
+ /* One remote step is D counts in the launcher (400 until the phone changes it; the hook and the pages step once per D) and the stock 600 in every other allowed app, either direction. */
  {const char *const apps[]={"com.rayneo.liteos.launcher","com.rayneo.liteos.recorder","com.rayneo.liteos.prompter","com.rayneo.liteos.aiSubtitle","com.rayneo.liteos.conversationAssist","com.rayneo.liteos.assistant","com.rayneo.liteos.todo","com.rayneo.liteos.notification"};
-  for(unsigned a=0;a<sizeof apps/sizeof *apps;a++){top_app=apps[a];const int want=a==0?300:600;
+  for(unsigned a=0;a<sizeof apps/sizeof *apps;a++){top_app=apps[a];const int want=a==0?(int)tio_knob_detent():600;
    unsigned seen=raw_callbacks;assert(inject(TGR_PREVIOUS)==TGR_OK&&raw_callbacks==seen+1);const int32_t back=last_raw;
    assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+2&&last_raw==-back&&(last_raw==want||last_raw==-want));}   /* equal magnitude, opposite direction */
   top_app="com.rayneo.liteos.launcher";}
+ assert(tio_knob_detent()==400); /* the default: nothing stored */
  kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
  TDSample snapshot={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);assert(snapshot.caps==TD_CAPS_TMG9&&snapshot.detent==TK_DETENT_DEFAULT);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
  kq=(TDCommand){TDQ_KNOB_START,103,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);blocked=true;timer.callback(&timer);assert(find()->knob.state==TK_CANCELED&&reads==before);blocked=false;kq.session=104;assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);detail_open=true;tgr_knob_observe(app,600,now_ms);assert(find()->knob.state==TK_CANCELED&&find()->knob.samples==0);detail_open=false;
@@ -117,12 +118,38 @@ int main(void){
   tgr_runtime_snapshot(&st);assert(writes==w&&st.detent==400);
   base.detent=500;assert(layout_request(base,rep)&&rep[7]==TML_OK&&rep[6]==3&&writes==w+1);
   tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG9);{uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500);}
+  {unsigned seen=raw_callbacks;top_app="com.rayneo.liteos.launcher";assert(tio_knob_detent()==500&&inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+1&&(last_raw==500||last_raw==-500)); /* a remote step is the live D in the launcher, 600 elsewhere */
+   top_app="com.rayneo.liteos.recorder";assert(inject(TGR_NEXT)==TGR_OK&&(last_raw==600||last_raw==-600));top_app="com.rayneo.liteos.launcher";}
   free(timer.user);timer=(HostTimer){0};assert(fm_menu_rows()==3);tgr_runtime_snapshot(&st);assert(st.detent==500); /* reboot: the next menu show loads it */
   assert(layout_request((TMLCommand){.op=TML_QUERY,.request=32,.client=9},rep)&&u32(rep+12)==77);
   assert(layout_request((TMLCommand){.op=TML_SET,.request=33,.client=9,.token=77,.generation=u32(rep+16),.rows=2},rep)&&rep[7]==TML_OK&&rep[6]==2);tgr_runtime_snapshot(&st);assert(st.detent==500); /* a layout SET without D keeps it */
   assert(layout_request((TMLCommand){.op=TML_QUERY,.request=34,.client=9},rep)&&layout_request((TMLCommand){.op=TML_SET,.request=35,.client=9,.token=77,.generation=u32(rep+16),.rows=3,.caps=TML_PEER_TMG9,.detent=400},rep)&&rep[7]==TML_OK&&rep[6]==3);tgr_runtime_snapshot(&st);assert(st.detent==400); /* back to the default, rows 3 */
  }
  free(timer.user);timer=(HostTimer){0};before=reads;assert(tio_lang()==TLG_EN&&reads==before);assert(fm_menu_rows()==3&&tio_lang()==TLG_ZH&&find()->language.source==2&&reads==before+6);before=reads;lr=language_request((TLGCommand){13,TLG_QUERY,TLG_EN});assert(lr.source==2&&lr.lang==TLG_ZH&&reads==before);
+ /* TMG9: the persisted D with no control state at all (the glasses just booted and the menu has not been shown): the status and the wheel/remote accessor
+  * read the stored record through the menu's own loader, so the phone's knob screen never reads back a reverted value. Nothing stored: 400. Read only: no
+  * controller is created, nothing is written or kept. */
+ {reset();TDSample st={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};uint8_t rep[32];
+  assert(!timer.user&&!find());
+  tgr_runtime_snapshot(&st);assert(st.detent==400&&st.caps==TD_CAPS_TMG9&&tio_knob_detent()==400&&!timer.user&&allocations==0&&writes==0);   /* nothing stored: the default */
+  TMLStored stored=tml_load(&tml_io);assert(stored.readable&&tml_store(&tml_io,&stored,3,500)&&writes==1);                                    /* D = 500 persisted by an earlier boot's SET */
+  unsigned w=writes;before=reads;
+  tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG9&&tio_knob_detent()==500&&reads>before);
+  assert(!timer.user&&!find()&&allocations==0&&writes==w);                                                                                    /* read only: no controller, no write */
+  {uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500&&d.caps==TD_CAPS_TMG9);}
+  /* A control state that exists but has not loaded the settings (a layout query creates one) answers the same. */
+  assert(layout_request((TMLCommand){.op=TML_QUERY,.request=40,.client=9},rep)&&find()&&!find()->settings_loaded);
+  tgr_runtime_snapshot(&st);assert(st.detent==500&&tio_knob_detent()==500&&!find()->settings_loaded);
+  /* The first menu show loads the same record, and from then on the answer comes from the control state without another read. */
+  assert(fm_menu_rows()==3&&find()->settings_loaded);before=reads;tgr_runtime_snapshot(&st);assert(st.detent==500&&tio_knob_detent()==500&&reads==before);
+  /* Nothing stored again, menu uninitialised: 400. A stored default (D = 400) reads as 400 as well. */
+  reset();tgr_runtime_snapshot(&st);assert(st.detent==400&&tio_knob_detent()==400);
+  stored=tml_load(&tml_io);assert(tml_store(&tml_io,&stored,2,0)&&tml_store(&tml_io,&stored,2,500)&&tml_store(&tml_io,&stored,2,400));tgr_runtime_snapshot(&st);assert(st.detent==400&&tio_knob_detent()==400&&!find());
+  stored=tml_load(&tml_io);assert(tml_store(&tml_io,&stored,2,300));tgr_runtime_snapshot(&st);assert(st.detent==300&&tio_knob_detent()==300&&!find());  /* the lowest D */
+  stored=tml_load(&tml_io);assert(tml_store(&tml_io,&stored,2,600));tgr_runtime_snapshot(&st);assert(st.detent==600&&tio_knob_detent()==600&&!find());  /* the highest D */
+  /* A record that cannot be read (I/O error) falls back to 400, never to garbage, and reads again once the error is gone. */
+  io_fail=FAIL_READ;tgr_runtime_snapshot(&st);assert(st.detent==400&&tio_knob_detent()==400&&!find());io_fail=0;tgr_runtime_snapshot(&st);assert(st.detent==600);
+ }
  reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==13);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
  reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling");return 0;
 }

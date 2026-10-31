@@ -4,6 +4,7 @@
  */
 #include "remote.h"
 #include "language_state.h"
+#include "../common-v1/knob_detent.h"
 #include "../diagnostics-v1/runtime_native.h"
 extern void fm_language_changed(void),fm_sync(void *);
 #include "../menu-grid-v2/menu_config.c"
@@ -50,6 +51,15 @@ static Control *find(void){
   if(*(void(**)(void*))((uint8_t*)t+8)==tick){Control *c=*(Control**)((uint8_t*)t+12);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}}
  return NULL;
 }
+/* The live knob detent D (knob_detent.h): the D of the stored menu record. Once the menu has loaded the settings that record is in the control state;
+ * before that (no control state yet, or one the first menu show has not filled) it is read from the same two-bank file through the same loader the menu
+ * uses (tml_load), so the status, the wheel inputs and the remote step answer the same before the menu is first shown as after. It is 400 only when nothing
+ * readable is stored. No control state is created and nothing is written. */
+unsigned tio_knob_detent(void){
+ Control *c=find();TMLStored stored;
+ if(c&&c->settings_loaded)stored=c->menu.stored;else stored=tml_load(&tml_io);
+ unsigned d=tml_detent(&stored);return tml_detent_valid(d)?d:TML_DETENT_DEFAULT;
+}
 unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
 unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
  c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);if(tlg_state_load(&c->language,&tls_io))fm_language_changed();c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
@@ -84,20 +94,21 @@ unsigned tgr_knob_command(void *app,const TDCommand *q,uint32_t now){
 void tgr_knob_cancel(void *app,uint32_t now){Control *c=find();if(c&&app&&c->menu_app==app)tk_cancel(&c->knob,now);}
 void tgr_knob_observe(void *app,int32_t delta,uint32_t now){Control *c=find();if(!c||c->knob.state!=TK_ACTIVE)return;bool ok=c->menu_app==app&&allowed()&&fm_menu_plain(app);tk_observe(&c->knob,delta,now,ok,c->synthetic_depth!=0);}
 void tgr_runtime_snapshot(TDSample *s){
- if(!s)return;s->caps=TD_CAPS_TMG9;s->detent=TK_DETENT_DEFAULT;s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;
+ if(!s)return;s->caps=TD_CAPS_TMG9;s->detent=tio_knob_detent(); /* the persisted D (400 when none is stored), with or without a control state */
+ s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;
  s->calibration_state=0;s->calibration_window=s->calibration_elapsed=s->calibration_samples=s->calibration_sequence=0;s->calibration_net=0;s->calibration_absolute=0;
  Control *c=find();if(!c)return;
- s->detent=tml_detent(&c->menu.stored); /* the live D: stored by the last TMG2 SET or loaded record, 400 when none is stored */
  if(c->settings_loaded){s->extension_valid|=TD_EXT_TILES|TD_EXT_LANGUAGE;s->tile_generation=c->tiles.stored.generation;s->language=c->language.lang;s->language_source=c->language.source;s->settings_flags=(c->tiles.stored.readable?1u:0u)|(c->language.stored.readable?2u:0u)|(c->pending?4u:0u);}
  tk_poll(&c->knob,stream_tick(),allowed()&&c->menu_app&&fm_menu_plain(c->menu_app));
  if(c->knob.window){s->extension_valid|=TD_EXT_CALIBRATION;s->calibration_state=c->knob.state;s->calibration_window=c->knob.window;s->calibration_elapsed=c->knob.elapsed;s->calibration_samples=c->knob.samples;s->calibration_net=c->knob.net;s->calibration_absolute=c->knob.absolute;s->calibration_sequence=c->knob.sequence;}
 }
 static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();tk_poll(&c->knob,stream_tick(),ok&&c->menu_app&&fm_menu_plain(c->menu_app));if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
 static void *device(unsigned type){void *p=NULL;for(unsigned j=0;j<16;j++){p=tgr_indev_next(p);if(!p)return NULL;if(tgr_indev_type(p)==type)return p;}return NULL;}
-/* Raw counts for one remote step. The launcher's menu hook (m8_hook_wheel) doubles a raw delta for the stock carousel and the TIO pages count in
- * TK_DETENT_RAW (300) themselves, so the launcher gets 300. Every other allowed app is stock and reads the raw listener at the stock rate of 600 counts
- * per item (TK_DETENT_LEGACY, what TMG7 injected), so a remote step still moves it one item. */
-static unsigned inject_counts(void){const char *top=nav_top_app();return top&&!strcmp(top,"com.rayneo.liteos.launcher")?TK_DETENT_RAW:TK_DETENT_LEGACY;}
+/* Raw counts for one remote step. In the launcher the menu hook (m8_hook_wheel) steps one item per D raw counts itself, and so do the TIO pages
+ * (wheel_input.h, music_input.h), D being the live detent (tio_knob_detent), so the launcher gets D: exactly one item or one page step, whatever D
+ * is. Every other allowed app is stock and reads the raw listener at the stock rate of 600 counts per item (TK_DETENT_LEGACY, what TMG7 injected),
+ * so a remote step still moves it one item. */
+static unsigned inject_counts(void){const char *top=nav_top_app();return top&&!strcmp(top,"com.rayneo.liteos.launcher")?tio_knob_detent():TK_DETENT_LEGACY;}
 static unsigned inject(unsigned op){
  if(!allowed())return TGR_BLOCKED;
  Control *c=find();if(c)tk_cancel(&c->knob,stream_tick());

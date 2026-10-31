@@ -1,12 +1,13 @@
-/* TMG9 bug 1: the REAL m8_hook_wheel body (sliced from menu10.c by tmg9_wheel_host_test.py into wheel_hook.inc) against a
- * stock model transcribed from nuttx_ap.bin, and the REAL FMView for the view side.
+/* TMG9 knob: the REAL m8_hook_wheel body (sliced from menu10.c by tmg9_wheel_host_test.py into wheel_hook.inc) and the REAL tio_menu_wheel_step
+ * (menu_wheel.h) against a stock model transcribed from nuttx_ap.bin, and the REAL FMView for the view side.
  *   0x4da6ae stock wheel -> 0x4da65c -> 0x58e90c step: position += delta/600, rubber band, round at .5, snap on change
  *   0x4da820 native_snap: re-seats the carousel from app[0x88] (0x58e34c setIndex, which clamps and zeroes the motion flags)
  *            unless nothing moved and the shown frame (app[0x90]) already is the one for app[0x88]
  *   0x4da148 frame hook / 0x4da42c label_frame hook: models of menu10.c m8_hook_frame / m8_hook_label_frame (they keep their
  *            state writes, 0x90 and 0x8c) that end in fm_sync: the FMView selects app[0x88] (focus_menu_native.c fm_sync).
- * Stock native_snap overwrites whatever the hook put in the scroll position with app[0x88], so a hook that only moves the
- * scroll position (TMG8) leaves the focus where it was: this test fails for that body (the driver proves it). */
+ * The hook owns the stepping: one item per live D raw counts through app[0x88] + app[0x90] + native_snap, a step past either end is the wrap,
+ * and the stock wheel (its 600-count rounding) never receives a delta while the menu has a controller. A hook that only moves the scroll
+ * position (TMG8) or that still feeds stock a scaled delta fails this test: the driver proves it for both. */
 #include "common-v1/menu_wheel.h"
 #include "music-runtime-v1/menu_tiles.h"
 #include "focus-v1/focus_menu.h"
@@ -32,7 +33,7 @@ static bool f_attach(void *o,void *w){return o&&w;}
 unsigned tio_lang(void){return 0;}
 static FMView VIEW;static unsigned ROWS;
 /* ---- the stock model ---- */
-static uint8_t A[0x200];static int COUNT;static uint32_t NOW;static TIOMenuWrap WRAP;static int DIRFLAG;static bool ELIGIBLE;static int SNAPS;
+static uint8_t A[0x200];static int COUNT;static uint32_t NOW;static TIOMenuStep STEP;static unsigned DET=400;static bool NOCTRL;static int STOCK_CALLS,STOCK_LAST;static int DIRFLAG;static bool ELIGIBLE;static int SNAPS;
 static uint32_t *word(void *app,unsigned off){return (uint32_t *)((uint8_t *)app+off);}
 #define CB(o) (A[0xa0+(o)])
 #define CI(o) (*(int32_t *)(A+0xa0+(o)))
@@ -48,7 +49,8 @@ static bool tn_slot_visible(void *a){(void)a;return false;}
 static bool eligible(void *a){(void)a;return ELIGIBLE;}
 static unsigned fm_tile_count(void){return (unsigned)COUNT;}
 static uint32_t stream_tick(void){return NOW;}
-int fm_wheel_wrap(void *app,int index,int count,int delta,uint32_t now){(void)app;return tio_menu_wheel_wrap(&WRAP,index,count,delta,now);}
+unsigned tio_knob_detent(void){return DET;}
+int fm_wheel_step(void *app,int index,int count,int delta,uint32_t now){(void)app;return NOCTRL?FM_STEP_NO_CONTROL:tio_menu_wheel_step(&STEP,index,count,delta,now,tio_knob_detent());}
 void fm_sync(void *app){int i=(int)*word(app,0x88);if(i>=0&&i<COUNT)(void)fm_view_update(&VIEW,i,0,0,NOW);}
 static bool m8_hook_frame(void *app,int frame){if(frame<0||frame>30*COUNT-1)return false;if((int)*word(app,0x90)==frame)return false;*word(app,0x90)=(uint32_t)frame;fm_sync(app);return true;}
 static void m8_hook_label_frame(void *app,int frame){frame=tio_clampi(frame,0,30*COUNT-1);*word(app,0x8c)=(uint32_t)tio_frame_index(frame);fm_sync(app);}
@@ -61,6 +63,7 @@ static void native_snap(void *app){                                             
  set_index((int)*word(app,0x88));(void)m8_hook_frame(app,tio_frame_start((int)*word(app,0x88)));m8_hook_label_frame(app,(int)*word(app,0x90));
 }
 static void stock_wheel(void *app,int delta){                                                                /* 0x4da6ae -> 0x4da65c -> 0x58e90c */
+ STOCK_CALLS++;STOCK_LAST=delta;
  CB(0xa)=(uint8_t)DIRFLAG;if((uint32_t)delta+1u<=2u)return;
  int d=CB(0xa)?delta:-delta;float gain=CB(0xd)==1?0.8f:1.f;float s10=CF(0x14)+(float)d*(1.f/600.f)*gain,s12=(float)(CI(0)-1),s11;
  if(s10<0)s11=-rb(-s10);else if(s10>s12)s11=rb(s10-s12)+s12;else s11=s10;                                    /* ctrl[8]=ctrl[9]=1: rubber band */
@@ -74,57 +77,96 @@ static void reset(unsigned rows,int count,int start,int dir){
  memset(&VIEW,0,sizeof VIEW);
  TNWidgets api={NULL,f_idle,f_create,f_create,f_label,f_place,f_buffer,f_text,f_visible,f_destroy,NULL,NULL};
  assert(fm_view_open(&VIEW,&api,NULL,f_attach,&VIEW));assert(fm_view_tiles(&VIEW,&tiles)&&fm_view_rows(&VIEW,rows));
- ROWS=rows;memset(A,0,sizeof A);COUNT=count;DIRFLAG=dir;ELIGIBLE=true;SNAPS=0;
+ ROWS=rows;memset(A,0,sizeof A);COUNT=count;DIRFLAG=dir;ELIGIBLE=true;SNAPS=0;NOCTRL=false;STOCK_CALLS=0;STOCK_LAST=0;
  CI(0)=count;CB(8)=1;CB(9)=1;*word(A,0x88)=(uint32_t)start;set_index(start);*word(A,0x90)=(uint32_t)tio_frame_start(start);*word(A,0x8c)=(uint32_t)start;
- WRAP=(TIOMenuWrap){0};NOW=1000;assert(fm_view_update(&VIEW,start,0,0,NOW));
+ STEP=(TIOMenuStep){0};NOW=1000;assert(fm_view_update(&VIEW,start,0,0,NOW));
 }
 static void turn(int raw){wheel_hook(A,raw);NOW+=5;}
 static void settled(int target){   /* the three places the focus lives all agree */
  CHECK((int)*word(A,0x88)==target);CHECK(CI(4)==target);CHECK(VIEW.selected==target);
  CHECK((int)*word(A,0x8c)==target);CHECK((int)*word(A,0x90)==tio_frame_start(target));
 }
+static bool loop_ok(const int *seen,int start){for(int i=0;i<13;i++)if(seen[i]!=(i==start?2:1))return false;return true;}
+static int mod(long v,int n){v%=n;return (int)(v<0?v+n:v);}
+/* Where the focus must be after `counts` raw counts of one gesture (never paused 250 ms) at detent D: one item per D, the sign is the direction. */
+static int expect(int start,int sign,long counts,int count,unsigned d){return mod(start+sign*(long)(counts/(long)d),count);}
+static void in_step(void){CHECK((int)*word(A,0x88)==CI(4)&&VIEW.selected==(int)*word(A,0x88)&&(int)*word(A,0x88)>=0&&(int)*word(A,0x88)<COUNT);}
 int main(void){
- /* 1. Wrap at both ends, both signs of the raw count, carousel and 2 / 3 rows, 8..13 items (setting 0x24 == 1: raw + is forward). */
- for(unsigned rows=1;rows<=3;rows++)for(int count=8;count<=13;count++){
-  for(int sign=-1;sign<=1;sign+=2){
-   int start=sign<0?0:count-1,target=sign<0?count-1:0;
-   snprintf(CASE,sizeof CASE,"rows=%u count=%d sign=%d",rows,count,sign);
-   reset(rows,count,start,1);
-   int events=0;while(events<30&&(int)*word(A,0x88)==start){turn(sign*50);events++;}
-   CHECK(events==6);   /* 300 counts built against the end, in 50-count events 5 ms apart */
-   settled(target);
-   /* The gesture goes on: the carousel carries on from the wrapped item like any other step, and the three places stay in step. */
-   for(int more=0;more<12;more++){turn(sign*50);int at=(int)*word(A,0x88);CHECK(at>=0&&at<count&&CI(4)==at&&VIEW.selected==at);}
-   {int k=((int)*word(A,0x88)-target)*sign;CHECK(k>=2&&k<=4);}   /* 600 more counts: the stock step takes 150-190 raw counts per item, so it walks on from the wrap point */
-   /* Ping-pong: turned back the other way a fresh 300 counts against the new end wraps again, to where it started. */
-   reset(rows,count,start,1);for(int i=0;i<6;i++)turn(sign*50);settled(target);NOW+=400;
-   for(int i=0;i<6;i++)turn(-sign*50);
-   settled(start);
+ const unsigned details[]={300,350,400,450,500,550,600};
+ /* 1. One item per D, however the counts are cut: after every event the focus is exactly start + floor(counts so far / D) items, modulo the item
+  * count (the step past the last item is the wrap). Carousel and 2 / 3 rows, 8..13 items, both signs, D = 300..600, 14 D of counts (a full
+  * 13-item loop and one more), and the stock wheel never receives a delta. */
+ for(unsigned di=0;di<sizeof details/sizeof *details;di++)for(unsigned rows=1;rows<=3;rows++)for(int count=8;count<=13;count++)for(int sign=-1;sign<=1;sign+=2)
+  for(int cut=0;cut<5;cut++){
+   unsigned d=details[di];int chunk=cut==0?50:cut==1?25:cut==2?(int)d:cut==3?(int)d/2+7:(int)d+(int)d/2;   /* 50, 25, exactly D, an odd cut below D, one and a half D */
+   for(int start=0;start<count;start+=count/3+1){
+    snprintf(CASE,sizeof CASE,"D=%u rows=%u count=%d sign=%d chunk=%d start=%d",d,rows,count,sign,chunk,start);
+    reset(rows,count,start,1);DET=d;long total=0;
+    for(int e=0;e<(int)(14*d)/chunk;e++){turn(sign*chunk);total+=chunk;CHECK((int)*word(A,0x88)==expect(start,sign,total,count,d));in_step();}
+    CHECK(STOCK_CALLS==0);
+   }
   }
+ /* 2. A 13-item loop is 13 * D counts: every item is visited once, in order, and the focus is back where it started. Both signs, every start, D = 300 / 400 / 600
+  * (and the rest), 50-count events 5 ms apart. */
+ for(unsigned di=0;di<sizeof details/sizeof *details;di++)for(int sign=-1;sign<=1;sign+=2)for(int start=0;start<13;start++){
+  unsigned d=details[di];snprintf(CASE,sizeof CASE,"loop D=%u sign=%d start=%d",d,sign,start);
+  reset(2,13,start,1);DET=d;int seen[13]={0},moves=0,last=start;seen[start]=1;long total=0;
+  while(total<13L*(long)d){int chunk=(int)d-(int)total%(int)d<50?(int)d-(int)total%(int)d:50;turn(sign*chunk);total+=chunk;
+   int at=(int)*word(A,0x88);if(at!=last){moves++;CHECK(mod(last+sign,13)==at);seen[at]++;last=at;}in_step();}
+  CHECK(moves==13&&loop_ok(seen,start)&&last==start&&(int)*word(A,0x88)==start);CHECK(STOCK_CALLS==0&&SNAPS==13);
  }
- /* 2. Not at an end: one turn, however hard, never wraps. It goes to the stock rule (and stops at the end); the hook does not snap. */
- for(unsigned rows=1;rows<=3;rows++)for(int count=8;count<=13;count++)for(int start=1;start<count-1;start++)for(int sign=-1;sign<=1;sign+=2){
-  snprintf(CASE,sizeof CASE,"mid rows=%u count=%d start=%d sign=%d",rows,count,start,sign);
-  reset(rows,count,start,1);turn(sign*100);
-  CHECK(SNAPS==0);CHECK(abs((int)*word(A,0x88)-start)<=1&&CI(4)==(int)*word(A,0x88)&&VIEW.selected==(int)*word(A,0x88));
-  reset(rows,count,start,1);turn(sign==1?INT_MAX:INT_MIN);
-  CHECK(SNAPS==0);CHECK((int)*word(A,0x88)==(sign>0?count-1:0));CHECK(CI(4)==(int)*word(A,0x88)&&VIEW.selected==(int)*word(A,0x88));
+ /* 3. Wrap at both ends: the step past the last item goes to the first, past the first to the last, and the three places the focus lives agree. */
+ for(unsigned di=0;di<sizeof details/sizeof *details;di++)for(unsigned rows=1;rows<=3;rows++)for(int count=8;count<=13;count++)for(int sign=-1;sign<=1;sign+=2){
+  unsigned d=details[di];int start=sign<0?0:count-1,target=sign<0?count-1:0;
+  snprintf(CASE,sizeof CASE,"wrap D=%u rows=%u count=%d sign=%d",d,rows,count,sign);
+  reset(rows,count,start,1);DET=d;
+  int events=0;while(events<40&&(int)*word(A,0x88)==start){turn(sign*50);events++;}
+  CHECK(events==(int)((d+49)/50));settled(target);CHECK(SNAPS==1&&STOCK_CALLS==0);
+  /* one burst of exactly D does the same, and 2 D from the end lands one item past the wrap */
+  reset(rows,count,start,1);DET=d;turn(sign*(int)d);settled(target);
+  reset(rows,count,start,1);DET=d;turn(sign*2*(int)d);settled(sign<0?count-2:1);
+  /* Ping-pong: back the other way after a pause, the same wrap in reverse. */
+  reset(rows,count,start,1);DET=d;for(unsigned i=0;i<(d+49)/50;i++)turn(sign*50);settled(target);NOW+=400;
+  for(unsigned i=0;i<(d+49)/50;i++)turn(-sign*50);settled(start);
  }
- /* 3. Not eligible (stock state not safe to re-seat): the hook never writes the index or snaps, the stock path runs. */
+ /* 4. A gesture is a run of counts: a pause over 250 ms or a reversal drops the remainder; jitter (8 counts or fewer) neither counts nor breaks the gesture. */
+ for(unsigned di=0;di<sizeof details/sizeof *details;di++){
+  unsigned d=details[di];int half=(int)d-50;snprintf(CASE,sizeof CASE,"gesture D=%u",d);
+  reset(2,13,5,1);DET=d;turn(half);CHECK((int)*word(A,0x88)==5);NOW+=300;turn(50);CHECK((int)*word(A,0x88)==5);                      /* idle reset */
+  reset(2,13,5,1);DET=d;turn(half);turn(-8);turn(8);turn(5);turn(0);CHECK((int)*word(A,0x88)==5);turn(50);CHECK((int)*word(A,0x88)==6);   /* jitter ignored, kept */
+  reset(2,13,5,1);DET=d;turn(half);turn(-60);CHECK((int)*word(A,0x88)==5);turn(60);CHECK((int)*word(A,0x88)==5);                  /* reversal reset: -60 started a fresh backward run, +60 a fresh forward one */
+  reset(2,13,5,1);DET=d;turn(half);turn(-60);turn(-(int)d);CHECK((int)*word(A,0x88)==4);                                          /* the fresh backward run steps at D */
+  reset(2,13,5,1);DET=d;turn((int)d+(int)d/2);CHECK((int)*word(A,0x88)==6);turn((int)d/2);CHECK((int)*word(A,0x88)==7);          /* the remainder is carried into the next event */
+  reset(2,13,5,1);DET=d;turn(INT_MAX);in_step();CHECK(STOCK_CALLS==0);reset(2,13,5,1);DET=d;turn(INT_MIN);in_step();CHECK(STOCK_CALLS==0);
+  CHECK((int)*word(A,0x88)>=0);
+ }
+ /* 5. D is read at every event: the same gesture steps at the new value after the phone changed it. */
+ reset(2,13,5,1);DET=300;turn(250);DET=600;turn(250);CHECK((int)*word(A,0x88)==5);turn(100);CHECK((int)*word(A,0x88)==6);   /* 600 now: 600 counts in one gesture */
+ reset(2,13,5,1);DET=600;turn(550);CHECK((int)*word(A,0x88)==5);DET=300;turn(60);CHECK((int)*word(A,0x88)==7);                  /* 610 counts at 300: two items, 10 left */
+ /* 6. Not eligible (stock state not safe to re-seat): nothing happens, nothing builds up: the hook writes no index, snaps nothing, and hands stock no delta. */
  for(int sign=-1;sign<=1;sign+=2){
   snprintf(CASE,sizeof CASE,"not eligible sign=%d",sign);
-  reset(2,13,sign<0?0:12,1);ELIGIBLE=false;
-  for(int i=0;i<8;i++)turn(sign*50);
-  CHECK(SNAPS==0);CHECK((int)*word(A,0x88)==(sign<0?0:12));
+  reset(2,13,sign<0?0:12,1);DET=400;ELIGIBLE=false;
+  for(int i=0;i<40;i++)turn(sign*50);
+  CHECK(SNAPS==0&&STOCK_CALLS==0&&(int)*word(A,0x88)==(sign<0?0:12));
+  ELIGIBLE=true;turn(sign*50);CHECK(SNAPS==0);                                                                                  /* the ineligible counts were not kept */
  }
- /* 4. A full 4000 count sweep each way from the first item changes the focus 13 times (twelve steps and a wrap) at 300 counts: 13 items in two turns. */
- for(int sign=-1;sign<=1;sign+=2){
-  snprintf(CASE,sizeof CASE,"sweep sign=%d",sign);
-  reset(2,13,0,1);int last=0,changes=0;
-  for(int total=0;total<4000;total+=50){turn(sign*50);int at=(int)*word(A,0x88);if(at!=last){changes++;last=at;}CHECK((int)*word(A,0x88)==CI(4)&&VIEW.selected==at);}
-  CHECK(changes>=12&&CI(4)==(int)*word(A,0x88)&&VIEW.selected==(int)*word(A,0x88));
+ /* 7. No menu controller at all (allocation failed): the stock menu keeps its own rate, so the delta goes to stock UNSCALED (never 2x) and the hook steps nothing. */
+ for(int sign=-1;sign<=1;sign+=2)for(int delta=100;delta<=900;delta+=400){
+  snprintf(CASE,sizeof CASE,"no controller sign=%d delta=%d",sign,delta);
+  reset(2,13,5,1);NOCTRL=true;turn(sign*delta);CHECK(STOCK_CALLS==1&&STOCK_LAST==sign*delta&&SNAPS==0);
  }
- /* 5. Slide direction of the page change on a wrap (grid): last -> first slides forward, first -> last backward, plain steps by order. */
+ /* 8. The stock direction setting (0x24, ctrl[0xa]) does not reach the menu: the raw sign decides, whatever stock would have done with it. */
+ for(unsigned di=0;di<sizeof details/sizeof *details;di++)for(int dir=0;dir<=1;dir++)for(int sign=-1;sign<=1;sign+=2){
+  unsigned d=details[di];snprintf(CASE,sizeof CASE,"dir=%d D=%u sign=%d",dir,d,sign);
+  reset(3,13,6,dir);DET=d;turn(sign*(int)d);CHECK((int)*word(A,0x88)==6+sign&&STOCK_CALLS==0);settled(6+sign);
+ }
+ /* 9. Remote: one injected step is D counts in the launcher (remote_native.c inject_counts): one item every time, either direction, at every D and every position. */
+ for(unsigned di=0;di<sizeof details/sizeof *details;di++)for(int sign=-1;sign<=1;sign+=2)for(int start=0;start<13;start++){
+  unsigned d=details[di];snprintf(CASE,sizeof CASE,"remote D=%u sign=%d start=%d",d,sign,start);
+  reset(1,13,start,1);DET=d;turn(sign*(int)d);settled(mod(start+sign,13));turn(sign*(int)d);settled(mod(start+2*sign,13));turn(-sign*(int)d);settled(mod(start+sign,13));CHECK(STOCK_CALLS==0);
+ }
+ /* 10. The slide direction of a page change on a wrap (grid): last -> first slides forward, first -> last backward, plain steps by order. */
  for(unsigned rows=2;rows<=3;rows++){
   unsigned per=rows*3;
   snprintf(CASE,sizeof CASE,"slide rows=%u",rows);
@@ -134,15 +176,7 @@ int main(void){
   reset(rows,13,(int)per,1);NOW=5000;CHECK(fm_view_update(&VIEW,(int)per-1,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==-10);
   reset(rows,13,0,1);NOW=5000;CHECK(fm_view_update(&VIEW,1,0,0,NOW));CHECK(!VIEW.page_motion&&VIEW.page_offset==0);   /* same page: no slide */
  }
- /* 7. Glasses setting 0x24 != 1 (stock reverses the delta). The hook's wrap follows the raw sign like every page input, so raw + at the last item
-  * wraps (in a slow 50-count gesture the reversed stock carousel leaves the end first: the open item below); the three focus places must stay in step whichever way the stock carousel was told to go. Whether raw + is "forward" on the
-  * hardware is the device check (README, TMG9 checklist: log one turn's sign). */
- for(unsigned rows=1;rows<=3;rows++)for(int count=8;count<=13;count++){
-  snprintf(CASE,sizeof CASE,"dir=0 rows=%u count=%d",rows,count);
-  reset(rows,count,count-1,0);turn(300);settled(0);   /* one burst of a full detent: the stock reversal has no time to move the focus off the end first */
-  reset(rows,count,3,0);for(int i=0;i<60;i++){turn(i<30?50:-50);CHECK((int)*word(A,0x88)==CI(4)&&VIEW.selected==(int)*word(A,0x88));}
- }
  if(FAILS){fprintf(stderr,"%d check(s) failed\n",FAILS);return 1;}
- puts("PASS tmg9 wheel hook: wrap writes app[0x88] and snaps, ctrl.idx/view.selected/label/frame agree for carousel and 2/3 rows, 8..13 items, both signs; grid slide follows the turn");
+ puts("PASS tmg9 wheel hook: one item per D (300..600) through app[0x88] + native_snap, 13 items in 13 D, wrap at both ends, remote step = D, ctrl.idx/view.selected/label/frame agree for carousel and 2/3 rows, the stock wheel never sees a delta");
  return 0;
 }

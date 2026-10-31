@@ -71,7 +71,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg6-passing',[FW/'tests/tmg6_passing_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')
     ctest('tmg4-diagnostics',[FW/'src/diagnostics-v1/diagnostics_test.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src/diagnostics-v1')
     ctest('tmg8-caps',[FW/'tests/tmg8_caps_test.c',FW/'src/menu-grid-v2/menu_config.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src')
-    ctest('tmg8-wheel',[FW/'tests/tmg8_wheel_test.c'],FW/'src')
+    ctest('tmg9-stepping',[FW/'tests/tmg9_stepping_test.c'],FW/'src')
     ctest('tmg8-music-input',[FW/'src/music-runtime-v1/music_input_test.c'],FW/'src/music-runtime-v1')
     run('tmg8-icons',['python3','-I',FW/'tests/tmg8_icons_test.py'])
     run('tmg8-brightness',['python3','-I',FW/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])

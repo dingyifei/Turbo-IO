@@ -5,7 +5,7 @@
 enum {TK_ABSENT=0,TK_ACTIVE=1,TK_FINISHED=2,TK_EXPIRED=3,TK_CANCELED=4,TK_OVERFLOW=5};
 enum {TK_OK=0,TK_BLOCKED=1,TK_SESSION=2,TK_BUSY=3,TK_UNAVAILABLE=4,TK_OVERFLOW_RESULT=5};
 #define TK_MAX_LEASE_MS 30000u
-#define TK_DETENT_RAW 300u    /* TMG8: raw counts per item; equals TIO_WHEEL_DETENT_RAW (tio_ui.h), asserted in menu_wheel.h */
+#define TK_DETENT_RAW 300u    /* TMG8: raw counts per item; equals TK_DETENT_MIN (TIO_WHEEL_DETENT_MIN in tio_ui.h, asserted in menu_wheel.h) */
 #define TK_DETENT_LEGACY 600u /* TMG4..TMG7 reported this; still accepted from a peer without the TMG8 caps bit */
 /* TMG9: with caps bit 10 (TD_CAP_KNOB_DETENT) the detent D is adjustable, 300..600 raw counts in steps of 50. The same numbers are
  * TML_DETENT_* in menu-grid-v2/menu_config.h (the wire and storage side); tests/tmg9_detent_test.c asserts they agree. */

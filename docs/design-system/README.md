@@ -102,7 +102,7 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
 - Mini-app art outside band B is capped at `lens-mid`.
 - Every host render passes the brightness gate, using the same metric as the Lens Brightness Audit dashboard.
 
-**9. Knob.** Every list moves one item per `lens-wheel-detent` (300 raw counts, about 6.7 items per turn) and wraps from the last item to the first. Input lockouts are 200 ms on pages and 500 ms in music.
+**9. Knob.** Every list moves one item per `lens-wheel-detent` (400 raw counts by default, about 5.0 items per ~2000-count turn; the phone sets it from 300 to 600 in steps of 50) and wraps from the last item to the first. Input lockouts are 200 ms on pages and 500 ms in music.
 
 ## Iconography
 

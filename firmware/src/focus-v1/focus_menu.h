@@ -65,6 +65,10 @@ void fm_show(void *app);
 void fm_hide(void *app);
 void fm_destroy(void *app);
 void fm_sync(void *app);
-/* Knob wrap (menu_wheel.h): the item to jump to, or -1 to let the stock carousel take the scaled delta. */
-int fm_wheel_wrap(void *app,int index,int count,int delta,uint32_t now);
+/* Knob stepping (menu_wheel.h): the hook accumulates the raw counts and moves one item per D (the live detent, knob_detent.h). Returns the item
+ * to select, FM_STEP_NONE when this delta completes no step, or FM_STEP_NO_CONTROL when the menu has no controller (the heap block that holds the
+ * remainder next to the view); the hook then leaves the delta to the stock carousel, unscaled. */
+#define FM_STEP_NONE (-1)
+#define FM_STEP_NO_CONTROL (-2)
+int fm_wheel_step(void *app,int index,int count,int delta,uint32_t now);
 #endif
