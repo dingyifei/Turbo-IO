@@ -20,7 +20,7 @@ def main():
  with zipfile.ZipFile(args.stock) as z:raw=z.read('nuttx_ap.bin')
  spec=json.loads((FW/'build-inputs.json').read_text());assert hashlib.sha256(raw).hexdigest()==spec['stockAP']
  for address,n,sha in RANGES:assert hashlib.sha256(raw[address-0x10190000:address-0x10190000+n]).hexdigest()==sha,hex(address)
- original=json.loads((FW.parent/'strix-1.0.5.5-tmg3/build-inputs.json').read_text())
+ original=json.loads((FW/'baseline/tmg3-build-inputs.json').read_text())
  keys=('offset','address','before','kind','target','pad')
  assert len(spec['edits'])==25 and [{k:e.get(k) for k in keys} for e in spec['edits']]==[{k:e.get(k) for k in keys} for e in original['edits']]
  assert [e for e in spec['edits'] if e['kind']=='raw']==[e for e in original['edits'] if e['kind']=='raw']

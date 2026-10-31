@@ -22,9 +22,8 @@ for file,entry in manifest.items():
         continue
     raise SystemExit('invalid manifest entry: '+file)
 
-ROOT=P.parents[1];FW2=ROOT/'firmware-research/strix-1.0.5.5-tmg2'
-FW4=ROOT/'firmware-research/strix-1.0.5.5-tmg8'   # the active tree (the FW4 name is historical); TMG7 is frozen and no longer tested here
-FW=FW4
+ROOT=P.parents[1]
+FW=ROOT/'firmware'   # the single firmware tree; released candidates are the fw/tmgN tags, not folders
 stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
 subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
 out=P/'build/tests';out.mkdir(parents=True,exist_ok=True)
@@ -68,39 +67,39 @@ def ctest(name,files,inc):
         raise RuntimeError(name+' did not report PASS')
 seen.add('tmg4-host')
 if only is None or 'tmg4-host' in only:
-    run('tmg8-host',['python3','-I',FW4/'tests/tmg7_host_test.py','--out',out/'tmg8-host','--brightness',out/'tmg8-host/brightness.json'])   # tokens, app runtime, nav, menu grid and carousel, card, layout EN/ZH, brightness gate (the script keeps its tmg7 name)
-    ctest('tmg6-passing',[FW4/'tests/tmg6_passing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
-    ctest('tmg4-diagnostics',[FW4/'src/diagnostics-v1/diagnostics_test.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
-    ctest('tmg8-caps',[FW4/'tests/tmg8_caps_test.c',FW4/'src/menu-grid-v2/menu_config.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src')
-    ctest('tmg8-wheel',[FW4/'tests/tmg8_wheel_test.c'],FW4/'src')
-    ctest('tmg8-music-input',[FW4/'src/music-runtime-v1/music_input_test.c'],FW4/'src/music-runtime-v1')
-    run('tmg8-icons',['python3','-I',FW4/'tests/tmg8_icons_test.py'])
-    run('tmg8-brightness',['python3','-I',FW4/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
-    ctest('tmg8-lyrics',[FW4/'tests/tmg8_lyrics_test.c'],FW4/'src')
-    ctest('tmg8-tile-state',[FW4/'tests/tmg8_tile_state_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
-    ctest('tmg8-nav-title',[FW4/'tests/tmg8_nav_title_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
-    ctest('tmg8-nav-background',[FW4/'tests/tmg8_nav_background_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
-    ctest('tmg4-command',[FW4/'src/diagnostics-v1/command_test.c',FW4/'src/diagnostics-v1/command.c',FW4/'src/diagnostics-v1/diagnostics.c'],FW4/'src/diagnostics-v1')
-    ctest('tmg4-status',[FW4/'tests/runtime_status_test.c',FW4/'src/diagnostics-v1/diagnostics.c',FW4/'src/diagnostics-v1/command.c'],FW4/'src')
-    ctest('tmg4-timer-wrap',[FW4/'tests/timer_wrap_test.c',FW4/'src/menu-grid-v2/tile_config.c',FW4/'src/menu-grid-v2/menu_config.c'],FW4/'src')
-    ctest('tmg4-knob',[FW4/'tests/knob_test.c',FW4/'src/diagnostics-v1/knob_calibration.c'],FW4/'src')
-    run('tmg4-identity',['python3','-I',FW4/'tests/identity_test.py'])
-    ctest('tmg4-tile-config',[FW4/'tests/tile_config_test.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
-    ctest('tmg4-menu-tiles',[FW4/'tests/menu_tiles_test.c'],FW4/'src')
-    ctest('tmg4-menu-lang',[FW4/'tests/menu_lang_test.c',FW4/'src/global-remote-v1/lang_flag.c',FW4/'src/global-remote-v1/lang_store.c'],FW4/'src')
-    ctest('tmg4-lang-store',[FW4/'tests/lang_store_test.c',FW4/'src/global-remote-v1/lang_store.c'],FW4/'src')
-    ctest('tmg4-text',[FW4/'tests/tio_text_test.c',FW4/'src/common-v1/tio_text.c'],FW4/'src')
-    ctest('tmg4-grid',[FW4/'tests/focus_grid_test.c',FW4/'src/focus-v1/focus_menu.c',FW4/'src/common-v1/tio_text.c',FW4/'src/menu-grid-v2/tile_config.c'],FW4/'src')
-    ctest('tmg5-music',[FW4/'src/music-runtime-v1/music_test.c',FW4/'src/music-runtime-v1/music.c'],FW4/'src/music-runtime-v1')
-    ctest('tmg5-noncardinal',[FW4/'tests/noncardinal_smoothing_test.c'],FW4/'src')
-    ctest('tmg5-smoothing',[FW4/'tests/smoothing_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
-    ctest('tmg4-prediction',[FW4/'tests/pose_prediction_test.c',FW4/'src/navigation-runtime-v1/nav_runtime.c'],FW4/'src')
-    run('tmg4-native-ui',['python3','-I',FW4/'tests/native_ui_host_test.py','--out',out/'tmg4-native-ui-host'])
-    run('tmg4-native-status',['python3','-I',FW4/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
-    run('tmg4-native',['python3','-I',FW4/'tests/native_host_test.py','--out',out/'tmg4-native-host'])
-    run('tmg4-stock-abi',['python3','-I',FW4/'tests/stock_abi_test.py','--stock',stock])
-    run('tmg4-kept',['python3','-I',FW4/'tools/check_kept.py',FW2,FW4])
-    run('tmg4-cjk',['python3','-I',FW4/'tools/check_cjk.py',FW4])
+    run('tmg8-host',['python3','-I',FW/'tests/tmg7_host_test.py','--out',out/'tmg8-host','--brightness',out/'tmg8-host/brightness.json'])   # tokens, app runtime, nav, menu grid and carousel, card, layout EN/ZH, brightness gate (the script keeps its tmg7 name)
+    ctest('tmg6-passing',[FW/'tests/tmg6_passing_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')
+    ctest('tmg4-diagnostics',[FW/'src/diagnostics-v1/diagnostics_test.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src/diagnostics-v1')
+    ctest('tmg8-caps',[FW/'tests/tmg8_caps_test.c',FW/'src/menu-grid-v2/menu_config.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src')
+    ctest('tmg8-wheel',[FW/'tests/tmg8_wheel_test.c'],FW/'src')
+    ctest('tmg8-music-input',[FW/'src/music-runtime-v1/music_input_test.c'],FW/'src/music-runtime-v1')
+    run('tmg8-icons',['python3','-I',FW/'tests/tmg8_icons_test.py'])
+    run('tmg8-brightness',['python3','-I',FW/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
+    ctest('tmg8-lyrics',[FW/'tests/tmg8_lyrics_test.c'],FW/'src')
+    ctest('tmg8-tile-state',[FW/'tests/tmg8_tile_state_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
+    ctest('tmg8-nav-title',[FW/'tests/tmg8_nav_title_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
+    ctest('tmg8-nav-background',[FW/'tests/tmg8_nav_background_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c',FW/'src/common-v1/tio_text.c'],FW/'src')
+    ctest('tmg4-command',[FW/'src/diagnostics-v1/command_test.c',FW/'src/diagnostics-v1/command.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src/diagnostics-v1')
+    ctest('tmg4-status',[FW/'tests/runtime_status_test.c',FW/'src/diagnostics-v1/diagnostics.c',FW/'src/diagnostics-v1/command.c'],FW/'src')
+    ctest('tmg4-timer-wrap',[FW/'tests/timer_wrap_test.c',FW/'src/menu-grid-v2/tile_config.c',FW/'src/menu-grid-v2/menu_config.c'],FW/'src')
+    ctest('tmg4-knob',[FW/'tests/knob_test.c',FW/'src/diagnostics-v1/knob_calibration.c'],FW/'src')
+    run('tmg4-identity',['python3','-I',FW/'tests/identity_test.py'])
+    ctest('tmg4-tile-config',[FW/'tests/tile_config_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
+    ctest('tmg4-menu-tiles',[FW/'tests/menu_tiles_test.c'],FW/'src')
+    ctest('tmg4-menu-lang',[FW/'tests/menu_lang_test.c',FW/'src/global-remote-v1/lang_flag.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')
+    ctest('tmg4-lang-store',[FW/'tests/lang_store_test.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')
+    ctest('tmg4-text',[FW/'tests/tio_text_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
+    ctest('tmg4-grid',[FW/'tests/focus_grid_test.c',FW/'src/focus-v1/focus_menu.c',FW/'src/common-v1/tio_text.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
+    ctest('tmg5-music',[FW/'src/music-runtime-v1/music_test.c',FW/'src/music-runtime-v1/music.c'],FW/'src/music-runtime-v1')
+    ctest('tmg5-noncardinal',[FW/'tests/noncardinal_smoothing_test.c'],FW/'src')
+    ctest('tmg5-smoothing',[FW/'tests/smoothing_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')
+    ctest('tmg4-prediction',[FW/'tests/pose_prediction_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')
+    run('tmg4-native-ui',['python3','-I',FW/'tests/native_ui_host_test.py','--out',out/'tmg4-native-ui-host'])
+    run('tmg4-native-status',['python3','-I',FW/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
+    run('tmg4-native',['python3','-I',FW/'tests/native_host_test.py','--out',out/'tmg4-native-host'])
+    run('tmg4-stock-abi',['python3','-I',FW/'tests/stock_abi_test.py','--stock',stock])
+    run('tmg4-kept',['python3','-I',FW/'tools/check_kept.py',FW/'baseline/kept',FW])
+    run('tmg4-cjk',['python3','-I',FW/'tools/check_cjk.py',FW])
     groups.append('tmg4-host');print('tmg4-host: PASS')
 else:skip('tmg4-host','not selected by --only')
 seen.add('shared-sources')
@@ -116,18 +115,18 @@ if only is None or 'shared-sources' in only:
         phone=P/Path(name).name
         if not phone.exists():
             print('shared-sources: skip removed phone copy '+phone.name);continue
-        if phone.read_bytes()!=(FW4/'src'/name).read_bytes():
+        if phone.read_bytes()!=(FW/'src'/name).read_bytes():
             raise RuntimeError('shared source mismatch: '+name)
     for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h','diagnostics-v1/diagnostics.c','diagnostics-v1/diagnostics.h','diagnostics-v1/command.h','diagnostics-v1/knob_calibration.c','diagnostics-v1/knob_calibration.h']:
         phone=P/Path(name).name
-        if not phone.is_file() or phone.read_bytes()!=(FW4/'src'/name).read_bytes():
+        if not phone.is_file() or phone.read_bytes()!=(FW/'src'/name).read_bytes():
             raise RuntimeError('TMG4 shared source missing/mismatch: '+name)
     groups.append('shared-sources');print('shared-sources: PASS')
 else:skip('shared-sources','not selected by --only')
 
 seen.add('pins')
 if only is None or 'pins' in only:
-    run('pins',['python3','-I',FW4/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
+    run('pins',['python3','-I',FW/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
     groups.append('pins');print('pins: PASS')
 else:skip('pins','not selected by --only')
 
@@ -166,7 +165,7 @@ test('spotify-cover',['SpotifyCover.m','tests/SpotifyCoverTests.m'],[],['-framew
 test('language-flag',['tests/LanguageFlagTests.m','LanguageFlag.m','lang_flag.c'])
 test('runtime-status',['tests/TDRuntimeTests.m','TDPhoneRun.m','TDPhoneStore.m','TDPhoneReply.m','command.c','diagnostics.c','knob_calibration.c'])
 if only is None or 'runtime-status' in only:
-    run('tmg5-native-status',['python3','-I',ROOT/'firmware-research/strix-1.0.5.5-tmg5/tests/native_status_host_test.py','--out',out/'tmg5-native-status'])
+    run('tmg5-native-status',['python3','-I',FW/'tests/native_status_host_test.py','--out',out/'tmg5-native-status'])
 test('voice-tts',['VoiceTTSTests.m','VoiceTTSText.m'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     root=Path(tmp)

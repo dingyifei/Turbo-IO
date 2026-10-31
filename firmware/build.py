@@ -52,8 +52,8 @@ def pin(spec, field, value, repin):
     spec[field] = value
 
 def animation_asset():
-    # Shared immutable build input: avoid duplicating the reviewed stock asset.
-    asset = HERE.parent/'strix-1.0.5.5-tmg2'/'assets'/'animation-frames.l8'
+    # Shared immutable build input, kept once under baseline/ (provenance in baseline/README.md).
+    asset = HERE/'baseline'/'animation-frames.l8'
     assert sha(asset.read_bytes()) == 'f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d', 'pin mismatch: animation asset'
     return asset
 
@@ -121,8 +121,14 @@ def build_input_identity(spec, versions, flags, asset_sha):
             if (path.is_file() and path.suffix in ('.c','.h','.inc','.S')
                     and not path.name.endswith(('_test.c','.test.c'))):
                 entries.append([path.relative_to(HERE).as_posix(), sha(path.read_bytes())])
+    # identityCarryOver: build.py is a build input, so editing it changes the identity embedded in the AP.
+    # The single-tree restructure edited build.py only to move file locations and the release label, and the
+    # identity of the already reproduced ZIP8 must not move, so its contribution is carried over from the
+    # pre-restructure file. Remove the key at the next repin and build.py is hashed live again.
+    carried = spec.get('identityCarryOver', {})
+    assert set(carried) <= {'build.py'}, 'identityCarryOver may only name build.py'
     for name in ('build.py','link.ld','trampolines.S','ImageWireFormat.h'):
-        entries.append([name, sha((HERE/name).read_bytes())])
+        entries.append([name, carried.get(name) or sha((HERE/name).read_bytes())])
     descriptors = []
     for edit in spec['edits']:
         row = {key:edit.get(key) for key in ('offset','address','before','kind','target','pad')}

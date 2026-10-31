@@ -11,7 +11,7 @@ import argparse, json, math, random, re, subprocess, sys
 from pathlib import Path
 
 FW = Path(__file__).resolve().parents[1]
-REPO = FW.parents[1]
+REPO = FW.parent
 GAMMA, WIN = 2.2, 25
 LIMITS = dict(peak=0.45, primary=0.65, unfocused=0.20)
 

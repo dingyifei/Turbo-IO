@@ -13,8 +13,8 @@ import argparse, base64, io, json, os, subprocess, sys, zipfile
 from pathlib import Path
 
 FW = Path(__file__).resolve().parents[1]
-BOARD = FW.parents[1] / 'docs/design-system/screens/LensApp.dc.html'
-DS = FW.parents[1] / 'dashboard-service'
+BOARD = FW.parent / 'docs/design-system/screens/LensApp.dc.html'
+DS = FW.parent / 'dashboard-service'
 LEGACY_TAP_B64 = DS / 'tests/fixtures/gallery_commute_legacy.tap.b64'   # committed as base64 text: the source audit rejects binaries
 PPD_X10 = (220, 230, 240, 248, 260, 270)   # tokens only; the pages build at 248 alone
 
@@ -57,11 +57,11 @@ def main():
     sys.path.insert(0, str(DS))
     from turbo_dashboard.app_wire import encode
     from turbo_dashboard.app_examples import examples
-    gallery = json.loads(zipfile.ZipFile(FW.parents[1] / 'app-gallery/Gallery_commute.zip').read('app.json'))
+    gallery = json.loads(zipfile.ZipFile(FW.parent / 'app-gallery/Gallery_commute.zip').read('app.json'))
     sdk = examples()
     docs = {'gallery-commute': gallery, 'sdk-weather': sdk['TurboAppSDKWeather'], 'sdk-music': sdk['TurboAppSDKMusic'], 'sdk-brief': sdk['TurboAppSDKExample']}
     # TMG8: every committed gallery package goes through the runtime and the brightness gate too (the commute package is also checked strictly above).
-    for z in sorted((FW.parents[1] / 'app-gallery').glob('Gallery_*.zip')):
+    for z in sorted((FW.parent / 'app-gallery').glob('Gallery_*.zip')):
         if z.stem != 'Gallery_commute':
             docs['gal-' + z.stem[len('Gallery_'):]] = json.loads(zipfile.ZipFile(z).read('app.json'))
     paths = []

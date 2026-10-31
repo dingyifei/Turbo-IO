@@ -2,7 +2,7 @@
 from pathlib import Path
 import subprocess,sys
 P=Path(__file__).resolve().parents[1]
-FW=P.parents[1]/'firmware-research/strix-1.0.5.5-tmg5'
+FW=P.parents[1]/'firmware'
 out=Path(sys.argv[1]);out.mkdir(parents=True,exist_ok=True)
 s=(FW/'src/global-remote-v1/remote_native.c').read_text()
 for a,b in {

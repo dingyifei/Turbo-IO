@@ -23,5 +23,19 @@ def main():
         (target/'src/identity_test.c').write_text('test fixture must not affect firmware identity\n');assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original
         changed=copy.deepcopy(versions);changed['clang']+=' changed';assert build.build_input_identity(inputs,changed,flags(target),asset)[1]!=original
         assert build.build_input_identity(inputs,versions,flags(target),asset)[1]==original
-    build.HERE=FW;print('PASS identity: canonical paths, derived-pin/test exclusion, source/order/toolchain sensitivity and no HEAD/time dependency')
+        # build.py is a build input; identityCarryOver freezes only its contribution (restructure carry-over) and nothing else.
+        script=target/'build.py';old_script=script.read_bytes();live=copy.deepcopy(inputs);live.pop('identityCarryOver',None)
+        live_before=build.build_input_identity(live,versions,flags(target),asset)[1]
+        script.write_bytes(old_script+b'\n# changed build script\n')
+        assert build.build_input_identity(live,versions,flags(target),asset)[1]!=live_before
+        carried=copy.deepcopy(live);carried['identityCarryOver']={'build.py':'f'*64}
+        carried_before=build.build_input_identity(carried,versions,flags(target),asset)[1]
+        script.write_bytes(old_script+b'\n# changed again\n')
+        assert build.build_input_identity(carried,versions,flags(target),asset)[1]==carried_before!=live_before
+        modified.write_bytes(modified.read_bytes()+b'\n/* changed source input */\n');assert build.build_input_identity(carried,versions,flags(target),asset)[1]!=carried_before;modified.write_bytes(old)
+        extra=copy.deepcopy(carried);extra['identityCarryOver']['link.ld']='e'*64
+        try:build.build_input_identity(extra,versions,flags(target),asset);raise SystemExit('carry-over of a non build.py input was accepted')
+        except AssertionError:pass
+        script.write_bytes(old_script)
+    build.HERE=FW;print('PASS identity: canonical paths, derived-pin/test exclusion, source/order/toolchain sensitivity, build.py carry-over scope and no HEAD/time dependency')
 if __name__=='__main__':main()
