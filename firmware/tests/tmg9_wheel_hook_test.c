@@ -147,9 +147,9 @@ int main(void){
  for(int sign=-1;sign<=1;sign+=2){
   snprintf(CASE,sizeof CASE,"not eligible sign=%d",sign);
   reset(2,13,sign<0?0:12,1);DET=400;ELIGIBLE=false;
-  for(int i=0;i<40;i++)turn(sign*50);
+  for(int i=0;i<30;i++)turn(sign*50);                                                                                           /* 1500 counts: 3.75 items if they were kept */
   CHECK(SNAPS==0&&STOCK_CALLS==0&&(int)*word(A,0x88)==(sign<0?0:12));
-  ELIGIBLE=true;turn(sign*50);CHECK(SNAPS==0);                                                                                  /* the ineligible counts were not kept */
+  ELIGIBLE=true;turn(sign*100);CHECK(SNAPS==0&&(int)*word(A,0x88)==(sign<0?0:12));                                              /* eligible() runs before the remainder builds: 1500 + 100 would be 4 items */
  }
  /* 7. No menu controller at all (allocation failed): the stock menu keeps its own rate, so the delta goes to stock UNSCALED (never 2x) and the hook steps nothing. */
  for(int sign=-1;sign<=1;sign+=2)for(int delta=100;delta<=900;delta+=400){
@@ -175,6 +175,11 @@ int main(void){
   reset(rows,13,(int)per-1,1);NOW=5000;CHECK(fm_view_update(&VIEW,(int)per,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==10);
   reset(rows,13,(int)per,1);NOW=5000;CHECK(fm_view_update(&VIEW,(int)per-1,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==-10);
   reset(rows,13,0,1);NOW=5000;CHECK(fm_view_update(&VIEW,1,0,0,NOW));CHECK(!VIEW.page_motion&&VIEW.page_offset==0);   /* same page: no slide */
+  /* One event can wrap by more than one item: the slide still goes the way the knob turned (the short way round). */
+  reset(rows,13,12,1);NOW=5000;CHECK(fm_view_update(&VIEW,1,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==10);    /* 12 -> 1, two items forward */
+  reset(rows,13,11,1);NOW=5000;CHECK(fm_view_update(&VIEW,0,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==10);    /* 11 -> 0, two items forward */
+  reset(rows,13,0,1);NOW=5000;CHECK(fm_view_update(&VIEW,11,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==-10);   /* 0 -> 11, two items backward */
+  reset(rows,13,1,1);NOW=5000;CHECK(fm_view_update(&VIEW,12,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==-10);   /* 1 -> 12, two items backward */
  }
  if(FAILS){fprintf(stderr,"%d check(s) failed\n",FAILS);return 1;}
  puts("PASS tmg9 wheel hook: one item per D (300..600) through app[0x88] + native_snap, 13 items in 13 D, wrap at both ends, remote step = D, ctrl.idx/view.selected/label/frame agree for carousel and 2/3 rows, the stock wheel never sees a delta");

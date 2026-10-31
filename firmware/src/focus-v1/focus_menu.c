@@ -226,8 +226,9 @@ bool fm_view_update(FMView *v,int selected,int64_t local,int battery,uint32_t no
   int old=v->selected;
   if(v->rows==FM_CAROUSEL){car_retarget(v,old,selected,now);v->selected=selected;render(v,now);return true;}
   bool page=old>=0&&(unsigned)old/per(v)!=(unsigned)selected/per(v);
-  /* A wrap slides the way the knob turned: last -> first is a forward step, first -> last a backward one. */
-  const int last=(int)v->tiles.count-1;bool fwd=selected>old;if(last>1&&old==last&&selected==0)fwd=true;else if(last>1&&old==0&&selected==last)fwd=false;
+  /* The page slides the short way round, like the carousel: forward when the forward distance modulo the tile count is at most half of it (ties forward).
+   * That makes a wrap a forward step last -> first, a backward one first -> last, and keeps a two-item wrap in the same direction (12 -> 1 is forward). */
+  const int n=(int)v->tiles.count;bool fwd=old<0||(((selected-old)%n+n)%n)*2<=n;
   if(old>=0)sample(v,now);
   v->selected=selected;unsigned cell=(unsigned)selected%per(v);
   if(old<0||page){v->caret_x=caret_left(cell);v->caret_y=caret_top(v,cell);for(unsigned i=0;i<FM_CELLS;i++)v->weights[i]=i==cell?256:0;}

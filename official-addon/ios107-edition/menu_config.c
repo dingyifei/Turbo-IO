@@ -44,8 +44,8 @@ bool tml_store(const TMLIO *io,TMLStored *s,unsigned rows,unsigned detent){
 }
 unsigned tml_accept(TMLState *s,const TMLCommand *q,uint32_t now,uint32_t nonce,bool allowed,const TMLIO *io){
  if(!allowed){s->token=0;return TML_BLOCKED;}
+ if(!peer_ok(q)){s->token=0;return TML_BLOCKED;} /* defence in depth for every op: tml_decode already refuses it (a query with a peer byte or D; a carousel without the peer byte; D without TMG9 or out of range) */
  if(q->op==TML_QUERY){s->stored=tml_load(io);s->token=0;if(!s->stored.readable)return TML_STORAGE;if(!nonce)return TML_UNAVAILABLE;s->token=nonce;s->client=q->client;s->issued=now;return TML_OK;}
- if(q->op==TML_SET&&!peer_ok(q)){s->token=0;return TML_BLOCKED;} /* defence in depth: tml_decode already refuses it (carousel without the peer byte, D without TMG9 or out of range) */
  if(!s->token||q->token!=s->token||q->client!=s->client||q->generation!=s->stored.generation||(uint32_t)(now-s->issued)>120000)return TML_SESSION;
  s->token=0;return tml_store(io,&s->stored,q->rows,q->detent)?TML_OK:TML_STORAGE;
 }

@@ -291,7 +291,7 @@ void m8_hook_wheel(void *app,int delta){
   if(!eligible(app))return;
   int target=fm_wheel_step(app,(int)*word(app,0x88),(int)fm_tile_count(),delta,stream_tick());
   if(target>=0){*word(app,0x88)=(uint32_t)target;*word(app,0x90)=UINT32_MAX;native_snap(app);return;}
-  if(target==FM_STEP_NO_CONTROL)stock_wheel(app,delta); /* no controller at all (allocation failed): the stock menu keeps its own rate, 600 counts per item */
+  if(target==FM_STEP_NO_CONTROL)stock_wheel(app,delta); /* no controller to step with (no nav slot, closing, or fm_show made none: allocation failed, renderer busy, no room): the stock menu keeps its own rate, 600 counts per item */
 }
 bool m8_hook_event(void *app,void *event){
   if(native_event_code(event)!=0xe || native_event_key(event)!=0x3a)return stock_event(app,event);

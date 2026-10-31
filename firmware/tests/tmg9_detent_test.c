@@ -136,6 +136,11 @@ static void handler_rules(void){
   TMLCommand c=bad[i];c.generation=st.stored.generation;
   assert(tml_accept(&st,&c,1001,0,true,&io)==TML_BLOCKED&&!st.token&&disk.writes==0&&st.stored.rows==3&&tml_detent(&st.stored)==400);
  }
+ /* A query that carries a peer byte or D is refused by the handler too, and it issues no token. */
+ for(unsigned i=0;i<4;i++){
+  TMLCommand bq={.op=TML_QUERY,.request=1,.client=7};if(i==0)bq.caps=TML_PEER_TMG8;if(i==1)bq.caps=TML_PEER_TMG9;if(i==2)bq.detent=500;if(i==3){bq.caps=TML_PEER_TMG9;bq.detent=500;}
+  st.token=0;assert(tml_accept(&st,&bq,1500,42,true,&io)==TML_BLOCKED&&!st.token&&disk.writes==0);
+ }
  assert(query(&st,&io,2000,41)==TML_OK);
  TMLCommand ok={.op=TML_SET,.request=3,.client=7,.token=41,.generation=0,.rows=3,.caps=TML_PEER_TMG9,.detent=500};
  assert(tml_accept(&st,&ok,2001,0,true,&io)==TML_OK&&disk.writes==1&&tml_detent(&st.stored)==500);
