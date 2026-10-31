@@ -72,6 +72,7 @@ int tap_fs_fclose(void *p){(void)p;return io_fail==FAIL_CLOSE?-1:0;}
 int *tap_fs_errno(void){return &file_error;}
 static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+0xa0)=13;for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=raw_callbacks=simulated_steps=0;memset(encoder,0,sizeof encoder);fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
 static TTReply request(TTCommand q){uint8_t raw[32],wire[74];tt_encode(raw,&q);tt_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TTReply r;assert(tt_uncarrier(reply_wire,74,raw,true)&&tt_reply_decode(raw,32,&r));return r;}
+static bool layout_request(TMLCommand q,uint8_t reply[32]){uint8_t raw[32],wire[74];tml_encode(raw,&q);tml_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);return tml_uncarrier(reply_wire,74,reply,true);}
 static TLGReply language_request(TLGCommand q){uint8_t raw[32],wire[74];tlg_encode(raw,&q);tlg_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TLGReply r;assert(tlg_uncarrier(reply_wire,74,raw,true)&&tlg_reply_decode(raw,32,&r));return r;}
 int main(void){
  reset();tgr_knob_cancel(app,now_ms);assert(allocations==0&&reads==0);TTVisible map;fm_tile_snapshot(&map);assert(map.count==13&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
@@ -96,7 +97,7 @@ int main(void){
    assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+2&&last_raw==-back&&(last_raw==want||last_raw==-want));}   /* equal magnitude, opposite direction */
   top_app="com.rayneo.liteos.launcher";}
  kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
- TDSample snapshot={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);assert(snapshot.caps==TD_CAPS_TMG8);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
+ TDSample snapshot={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);assert(snapshot.caps==TD_CAPS_TMG9&&snapshot.detent==TK_DETENT_DEFAULT);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
  kq=(TDCommand){TDQ_KNOB_START,103,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);blocked=true;timer.callback(&timer);assert(find()->knob.state==TK_CANCELED&&reads==before);blocked=false;kq.session=104;assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);detail_open=true;tgr_knob_observe(app,600,now_ms);assert(find()->knob.state==TK_CANCELED&&find()->knob.samples==0);detail_open=false;
  uint8_t raw[32];TTConfig c;tt_default(&c);tt_file_encode(raw,&c,9);chunk=3;assert(tt_file_write(NULL,0,raw,32));uint8_t reread[33];assert(tt_file_read(NULL,0,reread,33)==32&&!memcmp(raw,reread,32));chunk=0;
  const int write_failures[]={FAIL_OPEN,FAIL_ERROR,FAIL_CLOSE,FAIL_WRITE,FAIL_WRITE_ZERO,FAIL_FLUSH,FAIL_FILENO,FAIL_SYNC,FAIL_WRITE_BIG};
@@ -107,6 +108,20 @@ int main(void){
  for(unsigned i=0;i<sizeof write_failures/sizeof *write_failures;i++){io_fail=write_failures[i];assert(!tls_file_write(NULL,1,lang_raw,20));}io_fail=0;assert(tls_file_write(NULL,0,lang_raw,20));for(unsigned i=0;i<sizeof read_failures/sizeof *read_failures;i++){io_fail=read_failures[i];assert(tls_file_read(NULL,0,lang_back,21)==-1);}io_fail=0;
  // A real TLG1 handler query reads cached state; reboot loading is lazy.
  before=reads;lr=language_request((TLGCommand){11,TLG_QUERY,TLG_EN});assert(lr.result==TLG_OK&&reads==before);lr=language_request((TLGCommand){12,TLG_SET,TLG_ZH});assert(lr.result==TLG_OK&&lr.source==2&&tio_lang()==TLG_ZH);
+ /* TMG9 detent through the real handler: a TMG9 peer persists D, status reports it live, a reboot reads it back; anything else is dropped. */
+ {uint8_t rep[32];TDSample st={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&st);assert(st.caps==TD_CAPS_TMG9&&st.detent==400);
+  assert(layout_request((TMLCommand){.op=TML_QUERY,.request=30,.client=9},rep)&&rep[7]==TML_OK&&u32(rep+12)==77);const uint32_t gen=u32(rep+16);
+  TMLCommand base={.op=TML_SET,.request=31,.client=9,.token=77,.generation=gen,.rows=3,.detent=500};unsigned w=writes;
+  assert(!layout_request(base,rep));                                                                    /* D without the TMG9 peer byte: no reply, no write */
+  base.caps=TML_PEER_TMG8;assert(!layout_request(base,rep));base.caps=TML_PEER_TMG9;base.detent=450+1;assert(!layout_request(base,rep));base.detent=650;assert(!layout_request(base,rep));
+  tgr_runtime_snapshot(&st);assert(writes==w&&st.detent==400);
+  base.detent=500;assert(layout_request(base,rep)&&rep[7]==TML_OK&&rep[6]==3&&writes==w+1);
+  tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG9);{uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500);}
+  free(timer.user);timer=(HostTimer){0};assert(fm_menu_rows()==3);tgr_runtime_snapshot(&st);assert(st.detent==500); /* reboot: the next menu show loads it */
+  assert(layout_request((TMLCommand){.op=TML_QUERY,.request=32,.client=9},rep)&&u32(rep+12)==77);
+  assert(layout_request((TMLCommand){.op=TML_SET,.request=33,.client=9,.token=77,.generation=u32(rep+16),.rows=2},rep)&&rep[7]==TML_OK&&rep[6]==2);tgr_runtime_snapshot(&st);assert(st.detent==500); /* a layout SET without D keeps it */
+  assert(layout_request((TMLCommand){.op=TML_QUERY,.request=34,.client=9},rep)&&layout_request((TMLCommand){.op=TML_SET,.request=35,.client=9,.token=77,.generation=u32(rep+16),.rows=3,.caps=TML_PEER_TMG9,.detent=400},rep)&&rep[7]==TML_OK&&rep[6]==3);tgr_runtime_snapshot(&st);assert(st.detent==400); /* back to the default, rows 3 */
+ }
  free(timer.user);timer=(HostTimer){0};before=reads;assert(tio_lang()==TLG_EN&&reads==before);assert(fm_menu_rows()==3&&tio_lang()==TLG_ZH&&find()->language.source==2&&reads==before+6);before=reads;lr=language_request((TLGCommand){13,TLG_QUERY,TLG_EN});assert(lr.source==2&&lr.lang==TLG_ZH&&reads==before);
  reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==13);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
  reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling");return 0;

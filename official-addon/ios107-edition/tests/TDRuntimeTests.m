@@ -2,9 +2,9 @@
 #import "TDPhoneReply.h"
 #include "diagnostics.h"
 #include <assert.h>
-static uint32_t SampleBuild=TD_BUILD_TMG4,SampleCaps=TD_CAPS_ALL;
+static uint32_t SampleBuild=TD_BUILD_TMG4,SampleCaps=TD_CAPS_ALL,SampleDetent=0; // SampleDetent 0: the fixed value the caps imply
 static NSData *Packet(TDCommand q,unsigned kind,unsigned state,int64_t net,uint64_t absolute){
- TDSample s={.build=SampleBuild,.kind=kind,.session=q.session,.sequence=q.sequence,.caps=SampleCaps,.detent=(SampleCaps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY,.extension_valid=7,.nand_total=128000,.nand_available=64000,.tile_generation=5,.language=1,.language_source=2,.settings_flags=3,.valid=1u<<TD_LV_USED};s.values[TD_LV_USED]=1024;memset(s.build_sha,0xab,32);
+ TDSample s={.build=SampleBuild,.kind=kind,.session=q.session,.sequence=q.sequence,.caps=SampleCaps,.detent=SampleDetent?SampleDetent:(SampleCaps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY,.extension_valid=7,.nand_total=128000,.nand_available=64000,.tile_generation=5,.language=1,.language_source=2,.settings_flags=3,.valid=1u<<TD_LV_USED};s.values[TD_LV_USED]=1024;memset(s.build_sha,0xab,32);
  if(state){s.extension_valid|=TD_EXT_CALIBRATION;s.calibration_state=state;s.calibration_window=q.session;s.calibration_elapsed=2000;s.calibration_samples=8;s.calibration_net=net;s.calibration_absolute=absolute;s.calibration_sequence=q.sequence;}
  uint8_t bytes[TD_WIRE_BYTES];assert(td_encode(&s,bytes,sizeof bytes));return [NSData dataWithBytes:bytes length:sizeof bytes];
 }
@@ -23,21 +23,27 @@ static void LeaseOrdering(void){
  __block double now=100;__block TDCommand command;__block unsigned sends=0;__block __weak TDRuntimeSession *weak=nil;
  TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return @"queue";} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){command=q;sends++;weak.fileBusy=YES;return YES;}];weak=r;assert([r beginCalibration]);now=102;assert([r receive:Packet(command,TD_CALIBRATION,TK_ACTIVE,600,600) device:@"queue"]);now=129;[r finishCalibration];assert(sends==1);now=131;r.fileBusy=NO;assert(sends==1&&r.idleForOTA&&!r.holdsLease);
 }
-// TMG8 carousel: the caps accessor the layout screen reads. TMG7 (and older) glasses never report the bit.
+// Caps accessors the layout and knob screens read. TMG7 (and older) glasses never report the TMG8 bit, TMG8 never the TMG9 bit (TD_CAP_KNOB_DETENT).
 static void GlassesCaps(void){@autoreleasepool{
- for(unsigned tmg8=0;tmg8<2;tmg8++){
+ for(unsigned tier=0;tier<3;tier++){ // 0 = TMG7, 1 = TMG8, 2 = TMG9
+  BOOL tmg8=tier>=1,tmg9=tier==2;uint32_t caps=tier==2?TD_CAPS_TMG9:tier==1?TD_CAPS_TMG8:TD_CAPS_TMG6,detent=tier==2?450:tier==1?300:600;
   __block double now=100;__block TDCommand sent;__block NSString *peer=@"caps-peer";__block __weak TDRuntimeSession *weak=nil;
   TDRuntimeSession *r=[[TDRuntimeSession alloc]initWithPeer:^{return peer;} allowed:^BOOL{return YES;} clock:^{return now;} send:^BOOL(TDCommand q){sent=q;weak.fileBusy=YES;return YES;}];weak=r;
-  assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // nothing is known before a status sample
-  assert([r query]);SampleBuild=TD_BUILD_TMG6;SampleCaps=tmg8?TD_CAPS_TMG8:TD_CAPS_TMG6;now=101;
+  assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesReportTMG9DetentCaps&&!r.glassesDetent&&!r.glassesFirmware); // nothing is known before a status sample
+  assert([r query]);SampleBuild=TD_BUILD_TMG6;SampleCaps=caps;SampleDetent=tmg9?detent:0;now=101;
   assert([r receive:Packet(sent,TD_STATUS,0,0,0) device:peer]);
-  assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==(tmg8!=0)&&(r.glassesCaps&TD_CAP_NAV_PASSING)&&[r.glassesFirmware isEqual:@"TMG6"]); // TMG6, TMG7 and TMG8 share the build field
-  now=101+TDGlassesCapsFreshSeconds;assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==(tmg8!=0)); // still fresh at the edge
-  now=101+TDGlassesCapsFreshSeconds+1;assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // a stale sample (a reflash in between) says nothing, not even the TMG8 bit
-  now=100;assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps); // a clock that went backwards is not fresh either
-  now=102;peer=@"another-glasses";assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesFirmware); // another peer inherits nothing
+  assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==tmg8&&r.glassesReportTMG9DetentCaps==tmg9&&r.glassesDetent==detent&&(r.glassesCaps&TD_CAP_NAV_PASSING)&&[r.glassesFirmware isEqual:@"TMG6"]); // TMG6 to TMG9 share the build field
+  assert([r.status[@"sample"][@"detent"] unsignedIntValue]==detent); // the live D is what the status reports
+  now=101+TDGlassesCapsFreshSeconds;assert(r.glassesCaps==SampleCaps&&r.glassesReportTMG8Caps==tmg8&&r.glassesReportTMG9DetentCaps==tmg9&&r.glassesDetent==detent); // still fresh at the edge
+  now=101+TDGlassesCapsFreshSeconds+1;assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesReportTMG9DetentCaps&&!r.glassesDetent&&!r.glassesFirmware); // a stale sample (a reflash in between) says nothing, not even the TMG9 bit
+  now=100;assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesReportTMG9DetentCaps&&!r.glassesDetent); // a clock that went backwards is not fresh either
+  now=102;peer=@"another-glasses";assert(r.glassesCaps==0&&!r.glassesReportTMG8Caps&&!r.glassesReportTMG9DetentCaps&&!r.glassesDetent&&!r.glassesFirmware); // another peer inherits nothing
  }
- SampleBuild=TD_BUILD_TMG4;SampleCaps=TD_CAPS_ALL;
+ // A TMG9 status with a D off the step grid or outside 300..600 is not a valid sample: it cannot be encoded, and a patched wire is refused by td_decode.
+ {TDSample s={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1,.caps=TD_CAPS_TMG9,.detent=450},d;uint8_t wire[TD_WIRE_BYTES];
+  assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==450);
+  for(uint32_t bad=0;bad<=700;bad++){s.detent=bad;assert(td_encode(&s,wire,sizeof wire)==(bad>=300&&bad<=600&&bad%50==0));}}
+ SampleBuild=TD_BUILD_TMG4;SampleCaps=TD_CAPS_ALL;SampleDetent=0;
 }}
 static void RejectedStart(void){@autoreleasepool{
  __block double now=100;__block TDCommand sent;__block __weak TDRuntimeSession *weak=nil;

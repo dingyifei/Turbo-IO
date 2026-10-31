@@ -25,6 +25,7 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
  if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_caps=[caps copy];_send=[send copy];_note=TIOText(@"读取眼镜布局后可切换；需 TMG4 固件");}return self;
 }
 - (BOOL)glassesReportTMG8Caps{return _caps&&[_peerNow()length]&&(_caps()&TD_CAP_MENU_CAROUSEL)!=0;}
+- (BOOL)glassesReportTMG9DetentCaps{return _caps&&[_peerNow()length]&&(_caps()&TD_CAP_KNOB_DETENT)!=0;}
 - (BOOL)busy{return _done!=nil;}
 - (BOOL)ready{return _token&&[_peer isEqual:_peerNow()]&&_allowed()&&_clock()-_confirmedAt<110&&_clock()>=_confirmedAt;}
 - (NSUInteger)rows{return [_peer isEqual:_peerNow()]?_rows:0;}
@@ -35,9 +36,12 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
  NSAssert(NSThread.isMainThread,@"main only");
  if(self.busy){if(done)done();return;}
  if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;_note=TIOText(@"请连接眼镜、保持 App 前台并结束升级保护");if(done)done();return;}
- /* The one place a layout record is encoded: value 1 and its caps byte leave the phone only for a TMG8 peer. */
+ /* The one place a layout record is encoded: value 1 and its caps byte leave the phone only for a TMG8 peer, and a D-carrying SET (peer byte
+  * TML_PEER_TMG9) only for a peer that reported TD_CAP_KNOB_DETENT. Queries and every other SET keep the TMG7/TMG8 form with D = 0. */
  q.caps=0;
+ if(q.op!=TML_SET)q.detent=0;
  if(q.op==TML_SET&&q.rows==TML_CAROUSEL){if(!self.glassesReportTMG8Caps){_token=0;_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}q.caps=TML_PEER_TMG8;}
+ if(q.op==TML_SET&&q.detent){if(!self.glassesReportTMG9DetentCaps||!tml_detent_valid(q.detent)){_token=0;_note=TIOText(@"tmg9.layout.detentNeedsTMG9");if(done)done();return;}q.caps=TML_PEER_TMG9;}
  uint8_t raw[32],wire[74];tml_encode(raw,&q);TMLCommand verify;
  if(!tml_decode(raw,32,&verify)){_note=TIOText(@"布局请求校验失败");if(done)done();return;}
  tml_carrier(wire,raw,false);_request=q.request;_op=q.op;_target=q.rows;_done=done?[done copy]:[^(void){} copy];NSUInteger epoch=++_epoch;
@@ -55,6 +59,13 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
  if(self.busy){if(done)done();return;}
  if(!self.ready){__weak typeof(self) w=self;[self query:^{typeof(self) s=w;if(s.ready)[s choose:rows done:done];else if(done)done();}];return;}
  TMLCommand q={.op=TML_SET,.rows=(uint8_t)rows,.request=arc4random_uniform(UINT32_MAX-1)+1,.token=_token,.generation=_generation,.client=_client};
+ _token=0;[self send:q done:done];
+}
+- (void)chooseDetent:(NSUInteger)detent done:(void(^)(void))done{
+ if(!tml_detent_valid((unsigned)detent)||detent>UINT32_MAX||!self.glassesReportTMG9DetentCaps){_note=TIOText(@"tmg9.layout.detentNeedsTMG9");if(done)done();return;}
+ if(self.busy){if(done)done();return;}
+ if(!self.ready||!self.rows){__weak typeof(self) w=self;[self query:^{typeof(self) s=w;if(s.ready&&s.rows)[s chooseDetent:detent done:done];else if(done)done();}];return;}
+ TMLCommand q={.op=TML_SET,.rows=(uint8_t)self.rows,.request=arc4random_uniform(UINT32_MAX-1)+1,.token=_token,.generation=_generation,.client=_client,.detent=(uint32_t)detent};
  _token=0;[self send:q done:done];
 }
 - (BOOL)consume:(NSDictionary *)e{

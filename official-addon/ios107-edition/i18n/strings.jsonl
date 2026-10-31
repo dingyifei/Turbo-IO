@@ -2268,6 +2268,7 @@
 {"key":"tmg8.runtime.detent.format","en":"%@ raw units / step","zh":"每步 %@ 原始单位"}
 {"key":"tmg8.layout.carouselNeedsTMG8","en":"The carousel needs glasses firmware TMG8. Nothing was sent.","zh":"轮播需要 TMG8 眼镜固件，未发送任何设置。"}
 {"key":"tmg8.layout.confirmedCarousel","en":"Confirmed by glasses: carousel, one item at a time%@","zh":"眼镜已确认：轮播 · 每次一项%@"}
+{"key":"tmg9.layout.detentNeedsTMG9","en":"The knob step needs glasses firmware TMG9. Nothing was sent.","zh":"旋钮步长需要 TMG9 眼镜固件，未发送任何设置。"}
 {"key":"tmg8.layout.header","en":"Layout","zh":"布局"}
 {"key":"tmg8.layout.seg.carousel","en":"Carousel","zh":"轮播"}
 {"key":"tmg8.layout.seg.rows2","en":"2 rows","zh":"两排"}

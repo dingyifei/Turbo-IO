@@ -12,10 +12,16 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source);
 @property(nonatomic,readonly) NSString *note;
 /* YES when the connected glasses report the TMG8 caps bit. The carousel (layout 1) is offered and written only then. */
 @property(nonatomic,readonly) BOOL glassesReportTMG8Caps;
+/* YES when the connected glasses report the TMG9 caps bit (TD_CAP_KNOB_DETENT). A layout SET may carry the knob detent D only then. */
+@property(nonatomic,readonly) BOOL glassesReportTMG9DetentCaps;
 - (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(double(^)(void))clock send:(BOOL(^)(NSData *))send;
 - (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(double(^)(void))clock caps:(TIOGlassesCapsSource)caps send:(BOOL(^)(NSData *))send;
 - (void)query:(void(^)(void))done;
 - (void)choose:(NSUInteger)rows done:(void(^)(void))done;
+/* Writes the knob detent D (300..600 in steps of 50) with the layout the glasses confirmed (the SET names a layout, so it re-sends that one). Only for a
+ * TMG9 peer: any other peer, or a D outside the range, is refused before anything is encoded or sent. The glasses' reply confirms the layout only; the
+ * new D is confirmed by reading the status "detent" back (TDGlassesDetent). */
+- (void)chooseDetent:(NSUInteger)detent done:(void(^)(void))done;
 - (BOOL)consume:(NSDictionary *)event;
 - (void)cancel;
 @end

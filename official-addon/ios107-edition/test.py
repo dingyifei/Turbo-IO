@@ -109,6 +109,12 @@ if only is None or 'tmg9-wheel-hook' in only:
     run('tmg9-wheel-hook',['python3','-I',FW/'tests/tmg9_wheel_host_test.py','--out',out/'tmg9-wheel-hook'])
     groups.append('tmg9-wheel-hook');print('tmg9-wheel-hook: PASS')
 else:skip('tmg9-wheel-hook','not selected by --only')
+# TMG9 detent D: caps bit 10, the D-carrying TMG2 SET (peer byte 2), D/50 in the menu record, the status pairing; rollback proven against copies of the TMG7/TMG8 decoders.
+seen.add('tmg9-detent')
+if only is None or 'tmg9-detent' in only:
+    ctest('tmg9-detent',[FW/'tests/tmg9_detent_test.c',FW/'src/menu-grid-v2/menu_config.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src')
+    groups.append('tmg9-detent');print('tmg9-detent: PASS')
+else:skip('tmg9-detent','not selected by --only')
 seen.add('shared-sources')
 if only is None or 'shared-sources' in only:
     pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',

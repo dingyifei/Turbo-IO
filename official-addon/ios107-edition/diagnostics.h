@@ -21,6 +21,10 @@
 /* TMG8: the glasses can show the carousel menu layout (layout record value 1). TMG7 and older never set it. */
 #define TD_CAP_MENU_CAROUSEL (1u<<9)
 #define TD_CAPS_TMG8 (TD_CAPS_TMG6|TD_CAP_MENU_CAROUSEL)
+/* TMG9: the knob detent D is adjustable (300..600 in steps of 50, default 400) and the status "detent" field reports the live value.
+ * TMG8 and older never set it. */
+#define TD_CAP_KNOB_DETENT (1u<<10)
+#define TD_CAPS_TMG9 (TD_CAPS_TMG8|TD_CAP_KNOB_DETENT)
 enum {TD_SAMPLE=0,TD_STATUS=1,TD_CALIBRATION=2};
 enum {TD_EXT_NAND=1,TD_EXT_TILES=2,TD_EXT_LANGUAGE=4,TD_EXT_CALIBRATION=8};
 #define TD_MAX_LEASE_MS 600000u

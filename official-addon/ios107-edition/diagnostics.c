@@ -66,7 +66,7 @@ bool td_sample(TDDiagnostics *d,uint32_t now,bool connected,TDProbe probe,TDCloc
  uint32_t end=clock?clock(ctx):began,elapsed=end-began;
  if(!td_active(d,end))return false;
  d->last_sample=end;d->sampled=true;d->sample_seq++;if(!d->sample_seq)d->sample_seq=1;
- memset(out,0,sizeof *out);out->caps=d->build==TD_BUILD_TMG6?TD_CAPS_TMG8:d->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL;out->detent=(out->caps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY;out->build=d->build;out->session=d->session;
+ memset(out,0,sizeof *out);out->caps=d->build==TD_BUILD_TMG6?TD_CAPS_TMG9:d->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL;out->detent=(out->caps&TD_CAP_KNOB_DETENT)?TK_DETENT_DEFAULT:(out->caps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY;out->build=d->build;out->session=d->session;
  out->sequence=d->sample_seq;out->tick_ms=end;out->probe_ms=elapsed;out->valid=d->valid;
  memcpy(out->values,d->values,sizeof out->values);out->event_count=d->count;out->events_lost=d->lost;
  /* A slow call cannot be preempted safely. Stop subsequent probes; return the
@@ -84,8 +84,13 @@ static uint32_t get(const uint8_t *p){return p[0]|((uint32_t)p[1]<<8)|((uint32_t
 static uint64_t get64(const uint8_t *p){uint64_t n=0;for(unsigned i=0;i<8;i++)n|=(uint64_t)p[i]<<(8*i);return n;}
 static void put64(uint8_t *p,uint64_t n){for(unsigned i=0;i<8;i++)p[i]=(uint8_t)(n>>(8*i));}
 static int64_t signed64(uint64_t n){return n<=INT64_MAX?(int64_t)n:-(int64_t)(~n)-1;}
+/* The detent follows the caps: bit 10 -> the live D, 300..600 in steps of 50; bit 9 only -> 300 (TMG8); otherwise 600 (TMG4..TMG7). */
+static bool detent_valid(uint32_t caps,uint32_t d){
+ if(caps&TD_CAP_KNOB_DETENT)return d>=TK_DETENT_MIN&&d<=TK_DETENT_MAX&&d%TK_DETENT_STEP==0;
+ return d==((caps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY);
+}
 static bool sample_valid(const TDSample *s){
- if(!s||!s->session||!s->sequence||(s->build!=TD_BUILD_TMG4&&s->build!=TD_BUILD_TMG5&&s->build!=TD_BUILD_TMG6)||s->kind>TD_CALIBRATION||(s->valid>>TD_RESERVED)||s->event_count>TD_RING||s->flags>1||(s->caps&~(s->build==TD_BUILD_TMG6?TD_CAPS_TMG8:s->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL))||(s->extension_valid&~15u)||s->detent!=((s->caps&TD_CAP_MENU_CAROUSEL)?TK_DETENT_RAW:TK_DETENT_LEGACY)||s->language>1||s->language_source>2||s->calibration_state>TK_OVERFLOW||s->calibration_result>TK_OVERFLOW_RESULT||(s->settings_flags&~7u))return false;
+ if(!s||!s->session||!s->sequence||(s->build!=TD_BUILD_TMG4&&s->build!=TD_BUILD_TMG5&&s->build!=TD_BUILD_TMG6)||s->kind>TD_CALIBRATION||(s->valid>>TD_RESERVED)||s->event_count>TD_RING||s->flags>1||(s->caps&~(s->build==TD_BUILD_TMG6?TD_CAPS_TMG9:s->build==TD_BUILD_TMG5?TD_CAPS_TMG5:TD_CAPS_ALL))||(s->extension_valid&~15u)||!detent_valid(s->caps,s->detent)||s->language>1||s->language_source>2||s->calibration_state>TK_OVERFLOW||s->calibration_result>TK_OVERFLOW_RESULT||(s->settings_flags&~7u))return false;
  for(unsigned i=0;i<TD_METRICS;i++)if(!(s->valid&(1u<<i))&&s->values[i])return false;
  if(s->kind==TD_SAMPLE&&s->calibration_result)return false;
  if(s->extension_valid&TD_EXT_NAND){if(!s->nand_total||s->nand_total>UINT32_MAX||s->nand_available>s->nand_total)return false;}else if(s->nand_total||s->nand_available)return false;

@@ -920,6 +920,7 @@ static const TIOStringRow Rows[]={
     {"tmg8.layout.seg.rows3","3 rows","三排"},
     {"tmg8.layout.version.tmg6","TMG6 or TMG7","TMG6 或 TMG7"},
     {"tmg8.runtime.detent.format","%@ raw units / step","每步 %@ 原始单位"},
+    {"tmg9.layout.detentNeedsTMG9","The knob step needs glasses firmware TMG9. Nothing was sent.","旋钮步长需要 TMG9 眼镜固件，未发送任何设置。"},
     {"一次导出 Markdown 与 JSON","Export Markdown and JSON together",NULL},
     {"三排 · 九宫格（默认）","Three rows · 3×3 grid (default)",NULL},
     {"上一张照片还在保存，请稍候。","The previous photo is still saving. Please wait.",NULL},

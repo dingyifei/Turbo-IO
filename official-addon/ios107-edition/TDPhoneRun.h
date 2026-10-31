@@ -47,6 +47,12 @@
 - (uint32_t)glassesCaps;
 /* YES when the connected glasses report the TMG8 caps bit ("glasses report TMG8 caps"). */
 - (BOOL)glassesReportTMG8Caps;
+/* YES when the connected glasses report the TMG9 caps bit TD_CAP_KNOB_DETENT ("glasses report TMG9 detent caps"): the knob detent D is adjustable and
+ * a layout SET may carry it. TMG8 and older glasses never set it. */
+- (BOOL)glassesReportTMG9DetentCaps;
+/* The detent the glasses reported in the same fresh status sample: the live D (300..600 in steps of 50) from a TMG9 peer, the fixed 300 or 600 an older
+ * peer reports, and 0 when no sample is known (none yet, stale, another peer). */
+- (uint32_t)glassesDetent;
 /* The firmware label of the last validated status sample of the current peer ("TMG6" for a TMG6 or TMG7 build, which share
  * a build field; "TMG5"; "TMG4"), or nil until one arrives, once it is older than TDGlassesCapsFreshSeconds, and again as soon as the peer changes. */
 - (NSString *)glassesFirmware;
