@@ -28,6 +28,27 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source);
 BOOL TIOMenuLayoutIsReply(NSDictionary *);
 BOOL TIOMenuLayoutConsume(NSDictionary *);
 
+/* The knob step setting (TMG9): applies a new detent D through the layout link and confirms it by reading the status "detent" back. Nothing is
+ * shown as changed until the glasses report the new value: the SET reply only confirms the layout, so Pending lasts until the status says D, and
+ * Failed means the layout reply was refused/missing or the status never reported D within the read-back window. No automatic retry. */
+typedef NS_ENUM(NSUInteger,TIOKnobStepState){TIOKnobStepIdle,TIOKnobStepPending,TIOKnobStepConfirmed,TIOKnobStepFailed};
+extern const double TIOKnobStepReadbackSeconds; /* from the layout reply to the status that must report D */
+extern const double TIOKnobStepDeadlineSeconds; /* from apply to the end of the whole attempt */
+@interface TIOKnobStep:NSObject
+@property(nonatomic,readonly) TIOKnobStepState state;
+@property(nonatomic,readonly) NSUInteger target; /* the D being applied, or last applied */
+/* YES when the connected glasses report TD_CAP_KNOB_DETENT. Without it the setting is shown disabled and apply: refuses. */
+@property(nonatomic,readonly) BOOL enabled;
+/* reported: the fresh status "detent" (0 when unknown); refresh: asks the glasses for a new status sample (may decline). */
+- (instancetype)initWithLink:(TIOMenuLayoutLink *)link reported:(uint32_t(^)(void))reported refresh:(BOOL(^)(void))refresh clock:(double(^)(void))clock;
+/* NO (nothing sent, state unchanged) when not enabled, not 300..600 in steps of 50, already pending, the link is busy or D is already what the glasses report. */
+- (BOOL)apply:(NSUInteger)detent;
+/* Drives the read-back and the deadlines; call it about once a second while the screen is visible. */
+- (void)poll;
+/* Back to Idle (a new draft value was chosen); ignored while pending. */
+- (void)reset;
+@end
+
 // Same one-shot transaction ownership as row settings; no optimistic save.
 @interface TIOTileLayoutLink:NSObject
 @property(nonatomic,readonly) BOOL busy,ready;

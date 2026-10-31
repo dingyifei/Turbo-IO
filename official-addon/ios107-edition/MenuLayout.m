@@ -81,6 +81,42 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
 }
 @end
 
+const double TIOKnobStepReadbackSeconds=8,TIOKnobStepDeadlineSeconds=20;
+@implementation TIOKnobStep {
+ TIOMenuLayoutLink *_link;uint32_t(^_reported)(void);BOOL(^_refresh)(void);double(^_clock)(void);
+ TIOKnobStepState _state;NSUInteger _target,_epoch;BOOL _layoutConfirmed;double _startedAt,_confirmedAt;
+}
+- (instancetype)initWithLink:(TIOMenuLayoutLink *)link reported:(uint32_t(^)(void))reported refresh:(BOOL(^)(void))refresh clock:(double(^)(void))clock{
+ if((self=[super init])){_link=link;_reported=[reported copy];_refresh=[refresh copy];_clock=[clock copy];}return self;
+}
+- (TIOKnobStepState)state{return _state;}
+- (NSUInteger)target{return _target;}
+- (BOOL)enabled{return _link.glassesReportTMG9DetentCaps;}
+- (void)reset{if(_state!=TIOKnobStepPending)_state=TIOKnobStepIdle;}
+- (BOOL)apply:(NSUInteger)detent{
+ NSAssert(NSThread.isMainThread,@"main only");
+ if(_state==TIOKnobStepPending||_link.busy||!self.enabled||detent>UINT32_MAX||!tml_detent_valid((unsigned)detent)||_reported()==detent)return NO;
+ _target=detent;_state=TIOKnobStepPending;_layoutConfirmed=NO;_startedAt=_clock();NSUInteger epoch=++_epoch;
+ __weak typeof(self) weak=self;
+ [_link chooseDetent:detent done:^{
+  typeof(self) s=weak;if(!s||s->_epoch!=epoch||s->_state!=TIOKnobStepPending)return;
+  /* The link ends a transaction with its rows cleared when the reply was an error, never came, or the peer changed. */
+  if(!s->_link.rows||!s.enabled){s->_state=TIOKnobStepFailed;return;}
+  s->_layoutConfirmed=YES;s->_confirmedAt=s->_clock();[s poll];
+ }];
+ return YES;
+}
+- (void)poll{
+ if(_state!=TIOKnobStepPending)return;
+ double now=_clock();
+ if(now<_startedAt||now-_startedAt>TIOKnobStepDeadlineSeconds){_state=TIOKnobStepFailed;_epoch++;return;}
+ if(!_layoutConfirmed)return;
+ if(_reported()==_target){_state=TIOKnobStepConfirmed;_epoch++;return;}
+ if(now<_confirmedAt||now-_confirmedAt>TIOKnobStepReadbackSeconds){_state=TIOKnobStepFailed;_epoch++;return;}
+ if(_refresh)(void)_refresh();
+}
+@end
+
 #include "tile_config.h"
 static BOOL TileReply(NSDictionary *e,TTReply *reply){
  if(![e isKindOfClass:NSDictionary.class]||![e[@"eventType"]isEqual:@"messageReceived"])return NO;

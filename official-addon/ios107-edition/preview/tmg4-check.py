@@ -14,9 +14,10 @@ LANGS=('en','zh-Hans')
 APPEARANCES=('light','dark')
 STANDARD_SIZE='UICTContentSizeCategoryL'
 AX_SIZE='UICTContentSizeCategoryAccessibilityXXXL'
-TABLE_SCREENS=('tiles','runtime','knob')
+KNOB_STEP_SCREENS=('knob-tmg9','knob-tmg9-confirmed','knob-tmg9-failed','knob-tmg8')
+TABLE_SCREENS=('tiles','runtime','knob')+KNOB_STEP_SCREENS
 # Screens whose navigation title is localized today; the others only assert the process language.
-LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')
+LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')+KNOB_STEP_SCREENS
 # The menu layout screen with canned TMG8 glasses (carousel stored) and with older glasses (three rows, Carousel disabled).
 LAYOUT_SCREENS=('layout','layout-tmg7')
 SEGMENTS={'en':['Carousel','2 rows','3 rows'],'zh-Hans':['轮播','两排','三排']}
@@ -41,11 +42,38 @@ def check_table(screen,report,lang,stem,size):
         assert custom[0]['switchOn'] is None and custom[0]['accessory']==3,'Camera must stay visible in reversed fixture'
         assert {r['id'] for r in sections[2]['rows']}=={'tiles-read','tiles-save','tiles-reset'}
     else:
-        assert len(sections)==5 and len(sections[0]['rows'])==8 and len(sections[1]['rows'])==5
-        assert 'TMG4' in sections[0]['rows'][1]['status'] and '44444444' in sections[0]['rows'][1]['status']
-        assert '600' in sections[0]['rows'][6]['status']
+        # Status, calibration, knob step, capture, resources, integrity.
+        assert len(sections)==6 and len(sections[0]['rows'])==8 and len(sections[1]['rows'])==5 and len(sections[2]['rows'])==4,'section shape in '+str(stem)
         assert {r['id'] for r in sections[1]['rows'][2:]}=={'knob-start','knob-finish','knob-cancel'}
         if screen=='knob':assert '4800' in sections[1]['rows'][1]['status'],'completed one-turn fixture missing'
+        check_knob_step(screen,sections,lang,stem)
+# What each canned glasses reports and what the knob step section must then show (docs: ds3.md item 6).
+#   screen -> (firmware label, reported D, items per turn, setting enabled, stepper value, apply enabled)
+KNOB_FIXTURES={'runtime':('TMG4',600,'3.3',False,None,False),'knob':('TMG4',600,'3.3',False,None,False),
+    'knob-tmg8':('TMG6',300,'6.7',False,None,False),'knob-tmg9':('TMG6',400,'5.0',True,400,False),
+    'knob-tmg9-confirmed':('TMG6',450,'4.4',True,450,False),'knob-tmg9-failed':('TMG6',400,'5.0',True,450,True)}
+WORDS={'en':{'items':'items per turn','confirmed':'Confirmed by the glasses','failed':'Not confirmed','unavailable':'Not available','idle':'Not changed','needs':'TMG9','wrap':'wrap from the last item','nowrap':'Wrapping comes with TMG8'},
+       'zh-Hans':{'items':'每圈约','confirmed':'眼镜已确认','failed':'未确认','unavailable':'这副眼镜不支持','idle':'未更改','needs':'TMG9','wrap':'回到第一项','nowrap':'首尾循环需要 TMG8'}}
+def check_knob_step(screen,sections,lang,stem):
+    firmware,detent,items,enabled,value,apply_enabled=KNOB_FIXTURES[screen];w=WORDS[lang];rows=sections[2]['rows'];footer=sections[2]['footer'];tag=' in '+str(stem)
+    assert firmware in sections[0]['rows'][1]['status'] and ('6'*8 if firmware=='TMG6' else '4'*8) in sections[0]['rows'][1]['status'],'wrong fixture glasses'+tag
+    assert str(detent) in sections[0]['rows'][6]['status'],'the status detent row must show the reported D'+tag
+    assert [r['id'] for r in rows]==['knob-step-current','knob-step-choose','knob-step-apply','knob-step-result'],'step rows'+tag
+    current,choose,apply,result=rows
+    assert str(detent) in current['status'] and items in current['status'] and w['items'] in current['status'],'current step must show the reported D and items per turn'+tag
+    assert (choose['stepperEnabled'] is not None)==True and choose['stepperEnabled']==enabled,'stepper enabled only with caps bit 10'+tag
+    if value is not None:assert choose['stepperValue']==value,'stepper value'+tag
+    assert choose['stepperValue'] is not None and 300<=choose['stepperValue']<=600 and choose['stepperValue']%50==0,'stepper range'+tag
+    assert apply['enabled']==apply_enabled,'apply must be live only for a pending change on a TMG9 peer'+tag
+    assert (han(footer) if lang=='zh-Hans' else not han(footer)),'footer language'+tag
+    if not enabled:assert w['needs'] in footer and w['unavailable'] in result['status'],'the disabled setting must say it needs TMG9'+tag
+    else:assert w['needs'] not in footer,'TMG9 glasses must not be told to need TMG9'+tag
+    assert (w['wrap'] in footer) if screen!='knob' and screen!='runtime' else (w['nowrap'] in footer),'wrap sentence follows the TMG8 bit'+tag
+    expect={'knob-tmg9':w['idle'],'knob-tmg9-confirmed':w['confirmed'],'knob-tmg9-failed':w['failed']}.get(screen)
+    if expect:assert expect in result['status'],'result state'+tag+': '+result['status']
+    if screen=='knob-tmg9-confirmed':assert '450' in result['status']
+    text=' '.join([footer]+[r[k] for r in rows for k in ('title','status')])
+    assert 'tmg8.' not in text and 'tmg9.' not in text,'untranslated key'+tag
 def check_layout(screen,report,lang,stem):
     facts=report['layout'];segments=facts['segments'];tmg8=screen=='layout'
     assert [x['title'] for x in segments]==SEGMENTS[lang],'segment titles in '+str(stem)+': '+str([x['title'] for x in segments])

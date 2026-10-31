@@ -25,6 +25,7 @@ static TIOMenuLayoutLink *Link(void){
  });return link;
 }
 static TIOTileLayoutLink *TileLink(void);
+TIOMenuLayoutLink *TIOMenuLayoutSharedLink(void){return Link();}
 BOOL TIOMenuLayoutConsume(NSDictionary *e){return [Link() consume:e]||[TileLink() consume:e];}
 static NSString *TileName(NSUInteger tile);
 /* The phone-side picture of the glasses menu (docs/design-system PhoneMenuLayout, LensMenuCarousel and LensMenuGrid2, 540 x 220
