@@ -61,6 +61,9 @@ FOUNDATION_EXPORT UIFont *TIODesignLensFont(CGFloat glassesPixels, CGFloat previ
 #define TIO_DESIGN_CONST_2(name,A,a,B,b) static const CGFloat TIO##A = (a); static const CGFloat TIO##B = (b);
 TIO_DESIGN_NUMBERS_1(TIO_DESIGN_CONST_1)
 TIO_DESIGN_NUMBERS_2(TIO_DESIGN_CONST_2)
+#define TIO_DESIGN_CONST_R(Id,name,lo,hi,step,def) static const CGFloat TIO##Id##Min = (lo); static const CGFloat TIO##Id##Max = (hi); static const CGFloat TIO##Id##Step = (step); static const CGFloat TIO##Id##Default = (def);
+TIO_DESIGN_RANGES(TIO_DESIGN_CONST_R)
+#undef TIO_DESIGN_CONST_R
 #undef TIO_DESIGN_CONST_1
 #undef TIO_DESIGN_CONST_2
 /* Look a numeric token up by its tokens.json name. second is NO for singles. */

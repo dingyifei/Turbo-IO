@@ -102,7 +102,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  return [paragraphs componentsJoinedByString:@"\n\n"];
 }
 /* The detent the stepper shows: the user's pick, else what the glasses report, else the TMG9 default. */
-- (NSUInteger)effectiveDraft{NSUInteger d=self.draft?:ValidDetent(@([self.runtime glassesDetent]));return d?:TK_DETENT_DEFAULT;}
+- (NSUInteger)effectiveDraft{NSUInteger d=self.draft?:ValidDetent(@([self.runtime glassesDetent]));return d?:(NSUInteger)TIOLensWheelDetentDefault;}
 - (NSString *)stepResult{
  TIOKnobStepState state=self.step.state;
  if(!self.step.enabled&&state==TIOKnobStepIdle)return TIOText(@"tmg9.knob.state.unavailable");
@@ -138,7 +138,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  if(row==TDStepCurrent){c.textLabel.text=TIOText(@"tmg9.knob.current");c.detailTextLabel.text=reported?StepText(reported):TIOText(@"未测");c.accessibilityIdentifier=@"knob-step-current";}
  else if(row==TDStepChoose){
   c.textLabel.text=TIOText(@"tmg9.knob.choose");c.detailTextLabel.text=StepText(draft);c.accessibilityIdentifier=@"knob-step-choose";
-  UIStepper *stepper=[TDHitStepper new];stepper.minimumValue=TK_DETENT_MIN;stepper.maximumValue=TK_DETENT_MAX;stepper.stepValue=TK_DETENT_STEP;stepper.value=draft;stepper.wraps=NO;stepper.enabled=enabled&&!pending;
+  UIStepper *stepper=[TDHitStepper new];stepper.minimumValue=TIOLensWheelDetentMin;stepper.maximumValue=TIOLensWheelDetentMax;stepper.stepValue=TIOLensWheelDetentStep;stepper.value=draft;stepper.wraps=NO;stepper.enabled=enabled&&!pending;
   stepper.accessibilityIdentifier=@"knob-step-stepper";stepper.accessibilityLabel=TIOText(@"tmg9.knob.choose");stepper.accessibilityValue=StepText(draft);stepper.accessibilityHint=TIOText(@"tmg9.knob.chooseHint");
   [stepper addTarget:self action:@selector(stepperChanged:) forControlEvents:UIControlEventValueChanged];c.accessoryView=stepper;self.stepper=stepper;
   c.isAccessibilityElement=NO;c.accessibilityElements=@[stepper]; /* the stepper carries the label and value; the cell would only repeat them */
@@ -150,7 +150,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  }else{c.textLabel.text=TIOText(@"tmg9.knob.result");c.detailTextLabel.text=[self stepResult];c.accessibilityIdentifier=@"knob-step-result";}
 }
 - (void)stepperChanged:(UIStepper *)sender{
- NSUInteger value=(NSUInteger)llround(sender.value);if(value<TK_DETENT_MIN||value>TK_DETENT_MAX)return;
+ NSUInteger value=(NSUInteger)llround(sender.value);if(value<TIOLensWheelDetentMin||value>TIOLensWheelDetentMax)return;
  self.draft=value;[self.step reset];self.announced=self.step.state;sender.accessibilityValue=StepText(value);
  /* Only the rows that depend on the pick are refreshed; reloading the stepper's own row would end the drag or auto-repeat. */
  [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:TDStepChoose inSection:TDSectionStep]].detailTextLabel.text=StepText(value);

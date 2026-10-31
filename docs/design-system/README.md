@@ -102,7 +102,7 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
 - Mini-app art outside band B is capped at `lens-mid`.
 - Every host render passes the brightness gate, using the same metric as the Lens Brightness Audit dashboard.
 
-**9. Knob.** Every list moves one item per `lens-wheel-detent` (400 raw counts by default, about 5.0 items per ~2000-count turn; the phone sets it from 300 to 600 in steps of 50) and wraps from the last item to the first. Input lockouts are 200 ms on pages and 500 ms in music.
+**9. Knob.** Every list moves one item per `lens-wheel-detent` raw counts. The token is a range: `min` 300, `max` 600, `step` 50, `default` 400 (about 5.0 items per ~2000-count turn at the default, 6.7 at 300, 3.3 at 600). The phone sets it inside that range, and the firmware, the wire format and the phone code all read the same four numbers (`TIO_WHEEL_DETENT_*`, `TML_DETENT_*`, `TIOLensWheelDetent*`). A list wraps from the last item to the first. Input lockouts are 200 ms on pages and 500 ms in music.
 
 ## Iconography
 
