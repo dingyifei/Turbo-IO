@@ -1,6 +1,20 @@
 # iOS 1.0.7（230）· APP107 兼容适配
 
-## TMG8 candidate — current development branch
+## TMG9 candidate — current development branch
+
+TMG9 supersedes the TMG8 section below, which stays as history. CANDIDATE-NOT-APPROVED: offline build and host evidence only, not flashed, no glasses or phone contacted. The pinned ZIP9 is in `firmware-pins.json` and `FirmwarePins.h` (they follow `firmware/`, name `TMG9`). Details and the wire/storage design: `firmware/README.md`.
+
+TMG9 fixes the wrap (the highlight follows the animation at both ends), makes the knob step D a setting (300..600 counts per item in steps of 50, default 400) and adds caps bit 10. The glasses still report the TMG6 build name: TMG9 is proven by caps bit 10 plus a build hash that differs from TMG8's `7fe49d04...`. The phone sends a D-carrying SET only to glasses that reported bit 10.
+
+**Human-only TMG8 → TMG9 checklist:**
+
+1. Install the separately signed phone package manually and confirm the bundled candidate hash in `firmware-pins.json`. End display, navigation and music sessions before using the existing firmware wizard.
+2. Download the exact bundled TMG9 candidate in RayNeo and stop at **Ready to install**; require a fresh supported version observation (at most 120 seconds old) before the single confirmation. RayNeo Auto Update and the AI updates stay off. No automatic installation or flashing.
+3. After the glasses reboot, restart the phone app, refresh the status and require caps bit 10 and the new build hash.
+4. Device checklist: wrap at both ends; the knob step (default 400) changed from the phone, shown Confirmed only after the status reads it back; the navigation title with no shifted arrow; music working with a route active; the test bench lyrics, card and tile states; log one turn's direction sign (stock setting 0x24).
+5. Roll back manually to C12 plus ZIP8 (SHA256 `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`; the ZIP8 flash steps in the TMG8 section below stay valid). A stored custom D makes ZIP8 ignore that layout record and fall back to the other bank or the 3-row default, so set the step back to 400 before rolling back if the layout matters. Host previews do not establish hardware acceptance.
+
+## TMG8 candidate (superseded by TMG9; the rollback path)
 
 TMG8 supersedes the historical candidate sections below. ZIP SHA256: `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`; ZIP bytes: 8,819,108; ZIP MD5: `2c1a67c2d0108ecdfab139210ad67e7d`; AP size: 7,368,072 bytes (under 9.6 MB); AP SHA256: `5441188525e3fda393028694d093be713de360563ea2bb9696ec5c4c8c4a1fc1`; AP MD5: `2160d6a794be52c37797a06f173e50fe`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence only; the candidate is not approved, not flashed, and no glasses were contacted.
 

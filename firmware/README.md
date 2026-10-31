@@ -122,6 +122,27 @@ Leaving the Navigation page no longer ends the route. While a phone route is act
 - **Device checks (for the user's checklist).** (1) Battery drain over a 20-minute route with the Navigation page closed against the same route with it open (page closed should be clearly lower, never higher than open). (2) The band T title tracks the turns during a real route with the page closed: arrow, distance and road change with each manoeuvre, at most once a second. (3) Long-press out of Navigation mid-route, open another app and come back to the menu: the title and `n km to go` are still there; open Navigation again: the page shows the current turn and the map without a new START. (4) End the route on the phone, walk out of range, or stop sending for a minute: the title and the tile line disappear. (5) The panel does not wake on its own while the page is closed. (6) Whether the launcher menu app is destroyed while another app is open (the route then ends with it).
 - **Not host-testable.** `nav_service.c` itself (it reads fixed launcher addresses). Its edits are `close_page`, `resume`, `reap`, `map_apply` and the `deleted` guard; the logic they call is covered above.
 
+### TMG9 summary, identity, rollback and device checklist (`tmg9(5)`, docs)
+
+**What TMG9 fixes.** (1) The wrap at either end of the menu now moves the highlighted item as well as the animation (`tmg9(2)`). (2) The 64-byte bank alignment of the menu file (`tmg9(1)`). (3) The knob detent is a setting: D = raw counts per item, 300..600 in steps of 50, default 400 (`tmg9(3)`, `tmg9(4)`). About 5.0 items turn per 2000 counts at 400; 300 gives 6.7 and 600 gives 3.3. Phone side (not firmware): the knob step control on the Glasses runtime screen, and music and navigation fixes from the other lane.
+
+**Detent wire.** Caps bit 10 (`TD_CAP_KNOB_DETENT`, `TD_CAPS_TMG9`) says the glasses accept a TMG2 SET with peer byte 2 and D in the u32 at byte 24; D = 0 leaves the stored D alone. The status `detent` reports the live D and is the only confirmation the phone accepts. No other wire change.
+
+**Storage.** D/50 in byte 6 of the existing 20-byte TMC2 record, 0 meaning the default 400. A default D is always written as 0, so a record that never held a custom D is identical to what TMG7 and TMG8 write.
+
+**Identity.** The glasses still report the TMG6 build name; nothing reports the ZIP hash. TMG9 is recognised by (a) caps bit 10 in the status and (b) a new build-identity hash in the status `build` field, which differs from TMG8's `7fe49d04...` (the pinned values are in `official-addon/ios107-edition/firmware-pins.json`). Caps bit 10 without the new hash, or the new hash without bit 10, is not TMG9.
+
+**Rollback to C12 + ZIP8.** Flash ZIP8 (`effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`, tag `fw/tmg8`) with the same guarded OTA wizard and install C12. A stored default D (byte 6 = 0) is read by ZIP8 as usual: the layout survives. A stored custom D (byte 6 non-zero) makes ZIP8 and ZIP7 ignore that record without an error and without rewriting it: they use the other bank if it holds a readable record, otherwise the 3-row default. The carousel choice may therefore be lost on rollback; set the layout again afterwards (ZIP8 stores byte 6 = 0 from then on). To keep the layout across a rollback, set the knob step back to 400 first. ZIP8 stepping is its fixed 300 counts per item.
+
+**Device checklist (all open; no glasses were contacted).**
+1. Wrap at both ends: forward past the last item lands on the first, backward past the first lands on the last, and the highlight and label follow the animation.
+2. Knob step: the default 400 changed from the phone (Glasses runtime, Knob step, Apply); the screen shows Confirmed only after the status reads the new D back, and the turn feel changes with it.
+3. Navigation title in the menu with a route live shows no shifted arrow.
+4. Music works while a route is active.
+5. Test bench: lyrics, card and tile states look right.
+6. Log one turn's direction sign (stock setting 0x24; the hook treats positive raw counts as forward). If clockwise steps backward, report it.
+Host evidence: 220 renders (EN and ZH, `logs/tmg9/final-preview/`) and the 233-row brightness gate, 0 failures: max general 0.4128 of 0.45, max band-B primary 0.6448 of 0.65, the same as TMG8.
+
 ## Knob (Round 2, TMG8; superseded by the TMG9 stepping section above)
 
 This section describes frozen TMG8 (`fw/tmg8`): one fixed detent of 300, a doubled stock delta and the edge counter. TMG9 replaced all of it; the text is kept as history.
