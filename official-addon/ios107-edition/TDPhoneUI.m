@@ -155,6 +155,7 @@ static NSString *RuntimeState(NSString *state){return TIOText([@"tmg4.runtime.st
  /* Only the rows that depend on the pick are refreshed; reloading the stepper's own row would end the drag or auto-repeat. */
  [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:TDStepChoose inSection:TDSectionStep]].detailTextLabel.text=StepText(value);
  [self.tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:TDStepApply inSection:TDSectionStep],[NSIndexPath indexPathForRow:TDStepResult inSection:TDSectionStep]] withRowAnimation:UITableViewRowAnimationNone];
+ self.stepSignature=[self stepDrawn]; /* the rows above now show the new pick, so the next refresh leaves the stepper alone under VoiceOver */
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)p{
  (void)tableView;UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];c.selectionStyle=UITableViewCellSelectionStyleNone;c.detailTextLabel.textColor=UIColor.secondaryLabelColor;c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;
