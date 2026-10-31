@@ -1,6 +1,6 @@
 # 先离线研究：核对、测试、构建
 
-> Historical (2026-10): the root official-addon sources and commands below are archived in git tag archive/editions-2026-10; the active addon is official-addon/ios107-edition.
+> Historical (2026-10): the root official-addon sources and commands below are kept in commit 27ad86e; the active addon is official-addon/ios107-edition.
 
 **下列命令不会连接眼镜、安装手机 App 或发起 OTA。新生成的包不是自动安全可刷。** 先读 [SAFETY](SAFETY.md)。推荐在临时开发目录操作，保留原始下载件；脚本拒绝覆盖已有输出。
 

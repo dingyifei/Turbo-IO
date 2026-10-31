@@ -2,7 +2,7 @@
 
 **2026-09-25 · 实验固件，非开发者请勿刷。** 此研究用于探索 BES2800 application 内的原生应用与 UI 能力，不是日常成品固件。可能无法启动、丢失数据或失去 OTA；即使保留原厂 ZIP，也不保证能救砖。断电、意外中断、错误版本和运行时缺陷均有风险。原厂回滚机制不是安全承诺。
 
-[下载精确实测 ZIP、清单与 SHA256](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04) · 配套 iOS UI / 构建 / 签名（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）
+[下载精确实测 ZIP、清单与 SHA256](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04) · 配套 iOS UI / 构建 / 签名（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）
 
 ## 这次更新
 
@@ -58,7 +58,7 @@ python3 -m venv /absolute/firmware-venv
 
 ## 配套手机端及升级顺序
 
-先按配套手机教程（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）自行构建、签名和安装；确认 FOCUS-04 与内置候选校验通过。不要把旧 TWR1/TMU1 门禁与新包混用。
+先按配套手机教程（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）自行构建、签名和安装；确认 FOCUS-04 与内置候选校验通过。不要把旧 TWR1/TMU1 门禁与新包混用。
 
 1. 保存原厂基线及现有数据，关闭官方自动更新；确认版本、连接和充足电量（至少 50%），结束录音、导航、音乐、阅读、计时及对话。
 2. 诊断 → FOCUS-04 → 开启 15 分钟**只下载验收**；回官方更新页下载。此时未授权眼镜刷写。

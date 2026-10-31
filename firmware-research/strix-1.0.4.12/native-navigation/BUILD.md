@@ -1,6 +1,6 @@
 # 构建、校验与自行签名
 
-> Historical (2026-10): the root official-addon sources and commands below are archived in git tag archive/editions-2026-10; the active addon is official-addon/ios107-edition.
+> Historical (2026-10): the root official-addon sources and commands below are kept in commit 27ad86e; the active addon is official-addon/ios107-edition.
 
 先阅读 [风险与适配范围](README.md)。以下流程**不会操作眼镜或自动授权刷写**。在仓库根目录执行；所有 `YOUR_*` / `/absolute/...` 都要换成自己的值。无需任何作者私人工程。
 

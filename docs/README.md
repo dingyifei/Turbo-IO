@@ -19,12 +19,15 @@ Status column:
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
 | [Licensing](LICENSING.md) | Current | Non-commercial terms and third-party boundaries |
 | [Source release](SOURCE_RELEASE.md) | Current | What the public source includes and excludes |
+| [Changelog](CHANGELOG.md) | Historical | Dated updates and acceptance records up to 2026-10-23, moved out of the README |
 
 ## Design system
 
 [Design system](design-system/README.md) is the UI spec for the phone and the lens. It is backed by the [shared rules and tokens](design-system/SPEC.md) and one README per component under [`design-system/components/`](design-system/components/).
 
 ## V1 standalone client
+
+Start with [the V1 overview](v1-sdk.md): what it can do, quick start and limits.
 
 | Document | What it covers |
 |---|---|

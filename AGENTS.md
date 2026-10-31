@@ -39,7 +39,7 @@ This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It co
 | Path | Contents |
 |---|---|
 | `official-addon/ios107-edition/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.7, with its build, packaging, tests and the OTA flash guide |
-| `firmware/` | The patched glasses firmware as one tree; each release is a `fw/tmgN` tag. Until the single-tree restructure merges, this is the newest `firmware-research/strix-1.0.5.5-tmgN/` |
+| `firmware/` | The patched glasses firmware, as one tree. Each release is an annotated `fw/tmgN` tag, the release label is in `firmware/RELEASE`, and `firmware/baseline/` holds the few inputs carried over from older releases. |
 | `firmware-research/` | Stock firmware and research notes. Not built. |
 | `scripts/` | Gate, packaging and source audit |
 | `tools/` | Offline analysis tools |

@@ -20,11 +20,11 @@
 
 ## 历史：FOCUS-04 四项菜单与原生番茄时钟
 
-**2026-09-25 [FOCUS-04 / TFP1 源码、精确实刷固件及教程](native-navigation/focus/README.md)**：四项同屏菜单、左上角时间与电量、原生番茄计时，以及音乐/阅读/详情残留等交互修复；配套新版 iOS 插件 UI 和打包入口（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/focus-edition/README.md`）。仅 AP 内容改变，大小 9,558,216 字节；其他 13 个负载不变。用户确认实刷正常，仍有无法启动或失去 OTA 的风险，不保证回滚或救砖。
+**2026-09-25 [FOCUS-04 / TFP1 源码、精确实刷固件及教程](native-navigation/focus/README.md)**：四项同屏菜单、左上角时间与电量、原生番茄计时，以及音乐/阅读/详情残留等交互修复；配套新版 iOS 插件 UI 和打包入口（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）。仅 AP 内容改变，大小 9,558,216 字节；其他 13 个负载不变。用户确认实刷正常，仍有无法启动或失去 OTA 的风险，不保证回滚或救砖。
 
 ## 历史：TWR1 / TNV1 与 TDP1
 
-新增 [TWR1 微信读书：原创模块、精确实刷固件与离线重建](native-navigation/weread/README.md)，以及[研究思路](../../docs/WEREAD_RESEARCH.md)。不含网页正文适配、Cookie 或私用 IPA；公开手机模块未接入默认构建/专用打包门禁，没有匹配手机集成请先别刷。已知“长按旋钮返回可能异常”，不能把本页其他固件混用为阅读版。
+新增 [TWR1 微信读书：原创模块、精确实刷固件与离线重建](native-navigation/weread/README.md)，以及[研究思路](../../docs/history/WEREAD_RESEARCH.md)。不含网页正文适配、Cookie 或私用 IPA；公开手机模块未接入默认构建/专用打包门禁，没有匹配手机集成请先别刷。已知“长按旋钮返回可能异常”，不能把本页其他固件混用为阅读版。
 
 2026-09-22 的新匹配版本已单独发布：[TNV1 固件与校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · [源码、构建与使用](native-navigation/README.md)。新增独立第九项导航，保留第八项 Turbo Display **测试工具**；手机传语义数据、眼镜本地绘制。仅 AP 内容变化，保留其余13项。本页下方继续记录早期 R3 图片验证，**不是 TNV1 操作指南，两个包不能混用**。
 

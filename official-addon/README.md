@@ -15,15 +15,15 @@ The tracked root PrivateBootstrap parser and its tests remain for compatibility;
 <a id="1-兼容性门槛"></a>
 ## Compatibility
 
-The current port requires the exact 1.0.7 (230) host described in [ios107-edition](ios107-edition/README.md). Historical V2 compatibility and installation instructions remain in `git show archive/editions-2026-10:official-addon/README.md`.
+The current port requires the exact 1.0.7 (230) host described in [ios107-edition](ios107-edition/README.md). Historical V2 compatibility and installation instructions are kept in commit `27ad86e`: `git show 27ad86e:official-addon/README.md`.
 
 ## Archived
 
-navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ are preserved in the local tag `archive/editions-2026-10`. A small navs3 README pointer remains so frozen firmware documentation keeps a valid link.
+navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. A small navs3 README pointer remains so older firmware documentation keeps a valid link.
 
 ```sh
-git show archive/editions-2026-10:official-addon/navs3-edition/README.md
-git checkout archive/editions-2026-10 -- official-addon/navs3-edition
+git show 27ad86e:official-addon/navs3-edition/README.md
+git checkout 27ad86e -- official-addon/navs3-edition
 ```
 
 <a id="本地合并签名安装"></a>
@@ -33,10 +33,10 @@ From ios107-edition, after preparing compatible external inputs and ignored pars
 
 ```sh
 TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
-python3 test.py --firmware /absolute/TMG3-CANDIDATE-NOT-APPROVED.zip
+python3 test.py --firmware /absolute/StrixOS-1.0.5.5-TurboIO-TMGn-CANDIDATE-NOT-APPROVED.zip --app107 /absolute/Runner.app --patched-app /absolute/Runner.app
 node --test package.test.mjs local-translation/package-resources.test.mjs
 ```
 
-These commands do not install or communicate with hardware. Signing is a separate local checkpoint; see the active addon README.
+Use the firmware ZIP paired with the phone build (the current one is set in the private `package.env`; running `bash scripts/turbo-gate.sh` from the repo root fills these paths in). These commands do not install or communicate with hardware. Signing is a separate local checkpoint; see the active addon README.
 
 Original code uses [PolyForm Noncommercial 1.0.0](../LICENSE); third-party code retains its own terms.

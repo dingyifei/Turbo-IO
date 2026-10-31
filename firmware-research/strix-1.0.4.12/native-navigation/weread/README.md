@@ -4,7 +4,7 @@
 
 > **高风险试验用品，非开发者请勿刷。** 这是验证眼镜端应用、封面显示、文本排版和双向协议的研究，不是稳定阅读产品。不保证回滚或救砖；断电、中断、版本不符或 AP 错误都可能导致无法启动、失去 OTA。只改 AP 不等于只传/只写 AP，也不等于没有风险。
 
-[下载 TWR1 实验固件与校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1) · [实现思路与效果图](../../../../docs/WEREAD_RESEARCH.md) · [双向协议](PROTOCOL.md) · [发布清单](release-manifest.json)
+[下载 TWR1 实验固件与校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1) · [实现思路与效果图](../../../../docs/history/WEREAD_RESEARCH.md) · [双向协议](PROTOCOL.md) · [发布清单](release-manifest.json)
 
 ## 本次包含什么
 
@@ -18,7 +18,7 @@
 
 **不是完整公开手机产品交付：** `phone/` 是独立导出的源码模块，已做单元测试和 iOS 语法编译，但未接入主仓库默认构建、菜单及 TWR1 OTA 打包门禁。当前主仓库 `official-addon/package.mjs` 不能直接打包 TWR1；不要用 TMU1/TNV1 的打包参数或修改校验常量来凑合。没有自己的匹配手机集成时，只做离线构建/协议研究，**先别刷**。本次不提供成品 IPA。
 
-公开手机源码只支持用户自行导入有权使用的 TXT/EPUB 正文；书架 Key 仅用于书架与统计，不会自动取得章节全文。网页适配参考项目与许可边界见[研究说明](../../../../docs/WEREAD_RESEARCH.md)。
+公开手机源码只支持用户自行导入有权使用的 TXT/EPUB 正文；书架 Key 仅用于书架与统计，不会自动取得章节全文。网页适配参考项目与许可边界见[研究说明](../../../../docs/history/WEREAD_RESEARCH.md)。
 
 ## 实测范围与已知问题
 
