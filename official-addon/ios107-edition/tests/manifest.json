@@ -312,6 +312,14 @@
     "tests/MusicNavigationTests.m": {
       "status": "run",
       "group": "music-navigation"
+    },
+    "tests/GlassesBenchTests.m": {
+      "status": "run",
+      "group": "glasses-bench"
+    },
+    "tests/GlassesBenchLayout_test.c": {
+      "status": "run",
+      "group": "bench-layout"
     }
   }
 }

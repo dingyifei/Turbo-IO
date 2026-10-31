@@ -13,6 +13,7 @@
 #import "NativeNavigation.h"
 #import "ProtocolContext.h"
 #import "TIOLanguage.h"
+#import "GlassesBench.h"
 #include "music.h"
 #include "nav_runtime.h"
 #include <assert.h>
@@ -318,6 +319,49 @@ static void EndToEnd(void){
  player.glasses=NO;Spin(0.6);
 }
 
+
+// =================================================================================================================================
+// 4. Glasses test bench: the fake now-playing song goes through the same bridge (TMU1) and the glasses model
+// =================================================================================================================================
+static void BenchTests(void){
+ ResetGlasses();TB=nil;
+ TMPlayer *player=TMPlayer.shared;NSString *blocked=TIOText(@"music.status.blocked");
+ // A long lyric fixture: OPEN reaches the glasses, then the two lyric rows, each clipped to 240 B; the song is the demo one.
+ NSDictionary *fixture=nil;for(NSDictionary *f in TGBLyricFixtures())if([f[@"id"] isEqual:@"enell"])fixture=f;assert(fixture);
+ assert(!player.benchActive);
+ assert([player benchShowTitle:@"Demo song" artist:@"Bench" playing:NO positionMs:TGB_LYRIC_POSITION_MS durationMs:TGB_LYRIC_DURATION_MS lyrics:TGBLyricRows(fixture)]);
+ assert(player.benchActive&&[player.status isEqual:TIOText(@"music.status.demo")]&&![player.status isEqual:blocked]);
+ assert(SpinUntil(5,^BOOL{return GM->active&&GM->lyrics_ready&&!TMMusicFileInFlight();}));
+ assert(!strcmp(GM->title,"Demo song")&&!strcmp(GM->artist,"Bench")&&!GM->playing&&GM->line_count==2);
+ char text[TM_LYRIC_BYTES];tm_text(GM,0,text,sizeof text);assert(strlen(text)>200&&strlen(text)<=TGB_LYRIC_CAP);
+ assert([[NSString stringWithUTF8String:text] isEqual:TGBLyricRows(fixture)[0][@"text"]]);
+ tm_text(GM,1,text,sizeof text);assert(!strcmp(text,"Hold on to the light"));
+ assert(tm_position(GM,Tick32())>=TGB_LYRIC_POSITION_MS-200&&tm_position(GM,Tick32())<TGB_LYRIC_POSITION_MS+1500);   // paused near 0:05
+ // The glasses' play and pause keys move the demo clock and never reach Spotify (no state, no network, no poll).
+ uint32_t sid=GM->sid,gen=GM->generation;
+ Route(MusicReply(TM_PLAY,TM_OK,1,sid,gen,0,61));assert(SpinUntil(2,^BOOL{return player.playing;}));
+ Route(MusicReply(TM_PAUSE,TM_OK,1,sid,gen,0,62));assert(SpinUntil(2,^BOOL{return !player.playing;}));
+ Route(MusicReply(TM_NEXT,TM_OK,1,sid,gen,0,63));Route(MusicReply(TM_PREV,TM_OK,1,sid,gen,0,64));Spin(0.3);
+ assert(player.benchActive&&[player.song[@"name"] isEqual:@"Demo song"]);
+ [player play:YES];[player step:1];[player seek:30];Spin(0.2);assert(!player.playing&&[player.status isEqual:TIOText(@"music.status.paused")]&&player.position<10);   // the Music panel's own controls do nothing while the demo is up
+ // TM_RESUME (the glasses reopened the page) shows the demo song again.
+ unsigned opens=MusicOps[TM_OPEN];Route(MusicReply(TM_RESUME,TM_OK,0,0,0,0,65));
+ assert(SpinUntil(3,^BOOL{return MusicOps[TM_OPEN]==opens+1&&GM->active&&!TMMusicFileInFlight();}));
+ // Showing another fixture opens a new generation with the new lyrics.
+ NSDictionary *zh=nil;for(NSDictionary *f in TGBLyricFixtures())if([f[@"id"] isEqual:@"zh4"])zh=f;
+ assert([player benchShowTitle:@"Demo song" artist:@"Bench" playing:YES positionMs:65000 durationMs:TGB_LYRIC_DURATION_MS lyrics:TGBLyricRows(zh)]);
+ assert(SpinUntil(5,^BOOL{return GM->generation!=gen&&GM->lyrics_ready&&GM->playing&&!TMMusicFileInFlight();}));
+ tm_text(GM,0,text,sizeof text);assert([[NSString stringWithUTF8String:text] isEqual:zh[@"current"]]);
+ // Stop closes the glasses page and hands the player back.
+ unsigned closes=MusicOps[TM_CLOSE];[player benchStop];assert(!player.benchActive&&!player.song);
+ assert(SpinUntil(3,^BOOL{return MusicOps[TM_CLOSE]==closes+1&&!GM->active;}));
+ // A firmware stage blocks it: nothing is sent and the status says why.
+ ResetGlasses();OTAStage=2;
+ assert(![player benchShowTitle:@"Demo song" artist:@"Bench" playing:NO positionMs:0 durationMs:TGB_LYRIC_DURATION_MS lyrics:TGBLyricRows(fixture)]);
+ Spin(0.4);assert(!player.benchActive&&[player.status isEqual:blocked]&&Log.count==0);OTAStage=0;
+ printf("  test bench song: lyric rows clipped to 240 B on the glasses, play/pause local, RESUME reopens, stop closes, OTA stage blocks\n");
+}
+
 int main(int argc,char **argv){@autoreleasepool{
  Root=[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"music-nav-%d",getpid()]];
  [NSFileManager.defaultManager createDirectoryAtPath:Root withIntermediateDirectories:YES attributes:nil error:nil];
@@ -326,6 +370,7 @@ int main(int argc,char **argv){@autoreleasepool{
  puts("session pump interleaving");SessionTests();
  puts("music bridge BUSY / NO_SESSION");BridgeTests();
  puts("navigation + music end to end");EndToEnd();
+ puts("glasses test bench demo song");BenchTests();
  [NSUserDefaults.standardUserDefaults removePersistentDomainForName:NSProcessInfo.processInfo.processName];
  [NSFileManager.defaultManager removeItemAtPath:Root error:nil];
  puts("PASS music while navigating: showOnGlasses with an active session, BUSY/NO_SESSION rest, one file in flight, STOP and urgent UPDATE never yield");

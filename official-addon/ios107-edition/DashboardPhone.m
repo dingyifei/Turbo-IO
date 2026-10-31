@@ -2,6 +2,8 @@
 #import "TIOLanguage.h"
 #import "A2UIProbe.h"
 #import "ProtocolContext.h"
+#import "ExperimentalOTAFlash.h"
+#include "card.h"
 #ifndef TDC_HOST_TEST
 #import <UIKit/UIKit.h>
 #import "ResearchUI.h"
@@ -12,6 +14,7 @@
 // Query -> single install -> query -> stable move-to-front -> query/verify.
 static NSString *Device,*Op,*Note=/*i18n:id*/@"TDC1 测试卡 · 演示数据，未读取真实账户或 Mac";
 static NSDictionary *Before,*SortBefore;
+static NSString *Custom;   // card text from the Glasses test bench; nil sends the built-in demo values
 static uint32_t Sequence;static NSUInteger Generation;
 static BOOL Alternate,Installing;
 static void Changed(NSString *s){Note=s;[NSNotificationCenter.defaultCenter postNotificationName:@"TDCDashboardChanged" object:nil];
@@ -23,7 +26,9 @@ static void Changed(NSString *s){Note=s;[NSNotificationCenter.defaultCenter post
 #endif
 }
 static void Stop(NSString *s){Sequence=0;Generation++;Op=nil;Before=nil;SortBefore=nil;Installing=NO;Changed(s);}
+static BOOL OTABusy(void){id stage=TIOOTAFlashStatus()[@"stage"];return [stage isKindOfClass:NSNumber.class]&&[stage doubleValue]!=0;}
 static BOOL Send(NSDictionary *j,NSString *op){
+ if(OTABusy()){Stop(TIOText(@"bench.blocked"));return NO;}   // nothing goes to the glasses while a firmware stage is running
  id plugin=TIOProtocolPlugin();if(Sequence||!j||!plugin||![Device isEqual:TIOProtocolDevice()]||UIApplication.sharedApplication.applicationState!=UIApplicationStateActive){Stop(TIOText(@"未发送：请保持连接并停留前台，等待上一条回执"));return NO;}
  uint32_t seq=0x40000000+arc4random_uniform(0x3fffffff);NSData *packet=TDCRequest(seq,j);
  Class type=NSClassFromString(@"FlutterStandardTypedData"),callClass=NSClassFromString(@"FlutterMethodCall");SEL typed=NSSelectorFromString(@"typedDataWithBytes:"),make=NSSelectorFromString(@"methodCallWithMethodName:arguments:"),handle=NSSelectorFromString(@"handleMethodCall:result:");
@@ -49,7 +54,7 @@ void TDCObserveEvent(NSDictionary *e){
   if(![j[@"cmd"] isEqual:@"dashboard_config"])return;
   id body=[j[@"payload"] isKindOfClass:NSDictionary.class]?j[@"payload"][@"data"]:nil;if([body isKindOfClass:NSString.class])body=[NSJSONSerialization JSONObjectWithData:[body dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
   if(!TDCValidSnapshot(body)){Stop(TIOText(@"配置格式无法确认，未修改顺序"));return;}Sequence=0;
-  if([op isEqual:/*i18n:id*/@"读取原顺序"]){Before=body;Send(TDCInstall(TDCDemoText(Alternate)),/*i18n:id*/@"安装测试卡");return;}
+  if([op isEqual:/*i18n:id*/@"读取原顺序"]){Before=body;Send(TDCInstall(Custom?:TDCDemoText(Alternate)),/*i18n:id*/@"安装测试卡");return;}
   if([op isEqual:/*i18n:id*/@"读取安装结果"]){
    if(!SameOthers(Before,body)){Stop(TIOText(@"其他卡片或排序发生变化，已停止置顶；请重新核对"));return;}
    SortBefore=body;NSDictionary *sort=TDCMoveFirst(body);if(!sort){Stop(TIOText(@"配置尚无测试卡，停止置顶"));return;}Send(sort,/*i18n:id*/@"置顶测试卡");return;
@@ -65,6 +70,23 @@ void TDCObserveEvent(NSDictionary *e){
  Sequence=0;if(!ok){Stop(TIOText(@"眼镜拒绝本步，已停止；不自动重试、不修改其他卡片"));return;}
  if([op isEqual:/*i18n:id*/@"安装测试卡"])Query(/*i18n:id*/@"读取安装结果");else if([op isEqual:/*i18n:id*/@"置顶测试卡"])Query(/*i18n:id*/@"读取最终顺序");else Query(/*i18n:id*/@"读取当前状态");
 }
+
+// Glasses test bench entry points (ds3 p2): the same query, install, move-first, verify sequence as the panel below, with the card text the bench built.
+BOOL TDCBenchInstall(NSString *text){
+ DCValues values;NSData *data=[text isKindOfClass:NSString.class]?[text dataUsingEncoding:NSUTF8StringEncoding]:nil;
+ if(!data||!dc_parse(data.bytes,data.length,&values)){Changed(TIOText(@"bench.card.invalid"));return NO;}
+ if(Sequence){Changed(TIOText(@"正在等待眼镜回执，请稍候"));return NO;}
+ if(OTABusy()){Stop(TIOText(@"bench.blocked"));return NO;}
+ Device=TIOProtocolDevice();if(!Device.length){Stop(TIOText(@"请先返回官方首页确认眼镜连接"));return NO;}
+ Custom=[text copy];Installing=YES;Query(/*i18n:id*/@"读取原顺序");return Sequence!=0;
+}
+BOOL TDCBenchRemove(void){
+ if(Sequence){Changed(TIOText(@"正在等待眼镜回执，请稍候"));return NO;}
+ Device=TIOProtocolDevice();if(!Device.length){Stop(TIOText(@"请先返回官方首页确认眼镜连接"));return NO;}
+ return Send(TIOA2UIUninstall(TDCIdentifier()),/*i18n:id*/@"移除测试卡");
+}
+BOOL TDCBenchBusy(void){return Sequence!=0;}
+NSString *TDCBenchNote(void){return TIOText(Note);}   // the note is a Chinese source string or an already localized sentence
 #ifndef TDC_HOST_TEST
 @interface TDCDashboardPanel:UITableViewController @end
 @implementation TDCDashboardPanel
@@ -82,7 +104,7 @@ void TDCObserveEvent(NSDictionary *e){
 - (void)tableView:(UITableView *)v didSelectRowAtIndexPath:(NSIndexPath *)p{[v deselectRowAtIndexPath:p animated:YES];if(p.row==0||p.row==5)return;if(Sequence){Changed(TIOText(@"正在等待眼镜回执，请稍候"));return;}
  Device=TIOProtocolDevice();if(!Device.length){Stop(TIOText(@"请先返回官方首页确认眼镜连接"));return;}if(p.row==1){Query(/*i18n:id*/@"读取当前状态");return;}
  if(p.row==4){TIOConfirm(self,TIOText(@"common.editor.dashboardRemoveTitle"),TIOText(@"common.editor.dashboardRemoveDetail"),TIOText(@"common.editor.remove"),YES,^{Send(TIOA2UIUninstall(TDCIdentifier()),/*i18n:id*/@"移除测试卡");});return;}
- TIOConfirm(self,TIOText(@"common.editor.dashboardInstallTitle"),TIOText(@"common.editor.dashboardPrompt"),TIOText(@"common.editor.dashboardInstallAction"),NO,^{Alternate=p.row==3;Installing=YES;Query(/*i18n:id*/@"读取原顺序");});
+ TIOConfirm(self,TIOText(@"common.editor.dashboardInstallTitle"),TIOText(@"common.editor.dashboardPrompt"),TIOText(@"common.editor.dashboardInstallAction"),NO,^{Custom=nil;Alternate=p.row==3;Installing=YES;Query(/*i18n:id*/@"读取原顺序");});
 }
 @end
 UIViewController *TDCDashboardController(void){return [[TDCDashboardPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];}

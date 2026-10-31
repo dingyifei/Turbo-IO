@@ -65,6 +65,7 @@ static const TIOHubRowDefinition Rows[] = {
     {@"clenchLab", @"waveform.and.magnifyingglass", TIOHubSectionDeveloper, @"", @"CLENCH A1"},
 #endif
     {@"dashboardCard", @"chart.bar.xaxis", TIOHubSectionDeveloper, @"", @"TDC1"},
+    {@"testBench", @"testtube.2", TIOHubSectionDeveloper, @"", @"TMU1 TFP1 TDC1"},
     {@"a2ui", @"rectangle.on.rectangle", TIOHubSectionDeveloper, @"", @"A2UI 7392/8642"},
     {@"apiTest", @"bubble.left.and.bubble.right", TIOHubSectionDeveloper, @"", @""},
     {@"searchTest", @"magnifyingglass", TIOHubSectionDeveloper, @"", @""},

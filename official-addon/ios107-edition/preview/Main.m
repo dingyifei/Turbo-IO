@@ -5,6 +5,7 @@
 #import "TIOConfirm.h"
 #import "MenuLayoutUI.h"
 #import "TDPhoneUI.h"
+#import "GlassesTestBenchUI.h"
 #import "ResearchUI.h"
 #import "EditorUI.h"
 #import "EditorCrop.h"
@@ -418,6 +419,10 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             UIViewController *page=TIOExperimentalOTAController();
             if (page) navigation=[[UINavigationController alloc] initWithRootViewController:page];
             presented=navigation;
+        } else if ([screen hasPrefix:@"bench-"]) {
+            // The real Glasses test bench with canned values, scrolled to one section: bench-lyrics, bench-song, bench-card or bench-timer.
+            UIViewController *page=TIOGlassesTestBenchPreviewController([screen substringFromIndex:6]);
+            if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"tiles"]) {
             UIViewController *page=TIOTileEditorPreviewController();
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;

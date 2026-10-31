@@ -2302,3 +2302,79 @@
 {"key":"tmg9.knob.hint","en":"A new step is saved on the glasses, then confirmed by reading it back from their status.","zh":"新步长会保存到眼镜，再从眼镜状态读回来确认。"}
 {"key":"tmg9.knob.readFirst","en":"Refresh the status first, so the step setting can check the glasses.","zh":"请先刷新状态，让步长设置检查眼镜。"}
 {"key":"tmg9.knob.needsTMG9","en":"Changing the knob step needs glasses firmware TMG9. These glasses use a fixed step.","zh":"调整旋钮步长需要 TMG9 眼镜固件。这副眼镜使用固定步长。"}
+{"key":"bench.blocked","en":"A firmware transfer is running, so the test bench sends nothing.","zh":"固件传输进行中，测试台不会发送任何内容。"}
+{"key":"bench.blocked.title","en":"Sending is off","zh":"发送已关闭"}
+{"key":"bench.card.field.claude5h","en":"Claude 5-hour usage","zh":"Claude 5 小时用量"}
+{"key":"bench.card.field.claudeWeek","en":"Claude 7-day usage","zh":"Claude 7 天用量"}
+{"key":"bench.card.field.diskFree","en":"SSD free","zh":"SSD 可用"}
+{"key":"bench.card.field.diskTotal","en":"SSD total","zh":"SSD 总量"}
+{"key":"bench.card.field.icon1","en":"Icon 1","zh":"图标 1"}
+{"key":"bench.card.field.icon2","en":"Icon 2","zh":"图标 2"}
+{"key":"bench.card.field.icon3","en":"Icon 3","zh":"图标 3"}
+{"key":"bench.card.field.ramFree","en":"RAM free","zh":"内存可用"}
+{"key":"bench.card.field.ramTotal","en":"RAM total","zh":"内存总量"}
+{"key":"bench.card.field.weekly","en":"Codex 7-day usage","zh":"Codex 7 天用量"}
+{"key":"bench.card.footer","en":"The icon values are accepted by the card but not drawn. Sending replaces the Developer dashboard card and moves it to the top of the glasses dashboard; remove it when you are done.","zh":"卡片接受图标数值，但不会绘制。发送会替换开发者仪表盘卡片，并把它排到眼镜仪表盘最前；测完请移除。"}
+{"key":"bench.card.header","en":"Dashboard card","zh":"仪表盘卡片"}
+{"key":"bench.card.header.icons","en":"Icons","zh":"图标"}
+{"key":"bench.card.header.memory","en":"Memory","zh":"内存"}
+{"key":"bench.card.header.storage","en":"Storage","zh":"存储"}
+{"key":"bench.card.header.usage","en":"Usage","zh":"用量"}
+{"key":"bench.card.invalid","en":"The card text is not valid, so nothing was sent","zh":"卡片文本无效，未发送"}
+{"key":"bench.card.preset.empty","en":"Preset: empty / 0","zh":"预设：空 / 0"}
+{"key":"bench.card.preset.three100","en":"Preset: three 100%","zh":"预设：三个 100%"}
+{"key":"bench.card.preset.typical","en":"Preset: typical","zh":"预设：典型"}
+{"key":"bench.card.remove","en":"Remove card","zh":"移除卡片"}
+{"key":"bench.card.send","en":"Send card to glasses","zh":"发送卡片到眼镜"}
+{"key":"bench.card.size","en":"%lu of 120 bytes","zh":"%lu / 120 字节"}
+{"key":"bench.card.status","en":"Card status","zh":"卡片状态"}
+{"key":"bench.decrease","en":"Decrease","zh":"减少"}
+{"key":"bench.demo.detail","en":"Everything here is made up. Nothing is read from your accounts or your Mac, and no navigation route is sent.","zh":"这里的内容都是编造的演示数据：不会读取你的账户或 Mac，也不会发送导航路线。"}
+{"key":"bench.demo.title","en":"Demo data only","zh":"仅为演示数据"}
+{"key":"bench.increase","en":"Increase","zh":"增加"}
+{"key":"bench.lyric.en3","en":"English, 3 lines","zh":"英文，3 行"}
+{"key":"bench.lyric.en4","en":"English, 4 lines","zh":"英文，4 行"}
+{"key":"bench.lyric.en4s","en":"English, 4 smaller lines","zh":"英文，4 行小字号"}
+{"key":"bench.lyric.en5","en":"English, 5 lines","zh":"英文，5 行"}
+{"key":"bench.lyric.enell","en":"English, all caps, too long (…)","zh":"英文，全大写过长（…）"}
+{"key":"bench.lyric.ennext","en":"English, long next line","zh":"英文，下一句很长"}
+{"key":"bench.lyric.zh3","en":"Chinese, 3 lines","zh":"中文，3 行"}
+{"key":"bench.lyric.zh4","en":"Chinese, 4 lines","zh":"中文，4 行"}
+{"key":"bench.lyrics.footer","en":"Each tap opens the glasses music page with a paused demo song. The current lyric wraps and shrinks as it gets longer, and a line past 240 bytes is cut before it is sent. Check the wrap, the type size and the ellipsis on the glasses.","zh":"每点一行，眼镜音乐页就会显示一首暂停的演示歌曲。当前歌词越长，换行越多、字号越小；超过 240 字节的歌词会先截断再发送。请在眼镜上查看换行、字号和省略号。"}
+{"key":"bench.lyrics.header","en":"Lyrics","zh":"歌词"}
+{"key":"bench.music.active","en":"Demo song is on the glasses","zh":"演示歌曲已发到眼镜"}
+{"key":"bench.music.artist","en":"Turbo IO test bench","zh":"Turbo IO 测试台"}
+{"key":"bench.music.footer","en":"Playing and Position apply the next time you tap Show. While the demo song is up, the play and pause keys on the glasses move its clock and next and previous do nothing. Your Spotify is not touched.","zh":"「播放中」和「进度」在下次点「显示」时生效。演示歌曲显示期间，眼镜上的播放和暂停键只会改变演示进度，上一首和下一首不起作用。不会动用你的 Spotify。"}
+{"key":"bench.music.header","en":"Now playing","zh":"正在播放"}
+{"key":"bench.music.inactive","en":"No demo song sent","zh":"尚未发送演示歌曲"}
+{"key":"bench.music.line1","en":"First demo lyric line","zh":"演示歌词第一句"}
+{"key":"bench.music.line2","en":"Second demo lyric line","zh":"演示歌词第二句"}
+{"key":"bench.music.line3","en":"Third demo lyric line","zh":"演示歌词第三句"}
+{"key":"bench.music.playing","en":"Playing","zh":"播放中"}
+{"key":"bench.music.position","en":"Position","zh":"进度"}
+{"key":"bench.music.positionOf","en":"%@ of %@","zh":"%@ / %@"}
+{"key":"bench.music.show","en":"Show demo song on glasses","zh":"在眼镜上显示演示歌曲"}
+{"key":"bench.music.stop","en":"Stop demo song","zh":"停止演示歌曲"}
+{"key":"bench.music.title","en":"Demo song","zh":"演示歌曲"}
+{"key":"bench.notes.camera.detail","en":"Live view cannot be tested from here. Check it in the host preview only.","zh":"这里无法测试实时取景，只能在宿主预览中查看。"}
+{"key":"bench.notes.camera.title","en":"Camera live view","zh":"相机实时取景"}
+{"key":"bench.notes.header","en":"Check on the glasses","zh":"在眼镜上查看"}
+{"key":"bench.notes.route.detail","en":"There is no fake route. Test navigation with a real route in the Navigation screen.","zh":"这里没有假路线。请在「导航」页用真实路线测试导航。"}
+{"key":"bench.notes.route.title","en":"Navigation route","zh":"导航路线"}
+{"key":"bench.notes.tile.detail","en":"The Music tile on the glasses menu shows the song line only after the music page closes, and keeps it for 30 seconds.","zh":"眼镜菜单里的音乐磁贴只在音乐页关闭后才显示歌曲行，并保留 30 秒。"}
+{"key":"bench.notes.tile.title","en":"Music tile line","zh":"音乐磁贴的歌曲行"}
+{"key":"bench.timer.footer","en":"This is a real timer on the glasses. The first tap reads the glasses timer, so tap again to send. It ends after one minute or when you stop it.","zh":"这是眼镜上的真实计时。第一次点击会先读取眼镜计时，再点一次才会发送。一分钟后自动结束，也可随时停止。"}
+{"key":"bench.timer.header","en":"Pomodoro timer","zh":"番茄计时"}
+{"key":"bench.timer.pause","en":"Pause timer","zh":"暂停计时"}
+{"key":"bench.timer.resume","en":"Resume timer","zh":"继续计时"}
+{"key":"bench.timer.start","en":"Start 1-minute timer","zh":"开始 1 分钟计时"}
+{"key":"bench.timer.state.done","en":"Finished","zh":"已完成"}
+{"key":"bench.timer.state.idle","en":"No timer running","zh":"没有计时"}
+{"key":"bench.timer.state.left","en":"%@, %@ left","zh":"%@，剩余 %@"}
+{"key":"bench.timer.state.paused","en":"Paused","zh":"已暂停"}
+{"key":"bench.timer.state.running","en":"Running","zh":"计时中"}
+{"key":"bench.timer.state.stopped","en":"Stopped","zh":"已停止"}
+{"key":"bench.timer.state.unread","en":"Timer not read yet","zh":"尚未读取计时"}
+{"key":"bench.timer.stop","en":"Stop timer","zh":"停止计时"}
+{"key":"hub.row.testBench","en":"Glasses test bench","zh":"眼镜测试台"}
+{"key":"music.status.demo","en":"Demo song from the test bench, not your Spotify","zh":"来自测试台的演示歌曲，并非你的 Spotify"}

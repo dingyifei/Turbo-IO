@@ -171,7 +171,13 @@ test('catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','
 test('research-catalog-apple',['ResearchCatalogTests.m','ResearchCatalog.m','AppleAICore.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1','-DTIO_APPLE_AI=1'])
 test('music-compatibility',['tests/MusicCompatibilityTests.m','MusicBridge.m','TIOGlassesFileTransport.m','music.c','tests/diagnostic_stub.m'])
 test('music-clock',['tests/MusicClockTests.m'])
-test('music-navigation',['tests/MusicNavigationTests.m','MusicPlayer.m','MusicBridge.m','NativeNavigationUI.m','NativeNavigation.m','TNVTransport.m','TIOGlassesFileTransport.m','nav_runtime.c','music.c','SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','SpotifyLyrics.m','SpotifyCover.m','tests/diagnostic_stub.m'],extra=['-I',P/'tests/shims','-DNSHomeDirectory=TIOTestHome','-framework','Security','-framework','CoreGraphics','-framework','ImageIO'])
+test('music-navigation',['tests/MusicNavigationTests.m','GlassesBench.m','card.c','MusicPlayer.m','MusicBridge.m','NativeNavigationUI.m','NativeNavigation.m','TNVTransport.m','TIOGlassesFileTransport.m','nav_runtime.c','music.c','SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','SpotifyLyrics.m','SpotifyCover.m','tests/diagnostic_stub.m'],extra=['-I',P/'tests/shims','-DNSHomeDirectory=TIOTestHome','-framework','Security','-framework','CoreGraphics','-framework','ImageIO'])
+test('glasses-bench',['tests/GlassesBenchTests.m','GlassesBench.m','card.c'])
+seen.add('bench-layout')
+if only is None or 'bench-layout' in only:
+    ctest('bench-layout',[P/'tests/GlassesBenchLayout_test.c'],FW/'src')   # the bench lyric fixtures under the firmware's own wrapping
+    groups.append('bench-layout');print('bench-layout: PASS')
+else:skip('bench-layout','not selected by --only')
 test('spotify-lyrics',['SpotifyHTTP.m','SpotifyLyrics.m','tests/SpotifyLyricsTests.m'],[P/'tests/fixtures/spotify'])
 test('spotify-auth',['SpotifyHTTP.m','SpotifyAuth.m','tests/SpotifyAuthTests.m'],[P/'tests/fixtures/spotify'],['-framework','Security'])
 test('spotify-api',['SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','tests/SpotifyAPITests.m'],[P/'tests/fixtures/spotify'],['-framework','Security'])

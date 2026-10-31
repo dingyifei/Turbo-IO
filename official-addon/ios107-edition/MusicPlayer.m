@@ -40,6 +40,7 @@ static NSString *TMPlayerTrackKey(NSDictionary *state){
  // Poll ownership prevents an obsolete callback from releasing a newer request.
  NSUInteger _revision,_pollSerial,_viewRevision,_resumeRevision,_resumeViewRevision;
  BOOL _resumePending,_lyricsEnabled,_coverLoading,_lyricsLoading;
+ BOOL _demo;   // the test bench's fake song is up: no Spotify poll, no Spotify calls
 }
 static TMPlayer *Live;   // set once the player exists; the navigation pump asks without creating it
 + (instancetype)shared{static TMPlayer *p;static dispatch_once_t once;dispatch_once(&once,^{p=[self new];Live=p;});return p;}
@@ -69,6 +70,7 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
    TMPlayer *s=weak;if(!s)return;
    unsigned event=[q[@"event"] unsignedIntValue];s->_request=[q[@"request"] unsignedIntValue];
    if(event==TM_VIEW_CLOSED){++s->_viewRevision;s->_resumePending=NO;return;}
+   if(s->_demo){[s demoEvent:event];return;}
    if(event==TM_RESUME){[s resumeFromGlasses];return;}
    if(event==TM_PLAY){
     // The glasses can resume an existing context; only an explicit phone action
@@ -124,7 +126,7 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
 - (void)foreground:(NSNotification *)notification{__weak typeof(self) weak=self;TMPlayerOnMain(^{[weak refreshNow];});}
 - (void)authChanged:(NSNotification *)notification{
  __weak typeof(self) weak=self;TMPlayerOnMain(^{
-  TMPlayer *s=weak;if(!s)return;[s invalidateRequests];++s->_ticket;++s->_viewRevision;
+  TMPlayer *s=weak;if(!s)return;[s invalidateRequests];++s->_ticket;++s->_viewRevision;s->_demo=NO;
   s->_state=nil;s->_trackID=nil;s->_cover=nil;s->_gray=nil;s->_lyrics=nil;s->_sample=(TMClockSample){0};s->_fetchedAt=TMPlayerUptime();s->_pollAt=0;
   [s->_bridge close];
   s->_status=TMSpotifyAuth.shared.signedIn?TIOText(@"music.nothing"):TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);
@@ -156,7 +158,7 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
  [self showOnGlasses];return YES;
 }
 - (void)poll{
- if(_inflight||!TMSpotifyAuth.shared.signedIn||TMPlayerUptime()<TMSpotifyAPI.shared.backoffUntil)return;
+ if(_demo||_inflight||!TMSpotifyAuth.shared.signedIn||TMPlayerUptime()<TMSpotifyAPI.shared.backoffUntil)return;
  _inflight=YES;_pollAt=TMPlayerUptime()+3;
  NSUInteger serial=++_pollSerial,ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];
  __weak typeof(self) weak=self;
@@ -185,7 +187,7 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
  });}];
 }
 - (void)fetchAssets{
- if(!_state)return;
+ if(!_state||_demo)return;
  NSUInteger ticket=_ticket,revision=_revision;NSString *client=[TMSpotifyAuth.shared.clientID copy];NSDictionary *state=_state;__weak typeof(self) weak=self;
  NSURL *image=[state[@"image"] isKindOfClass:NSURL.class]?state[@"image"]:nil;
  if(image&&!_cover&&!_coverLoading){
@@ -217,6 +219,7 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
  });}];
 }
 - (BOOL)beginControl{
+ if(_demo)return NO;
  if(!TMSpotifyAuth.shared.signedIn){_status=TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);return NO;}
  [self syncLyricsPreference];[self invalidateRequests];_pollAt=TMPlayerUptime()+.5;
  return YES;
@@ -281,6 +284,33 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
  if([TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue]){_status=TIOText(@"music.status.blocked");return;}
  if(!_state){_cover=nil;_gray=nil;_lyrics=[self idleLyrics];}
  if(_sentTicket==_ticket)[_bridge reopen];else{_sentTicket=_ticket;[_bridge openWithCover:_gray lyrics:_lyrics];if(!_bridge.active)_sentTicket=0;}
+}
+- (BOOL)benchActive{return _demo;}
+- (BOOL)benchShowTitle:(NSString *)title artist:(NSString *)artist playing:(BOOL)playing positionMs:(uint32_t)position durationMs:(uint32_t)duration lyrics:(NSArray *)lyrics{
+ if([TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue]){_status=TIOText(@"music.status.blocked");return NO;}
+ NSTimeInterval now=TMPlayerUptime();
+ [self invalidateRequests];++_ticket;++_viewRevision;_demo=YES;
+ NSDictionary *state=@{@"id":@"turbo-bench-demo",@"type":@"track",@"title":TMPlayerString(title),@"artist":TMPlayerString(artist),@"album":@"",
+                       @"playing":@(playing),@"progress_ms":@(position),@"duration_ms":@(duration)};
+ _state=state;_trackID=TMPlayerTrackKey(state);_fetchedAt=now;
+ _sample=(TMClockSample){.playing=playing,.position_ms=position,.duration_ms=duration,.at=now};
+ _cover=nil;_gray=nil;_coverLoading=_lyricsLoading=NO;_lyrics=lyrics.count?[lyrics copy]:[self idleLyrics];
+ _status=TIOText(@"music.status.demo");
+ _sentTicket=_ticket;[_bridge openWithCover:nil lyrics:_lyrics];if(!_bridge.active)_sentTicket=0;
+ return _bridge.active;
+}
+- (void)benchStop{
+ if(!_demo)return;
+ _demo=NO;++_ticket;++_viewRevision;_resumePending=NO;_sentTicket=0;
+ _state=nil;_trackID=nil;_cover=nil;_gray=nil;_lyrics=[self idleLyrics];_sample=(TMClockSample){.at=TMPlayerUptime()};_fetchedAt=TMPlayerUptime();
+ _status=TMSpotifyAuth.shared.signedIn?TIOText(@"music.nothing"):TMPlayerStatus(TMSpotifyAuth.shared.clientID.length?TMSpotifySignedOut:TMSpotifyNotConfigured);
+ [_bridge close];_pollAt=0;
+}
+// What the glasses ask for while the demo song is up: Resume reopens it, play and pause move the demo clock, next and previous do nothing.
+- (void)demoEvent:(unsigned)event{
+ if(event==TM_RESUME)[self showOnGlasses];
+ else if(event==TM_PLAY)[self optimisticPlaying:YES];
+ else if(event==TM_PAUSE)[self optimisticPlaying:NO];
 }
 - (void)hideGlasses{++_viewRevision;_resumePending=NO;[_bridge close];}
 #if TIO_UI_PREVIEW
