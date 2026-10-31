@@ -1,3 +1,5 @@
+> Historical: describes a feature removed from the current ios107 build (2026-10)
+
 # Turbo Display 与原生导航应用
 
 更新于2026-09-22。这里区分基于 Strix OS 1.0.4.12 的两种实现：**Turbo Display 是开发测试工具，原生导航是独立应用页面**。它们都不是原厂固件下的默认 SDK 能力。
@@ -20,7 +22,7 @@
 - 每条完整导航数据最多328字节；单在途传输，等文件终态与对应眼镜回执，只保留最新待发送状态，最高1Hz更新。
 - 手机 START 可从首页打开导航，不必先手动进入眼镜菜单；手动打开导航但未有会话时显示“请从手机开始导航”。
 - 实现默认60秒无有效内容更新息屏、实体按键唤醒、可选常亮，以及停止/返回/业务抢占时收尾。心跳不是新导航数据，不应拿心跳无限延长旧指引。
-- 手机后台立即退出问题已修复，见[后台定位与模拟测试限制](../official-addon/docs/NAVIGATION_BACKGROUND.md)。
+- 手机后台立即退出问题已修复，见[后台定位与模拟测试限制](NAVIGATION_BACKGROUND.md)。
 
 “应用级别”描述的是集成于固件内、有独立入口和生命周期的原生导航应用页面。底层是 Launcher 中的 LVGL 子页面，不是动态安装的 APK/HAP，也不是通用第三方 App 商店。功能仍属于实验阶段。
 
@@ -32,7 +34,7 @@
 4. 查看箭头、距离、路名与路线示意图。手机路线数据持续驱动原生界面，不是连续传导航截图。
 5. 使用 **停止并退出眼镜导航**，或眼镜实体返回结束显示。真实导航可按授权退后台；模拟只有系统短时后台额度，不承诺无限锁屏模拟。
 
-使用 [TNV1 实验 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) 和[匹配源码构建说明](../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md)，先读[升级与验收步骤](../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md)。**旧 R3 Release 不含此功能，不能混用。** 不提供合并后/签名 IPA；服务 Key 和签名由使用者配置。
+使用 [TNV1 实验 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) 和[匹配源码构建说明](../../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md)，先读[升级与验收步骤](../../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md)。**旧 R3 Release 不含此功能，不能混用。** 不提供合并后/签名 IPA；服务 Key 和签名由使用者配置。
 
 ## 3. 已实现、已验证与已发布
 
@@ -55,4 +57,4 @@
 - 不随意扩大图像尺寸、控件数量或传输队列；内存、限流、退出释放及错误回执需要一起验证。
 - 发布仍只包含经审查的源码/依赖和明确列出的研究附件，不公开私人Key、账号、日志、签名材料或已合并手机成品包。
 
-[返回主README](../README.md) · [早期R3过程与风险](../firmware-research/strix-1.0.4.12/README.md) · [iOS标准导航教程](../official-addon/docs/NAVIGATION.md)
+[返回主README](../../README.md) · [早期R3过程与风险](../../firmware-research/strix-1.0.4.12/README.md) · [iOS标准导航教程](NAVIGATION.md)

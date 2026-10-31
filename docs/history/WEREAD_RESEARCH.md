@@ -1,10 +1,12 @@
+> Historical: describes a feature removed from the current ios107 build (2026-10)
+
 # 微信读书：眼镜阅读思路与参考项目
 
-2026-09-24。**本页分享架构思路、研究进展与第三方项目链接。原创 AP / 手机模块与实刷固件现已单独发布，不含网页正文适配代码、账号会话、Cookie、Key、书籍缓存或私用 IPA。** [源码、固件与构建说明](../firmware-research/strix-1.0.4.12/native-navigation/weread/README.md)。公开手机模块尚未接入默认构建和 TWR1 OTA 门禁，不代表开箱可用。
+2026-09-24。**本页分享架构思路、研究进展与第三方项目链接。原创 AP / 手机模块与实刷固件现已单独发布，不含网页正文适配代码、账号会话、Cookie、Key、书籍缓存或私用 IPA。** [源码、固件与构建说明](../../firmware-research/strix-1.0.4.12/native-navigation/weread/README.md)。公开手机模块尚未接入默认构建和 TWR1 OTA 门禁，不代表开箱可用。
 
 ## 界面效果示意
 
-![微信读书界面效果示意：菜单入口、同步提示、四本书架与阅读页](screenshots/weread-ui-concept.jpg)
+![微信读书界面效果示意：菜单入口、同步提示、四本书架与阅读页](../screenshots/weread-ui-concept.jpg)
 
 用户提供的布局效果图，展示菜单、同步提示、四本书架与阅读页；**不是实机验收证据或当前公开构建的功能截图**。图中书籍、文字、页码与速度仅为示例，不附带对应书籍资源；实际速度单位和研究状态见下文。
 

@@ -1,12 +1,12 @@
 # Android 1.0.4 历史记录（已由1.0.5发行替代）
 
-下文为历史记录，不是当前安装/刷写流程。当前请看 [1.0.5 README](../README.md) 和 [安装教程](INSTALL_AND_FLASH.md)。历史相对链接按原文件位置记录。
+下文为历史记录，不是当前安装/刷写流程。当前请看 [1.0.5 README](../README.md) 和 [安装教程](INSTALL_AND_FLASH.md)。历史内容保留，链接按本页位置修正。
 
 在 Android 官方雷鸟 App 内加入自有模型、搜索、录音导出与眼镜导航。**这是给开发者使用的非商业研究源码，不是现成 APK，也不是已经完成的独立 Android SDK。** 不熟悉 Android 构建、签名与排错，请继续使用官方 App。
 
-[返回项目首页](../README.md) · [验证记录](docs/VALIDATION.md) · [非商业许可](../LICENSE)
+[返回项目首页](../../README.md) · [验证记录](VALIDATION.md) · [非商业许可](../../LICENSE)
 
-**获取 Android 官方 App：[雷鸟 AI Android 官方下载入口](https://rayneo.cn/commonPage/venus/appDownload/index_m.html)**。将此链接、仓库地址和[首页提示词](../README.md#让-claude-code--codex-帮你接入)一起交给 Claude Code / Codex，即可按本教程引导检查、构建与配置。页面可能提供更新版本，仍需通过下方SHA校验；不是不经验证就能合并。详见[完整AI接入说明](../docs/AI_SETUP.md)。
+**获取 Android 官方 App：[雷鸟 AI Android 官方下载入口](https://rayneo.cn/commonPage/venus/appDownload/index_m.html)**。将此链接、仓库地址和[首页提示词](../../README.md#让-claude-code--codex-帮你接入)一起交给 Claude Code / Codex，即可按本教程引导检查、构建与配置。页面可能提供更新版本，仍需通过下方SHA校验；不是不经验证就能合并。详见[完整AI接入说明](../../docs/AI_SETUP.md)。
 
 ## 1. 可以做什么
 
@@ -80,7 +80,7 @@ node android-addon/package.mjs /path/to/RayNeo_AI_1.0.4.apk
 2. 填写完整 HTTPS Chat Completions URL、账户实际可用的模型 ID、自己的 API Key。DeepSeek 地址为 `https://api.deepseek.com/chat/completions`；默认模型字符串只是可编辑示例，不保证所有账号可用。
 3. 按需编辑个人提示词。请求默认关闭思考、开启 SSE、最多2048输出 tokens；其他服务需兼容实际请求字段。
 4. 在「联网搜索与知识库」填写自己的 TinyFish Key 并开启搜索。只有已启用且有凭据的工具才注册给模型；这是扩展的 `web_search` 函数工具，不是模型厂商内置搜索。
-5. 知识库可选：先按 [Mac 桥接说明](../official-addon/knowledge-bridge/README.md) 启动自己的服务，再填 HTTPS `/api/turbo-knowledge` 地址和令牌。Android 目前仅接只读 query / status / sources，手机到电脑全链路仍需验收。不要填写维护者的地址。
+5. 知识库可选：先按 [Mac 桥接说明](../../official-addon/knowledge-bridge/README.md) 启动自己的服务，再填 HTTPS `/api/turbo-knowledge` 地址和令牌。Android 目前仅接只读 query / status / sources，手机到电脑全链路仍需验收。不要填写维护者的地址。
 
 默认使用官方模型、搜索/知识库关闭。所有 Key 输入为空，不提供测试 Key。Android Key 以 Keystore AES-GCM 加密存储；不显示已有 Key、不写进源文件或调试输出。新填空值表示保留已存的 Key，不是清空；停用能力使用开关，泄露的 Key 应到服务商撤销。
 
@@ -116,4 +116,4 @@ node android-addon/package.mjs /path/to/RayNeo_AI_1.0.4.apk
 
 下一步：扩大非 Root 设备与高德配置覆盖、模拟导航镜片验收、户外跟随/断连/退出、长期稳定性，再逐项移植待办、提词器、全天智记和其他 Agent。欢迎提交**脱敏**复现步骤，不要附 Key、个人录音、聊天、设备标识或官方包。
 
-原创代码沿用仓库 [PolyForm Noncommercial 1.0.0](../LICENSE)，仅非商业学习研究；第三方 App、SDK 和服务的权利与条款不因本项目改变。未经授权不得商用或收费分发。
+原创代码沿用仓库 [PolyForm Noncommercial 1.0.0](../../LICENSE)，仅非商业学习研究；第三方 App、SDK 和服务的权利与条款不因本项目改变。未经授权不得商用或收费分发。

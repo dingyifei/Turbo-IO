@@ -1,3 +1,5 @@
+> Historical: describes a feature removed from the current ios107 build (2026-10)
+
 # iOS 导航后台行为修复
 
 修复版本：2026-09-22。只改手机端，不修改或刷写眼镜固件。

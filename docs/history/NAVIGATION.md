@@ -1,3 +1,5 @@
+> Historical: describes a feature removed from the current ios107 build (2026-10)
+
 # 雷鸟 iO 眼镜导航 · 开发者使用教程
 
 **当前实测环境：官方 iOS 雷鸟 AI App 1.0.5（Build 201）+ Strix OS 1.0.4.12，非越狱 iPhone Air。** App 版本和眼镜固件版本是两回事；1.0.4/1.0.2 是历史适配，不是本次使用的 App。
@@ -9,7 +11,7 @@
 **先选路线，不要混用两套显示方式：**
 
 - **普通构建 / 原厂固件**：高德手机导航 + 原厂字幕模板；本页第2—5节的默认命令和“开启眼镜字幕显示”属于这条路线，仍有模拟/前台保护。
-- **TNV1 实验固件 / 独立导航应用**：最新的应用级眼镜导航，手机发语义数据，眼镜 LVGL 本地画箭头与路线示意图，可从首页主动开启。需匹配的 **1.0.5（201）** 专用构建与高风险研究固件；请按 [TNV1 构建](../../../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md) 和[升级/导航使用流程](../../../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md) 操作，按钮是“开启眼镜原生导航”。**不要按普通构建命令编译后期待出现 TNV1。** Turbo Display 是传图测试工具，不是导航应用。
+- **TNV1 实验固件 / 独立导航应用**：最新的应用级眼镜导航，手机发语义数据，眼镜 LVGL 本地画箭头与路线示意图，可从首页主动开启。需匹配的 **1.0.5（201）** 专用构建与高风险研究固件；请按 [TNV1 构建](../../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md) 和[升级/导航使用流程](../../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md) 操作，按钮是“开启眼镜原生导航”。**不要按普通构建命令编译后期待出现 TNV1。** Turbo Display 是传图测试工具，不是导航应用。
 
 下面先介绍两条路线共享的地图能力，再说明普通字幕构建。
 
@@ -29,8 +31,8 @@
 
 ## 2. 兼容性与高德依赖
 
-- **当前官方 App：iOS 雷鸟 AI 眼镜 1.0.5 / Build 201**。普通扩展保留1.0.4（195）、1.0.2（67）的历史适配；**TNV1实验OTA仅适配1.0.5（201）**。精确二进制约束见[V2构建说明](../README.md#1-兼容性门槛)。未知版本不要跳过检查。
-- **当前固件：Strix OS 1.0.4.12**。原厂升级后用户反馈正常，TNV1的固定AP修改版另有导航及后台实测反馈。见[1.0.5适配说明](COMPATIBILITY_105.md)和[TNV1验收边界](../../../firmware-research/strix-1.0.4.12/native-navigation/README.md)。早期协议研究基于1.0.3.15，1.0.4.8为历史升级验证。每次重新生成SID并等待眼镜ACK，不能外推全部模式/固件。
+- **当前官方 App：iOS 雷鸟 AI 眼镜 1.0.5 / Build 201**。普通扩展保留1.0.4（195）、1.0.2（67）的历史适配；**TNV1实验OTA仅适配1.0.5（201）**。精确二进制约束见[V2构建说明](../../official-addon/README.md)。未知版本不要跳过检查。
+- **当前固件：Strix OS 1.0.4.12**。原厂升级后用户反馈正常，TNV1的固定AP修改版另有导航及后台实测反馈。见[1.0.5适配说明](../../official-addon/docs/COMPATIBILITY_105.md)和[TNV1验收边界](../../firmware-research/strix-1.0.4.12/native-navigation/README.md)。早期协议研究基于1.0.3.15，1.0.4.8为历史升级验证。每次重新生成SID并等待眼镜ACK，不能外推全部模式/固件。
 - Navi **11.2.100**（含地图），Foundation **1.9.1**（非IDFA包），Search **9.8.1**。使用静态库构建进扩展；不能再把相同SDK作为第二套动态库重复注入宿主。
 - 官方来源：[导航SDK下载](https://developer.amap.com/api/ios-navi-sdk/download)、[地图/搜索SDK下载](https://lbs.amap.com/api/ios-sdk/download)。使用前阅读并遵循其许可、隐私及服务要求。本仓库不再分发这些SDK二进制。
 
@@ -52,7 +54,7 @@ TIO_AMAP_ENABLED=1 bash official-addon/build.sh embedded
 
 ## 3. 在自己电脑合并、签名
 
-先准备有权使用且符合[V2技术门槛](../README.md#1-兼容性门槛)的原始 `Runner.app` 和自己的签名材料。工具不下载应用、不解密、不绕过登录/付费限制。不要拿上一次带个人配置的私用包当公开输入。
+先准备有权使用且符合[V2技术门槛](../../official-addon/README.md)的原始 `Runner.app` 和自己的签名材料。工具不下载应用、不解密、不绕过登录/付费限制。不要拿上一次带个人配置的私用包当公开输入。
 
 ```sh
 node official-addon/package.mjs \
@@ -142,7 +144,7 @@ SubtitleHUD + ProtocolContext：当前设备、新SID、ACK门槛
 
 ## 8. 无Key测试
 
-<img src="navigation-search.png" width="280" alt="无账号无Key的模拟器搜索页：显式搜索与取消反馈，不是真实联网结果" />
+<img src="../../official-addon/docs/navigation-search.png" width="280" alt="无账号无Key的模拟器搜索页：显式搜索与取消反馈，不是真实联网结果" />
 
 上图是公开源码的UIKit模拟器截图，使用公开测试词演示取消状态，不是眼镜截图或真实搜索结果。
 

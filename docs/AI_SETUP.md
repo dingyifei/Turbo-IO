@@ -1,13 +1,13 @@
 # 用 Claude Code / Codex 接入 Turbo IO
 
-**2026-10-19 路由更新：** iOS 1.0.7（230）使用 [APP107 专用目录](../official-addon/ios107-edition/README.md)，继承 NAVS3、沿用现有 TMG2，**OTA 已在 iPhone 17 Pro Max 实刷通过并开放**；需要自行准备合法的 1.0.7 未加密输入，按[专用刷机教程](../official-addon/ios107-edition/OTA.md)完成校验、单次授权与刷后收尾。1.0.6（218）使用 NAVS3（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`），其固定门禁不能移用。下方旧版说明仅作历史参考，不得通过改版本白名单假装兼容。
+**当前 iOS 路线：** iOS 1.0.7（230）使用 [ios107 专用目录](../official-addon/ios107-edition/README.md)；自行准备合法的 1.0.7 未加密输入，按[专用刷机教程](../official-addon/ios107-edition/OTA.md)核对当前固定组合、单次授权与刷后收尾。历史 1.0.6 NAVS3 资料可用 `git show 27ad86e:official-addon/navs3-edition/README.md` 查看，旧门禁不能移用。**高德（AMap）导航已从当前 ios107 构建移除**；[历史导航文档](history/NAVIGATION.md)不是当前功能或安装指引。不得通过改版本白名单假装兼容。
 
 目标是把重复的环境检查、构建、合并和排错交给编程助手，让开发者主要完成账号、签名、设备确认和实测。**不是承诺一条提示词就能跨过所有安装限制，也不是成品 App 安装服务。** 仅限非商业学习研究。
 
 ## 先给助手三样东西
 
 1. 本仓库：<https://github.com/Turbo1123/Turbo-IO>。
-2. Android 使用 [雷鸟 AI Android 官方下载入口](https://rayneo.cn/commonPage/venus/appDownload/index_m.html)，不是 Turbo IO 安装包或固定旧版存档。**iOS 官方扩展可使用[明确列出的原厂解密输入](../official-apps/ios/README.md)，或自行准备有权使用的兼容副本。1.0.6（218）输入已去签名，对应 TMIG1；无插件，仍需自己合并与签名。** 不提供代砸壳或代签服务。商店安装仍不等于取得可合并的未加密 Runner.app，不能跳过版本与哈希校验。
+2. Android 使用 [雷鸟 AI Android 官方下载入口](https://rayneo.cn/commonPage/venus/appDownload/index_m.html)，不是 Turbo IO 安装包或固定旧版存档。**iOS 官方扩展可使用[明确列出的原厂解密输入](../official-apps/ios/README.md)，或自行准备有权使用的兼容副本。当前路线使用匹配的 1.0.7（230）输入；历史 1.0.6（218）仅对应旧 TMIG1。原厂输入无插件，仍需自己合并与签名。** 不提供代砸壳或代签服务。商店安装仍不等于取得可合并的未加密 Runner.app，不能跳过版本与哈希校验。
 3. [首页可复制的完整提示词](../README.md#让-claude-code--codex-帮你接入)，并选好自己的平台。不确定路线时让助手先解释五个选项，而不是同时搭建全部组件。
 
 原生鸿蒙 HarmonyOS、iOS 独立 SDK 与仅 Web 预览不需要官方应用副本；鸿蒙按 [源码安装教程](../harmony-sdk/README.md) 自行编译签名。
@@ -23,7 +23,7 @@
 | Web 预览 | `node display-observer/server.mjs --no-proxy`，检查页面 | 一个可用端口和浏览器 | 不要误报为真实眼镜画面；不需要官方包、Key或手机 |
 | 原生鸿蒙 | [鸿蒙教程](../harmony-sdk/README.md)，DevEco 打开 `harmony-sdk`，先跑测试和无维护者签名构建 | 自己的华为开发者签名、手机调试授权、各服务 Key | 不需要官方 APK/IPA；系统通知转发未实现，需要受限权限与用户授权；不提供 HAP |
 | iOS 独立 SDK | [配置文档](CONFIGURATION.md)，`scripts/start.mjs --local` 或 `--device` | macOS/Xcode、自己的签名和服务配置 | 切换客户端时才先官方解绑、系统忽略，再重新配对 |
-| iOS 官方扩展 | [扩展说明](../official-addon/README.md)，先测试与零密钥预览，再按条件本地合并 | 合法兼容未加密 `Runner.app`、个人证书/描述文件与设备授权 | 1.0.4（195）或1.0.2（67），对应UUID及thin arm64校验；普通商店加密IPA不能直接合并 |
+| iOS 官方扩展 | [扩展说明](../official-addon/README.md)，先测试与零密钥预览，再按条件本地合并 | 合法兼容未加密 `Runner.app`、个人证书/描述文件与设备授权 | 当前 ios107 为 1.0.7（230），须通过专用打包器的精确输入校验；普通商店加密IPA不能直接合并 |
 | Android 官方扩展 | [Android教程](../android-addon/README.md)，检查JDK/SDK，运行build和package脚本 | 合法官方APK、自己的keystore、测试手机和服务配置 | 当前1.0.4（195）且精确SHA匹配；非Root设备已由用户实机验证可用 |
 
 iOS / Android 官方扩展**不是第二个独立蓝牙客户端**，沿用宿主的配对和识别。不要看见首页V1的“先解绑”就把现有官方连接清掉。不要自动卸载正在使用的官方App；签名冲突可能需要另外的测试设备或恢复方案。
@@ -53,7 +53,7 @@ Android非Root设备已有用户实机可用确认；但换签仍不能直接覆
 
 官方扩展保留官方ASR；先随机文字/短问答测试，再配置模型地址、模型ID与自己的Key，按需开启TinyFish和知识库。V1云语音另需自己的ASR设置，不与官方扩展混淆。
 
-模型能回答后，再测试插话、收尾、文件分享和导航。眼镜显示由使用者实际确认，成功回执不能代替镜片检查。不要一开始就启用所有收费服务或上传长录音。
+模型能回答后，再测试插话、收尾和文件分享；导航仅在所选平台仍支持时单独验收，当前 ios107 不包含高德导航。眼镜显示由使用者实际确认，成功回执不能代替镜片检查。不要一开始就启用所有收费服务或上传长录音。
 
 ## 可追加给助手的任务
 
@@ -66,7 +66,7 @@ Android非Root设备已有用户实机可用确认；但换签仍不能直接覆
 请实际检查页面能访问，告诉我如何停止你启动的进程。
 ```
 
-**Android 模型和导航**
+**Android 模型和导航（高德相关说明仅适用于 Android，非当前 ios107）**
 
 ```text
 目标是Android官方扩展。先编译和校验APK，输出签名前检查结果。

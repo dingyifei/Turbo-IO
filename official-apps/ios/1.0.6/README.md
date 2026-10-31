@@ -39,7 +39,7 @@ unzip RayNeo_AI_1.0.6_218_decrypted_unsigned_original.ipa -d /absolute/new-input
 
 ## 合并 Turbo IO
 
-新版对应 **TMIG1 插件（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/tmig1-edition/README.md`）** 和 **[Strix OS 1.0.5.5](../../../firmware-research/strix-1.0.5.5/README.md)**。使用最新版仓库打包器，其精确接受原始签名保留版及本 Release 未签名版这两个固定 App.framework 哈希，**没有放宽固件哈希、清单或刷写门禁**。
+新版对应 **TMIG1 插件（已归档 / archived in commit `27ad86e`: `official-addon/tmig1-edition/README.md`）** 和 **[Strix OS 1.0.5.5](../../../firmware-research/strix-1.0.5.5/README.md)**。使用最新版仓库打包器，其精确接受原始签名保留版及本 Release 未签名版这两个固定 App.framework 哈希，**没有放宽固件哈希、清单或刷写门禁**。
 
 本未签名副本已通过清理审计与打包输入/加载项测试，尚未把这份去签名派生包重新签名安装做整包真机回归。此前 iPhone 17 Pro Max 的 1.0.6 / TMIG1 实测与此发行输入的审计是不同证据，不能混为“此 IPA 可直接安装或已全量验收”。
 

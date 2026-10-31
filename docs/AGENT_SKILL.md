@@ -2,7 +2,7 @@
 
 仓库提供标准 Agent Skills 目录 `skills/turbo-io`，供 Codex 与 Claude Code 读取。用途是非商业学习研究的环境检查、源码获取、Web预览、iOS独立SDK、iOS/Android官方扩展构建配置和Codex bridge接入，不包含密钥、IPA/APK，也不会绕过签名与用户授权。许可见 [LICENSING.md](LICENSING.md)。
 
-不想先安装技能，可直接复制[首页提示词](../README.md#让-claude-code--codex-帮你接入)。Android 把[雷鸟 AI Android 官方下载入口](https://rayneo.cn/commonPage/venus/appDownload/index_m.html)和仓库地址交给助手；iOS 官方扩展提供[原厂输入版本索引](../official-apps/ios/README.md)或自己的合法兼容未加密副本，仍需自行合并、配置与签名，不提供代砸壳或代签服务。1.0.6 使用 TMIG1 专用打包器，不能混用旧输入。完整流程见 [AI_SETUP.md](AI_SETUP.md)。技能与直接提示词是两种引导方式，不需要同时使用。
+不想先安装技能，可直接复制[首页提示词](../README.md#让-claude-code--codex-帮你接入)。Android 把[雷鸟 AI Android 官方下载入口](https://rayneo.cn/commonPage/venus/appDownload/index_m.html)和仓库地址交给助手；iOS 官方扩展提供[原厂输入版本索引](../official-apps/ios/README.md)或自己的合法兼容未加密副本，仍需自行合并、配置与签名，不提供代砸壳或代签服务。当前 iOS 路线为 1.0.7（230）的 [ios107 专用扩展](../official-addon/ios107-edition/README.md)，使用匹配的打包器与固定输入校验，不能混用旧版本。完整流程见 [AI_SETUP.md](AI_SETUP.md)。技能与直接提示词是两种引导方式，不需要同时使用。
 
 ## 一行安装
 

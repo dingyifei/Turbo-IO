@@ -47,7 +47,7 @@ xcodebuild -project TurboWatchRemote.xcodeproj -scheme RayNeoWatchRemote \
 
 ## 2. 接入公开 iOS 插件
 
-official-addon/ios107-edition already compiles the Watch sources (build.sh: WatchRemoteGate.m WatchGlobalBridge.m remote.c WatchRemoteAddon.m); build and package ios107 per its README. 当前 ios107-edition 已内置 Watch 源码，无需派生；旧的 stage-addon.py（focus-edition）保存在 git tag archive/editions-2026-10。
+official-addon/ios107-edition already compiles the Watch sources (build.sh: WatchRemoteGate.m WatchGlobalBridge.m remote.c WatchRemoteAddon.m); build and package ios107 per its README. 当前 ios107-edition 已内置 Watch 源码，无需派生；旧的 stage-addon.py（focus-edition）保存在 commit `27ad86e`。
 
 - 编译 `Addon/*.m`、`Firmware/remote.c`，链接 WatchConnectivity。
 - `DisplayPhoneUI.m` 回执分类和消费接入 TGR1，不吞掉其他业务回执。

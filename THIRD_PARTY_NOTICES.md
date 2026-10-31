@@ -42,6 +42,6 @@ The `firmware-strix-1.0.4.12-tnv1` prerelease additionally provides the exact te
 
 ## TMU1 音乐 API 参考
 
-The NetEase client adapted from Beans Music (MIT) was removed in 2026-10; the historical source and its license are preserved in git tag `archive/editions-2026-10`.
+The NetEase client adapted from Beans Music (MIT) was removed in 2026-10; the historical source and its license are preserved in commit `27ad86e` (for example, `git show 27ad86e:official-addon/music/Beans-MIT-LICENSE.txt`).
 
 The `firmware-strix-1.0.4.12-tmu1` prerelease distributes the exact hardware-tested music OTA archive, retaining navigation, display and animation experiments. The firmware copyright and risk boundaries above apply equally; only AP payload content and its manifest Size/MD5 change. No account data or personal signing material is included, and original vendor firmware is not licensed as original project source.

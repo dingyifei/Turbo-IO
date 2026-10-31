@@ -24,7 +24,7 @@ an older checkout, report that version mismatch instead of inventing APIs.
 - App: TAP1 declarative JSON, at most 4 pages on 540×180, 12 components/page,
   app+manifest <=20,480 bytes, ZIP <=24,576 bytes. Start from
   `uv run turbo-app gallery list` and `gallery prompt <id>` or trusted JS builder
-  `examples/app-sdk.mjs`. Build/check/preview through the actual compiler.
+  `dashboard-service/examples/app-sdk.mjs`. Build/check/preview through the actual compiler.
 
 ## Server data mapping
 
