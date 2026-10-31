@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate exact candidate identity pins from an already-audited TMG8 ZIP.
+"""Generate exact candidate identity pins from an already-audited candidate ZIP (label: ../RELEASE).
 
 This does not audit executable edits, authorize flashing, or change OTA routing.
 The firmware build's separate audit remains required.
@@ -9,8 +9,17 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import zipfile
+
+
+def release_label(root=None):
+    """The one place the release label comes from: RELEASE at the tree root. Never the folder name."""
+    label = ((root or Path(__file__).resolve().parents[1]) / 'RELEASE').read_text().strip()
+    if not re.fullmatch(r'TMG[0-9]+', label):
+        raise ValueError('RELEASE must hold one label such as TMG8')
+    return label
 
 
 def sha256(data):
@@ -45,7 +54,7 @@ def pins_for(archive):
             raise ValueError('ZIP member set differs from manifest')
         ap = payloads['nuttx_ap.bin']
     return {
-        'name': 'TMG8',
+        'name': release_label(),
         'zipBytes': len(raw),
         'zipSHA256': sha256(raw),
         'apBytes': len(ap),

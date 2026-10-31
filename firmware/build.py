@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import struct
 import subprocess
 import zipfile
@@ -50,6 +51,17 @@ def pin(spec, field, value, repin):
     if not repin and spec[field] != value:
         raise AssertionError('pin mismatch: ' + field)
     spec[field] = value
+
+def release_label(root=None):
+    """The one place the release label comes from: RELEASE, beside this file. Never the folder name."""
+    label = ((root or HERE)/'RELEASE').read_text().strip()
+    assert re.fullmatch(r'TMG[0-9]+', label), 'RELEASE must hold one label such as TMG8'
+    return label
+
+
+def archive_name(root=None):
+    return 'StrixOS-1.0.5.5-TurboIO-' + release_label(root) + '-CANDIDATE-NOT-APPROVED.zip'
+
 
 def animation_asset():
     # Shared immutable build input, kept once under baseline/ (provenance in baseline/README.md).
@@ -240,7 +252,7 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
     for row in rows:
         if row['Name'] == 'nuttx_ap.bin': row.update(Size=len(ap),Md5=sha(ap,'md5'))
     stock['OtaFileInfo.json'] = (json.dumps(rows,indent=2)+'\n').encode()
-    archive = out/spec['archive']['name']
+    archive = out/archive_name()
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         for name,data in sorted(stock.items()):
             info = zipfile.ZipInfo(name,(2026,10,27,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED

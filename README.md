@@ -13,7 +13,7 @@
 ## Repository layout (2026-10 slim build)
 
 - The active phone addon is `official-addon/ios107-edition`, containing build.sh, package.mjs, test.py, local-translation/ and tests/. Parser copies and signing inputs remain external private build inputs.
-- The current glasses firmware source is `firmware-research/strix-1.0.5.5-tmg3`; TMG2 compatibility is retained.
+- The glasses firmware source is the single tree [`firmware/`](firmware/README.md) (release label in `firmware/RELEASE`, now TMG8). It is not copied per release: every released candidate TMG2 to TMG8 is an annotated git tag `fw/tmg2` … `fw/tmg8` (`git checkout fw/tmg3` restores that release's tree). TMG2 compatibility is retained.
 - Older editions and duplicated root addon sources are archived in local tag `archive/editions-2026-10`. Restore one with `git checkout archive/editions-2026-10 -- official-addon/navs3-edition`.
 - `official-addon/research/`, `knowledge-bridge/`, `tar2-airplay/`, `tar2-display/` and historical `docs/` remain.
 - The tracked root PrivateBootstrap parser files and a navs3 README pointer remain for compatibility. This cleanup does not install or flash anything.
@@ -122,7 +122,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 
 公开源码、构建及测试，不公开个人签名 IPA、Cookie、Key、私人服务地址、设备备份或微信读书网页正文适配。[原厂 1.0.7 砸壳／去签名输入](official-apps/ios/1.0.7/README.md)已单独归档，未合并 Turbo IO，需自行合法使用与签名；历史原厂 1.0.6 输入不能用于 1.0.7 打包。
 
-**[1.0.7 源码 / 构建与版本对比](official-addon/ios107-edition/README.md) · [APP107 OTA 预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [现有 TMG2 固件](firmware-research/strix-1.0.5.5-tmg2/README.md)**
+**[1.0.7 源码 / 构建与版本对比](official-addon/ios107-edition/README.md) · [APP107 OTA 预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [现有 TMG2 固件（git 标签 `fw/tmg2`，下载见 Release）](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [当前眼镜固件源码 `firmware/`](firmware/README.md)**
 
 <a id="remote-camera"></a>
 
@@ -134,7 +134,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 
 手机端捕获、压缩、传输及测试代码，眼镜端原生页面和控制协议均已公开。**已发布的 TMG2 固件包含此功能，已有 TMG2 不必另刷 TCM1。** 本次补充独立功能说明，不生成或替换固件；当前列出的配套手机实现为 iOS，不代表 Android 已同步适配。
 
-**[iOS 1.0.7 手机源码](official-addon/ios107-edition/camera-v1) · iOS 1.0.6 手机源码（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/camera-v1`） · [眼镜原生源码](firmware-research/strix-1.0.5.5-tmg2/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](official-addon/ios107-edition/OTA.md)**
+**[iOS 1.0.7 手机源码](official-addon/ios107-edition/camera-v1) · iOS 1.0.6 手机源码（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/camera-v1`） · [眼镜原生源码](firmware/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](official-addon/ios107-edition/OTA.md)**
 
 <a id="navs3-update"></a>
 
@@ -155,7 +155,7 @@ MCP 在**用户自己的 Server** 上运行，眼镜不运行 MCP、浏览器或
 - 仅针对 RayNeo AI iOS 1.0.6（218）＋ Strix OS 1.0.5.5；不是新版 Android APK。已有 TMG2 无需为 NAVS3 重刷。
 - 不含 Cookie、Key、签名材料、私用 IPA、真实路线/通知/智记记录或网页阅读适配；Dots 仍未完成。
 
-**源码与构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） · [固件与刷写步骤](firmware-research/strix-1.0.5.5-tmg2/README.md) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
+**源码与构建（已归档 / archived in git tag `archive/editions-2026-10`: `official-addon/navs3-edition/README.md`） · [固件与刷写步骤（git 标签 `fw/tmg2`）](https://github.com/Turbo1123/Turbo-IO/tree/fw/tmg2/firmware-research) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
 
 <a id="tmig1-update"></a>
 

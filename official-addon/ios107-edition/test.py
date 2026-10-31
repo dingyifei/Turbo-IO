@@ -84,6 +84,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-timer-wrap',[FW/'tests/timer_wrap_test.c',FW/'src/menu-grid-v2/tile_config.c',FW/'src/menu-grid-v2/menu_config.c'],FW/'src')
     ctest('tmg4-knob',[FW/'tests/knob_test.c',FW/'src/diagnostics-v1/knob_calibration.c'],FW/'src')
     run('tmg4-identity',['python3','-I',FW/'tests/identity_test.py'])
+    run('tmg-release-label',['python3','-I',FW/'tests/release_label_test.py'])   # the label comes from firmware/RELEASE, not the folder name
     ctest('tmg4-tile-config',[FW/'tests/tile_config_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
     ctest('tmg4-menu-tiles',[FW/'tests/menu_tiles_test.c'],FW/'src')
     ctest('tmg4-menu-lang',[FW/'tests/menu_lang_test.c',FW/'src/global-remote-v1/lang_flag.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')

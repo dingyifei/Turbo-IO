@@ -1,8 +1,12 @@
-# TMG8 candidate (Round 2 fork)
+# TurboIO firmware (single tree; current release label in `RELEASE`)
+
+This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg8`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label (`TMG8` today) is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). `build-inputs.json` carries `identityCarryOver` (build.py only): the restructure had to edit `build.py`, which is a build input, and the carry-over keeps the identity embedded in the AP, and so ZIP8, unchanged; remove it at the next repin. The sections below keep the TMG8 text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`).
+
+## TMG8 candidate (Round 2 fork)
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG8 starts as a source-identical fork of frozen TMG7 (`../strix-1.0.5.5-tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below (the status `detent` field, which already existed, reads 300 instead of 600 when that bit is set). Before the Round 2 commits land it builds the same AP as TMG7. The phone pins name TMG8 and the exact ZIP8 below (first pinned at `tmg8(12)`, moved to the rebuilt ZIP8 at `tmg8(17)`). The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
+TMG8 starts as a source-identical fork of frozen TMG7 (tag `fw/tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below (the status `detent` field, which already existed, reads 300 instead of 600 when that bit is set). Before the Round 2 commits land it builds the same AP as TMG7. The phone pins name TMG8 and the exact ZIP8 below (first pinned at `tmg8(12)`, moved to the rebuilt ZIP8 at `tmg8(17)`). The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
 
 ## TMG8 caps bit and the carousel layout value
 
@@ -144,7 +148,7 @@ The audit confirms 25 patch sites, the sole raw edit unchanged (`0x4d9bec 0721->
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
 
-TMG7 forks frozen TMG6 (`../strix-1.0.5.5-tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, firmware name (TD_BUILD_TMG6, TD_CAPS_TMG6), the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
+TMG7 forks frozen TMG6 (tag `fw/tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, firmware name (TD_BUILD_TMG6, TD_CAPS_TMG6), the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
 
 - Shared tokens in `src/common-v1` (lens intensity ramp, bands, 40..500 core, caret, 16 px text floor) with a transient hint helper that fades and hides.
 - Navigation (LensNav): the distance and instruction have fixed slots (x 84 and 196) that never move or resize (a distance of 10 km and more drops its tenths and rounds to the nearest kilometre, capped at 999 km), the map is the board's x 372..520 window (canvas at x 348, car within 3 px of the window centre, columns outside it blanked, the scale bar and its label inside it, 29 px clear of the band-B text), the turn glyph has a 7 px stroke, and the fixed clock footer is gone (removed at TMG6).
@@ -220,7 +224,7 @@ Knob calibration is a volatile, bounded30-second window: rotate exactly one turn
 
 ## Navigation and T4 removal
 
-POSE2 keeps the existing14-byte body, bounded prediction and timing. The phone sends no op8 fallback. Missing capability bit1 or failed prediction-mirror allocation stops navigation with an explicit message. The shared12-byte base validator remains because POSE2 and SCENE2 use it. The removed WeRead/Ride/English/Dots reply classifier is gone; WP8 transport-equivalence fixtures remain. FW2/FW3 trees and candidates are immutable; FW2 supplies only the pinned animation and structural-preservation baseline.
+POSE2 keeps the existing14-byte body, bounded prediction and timing. The phone sends no op8 fallback. Missing capability bit1 or failed prediction-mirror allocation stops navigation with an explicit message. The shared12-byte base validator remains because POSE2 and SCENE2 use it. The removed WeRead/Ride/English/Dots reply classifier is gone; WP8 transport-equivalence fixtures remain. FW2/FW3 releases are immutable (tags `fw/tmg2` and `fw/tmg3`); `baseline/` supplies only the pinned animation and structural-preservation baseline.
 
 ## Rebuild and audit
 
@@ -228,14 +232,15 @@ Use the already-provisioned LLVM23.1.4 toolchain. No package manager is required
 
 ```sh
 R=$(git rev-parse --show-toplevel)
-FW4=$R/firmware-research/strix-1.0.5.5-tmg4
+FW=$R/firmware
+ZIP=StrixOS-1.0.5.5-TurboIO-$(cat "$FW/RELEASE")-CANDIDATE-NOT-APPROVED.zip
 IN=$HOME/projects/personal/turboio-inputs
 TC=$IN/toolchain/llvm-bin
 STOCK=$R/firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip
 D=$(mktemp -d)
-python3 -I "$FW4/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
-python3 -I "$FW4/build.py" --stock "$STOCK" --audit "$D/build/StrixOS-1.0.5.5-TurboIO-TMG4-CANDIDATE-NOT-APPROVED.zip"
-python3 -I "$FW4/tools/phone_pins.py" --zip "$D/build/StrixOS-1.0.5.5-TurboIO-TMG4-CANDIDATE-NOT-APPROVED.zip" --check "$R/official-addon/ios107-edition"
+python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
+python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP"
+python3 -I "$FW/tools/phone_pins.py" --zip "$D/build/$ZIP" --check "$R/official-addon/ios107-edition"
 ```
 
 The shared immutable animation is read from `baseline/animation-frames.l8` (provenance in `baseline/README.md`), SHA-256`f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d`; no duplicate binary asset is tracked. Normal builds enforce all pins. `--repin` is a deliberate developer operation, not a runtime update mechanism.
