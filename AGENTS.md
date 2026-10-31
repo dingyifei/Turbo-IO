@@ -52,6 +52,7 @@ Build inputs live outside the repo: the stock app, signing configuration and fir
 - `bash scripts/turbo-gate.sh` runs the full check: addon build, symbol checks, `test.py` against the pinned firmware, the node tests, and the source audit.
 - `bash scripts/turbo-gate.sh --only-build` is the quick check for each commit.
 - `bash scripts/turbo-gate.sh --preview` adds the preview screenshot matrix and takes about 15 minutes. Run it once on the final commit before handing off, not after every commit.
+- `python3 official-addon/ios107-edition/test.py --firmware <zip> --app107 <Runner.app> --patched-app <Runner.app>` runs the test groups directly; the gate fills in these paths from `package.env`.
 - `bash scripts/turbo-package.sh <label>` builds and signs an IPA into a new directory. Run it only when the task asks for it. It never installs anything.
 - For the firmware build, the ZIP audit and pin updates, see the firmware tree's README. A release build must reproduce the ZIP recorded for its tag byte for byte.
 
