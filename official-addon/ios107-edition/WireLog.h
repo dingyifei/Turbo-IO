@@ -9,6 +9,8 @@ FOUNDATION_EXPORT BOOL TIOWireLogStart(void);
 FOUNDATION_EXPORT void TIOWireLogStop(void);
 // active, records, dropped, bytes, file, files, totalBytes, disabledReason, wrappedChannels
 FOUNDATION_EXPORT NSDictionary *TIOWireLogStatus(void);
+// Counters only: no directory listing, safe to call from UI code often (active, records, dropped, bytes, file, disabledReason).
+FOUNDATION_EXPORT NSDictionary *TIOWireLogLiveStatus(void);
 FOUNDATION_EXPORT NSURL *TIOWireLogDirectory(void);
 // Asks the writer queue to flush, then calls done on the main queue.
 FOUNDATION_EXPORT void TIOWireLogFlush(void (^done)(void));
@@ -38,6 +40,8 @@ typedef NS_ENUM(NSInteger, TIOWireLogChannelClass) {
     TIOWireLogChannelOpaque       // cloud, login or account traffic: channel name and byte count only
 };
 FOUNDATION_EXPORT TIOWireLogChannelClass TIOWireLogClassifyChannel(NSString *channel);
+// Methods whose name contains token, login, auth, password, credential or secret: name and size only, on any channel.
+FOUNDATION_EXPORT BOOL TIOWireLogMethodIsSizeOnly(NSString *method);
 
 // ---- exposed for the host tests ----
 FOUNDATION_EXPORT BOOL TIOWireLogKeyIsSensitive(NSString *key);

@@ -11,37 +11,40 @@ static NSString *Fmt(NSString *key) { NSString *f = TIOText(key); return f; }
 // ---- recording pill: a click-through window above everything, shown while the recorder is active ----
 static UIWindow *Pill;
 
+static CGRect PillFrame(UIWindowScene *scene) {
+    UIWindow *host = scene.keyWindow ?: scene.windows.firstObject;
+    return CGRectMake(8 + host.safeAreaInsets.left, 2 + host.safeAreaInsets.top, 64, 18);
+}
+
 static void SyncPill(void) {
     BOOL on = TIOWireLogActive();
     if (!on) { Pill.hidden = YES; return; }
-    if (Pill) { Pill.hidden = NO; return; }
+    if (Pill) { Pill.frame = PillFrame(Pill.windowScene); Pill.hidden = NO; return; }
     UIWindowScene *scene = nil;
     for (UIScene *s in UIApplication.sharedApplication.connectedScenes)
         if ([s isKindOfClass:UIWindowScene.class] && s.activationState != UISceneActivationStateUnattached) { scene = (UIWindowScene *)s; break; }
     if (!scene) return; // no scene yet: the poll below retries
+    // The window is only as big as the pill and never key, so it cannot take over the status bar or any touches.
     UIWindow *w = [[UIWindow alloc] initWithWindowScene:scene];
+    w.frame = PillFrame(scene);
     w.windowLevel = UIWindowLevelAlert + 100;
     w.userInteractionEnabled = NO;
     w.backgroundColor = UIColor.clearColor;
     UIViewController *vc = [UIViewController new];
     vc.view.userInteractionEnabled = NO;
     w.rootViewController = vc;
-    UILabel *label = [UILabel new];
+    UILabel *label = [[UILabel alloc] initWithFrame:vc.view.bounds];
+    label.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     label.text = [NSString stringWithFormat:@"● %@", TIOText(@"wirelog.pill")];
     label.font = TIODesignFontWeight(TIODesignTextStyleCaption, UIFontWeightBold);
     label.textColor = TIODesignColor(TIODesignColorOnAccent);
     label.backgroundColor = TIODesignColor(TIODesignColorStatusDanger);
     label.textAlignment = NSTextAlignmentCenter;
     label.layer.cornerRadius = 9; label.layer.masksToBounds = YES;
-    label.translatesAutoresizingMaskIntoConstraints = NO;
     label.isAccessibilityElement = YES;
     label.accessibilityLabel = TIOText(@"wirelog.pill.accessibility");
     label.accessibilityIdentifier = @"wirelog-pill";
     [vc.view addSubview:label];
-    [NSLayoutConstraint activateConstraints:@[
-        [label.leadingAnchor constraintEqualToAnchor:vc.view.safeAreaLayoutGuide.leadingAnchor constant:8],
-        [label.topAnchor constraintEqualToAnchor:vc.view.safeAreaLayoutGuide.topAnchor constant:2],
-        [label.widthAnchor constraintGreaterThanOrEqualToConstant:64], [label.heightAnchor constraintEqualToConstant:18]]];
     w.hidden = NO;
     Pill = w;
 }
@@ -56,7 +59,7 @@ void TIOWireLogUIInstall(void) {
 }
 
 NSString *TIOWireLogStatusLine(void) {
-    NSDictionary *s = TIOWireLogStatus();
+    NSDictionary *s = TIOWireLogLiveStatus(); // counters only; the hub asks for this on every redraw
     if (![s[@"active"] boolValue]) return TIOText(@"hub.status.wireLog.off");
     return [NSString stringWithFormat:Fmt(@"hub.status.wireLog.on"), (unsigned long)[s[@"records"] unsignedLongLongValue]];
 }
@@ -66,6 +69,7 @@ enum { SecRecord, SecStart, SecFiles, SecCount };
 
 @interface TIOWireLogPanel : UITableViewController
 @property (nonatomic, strong) NSTimer *refresh;
+@property (nonatomic, copy) NSDictionary *cached; // full status; refreshed once a second off the main thread
 @end
 
 @implementation TIOWireLogPanel
@@ -73,11 +77,19 @@ enum { SecRecord, SecStart, SecFiles, SecCount };
     [super viewDidLoad];
     self.title = TIOText(@"hub.row.wireLog");
     self.tableView.accessibilityIdentifier = @"wirelog-table";
+    self.cached = TIOWireLogStatus();
+}
+- (void)refreshStatus {
+    __weak typeof(self) weak = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        NSDictionary *fresh = TIOWireLogStatus(); // lists the folder: never on the main thread
+        dispatch_async(dispatch_get_main_queue(), ^{ weak.cached = fresh; [weak.tableView reloadData]; });
+    });
 }
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     __weak typeof(self) weak = self;
-    self.refresh = [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { [weak.tableView reloadData]; }];
+    self.refresh = [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { [weak refreshStatus]; }];
 }
 - (void)viewWillDisappear:(BOOL)animated { [super viewWillDisappear:animated]; [self.refresh invalidate]; self.refresh = nil; }
 
@@ -90,7 +102,9 @@ enum { SecRecord, SecStart, SecFiles, SecCount };
 }
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
-    NSDictionary *s = TIOWireLogStatus();
+    // Live counters are cheap; the folder listing (files, totalBytes) comes from the once-a-second cache.
+    NSMutableDictionary *s = [self.cached mutableCopy] ?: [NSMutableDictionary new];
+    [s addEntriesFromDictionary:TIOWireLogLiveStatus()];
     BOOL active = [s[@"active"] boolValue];
     cell.detailTextLabel.numberOfLines = 0;
     if (ip.section == SecRecord) {
@@ -123,7 +137,7 @@ enum { SecRecord, SecStart, SecFiles, SecCount };
 - (void)toggleRecording:(UISwitch *)sw {
     if (sw.on) TIOWireLogStart(); else TIOWireLogStop();
     TIOWireLogUIInstall();
-    dispatch_async(dispatch_get_main_queue(), ^{ [self.tableView reloadData]; });
+    [self refreshStatus];
 }
 - (void)toggleAutoStart:(UISwitch *)sw { TIOWireLogSetAutoStart(sw.on); }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)ip {

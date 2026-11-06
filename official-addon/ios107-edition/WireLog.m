@@ -57,24 +57,49 @@ static NSArray<NSString *> *Words(NSString *key) {
     return out;
 }
 
+// Hard: the key alone marks the value as a credential. Soft: a bare "key", "session" or "sign" is only
+// a credential when its value looks like one (long, no spaces), so {key:"brightness"} stays readable.
+static NSSet<NSString *> *HardWords(void) {
+    static NSSet *w; static dispatch_once_t o;
+    dispatch_once(&o, ^{
+        w = [NSSet setWithArray:@[@"token", @"tokens", @"auth", @"authorization", @"authorisation", @"secret", @"secrets",
+                                  @"password", @"passwd", @"pwd", @"cookie", @"cookies", @"signature", @"signatures",
+                                  @"ticket", @"tickets", @"credential", @"credentials", @"bearer", @"jwt"]];
+    });
+    return w;
+}
 BOOL TIOWireLogKeyIsSensitive(NSString *key) {
     if (![key isKindOfClass:NSString.class] || !key.length) return NO;
-    static NSSet<NSString *> *exact; static NSArray<NSString *> *suffixes; static dispatch_once_t o;
+    static NSArray<NSString *> *suffixes; static NSSet<NSString *> *benignKey; static dispatch_once_t o;
     dispatch_once(&o, ^{
-        exact = [NSSet setWithArray:@[@"token", @"tokens", @"auth", @"authorization", @"authorisation", @"secret", @"secrets",
-                                      @"password", @"passwd", @"pwd", @"cookie", @"cookies", @"session", @"sessions",
-                                      @"sign", @"signature", @"signatures", @"key", @"keys", @"ticket", @"tickets",
-                                      @"credential", @"credentials", @"bearer", @"jwt"]];
-        suffixes = @[@"token", @"secret", @"password", @"passwd", @"apikey", @"accesskey", @"secretkey", @"privatekey",
-                     @"signature", @"cookie", @"credential", @"credentials"];
+        suffixes = @[@"token", @"secret", @"password", @"passwd", @"cookie", @"credential", @"credentials", @"signature",
+                     @"authcode", @"authkey", @"apikey", @"appkey", @"accesskey", @"secretkey", @"privatekey", @"signkey", @"sessionkey"];
+        benignKey = [NSSet setWithArray:@[@"monkey", @"turkey", @"hockey", @"donkey", @"whiskey", @"jockey", @"hotkey"]];
     });
+    NSArray<NSString *> *words = Words(key);
     NSMutableString *joined = [NSMutableString new];
-    for (NSString *w in Words(key)) {
-        if ([exact containsObject:w]) return YES;
+    for (NSString *w in words) {
+        if ([HardWords() containsObject:w]) return YES;
         [joined appendString:w];
     }
+    // apiKey, sessionKey, secret_key: "key" closing a longer name. keyCode, keyName and keyboard are left alone.
+    NSString *last = words.lastObject;
+    if (words.count >= 2 && ([last isEqualToString:@"key"] || [last isEqualToString:@"keys"])) return YES;
     for (NSString *s in suffixes) if ([joined hasSuffix:s]) return YES;
+    // All-lowercase compounds such as "pushkey" or "clientkey".
+    if (joined.length > 3 && [joined hasSuffix:@"key"] && ![benignKey containsObject:joined]) return YES;
     return NO;
+}
+static BOOL KeyIsSoft(NSString *key) {
+    NSArray<NSString *> *w = Words(key);
+    return w.count == 1 && ([w[0] isEqualToString:@"key"] || [w[0] isEqualToString:@"keys"] || [w[0] isEqualToString:@"session"] ||
+                            [w[0] isEqualToString:@"sessions"] || [w[0] isEqualToString:@"sign"]);
+}
+static BOOL LooksLikeCredential(id v) {
+    if ([v isKindOfClass:NSData.class]) return [(NSData *)v length] >= 8;
+    if (![v isKindOfClass:NSString.class]) return NO;
+    NSString *s = v;
+    return s.length >= 16 && [s rangeOfCharacterFromSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].location == NSNotFound;
 }
 
 static NSString *RedactedMarker(NSUInteger len) { return [NSString stringWithFormat:@"<redacted len=%lu>", (unsigned long)len]; }
@@ -87,19 +112,43 @@ static NSUInteger ValueLength(id v) {
     @try { return [[v description] length]; } @catch (__unused id e) { return 0; }
 }
 
-static NSString *RedactString(NSString *s) {
+static id JV(id v, int depth);
+
+static NSString *RedactStringAt(NSString *s, int depth) {
     if (s.length < 12 || s.length > 262144) return s;
-    static NSRegularExpression *bearer, *jwt; static dispatch_once_t o;
+    static NSRegularExpression *bearer, *jwt, *pair; static dispatch_once_t o;
     dispatch_once(&o, ^{
         bearer = [NSRegularExpression regularExpressionWithPattern:@"\\bBearer\\s+[A-Za-z0-9._~+/=-]{8,}" options:NSRegularExpressionCaseInsensitive error:nil];
         jwt = [NSRegularExpression regularExpressionWithPattern:@"\\beyJ[A-Za-z0-9_-]{6,}\\.[A-Za-z0-9_-]{6,}\\.[A-Za-z0-9_-]*" options:0 error:nil];
+        // name=value, name: value, "name":"value" and the same with escaped quotes, for names that contain a credential word.
+        pair = [NSRegularExpression regularExpressionWithPattern:
+            @"([A-Za-z0-9_-]*(?:token|secret|password|passwd|cookie|signature|credential|ticket|authorization|authcode|api_?key|app_?key|access_?key|secret_?key)[A-Za-z0-9_-]*)(\\\\?\"?\\s*[:=]\\s*\\\\?\"?)(?!<redacted)([^\"&\\s,}\\\\\\]]{4,})"
+            options:NSRegularExpressionCaseInsensitive error:nil];
     });
     NSString *out = s;
+    // JSON carried inside a string value: parse it, redact it as a tree, and keep the result only if something changed.
+    NSUInteger first = 0;
+    while (first < out.length && [NSCharacterSet.whitespaceAndNewlineCharacterSet characterIsMember:[out characterAtIndex:first]]) first++;
+    if (first < out.length && ([out characterAtIndex:first] == '{' || [out characterAtIndex:first] == '[') && depth < kDepthCap) {
+        id parsed = [NSJSONSerialization JSONObjectWithData:[out dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+        if (parsed) {
+            id red = JV(parsed, depth + 1);
+            NSData *a = [NSJSONSerialization dataWithJSONObject:parsed options:NSJSONWritingSortedKeys error:nil];
+            NSData *b = [NSJSONSerialization isValidJSONObject:red] ? [NSJSONSerialization dataWithJSONObject:red options:NSJSONWritingSortedKeys error:nil] : nil;
+            if (b && ![a isEqualToData:b]) out = [[NSString alloc] initWithData:b encoding:NSUTF8StringEncoding] ?: out;
+        }
+    }
     for (NSRegularExpression *re in @[bearer, jwt]) {
         NSArray<NSTextCheckingResult *> *hits = [re matchesInString:out options:0 range:NSMakeRange(0, out.length)];
         if (!hits.count) continue;
         NSMutableString *m = [out mutableCopy];
         for (NSTextCheckingResult *hit in hits.reverseObjectEnumerator) [m replaceCharactersInRange:hit.range withString:RedactedMarker(hit.range.length)];
+        out = [m copy];
+    }
+    NSArray<NSTextCheckingResult *> *pairs = [pair matchesInString:out options:0 range:NSMakeRange(0, out.length)];
+    if (pairs.count) {
+        NSMutableString *m = [out mutableCopy];
+        for (NSTextCheckingResult *hit in pairs.reverseObjectEnumerator) { NSRange r = [hit rangeAtIndex:3]; [m replaceCharactersInRange:r withString:RedactedMarker(r.length)]; }
         out = [m copy];
     }
     return out;
@@ -127,8 +176,6 @@ static NSDictionary *BytesObject(NSData *d, NSString *kind) {
     return m;
 }
 
-static id JV(id v, int depth);
-
 static id JVDictionary(NSDictionary *d, int depth) {
     NSMutableArray<NSArray *> *pairs = [NSMutableArray new];
     for (id k in d) {
@@ -141,7 +188,8 @@ static id JVDictionary(NSDictionary *d, int depth) {
     for (NSArray *p in pairs) {
         if (++count > kItemCap) { out[@"$truncated"] = @(pairs.count - kItemCap); break; }
         id val = p[1];
-        out[p[0]] = TIOWireLogKeyIsSensitive(p[0]) && val != NSNull.null ? RedactedMarker(ValueLength(val)) : JV(val, depth + 1);
+        BOOL hide = val != NSNull.null && (TIOWireLogKeyIsSensitive(p[0]) || (KeyIsSoft(p[0]) && LooksLikeCredential(val)));
+        out[p[0]] = hide ? RedactedMarker(ValueLength(val)) : JV(val, depth + 1);
     }
     return out;
 }
@@ -149,7 +197,7 @@ static id JVDictionary(NSDictionary *d, int depth) {
 static id JV(id v, int depth) {
     if (!v || v == NSNull.null) return NSNull.null;
     if (depth > kDepthCap) return @"<depth limit>";
-    if ([v isKindOfClass:NSString.class]) return RedactString(v);
+    if ([v isKindOfClass:NSString.class]) return RedactStringAt(v, depth);
     if ([v isKindOfClass:NSNumber.class]) {
         if (CFGetTypeID((__bridge CFTypeRef)v) == CFBooleanGetTypeID()) return v;
         double dv = [v doubleValue];
@@ -181,7 +229,7 @@ static id JV(id v, int depth) {
     if ([cls isEqualToString:@"NSObject"]) return @{@"$": @"sentinel (FlutterMethodNotImplemented)"};
     NSString *desc = [v description];
     if (desc.length > 256) desc = [desc substringToIndex:256];
-    return @{@"$class": cls, @"$desc": RedactString(desc)};
+    return @{@"$class": cls, @"$desc": RedactStringAt(desc, depth)};
 }
 
 id TIOWireLogJSON(id value) { return JV(value, 0); }
@@ -327,9 +375,17 @@ TIOWireLogChannelClass TIOWireLogClassifyChannel(NSString *channel) {
     BOOL ours = NO;
     for (NSString *t in @[@"rayneo", @"venus", @"voice_assistant", @"ask_ai", @"always_on"]) if ([l containsString:t]) { ours = YES; break; }
     if (!ours) return TIOWireLogChannelIgnored;
-    for (NSString *t in @[@"http", @"login", @"account", @"oauth", @"passport", @"auth", @"cloud", @"userinfo"])
+    for (NSString *t in @[@"http", @"login", @"account", @"oauth", @"passport", @"auth", @"cloud", @"userinfo", @"push", @"analytics"])
         if ([l containsString:t]) return TIOWireLogChannelOpaque;
     return TIOWireLogChannelFull;
+}
+
+// Methods that carry credentials or account state are logged by name and size only, whatever the channel.
+BOOL TIOWireLogMethodIsSizeOnly(NSString *method) {
+    if (![method isKindOfClass:NSString.class]) return NO;
+    NSString *l = method.lowercaseString;
+    for (NSString *t in @[@"token", @"login", @"auth", @"password", @"credential", @"secret"]) if ([l containsString:t]) return YES;
+    return NO;
 }
 
 // ============================================================ writer (all state below lives on Q())
@@ -377,7 +433,7 @@ static void EnforceCap(void) {
     NSFileManager *fm = NSFileManager.defaultManager;
     NSArray<NSString *> *names = [fm contentsOfDirectoryAtPath:wDir.path error:nil] ?: @[];
     NSMutableArray<NSString *> *old = [NSMutableArray new];
-    for (NSString *n in names) if ([n hasPrefix:@"wirelog-"] && [n hasSuffix:@".jsonl"] && ![wPath hasSuffix:n]) [old addObject:n];
+    for (NSString *n in names) if ([n hasPrefix:@"wirelog-"] && [n hasSuffix:@".jsonl"] && ![wPath.lastPathComponent isEqualToString:n]) [old addObject:n];
     [old sortUsingSelector:@selector(compare:)];
     unsigned long long total = 0; NSMutableDictionary<NSString *, NSNumber *> *sizes = [NSMutableDictionary new];
     for (NSString *n in old) { struct stat st; unsigned long long s = stat([wDir.path stringByAppendingPathComponent:n].fileSystemRepresentation, &st) == 0 ? (unsigned long long)st.st_size : 0; sizes[n] = @(s); total += s; }
@@ -406,15 +462,24 @@ static NSDictionary *HeaderRecord(void) {
              @"note": @"records are written by one queue; sort by seq. mono is systemUptime seconds. Redacted values read <redacted len=N>."};
 }
 
+// File names carry a UTC millisecond stamp that only ever increases within the process and never falls behind the
+// newest file already on disk. Name order is therefore creation order, which is what the cap deletes by, and a name
+// freed by the cap can never be handed to a newer file.
+static int64_t wLastNameMs;
 static BOOL OpenFile(void) {
     if (!wDir) wDir = TIOWireLogDirectory();
     if (!wBuf) wBuf = [NSMutableData new];
     [NSFileManager.defaultManager createDirectoryAtURL:wDir withIntermediateDirectories:YES attributes:nil error:nil];
     if (!wName) wName = Formatter(@"yyyyMMdd'T'HHmmss.SSS'Z'");
-    NSTimeInterval t = NSDate.date.timeIntervalSince1970;
+    for (NSString *n in [NSFileManager.defaultManager contentsOfDirectoryAtPath:wDir.path error:nil] ?: @[]) {
+        if (![n hasPrefix:@"wirelog-"] || ![n hasSuffix:@".jsonl"]) continue;
+        NSDate *d = [wName dateFromString:[n substringWithRange:NSMakeRange(8, n.length - 8 - 6)]];
+        if (d) wLastNameMs = MAX(wLastNameMs, (int64_t)llround(d.timeIntervalSince1970 * 1000));
+    }
     NSString *path = nil;
-    for (int tries = 0; tries < 1000; tries++, t += 0.001) {
-        path = [wDir.path stringByAppendingPathComponent:[NSString stringWithFormat:@"wirelog-%@.jsonl", [wName stringFromDate:[NSDate dateWithTimeIntervalSince1970:t]]]];
+    for (int tries = 0; tries < 1000; tries++) {
+        wLastNameMs = MAX((int64_t)llround(NSDate.date.timeIntervalSince1970 * 1000), wLastNameMs + 1);
+        path = [wDir.path stringByAppendingPathComponent:[NSString stringWithFormat:@"wirelog-%@.jsonl", [wName stringFromDate:[NSDate dateWithTimeIntervalSince1970:(wLastNameMs + 0.5) / 1000.0]]]];
         wFd = open(path.fileSystemRepresentation, O_WRONLY | O_CREAT | O_EXCL, 0600);
         if (wFd >= 0 || errno != EEXIST) break;
     }
@@ -483,7 +548,8 @@ static NSMutableDictionary *NewRecord(NSString *dir, NSString *channel) { return
 static void WLEnqueue(NSMutableDictionary *rec) {
     if (!atomic_load(&gActive)) return;
     NSData *raw = rec[@"_raw"];
-    NSUInteger estimate = 512 + raw.length * 3;
+    // Raw bytes and the structural snapshots both end up as hex or JSON, so the backlog estimate counts them tripled.
+    NSUInteger estimate = 512 + (raw.length + [rec[@"_est"] unsignedIntegerValue]) * 3;
     if (atomic_load(&gPending) + estimate > kMaxPending) { atomic_fetch_add(&gDropped, 1); return; }
     atomic_fetch_add(&gPending, estimate);
     dispatch_async(Q(), ^{
@@ -491,10 +557,22 @@ static void WLEnqueue(NSMutableDictionary *rec) {
             if (!atomic_load(&gFailed)) { // a normal Stop still drains what was queued before it
                 NSMutableDictionary *r = rec;
                 NSData *bytes = r[@"_raw"];
+                // Snapshots taken on the calling thread (_jv_x) are encoded and redacted here, off that thread.
+                for (NSString *k in [r.allKeys copy]) {
+                    if (![k hasPrefix:@"_jv_"]) continue;
+                    r[[k substringFromIndex:4]] = JV(r[k], 0);
+                    [r removeObjectForKey:k];
+                }
+                [r removeObjectForKey:@"_est"];
                 if (bytes) {
                     NSDictionary *d = TIOWireLogDecodeMessage(bytes, [r[@"_env"] boolValue]);
                     [r removeObjectForKey:@"_raw"]; [r removeObjectForKey:@"_env"];
-                    for (NSString *k in d) { if (!r[k]) r[k] = d[k]; else if (![k isEqualToString:@"len"]) r[[@"decoded_" stringByAppendingString:k]] = d[k]; }
+                    BOOL sizeOnly = [d[@"codec"] isEqual:@"methodCall"] && TIOWireLogMethodIsSizeOnly(d[@"method"]);
+                    for (NSString *k in d) {
+                        if (sizeOnly && ([k isEqualToString:@"arguments"] || [k isEqualToString:@"value"])) continue;
+                        if (!r[k]) r[k] = d[k]; else if (![k isEqualToString:@"len"]) r[[@"decoded_" stringByAppendingString:k]] = d[k];
+                    }
+                    if (sizeOnly) r[@"opaque"] = @YES;
                     id v = d[@"value"];
                     if ([v isKindOfClass:NSDictionary.class] && [v[@"eventType"] isKindOfClass:NSString.class] && !r[@"eventType"]) r[@"eventType"] = v[@"eventType"];
                 }
@@ -540,15 +618,21 @@ NSArray<NSURL *> *TIOWireLogFiles(void) {
     return out;
 }
 
+NSDictionary *TIOWireLogLiveStatus(void) {
+    [Lock() lock];
+    NSDictionary *s = @{@"active": @(atomic_load(&gActive)), @"records": @(atomic_load(&gRecords)), @"dropped": @(atomic_load(&gDropped)),
+                        @"bytes": @(atomic_load(&gBytes)), @"file": gCurrentFile ?: @"", @"disabledReason": gDisabledReason ?: @"",
+                        @"wrappedChannels": [gWrapped.allObjects sortedArrayUsingSelector:@selector(compare:)] ?: @[]};
+    [Lock() unlock];
+    return s;
+}
+
 NSDictionary *TIOWireLogStatus(void) {
     unsigned long long total = 0;
     NSArray<NSURL *> *files = TIOWireLogFiles();
     for (NSURL *u in files) { struct stat st; if (stat(u.fileSystemRepresentation, &st) == 0) total += (unsigned long long)st.st_size; }
-    [Lock() lock];
-    NSDictionary *s = @{@"active": @(atomic_load(&gActive)), @"records": @(atomic_load(&gRecords)), @"dropped": @(atomic_load(&gDropped)),
-                        @"bytes": @(atomic_load(&gBytes)), @"file": gCurrentFile ?: @"", @"files": @(files.count), @"totalBytes": @(total),
-                        @"disabledReason": gDisabledReason ?: @"", @"wrappedChannels": [gWrapped.allObjects sortedArrayUsingSelector:@selector(compare:)] ?: @[]};
-    [Lock() unlock];
+    NSMutableDictionary *s = [TIOWireLogLiveStatus() mutableCopy];
+    s[@"files"] = @(files.count); s[@"totalBytes"] = @(total);
     return s;
 }
 
@@ -590,15 +674,39 @@ NSString *TIOWireLogClaimBridgeCall(void) {
     return ch;
 }
 
+// A structural copy taken on the calling thread: containers are rebuilt, immutable strings and data are shared,
+// nothing is encoded, redacted or described here. `bytes` accumulates a size estimate for the backlog bound.
+static id Snap(id v, NSUInteger *bytes, int depth) {
+    *bytes += 16;
+    if (depth > kDepthCap) return @"<depth limit>";
+    if ([v isKindOfClass:NSString.class]) { *bytes += [(NSString *)v length]; return [v copy]; }
+    if ([v isKindOfClass:NSData.class]) { *bytes += [(NSData *)v length]; return [v copy]; }
+    if ([v isKindOfClass:NSDictionary.class]) {
+        NSMutableDictionary *m = [NSMutableDictionary dictionaryWithCapacity:MIN([(NSDictionary *)v count], kItemCap)];
+        NSUInteger n = 0;
+        for (id k in v) { if (++n > kItemCap) break; m[k] = Snap(((NSDictionary *)v)[k], bytes, depth + 1); }
+        return m;
+    }
+    if ([v isKindOfClass:NSArray.class]) {
+        NSMutableArray *a = [NSMutableArray arrayWithCapacity:MIN([(NSArray *)v count], kItemCap)];
+        for (id e in v) { if (a.count >= kItemCap) break; [a addObject:Snap(e, bytes, depth + 1)]; }
+        return a;
+    }
+    return v;
+}
+
 id TIOWireLogWrapBridgeResult(NSString *channel, id call, id result) {
     if (!atomic_load(&gActive) || !result) return result;
     @try {
         NSString *method = KVC(call, @"method");
         NSString *methodName = [method isKindOfClass:NSString.class] ? [method copy] : @"?";
+        BOOL sizeOnly = TIOWireLogMethodIsSizeOnly(methodName);
         NSMutableDictionary *rec = NewRecord(@"d2n.call", channel);
         NSNumber *callSeq = rec[@"seq"];
         rec[@"method"] = methodName;
-        rec[@"arguments"] = JV(KVC(call, @"arguments"), 0);
+        NSUInteger bytes = 0;
+        if (sizeOnly) rec[@"opaque"] = @YES;
+        else { rec[@"_jv_arguments"] = Snap(KVC(call, @"arguments"), &bytes, 0); rec[@"_est"] = @(bytes); }
         WLEnqueue(rec);
         NSTimeInterval t0 = NSProcessInfo.processInfo.systemUptime;
         void (^original)(id) = result;
@@ -610,7 +718,8 @@ id TIOWireLogWrapBridgeResult(NSString *channel, id call, id result) {
                 NSMutableDictionary *r = NewRecord(@"d2n.result", channel);
                 r[@"callSeq"] = callSeq; r[@"method"] = methodName;
                 r[@"latencyMs"] = @(round((NSProcessInfo.processInfo.systemUptime - t0) * 10000.0) / 10.0);
-                r[@"value"] = JV(value, 0);
+                if (sizeOnly) r[@"opaque"] = @YES;
+                else { NSUInteger vb = 0; r[@"_jv_value"] = Snap(value, &vb, 0); r[@"_est"] = @(vb); }
                 WLEnqueue(r);
             } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
         } copy];
@@ -638,22 +747,30 @@ void TIOWireLogNativeToDart(NSString *channel, NSData *message) {
     } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
 }
 
+// The method name of a standard-codec method call, read without decoding the arguments.
+static NSString *PeekMethod(NSData *d) {
+    if (![d isKindOfClass:NSData.class] || d.length < 3 || ((const uint8_t *)d.bytes)[0] != 6) return nil;
+    Reader r = {d.bytes, d.length, 0, NO, 0};
+    id m = RV(&r);
+    return !r.bad && [m isKindOfClass:NSString.class] ? m : nil;
+}
+
 typedef void (^TIOWireReply)(NSData *);
 typedef void (^TIOWireHandler)(NSData *, TIOWireReply);
+static const void *kWrappedHandler = &kWrappedHandler;
 
 id TIOWireLogWrapHandler(NSString *channel, id handler) {
     if (!handler || TIOWireLogClassifyChannel(channel) == TIOWireLogChannelIgnored) return handler;
+    // The two- and three-argument setters can call each other; never wrap a wrapper.
+    if (objc_getAssociatedObject(handler, kWrappedHandler)) return handler;
     NoteWrapped(channel);
     TIOWireHandler original = handler;
-    BOOL opaque = TIOWireLogClassifyChannel(channel) == TIOWireLogChannelOpaque;
-    return [^(NSData *message, TIOWireReply reply) {
+    BOOL channelOpaque = TIOWireLogClassifyChannel(channel) == TIOWireLogChannelOpaque;
+    TIOWireHandler wrapper = [^(NSData *message, TIOWireReply reply) {
         if (!atomic_load(&gActive)) { original(message, reply); return; }
-        if (opaque) {
-            @try { NSMutableDictionary *r = NewRecord(@"d2n.message", channel); r[@"opaque"] = @YES; r[@"bytes"] = @(message.length); WLEnqueue(r); }
-            @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
-            original(message, reply);
-            return;
-        }
+        NSString *peek = nil;
+        BOOL sizeOnly = channelOpaque;
+        @try { peek = PeekMethod(message); sizeOnly = sizeOnly || TIOWireLogMethodIsSizeOnly(peek); } @catch (__unused id e) { sizeOnly = YES; }
         TIOWireLogContext *ctx = [TIOWireLogContext new];
         ctx.channel = channel;
         NSNumber *callSeq = nil; NSTimeInterval t0 = NSProcessInfo.processInfo.systemUptime;
@@ -669,7 +786,8 @@ id TIOWireLogWrapHandler(NSString *channel, id handler) {
                         NSMutableDictionary *r = NewRecord(@"d2n.result", channel);
                         r[@"callSeq"] = callSeq;
                         r[@"latencyMs"] = @(round((NSProcessInfo.processInfo.systemUptime - t0) * 10000.0) / 10.0);
-                        if (response.length) { r[@"_raw"] = [response copy]; r[@"_env"] = @YES; } else r[@"len"] = @0;
+                        if (sizeOnly) { r[@"opaque"] = @YES; r[@"bytes"] = @(response.length); if (peek) r[@"method"] = peek; }
+                        else if (response.length) { r[@"_raw"] = [response copy]; r[@"_env"] = @YES; } else r[@"len"] = @0;
                         WLEnqueue(r);
                     } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
                 } copy];
@@ -682,10 +800,13 @@ id TIOWireLogWrapHandler(NSString *channel, id handler) {
         if (ctx.claimed || !atomic_load(&gActive)) return; // the bridge hook recorded this call itself
         @try {
             NSMutableDictionary *r = NewRecordSeq(@"d2n.call", channel, callSeq);
-            if (message.length) { r[@"_raw"] = [message copy]; r[@"_env"] = @NO; } else r[@"len"] = @0;
+            if (sizeOnly) { r[@"opaque"] = @YES; r[@"bytes"] = @(message.length); if (peek) r[@"method"] = peek; }
+            else if (message.length) { r[@"_raw"] = [message copy]; r[@"_env"] = @NO; } else r[@"len"] = @0;
             WLEnqueue(r);
         } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
     } copy];
+    objc_setAssociatedObject(wrapper, kWrappedHandler, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    return wrapper;
 }
 
 static int64_t (*PriorSetHandler)(id, SEL, id, id);
@@ -694,19 +815,35 @@ static int64_t SetHandlerHook(id self, SEL cmd, id channel, id handler) {
     @try { h = TIOWireLogWrapHandler(channel, handler); } @catch (__unused id e) { h = handler; }
     return PriorSetHandler(self, cmd, channel, h);
 }
+// Same with a task queue (background plugins such as activity_recognition use it). A nil handler removes a
+// handler and passes straight through.
+static int64_t (*PriorSetHandlerQ)(id, SEL, id, id, id);
+static int64_t SetHandlerQHook(id self, SEL cmd, id channel, id handler, id queue) {
+    id h = handler;
+    @try { h = TIOWireLogWrapHandler(channel, handler); } @catch (__unused id e) { h = handler; }
+    return PriorSetHandlerQ(self, cmd, channel, h, queue);
+}
+
+static Method CheckedSetter(NSString *selector, unsigned args) {
+    Method m = class_getInstanceMethod(NSClassFromString(@"FlutterEngine"), NSSelectorFromString(selector));
+    if (!m || method_getNumberOfArguments(m) != args) return NULL;
+    for (unsigned i = 2; i < args; i++) { char *t = method_copyArgumentType(m, i); BOOL ok = t && t[0] == '@'; free(t); if (!ok) return NULL; }
+    char *r = method_copyReturnType(m); BOOL okReturn = r && (r[0] == 'v' || r[0] == 'q' || r[0] == 'l' || r[0] == 'Q'); free(r);
+    return okReturn ? m : NULL;
+}
 
 BOOL TIOInstallWireLogHook(void) {
-    static BOOL installed;
+    static BOOL installed2, installed3;
     ObserveBackground();
-    if (installed) return YES;
-    Method m = class_getInstanceMethod(NSClassFromString(@"FlutterEngine"), NSSelectorFromString(@"setMessageHandlerOnChannel:binaryMessageHandler:"));
-    if (!m || method_getNumberOfArguments(m) != 4) return NO;
-    for (unsigned i = 2; i < 4; i++) { char *t = method_copyArgumentType(m, i); BOOL ok = t && t[0] == '@'; free(t); if (!ok) return NO; }
-    char *r = method_copyReturnType(m); BOOL okReturn = r && (r[0] == 'v' || r[0] == 'q' || r[0] == 'l' || r[0] == 'Q'); free(r);
-    if (!okReturn) return NO;
-    PriorSetHandler = (void *)method_setImplementation(m, (IMP)SetHandlerHook);
-    installed = YES;
-    return YES;
+    if (!installed2) {
+        Method m = CheckedSetter(@"setMessageHandlerOnChannel:binaryMessageHandler:", 4);
+        if (m) { PriorSetHandler = (void *)method_setImplementation(m, (IMP)SetHandlerHook); installed2 = YES; }
+    }
+    if (!installed3) {
+        Method m = CheckedSetter(@"setMessageHandlerOnChannel:binaryMessageHandler:taskQueue:", 5);
+        if (m) { PriorSetHandlerQ = (void *)method_setImplementation(m, (IMP)SetHandlerQHook); installed3 = YES; }
+    }
+    return installed2 || installed3;
 }
 
 // ============================================================ test support

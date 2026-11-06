@@ -77,13 +77,16 @@ static NSArray<NSDictionary *> *Records(NSURL *dir) {
 }
 static void Fresh(NSURL *dir, unsigned long long rotate, unsigned long long cap) { TIOWireLogConfigure(dir, rotate, cap); }
 
+static void TestRedactionMore(void);
 static void TestRedaction(void) {
     for (NSString *k in @[@"token", @"accessToken", @"access_token", @"refresh-token", @"Authorization", @"password", @"apiKey", @"API_KEY", @"APIKey",
-                          @"sessionId", @"cookie", @"Cookies", @"signature", @"sign", @"ticket", @"credential", @"secret", @"clientSecret", @"key", @"authToken", @"jwt"])
+                          @"cookie", @"Cookies", @"signature", @"ticket", @"credential", @"secret", @"clientSecret", @"authToken", @"jwt",
+                          @"appkey", @"authcode", @"authCode", @"appKey", @"sessionKey", @"secret_key", @"pushkey", @"clientkey", @"sessionToken", @"oauthcode"])
         assert(TIOWireLogKeyIsSensitive(k));
     // False hits that must stay readable: glasses business fields.
     for (NSString *k in @[@"businessId", @"customId", @"keyboard", @"monkey", @"design", @"signal", @"assign", @"author", @"tokenizer",
-                          @"eventType", @"deviceId", @"payload", @"message", @"taskId", @"fileName", @"cmd", @"data", @"value", @"mode", @"turkey", @"ticketing"])
+                          @"eventType", @"deviceId", @"payload", @"message", @"taskId", @"fileName", @"cmd", @"data", @"value", @"mode", @"turkey", @"ticketing",
+                          @"key", @"keys", @"session", @"sign", @"keyCode", @"keyName", @"sessionId", @"hotkey", @"hockey"])
         assert(!TIOWireLogKeyIsSensitive(k));
     assert(!TIOWireLogKeyIsSensitive(@"") && !TIOWireLogKeyIsSensitive(nil));
 
@@ -104,7 +107,35 @@ static void TestRedaction(void) {
     assert([TIOWireLogJSON(@"Bearer of good news, long text") hasPrefix:@"Bearer of"]);
     // Redacting a value that is not a string still reports a length.
     assert([TIOWireLogJSON(@{@"secret": @[@1, @2, @3]})[@"secret"] isEqualToString:@"<redacted len=3>"]);
-    assert([TIOWireLogJSON(@{@"key": [NSData dataWithBytes:"abcd" length:4]})[@"key"] isEqualToString:@"<redacted len=4>"]);
+    assert([TIOWireLogJSON(@{@"apiKey": [NSData dataWithBytes:"abcd" length:4]})[@"apiKey"] isEqualToString:@"<redacted len=4>"]);
+    TestRedactionMore();
+}
+
+
+static void TestRedactionMore(void) {
+    // Bare "key" / "session" / "sign" are credentials only when the value looks like one.
+    NSDictionary *soft = TIOWireLogJSON(@{@"key": @"brightness", @"session": @"short", @"sign": @"x", @"keyCode": @4, @"sessionId": @"0123456789abcdef0123456789abcdef"});
+    assert([soft[@"key"] isEqualToString:@"brightness"] && [soft[@"session"] isEqualToString:@"short"] && [soft[@"sign"] isEqualToString:@"x"]);
+    assert([soft[@"keyCode"] isEqual:@4] && [soft[@"sessionId"] isEqualToString:@"0123456789abcdef0123456789abcdef"]);
+    assert([TIOWireLogJSON(@{@"key": @"0123456789abcdef0123"})[@"key"] isEqualToString:@"<redacted len=20>"]);
+    assert([TIOWireLogJSON(@{@"session": @"0123456789abcdef0123456789abcdef"})[@"session"] isEqualToString:@"<redacted len=32>"]);
+    assert([TIOWireLogJSON(@{@"key": @"has spaces in it, long enough to count"})[@"key"] hasPrefix:@"has spaces"]);
+
+    // JSON carried inside a string value.
+    NSString *inner = @"{\"accessToken\":\"abcdef123456\",\"businessId\":22,\"nested\":\"{\\\"password\\\":\\\"hunter2hunter2\\\"}\"}";
+    NSDictionary *j = TIOWireLogJSON(@{@"payload": inner, @"other": @"{\"a\": 1, \"b\" : 2}"});
+    assert([j[@"payload"] rangeOfString:@"abcdef123456"].location == NSNotFound && [j[@"payload"] rangeOfString:@"hunter2"].location == NSNotFound);
+    NSDictionary *back = [NSJSONSerialization JSONObjectWithData:[j[@"payload"] dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+    assert([back[@"accessToken"] isEqualToString:@"<redacted len=12>"] && [back[@"businessId"] isEqual:@22]);
+    assert([j[@"other"] isEqualToString:@"{\"a\": 1, \"b\" : 2}"]);               // JSON with nothing to hide is left byte-for-byte
+    // Fragments that are not valid JSON, query strings, headers.
+    NSString *cut = [TIOWireLogJSON(@"{\"token\":\"abcdefghijkl\", \"x\":") description];
+    assert([cut rangeOfString:@"abcdefghijkl"].location == NSNotFound);
+    NSString *url = TIOWireLogJSON(@"https://h.example/x?access_token=abc123def456&foo=1&appKey=zzzzzzzz");
+    assert([url rangeOfString:@"abc123def456"].location == NSNotFound && [url rangeOfString:@"zzzzzzzz"].location == NSNotFound && [url containsString:@"foo=1"]);
+    NSString *hdr = TIOWireLogJSON(@"Authorization: Bearer abcdefghijklmnop and more text");
+    assert([hdr rangeOfString:@"abcdefghijklmnop"].location == NSNotFound && [hdr containsString:@"and more text"]);
+    assert([TIOWireLogJSON(@"the token count is high, nothing to hide here")  isEqualToString:@"the token count is high, nothing to hide here"]);
 }
 
 static void TestJSON(void) {
@@ -186,6 +217,11 @@ static void TestChannelPolicy(void) {
     assert(TIOWireLogClassifyChannel(@"") == TIOWireLogChannelIgnored && TIOWireLogClassifyChannel(nil) == TIOWireLogChannelIgnored);
     assert(TIOWireLogClassifyChannel(@"rayneo/account/login") == TIOWireLogChannelOpaque);
     assert(TIOWireLogClassifyChannel(@"rayneo_http_client") == TIOWireLogChannelOpaque);
+    assert(TIOWireLogClassifyChannel(@"com.rayneo.venus/push") == TIOWireLogChannelOpaque);
+    assert(TIOWireLogClassifyChannel(@"com.rayneo.venus/push/msg") == TIOWireLogChannelOpaque);
+    assert(TIOWireLogClassifyChannel(@"rayneo_native_plugin/analytics_delivery") == TIOWireLogChannelOpaque);
+    assert(TIOWireLogMethodIsSizeOnly(@"refreshToken") && TIOWireLogMethodIsSizeOnly(@"login") && TIOWireLogMethodIsSizeOnly(@"getAuthInfo") && TIOWireLogMethodIsSizeOnly(@"LOGIN_BY_CODE"));
+    assert(!TIOWireLogMethodIsSizeOnly(@"rayneonet_sendMessage") && !TIOWireLogMethodIsSizeOnly(@"startAsr") && !TIOWireLogMethodIsSizeOnly(nil));
 }
 
 static void TestWriter(void) {
@@ -287,14 +323,16 @@ static void TestPassivity(void) {
     assert(hits == 1 && !TIOWireLogActive() && [TIOWireLogStatus()[@"disabledReason"] length] > 0);
     TIOWireLogDrainForTest();
 
-    // Same for an argument whose description throws (hostile object in the tree).
+    // Same for an argument whose description throws: the calling thread only takes a structural snapshot, so the
+    // failure shows up on the writer queue. The caller is never touched and the recorder switches itself off.
     Fresh(dir = TempDir(), 0, 0);
     hits = 0; TIOWireLogStart();
     call.arguments = @{@"x": [Poison new]};
     @try { out = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, result); } @catch (__unused id e) { assert(!"observer exception reached the caller"); }
-    assert(out == result && !TIOWireLogActive());
     ((void (^)(id))out)(@2);
     assert(hits == 1);
+    TIOWireLogDrainForTest();
+    assert(!TIOWireLogActive() && [TIOWireLogStatus()[@"disabledReason"] length] > 0);
     TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", Envelope(@{@"a": @1})); // inactive: a no-op, not a crash
     TIOWireLogDrainForTest();
 
@@ -328,7 +366,7 @@ static void TestPassivity(void) {
     NSMutableArray *dirs = [NSMutableArray new]; for (NSDictionary *x in recs) [dirs addObject:[NSString stringWithFormat:@"%@@%@", x[@"dir"], x[@"channel"]]];
     NSArray *want = @[@"d2n.call@rayneo_venus_sdk_plugin/asr", @"d2n.result@rayneo_venus_sdk_plugin/asr",
                       @"d2n.call@com.rayneo/sdk", @"d2n.result@com.rayneo/sdk",
-                      @"d2n.call@rayneo_venus_sdk_plugin/always_on", @"d2n.message@rayneo/account"];
+                      @"d2n.call@rayneo_venus_sdk_plugin/always_on", @"d2n.call@rayneo/account", @"d2n.result@rayneo/account"];
     NSArray *sorted = [recs sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) { return [a[@"seq"] compare:b[@"seq"]]; }];
     NSMutableArray *got = [NSMutableArray new]; for (NSDictionary *x in sorted) [got addObject:[NSString stringWithFormat:@"%@@%@", x[@"dir"], x[@"channel"]]];
     assert([[got sortedArrayUsingSelector:@selector(compare:)] isEqual:[want sortedArrayUsingSelector:@selector(compare:)]]);
@@ -339,6 +377,103 @@ static void TestPassivity(void) {
     }
 }
 
+
+static void TestSizeOnly(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    // Bridge: a token method records its name and nothing else, on the call and on the result.
+    FakeCall *call = [FakeCall new]; call.method = @"refreshToken"; call.arguments = @{@"refreshToken": @"zzzzzzzzzzzz", @"uid": @7};
+    __block int hits = 0;
+    id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(id v) { hits++; });
+    ((void (^)(id))wrapped)(@{@"accessToken": @"aaaaaaaaaaaa", @"expires": @3600});
+    assert(hits == 1);
+    // Generic handler: the method name is read from the bytes, the arguments and the reply stay out of the log.
+    NSData *msg = MethodCall(@"loginWithPassword", @{@"user": @"someone", @"pw": @"hunter2hunter2"});
+    NSData *rep = Envelope(@{@"session": @"0123456789abcdef0123456789abcdef"});
+    void (^h)(NSData *, void (^)(NSData *)) = TIOWireLogWrapHandler(@"rayneo_venus_sdk_plugin/user_center", ^(NSData *m, void (^reply)(NSData *)) { reply(rep); });
+    h(msg, ^(NSData *r) { hits++; });
+    assert(hits == 2);
+    // A channel that is size-only as a whole.
+    ((void (^)(NSData *, void (^)(NSData *)))TIOWireLogWrapHandler(@"com.rayneo.venus/push", ^(NSData *m, void (^reply)(NSData *)) { reply(rep); }))(MethodCall(@"register", @"bare-device-token-0123456789"), ^(NSData *r) {});
+    // Native to Dart: a method call whose name says token.
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", MethodCall(@"onTokenRefreshed", @{@"value": @"tttttttttttt"}));
+    TIOWireLogNativeToDart(@"com.rayneo.venus/push", MethodCall(@"onPush", @"bare-device-token-0123456789"));
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSString *all = @"";
+    for (NSURL *u in TIOWireLogFiles()) all = [all stringByAppendingString:[NSString stringWithContentsOfURL:u encoding:NSUTF8StringEncoding error:nil]];
+    for (NSString *secret in @[@"zzzzzzzzzzzz", @"aaaaaaaaaaaa", @"someone", @"hunter2", @"0123456789abcdef", @"bare-device-token", @"tttttttttttt"])
+        assert([all rangeOfString:secret].location == NSNotFound);
+    NSArray *recs = Records(dir);
+    assert(recs.count == 8);
+    NSInteger opaque = 0;
+    for (NSDictionary *r in recs) { if ([r[@"opaque"] boolValue]) opaque++; assert(!r[@"arguments"] && !r[@"value"] && !r[@"data"]); }
+    assert(opaque == 8);
+    assert([recs[0][@"method"] isEqualToString:@"refreshToken"] && [recs[1][@"latencyMs"] doubleValue] >= 0);
+    NSDictionary *login = nil; for (NSDictionary *r in recs) if ([r[@"method"] isEqual:@"loginWithPassword"] && [r[@"dir"] isEqual:@"d2n.call"]) login = r;
+    assert(login && [login[@"bytes"] isEqual:@(msg.length)]);
+
+    // Wrapping is idempotent (the two- and three-argument setters may call each other).
+    id once = TIOWireLogWrapHandler(@"rayneo_venus_sdk_plugin/asr", ^(NSData *m, void (^reply)(NSData *)) {});
+    assert(TIOWireLogWrapHandler(@"rayneo_venus_sdk_plugin/asr", once) == once);
+    assert(TIOWireLogWrapHandler(@"rayneo_venus_sdk_plugin/asr", nil) == nil);
+}
+
+static void TestNaming(void) {
+    // Tiny files and a tight cap force many rotations inside the same millisecond. Names must keep increasing, the
+    // cap must delete the oldest file, and the newest record must always survive.
+    NSURL *dir = TempDir();
+    Fresh(dir, 420, 1300);
+    TIOWireLogStart();
+    const int n = 300;
+    for (int i = 0; i < n; i++) TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", Envelope(@{@"i": @(i), @"pad": @"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}));
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray<NSString *> *names = [[NSFileManager.defaultManager contentsOfDirectoryAtPath:dir.path error:nil] sortedArrayUsingSelector:@selector(compare:)];
+    assert(names.count >= 2);
+    long long lastFirstSeq = 0; unsigned long long total = 0;
+    for (NSString *name in names) {
+        NSData *d = [NSData dataWithContentsOfFile:[dir.path stringByAppendingPathComponent:name]];
+        total += d.length;
+        NSArray *lines = [[[NSString alloc] initWithData:d encoding:NSUTF8StringEncoding] componentsSeparatedByString:@"\n"];
+        long long first = 0;
+        for (NSString *line in lines) {
+            if (!line.length) continue;
+            NSDictionary *r = [NSJSONSerialization JSONObjectWithData:[line dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+            if (r[@"seq"]) { first = [r[@"seq"] longLongValue]; break; }
+        }
+        assert(first > lastFirstSeq);   // name order is creation order
+        lastFirstSeq = first;
+    }
+    assert(total <= 1300);
+    NSArray *recs = Records(dir);
+    assert([recs.lastObject[@"value"][@"i"] isEqual:@(n - 1)]);   // the newest record is in the newest file, never deleted by the cap
+    // A second session in the same directory sorts after everything already there.
+    NSString *newest = names.lastObject;
+    Fresh(dir, 420, 1300);
+    TIOWireLogStart();
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", Envelope(@{@"again": @1}));
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *after = [[NSFileManager.defaultManager contentsOfDirectoryAtPath:dir.path error:nil] sortedArrayUsingSelector:@selector(compare:)];
+    assert([after.lastObject compare:newest] == NSOrderedDescending);
+}
+
+static void TestBacklogBound(void) {
+    // The estimate covers call arguments and results too: a 3 MB argument is counted (about 9 MB) and dropped, not queued.
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    FakeCall *call = [FakeCall new]; call.method = @"rayneonet_sendMessage";
+    call.arguments = @{@"blob": [@"" stringByPaddingToLength:3u << 20 withString:@"ab" startingAtIndex:0]};
+    __block int hits = 0;
+    id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(id v) { hits++; });
+    ((void (^)(id))wrapped)(@1);
+    assert(hits == 1);
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSDictionary *st = TIOWireLogStatus();
+    assert([st[@"dropped"] unsignedLongLongValue] == 1);          // the call record
+    assert([st[@"records"] unsignedLongLongValue] == 1);          // the small result record
+}
+
 int main(void) {
     @autoreleasepool {
         TestRedaction();
@@ -347,6 +482,9 @@ int main(void) {
         TestChannelPolicy();
         TestWriter();
         TestPassivity();
+        TestSizeOnly();
+        TestNaming();
+        TestBacklogBound();
         puts("WireLogTests: PASS");
     }
     return 0;
