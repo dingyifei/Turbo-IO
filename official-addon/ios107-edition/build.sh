@@ -93,6 +93,10 @@ if [[ ${TIO_APPLE_AI:-0} == 1 ]]; then
   [[ "$mode" == embedded ]] || { echo 'Apple AI bridge is embedded only' >&2; exit 2; }
   apple_options=(-DTIO_APPLE_AI=1 -framework Speech AppleAICore.m AppleAI.m AppleAIPanel.m RecordingTranscribe.m NoNetworkTurn.m NoNetworkTurnHost.m -framework Network)
 fi
+wire_options=()
+if [[ ${TIO_WIRE_LOG:-0} == 1 ]]; then
+  wire_options=(-DTIO_WIRE_LOG=1 WireLog.m WireLogUI.m)
+fi
 echo "TurboIO profile: $([[ ${TIO_IMAGE_RX_LAB:-0} == 1 ]] && echo dev || echo daily)" >&2
 xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-min=16.0 \
   -fobjc-arc \
@@ -143,6 +147,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   ${nav_options[@]+"${nav_options[@]}"} \
   ${image_options[@]+"${image_options[@]}"} \
   ${apple_options[@]+"${apple_options[@]}"} \
+  ${wire_options[@]+"${wire_options[@]}"} \
   "-DTIO_TARGET_BUNDLE_ID=\"$bundle\"" -install_name "$install_name" ${link_options[@]+"${link_options[@]}"} \
   -I. \
   Core.m \

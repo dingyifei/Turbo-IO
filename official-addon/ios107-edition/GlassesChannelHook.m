@@ -30,6 +30,10 @@
 #if __has_feature(ptrauth_calls)
 #include <ptrauth.h>
 #endif
+#if TIO_WIRE_LOG
+#import "WireLog.h"
+#import "WireLogUI.h"
+#endif
 
 static void (*PriorMethod)(id,SEL,id,id);
 static void (*PriorSend)(id,SEL,id,id,id);
@@ -99,11 +103,17 @@ NSDictionary *TIOGlassesChannelTrafficStatus(void){
     return d;
 }
 static void MethodHook(id self,SEL cmd,id call,id result){
+#if TIO_WIRE_LOG
+    NSString *wireChannel=TIOWireLogClaimBridgeCall(); // passive; first so the sendFile re-dispatch below still counts as the bridge's
+#endif
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&!NSThread.isMainThread){
         dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;
     }
     // Evidence first: a stock call proves the stock path reaches this hook even when the guard refuses it below.
     RecordStockEvidence(call,result);
+#if TIO_WIRE_LOG
+    result=TIOWireLogWrapBridgeResult(wireChannel,call,result); // forwards unchanged; records the call, the value and the latency
+#endif
     // A guard that throws counts as a refusal: the call is answered like any block and never reaches PriorMethod.
     NSDictionary *teleprompter=nil;BOOL otaBlocked=YES;
     @try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}
@@ -120,6 +130,9 @@ static void MethodHook(id self,SEL cmd,id call,id result){
     PriorMethod(self,cmd,call,result);
 }
 static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
+#if TIO_WIRE_LOG
+    TIOWireLogNativeToDart(channel,message); // before any gate or consumer below, so it sees every message once
+#endif
 #if TIO_IMAGE_RX_LAB
     // Clench Lab: counts only, never consumes; idle cost is one atomic load. Arrival is read before any decode.
     NSTimeInterval clenchArrival=0;if(TIOClenchTapActive()){clenchArrival=NSProcessInfo.processInfo.systemUptime;@try{TIOClenchTapChannel(channel,[message isKindOfClass:NSData.class]?message.length:0);}@catch(__unused id e){}}
@@ -171,6 +184,10 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
 }
 // Fails closed: when either target is missing or has another signature nothing is
 // swapped, Installed stays NO and the reason is kept for the load info and the UI.
-BOOL TIOInstallGlassesChannelHook(void){if(Installed)return YES;Class bridge=NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),engine=NSClassFromString(@"FlutterEngine");NSString *failure=TIOChannelHookTargetFailure(bridge,engine);if(failure){InstallFailure=failure;return NO;}Method method=class_getInstanceMethod(bridge,NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(engine,NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady();return YES;}
+BOOL TIOInstallGlassesChannelHook(void){if(Installed)return YES;Class bridge=NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),engine=NSClassFromString(@"FlutterEngine");NSString *failure=TIOChannelHookTargetFailure(bridge,engine);if(failure){InstallFailure=failure;return NO;}Method method=class_getInstanceMethod(bridge,NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(engine,NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady();
+#if TIO_WIRE_LOG
+    TIOInstallWireLogHook();TIOWireLogMaybeAutoStart();TIOWireLogUIInstall();
+#endif
+    return YES;}
 BOOL TIOGlassesChannelHookInstalled(void){return Installed;}
 NSString *TIOGlassesChannelHookFailure(void){return Installed?nil:(InstallFailure?:@"not attempted");}

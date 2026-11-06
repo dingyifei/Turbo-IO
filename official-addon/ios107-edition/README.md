@@ -225,3 +225,29 @@ python3 test.py --firmware "$FWZIP" --only no-network-turn
 ```
 
 The tests inject a clock and scheduler and cover cancellation, duplicates, pre-accept replies, ordered hold/replay, synchronous reentry, stale generations, overflow, wrapper failures and default-OFF options. Build and simulator gates do not establish device acceptance. No entitlements, Info.plist keys or firmware changes are introduced by WP7c.
+
+## Wire log / 通信记录 (`TIO_WIRE_LOG=1`)
+
+A passive recorder for the traffic between the RayNeo app's Dart layer and its native layer. It exists to turn the "inferred" message formats in the protocol notes into recorded ones. It is **off in every normal build**: without `TIO_WIRE_LOG=1` the addon is byte-for-byte the build it was before (checked by comparing the dylib SHA-256 with and without the change). Build it with `TIO_WIRE_LOG=1 bash scripts/turbo-gate.sh --only-build` followed by `bash scripts/turbo-package.sh <label>`, which packages the addon that build left behind.
+
+What it records, one JSON object per line:
+
+- Every method call into the RayneoNet bridge (`handleMethodCall:result:`): method, full arguments, the value handed back to Dart, and the latency. The `result` block is wrapped so it still runs, with the original value, exactly as often as before.
+- Every native-to-Dart message sent through `FlutterEngine`, on the `rayneonet` event channel and on the `rayneo_venus_sdk_plugin` channels (`/asr`, `/always_on`, `/ask_ai`, `/ask_ai_asr`, `voice_assistant_events`). Standard-codec messages are decoded; anything else (pigeon codecs) is kept as hex.
+- Dart-to-native calls on the other `rayneo` / `venus` channels, through a wrapper on `setMessageHandlerOnChannel:binaryMessageHandler:`. Channels whose name suggests cloud, login or account traffic are logged by channel name and byte count only.
+- Per record: `seq`, `mono` (system uptime, seconds), `wall` (UTC), `dir` (`d2n.call`, `d2n.result`, `n2d.message`), `channel`, `method` or `eventType`, and a `thread` tag. Bytes are `{"$hex": "...", "len": N}`. Records can reach the file slightly out of order; sort by `seq`. A `d2n.result` points at its call with `callSeq`.
+
+What it never does: change arguments, results, ordering, threading or the number of calls; wait on file I/O (records are queued to one serial background queue); or bypass a gate. The OTA transfer gate and the glasses-log gate run exactly as before, and the log shows what they decided. Any exception inside the recorder is caught, and the first one switches recording off for the session (the screen then says why).
+
+**Privacy.** Glasses business payloads are recorded on purpose, so notification text, caption text and ASR text will appear in the log. Values under keys that look like credentials (token, auth, secret, password, cookie, session, sign, signature, key, ticket, credential, matched on whole words so `businessId` and `keyboard` stay readable) are replaced with `<redacted len=N>` before anything is written, and so are bearer tokens and JWTs found inside strings. Treat the files as private anyway.
+
+Use: Developer section, **Wire log**. The switch starts and stops recording; a red "REC" pill stays on screen while it runs. "Start recording at launch" is off by default, so recording does not survive an app restart unless you turn that on. Files are `Documents/turbo-wirelog/wirelog-<UTC timestamp>.jsonl`, rotated at 20 MB, folder capped at 200 MB (oldest dropped first), flushed at least every 2 seconds and when the app goes to the background. **Export logs** opens the share sheet. From a Mac you can also pull the folder (the owner runs this, not an agent; `<device>` is your phone):
+
+```
+xcrun devicectl device copy from --device <device> --domain-type appDataContainer \
+  --domain-identifier com.rayneo.venus.pub --source Documents/turbo-wirelog --destination ./wirelog
+```
+
+Limits: the handler wrapper only sees channels registered after the addon is loaded; calls into the RayneoNet bridge are seen regardless. `WireLogTests.m` (test group `wire-log`) covers redaction, JSON encoding, the decoder, rotation and the cap, and passivity.
+
+中文：`TIO_WIRE_LOG=1` 才会编入；不开则产物与此前逐字节相同。只读记录 Dart 与原生之间的通道通信（含 RayneoNet 调用及其返回、原生到 Dart 的消息），写入 `Documents/turbo-wirelog`。默认关闭，界面有“REC”提示；凭据类字段在写入前被替换，但通知、字幕和识别文本会出现在日志里。

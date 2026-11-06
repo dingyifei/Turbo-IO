@@ -2448,6 +2448,26 @@ static const TIOStringRow Rows[]={
     {"；已请求退出，镜片未确认","; exit requested, but not confirmed by glasses",NULL},
     {"；文件已结束，可在眼镜开页后重新查询","; file complete; query again after opening the page on the glasses",NULL},
     {"；警告：其他卡片配置发生变化，请检查，不自动覆盖恢复","; Warning: other card configuration changed. Check it; the tool will not overwrite it automatically to restore the prior state.",NULL},
+#if TIO_WIRE_LOG
+    {"hub.row.wireLog","Wire log","通信记录"},
+    {"hub.status.wireLog.off","Off","已关闭"},
+    {"hub.status.wireLog.on","Recording · %lu records","录制中 · %lu 条"},
+    {"wirelog.pill","REC","录制"},
+    {"wirelog.pill.accessibility","Wire log is recording","通信记录正在录制"},
+    {"wirelog.record","Record channel traffic","记录通道通信"},
+    {"wirelog.status","%lu records · %lu dropped · %@","%lu 条 · 丢弃 %lu · %@"},
+    {"wirelog.stopped.error","Stopped itself after an error: %@","因错误已自行停止：%@"},
+    {"wirelog.footer.privacy","Records what the app and the glasses send each other: notification text, caption and ASR text and other glasses data will appear in the file. Values under token, password, cookie, key and similar names are replaced before writing. Cloud, login and account channels are logged by size only.","记录应用与眼镜之间互相发送的内容：通知文本、字幕与语音识别文本等眼镜数据会出现在文件中。token、password、cookie、key 等名称下的值在写入前会被替换。云端、登录和账号通道只记录大小。"},
+    {"wirelog.autostart","Start recording at launch","启动时自动开始记录"},
+    {"wirelog.footer.start","Off by default. When off, recording stops with the app and has to be switched on again.","默认关闭。关闭时，记录随应用退出而停止，需要重新开启。"},
+    {"wirelog.export","Export logs","导出日志"},
+    {"wirelog.files","%lu files · %@","%lu 个文件 · %@"},
+    {"wirelog.export.none","There are no logs yet.","还没有日志。"},
+    {"wirelog.delete","Delete logs","删除日志"},
+    {"wirelog.delete.message","Deletes every recorded log file on this phone.","删除这台手机上所有已记录的日志文件。"},
+    {"wirelog.delete.running","Stop recording first.","请先停止记录。"},
+    {"wirelog.footer.files","Files rotate at 20 MB and the folder is capped at 200 MB; the oldest go first. Share them from here, or copy Documents/turbo-wirelog from a Mac.","文件在 20 MB 时轮换，文件夹总量上限 200 MB，先删最旧的。可在此分享，或从 Mac 拷贝 Documents/turbo-wirelog。"},
+#endif
     {NULL,NULL,NULL}
 };
 NSDictionary<NSString*,NSArray<NSString*>*> *TIOStringTable(void){

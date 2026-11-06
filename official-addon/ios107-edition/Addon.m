@@ -32,6 +32,9 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "FirmwareExportUI.h"
 #import "DownloadOnlySafety.h"
 #import "ExperimentalOTAUI.h"
+#if TIO_WIRE_LOG
+#import "WireLogUI.h"
+#endif
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAFlash.h"
 #import "ResearchUI.h"
@@ -580,6 +583,9 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 #if TIO_APPLE_AI
     else if ([key isEqual:@"appleAI"]) status=TIOAppleAIStatusLine();
 #endif
+#if TIO_WIRE_LOG
+    else if ([key isEqual:@"wireLog"]) status=TIOWireLogStatusLine();
+#endif
     else if ([key isEqual:@"api"]) status=[Prefs stringForKey:@"model"]?:TIOText(@"hub.status.api.unset");
     else if ([key isEqual:@"tts"]) status=TIOText(TTSOn()?@"hub.status.tts.on":@"hub.status.tts.off");
     else if ([key isEqual:@"ttsSpeed"]) status=TIOText(@"hub.status.ttsSpeed");
@@ -731,6 +737,9 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"localTranslation"]) {TIOOpenLocalTranslation(self);return;}
     else if ([key isEqual:@"diagnosticsRuntime"]) screen=TDDiagnosticsController();
     else if ([key isEqual:@"glassesLog"]) screen=TIOGlassesLogController();
+#if TIO_WIRE_LOG
+    else if ([key isEqual:@"wireLog"]) screen=TIOWireLogController();
+#endif
 #if TIO_IMAGE_RX_LAB && TIO_DISPLAY_PHONE
     else if ([key isEqual:@"displayPhone"]) screen=TDPPhoneController();
 #endif

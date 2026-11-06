@@ -168,6 +168,10 @@
       "status": "run",
       "group": "web-search"
     },
+    "WireLogTests.m": {
+      "status": "run",
+      "group": "wire-log"
+    },
     "camera-v1/CameraCaptureTests.m": {
       "status": "run",
       "group": "camera-capture"
