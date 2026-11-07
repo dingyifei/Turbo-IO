@@ -22,16 +22,28 @@ FOUNDATION_EXPORT NSArray<NSString *> *TIOFirmwareExportRootPaths(void);
 FOUNDATION_EXPORT NSURL *TIOFirmwareExportOwnDirectory(NSURL *home);
 
 // Scans the container at home. Result keys:
-//   entries      NSArray of entry dictionaries, sorted by root then path
+//   entries      NSArray of entry dictionaries, newest first by item: each
+//                top-level item (a file, or a folder followed by its contents
+//                in path order) is placed by the newest modified date in it
+//                (stable for ties), so a new download sorts above leftovers.
 //   roots        container-relative roots that exist and were searched
 //   skippedLinks number of symbolic links seen and not followed
 //   truncated    YES when the entry limit stopped the scan
 //   depthLimited YES when a folder at the depth limit had children
 // Entry keys: url, relative (container-relative path), name, root, kind
 // ("file" or "folder"), depth (1 = directly in the root), bytes, modified,
+// version (only when the name carries one, see TIOFirmwareExportVersion),
 // and for folders files (regular files listed below it) and extracted
 // (name starts with "extracted").
 FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportScan(NSURL *home);
+
+// "1.0.5.5" from Strix_OS_1.0.5.5, Strix_OS_1.0.5.5.zip or StrixOS-1.0.5.5-...; nil otherwise.
+FOUNDATION_EXPORT NSString *_Nullable TIOFirmwareExportVersion(NSString *name);
+// Name of the Turbo IO candidate ZIP with this SHA-256 (any case), or nil.
+// Covers TMG2 and every ZIP pin firmware-pins.json ever held (TMG3 to TMG9,
+// superseded ones included) plus the compiled-in FirmwarePins.h pin. A match
+// is a Turbo candidate (likely left in ota/ by 1.0.7), never stock firmware.
+FOUNDATION_EXPORT NSString *_Nullable TIOFirmwareExportTurboCandidate(NSString *sha256);
 
 // Streams the file in 1 MiB chunks. Keys: sha256, md5 (lowercase hex), bytes.
 // Refuses symbolic links and anything that is not a regular file.

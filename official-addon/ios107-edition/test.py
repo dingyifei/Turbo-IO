@@ -274,7 +274,7 @@ if only is None or 'protocol-restart' in only:
     shutil.rmtree(restart_dir,ignore_errors=True);restart_dir.mkdir()
 test('protocol-restart',['ProtocolRestartTests.m', 'ProtocolContext.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules', '-DNSHomeDirectory=TIOTestHome'],runs=[['write',restart_dir],['read',restart_dir]])
 test('recording-exports',['RecordingExportsTests.m', 'RecordingExports.m'],argv=[],extra=['-fmodules'])
-test('firmware-export',['tests/FirmwareExportTests.m','FirmwareExport.m'],argv=[],extra=['-fmodules','-lz'])
+test('firmware-export',['tests/FirmwareExportTests.m','FirmwareExport.m'],argv=[args.firmware],extra=['-fmodules','-lz'])
 test('recording-text',['RecordingTextTests.m', 'RecordingText.m'],argv=[],extra=['-fmodules'])
 test('alwayson-audio',['AlwaysOnAudioTests.m', 'AlwaysOnAudioFiles.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])
 test('alwayson-ogg',['AlwaysOnOggTests.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])

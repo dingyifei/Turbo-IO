@@ -858,7 +858,10 @@ __attribute__((constructor)) static void Load(void) {
             TIOStartExperimentalOTAFeedIfMarked();
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
-            TIOLanguageFlagStart();
+            // The download-only host (1.0.11/259) sends no addon-originated frame:
+            // no language-flag push, no clench-lab restore, no watch remote.
+            BOOL downloadOnly=[TIOHostProfile() isEqual:@"ios1011-download"];
+            if(!downloadOnly)TIOLanguageFlagStart();
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
             [Prefs registerDefaults:@{@"appleFallback":@YES,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);
@@ -893,9 +896,9 @@ __attribute__((constructor)) static void Load(void) {
             // Download-only host (1.0.11/259): no feature hooks, only the rayneonet
             // channel hook so TIOOTAFlashBlockCall refuses every OTA frame but the
             // empty version query. TIOOTA107HostMatches stays false there.
-            else if([TIOHostProfile() isEqual:@"ios1011-download"])TIOInstallGlassesChannelHook();
+            else if(downloadOnly)TIOInstallGlassesChannelHook();
 #if TIO_IMAGE_RX_LAB
-            TIOClenchLabInstallRecovery();
+            if(!downloadOnly)TIOClenchLabInstallRecovery();
 #endif
             TCCameraReportLoaded();
             NSMutableString *loadInfo=[NSMutableString stringWithFormat:@"setup reached; hooks=%d; version=%d; voiceClass=%d; alwaysOnClass=%d\n",valid,VersionMatches(),voice!=Nil,ao!=Nil];

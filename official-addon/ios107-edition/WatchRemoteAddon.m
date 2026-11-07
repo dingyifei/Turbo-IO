@@ -6,6 +6,7 @@
 #import "TIOConfirm.h"
 #import "ExperimentalOTAFlash.h"
 #import "ProtocolContext.h"
+#import "HostCompatibility.h"
 #import "MusicPlayer.h"
 #import "FocusBridge.h"
 #import "focus.h"
@@ -154,7 +155,10 @@ static BOOL WatchOTAIdle(void) {
 @end
 UIViewController *TIOWatchRemoteController(void){return [[TIOWatchSettings alloc]initWithStyle:UITableViewStyleInsetGrouped];}
 #ifndef TIO_WATCH_TESTING
-__attribute__((constructor)) static void TIOWatchLoad(void){dispatch_async(dispatch_get_main_queue(),^{[TIOWatchHost.shared activate];
+// The download-only host (1.0.11/259) hides the watch row, so it must not take
+// the WCSession delegate or re-arm from defaults saved on 1.0.7.
+__attribute__((constructor)) static void TIOWatchLoad(void){dispatch_async(dispatch_get_main_queue(),^{if([TIOHostProfile() isEqual:@"ios1011-download"])return;
+    [TIOWatchHost.shared activate];
     [TIOWatchHost.shared restoreAuthorization];
     [TIOWatchHost.shared publishStatus];
 });}

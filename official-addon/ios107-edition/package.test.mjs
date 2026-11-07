@@ -283,6 +283,18 @@ test('real 1.0.11 input: pins, unpatched routes and deterministic signature stri
  assert.equal(sha256(r),HOST_PROFILES['ios1011-download'].acceptedPairs[0][0]); // input untouched
  // After signing only the signature may differ: same stripped bytes, same route records.
  assert.ok(verifySignedStockApp(a,a));assert.throws(()=>verifySignedStockApp(badApp,a));
+ // Simulated re-sign (no codesign): replace the signature blob with one of another size,
+ // as codesign_allocate lays it out. A smaller blob keeps __LINKEDIT vmsize, a larger one grows it.
+ const layout=b=>{let p=32,sig,link;for(let i=0;i<b.readUInt32LE(16);i++){const c=b.readUInt32LE(p);if(c===0x1d)sig=p;if(c===0x19&&b.toString('latin1',p+8,p+24).startsWith('__LINKEDIT'))link=p;p+=b.readUInt32LE(p+4);}return {sig,link};};
+ const resign=(b,size,vmsize)=>{const {sig,link}=layout(b),dataoff=b.readUInt32LE(sig+8),out=Buffer.concat([b.subarray(0,dataoff),Buffer.alloc(size,0xfa)]);
+  out.writeUInt32LE(size,sig+12);const filesize=BigInt(out.length)-out.readBigUInt64LE(link+40);out.writeBigUInt64LE(filesize,link+48);
+  out.writeBigUInt64LE(vmsize??((filesize+0x3fffn)&~0x3fffn),link+32);return out;};
+ const keepVm=b=>b.readBigUInt64LE(layout(b).link+32);
+ const smaller=resign(a,400000,keepVm(a)),larger=resign(a,1400000);
+ assert.notEqual(keepVm(larger),keepVm(a));
+ assert.ok(verifySignedStockApp(smaller,a));assert.ok(verifySignedStockApp(larger,a));
+ const flipped=Buffer.from(larger);flipped[4096]^=1;assert.throws(()=>verifySignedStockApp(flipped,a),/changed_after_signing/);
+ assert.throws(()=>verifySignedStockApp(resign(a,1400000,keepVm(a)),a),/changed_after_signing/); // vmsize below filesize
 });
 test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identical to stock',t=>{
  const p=process.env.IOS1011_TEST_APP,addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');
@@ -322,4 +334,29 @@ test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gat
  const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
  assert.match(gate,/if \[\[ -n "\$TURBO_APP1011" \]\]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi/);
  assert.match(gate,/stage test test_stage\n    stage package-test package_test_stage/);
+});
+// The 1.0.11 guard depends on Load() installing the rayneonet hook on the
+// download-only host; no host test links Addon.m, so pin the source shape here.
+test('download-only host: Load installs only the guard hook and sends nothing on its own',()=>{
+ const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
+ const addon=src('Addon.m'),load=addon.slice(addon.indexOf('static void Load(void)'));
+ assert.match(load,/BOOL downloadOnly=\[TIOHostProfile\(\) isEqual:@"ios1011-download"\];/);
+ assert.match(load,/if\(valid\)\{TIOInstallGlassesChannelHook\(\);TIOInstallTodoRuntime\(\);\}\n(?:\s*\/\/[^\n]*\n)*\s*else if\(downloadOnly\)TIOInstallGlassesChannelHook\(\);/);
+ assert.equal([...addon.matchAll(/TIOInstallGlassesChannelHook\(\)/g)].length,2);
+ // No addon-originated glasses frames on the download-only host.
+ assert.equal([...addon.matchAll(/TIOLanguageFlagStart\(\)/g)].length,1);assert.match(load,/if\(!downloadOnly\)TIOLanguageFlagStart\(\);/);
+ assert.equal([...addon.matchAll(/TIOClenchLabInstallRecovery\(\)/g)].length,1);assert.match(load,/if\(!downloadOnly\)TIOClenchLabInstallRecovery\(\);/);
+ const watch=src('WatchRemoteAddon.m'),ctor=watch.slice(watch.indexOf('static void TIOWatchLoad(void)'));
+ assert.ok(ctor.indexOf('if([TIOHostProfile() isEqual:@"ios1011-download"])return;')>=0);
+ assert.ok(ctor.indexOf('if([TIOHostProfile() isEqual:@"ios1011-download"])return;')<ctor.indexOf('activate]'));
+ // The guard row is green only when every part of the safety net is present.
+ const guard=addon.match(/BOOL TIOHostDownloadOnlyGuardActive\(void\) \{([\s\S]*?)\n\}/);assert.ok(guard);
+ for(const part of ['[TIOHostProfile() isEqual:@"ios1011-download"]','!TIOOTA107HostMatches(','TIOOTAFlashBuild()','TIOGlassesChannelHookInstalled()','[TIOOTAGuardStatus()[@"transportHookReady"] boolValue]'])assert.ok(guard[1].includes(part),part);
+ assert.doesNotMatch(guard[1],/\|\|/);
+ // The hook applies the OTA guard before any observer or the stock handler runs.
+ const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
+ const block=body.indexOf('BOOL otaBlocked=TIOOTAFlashBlockCall(call);');assert.ok(block>0);
+ assert.ok(block<body.indexOf('TIOProtocolObserveCall(')&&block<body.indexOf('PriorMethod(self,cmd,call,result)'));
+ assert.match(body,/if\(otaBlocked\)\{[^\n]*return;\}/);
+ assert.match(hook,/Installed=YES;TIOOTARecordTransportHookReady\(\);/);
 });

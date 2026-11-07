@@ -23,6 +23,6 @@
 
 **非官方高风险实验预发布。非开发者请勿刷；不保证稳定、回滚或救砖。刷后必须按教程完成收尾，不混用其他版本的候选和授权。**
 
-## Host profile `ios1011-download` (RayNeo AI 1.0.11/259): not packaged, not released
+## 宿主 `ios1011-download`（RayNeo AI 1.0.11/259）：未打包，未发布
 
-The source now knows a second host profile, `ios1011-download`, matched by exact version, build and Runner UUID `22724C97-2EF9-388D-8E6A-6E051855A555`. It is a download-only build: `App.framework/App` stays byte-identical to stock 1.0.11 (no route patch, no bundled TMG ZIP, no OTA routing key, no `UISupportedDevices`), so the stock app downloads the newest stock firmware from RayNeo's server, and the addon's "Stock firmware export" panel lists, hashes (SHA-256 and MD5) and shares it read-only. The addon installs only the rayneonet channel hook there; with it, every business-9 frame except the empty version query is refused, so no OTA session can start. The hub shows only the export panel and the language row, with no TMG flash wizard. TMG flashing stays on the 1.0.7 builds. Packaging is blocked until the decomp answers Q1; the owner flow and rollback (reinstall C13 over the app) are in [OTA.md](OTA.md).
+源码现在认识第二个宿主 `ios1011-download`，按精确的版本、构建号和 Runner UUID `22724C97-2EF9-388D-8E6A-6E051855A555` 识别。它是仅下载构建：`App.framework/App` 与原厂 1.0.11 逐字节一致（不改升级路由，不内置 TMG ZIP，不写 OTA 路由键，不注入 `UISupportedDevices`），让原厂 App 从雷鸟服务器下载最新的官方固件，再由扩展的“导出官方固件”面板只读列出、计算哈希（SHA-256 和 MD5）并分享。在这个宿主上扩展只安装 rayneonet 通道钩子，不主动向眼镜发送任何帧；钩子装好后，业务 9 中除空的版本查询以外的帧一律拒绝，OTA 会话无法开始。面板里只有导出面板和语言两项，没有 TMG 刷机向导。TMG 刷机仍然只在 1.0.7 构建上进行。在反编译回答问题 Q1 之前不打包；机主流程和回滚方法（把 C13 覆盖安装回去）见 [OTA.md](OTA.md)。

@@ -67,10 +67,25 @@ export function verifyStockApp(appImage,profileName='ios1011-download'){
   for(const [route,offset] of p.routes){const b=Buffer.from(route);if(appImage.indexOf(b)!==offset||appImage.indexOf(b,offset+1)!==-1)throw Error('download_only_route_mismatch');}
   return true;
 }
+// codesign_allocate sizes __LINKEDIT vmsize to the new signature, so a re-signed
+// image may differ from stock there and nowhere else once the signature is gone.
+// Returns the stripped image with that one field zeroed; vmsize must still cover filesize.
+function linkeditAt(bytes){
+  const info=inspectMachO(bytes);let p=32,at=[];
+  for(let i=0;i<info.count;i++){if(bytes.readUInt32LE(p)===0x19&&bytes.toString('latin1',p+8,p+24).replace(/\0+$/,'')==='__LINKEDIT')at.push(p);p+=bytes.readUInt32LE(p+4);}
+  if(at.length!==1)throw Error('download_only_app_changed_after_signing');
+  return at[0];
+}
+function strippedForCompare(bytes){
+  const p=linkeditAt(bytes),vmsize=bytes.readBigUInt64LE(p+32),filesize=bytes.readBigUInt64LE(p+48);
+  if(vmsize<filesize||vmsize%0x4000n)throw Error('download_only_app_changed_after_signing');
+  const {output}=stripCodeSignature(bytes);output.writeBigUInt64LE(0n,linkeditAt(output)+32);
+  return output;
+}
 // After signing, App.framework/App carries a new signature. Everything else must equal stock.
 export function verifySignedStockApp(signed,stock,profileName='ios1011-download'){
   verifyStockApp(stock,profileName);
-  if(!stripCodeSignature(signed).output.equals(stripCodeSignature(stock).output))throw Error('download_only_app_changed_after_signing');
+  if(!strippedForCompare(signed).equals(strippedForCompare(stock)))throw Error('download_only_app_changed_after_signing');
   for(const [route,offset] of hostProfile(profileName).routes){const b=Buffer.from(route);if(signed.indexOf(b)!==offset||signed.indexOf(b,offset+1)!==-1)throw Error('download_only_route_mismatch');}
   return true;
 }

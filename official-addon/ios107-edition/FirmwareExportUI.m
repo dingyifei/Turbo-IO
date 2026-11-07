@@ -84,6 +84,17 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     if(h[@"error"])return Fmt(@"fwexport.hash.failed",h[@"error"]);
     return [NSString stringWithFormat:@"SHA-256 %@\nMD5 %@",h[@"sha256"],h[@"md5"]];
 }
+// A file whose SHA-256 is a known Turbo IO candidate ZIP; for a folder, the
+// candidate its sibling <name>.zip matched (the 1.0.7 app unpacked it there).
+- (NSString *)candidateFor:(NSDictionary *)row{
+    NSURL *file=row[@"url"];
+    if([row[@"kind"] isEqual:@"folder"])file=[file.URLByDeletingLastPathComponent URLByAppendingPathComponent:[row[@"name"] stringByAppendingString:@".zip"] isDirectory:NO];
+    return TIOFirmwareExportTurboCandidate(self.hashes[file.path][@"sha256"]);
+}
+- (NSString *)candidateText:(NSDictionary *)row{
+    NSString *name=[self candidateFor:row];if(!name)return nil;
+    return Fmt([row[@"kind"] isEqual:@"folder"]?@"fwexport.candidate.folder":@"fwexport.candidate.file",name);
+}
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip{
     UITableViewCell *c=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];TIOStyleResearchCell(c);
     c.textLabel.numberOfLines=0;c.detailTextLabel.numberOfLines=0;c.selectionStyle=UITableViewCellSelectionStyleNone;
@@ -118,14 +129,26 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     NSDictionary *row=rows[ip.row];c.selectionStyle=UITableViewCellSelectionStyleDefault;c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     c.textLabel.text=ip.section==SectionFound?row[@"relative"]:row[@"name"];
     c.textLabel.font=TIODesignFont(TIODesignTextStyleSubheadline);
+    NSMutableArray<NSString *> *lines=[NSMutableArray new];
     if([row[@"kind"] isEqual:@"folder"]){
         c.imageView.image=[UIImage systemImageNamed:@"folder"];
-        c.detailTextLabel.text=Fmt(@"fwexport.folder.detail",(unsigned long)[row[@"files"] unsignedIntegerValue],SizeText(row[@"bytes"]));
+        [lines addObject:Fmt(@"fwexport.folder.detail",(unsigned long)[row[@"files"] unsignedIntegerValue],SizeText(row[@"bytes"]))];
+        [lines addObject:Stamp(row[@"modified"])];
     }else{
         c.imageView.image=[UIImage systemImageNamed:ip.section==SectionCopies?@"doc.zipper":@"doc"];
-        c.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@\n%@",SizeText(row[@"bytes"]),Stamp(row[@"modified"]),[self hashText:row[@"url"]]];
+        [lines addObject:[NSString stringWithFormat:@"%@ · %@",SizeText(row[@"bytes"]),Stamp(row[@"modified"])]];
         c.detailTextLabel.font=TIODesignMonospacedDigitFont(TIODesignTextStyleFootnote);
     }
+    if(row[@"version"])[lines insertObject:Fmt(@"fwexport.version",row[@"version"]) atIndex:0];
+    if(![row[@"kind"] isEqual:@"folder"])[lines addObject:[self hashText:row[@"url"]]];
+    NSString *candidate=ip.section==SectionFound?[self candidateText:row]:nil;
+    if(candidate){
+        // A leftover Turbo candidate must never pass for the stock download.
+        [lines insertObject:candidate atIndex:0];
+        c.textLabel.textColor=TIODesignColor(TIODesignColorStatusWarn);c.imageView.image=[UIImage systemImageNamed:@"exclamationmark.triangle.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusWarn);
+        c.accessibilityIdentifier=@"fwexport-turbo-candidate";
+    }
+    c.detailTextLabel.text=[lines componentsJoinedByString:@"\n"];
     return c;
 }
 - (void)notice:(NSString *)message{TIONotice(self,TIOText(@"fwexport.title"),message);}
@@ -140,7 +163,9 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     if(hashed){[titles addObject:TIOText(@"fwexport.action.copySHA")];[titles addObject:TIOText(@"fwexport.action.copyMD5")];}
     if(ownCopy)[titles addObject:TIOText(@"fwexport.action.delete")];
     NSIndexSet *destructive=ownCopy?[NSIndexSet indexSetWithIndex:titles.count-1]:nil;
-    TIOChoose(self,row[@"name"],[self hashText:file],titles,NSNotFound,destructive,^(NSInteger index){
+    NSString *candidate=ownCopy?nil:[self candidateText:row],*message=[self hashText:file];
+    if(candidate)message=[NSString stringWithFormat:@"%@\n\n%@",candidate,message];
+    TIOChoose(self,row[@"name"],message,titles,NSNotFound,destructive,^(NSInteger index){
         if(index==0){[self share:file];return;}
         if(hashed&&(index==1||index==2)){UIPasteboard.generalPasteboard.string=h[index==1?@"sha256":@"md5"];[self notice:TIOText(@"fwexport.copied")];return;}
         if(ownCopy&&index==(NSInteger)titles.count-1)TIOConfirm(self,TIOText(@"fwexport.delete.title"),TIOText(@"fwexport.delete.message"),TIOText(@"fwexport.action.delete"),YES,^{

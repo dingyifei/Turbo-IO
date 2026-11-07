@@ -2287,6 +2287,8 @@
 {"key":"fwexport.action.delete","en":"Delete this copy","zh":"删除此副本"}
 {"key":"fwexport.action.rezip","en":"Re-zip a copy","zh":"重新打包副本"}
 {"key":"fwexport.action.share","en":"Share file","zh":"分享文件"}
+{"key":"fwexport.candidate.file","en":"Turbo candidate (%@), not stock firmware","zh":"Turbo 候选固件（%@），不是官方固件"}
+{"key":"fwexport.candidate.folder","en":"Unpacked from a Turbo candidate (%@), not stock firmware","zh":"由 Turbo 候选固件（%@）解压，不是官方固件"}
 {"key":"fwexport.copied","en":"Copied","zh":"已复制"}
 {"key":"fwexport.copies.empty","en":"None","zh":"无"}
 {"key":"fwexport.copies.footer","en":"Made by Turbo IO from an extracted folder and kept in its own folder. The hash will not match the server's package.","zh":"由 Turbo IO 从解压后的文件夹打包，保存在 Turbo IO 自己的目录。哈希不会与服务器固件包一致。"}
@@ -2325,6 +2327,7 @@
 {"key":"fwexport.section.status","en":"Status","zh":"状态"}
 {"key":"fwexport.status.footer","en":"Auto Update stays off. In the RayNeo firmware page, check for an update, download it, and stop at Ready to install. Never tap Start install.","zh":"自动更新保持关闭。在官方固件页面检查更新并下载，停在“准备安装”，不要点“开始安装”。"}
 {"key":"fwexport.title","en":"Stock firmware export","zh":"导出官方固件"}
+{"key":"fwexport.version","en":"Version %@","zh":"版本 %@"}
 {"key":"fwexport.wizard.blocked","en":"This download-only build cannot flash the glasses. Use Stock firmware export.","zh":"仅下载构建不能刷写眼镜，请使用“导出官方固件”。"}
 {"key":"hub.row.firmwareExport","en":"Stock firmware export","zh":"导出官方固件"}
 {"key":"hub.status.firmwareExport.guarded","en":"Download only · OTA transfer blocked","zh":"仅下载，已阻止传输"}

@@ -1,4 +1,5 @@
 #import "FirmwareExport.h"
+#import "FirmwarePins.h"
 #import "TIOLanguage.h"
 #import <CommonCrypto/CommonDigest.h>
 #include <fcntl.h>
@@ -42,7 +43,56 @@ static BOOL LooksLikeFirmwareFolder(NSString *name){
 }
 static BOOL LooksLikeFirmwareFile(NSString *name){NSString *n=name.lowercaseString;return [n hasPrefix:@"fota"]||[n containsString:@"strix"];}
 
+NSString *TIOFirmwareExportVersion(NSString *name){
+    static NSRegularExpression *pattern;static dispatch_once_t once;
+    dispatch_once(&once,^{pattern=[NSRegularExpression regularExpressionWithPattern:@"strix[ _-]?os[ _-]?v?([0-9]+(?:\\.[0-9]+)+)" options:NSRegularExpressionCaseInsensitive error:NULL];});
+    if(![name isKindOfClass:NSString.class])return nil;
+    NSTextCheckingResult *m=[pattern firstMatchInString:name options:0 range:NSMakeRange(0,name.length)];
+    return m?[name substringWithRange:[m rangeAtIndex:1]]:nil;
+}
+NSString *TIOFirmwareExportTurboCandidate(NSString *sha256){
+    static NSDictionary<NSString *,NSString *> *known;static dispatch_once_t once;
+    dispatch_once(&once,^{
+        NSMutableDictionary *d=[@{
+            @"6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473":@"TMG2",
+            @"45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274":@"TMG3",
+            @"47f3f639400173acf57916c5e24c35b307ab2146a2030a2a2b6980b31ce4ab03":@"TMG4",
+            @"aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126":@"TMG4",
+            @"9f1e327c42c859d37e035bcfe83554c137e9fed05dfbaa8c5ed938bb65d19ebb":@"TMG5",
+            @"6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef":@"TMG5",
+            @"06927af943f06463b5bff1c10df0bcbd326c110280ef4f9ec22ac7b2b44a48d4":@"TMG6",
+            @"a134c0f9d8550cdd5b53559e4857e27ca92ec8b168543d2c357cbc1e3fbe4d6e":@"TMG6",
+            @"0d77be022276a573591915a7baa0048117c049eb048ce326be4f0beaa1b3ece7":@"TMG7",
+            @"ecb5fd7dcb7340c76b00ee609fe84f2a66fc66eaa565b1cda1900a086f0d6e0d":@"TMG7",
+            @"6b06d0dd3124ac1f86c91e0879908f9bfe129a2051cf0b619d5b0b664bc3c0aa":@"TMG7",
+            @"76cac17dfbddbee5683c5a4e4f40b81d98f4d2706f21a460277093cf416f24e5":@"TMG8",
+            @"effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6":@"TMG8",
+            @"2ae00724ff47aabe1c19e192316a8cf497f9838698129a3c40b493deebf6231e":@"TMG9",
+            @"2b90c0d081365acaf18a5e79ee629d3e2495dc43fa1a4b27b54c795168c4126f":@"TMG9",
+            @"a4ca066249c277c06bebf327970b4c1c31935a3f84aeab371bf11c99b9d5a36b":@"TMG9",
+            @"a6e5d4e7f1e9c3dbcc5efab292a6010b50301d9472e5af0e36b4e7a4089c8c91":@"TMG9",
+            @"def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd":@"TMG9",
+        } mutableCopy];
+        d[TIO_FW_ZIP_SHA256.lowercaseString]=TIO_FW_NAME;known=d;
+    });
+    return [sha256 isKindOfClass:NSString.class]?known[sha256.lowercaseString]:nil;
+}
+
 typedef struct{NSUInteger count,links;BOOL truncated,depthLimited;} WalkState;
+static NSDictionary *WithVersion(NSDictionary *entry){
+    NSString *version=TIOFirmwareExportVersion(entry[@"name"]);if(!version)return entry;
+    NSMutableDictionary *m=[entry mutableCopy];m[@"version"]=version;return m;
+}
+// Top-level items newest first; a folder keeps its contents right after it.
+static NSArray *NewestFirst(NSArray<NSDictionary *> *entries){
+    NSMutableArray<NSMutableArray *> *groups=[NSMutableArray new];
+    for(NSDictionary *e in entries){if([e[@"depth"] integerValue]<=1||!groups.count)[groups addObject:[NSMutableArray new]];[groups.lastObject addObject:e];}
+    NSMutableArray *keyed=[NSMutableArray new];
+    for(NSUInteger i=0;i<groups.count;i++){NSDate *newest=NSDate.distantPast;for(NSDictionary *e in groups[i])if([e[@"modified"] compare:newest]==NSOrderedDescending)newest=e[@"modified"];[keyed addObject:@{@"newest":newest,@"index":@(i)}];}
+    [keyed sortUsingComparator:^NSComparisonResult(NSDictionary *a,NSDictionary *b){NSComparisonResult r=[b[@"newest"] compare:a[@"newest"]];return r!=NSOrderedSame?r:[a[@"index"] compare:b[@"index"]];}];
+    NSMutableArray *out=[NSMutableArray arrayWithCapacity:entries.count];for(NSDictionary *k in keyed)[out addObjectsFromArray:groups[[k[@"index"] unsignedIntegerValue]]];
+    return out;
+}
 // Depth-first, sorted, links never followed. Adds folder entries before their
 // contents and fills each folder's file count and byte total afterwards.
 static void Walk(NSString *dir,NSString *relative,NSString *root,NSUInteger depth,NSString *own,NSMutableArray *entries,WalkState *state,uint64_t *bytes,NSUInteger *files){
@@ -53,14 +103,14 @@ static void Walk(NSString *dir,NSString *relative,NSString *root,NSUInteger dept
         if(S_ISLNK(st.st_mode)){state->links++;continue;}
         if(S_ISREG(st.st_mode)){
             state->count++;*bytes+=(uint64_t)st.st_size;(*files)++;
-            [entries addObject:@{@"url":[NSURL fileURLWithPath:path isDirectory:NO],@"relative":rel,@"name":name,@"root":root,@"kind":@"file",@"depth":@(depth),@"bytes":@((uint64_t)st.st_size),@"modified":Modified(&st)}];
+            [entries addObject:WithVersion(@{@"url":[NSURL fileURLWithPath:path isDirectory:NO],@"relative":rel,@"name":name,@"root":root,@"kind":@"file",@"depth":@(depth),@"bytes":@((uint64_t)st.st_size),@"modified":Modified(&st)})];
         }else if(S_ISDIR(st.st_mode)){
             if(own&&Inside(Real(path),own))continue;
             state->count++;NSUInteger index=entries.count;uint64_t subBytes=0;NSUInteger subFiles=0;
             [entries addObject:@{}];
             if(depth<TIOFirmwareExportMaxDepth)Walk(path,rel,root,depth+1,own,entries,state,&subBytes,&subFiles);
             else if(Children(path).count)state->depthLimited=YES;
-            entries[index]=@{@"url":[NSURL fileURLWithPath:path isDirectory:YES],@"relative":rel,@"name":name,@"root":root,@"kind":@"folder",@"depth":@(depth),@"bytes":@(subBytes),@"files":@(subFiles),@"modified":Modified(&st),@"extracted":@([name.lowercaseString hasPrefix:@"extracted"])};
+            entries[index]=WithVersion(@{@"url":[NSURL fileURLWithPath:path isDirectory:YES],@"relative":rel,@"name":name,@"root":root,@"kind":@"folder",@"depth":@(depth),@"bytes":@(subBytes),@"files":@(subFiles),@"modified":Modified(&st),@"extracted":@([name.lowercaseString hasPrefix:@"extracted"])});
             *bytes+=subBytes;*files+=subFiles;
         }
     }
@@ -101,9 +151,9 @@ NSDictionary *TIOFirmwareExportScan(NSURL *home){
         NSString *path=[home.path stringByAppendingPathComponent:rel];struct stat st;
         if(!Lstat(path,&st)||!S_ISREG(st.st_mode))continue;
         state.count++;
-        [entries addObject:@{@"url":[NSURL fileURLWithPath:path isDirectory:NO],@"relative":rel,@"name":rel.lastPathComponent,@"root":rel.stringByDeletingLastPathComponent,@"kind":@"file",@"depth":@1,@"bytes":@((uint64_t)st.st_size),@"modified":Modified(&st)}];
+        [entries addObject:WithVersion(@{@"url":[NSURL fileURLWithPath:path isDirectory:NO],@"relative":rel,@"name":rel.lastPathComponent,@"root":rel.stringByDeletingLastPathComponent,@"kind":@"file",@"depth":@1,@"bytes":@((uint64_t)st.st_size),@"modified":Modified(&st)})];
     }
-    return @{@"entries":entries,@"roots":roots,@"skippedLinks":@(state.links),@"truncated":@(state.truncated),@"depthLimited":@(state.depthLimited)};
+    return @{@"entries":NewestFirst(entries),@"roots":roots,@"skippedLinks":@(state.links),@"truncated":@(state.truncated),@"depthLimited":@(state.depthLimited)};
 }
 
 static NSString *Hex(const unsigned char *bytes,size_t length){

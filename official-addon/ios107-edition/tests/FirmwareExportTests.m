@@ -4,6 +4,7 @@
 // into the addon's own folder, and every source file byte-for-byte unchanged.
 // No device, network or signing.
 #import "FirmwareExport.h"
+#import "FirmwarePins.h"
 #import "TIOLanguage.h"
 #include <assert.h>
 #include <sys/stat.h>
@@ -32,7 +33,11 @@ static NSDictionary *Snapshot(NSString *root){
 }
 static NSDictionary *Entry(NSArray *entries,NSString *rel){for(NSDictionary *e in entries)if([e[@"relative"] isEqual:rel])return e;return nil;}
 
-int main(void){@autoreleasepool{
+static void Touch(NSString *path,NSDate *date){assert([NSFileManager.defaultManager setAttributes:@{NSFileModificationDate:date} ofItemAtPath:path error:nil]);}
+static NSUInteger IndexOf(NSArray *entries,NSString *rel){for(NSUInteger i=0;i<entries.count;i++)if([entries[i][@"relative"] isEqual:rel])return i;return NSNotFound;}
+
+// argv[1], optional: the pinned candidate ZIP (test.py passes --firmware).
+int main(int argc,const char **argv){@autoreleasepool{
     TIOSetUILanguageOverride(@"en");
     NSString *base=[NSTemporaryDirectory() stringByAppendingPathComponent:[@"fwexport-" stringByAppendingString:NSUUID.UUID.UUIDString]];
     Home=[base stringByAppendingPathComponent:@"container"];Outside=[base stringByAppendingPathComponent:@"outside"];
@@ -58,6 +63,14 @@ int main(void){@autoreleasepool{
     assert(symlink([Outside stringByAppendingPathComponent:@"secret"].fileSystemRepresentation,P(@"Library/Application Support/ota/escape").fileSystemRepresentation)==0);
     assert(symlink([Outside stringByAppendingPathComponent:@"secret/secret.bin"].fileSystemRepresentation,P(@"Library/Application Support/ota/linked.bin").fileSystemRepresentation)==0);
     Dir(P(@"tmp"));assert(symlink([Outside stringByAppendingPathComponent:@"secret"].fileSystemRepresentation,P(@"tmp/ota").fileSystemRepresentation)==0);
+    // A 1.0.7 leftover: the Turbo candidate the old feed served, kept by the install over C13,
+    // older than everything else. With the real pinned ZIP it must be labelled a candidate.
+    NSString *leftZip=P(@"Library/Application Support/ota/Strix_OS_1.0.5.5.zip"),*leftDir=P(@"Library/Application Support/ota/Strix_OS_1.0.5.5");
+    if(argc>1)assert([NSFileManager.defaultManager copyItemAtPath:[NSString stringWithUTF8String:argv[1]] toPath:leftZip error:nil]);else File(leftZip,Bytes(500,13));
+    File([leftDir stringByAppendingPathComponent:@"manifest.json"],Bytes(20,14));
+    NSDate *old=[NSDate dateWithTimeIntervalSince1970:1761900000],*newest=[NSDate dateWithTimeIntervalSinceNow:120];
+    Touch(leftZip,old);Touch([leftDir stringByAppendingPathComponent:@"manifest.json"],old);Touch(leftDir,old);
+    Touch(P(@"Library/Application Support/ota/Strix_OS_1.0.5.6.zip"),newest);
     NSDictionary *before=Snapshot(Home),*outsideBefore=Snapshot(Outside);
 
     NSDictionary *scan=TIOFirmwareExportScan(home);NSArray *entries=scan[@"entries"];
@@ -80,6 +93,25 @@ int main(void){@autoreleasepool{
     assert(Entry(entries,@"Documents/fota_loose.bin"));
     assert(Entry(entries,@"Library/Application Support/Upgrade/u.bin"));
     assert(Entry(entries,@"Library/Caches/ota/cache.bin"));
+
+    // Newest first by top-level item; a folder keeps its contents right behind it.
+    assert([entries[0][@"relative"] isEqual:@"Library/Application Support/ota/Strix_OS_1.0.5.6.zip"]);
+    NSUInteger leftDirAt=IndexOf(entries,@"Library/Application Support/ota/Strix_OS_1.0.5.5"),leftZipAt=IndexOf(entries,@"Library/Application Support/ota/Strix_OS_1.0.5.5.zip");
+    assert(leftDirAt!=NSNotFound&&leftZipAt!=NSNotFound);
+    assert(IndexOf(entries,@"Library/Application Support/ota/Strix_OS_1.0.5.5/manifest.json")==leftDirAt+1);
+    assert(MIN(leftDirAt,leftZipAt)==entries.count-3&&MAX(leftDirAt,leftZipAt)>=entries.count-2);
+    NSUInteger ex=IndexOf(entries,@"Library/Application Support/ota/extracted_1762400000");
+    for(NSString *child in @[@"nuttx_ap.bin",@"manifest.json",@"res",@"res/font.bin",@"res/empty.bin"])assert(IndexOf(entries,[@"Library/Application Support/ota/extracted_1762400000" stringByAppendingPathComponent:child])>ex&&IndexOf(entries,[@"Library/Application Support/ota/extracted_1762400000" stringByAppendingPathComponent:child])<=ex+5);
+    // Versions come from Strix_OS names only.
+    assert([entries[leftDirAt][@"version"] isEqual:@"1.0.5.5"]&&[entries[leftZipAt][@"version"] isEqual:@"1.0.5.5"]&&[entries[0][@"version"] isEqual:@"1.0.5.6"]);
+    assert(!Entry(entries,@"Library/Application Support/ota/fota_1762400000.bin")[@"version"]&&!entries[ex][@"version"]);
+    assert([TIOFirmwareExportVersion(@"StrixOS-1.0.5.5-TurboIO-TMG9-CANDIDATE-NOT-APPROVED.zip") isEqual:@"1.0.5.5"]&&[TIOFirmwareExportVersion(@"Strix OS 1.0.6") isEqual:@"1.0.6"]&&!TIOFirmwareExportVersion(@"fota_1.bin"));
+    // Turbo candidates: the compiled-in pin and every recorded ZIP hash, case-insensitive; anything else is not one.
+    assert([TIOFirmwareExportTurboCandidate(TIO_FW_ZIP_SHA256) isEqual:TIO_FW_NAME]&&[TIOFirmwareExportTurboCandidate(TIO_FW_ZIP_SHA256.uppercaseString) isEqual:TIO_FW_NAME]);
+    assert([TIOFirmwareExportTurboCandidate(@"def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd") isEqual:@"TMG9"]&&[TIOFirmwareExportTurboCandidate(@"6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473") isEqual:@"TMG2"]);
+    assert(!TIOFirmwareExportTurboCandidate(Shasum(P(@"Library/Application Support/ota/Strix_OS_1.0.5.6.zip")))&&!TIOFirmwareExportTurboCandidate(nil)&&!TIOFirmwareExportTurboCandidate(@""));
+    {NSError *e=nil;NSDictionary *h=TIOFirmwareExportHash([NSURL fileURLWithPath:leftZip],&e);assert(h&&!e);
+     if(argc>1)assert([TIOFirmwareExportTurboCandidate(h[@"sha256"]) hasPrefix:@"TMG"]);else assert(!TIOFirmwareExportTurboCandidate(h[@"sha256"]));}
 
     // Hashes agree with independent tools, for a multi-chunk file, a small file and an empty file.
     for(NSString *rel in @[@"Library/Application Support/ota/fota_1762400000.bin",@"Library/Application Support/ota/Strix_OS_1.0.5.6.zip",@"Library/Application Support/ota/extracted_1762400000/res/empty.bin"]){
