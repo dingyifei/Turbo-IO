@@ -81,11 +81,14 @@ stage() {
   fi
 }
 # The external configuration is the only source of packaging inputs.
-unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP
+# TURBO_APP1011 (optional, read-only test input) may also come from the environment.
+inherited_app1011=${TURBO_APP1011:-}
+unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
 [[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'Missing external package.env' >&2; exit 1; }
 set -a
 source "$TURBO_INPUTS/package.env"
 set +a
+TURBO_APP1011=${TURBO_APP1011:-$inherited_app1011}
 private_stage() {
   local backup=$TURBO_INPUTS/private-backup/ios107 file
   for file in PrivateBootstrap.h PrivateBootstrap.m; do
@@ -129,6 +132,15 @@ package_test_stage() {
   export IOS107_TEST_UNSIGNED_APP=$TURBO_APP107
   IOS107_TEST_FIRMWARE="$TURBO_FIRMWARE" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
 }
+# Optional: download-only 1.0.11/259 host checks. Runs only when TURBO_APP1011 is set.
+host1011_stage() {
+  : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
+  [[ -d "$TURBO_APP1011" ]] || { echo 'TURBO_APP1011 is not a directory' >&2; return 1; }
+  cd "$ED"
+  python3 test.py --firmware "$TURBO_FIRMWARE" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host
+  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE IOS107_TEST_FIRMWARE
+  IOS1011_TEST_APP="$TURBO_APP1011" node --test package.test.mjs
+}
 source_audit_stage() {
   cd "$REPO"
   node --input-type=module -e "const m=await import('./scripts/check-source.mjs');const r=m.audit(process.cwd());const f=r.findings.filter(x=>!x.file.startsWith('.remember/'));if(f.length){console.log(JSON.stringify(f,null,1));process.exit(1)}console.log(r.files+' files clean')"
@@ -141,14 +153,16 @@ stage private private_stage
 stage build build_stage
 stage symbols symbols_stage
 if [[ $only_build == 1 ]]; then
-  for name in test package-test source-audit preview; do report skip "$name" '--only-build'; done
+  for name in test package-test host1011 source-audit preview; do report skip "$name" '--only-build'; done
 else
   if [[ $skip_tests == 1 ]]; then
     report skip test '--skip-tests'
     report skip package-test '--skip-tests'
+    report skip host1011 '--skip-tests'
   else
     stage test test_stage
     stage package-test package_test_stage
+    if [[ -n "$TURBO_APP1011" ]]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi
   fi
   stage source-audit source_audit_stage
   if [[ $preview == 1 ]]; then stage preview preview_stage; else report skip preview 'not requested'; fi

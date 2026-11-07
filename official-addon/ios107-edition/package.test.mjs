@@ -214,3 +214,112 @@ test('bundle private allowances match exact regular-file paths',()=>{
   assert.deepEqual(leakGuard.privateBundleNames(root,leakGuard.ALLOWED_BUNDLE_PRIVATE),['Frameworks/TurboIOPrivateAddon.dylib','Frameworks/TurboIOPrivateAddon.dylib/secret.json']);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+
+// Download-only 1.0.11/259 profile: stock App.framework, no route patch, no ZIP, no flash marker.
+import {HOST_PROFILES,hostProfile,verifyStockApp,verifySignedStockApp} from './package.mjs';
+import {stripCodeSignature} from './macho-embed.mjs';
+import {createHash} from 'node:crypto';
+const info1011={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Runner',CFBundleShortVersionString:'1.0.11',CFBundleVersion:'259'};
+const options1011={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios1011-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',host:'ios1011-download'};
+const sha256=b=>createHash('sha256').update(b).digest('hex');
+test('host profile table: ios107 keeps the route patch and firmware; ios1011-download has neither',()=>{
+ assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011-download','ios107']);
+ assert.equal(hostProfile(),HOST_PROFILES.ios107);assert.throws(()=>hostProfile('ios1011'));assert.throws(()=>hostProfile('__proto__'));
+ const a=HOST_PROFILES.ios107,d=HOST_PROFILES['ios1011-download'];
+ assert.equal(a.routePatch,true);assert.equal(a.firmware,true);assert.equal(a.stripStaleSignature,undefined);
+ assert.equal(d.routePatch,false);assert.equal(d.firmware,false);assert.equal(d.stripStaleSignature,true);
+ assert.equal(d.acceptedPairs.length,1);assert.deepEqual(d.acceptedPairs[0],['09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95','0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be']);
+ assert.deepEqual(d.routes,[['/xrlauncherapi/v1/signApi/gray/upgrade',39886000],['/xrlauncherhwapi/v1/signApi/gray/upgrade',30868352]]);
+ assert.equal(d.sourceIPASHA256,'e097f1f86cbb91b4d95e242b3c3de7c363d6abd38b7ece4408989c40d7cae19f');
+ // The packager pin, the JS host matrix and the native header name the same UUID.
+ const native=fs.readFileSync(new URL('./HostCompatibility.h',import.meta.url),'utf8').match(/"1\.0\.11"\]&&\[build isEqual:@"259"\]\)return @"([0-9A-F-]{36})"/);
+ assert.ok(native);assert.equal(native[1].replaceAll('-','').toLowerCase(),d.uuid);
+ assert.equal(inspectedHost(info1011,d.uuid).profile,'ios1011-download');assert.equal(inspectedHost(info1011,d.uuid).downloadOnly,true);
+ assert.equal(inspectedHost({...info1011,CFBundleVersion:'260'},d.uuid),null);assert.equal(inspectedHost(info1011,HOST_PROFILES.ios107.uuid),null);
+ assert.equal(inspectedHost(info,d.uuid),null);assert.equal(inspectedHost(info,HOST_PROFILES.ios107.uuid).downloadOnly,undefined);
+});
+test('download-only options take no firmware, candidate flag or product',()=>{
+ validateOptions(options1011);
+ for(const extra of [{firmware:'/example/TMG8.zip'},{product:'iPhone17,1'},{'experimental-ota':'TMG8'},{bundle:'example.other'}])assert.throws(()=>validateOptions({...options1011,...extra}));
+ assert.throws(()=>validateOptions({...options1011,host:'ios1011'}));
+ assert.throws(()=>validateOptions({...options,host:'ios1011-download'}));
+ validateOptions({...options,host:'ios107'});
+});
+test('download-only host gate rejects other versions, TIO markers and unknown bytes',()=>{
+ for(const bad of [info,{...info1011,CFBundleVersion:'258'},{...info1011,TIOHostProfile:'ios1011-download'},{...info1011,CFBundleIdentifier:'example.other'}])
+  assert.throws(()=>validateHost(bad,Buffer.alloc(32),Buffer.alloc(32),'ios1011-download'),/requires_original_ios1011_259/);
+ assert.throws(()=>validateHost(info1011,Buffer.alloc(32),Buffer.alloc(32),'ios1011-download'));
+ assert.throws(()=>validateHost(info1011,Buffer.alloc(32),Buffer.alloc(32)),/requires_original_ios107_230/);
+ assert.throws(()=>verifyStockApp(Buffer.alloc(64)),/download_only_app_changed/);assert.throws(()=>verifyStockApp(Buffer.alloc(64),'ios107'));
+});
+test('packager source keeps the download-only path free of route patch, ZIP and flash marker',()=>{
+ const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
+ const branch=s.slice(s.indexOf('if(!host.routePatch){'),s.indexOf('}else{',s.indexOf('if(!host.routePatch){')));
+ assert.ok(branch.includes('verifyStockApp('));assert.ok(branch.includes("'TIOHostProfile'"));
+ for(const forbidden of ['patchOTARoute','TIOExperimentalOTAQueryRouting','TIOExperimentalOTABuild','CANDIDATE_RESOURCE','UISupportedDevices','NSAllowsLocalNetworking'])assert.ok(!branch.includes(forbidden),forbidden);
+ assert.match(s,/if\(host\.routePatch\)verifyRoute\(/);assert.match(s,/else verifySignedStockApp\(/);
+ assert.match(s,/host\.stripStaleSignature\?\['--strip-stale-signature'\]:\[\]/);
+});
+test('real 1.0.11 input: pins, unpatched routes and deterministic signature strip',t=>{
+ const p=process.env.IOS1011_TEST_APP;if(!p)return t.skip('set IOS1011_TEST_APP');
+ const r=fs.readFileSync(p+'/Runner'),a=fs.readFileSync(p+'/Frameworks/App.framework/App');
+ const frameworks={'RayneoNet.framework/RayneoNet':fs.readFileSync(p+'/Frameworks/RayneoNet.framework/RayneoNet'),'Flutter.framework/Flutter':fs.readFileSync(p+'/Frameworks/Flutter.framework/Flutter')};
+ const plist=JSON.parse(runFixtureCommand('plutil',['-convert','json','-o','-',p+'/Info.plist'],{encoding:'utf8'}));
+ validateHost(plist,r,a,'ios1011-download',frameworks);assert.ok(inspectedHost(plist,inspectMachO(r).uuid).downloadOnly);
+ assert.throws(()=>validateHost(plist,r,a,'ios1011-download'),/host_framework_identity_mismatch/);
+ assert.throws(()=>validateHost(plist,r,a,'ios107',frameworks));
+ const badNet=Buffer.from(frameworks['RayneoNet.framework/RayneoNet']);badNet[4096]^=1;assert.throws(()=>validateHost(plist,r,a,'ios1011-download',{...frameworks,'RayneoNet.framework/RayneoNet':badNet}));
+ const badApp=Buffer.from(a);badApp[4096]^=1;assert.throws(()=>validateHost(plist,r,badApp,'ios1011-download',frameworks));assert.throws(()=>verifyStockApp(badApp));
+ const badRunner=Buffer.from(r);badRunner[4096]^=1;assert.throws(()=>validateHost(plist,badRunner,a,'ios1011-download',frameworks));
+ assert.ok(verifyStockApp(a));assert.throws(()=>patch(a));
+ for(const [route,offset] of HOST_PROFILES['ios1011-download'].routes){const moved=Buffer.from(a);moved[offset]^=1;assert.throws(()=>verifyStockApp(moved));}
+ // Strip: deterministic, idempotent, removes exactly LC_CODE_SIGNATURE and its blob.
+ const h=inspectMachO(r),one=stripCodeSignature(r),two=stripCodeSignature(r);
+ assert.equal(one.stripped,true);assert.ok(one.output.equals(two.output));assert.equal(stripCodeSignature(one.output).stripped,false);
+ assert.equal(sha256(one.output),'c28032569765077b0246a3ba9c54fede700f5bed4d3445f61cea0e40fcdbd6f6');
+ const u=inspectMachO(one.output);assert.equal(u.uuid,h.uuid);assert.equal(u.count,h.count-1);assert.equal(u.encrypted,false);assert.equal(one.output.length,42246528);
+ const embedded=inspectMachO(addEmbeddedLoad(one.output));assert.equal(embedded.uuid,h.uuid);assert.equal(embedded.count,h.count);
+ assert.deepEqual(embedded.dependencies.filter(x=>!inspectMachO(r).dependencies.includes(x)),['@executable_path/Frameworks/TurboIOPrivateAddon.dylib']);
+ assert.equal(sha256(r),HOST_PROFILES['ios1011-download'].acceptedPairs[0][0]); // input untouched
+ // After signing only the signature may differ: same stripped bytes, same route records.
+ assert.ok(verifySignedStockApp(a,a));assert.throws(()=>verifySignedStockApp(badApp,a));
+});
+test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identical to stock',t=>{
+ const p=process.env.IOS1011_TEST_APP,addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');
+ if(!p)return t.skip('set IOS1011_TEST_APP');if(!fs.existsSync(addon))return t.skip('build the embedded addon first');
+ const root=fs.mkdtempSync(path.join(packageTestDirectory,'build','h1011-prepare-'));
+ try{
+  // Minimal fixture copied from the real input: Info.plist, Runner, App.framework and the stale seal.
+  const src=path.join(root,'src/Runner.app');fs.mkdirSync(path.join(src,'Frameworks/App.framework'),{recursive:true});fs.mkdirSync(path.join(src,'_CodeSignature'));
+  for(const f of ['Info.plist','Runner','Frameworks/App.framework/App','Frameworks/App.framework/Info.plist','_CodeSignature/CodeResources'])fs.copyFileSync(path.join(p,f),path.join(src,f));
+  const embed=path.join(packageTestDirectory,'macho-embed.mjs');
+  assert.throws(()=>runFixtureCommand(process.execPath,[embed,src,path.join(root,'plain/Runner.app'),addon,'com.rayneo.venus.pub'],{stdio:'pipe'}),e=>/require --strip-stale-signature/.test(String(e.stderr)));
+  assert.equal(fs.existsSync(path.join(root,'plain')),false);
+  const out=path.join(root,'out/Runner.app');
+  runFixtureCommand(process.execPath,[embed,src,out,addon,'com.rayneo.venus.pub','--strip-stale-signature'],{stdio:'pipe'});
+  const app=fs.readFileSync(path.join(out,'Frameworks/App.framework/App'));
+  assert.equal(sha256(app),'0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be');assert.ok(verifyStockApp(app));
+  assert.equal(fs.existsSync(path.join(out,'_CodeSignature')),false);assert.ok(fs.existsSync(path.join(src,'_CodeSignature/CodeResources')));
+  const runner=fs.readFileSync(path.join(out,'Runner')),report=JSON.parse(fs.readFileSync(path.join(out,'TurboIOPrivatePreparation.json'),'utf8'));
+  assert.equal(stripCodeSignature(runner).stripped,false);assert.equal(inspectMachO(runner).uuid,'22724c972ef9388d8e6a6e051855a555');
+  assert.equal(report.hostProfile,'ios1011-download');assert.equal(report.staleSignatureRemoved,true);
+  assert.equal(report.originalExecutableSHA256,'09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95');
+  assert.equal(report.unsignedExecutableSHA256,'c28032569765077b0246a3ba9c54fede700f5bed4d3445f61cea0e40fcdbd6f6');
+  assert.equal(report.preparedExecutableSHA256,sha256(runner));
+  const plist=plistJSON(path.join(out,'Info.plist'));
+  for(const k of ['TIOExperimentalOTAQueryRouting','TIOExperimentalOTABuild','UISupportedDevices','TIOHostProfile'])assert.equal(plist[k],undefined,k);
+  assert.equal(fs.existsSync(path.join(out,leakGuard.CANDIDATE_RESOURCE)),false);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# Download-only:'),wrapper.indexOf('\nelse\nrun_logged package'));
+ assert.match(branch,/--host ios1011-download --app "\$TURBO_APP1011"/);
+ assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
+ assert.match(branch,/hostProfile'\]=='ios1011-download'/);
+ assert.match(wrapper,/unset [^\n]*TURBO_APP1011/);
+ assert.match(wrapper,/--firmware "\$TURBO_FIRMWARE" --product "\$TURBO_PRODUCT"/);
+ const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ assert.match(gate,/if \[\[ -n "\$TURBO_APP1011" \]\]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi/);
+ assert.match(gate,/stage test test_stage\n    stage package-test package_test_stage/);
+});

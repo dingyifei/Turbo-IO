@@ -47,9 +47,35 @@ export function addEmbeddedLoad(bytes) {
   return result;
 }
 
+// Removes a stale (here: invalidated by decryption) LC_CODE_SIGNATURE and its
+// trailing blob, so the addon load command is added to an unsigned image. Pure and
+// deterministic: same input bytes, same output bytes. The re-sign writes a new one.
+export function stripCodeSignature(bytes) {
+  const info=inspectMachO(bytes);let p=32,sig=null,linkedit=null;
+  for(let i=0;i<info.count;i++){
+    const cmd=bytes.readUInt32LE(p),n=bytes.readUInt32LE(p+4);
+    if(cmd===0x1d){if(n!==16||sig)throw Error('Invalid code signature command');sig={at:p,dataoff:bytes.readUInt32LE(p+8),datasize:bytes.readUInt32LE(p+12)};}
+    if(cmd===0x19&&bytes.toString('latin1',p+8,p+24).replace(/\0+$/,'')==='__LINKEDIT'){if(linkedit)throw Error('Duplicate __LINKEDIT');linkedit={at:p,fileoff:Number(bytes.readBigUInt64LE(p+40)),filesize:Number(bytes.readBigUInt64LE(p+48))};}
+    p+=n;
+  }
+  if(!sig)return {output:Buffer.from(bytes),stripped:false};
+  if(!linkedit||linkedit.at>sig.at||sig.dataoff%16||sig.dataoff<linkedit.fileoff||sig.dataoff+sig.datasize!==bytes.length||linkedit.fileoff+linkedit.filesize!==bytes.length)throw Error('Unexpected code signature layout');
+  const output=Buffer.from(bytes.subarray(0,sig.dataoff));
+  bytes.copy(output,sig.at,sig.at+16,info.end);output.fill(0,info.end-16,info.end);
+  output.writeUInt32LE(info.count-1,16);output.writeUInt32LE(info.size-16,20);
+  const filesize=sig.dataoff-linkedit.fileoff;
+  output.writeBigUInt64LE(BigInt(filesize),linkedit.at+48); // vmsize is kept, as codesign --remove-signature does
+  const after=inspectMachO(output);
+  if(after.uuid!==info.uuid||after.count!==info.count-1||after.encrypted!==info.encrypted)throw Error('Post-strip verification failed');
+  for(let q=32,i=0;i<after.count;i++){if(output.readUInt32LE(q)===0x1d)throw Error('Post-strip verification failed');q+=output.readUInt32LE(q+4);}
+  return {output,stripped:true};
+}
+
 function prepare() {
-  const [sourceArg,outArg,addonArg,bundle]=process.argv.slice(2);
-  if(!sourceArg||!outArg||!addonArg||!bundle||process.argv.length!==6)throw Error('Usage: node macho-embed.mjs /absolute/Runner.app /absolute/new/Runner.app /absolute/embedded/TurboIOPrivateAddon.dylib your.bundle.id');
+  const [sourceArg,outArg,addonArg,bundle,mode]=process.argv.slice(2);
+  // --strip-stale-signature is for download-only hosts, whose input still carries an invalid Apple signature.
+  const strip=process.argv.length===7&&mode==='--strip-stale-signature';
+  if(!sourceArg||!outArg||!addonArg||!bundle||(process.argv.length!==6&&!strip))throw Error('Usage: node macho-embed.mjs /absolute/Runner.app /absolute/new/Runner.app /absolute/embedded/TurboIOPrivateAddon.dylib your.bundle.id [--strip-stale-signature]');
   if(![sourceArg,outArg,addonArg].every(path.isAbsolute)||![sourceArg,outArg].every(x=>x.endsWith('.app')))throw Error('Use absolute app and addon paths');
   if(!/^[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z0-9.-]+$/.test(bundle))throw Error('Invalid explicit Bundle ID');
   const source=fs.realpathSync(sourceArg),out=path.resolve(outArg),addon=fs.realpathSync(addonArg);
@@ -57,20 +83,25 @@ function prepare() {
   const plist=p=>JSON.parse(execFileSync('plutil',['-convert','json','-o','-',p],{encoding:'utf8'}));
   const info=plist(path.join(source,'Info.plist'));
   const exe=path.join(source,'Runner'),original=fs.readFileSync(exe),header=inspectMachO(original);
-  if(!inspectedHost(info,header.uuid))throw Error('Unsupported official source app version/build/UUID');
+  const host=inspectedHost(info,header.uuid);
+  if(!host)throw Error('Unsupported official source app version/build/UUID');
+  if(!!host.downloadOnly!==strip)throw Error('Download-only hosts, and only they, require --strip-stale-signature');
   const embedded=fs.readFileSync(addon),addonInfo=inspectMachO(embedded);
   if(addonInfo.fileType!==6||addonInfo.installName!=='@rpath/TurboIOPrivateAddon.dylib'||addonInfo.encrypted||addonInfo.dependencies.some(x=>/\/var\/jb\/|frida|ellekit|substrate/i.test(x)))throw Error('Use the embedded addon build, with no jailbreak runtime dependency');
   if(!embedded.includes(Buffer.from(bundle+'\0')))throw Error('Build addon for exactly the requested Bundle ID');
-  const patched=addEmbeddedLoad(original),inventory=[];
+  const unsigned=strip?stripCodeSignature(original).output:original;
+  const patched=addEmbeddedLoad(unsigned),inventory=[];
   function walk(dir){for(const name of fs.readdirSync(dir)){const p=path.join(dir,name),st=fs.lstatSync(p);if(st.isSymbolicLink())throw Error('Review bundle symlinks before preparing');if(st.isDirectory()){if(name==='PlugIns')throw Error('Source has app extensions; separate signing/entitlement review required');walk(p);}else {const b=fs.readFileSync(p);if(b.length>=4&&[0xcafebabe,0xbebafeca,0xcafebabf,0xbfbafeca].includes(b.readUInt32BE(0)))throw Error('Fat Mach-O needs slice-by-slice review before preparing');if(b.length>=4&&b.readUInt32LE(0)===0xfeedfacf){const h=inspectMachO(b);if(h.encrypted)throw Error('Encrypted embedded image: '+path.relative(source,p));inventory.push(path.relative(source,p));}}}}
   walk(source); // Complete preflight before creating any output.
   fs.mkdirSync(path.dirname(out),{recursive:true});fs.cpSync(source,out,{recursive:true,force:false,errorOnExist:true,dereference:false});
   fs.writeFileSync(path.join(out,'Runner'),patched);
+  if(strip)fs.rmSync(path.join(out,'_CodeSignature'),{recursive:true,force:true}); // the app's own stale seal; nested frameworks are re-signed with --force
   fs.mkdirSync(path.join(out,'Frameworks'),{recursive:true});fs.copyFileSync(addon,path.join(out,'Frameworks/TurboIOPrivateAddon.dylib'),fs.constants.COPYFILE_EXCL);
   execFileSync('plutil',['-replace','CFBundleIdentifier','-string',bundle,path.join(out,'Info.plist')]);
   if(plist(path.join(out,'Info.plist')).CFBundleIdentifier!==bundle)throw Error('Bundle ID update failed');
   const hash=b=>createHash('sha256').update(b).digest('hex');
   const report={status:'PREPARED_ONLY_NOT_SIGNED_NOT_INSTALLABLE',originalExecutableSHA256:hash(original),preparedExecutableSHA256:hash(patched),addonSHA256:hash(embedded),binaryCount:inventory.length,uuid:header.uuid,sourcePreserved:hash(fs.readFileSync(exe))===hash(original),requires:['matching developer provisioning profile','review entitlements for every nested code bundle','sign nested code then app','non-jailbroken hardware acceptance']};
+  if(strip)Object.assign(report,{hostProfile:host.profile,staleSignatureRemoved:true,unsignedExecutableSHA256:hash(unsigned)});
   fs.writeFileSync(path.join(out,'TurboIOPrivatePreparation.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});
   console.log(JSON.stringify(report,null,2));
 }

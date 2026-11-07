@@ -5,6 +5,9 @@ export const inspectedHosts = Object.freeze([
   Object.freeze({version:'1.0.2',build:'67',uuid:'eeea85e54114313cb65173c90a6b5d3c'}),
   Object.freeze({version:'1.0.4',build:'195',uuid:'261c8e78f9553d7d85f713b9082972cf'}),
   Object.freeze({version:'1.0.5',build:'201',uuid:'748fd301da603095a2449bd0558faca5'}),
+  // Download-only: the addon installs only the OTA transfer guard on this host
+  // (HostCompatibility.h TIOHostDownloadOnlyUUID). App.framework ships unchanged.
+  Object.freeze({version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555',profile:'ios1011-download',downloadOnly:true}),
 ]);
 export function inspectedHost(info, uuid) {
   if(info.CFBundleIdentifier!=='com.rayneo.venus.pub'||info.CFBundleExecutable!=='Runner')return null;

@@ -7,13 +7,19 @@ ED=$REPO/official-addon/ios107-edition
 TURBO_INPUTS=${TURBO_INPUTS:-"$HOME/projects/personal/turboio-inputs"}
 apple_ai_out=''
 apple_args=()
-if [[ ${1:-} == --apple-ai ]]; then
-  [[ $# == 3 && -n ${2:-} ]] || { echo 'Usage: turbo-package.sh [--apple-ai <new-directory>] <label>' >&2; exit 2; }
-  apple_ai_out=$2
-  shift 2
-fi
+# --host 107 (default): the 1.0.7/230 TMG build. --host 1011: the download-only
+# 1.0.11/259 build (stock App.framework, no firmware, no flashing), from TURBO_APP1011.
+host=107
+usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011] <label>'
+while [[ $# -gt 1 ]]; do
+  case "$1" in
+    --apple-ai) [[ -n ${2:-} && -z $apple_ai_out ]] || { echo "$usage" >&2; exit 2; }; apple_ai_out=$2; shift 2 ;;
+    --host) [[ ${2:-} == 107 || ${2:-} == 1011 ]] || { echo "$usage" >&2; exit 2; }; host=$2; shift 2 ;;
+    *) echo "$usage" >&2; exit 2 ;;
+  esac
+done
 if [[ $# != 1 || ! $1 =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-  printf 'Usage: %s <label>\n' "$0" >&2
+  echo "$usage" >&2
   exit 2
 fi
 label=$1
@@ -42,12 +48,14 @@ trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 # Ignore inherited credentials and paths; require the external configuration.
-unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP
+unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
 [[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'PACKAGE FAIL: missing external package.env' >&2; exit 1; }
 set -a
 source "$TURBO_INPUTS/package.env"
 set +a
-for name in TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107; do
+if [[ $host == 1011 ]]; then required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011)
+else required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107); fi
+for name in "${required[@]}"; do
   [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
 done
 if [[ -n "$apple_ai_out" ]]; then
@@ -57,7 +65,11 @@ if [[ -n "$apple_ai_out" ]]; then
 fi
 ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
 [[ -f "$ADDON" ]] || { echo 'PACKAGE FAIL: missing addon' >&2; exit 1; }
-[[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+if [[ $host == 1011 ]]; then
+  [[ -f "$TURBO_PROFILE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+else
+  [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+fi
 OUT=$TURBO_INPUTS/signed-$(date +%Y%m%d-%H%M)-$label
 [[ ! -e "$OUT" && ! -L "$OUT" ]] || { echo 'PACKAGE FAIL: output already exists' >&2; exit 1; }
 keychain_error() {
@@ -96,6 +108,31 @@ PY
 # normal access checks but discards the signature without writing anything.
 # Probe once because package.mjs deliberately hides child-process stderr.
 run_logged signing-preflight codesign --dryrun --force --sign "$TURBO_SIGN_ID" --timestamp=none "$ADDON"
+if [[ $host == 1011 ]]; then
+# Download-only: no firmware resource and no device-model list; package.mjs keeps App.framework stock.
+run_logged package node "$ED/package.mjs" --host ios1011-download --app "$TURBO_APP1011" --addon "$ADDON" \
+  --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
+  --out "$OUT" --bundle com.rayneo.venus.pub ${apple_args[@]+"${apple_args[@]}"}
+run_logged codesign codesign --verify --deep --strict "$OUT/Payload/Runner.app"
+run_logged unzip unzip -tq "$OUT/TurboIO-local-only.ipa"
+run_logged report python3 - "$OUT" <<'PY'
+import hashlib,json,pathlib,plistlib,sys
+out=pathlib.Path(sys.argv[1])
+with (out/'report.json').open() as stream: report=json.load(stream)
+assert report['status']=='SIGNED_NOT_DEVICE_ACCEPTED', 'unexpected package status'
+assert report['hostProfile']=='ios1011-download' and report['flashAuthorized'] is False, 'unexpected host profile or flash authorization'
+assert report['firmwareBundled'] is False and report['routePatched'] is False and report['experimentalOTA'] is False, 'download-only build carries OTA material'
+app=out/'Payload/Runner.app'
+info=plistlib.loads((app/'Info.plist').read_bytes())
+assert info.get('TIOHostProfile')=='ios1011-download', 'missing host profile marker'
+for key in ('TIOExperimentalOTAQueryRouting','TIOExperimentalOTABuild','UISupportedDevices'):
+    assert key not in info, 'unexpected '+key
+assert not (app/'TurboWeReadCandidate.zip').exists(), 'unexpected firmware resource'
+digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
+assert report['ipaSHA256']==digest, 'IPA digest mismatch'
+print(digest)
+PY
+else
 run_logged package node "$ED/package.mjs" --app "$TURBO_APP107" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
   --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$TURBO_FIRMWARE" --product "$TURBO_PRODUCT" ${apple_args[@]+"${apple_args[@]}"}
@@ -114,6 +151,7 @@ digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
 assert report['ipaSHA256']==digest, 'IPA digest mismatch'
 print(digest)
 PY
+fi
 active=timings
 mkdir -p "$TURBO_INPUTS/baseline"
 python3 - "$started" "$TURBO_INPUTS/baseline/timings.txt" "$label" <<'PY'
