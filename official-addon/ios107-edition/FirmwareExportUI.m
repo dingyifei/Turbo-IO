@@ -21,12 +21,14 @@ static NSURL *Home(void){return [NSURL fileURLWithPath:NSHomeDirectory() isDirec
 static BOOL Guarded(void){return TIOHostDownloadOnlyGuardActive();}
 static NSDictionary *SafetyModel(void){
     // Guarded() also checks the refusal's own host test; it has the last word on the guard row.
-    return TIOFirmwareExportSafetyModel(TIOHostProfile(),TIOGlassesChannelHookInstalled()&&Guarded(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue],NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
+    // Green needs runtime evidence too: a stock rayneonet call has passed the hook in this launch.
+    return TIOFirmwareExportSafetyModel(TIOHostProfile(),TIOGlassesChannelHookInstalled()&&Guarded(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue],TIOGlassesChannelStockTrafficSeen(),NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
 }
 NSString *TIOFirmwareExportHubStatus(void){
     NSDictionary *m=SafetyModel();
     if(![m[@"guardActive"] boolValue])return TIOText(@"hub.status.firmwareExport.unguarded");
     if([m[@"autoUpdate"] isEqual:@"on"])return TIOText(@"hub.status.firmwareExport.autoOn");
+    if([m[@"guardLevel"] isEqual:@"warn"])return TIOText(@"hub.status.firmwareExport.waiting");
     return TIOText(@"hub.status.firmwareExport.guarded");
 }
 static UIColor *LevelColor(NSString *level){
@@ -44,6 +46,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
 @property(nonatomic) BOOL busy;
 @property(nonatomic) NSUInteger generation;
 @property(nonatomic) NSDictionary *safety;
+@property(nonatomic) NSTimer *safetyTimer;
 @end
 @implementation TIOFirmwareExportPanel
 - (void)viewDidLoad{
@@ -53,6 +56,20 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
 }
 // Auto Update can change while the owner is in RayNeo's firmware page; re-read on every return.
 - (void)viewWillAppear:(BOOL)animated{[super viewWillAppear:animated];[self updateSafety];}
+// While visible, re-read once a second (and at once on the hook's notification) so the
+// guard row turns green as soon as a stock rayneonet call has passed the hook.
+- (void)viewDidAppear:(BOOL)animated{
+    [super viewDidAppear:animated];[self.safetyTimer invalidate];__weak typeof(self) weak=self;
+    self.safetyTimer=[NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t){[weak pollSafety];}];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(pollSafety) name:TIOGlassesChannelStockTrafficNotification object:nil];
+}
+- (void)viewWillDisappear:(BOOL)animated{
+    [super viewWillDisappear:animated];[self.safetyTimer invalidate];self.safetyTimer=nil;
+    [NSNotificationCenter.defaultCenter removeObserver:self name:TIOGlassesChannelStockTrafficNotification object:nil];
+}
+- (void)dealloc{[_safetyTimer invalidate];[NSNotificationCenter.defaultCenter removeObserver:self];}
+// Rebuilds only when the model changed, so the list does not flicker every second.
+- (void)pollSafety{if(![SafetyModel() isEqual:self.safety])[self updateSafety];}
 - (void)updateSafety{
     self.safety=SafetyModel();
     NSString *banner=self.safety[@"bannerKey"];
@@ -144,10 +161,17 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
             if([m[@"autoLevel"] isEqual:@"danger"])c.textLabel.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);
             c.imageView.image=[UIImage systemImageNamed:[m[@"autoLevel"] isEqual:@"ok"]?@"checkmark.circle.fill":@"exclamationmark.triangle.fill"];c.imageView.tintColor=color;
             c.accessibilityIdentifier=[@"fwexport-auto-" stringByAppendingString:m[@"autoUpdate"]];
-        }else if([(self.safety?:SafetyModel())[@"guardActive"] boolValue]){
+        }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"ok"]){
+            // Green: guard installed and a stock rayneonet call has passed the hook in this launch.
             c.textLabel.text=TIOText(@"fwexport.guard.on");c.detailTextLabel.text=TIOText(@"fwexport.guard.on.detail");
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusOk);c.imageView.image=[UIImage systemImageNamed:@"checkmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusOk);
             c.accessibilityIdentifier=@"fwexport-guard-on";
+        }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"warn"]){
+            // Amber: the hook is installed, but nothing yet shows the stock path goes through it.
+            c.textLabel.text=TIOText(@"fwexport.guard.waiting");c.detailTextLabel.text=TIOText(@"fwexport.guard.waiting.detail");
+            c.textLabel.textColor=TIODesignColor(TIODesignColorStatusWarn);c.textLabel.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);
+            c.imageView.image=[UIImage systemImageNamed:@"exclamationmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusWarn);
+            c.accessibilityIdentifier=@"fwexport-guard-waiting";
         }else{
             // Loud on purpose: without the hook nothing stops an OTA session from this app.
             // Danger fill with the on-accent token: white text in light mode, dark text on the lighter dark-mode red.

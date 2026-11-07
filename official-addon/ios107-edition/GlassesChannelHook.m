@@ -24,6 +24,12 @@
 #import <objc/message.h>
 #import "GlassesChannelHook.h"
 #import "DownloadOnlySafety.h"
+#include <dlfcn.h>
+#include <stdatomic.h>
+#include <os/lock.h>
+#if __has_feature(ptrauth_calls)
+#include <ptrauth.h>
+#endif
 
 static void (*PriorMethod)(id,SEL,id,id);
 static void (*PriorSend)(id,SEL,id,id,id);
@@ -40,10 +46,64 @@ static BOOL RouteFileEvent(id event,BOOL(^consume)(NSDictionary *),void(^complet
  return YES;
 }
 #endif
+// Stock-traffic evidence (G2). Stock calls reach MethodHook with the FlutterResult
+// block that Flutter.framework (or the Runner) built; the addon's senders call
+// -handleMethodCall:result: on the captured plugin with their own blocks or nil.
+// So the origin is read from where the result block's invoke function lives, not
+// from the call stack. The last stock invoke pointer is cached, so after the
+// first stock call the check is one class test and one pointer compare.
+NSString *const TIOGlassesChannelStockTrafficNotification=@"TIOGlassesChannelStockTrafficSeen";
+static _Atomic(uint64_t) StockCalls,AddonCalls;static _Atomic(uintptr_t) StockInvoke;
+static os_unfair_lock EvidenceLock=OS_UNFAIR_LOCK_INIT;static NSTimeInterval FirstStockUptime;static NSString *FirstStockMethod;
+struct TIOBlockLayout{void *isa;int flags;int reserved;void *invoke;};
+static uintptr_t BlockInvoke(id result){
+    static Class block;static dispatch_once_t once;dispatch_once(&once,^{block=NSClassFromString(@"NSBlock");});
+    if(!result||!block||![result isKindOfClass:block])return 0;
+    void *invoke=((__bridge struct TIOBlockLayout *)result)->invoke;
+#if __has_feature(ptrauth_calls)
+    invoke=ptrauth_strip(invoke,ptrauth_key_function_pointer);
+#endif
+    return (uintptr_t)invoke;
+}
+static BOOL StockOrigin(id result){
+    uintptr_t invoke=BlockInvoke(result);if(!invoke)return NO;
+    if(invoke==atomic_load_explicit(&StockInvoke,memory_order_relaxed))return YES;
+    static NSString *addonImage,*bundle;static dispatch_once_t once;
+    dispatch_once(&once,^{Dl_info mine={0};if(dladdr((const void *)&BlockInvoke,&mine)&&mine.dli_fname)addonImage=@(mine.dli_fname);bundle=NSBundle.mainBundle.bundlePath;});
+    Dl_info theirs={0};if(!dladdr((const void *)invoke,&theirs)||!theirs.dli_fname)return NO;
+    if(!TIOChannelResultImageIsStock(@(theirs.dli_fname),addonImage,bundle))return NO;
+    atomic_store_explicit(&StockInvoke,invoke,memory_order_relaxed);return YES;
+}
+static void AppendLoadInfo(NSString *line){
+    NSString *path=[NSTemporaryDirectory() stringByAppendingPathComponent:@"TurboIOPrivateAddon-load.txt"];
+    NSFileHandle *file=[NSFileHandle fileHandleForWritingAtPath:path];if(!file)return;
+    @try{[file seekToEndOfFile];[file writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];[file closeFile];}@catch(__unused NSException *e){}
+}
+static void RecordStockEvidence(id call,id result){
+    NSString *method=Get(call,@"method");if(![method isKindOfClass:NSString.class]||![method hasPrefix:@"rayneonet_"])return;
+    if(!StockOrigin(result)){atomic_fetch_add_explicit(&AddonCalls,1,memory_order_relaxed);return;}
+    if(atomic_fetch_add_explicit(&StockCalls,1,memory_order_relaxed))return;
+    NSTimeInterval uptime=NSProcessInfo.processInfo.systemUptime;NSString *first=[method copy];
+    os_unfair_lock_lock(&EvidenceLock);if(!FirstStockMethod){FirstStockUptime=uptime;FirstStockMethod=first;}os_unfair_lock_unlock(&EvidenceLock);
+    // On main, so the line lands after Load has written the load info.
+    dispatch_async(dispatch_get_main_queue(),^{
+        AppendLoadInfo([NSString stringWithFormat:@"stockTraffic=1; first stock call %@ at uptime %.1f\n",first,uptime]);
+        [NSNotificationCenter.defaultCenter postNotificationName:TIOGlassesChannelStockTrafficNotification object:nil];
+    });
+}
+BOOL TIOGlassesChannelStockTrafficSeen(void){os_unfair_lock_lock(&EvidenceLock);BOOL seen=FirstStockMethod!=nil;os_unfair_lock_unlock(&EvidenceLock);return seen;}
+NSDictionary *TIOGlassesChannelTrafficStatus(void){
+    os_unfair_lock_lock(&EvidenceLock);NSString *method=FirstStockMethod;NSTimeInterval uptime=FirstStockUptime;os_unfair_lock_unlock(&EvidenceLock);
+    NSMutableDictionary *d=[@{@"stockSeen":@(method!=nil),@"stockCalls":@(atomic_load(&StockCalls)),@"addonCalls":@(atomic_load(&AddonCalls))} mutableCopy];
+    if(method){d[@"firstStockMethod"]=method;d[@"firstStockUptime"]=@(uptime);}
+    return d;
+}
 static void MethodHook(id self,SEL cmd,id call,id result){
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&!NSThread.isMainThread){
         dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;
     }
+    // Evidence first: a stock call proves the stock path reaches this hook even when the guard refuses it below.
+    RecordStockEvidence(call,result);
     BOOL otaBlocked=TIOOTAFlashBlockCall(call);
 #if TIO_DISPLAY_PHONE
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"])TDPDiagRecord(@"gate",@{@"blocked":@(otaBlocked),@"otaStage":TIOOTAFlashStatus()[@"stage"]?:@0});

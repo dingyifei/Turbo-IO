@@ -16,6 +16,18 @@ NSString *TIOChannelHookTargetFailure(Class bridge,Class engine){
 BOOL TIODownloadOnlyGuardActiveFor(NSString *profile,BOOL hookInstalled,BOOL transportHookReady){
     return [profile isEqual:@"ios1011-download"]&&hookInstalled&&transportHookReady;
 }
+static NSString *Unprivate(NSString *p){return [p hasPrefix:@"/private/"]?[p substringFromIndex:8]:p;}
+BOOL TIOChannelResultImageIsStock(NSString *imagePath,NSString *addonImagePath,NSString *bundlePath){
+    if(![imagePath isKindOfClass:NSString.class]||!imagePath.length||![bundlePath isKindOfClass:NSString.class]||!bundlePath.length)return NO;
+    NSString *image=Unprivate(imagePath.stringByStandardizingPath),*bundle=Unprivate(bundlePath.stringByStandardizingPath);
+    if([addonImagePath isKindOfClass:NSString.class]&&[image isEqual:Unprivate(addonImagePath.stringByStandardizingPath)])return NO;
+    if([image.lastPathComponent hasPrefix:@"Turbo"])return NO;
+    return [image hasPrefix:[bundle stringByAppendingString:@"/"]];
+}
+NSString *TIODownloadOnlyGuardLevelFor(NSString *profile,BOOL hookInstalled,BOOL transportHookReady,BOOL stockTrafficSeen){
+    if(!TIODownloadOnlyGuardActiveFor(profile,hookInstalled,transportHookReady))return @"danger";
+    return stockTrafficSeen?@"ok":@"warn";
+}
 TIOAutoUpdateReading TIOAutoUpdateReadingFor(NSDictionary *preferences){
     if(![preferences isKindOfClass:NSDictionary.class])return TIOAutoUpdateReadingMissing;
     NSUInteger found=0;
@@ -31,23 +43,27 @@ TIOAutoUpdateReading TIOAutoUpdateReadingFor(NSDictionary *preferences){
 NSString *TIOAutoUpdateReadingName(TIOAutoUpdateReading state){
     return state==TIOAutoUpdateReadingOff?@"off":state==TIOAutoUpdateReadingMissing?@"missing":@"on";
 }
-NSDictionary *TIOFirmwareExportSafetyModel(NSString *profile,BOOL hookInstalled,BOOL transportHookReady,NSDictionary *preferences){
+NSDictionary *TIOFirmwareExportSafetyModel(NSString *profile,BOOL hookInstalled,BOOL transportHookReady,BOOL stockTrafficSeen,NSDictionary *preferences){
     BOOL guard=TIODownloadOnlyGuardActiveFor(profile,hookInstalled,transportHookReady);
+    NSString *guardLevel=TIODownloadOnlyGuardLevelFor(profile,hookInstalled,transportHookReady,stockTrafficSeen);
+    NSString *guardKey=[guardLevel isEqual:@"ok"]?@"fwexport.guard.on":[guardLevel isEqual:@"warn"]?@"fwexport.guard.waiting":@"fwexport.guard.off";
     TIOAutoUpdateReading autoUpdate=TIOAutoUpdateReadingFor(preferences);
     NSString *autoLevel=autoUpdate==TIOAutoUpdateReadingOff?@"ok":autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"danger";
-    NSString *level=!guard||autoUpdate==TIOAutoUpdateReadingOn?@"danger":autoLevel;
+    NSString *level=[guardLevel isEqual:@"danger"]||autoUpdate==TIOAutoUpdateReadingOn?@"danger":
+        [guardLevel isEqual:@"warn"]||autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"ok";
     NSMutableDictionary *m=[@{
-        @"guardActive":@(guard),@"guardLevel":guard?@"ok":@"danger",
-        @"guardKey":guard?@"fwexport.guard.on":@"fwexport.guard.off",
-        @"guardDetail":guard?@"fwexport.guard.on.detail":@"fwexport.guard.off.detail",
+        @"guardActive":@(guard),@"stockTrafficSeen":@(stockTrafficSeen),@"guardLevel":guardLevel,
+        @"guardKey":guardKey,@"guardDetail":[guardKey stringByAppendingString:@".detail"],
         @"autoUpdate":TIOAutoUpdateReadingName(autoUpdate),@"autoLevel":autoLevel,
         @"autoKey":[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)],
         @"autoDetail":[[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)] stringByAppendingString:@".detail"],
-        @"safe":@(guard&&autoUpdate==TIOAutoUpdateReadingOff),@"level":level,
+        @"safe":@([guardLevel isEqual:@"ok"]&&autoUpdate==TIOAutoUpdateReadingOff),@"level":level,
     } mutableCopy];
     // The guard banner outranks the Auto Update one: without the guard nothing stops a transfer.
+    // Auto Update ON is next (danger); a guard with no stock traffic seen yet outranks a missing reading.
     if(!guard)m[@"bannerKey"]=@"fwexport.banner.unguarded";
     else if(autoUpdate==TIOAutoUpdateReadingOn)m[@"bannerKey"]=@"fwexport.banner.autoOn";
+    else if(!stockTrafficSeen)m[@"bannerKey"]=@"fwexport.banner.noTraffic";
     else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
     return m;
 }

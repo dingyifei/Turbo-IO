@@ -364,11 +364,25 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  // G2: a failed hook install on the download-only host is written to the load info.
  assert.match(load,/if\(downloadOnly&&!TIOGlassesChannelHookInstalled\(\)\)\[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: [^"]*",TIOGlassesChannelHookFailure\(\)\];/);
  assert.match(load,/TIOOTADownloadOnlyGuardMarker\]/);
+ assert.match(load,/downloadOnlyGuard=%d; stockTraffic=%d\\n%@\\n",[^;]*TIOGlassesChannelStockTrafficSeen\(\),TIOOTADownloadOnlyGuardMarker\]/);
  // The hook applies the OTA guard before any observer or the stock handler runs.
  const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
  const block=body.indexOf('BOOL otaBlocked=TIOOTAFlashBlockCall(call);');assert.ok(block>0);
  assert.ok(block<body.indexOf('TIOProtocolObserveCall(')&&block<body.indexOf('PriorMethod(self,cmd,call,result)'));
  assert.match(body,/if\(otaBlocked\)\{[^\n]*return;\}/);
+ // G2 runtime evidence: MethodHook records a stock rayneonet call before TIOOTAFlashBlockCall can
+ // refuse it and return, and after the off-main sendFile redispatch (so one call counts once).
+ const evidence=body.indexOf('RecordStockEvidence(call,result);');assert.ok(evidence>0);
+ assert.equal(body.split('RecordStockEvidence(call,result);').length,2);
+ assert.ok(evidence<body.indexOf('TIOOTAFlashBlockCall(call)')&&evidence<body.indexOf('if(otaBlocked)'));
+ assert.ok(evidence>body.indexOf('dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;'));
+ assert.ok(body.indexOf('TIOOTAFlashBlockCall(')===body.lastIndexOf('TIOOTAFlashBlockCall('));
+ // Only stock calls count: the origin is the image of the result block's invoke function, checked by
+ // the tested TIOChannelResultImageIsStock; the addon's own senders count separately as addonCalls.
+ const record=hook.slice(hook.indexOf('static void RecordStockEvidence('),hook.indexOf('static void MethodHook('));
+ assert.match(record,/\[method hasPrefix:@"rayneonet_"\]/);
+ assert.match(record,/if\(!StockOrigin\(result\)\)\{atomic_fetch_add_explicit\(&AddonCalls,1,memory_order_relaxed\);return;\}/);
+ assert.match(hook,/if\(!TIOChannelResultImageIsStock\(@\(theirs\.dli_fname\),addonImage,bundle\)\)return NO;/);
  assert.match(hook,/Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady\(\);/);
  // G2: the install resolves both targets through the tested check and swaps nothing on failure.
  const install=hook.slice(hook.indexOf('BOOL TIOInstallGlassesChannelHook(void)'));
@@ -424,7 +438,13 @@ test('export panel reads Auto Update without writing preferences',()=>{
   assert.doesNotMatch(text,/setObject:|setBool:|setValue:|removeObjectForKey:|synchronize|TIOOTAFlashDisableAutoUpdate/,f);
  }
  const ui=src('FirmwareExportUI.m');
- assert.match(ui,/TIOFirmwareExportSafetyModel\(TIOHostProfile\(\),TIOGlassesChannelHookInstalled\(\)&&Guarded\(\),/);
+ assert.match(ui,/TIOFirmwareExportSafetyModel\(TIOHostProfile\(\),TIOGlassesChannelHookInstalled\(\)&&Guarded\(\),\[TIOOTAGuardStatus\(\)\[@"transportHookReady"\] boolValue\],TIOGlassesChannelStockTrafficSeen\(\),/);
+ // The guard row is green, amber or red from the model's guardLevel, refreshed while the panel is visible.
+ assert.match(ui,/\[\(self\.safety\?:SafetyModel\(\)\)\[@"guardLevel"\] isEqual:@"ok"\]/);
+ assert.match(ui,/\[\(self\.safety\?:SafetyModel\(\)\)\[@"guardLevel"\] isEqual:@"warn"\]/);
+ assert.match(ui,/scheduledTimerWithTimeInterval:1 repeats:YES block:/);
+ assert.match(ui,/name:TIOGlassesChannelStockTrafficNotification object:nil\]/);
+ assert.match(ui,/if\(\[m\[@"guardLevel"\] isEqual:@"warn"\]\)return TIOText\(@"hub\.status\.firmwareExport\.waiting"\);/);
  assert.match(ui,/NSUserDefaults\.standardUserDefaults\.dictionaryRepresentation/);
  assert.match(ui,/- \(void\)viewWillAppear:\(BOOL\)animated\{\[super viewWillAppear:animated\];\[self updateSafety\];\}/);
  assert.match(ui,/if\(s==SectionStatus\)return 3;/);

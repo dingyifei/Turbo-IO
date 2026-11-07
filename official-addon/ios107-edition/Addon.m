@@ -912,7 +912,8 @@ __attribute__((constructor)) static void Load(void) {
             [loadInfo appendString:@"display extension=MUSIC-OTA-PHONE-01; numeric diagnostics; OTA writes disabled; legacy N8W retained\n"];
 #endif
 #endif
-            [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOOTADownloadOnlyGuardMarker];
+            [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d; stockTraffic=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOGlassesChannelStockTrafficSeen(),TIOOTADownloadOnlyGuardMarker];
+            // The hook appends "stockTraffic=1; first stock call ..." to this file when a stock rayneonet call first passes it.
             // The image and the packager's marker should agree; say so when only one selects the download-only host.
             NSString *imageProfile=TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary),*markerProfile=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];
             if(downloadOnly&&!([imageProfile isEqual:@"ios1011-download"]&&[markerProfile isEqual:@"ios1011-download"]))[loadInfo appendFormat:@"HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only\n",imageProfile?:@"none",[markerProfile isKindOfClass:NSString.class]?markerProfile:@"none"];
