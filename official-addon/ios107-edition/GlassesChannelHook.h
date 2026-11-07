@@ -2,3 +2,5 @@
 // Sole owner of the rayneonet Flutter channel interception. Carries the OTA flash gate.
 FOUNDATION_EXPORT BOOL TIOInstallGlassesChannelHook(void);
 FOUNDATION_EXPORT BOOL TIOGlassesChannelHookInstalled(void);
+// nil once installed; otherwise why not ("not attempted", or the failed target check).
+FOUNDATION_EXPORT NSString *TIOGlassesChannelHookFailure(void);

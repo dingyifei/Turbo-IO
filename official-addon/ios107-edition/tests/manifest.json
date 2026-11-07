@@ -192,7 +192,7 @@
     "tests/Host1011GuardTests.m": {
       "status": "run",
       "group": "ios1011-guard",
-      "note": "Download-only 1.0.11/259 host: unchanged OTA policy refuses every business-9 frame but the empty version query. With --app1011 it also runs as ios1011-host against the real Runner."
+      "note": "Download-only 1.0.11/259 host: every business-9 frame but the empty version query is refused, built in four TIO_* flag sets (full, flash, phone, none) that must print the same sweep digest. With --app1011 it also runs as ios1011-host against the real Runner."
     },
     "tests/LanguageFlagTests.m": {
       "status": "run",
@@ -318,6 +318,11 @@
       "status": "run",
       "group": "tio-design",
       "note": "Host test: compiled TIODesign.inc tables equal docs/design-system/tokens.json."
+    },
+    "tests/DownloadOnlySafetyTests.m": {
+      "status": "run",
+      "group": "download-only-safety",
+      "note": "G2/G3 for the download-only 1.0.11 host: hook target failures leave the guard off and the export panel unsafe; Auto Update off/on/missing read only, worst key wins."
     }
   }
 }

@@ -113,6 +113,13 @@ symbols_stage() {
   if grep -Fq 'AMapNavi' "$GATE/symbols.txt"; then echo 'Unexpected AMapNavi symbol' >&2; return 1; fi
   marker_count=$(grep -a -c 'display extension=APP107-OTA-PHONE-01;' "$addon" || true)
   [[ $marker_count -ge 1 ]] || { echo 'Missing APP107 display marker' >&2; return 1; }
+  # G1/G2: the flag-independent 1.0.11 download-only guard is in every build.
+  local name
+  for name in _TIOOTADownloadOnlyHost _TIOOTADownloadOnlyBlockCall _TIOOTADownloadOnlyGuardMarker \
+    _TIOGlassesChannelHookFailure _TIOChannelHookTargetFailure _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive; do
+    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 guard symbol $name" >&2; return 1; }
+  done
+  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
 }
 test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"

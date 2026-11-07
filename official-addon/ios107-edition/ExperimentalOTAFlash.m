@@ -8,6 +8,7 @@
 #import "ExperimentalOTA.h"
 #import "FirmwarePins.h"
 #import "ExperimentalOTAGuard.h"
+#import "HostCompatibility.h"
 #include <TargetConditionals.h>
 #include <math.h>
 #if TIO_IMAGE_RX_LAB
@@ -153,7 +154,29 @@ BOOL TIOOTAFlashDisableAutoUpdate(void){
     [p synchronize];return YES;
 }
 static id Get(id obj,NSString *key){@try{return [obj valueForKey:key];}@catch(NSException *e){return nil;}}
+// Download-only 1.0.11/259 host (G1). The refusal below is compiled in every
+// build and depends on no TIO_* flag: TIO_OTA_FLASH_ENABLED, TIO_DISPLAY_FLASH
+// and TIO_DISPLAY_PHONE only shape the 1.0.7 path further down.
+NSString *const TIOOTADownloadOnlyGuardMarker=@"ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent; business 9 refused except the empty version query";
+BOOL TIOOTADownloadOnlyHost(void){
+    NSDictionary *info=NSBundle.mainBundle.infoDictionary;
+    // The packager's marker alone also counts: refusing more is the safe side.
+    return [TIOHostProfileFor(TIOHostMainImage(),info) isEqual:@"ios1011-download"]||[info[@"TIOHostProfile"] isEqual:@"ios1011-download"];
+}
+BOOL TIOOTADownloadOnlyBlockCall(id call){
+    NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
+    if(![method isKindOfClass:NSString.class])return YES;
+    if([method isEqual:@"rayneonet_sendMessage"]){
+        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Number(args[@"businessId"],&business))return YES;
+        if(business!=9)return NO;
+        id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
+        return !TIOOTAIsEmptyVersionQuery(data);
+    }
+    // No addon file sender is scoped here: the download-only host sends nothing of its own.
+    return TIOOTAFileCallBlocked(method,NO,0);
+}
 BOOL TIOOTAFlashBlockCall(id call){
+    if(TIOOTADownloadOnlyHost())return TIOOTADownloadOnlyBlockCall(call);
     if(!TIOOTAFlashBuild())return NO;
     NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
     if(![method isKindOfClass:NSString.class])return YES;

@@ -108,7 +108,20 @@ PY
 # normal access checks but discards the signature without writing anything.
 # Probe once because package.mjs deliberately hides child-process stderr.
 run_logged signing-preflight codesign --dryrun --force --sign "$TURBO_SIGN_ID" --timestamp=none "$ADDON"
+download_only_guard() {
+  local symbols name
+  symbols=$(nm -g "$1")
+  for name in _TIOOTAFlashBlockCall _TIOOTADownloadOnlyHost _TIOOTADownloadOnlyBlockCall _TIOOTADownloadOnlyGuardMarker \
+    _TIOInstallGlassesChannelHook _TIOGlassesChannelHookFailure _TIOChannelHookTargetFailure \
+    _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive; do
+    grep -Eq " $name\$" <<<"$symbols" || { echo "missing $name" >&2; return 1; }
+  done
+  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent' "$1" || { echo 'missing 1.0.11 guard marker' >&2; return 1; }
+}
 if [[ $host == 1011 ]]; then
+# G1/G2: fail closed unless the addon carries the flag-independent 1.0.11 guard
+# (package.mjs repeats this check with the same symbol list before signing).
+run_logged download-only-guard download_only_guard "$ADDON"
 # Download-only: no firmware resource and no device-model list; package.mjs keeps App.framework stock.
 run_logged package node "$ED/package.mjs" --host ios1011-download --app "$TURBO_APP1011" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \

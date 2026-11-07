@@ -30,6 +30,7 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "ResearchCatalog.h"
 #import "HostCompatibility.h"
 #import "FirmwareExportUI.h"
+#import "DownloadOnlySafety.h"
 #import "ExperimentalOTAUI.h"
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAFlash.h"
@@ -823,11 +824,7 @@ static BOOL Signature(Class cls,NSString *name,NSUInteger argc,const char *retur
 }
 #import "HostCompatibility.h"
 #import "OTAHost.h"
-static const struct mach_header *MainImage(void) {
-    const char *executable=NSBundle.mainBundle.executablePath.fileSystemRepresentation;
-    for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&executable&&strcmp(name,executable)==0)return _dyld_get_image_header(i);}
-    return NULL;
-}
+static const struct mach_header *MainImage(void) {return TIOHostMainImage();}
 static BOOL VersionMatches(void) {
     if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return NO;
     return TIOHostImageMatches(MainImage(),NSBundle.mainBundle.infoDictionary);
@@ -837,10 +834,12 @@ NSString *TIOHostProfile(void) {
     return TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary);
 }
 // The download-only host's only protection against an OTA session is the
-// business-9 guard in TIOOTAFlashBlockCall, applied by the rayneonet hook.
+// business-9 refusal in TIOOTAFlashBlockCall, applied by the rayneonet hook.
+// That refusal is flag-independent (TIOOTADownloadOnlyBlockCall), so this
+// needs the hook installed and recorded ready, not TIOOTAFlashBuild().
 BOOL TIOHostDownloadOnlyGuardActive(void) {
-    return [TIOHostProfile() isEqual:@"ios1011-download"]&&!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary)&&
-        TIOOTAFlashBuild()&&TIOGlassesChannelHookInstalled()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue];
+    return TIODownloadOnlyGuardActiveFor(TIOHostProfile(),TIOGlassesChannelHookInstalled(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue])&&
+        TIOOTADownloadOnlyHost()&&!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary);
 }
 static void AddEntry(void) {
     UIViewController *top=TopController();UIWindow *window=top.view.window;if(!window)return;
@@ -909,7 +908,9 @@ __attribute__((constructor)) static void Load(void) {
             [loadInfo appendString:@"display extension=MUSIC-OTA-PHONE-01; numeric diagnostics; OTA writes disabled; legacy N8W retained\n"];
 #endif
 #endif
-            [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive()];
+            [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOOTADownloadOnlyGuardMarker];
+            // A failed hook on the download-only host leaves the stock OTA path unguarded: say so.
+            if(downloadOnly&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
             [loadInfo appendFormat:@"bundle=%@; version=%@; build=%@\n",NSBundle.mainBundle.bundleIdentifier,[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"]];
             for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&[[NSString stringWithUTF8String:name].lastPathComponent isEqual:@"Runner"]){const struct mach_header *h=_dyld_get_image_header(i);[loadInfo appendFormat:@"Runner image index=%u magic=%x\n",i,h->magic];}}
             for(NSString *sel in @[@"onAsrResult:isFinish:sessionId:",@"onNlpResult:",@"onResponseComplete",@"onAlwaysOnResponse:"]){Method m=class_getInstanceMethod([sel isEqual:@"onAlwaysOnResponse:"]?ao:voice,NSSelectorFromString(sel));[loadInfo appendFormat:@"%@ %s\n",sel,m?method_getTypeEncoding(m):"missing"];}

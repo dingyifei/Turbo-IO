@@ -23,13 +23,13 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import "GlassesChannelHook.h"
+#import "DownloadOnlySafety.h"
 
 static void (*PriorMethod)(id,SEL,id,id);
 static void (*PriorSend)(id,SEL,id,id,id);
 static id Get(id o,NSString *k){@try{return [o valueForKey:k];}@catch(NSException *e){return nil;}}
 static NSData *Data(id v){if([v isKindOfClass:NSData.class])return v;if([NSStringFromClass([v class]) isEqual:@"FlutterStandardTypedData"]){id d=Get(v,@"data");if([d isKindOfClass:NSData.class])return d;}return nil;}
-static BOOL Sign(Method m,NSUInteger n){if(!m||method_getNumberOfArguments(m)!=n)return NO;char *r=method_copyReturnType(m);BOOL ok=r&&r[0]=='v';free(r);for(NSUInteger i=2;i<n;i++){char *t=method_copyArgumentType(m,(unsigned)i);ok=ok&&t&&t[0]=='@';free(t);}return ok;}
-static BOOL Installed;
+static BOOL Installed;static NSString *InstallFailure;
 #if TIO_IMAGE_RX_LAB || TIO_DISPLAY_PHONE
 static BOOL RouteFileEvent(id event,BOOL(^consume)(NSDictionary *),void(^completion)(BOOL)){
  if(![event isKindOfClass:NSDictionary.class]||!consume||!completion||
@@ -104,5 +104,8 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
         }}@catch(NSException *e){}
     }PriorSend(self,cmd,channel,message,reply);
 }
-BOOL TIOInstallGlassesChannelHook(void){if(Installed)return YES;Method method=class_getInstanceMethod(NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(NSClassFromString(@"FlutterEngine"),NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));if(!Sign(method,4)||!Sign(send,5))return NO;PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;TIOOTARecordTransportHookReady();return YES;}
+// Fails closed: when either target is missing or has another signature nothing is
+// swapped, Installed stays NO and the reason is kept for the load info and the UI.
+BOOL TIOInstallGlassesChannelHook(void){if(Installed)return YES;Class bridge=NSClassFromString(@"rayneo_venus_sdk_plugin.RayneoNetPluginBridge"),engine=NSClassFromString(@"FlutterEngine");NSString *failure=TIOChannelHookTargetFailure(bridge,engine);if(failure){InstallFailure=failure;return NO;}Method method=class_getInstanceMethod(bridge,NSSelectorFromString(@"handleMethodCall:result:"));Method send=class_getInstanceMethod(engine,NSSelectorFromString(@"sendOnChannel:message:binaryReply:"));PriorMethod=(void *)method_setImplementation(method,(IMP)MethodHook);PriorSend=(void *)method_setImplementation(send,(IMP)Send);Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady();return YES;}
 BOOL TIOGlassesChannelHookInstalled(void){return Installed;}
+NSString *TIOGlassesChannelHookFailure(void){return Installed?nil:(InstallFailure?:@"not attempted");}

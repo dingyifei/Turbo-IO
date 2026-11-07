@@ -217,6 +217,7 @@ test('bundle private allowances match exact regular-file paths',()=>{
 
 // Download-only 1.0.11/259 profile: stock App.framework, no route patch, no ZIP, no flash marker.
 import {HOST_PROFILES,hostProfile,verifyStockApp,verifySignedStockApp} from './package.mjs';
+import * as packaging from './package.mjs';
 import {stripCodeSignature} from './macho-embed.mjs';
 import {createHash} from 'node:crypto';
 const info1011={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Runner',CFBundleShortVersionString:'1.0.11',CFBundleVersion:'259'};
@@ -325,7 +326,7 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
 });
 test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# Download-only:'),wrapper.indexOf('\nelse\nrun_logged package'));
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('\nelse\nrun_logged package'));
  assert.match(branch,/--host ios1011-download --app "\$TURBO_APP1011"/);
  assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
  assert.match(branch,/hostProfile'\]=='ios1011-download'/);
@@ -349,14 +350,74 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  const watch=src('WatchRemoteAddon.m'),ctor=watch.slice(watch.indexOf('static void TIOWatchLoad(void)'));
  assert.ok(ctor.indexOf('if([TIOHostProfile() isEqual:@"ios1011-download"])return;')>=0);
  assert.ok(ctor.indexOf('if([TIOHostProfile() isEqual:@"ios1011-download"])return;')<ctor.indexOf('activate]'));
- // The guard row is green only when every part of the safety net is present.
+ // The guard row is green only when every part of the safety net is present. The
+ // refusal is flag-independent (G1), so the predicate no longer asks for TIOOTAFlashBuild().
  const guard=addon.match(/BOOL TIOHostDownloadOnlyGuardActive\(void\) \{([\s\S]*?)\n\}/);assert.ok(guard);
- for(const part of ['[TIOHostProfile() isEqual:@"ios1011-download"]','!TIOOTA107HostMatches(','TIOOTAFlashBuild()','TIOGlassesChannelHookInstalled()','[TIOOTAGuardStatus()[@"transportHookReady"] boolValue]'])assert.ok(guard[1].includes(part),part);
- assert.doesNotMatch(guard[1],/\|\|/);
+ for(const part of ['TIODownloadOnlyGuardActiveFor(TIOHostProfile(),TIOGlassesChannelHookInstalled(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue])','TIOOTADownloadOnlyHost()','!TIOOTA107HostMatches('])assert.ok(guard[1].includes(part),part);
+ assert.doesNotMatch(guard[1],/\|\||TIOOTAFlashBuild/);
+ // G2: a failed hook install on the download-only host is written to the load info.
+ assert.match(load,/if\(downloadOnly&&!TIOGlassesChannelHookInstalled\(\)\)\[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: [^"]*",TIOGlassesChannelHookFailure\(\)\];/);
+ assert.match(load,/TIOOTADownloadOnlyGuardMarker\]/);
  // The hook applies the OTA guard before any observer or the stock handler runs.
  const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
  const block=body.indexOf('BOOL otaBlocked=TIOOTAFlashBlockCall(call);');assert.ok(block>0);
  assert.ok(block<body.indexOf('TIOProtocolObserveCall(')&&block<body.indexOf('PriorMethod(self,cmd,call,result)'));
  assert.match(body,/if\(otaBlocked\)\{[^\n]*return;\}/);
- assert.match(hook,/Installed=YES;TIOOTARecordTransportHookReady\(\);/);
+ assert.match(hook,/Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady\(\);/);
+ // G2: the install resolves both targets through the tested check and swaps nothing on failure.
+ const install=hook.slice(hook.indexOf('BOOL TIOInstallGlassesChannelHook(void)'));
+ const check=install.indexOf('NSString *failure=TIOChannelHookTargetFailure(bridge,engine);if(failure){InstallFailure=failure;return NO;}');
+ assert.ok(check>0&&check<install.indexOf('method_setImplementation('));
+ assert.doesNotMatch(hook,/static BOOL Sign\(/);
+});
+// G1: on the download-only host TIOOTAFlashBlockCall delegates before any flag-dependent code.
+test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on no flag',()=>{
+ const flash=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
+ const body=flash.slice(flash.indexOf('BOOL TIOOTAFlashBlockCall(id call){'));
+ assert.match(body,/^BOOL TIOOTAFlashBlockCall\(id call\)\{\n    if\(TIOOTADownloadOnlyHost\(\)\)return TIOOTADownloadOnlyBlockCall\(call\);\n    if\(!TIOOTAFlashBuild\(\)\)return NO;/);
+ const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('BOOL TIOOTAFlashBlockCall(id call){'));
+ assert.ok(pure.length>0);assert.doesNotMatch(pure,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild|ScopedFileSenders/);
+ assert.ok(pure.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
+ // test.py builds the guard test with and without the flash/phone flags and compares the sweep.
+ const py=fs.readFileSync(new URL('./test.py',import.meta.url),'utf8');
+ assert.match(py,/'noflags':\(\[\],\[\],False\)/);assert.match(py,/refusal differs between flag sets/);
+});
+test('download-only addon gate: guard symbols and marker are required',()=>{
+ const symbols=packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS.map(n=>'0000000000001000 T '+n).join('\n')+'\n';
+ const addon=Buffer.concat([Buffer.alloc(16),Buffer.from(packaging.DOWNLOAD_ONLY_GUARD_MARKER+'; business 9 refused'),Buffer.alloc(16)]);
+ assert.ok(packaging.validateDownloadOnlyAddon(symbols,addon));
+ for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS){
+  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols.replace(' T '+name+'\n','\n'),addon),new RegExp('download_only_guard_missing:'+name));
+  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols.replace(' T '+name+'\n',' T '+name+'X\n'),addon));
+ }
+ assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,Buffer.alloc(64)),/download_only_guard_missing:marker/);
+ assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,undefined),/marker/);
+ const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
+ assert.match(s,/if\(!host\.routePatch\)validateDownloadOnlyAddon\(symbols,fs\.readFileSync\(o\.addon\)\);/);
+ assert.ok(s.indexOf('validateDownloadOnlyAddon(symbols,')<s.indexOf("fs.mkdirSync(destination"));
+ // The wrapper and the gate check the same names before anything is packaged.
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8'),gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS)assert.ok(wrapper.includes(name),name);
+ for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS.filter(n=>!['_TIOOTAFlashBlockCall','_TIOInstallGlassesChannelHook'].includes(n)))assert.ok(gate.includes(name),name);
+ assert.ok(wrapper.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER)&&gate.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('run_logged package node "$ED/package.mjs" --host ios1011-download'));
+ assert.match(branch,/run_logged download-only-guard download_only_guard "\$ADDON"/);
+});
+test('real addon build carries the download-only guard',t=>{
+ const addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');if(!fs.existsSync(addon))return t.skip('build the embedded addon first');
+ assert.ok(packaging.validateDownloadOnlyAddon(runFixtureCommand('/usr/bin/nm',['-g',addon],{encoding:'utf8',maxBuffer:64*1024*1024}),fs.readFileSync(addon)));
+});
+// G3: the export panel reads Auto Update and never writes RayNeo's preferences.
+test('export panel reads Auto Update without writing preferences',()=>{
+ const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
+ for(const f of ['FirmwareExportUI.m','DownloadOnlySafety.m']){
+  const text=src(f);
+  assert.doesNotMatch(text,/setObject:|setBool:|setValue:|removeObjectForKey:|synchronize|TIOOTAFlashDisableAutoUpdate/,f);
+ }
+ const ui=src('FirmwareExportUI.m');
+ assert.match(ui,/TIOFirmwareExportSafetyModel\(TIOHostProfile\(\),TIOGlassesChannelHookInstalled\(\)&&Guarded\(\),/);
+ assert.match(ui,/NSUserDefaults\.standardUserDefaults\.dictionaryRepresentation/);
+ assert.match(ui,/- \(void\)viewWillAppear:\(BOOL\)animated\{\[super viewWillAppear:animated\];\[self updateSafety\];\}/);
+ assert.match(ui,/if\(s==SectionStatus\)return 3;/);
+ assert.match(ui,/self\.tableView\.tableHeaderView=box;/);
 });

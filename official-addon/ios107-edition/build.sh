@@ -196,6 +196,7 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   RecordingExportsUI.m \
   FirmwareExport.m \
   FirmwareExportUI.m \
+  DownloadOnlySafety.m \
   RecordingExportsMenu.m \
   RecordingText.m \
   RecordingTextUI.m \

@@ -1,6 +1,6 @@
 """Portable macOS offline tests. No phone, network, signing or flashing."""
 from pathlib import Path
-import argparse, fnmatch, json, os, subprocess, tempfile, zipfile
+import argparse, fnmatch, json, os, re, subprocess, tempfile, zipfile
 P=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,required=True)
 parser.add_argument('--app107',type=Path)
@@ -209,12 +209,34 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         groups.append('tmg4-wizard');print('tmg4-wizard: PASS')
     else:skip('tmg4-wizard','not selected by --only')
     # Download-only 1.0.11/259 host: the same unchanged flash policy and feed, with 1.0.11 host info.
+    # G1: the refusal must not depend on build flags. The same test is built with the
+    # full flash flag set and with none of them; every build must print the same sweep.
+    # name: (defines, extra sources, flash build expected on the 1.0.11 host)
+    phone_sources=[P/'DisplayPhoneTransport.m',P/'DisplayDiagnostics.m',P/'display_client.c',P/'display_carrier.c',P/'display_runtime.c']
+    host1011_configs={
+        'full':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,True),
+        'flash':(['-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1'],[],True),
+        'phone':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,False),
+        'noflags':([],[],False),
+    }
     def host1011_guard(name,argv):
-        flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',flash_seams)
+        seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'}
+        flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',seams)
         feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTA107HostMatches(bundle.infoDictionary)':'TIOOTA107HostMatches(TMG4HostInfo())'})
-        run(name+'-build',flags+[P/'tests/Host1011GuardTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',flash,feed,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/name])
-        run(name,[out/name,*argv])
-        if 'PASS' not in (out/(name+'.log')).read_text():raise RuntimeError(name+' did not report PASS')
+        sweeps={}
+        for config,(defines,sources,flash_on) in host1011_configs.items():
+            for flag in ('TIO_OTA_FLASH_ENABLED','TIO_DISPLAY_FLASH','TIO_DISPLAY_PHONE'):
+                present=any(d.startswith('-D'+flag+'=') for d in defines)
+                if config=='full' and not present or config=='noflags' and present:raise RuntimeError('ios1011 flag set '+config+': '+flag)
+            binary=name+'-'+config
+            run(binary+'-build',flags+[P/'tests/Host1011GuardTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',P/'DownloadOnlySafety.m',flash,feed,*sources,'-lz',*defines,'-o',out/binary])
+            run(binary,[out/binary,*argv])
+            log=(out/(binary+'.log')).read_text()
+            if 'PASS' not in log:raise RuntimeError(binary+' did not report PASS')
+            sweeps[config]=re.search(r'sweep=([0-9a-f]{64})',log).group(1)
+            if ('flash build on' in log)!=flash_on:raise RuntimeError(binary+': unexpected flash build state')
+        if len(set(sweeps.values()))!=1:raise RuntimeError(name+': refusal differs between flag sets '+repr(sweeps))
+        print(name+': same refusal in flag sets '+', '.join(sweeps)+' (sweep '+next(iter(sweeps.values()))[:16]+')')
     seen.add('ios1011-guard')
     if only is None or 'ios1011-guard' in only:
         host1011_guard('ios1011-guard',[])
@@ -275,6 +297,7 @@ if only is None or 'protocol-restart' in only:
 test('protocol-restart',['ProtocolRestartTests.m', 'ProtocolContext.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules', '-DNSHomeDirectory=TIOTestHome'],runs=[['write',restart_dir],['read',restart_dir]])
 test('recording-exports',['RecordingExportsTests.m', 'RecordingExports.m'],argv=[],extra=['-fmodules'])
 test('firmware-export',['tests/FirmwareExportTests.m','FirmwareExport.m'],argv=[args.firmware],extra=['-fmodules','-lz'])
+test('download-only-safety',['tests/DownloadOnlySafetyTests.m','DownloadOnlySafety.m'],argv=[],extra=['-fmodules'])
 test('recording-text',['RecordingTextTests.m', 'RecordingText.m'],argv=[],extra=['-fmodules'])
 test('alwayson-audio',['AlwaysOnAudioTests.m', 'AlwaysOnAudioFiles.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])
 test('alwayson-ogg',['AlwaysOnOggTests.m', 'AlwaysOnOgg.m'],argv=[],extra=['-fmodules'])

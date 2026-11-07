@@ -1,5 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <mach-o/loader.h>
+#import <mach-o/dyld.h>
+#include <string.h>
 
 // Inspected host builds only. Interface signatures are independently checked
 // before installing hooks; inclusion is not a claim of feature acceptance.
@@ -49,9 +51,20 @@ static inline NSString *TIOHostProfileFor(const struct mach_header *h,NSDictiona
     if([info[@"CFBundleShortVersionString"] isEqual:@"1.0.7"]&&[[info[@"CFBundleVersion"] description] isEqual:@"230"]&&TIOHostImageMatches(h,info))return @"ios107";
     return nil;
 }
+// Header of the running process's main executable (the image whose path is the
+// main bundle's executable), looked up once; NULL when not found.
+static inline const struct mach_header *TIOHostMainImage(void) {
+    static const struct mach_header *image;static dispatch_once_t once;
+    dispatch_once(&once,^{
+        const char *executable=NSBundle.mainBundle.executablePath.fileSystemRepresentation;
+        for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&executable&&strcmp(name,executable)==0){image=_dyld_get_image_header(i);break;}}
+    });
+    return image;
+}
 // Profile of the running host's main executable image; nil when unknown. Defined in Addon.m.
 FOUNDATION_EXPORT NSString *TIOHostProfile(void);
-// YES only on the download-only host when the OTA guard is compiled in and the
-// rayneonet transport hook that applies it is installed. Defined in Addon.m.
+// YES only on the download-only host when the rayneonet transport hook that
+// applies the (flag-independent) OTA refusal is installed and recorded ready.
+// Defined in Addon.m on top of TIODownloadOnlyGuardActiveFor (DownloadOnlySafety.h).
 // The UI must show a loud warning when the profile is download-only and this is NO.
 FOUNDATION_EXPORT BOOL TIOHostDownloadOnlyGuardActive(void);

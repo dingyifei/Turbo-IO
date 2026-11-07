@@ -89,6 +89,17 @@ export function verifySignedStockApp(signed,stock,profileName='ios1011-download'
   for(const [route,offset] of hostProfile(profileName).routes){const b=Buffer.from(route);if(signed.indexOf(b)!==offset||signed.indexOf(b,offset+1)!==-1)throw Error('download_only_route_mismatch');}
   return true;
 }
+// G1/G2 gate for the download-only host: the built addon must carry the
+// flag-independent business-9 refusal, the hook target check and the panel's
+// safety model. Missing any of them fails closed before anything is signed.
+export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent';
+export const DOWNLOAD_ONLY_GUARD_SYMBOLS=Object.freeze(['_TIOOTAFlashBlockCall','_TIOOTADownloadOnlyHost','_TIOOTADownloadOnlyBlockCall','_TIOOTADownloadOnlyGuardMarker','_TIOInstallGlassesChannelHook','_TIOGlassesChannelHookFailure','_TIOChannelHookTargetFailure','_TIODownloadOnlyGuardActiveFor','_TIOFirmwareExportSafetyModel','_TIOHostDownloadOnlyGuardActive']);
+export function validateDownloadOnlyAddon(symbols,addon){
+  const names=new Set(String(symbols).split('\n').map(l=>l.trim().split(/\s+/).pop()));
+  for(const name of DOWNLOAD_ONLY_GUARD_SYMBOLS)if(!names.has(name))throw Error('download_only_guard_missing:'+name);
+  if(!Buffer.isBuffer(addon)||!addon.includes(Buffer.from(DOWNLOAD_ONLY_GUARD_MARKER)))throw Error('download_only_guard_missing:marker');
+  return true;
+}
 export function validateOptions(o) {
   const host=hostProfile(o.host??'ios107');
   for(const k of ['app','addon','profile','out'])if(typeof o[k]!=='string'||!path.isAbsolute(o[k]))throw Error('absolute_paths_required');
@@ -176,6 +187,7 @@ function main(){
   if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=APP107-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
   if(host.firmware)validateResearchPair(symbols,pins.name,firmware);else if(firmware)throw Error('download_only_host_takes_no_firmware_or_product');
+  if(!host.routePatch)validateDownloadOnlyAddon(symbols,fs.readFileSync(o.addon));
   const info=JSON.parse(run('plutil',['-convert','json','-o','-',path.join(source,'Info.plist')],{encoding:'utf8'}));
   const sourceApp=fs.readFileSync(path.join(source,'Frameworks/App.framework/App'));
   validateHost(info,fs.readFileSync(path.join(source,'Runner')),sourceApp,host.name,Object.fromEntries(Object.keys(host.frameworks??{}).map(n=>[n,fs.readFileSync(path.join(source,'Frameworks',n))])));

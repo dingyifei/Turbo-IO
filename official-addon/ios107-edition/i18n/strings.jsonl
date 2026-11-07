@@ -2287,6 +2287,15 @@
 {"key":"fwexport.action.delete","en":"Delete this copy","zh":"删除此副本"}
 {"key":"fwexport.action.rezip","en":"Re-zip a copy","zh":"重新打包副本"}
 {"key":"fwexport.action.share","en":"Share file","zh":"分享文件"}
+{"key":"fwexport.auto.missing","en":"Auto Update not recorded","zh":"自动更新状态未记录"}
+{"key":"fwexport.auto.missing.detail","en":"Not recorded (the app treats missing as off). Open the firmware page and confirm the toggle is off.","zh":"未记录（官方应用把未记录视为关闭）。请打开固件页面，确认开关为关闭。"}
+{"key":"fwexport.auto.off","en":"Auto Update is off","zh":"自动更新已关闭"}
+{"key":"fwexport.auto.off.detail","en":"RayNeo's firmware page records Auto Update as off. Turbo IO only reads this setting and never changes it.","zh":"官方固件页记录的自动更新为关闭。Turbo IO 只读取此设置，不会修改。"}
+{"key":"fwexport.auto.on","en":"Auto Update is ON: turn it off in the firmware page before anything else","zh":"自动更新已开启：先在固件页面关闭它，再做其他操作"}
+{"key":"fwexport.auto.on.detail","en":"With Auto Update on, the app may start an install by itself. Turn it off in RayNeo's firmware page first. Turbo IO does not change this setting.","zh":"自动更新开启时，官方应用可能自行开始安装。请先在官方固件页面关闭它。Turbo IO 不会修改此设置。"}
+{"key":"fwexport.banner.autoMissing","en":"Auto Update not recorded: open the firmware page and confirm the toggle is off before downloading.","zh":"自动更新状态未记录：下载前请打开固件页面，确认开关为关闭。"}
+{"key":"fwexport.banner.autoOn","en":"Auto Update is ON: turn it off in the firmware page before anything else.","zh":"自动更新已开启：先在固件页面关闭它，再做其他操作。"}
+{"key":"fwexport.banner.unguarded","en":"Guard NOT active — do not open the firmware page and do not start any install. Exporting the files below is still safe.","zh":"防护未生效——不要打开固件页面，也不要开始任何安装。导出下方文件仍然安全。"}
 {"key":"fwexport.candidate.file","en":"Turbo candidate (%@), not stock firmware","zh":"Turbo 候选固件（%@），不是官方固件"}
 {"key":"fwexport.candidate.folder","en":"Unpacked from a Turbo candidate (%@), not stock firmware","zh":"由 Turbo 候选固件（%@）解压，不是官方固件"}
 {"key":"fwexport.copied","en":"Copied","zh":"已复制"}
@@ -2304,7 +2313,7 @@
 {"key":"fwexport.error.write","en":"Could not write the ZIP","zh":"无法写入 ZIP"}
 {"key":"fwexport.folder.detail","en":"Folder · %lu files · %@ · tap to re-zip a copy","zh":"文件夹 · %lu 个文件 · %@ · 点按可重新打包副本"}
 {"key":"fwexport.found.footer","en":"Read only: nothing here deletes, moves or changes RayNeo's files. Tap a file to share it or copy its hashes. On the Mac, shasum -a 256 must show the same SHA-256.","zh":"只读：不会删除、移动或修改官方文件。点按文件可分享或复制哈希。在 Mac 上用 shasum -a 256 核对，SHA-256 必须一致。"}
-{"key":"fwexport.guard.off","en":"Guard NOT active — do not start any install","zh":"防护未生效——不要开始任何安装"}
+{"key":"fwexport.guard.off","en":"Guard NOT active — do not open the firmware page or start any install","zh":"防护未生效——不要打开固件页面，也不要开始任何安装"}
 {"key":"fwexport.guard.off.detail","en":"The transport hook that refuses OTA frames is not installed. Do not tap Start install. Close the app and report this.","zh":"拒绝 OTA 帧的传输钩子没有安装。不要点“开始安装”，请关闭应用并报告此问题。"}
 {"key":"fwexport.guard.on","en":"OTA transfer to glasses blocked","zh":"已阻止向眼镜传输固件（OTA）"}
 {"key":"fwexport.guard.on.detail","en":"Only the empty version query reaches the glasses, so this build cannot start an OTA session.","zh":"只放行空的版本查询，本构建无法开启 OTA 会话。"}
@@ -2330,5 +2339,6 @@
 {"key":"fwexport.version","en":"Version %@","zh":"版本 %@"}
 {"key":"fwexport.wizard.blocked","en":"This download-only build cannot flash the glasses. Use Stock firmware export.","zh":"仅下载构建不能刷写眼镜，请使用“导出官方固件”。"}
 {"key":"hub.row.firmwareExport","en":"Stock firmware export","zh":"导出官方固件"}
+{"key":"hub.status.firmwareExport.autoOn","en":"Auto Update is ON","zh":"自动更新已开启"}
 {"key":"hub.status.firmwareExport.guarded","en":"Download only · OTA transfer blocked","zh":"仅下载，已阻止传输"}
 {"key":"hub.status.firmwareExport.unguarded","en":"Guard NOT active","zh":"防护未生效"}

@@ -2,6 +2,9 @@
 #import "FirmwareExportUI.h"
 #import "FirmwareExport.h"
 #import "HostCompatibility.h"
+#import "DownloadOnlySafety.h"
+#import "GlassesChannelHook.h"
+#import "ExperimentalOTAGuard.h"
 #import "ResearchUI.h"
 #import "TIOConfirm.h"
 #import "TIODesign.h"
@@ -12,10 +15,23 @@
 typedef NS_ENUM(NSInteger, TIOFirmwareExportSection) {SectionStatus, SectionFound, SectionCopies, SectionRoots, SectionCount};
 
 static NSURL *Home(void){return [NSURL fileURLWithPath:NSHomeDirectory() isDirectory:YES];}
-// "Blocked" requires the download-only profile, the compiled-in guard and the
-// installed rayneonet transport hook (TIOHostDownloadOnlyGuardActive).
+// "Blocked" requires the download-only profile and the installed rayneonet
+// transport hook (TIOHostDownloadOnlyGuardActive); the refusal itself is
+// flag-independent. Auto Update is read from RayNeo's preferences, never written.
 static BOOL Guarded(void){return TIOHostDownloadOnlyGuardActive();}
-NSString *TIOFirmwareExportHubStatus(void){return TIOText(Guarded()?@"hub.status.firmwareExport.guarded":@"hub.status.firmwareExport.unguarded");}
+static NSDictionary *SafetyModel(void){
+    // Guarded() also checks the refusal's own host test; it has the last word on the guard row.
+    return TIOFirmwareExportSafetyModel(TIOHostProfile(),TIOGlassesChannelHookInstalled()&&Guarded(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue],NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
+}
+NSString *TIOFirmwareExportHubStatus(void){
+    NSDictionary *m=SafetyModel();
+    if(![m[@"guardActive"] boolValue])return TIOText(@"hub.status.firmwareExport.unguarded");
+    if([m[@"autoUpdate"] isEqual:@"on"])return TIOText(@"hub.status.firmwareExport.autoOn");
+    return TIOText(@"hub.status.firmwareExport.guarded");
+}
+static UIColor *LevelColor(NSString *level){
+    return TIODesignColor([level isEqual:@"ok"]?TIODesignColorStatusOk:[level isEqual:@"warn"]?TIODesignColorStatusWarn:TIODesignColorStatusDanger);
+}
 static NSString *SizeText(id bytes){return [NSByteCountFormatter stringFromByteCount:[bytes longLongValue] countStyle:NSByteCountFormatterCountStyleFile];}
 // Localized format keys go through one va_list helper (as in ClenchLabUI.m).
 static NSString *Fmt(NSString *key,...){va_list a;va_start(a,key);NSString *r=[[NSString alloc]initWithFormat:TIOText(key) arguments:a];va_end(a);return r;}
@@ -27,6 +43,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
 @property(nonatomic) NSMutableDictionary<NSString *,NSDictionary *> *hashes;
 @property(nonatomic) BOOL busy;
 @property(nonatomic) NSUInteger generation;
+@property(nonatomic) NSDictionary *safety;
 @end
 @implementation TIOFirmwareExportPanel
 - (void)viewDidLoad{
@@ -34,8 +51,25 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refresh)];
     [self refresh];
 }
+// Auto Update can change while the owner is in RayNeo's firmware page; re-read on every return.
+- (void)viewWillAppear:(BOOL)animated{[super viewWillAppear:animated];[self updateSafety];}
+- (void)updateSafety{
+    self.safety=SafetyModel();
+    NSString *banner=self.safety[@"bannerKey"];
+    if(!banner){self.tableView.tableHeaderView=nil;[self.tableView reloadData];return;}
+    // Loud on purpose and above everything else; export stays usable below it.
+    UILabel *label=[UILabel new];label.numberOfLines=0;label.text=TIOText(banner);
+    label.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);label.textColor=TIODesignColor(TIODesignColorOnAccent);
+    label.accessibilityIdentifier=[self.safety[@"level"] isEqual:@"danger"]?@"fwexport-banner-unsafe":@"fwexport-banner-warn";
+    UIView *box=[UIView new];box.backgroundColor=LevelColor(self.safety[@"level"]);box.layer.cornerRadius=12;
+    label.translatesAutoresizingMaskIntoConstraints=NO;[box addSubview:label];
+    [NSLayoutConstraint activateConstraints:@[[label.leadingAnchor constraintEqualToAnchor:box.leadingAnchor constant:16],[label.trailingAnchor constraintEqualToAnchor:box.trailingAnchor constant:-16],[label.topAnchor constraintEqualToAnchor:box.topAnchor constant:12],[label.bottomAnchor constraintEqualToAnchor:box.bottomAnchor constant:-12]]];
+    CGFloat width=MAX(self.tableView.bounds.size.width,320);
+    CGSize size=[box systemLayoutSizeFittingSize:CGSizeMake(width,UILayoutFittingCompressedSize.height) withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    box.frame=CGRectMake(0,0,width,size.height);self.tableView.tableHeaderView=box;[self.tableView reloadData];
+}
 - (void)refresh{
-    if(self.busy)return;self.busy=YES;NSUInteger generation=++self.generation;[self.tableView reloadData];
+    if(self.busy)return;self.busy=YES;[self updateSafety];NSUInteger generation=++self.generation;[self.tableView reloadData];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{
         NSDictionary *scan=TIOFirmwareExportScan(Home());NSArray *copies=TIOFirmwareExportOwnCopies(Home());
         dispatch_async(dispatch_get_main_queue(),^{
@@ -61,7 +95,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t{return SectionCount;}
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s{
-    if(s==SectionStatus)return 2;
+    if(s==SectionStatus)return 3;
     if(s==SectionFound)return MAX(1,self.entries.count);
     if(s==SectionCopies)return MAX(1,self.copies.count);
     return MAX(1,[self.scan[@"roots"] count]);
@@ -103,7 +137,14 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
             NSString *profile=TIOHostProfile();
             c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):TIOText(@"fwexport.host.unknown"));
             c.detailTextLabel.text=profile?:@"none";c.accessibilityIdentifier=@"fwexport-host";
-        }else if(Guarded()){
+        }else if(ip.row==2){
+            // G3: read only. Red when on, amber when not recorded, green when explicitly off.
+            NSDictionary *m=self.safety?:SafetyModel();UIColor *color=LevelColor(m[@"autoLevel"]);
+            c.textLabel.text=TIOText(m[@"autoKey"]);c.detailTextLabel.text=TIOText(m[@"autoDetail"]);c.textLabel.textColor=color;
+            if([m[@"autoLevel"] isEqual:@"danger"])c.textLabel.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);
+            c.imageView.image=[UIImage systemImageNamed:[m[@"autoLevel"] isEqual:@"ok"]?@"checkmark.circle.fill":@"exclamationmark.triangle.fill"];c.imageView.tintColor=color;
+            c.accessibilityIdentifier=[@"fwexport-auto-" stringByAppendingString:m[@"autoUpdate"]];
+        }else if([(self.safety?:SafetyModel())[@"guardActive"] boolValue]){
             c.textLabel.text=TIOText(@"fwexport.guard.on");c.detailTextLabel.text=TIOText(@"fwexport.guard.on.detail");
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusOk);c.imageView.image=[UIImage systemImageNamed:@"checkmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusOk);
             c.accessibilityIdentifier=@"fwexport-guard-on";

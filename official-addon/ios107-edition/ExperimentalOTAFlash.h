@@ -12,6 +12,11 @@ BOOL TIOOTAFlashBuild(void);
 NSUInteger TIOOTAScopedSenderCount(void);
 BOOL TIOOTAFlashProtected(void);
 BOOL TIOOTAFlashBlockCall(id call);
+// Download-only 1.0.11/259 host: TIOOTAFlashBlockCall delegates to
+// TIOOTADownloadOnlyBlockCall there, whatever TIO_* flags the build has.
+FOUNDATION_EXPORT NSString *const TIOOTADownloadOnlyGuardMarker;
+BOOL TIOOTADownloadOnlyHost(void);
+BOOL TIOOTADownloadOnlyBlockCall(id call);
 BOOL TIOOTAFileCallBlocked(NSString *method, BOOL scopedImage, NSUInteger stage);
 BOOL TIOPhoneOTAReadAllowed(NSData *data);
 void TIOOTAFlashObserveEvent(NSDictionary *event);
