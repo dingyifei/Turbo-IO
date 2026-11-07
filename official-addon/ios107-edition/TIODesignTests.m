@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #include "TIODesign.inc"
+#include "knob_calibration.h"
 /* Host test (no UIKit): the token tables compiled into TIODesign.h/.m, which
  * are expanded from TIODesign.inc, must equal docs/design-system/tokens.json
  * row for row and in both directions. argv[1] is the path to tokens.json. */
@@ -116,6 +117,28 @@ int main(int argc,char **argv){
    CHECK(Near(Numbers_[i].a,want[0].doubleValue),"%s first %g != %g",Numbers_[i].name,Numbers_[i].a,want[0].doubleValue);
    if(Numbers_[i].pair&&want.count==2)CHECK(Near(Numbers_[i].b,want[1].doubleValue),"%s second %g != %g",Numbers_[i].name,Numbers_[i].b,want[1].doubleValue);
   }
+
+  /* Range tokens: the same min / max / step / default in tokens.json and the compiled table, the default is the token's value, and the knob detent range is
+   * the one the wire and the glasses use (knob_calibration.h, shared with the firmware). */
+  NSMutableDictionary<NSString *,NSDictionary *> *ranges=[NSMutableDictionary new];
+  for(NSString *group in @[@"spacing",@"radius",@"size",@"lens"])
+   for(NSDictionary *token in json[group][@"tokens"])if(token[@"range"])ranges[token[@"name"]]=token;
+  #define RANGE_ROW(Id,name,lo,hi,step,def) {name,lo,hi,step,def},
+  static const struct {const char *name;double lo,hi,step,def;} Ranges[]={TIO_DESIGN_RANGES(RANGE_ROW)};
+  CHECK(ranges.count==sizeof Ranges/sizeof *Ranges,"range token count json=%lu compiled=%zu",(unsigned long)ranges.count,sizeof Ranges/sizeof *Ranges);
+  for(size_t i=0;i<sizeof Ranges/sizeof *Ranges;i++){
+   NSDictionary *token=ranges[@(Ranges[i].name)];CHECK(token!=nil,"range %s not in tokens.json",Ranges[i].name);if(!token)continue;
+   NSDictionary *r=token[@"range"];
+   CHECK(Near(Ranges[i].lo,Numbers(r[@"min"]).firstObject.doubleValue),"%s min",Ranges[i].name);
+   CHECK(Near(Ranges[i].hi,Numbers(r[@"max"]).firstObject.doubleValue),"%s max",Ranges[i].name);
+   CHECK(Near(Ranges[i].step,Numbers(r[@"step"]).firstObject.doubleValue),"%s step",Ranges[i].name);
+   CHECK(Near(Ranges[i].def,Numbers(r[@"default"]).firstObject.doubleValue),"%s default",Ranges[i].name);
+   CHECK(Near(Ranges[i].def,Numbers(token[@"value"]).firstObject.doubleValue),"%s default is not the token value",Ranges[i].name);
+   CHECK(Ranges[i].lo<=Ranges[i].def&&Ranges[i].def<=Ranges[i].hi&&fmod(Ranges[i].def-Ranges[i].lo,Ranges[i].step)==0&&fmod(Ranges[i].hi-Ranges[i].lo,Ranges[i].step)==0,"%s range is not on its step grid",Ranges[i].name);
+  }
+  CHECK(TK_DETENT_MIN==300&&TK_DETENT_MAX==600&&TK_DETENT_STEP==50&&TK_DETENT_DEFAULT==400,"knob_calibration.h changed");
+  for(size_t i=0;i<sizeof Ranges/sizeof *Ranges;i++)if(!strcmp(Ranges[i].name,"lens-wheel-detent"))
+   CHECK(Near(Ranges[i].lo,TK_DETENT_MIN)&&Near(Ranges[i].hi,TK_DETENT_MAX)&&Near(Ranges[i].step,TK_DETENT_STEP)&&Near(Ranges[i].def,TK_DETENT_DEFAULT),"lens-wheel-detent differs from TK_DETENT_*");
  }
  if(failures){fprintf(stderr,"%d failure(s)\n",failures);return 1;}
  puts("PASS");return 0;

@@ -226,11 +226,14 @@ bool fm_view_update(FMView *v,int selected,int64_t local,int battery,uint32_t no
   int old=v->selected;
   if(v->rows==FM_CAROUSEL){car_retarget(v,old,selected,now);v->selected=selected;render(v,now);return true;}
   bool page=old>=0&&(unsigned)old/per(v)!=(unsigned)selected/per(v);
+  /* The page slides the short way round, like the carousel: forward when the forward distance modulo the tile count is at most half of it (ties forward).
+   * That makes a wrap a forward step last -> first, a backward one first -> last, and keeps a two-item wrap in the same direction (12 -> 1 is forward). */
+  const int n=(int)v->tiles.count;bool fwd=old<0||(((selected-old)%n+n)%n)*2<=n;
   if(old>=0)sample(v,now);
   v->selected=selected;unsigned cell=(unsigned)selected%per(v);
   if(old<0||page){v->caret_x=caret_left(cell);v->caret_y=caret_top(v,cell);for(unsigned i=0;i<FM_CELLS;i++)v->weights[i]=i==cell?256:0;}
   v->from_x=v->caret_x;v->from_y=v->caret_y;for(unsigned i=0;i<FM_CELLS;i++)v->from_weights[i]=v->weights[i];
-  v->page_motion=page&&!v->reduce_motion;v->page_offset=v->page_motion?(selected>old?10:-10):0;v->started=now;v->moving=old>=0&&!v->reduce_motion;
+  v->page_motion=page&&!v->reduce_motion;v->page_offset=v->page_motion?(fwd?10:-10):0;v->started=now;v->moving=old>=0&&!v->reduce_motion;
   render(v,now);
  }else if(v->moving||v->dirty){if((uint32_t)(now-v->last_draw)>=16)render(v,now);}
  else v->api.visible(v->api.ctx,v->root,true);

@@ -65,6 +65,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  NSArray *points=d[@"navPoints"];if(points){if(![points isKindOfClass:NSArray.class]||points.count>32)return NO;for(id pair in points){if(![pair isKindOfClass:NSArray.class]||[pair count]!=2||!Number(pair[0],1023)||!Number(pair[1],1023))return NO;s->points[s->point_count++]=(TNPoint){[pair[0] unsignedIntValue],[pair[1] unsignedIntValue]};}}
  if(s->point_count)s->position=s->points[0];if(Number(d[@"navHeading"],359))s->heading=[d[@"navHeading"] unsignedIntValue];return YES;
 }
+static const NSTimeInterval kYieldWindow=0.4,kYieldCooldown=1.0;
 @implementation TNVSession{
  NSString *_device,*_task,*_nativeTask,*_note;uint32_t _sid,_seq;NSTimeInterval(^_clock)(void);void(^_sender)(NSData *,NSString *,TNVSubmitted);void(^_cleanup)(NSString *);
  NSData *_packet,*_latest,*_committed,*_sending;NSMutableArray *_early;BOOL _active,_fileBusy,_ack,_submitted,_failed,_stopping,_always;
@@ -74,12 +75,24 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  BOOL _pose2;TNRState *_mirror;unsigned _speedLatest,_speedCommitted;NSTimeInterval _lastCorrection;BOOL _sceneSinceCorrection;double _pose2MaxError;
  NSMutableArray *_trace;
  NSTimeInterval _deadline,_lastOffer,_lastCommit,_lastWire,_next;NSUInteger _count;unsigned _op;
+ NSTimeInterval _yieldSince,_yieldHold;NSUInteger _yields;
 }
 - (instancetype)initWithDevice:(NSString *)device session:(uint32_t)sid clock:(NSTimeInterval(^)(void))clock sender:(void(^)(NSData *,NSString *,TNVSubmitted))sender cleanup:(void(^)(NSString *))cleanup{if(!device.length||!sid||!clock||!sender)return nil;if((self=[super init])){_device=[device copy];_sid=sid;_clock=[clock copy];_sender=[sender copy];_cleanup=[cleanup copy];_note=TIOText(@"尚未开始");}return self;}
 - (void)dealloc{free(_mirror);}
 - (BOOL)active{return _active;}- (BOOL)backoff{return _background||_clock()<_backoffUntil;}- (void)setBackground:(BOOL)background{_background=background;}- (BOOL)busy{return _packet||_fileBusy;}
+// A failed session keeps an uncertain native file but is no longer sending, so it does not hold the link against music.
+- (BOOL)fileInFlight{return _packet||(_fileBusy&&!_failed);}
+- (BOOL)peerHolds{return self.peerFileInFlight&&self.peerFileInFlight();}
+// Called only where a non-urgent packet is about to go out. Yield for at most kYieldWindow, then not again for kYieldCooldown.
+- (BOOL)yieldToPeer{
+ if(!self.peerWaiting||!self.peerWaiting()){_yieldSince=0;return NO;}
+ NSTimeInterval now=_clock();
+ if(_yieldSince){if(now-_yieldSince<kYieldWindow)return YES;_yieldSince=0;return NO;}
+ if(now<_yieldHold)return NO;
+ _yieldSince=now;_yieldHold=now+kYieldWindow+kYieldCooldown;_yields++;return YES;
+}
 - (void)trace:(NSString *)event{if(!_trace)_trace=[NSMutableArray new];[_trace addObject:@{@"event":event,@"at":@(_clock()),@"seq":@(_seq),@"op":@(_op),@"ack":@(_ack),@"fileBusy":@(_fileBusy),@"submitted":@(_submitted),@"paused":@(_paused),@"pose2":@(_pose2)}];if(_trace.count>48)[_trace removeObjectAtIndex:0];}
-- (NSDictionary *)status{return @{@"active":@(_active),@"busy":@(self.busy),@"note":_note?:@"",@"snapshots":@(_count),@"session":@(_sid),@"sequence":@(_seq),@"always":@(_always),@"failed":@(_failed),@"maps":@(_maps),@"poses":@(_poses),@"mapBytes":@(_mapV2?_map2Latest.length:_mapLatest.length),@"mapPaths":@(_mapLatest.length>=16?U16((const uint8_t *)_mapLatest.bytes+6):0),@"mapLabels":@(_map2Latest.length>=16?U16((const uint8_t *)_map2Latest.bytes+10):0),@"mapMode":@(_extended),@"roadLabels":@(_mapV2),@"replayPaused":@(_paused),@"source":_source?:@"unknown",@"ackMs":@(_ackMs),@"fileMs":@(_fileMs),@"commitMs":@(_commitMs),@"poseAgeMs":@(_poseAgeMs),@"wireBytes":@(_wireBytes),@"files":@(_files),@"backoff":@(self.backoff),@"pose2":@(_pose2),@"pose2MaxErrorQm":@(_pose2MaxError),@"inFlightOp":@(_packet?_op:0),@"inFlightAck":@(_ack),@"nativeFilePending":@(_fileBusy),@"trace":[_trace copy]?:@[]};}
+- (NSDictionary *)status{return @{@"active":@(_active),@"busy":@(self.busy),@"note":_note?:@"",@"snapshots":@(_count),@"session":@(_sid),@"sequence":@(_seq),@"always":@(_always),@"failed":@(_failed),@"maps":@(_maps),@"poses":@(_poses),@"mapBytes":@(_mapV2?_map2Latest.length:_mapLatest.length),@"mapPaths":@(_mapLatest.length>=16?U16((const uint8_t *)_mapLatest.bytes+6):0),@"mapLabels":@(_map2Latest.length>=16?U16((const uint8_t *)_map2Latest.bytes+10):0),@"mapMode":@(_extended),@"roadLabels":@(_mapV2),@"replayPaused":@(_paused),@"source":_source?:@"unknown",@"ackMs":@(_ackMs),@"fileMs":@(_fileMs),@"commitMs":@(_commitMs),@"poseAgeMs":@(_poseAgeMs),@"wireBytes":@(_wireBytes),@"files":@(_files),@"backoff":@(self.backoff),@"pose2":@(_pose2),@"pose2MaxErrorQm":@(_pose2MaxError),@"yields":@(_yields),@"inFlightOp":@(_packet?_op:0),@"inFlightAck":@(_ack),@"nativeFilePending":@(_fileBusy),@"trace":[_trace copy]?:@[]};}
 - (void)fail:(NSString *)note{[self trace:@"failed"];_active=NO;_failed=YES;_packet=nil;_note=note;/* preserve uncertain native file ownership */}
 - (void)finish{if(!_packet||!_ack||_fileBusy||!_submitted)return;unsigned op=_op;_commitMs=(_clock()-_lastWire)*1000;_packet=nil;_nativeTask=nil;_early=nil;if(_cleanup)_cleanup(_task);_task=nil;_next=_clock()+(_extended?0:1);
  if(_pose2&&_mirror&&op>=TNR_SCENE&&op<=TNR_POSE2){
@@ -97,7 +110,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
  if(op==TN_STOP){_active=NO;_stopping=NO;_note=TIOText(@"眼镜已确认退出导航");}else _note=TIOText(@"原生导航已提交 · 镜片效果待确认");
 }
 - (BOOL)send:(enum TNOp)op scene:(NSData *)scene{
- if(self.busy||_failed||_seq==UINT32_MAX)return NO;uint8_t b[TNR_MAX_BYTES];size_t n=op>=TNR_SCENE?tnr_wrap(b,sizeof b,op,_sid,++_seq,scene.bytes,scene.length):tn_encode(b,sizeof b,op,_sid,++_seq,scene?(const TNScene *)scene.bytes:NULL);if(!n)return NO;
+ if(self.busy||_failed||_seq==UINT32_MAX||[self peerHolds])return NO;uint8_t b[TNR_MAX_BYTES];size_t n=op>=TNR_SCENE?tnr_wrap(b,sizeof b,op,_sid,++_seq,scene.bytes,scene.length):tn_encode(b,sizeof b,op,_sid,++_seq,scene?(const TNScene *)scene.bytes:NULL);if(!n)return NO;
  _packet=[NSData dataWithBytes:b length:n];_wireBytes+=n;_files++;_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_submitted=NO;_fileBusy=YES;_op=op;_sending=op>=TNR_SCENE?[_packet subdataWithRange:NSMakeRange(32,_packet.length-32)]:[scene copy];_lastWire=_clock();_deadline=_lastWire+8;/* poses too: a slow background transfer is late, and failing loses STOP */NSString *task=_task;
  [self trace:@"send"];__weak typeof(self) weak=self;_sender(_packet,task,^(BOOL ok,NSString *native){TNVSession *s=weak;if(!s||![task isEqual:s->_task])return;
   if(!ok||![native isKindOfClass:NSString.class]||!native.length||native.length>256){s->_fileBusy=NO;[s fail:TIOText(@"文件提交失败；停止导航发送")];return;}
@@ -117,7 +130,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 - (void)setAlways:(BOOL)always{_always=always;if(_latest){NSMutableData *d=[_latest mutableCopy];((TNScene *)d.mutableBytes)->mode=always?TN_ALWAYS:TN_SMART;_latest=d;}}
 // After a failure the glasses still show the last frame; send one STOP once no native file is uncertain.
 - (void)farewell{
- if(!_wantFarewell||_farewell||!_failed||_fileBusy||_packet||_seq==UINT32_MAX)return;_farewell=YES;_failed=NO;_active=YES;_stopping=YES;
+ if(!_wantFarewell||_farewell||!_failed||_fileBusy||_packet||_seq==UINT32_MAX||[self peerHolds])return;_farewell=YES;_failed=NO;_active=YES;_stopping=YES;
  if(![self send:TN_STOP scene:nil]){_failed=YES;_active=NO;_stopping=NO;}
 }
 - (void)stop{if(_failed){_wantFarewell=YES;[self farewell];return;}if(!_active)return;_stopping=YES;_note=TIOText(@"等待在途包结束后退出导航");[self pump];}
@@ -127,7 +140,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
 - (void)pump{
  if(_packet&&_clock()>=_deadline){[self fail:TIOText(@"导航协议超时；停止发送，请确认已刷TNV1固件并用实体键退出旧画面。")];return;}
  if(_wantFarewell&&_failed){[self farewell];return;}
- if(!_active||self.busy||_clock()<_next)return;
+ if(!_active||self.busy||_clock()<_next||[self peerHolds])return;
  if(_stopping){[self send:TN_STOP scene:nil];return;}
  if(_paused)return;
  if(_extended&&!_probed){[self send:TN_QUERY scene:nil];return;}
@@ -151,7 +164,7 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
   correctionDue=correctionDue&&now-_lastPose>=(self.backoff?1:0.2);
  }
  BOOL poseDue=_extended&&_mapCommitted&&_poseLatest&&(_pose2?correctionDue:now-_lastPose>=0.9);
- if((_mapCommitted||!_extended||!_mapLatest)&&fresh&&(urgent||(!poseDue&&(now-_lastCommit>=10||(changed&&now-_lastCommit>=1))))){[self send:TN_UPDATE scene:_latest];return;}
+ if((_mapCommitted||!_extended||!_mapLatest)&&fresh&&(urgent||(!poseDue&&(now-_lastCommit>=10||(changed&&now-_lastCommit>=1))))){if(!urgent&&[self yieldToPeer])return;[self send:TN_UPDATE scene:_latest];return;}
  if(_extended&&fresh&&_poseLatest&&now-_poseAt<=4&&now>=_poseAt){
   NSData *map=_mapV2&&_map2Latest?_map2Latest:_mapLatest;
   if(map&&![map isEqual:_mapCommitted]){
@@ -160,13 +173,14 @@ BOOL TNVScene(NSDictionary *d,BOOL always,TNScene *s){
   }
   // Slow links and the background get one pose a second; otherwise 2 Hz, and only for >=1 m or >=3 degrees.
   if(_mapCommitted&&(_pose2?correctionDue:now-_lastPose>=(self.backoff?1:0.5))){
+   if([self yieldToPeer])return;
    NSMutableData *pose=[_poseLatest mutableCopy];uint8_t *p=pose.mutableBytes;unsigned age=(unsigned)((now-_poseAt)*1000);p[10]=age;p[11]=age>>8;
    if(_pose2){[pose setLength:14];p=pose.mutableBytes;p[12]=(uint8_t)_speedLatest;p[13]=(uint8_t)(_speedLatest>>8);_poseAgeMs=age;[self send:(enum TNOp)TNR_POSE2 scene:pose];return;}
   }
   // Due position corrections must make progress even when label names churn.
-  if(_passingCap&&_mapCommitted&&_passingLatest&&![_passingLatest isEqual:_passingCommitted]&&U32(_passingLatest.bytes)==U32(_mapCommitted.bytes)){[self send:(enum TNOp)TNR_PASSING scene:_passingLatest];return;}
+  if(_passingCap&&_mapCommitted&&_passingLatest&&![_passingLatest isEqual:_passingCommitted]&&U32(_passingLatest.bytes)==U32(_mapCommitted.bytes)){if([self yieldToPeer])return;[self send:(enum TNOp)TNR_PASSING scene:_passingLatest];return;}
  }
- if(!_extended&&fresh&&changed){[self send:TN_UPDATE scene:_latest];return;}
+ if(!_extended&&fresh&&changed){if(!urgent&&[self yieldToPeer])return;[self send:TN_UPDATE scene:_latest];return;}
  if(_clock()-_lastWire>=10)[self send:TN_HEARTBEAT scene:nil];
 }
 - (BOOL)consume:(NSDictionary *)e{

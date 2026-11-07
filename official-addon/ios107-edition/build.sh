@@ -184,6 +184,8 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   editor.c \
   DashboardCard.m \
   DashboardPhone.m \
+  GlassesBench.m \
+  GlassesTestBenchUI.m \
   card.c \
   A2UIProtocol.m \
   A2UIProbe.m \

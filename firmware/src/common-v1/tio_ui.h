@@ -47,11 +47,16 @@
 #define TIO_MENU_M1 TIO_EDGE(6935,TIO_MENU_H-TIO_RESERVE_BOTTOM)  /* 172 */
 #define TIO_MENU_B1 TIO_EDGE(8548,TIO_MENU_H-TIO_RESERVE_BOTTOM)  /* 212 */
 
-/* Knob (tokens lens-wheel-detent, README rule 9): one item per 300 raw counts (about 6.7 per turn at ~2000 counts/turn).
- * Pages (wheel_input.h, music_input.h) step once per detent; the menu doubles the stock delta (menu_wheel.h) because the
- * stock carousel needs 600 raw units per item. diagnostics-v1/knob_calibration.h repeats the number as TK_DETENT_RAW so the
- * phone can share it; menu_wheel.h static-asserts they agree. Lockouts after a step: 200 ms on pages, 500 ms in music. */
-#define TIO_WHEEL_DETENT_RAW 300
+/* Knob (token lens-wheel-detent, README rule 9): D raw counts per item, adjustable from the phone (TMG9). D is 300..600 in steps of 50 and
+ * 400 when nothing is stored (about 5.0 items per ~2000-count turn; 300 gives 6.7, 450 gives 4.4, 600 gives 3.3). Everything reads the one
+ * live value through tio_knob_detent() (knob_detent.h): the main menu (menu_wheel.h, the hook steps one item per D itself), the pages
+ * (wheel_input.h), music (music_input.h) and the remote's injected step (remote_native.c). Lockouts after a step are time based and do not
+ * depend on D: 200 ms on pages, 500 ms in music. diagnostics-v1/knob_calibration.h repeats the numbers as TK_DETENT_* so the phone can share
+ * them; menu_wheel.h static-asserts they agree. */
+#define TIO_WHEEL_DETENT_MIN 300
+#define TIO_WHEEL_DETENT_MAX 600
+#define TIO_WHEEL_DETENT_STEP 50
+#define TIO_WHEEL_DETENT_DEFAULT 400
 #define TIO_WHEEL_LOCK_PAGE_MS 200u
 #define TIO_WHEEL_LOCK_MUSIC_MS 500u
 

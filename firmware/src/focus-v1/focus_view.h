@@ -4,6 +4,8 @@
 #include "../navigation-runtime-v1/nav_view.h"
 #include "../common-v1/tio_ui.h"
 #include "../common-v1/tio_hint.h"
+#include "../common-v1/tio_bank.h"
+#include <stddef.h>
 /* LensFocus (docs/design-system/screens/LensFocus.dc.html, halved), primary information lowest:
  * band T  phase title (lens-mid, 18 px), "n / 4" at the right, 4 px progress track under them;
  *         the control hint replaces the title and the count for TIO_HINT_MS after entry and input
@@ -16,7 +18,8 @@ enum {TF_L_TITLE,TF_L_COUNT,TF_L_STATUS,TF_L_TIME};
 #define TF_BAR_H TIO_TRACK_H
 #define TF_TRACK_LEVEL (TIO_LENS_TRACK>>8&255u) /* canvas gray level = green channel */
 #define TF_FILL_LEVEL (TIO_LENS_FULL>>8&255u)
-typedef struct {TNWidgets api;void *root,*labels[TF_LABELS],*bar;char text[2][TF_LABELS][112];_Alignas(64) uint8_t bar_px[2][TF_BAR_W*TF_BAR_H];unsigned bank;bool open;TIOHint hint;uint32_t title_color;} TFView;
+typedef struct {TNWidgets api;void *root,*labels[TF_LABELS],*bar;char text[2][TF_LABELS][112];_Alignas(64) uint8_t bar_px[2][FM_BANK64(TF_BAR_W*TF_BAR_H)];unsigned bank;bool open;TIOHint hint;uint32_t title_color;} TFView;
+_Static_assert(offsetof(TFView,bar_px)%64==0&&sizeof(((TFView *)0)->bar_px[0])%64==0&&FM_BANK64(TF_BAR_W*TF_BAR_H)==1856,"TFView progress bar banks must be 64 byte aligned");
 TIORect tf_title_rect(void);
 TIORect tf_count_rect(void);
 TIORect tf_bar_rect(void);

@@ -19,12 +19,18 @@ BOOL TMMusicReply(NSDictionary *e,NSDictionary **out){if(![e isKindOfClass:NSDic
 static NSData *Clip(NSString *s,NSUInteger max){if(![s isKindOfClass:NSString.class])s=@"";s=[[s componentsSeparatedByCharactersInSet:NSCharacterSet.controlCharacterSet]componentsJoinedByString:@" "];NSMutableData *d=[NSMutableData new];[s enumerateSubstringsInRange:NSMakeRange(0,s.length) options:NSStringEnumerationByComposedCharacterSequences usingBlock:^(NSString *a,NSRange r,NSRange all,BOOL *stop){NSData *b=[a dataUsingEncoding:NSUTF8StringEncoding];if(d.length+b.length>max){*stop=YES;return;}[d appendData:b];}];return d;}
 @implementation TMMusicBridge{
  TIOGlassesFileTransport *_transport;NSString *_peer,*_task,*_nativeTask,*_note;NSData *_packet,*_cover,*_lyrics;NSArray *_rows;NSMutableArray *_early;
- uint32_t _sid,_gen,_seq,_sendingGen;NSUInteger _coverAt,_lyricsAt,_chunk;unsigned _op;BOOL _ack,_fileDone,_submitted,_active,_needOpen,_needClose,_failed;
+ uint32_t _sid,_gen,_seq,_sendingGen;NSUInteger _coverAt,_lyricsAt,_chunk;unsigned _op;BOOL _ack,_fileDone,_submitted,_active,_needOpen,_needClose,_failed,_refused;
  NSTimeInterval _deadline,_lastClock,_next;NSUInteger _count;NSMutableOrderedSet *_commands;
 }
 - (instancetype)init{if((self=[super init])){TDPDiagConfigure([NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/display-phone-diagnostics.json"]]);TDPDiagRecord(@"state",@{@"code":@2302});}return self;}
 - (BOOL)busy{return _packet!=nil;}
 - (BOOL)active{return _active;}
+// A failed bridge keeps its uncertain file but no longer sends, so it does not hold the link against navigation.
+- (BOOL)fileInFlight{return _packet!=nil&&!_failed;}
+- (BOOL)waiting{
+ if(_failed||_packet||!_active)return NO;
+ return _needClose||_needOpen||TMClockDue(_lastClock,NSProcessInfo.processInfo.systemUptime)||_lyricsAt<_lyrics.length||_coverAt<_cover.length;
+}
 - (void)reopen{if(!_gen||_failed)return;_needOpen=_active=YES;_needClose=NO;[self pump];}
 - (void)changed{_lastClock=0;[self pump];}
 - (NSString *)note{return _note?:TIOText(@"尚未同步 · 需要 TMU1 新固件");}
@@ -40,16 +46,25 @@ static NSData *Clip(NSString *s,NSUInteger max){if(![s isKindOfClass:NSString.cl
 - (void)openWithCover:(NSData *)cover lyrics:(NSArray *)lyrics{if(![self setup])return;if(++_gen==0){_failed=YES;_note=TIOText(@"会话计数耗尽，请重启");return;}_cover=_lyrics=nil;_coverAt=_lyricsAt=0;_needOpen=_active=YES;_needClose=NO;[self assetsCover:cover lyrics:lyrics];_note=TIOText(@"请求打开眼镜音乐页");[self pump];}
 - (NSData *)state{NSDictionary *s=self.snapshot?self.snapshot():@{};uint8_t b[TM_STATE_BYTES]={0};Put(b,MIN(86400000,[s[@"position"]unsignedIntValue]));Put(b+4,MIN(86400000,[s[@"duration"]unsignedIntValue]));b[8]=[s[@"playing"]boolValue];b[9]=MIN(2,[s[@"mode"]unsignedIntValue]);Put(b+12,[s[@"request"]unsignedIntValue]);NSData *title=Clip(s[@"title"],95),*artist=Clip(s[@"artist"],79);memcpy(b+16,title.bytes,title.length);memcpy(b+112,artist.bytes,artist.length);return [NSData dataWithBytes:b length:sizeof b];}
 - (void)fail:(NSString *)reason{_failed=YES;_active=NO;_note=reason;TDPDiagRecord(@"state",@{@"code":@4,@"op":@(_op),@"sid":@(_sid),@"revision":@(_sendingGen),@"packet":@(_seq)});/* Do not delete uncertain in-flight native file. */}
-- (void)finish{if(!_packet||!_ack||!_fileDone||!_submitted)return;[_transport cleanup:_task];if(_sendingGen==_gen){if(_op==TM_OPEN)_needOpen=NO;if(_op==TM_COVER)_coverAt+=_chunk;if(_op==TM_LYRICS)_lyricsAt+=_chunk;if(_op==TM_CLOSE)_active=_needClose=NO;}
+- (void)finish{if(!_packet||!_ack||!_fileDone||!_submitted)return;[_transport cleanup:_task];if(_sendingGen==_gen&&_refused){
+  // The glasses said no for a reason that is not an error (navigation or another page holds them, or the music page is
+  // closed). Go quiet instead of failing: the glasses' own Resume request (TM_RESUME) reopens through -reopen.
+  _active=_needOpen=_needClose=NO;_packet=nil;_task=_nativeTask=nil;_early=nil;_refused=NO;_next=NSProcessInfo.processInfo.systemUptime+.12;
+  TDPDiagRecord(@"packet_refused",@{@"op":@(_op),@"sid":@(_sid),@"revision":@(_sendingGen),@"packet":@(_seq)});
+  _note=_op==TM_OPEN?TIOText(@"music.bridge.busy"):TIOText(@"music.bridge.noSession");return;
+ }
+ _refused=NO;
+ if(_sendingGen==_gen){if(_op==TM_OPEN)_needOpen=NO;if(_op==TM_COVER)_coverAt+=_chunk;if(_op==TM_LYRICS)_lyricsAt+=_chunk;if(_op==TM_CLOSE)_active=_needClose=NO;}
  TDPDiagRecord(@"packet_complete",@{@"op":@(_op),@"sid":@(_sid),@"revision":@(_sendingGen),@"packet":@(_seq)});_packet=nil;_task=_nativeTask=nil;_early=nil;_count++;_next=NSProcessInfo.processInfo.systemUptime+.12;_note=[NSString stringWithFormat:TIOText(@"眼镜已确认 %lu 包 · %@"),(unsigned long)_count,_active?TIOText(@"正在同步"):TIOText(@"已关闭画面")];
 }
 - (void)send:(unsigned)op data:(NSData *)data offset:(NSUInteger)offset final:(BOOL)final{if(_seq==UINT32_MAX){[self fail:TIOText(@"序号耗尽")];return;}uint8_t b[TM_PACKET_MAX];size_t n=tm_encode(b,sizeof b,op,final,_sid,_gen,++_seq,(uint32_t)offset,data.bytes,data.length);if(!n){[self fail:TIOText(@"音乐包编码失败")];return;}
- _packet=[NSData dataWithBytes:b length:n];_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_fileDone=_submitted=NO;_sendingGen=_gen;_op=op;_chunk=data.length;_deadline=NSProcessInfo.processInfo.systemUptime+15;NSString *task=_task;__weak typeof(self) weak=self;
+ _packet=[NSData dataWithBytes:b length:n];_task=NSUUID.UUID.UUIDString;_nativeTask=nil;_early=[NSMutableArray new];_ack=_fileDone=_submitted=_refused=NO;_sendingGen=_gen;_op=op;_chunk=data.length;_deadline=NSProcessInfo.processInfo.systemUptime+15;NSString *task=_task;__weak typeof(self) weak=self;
  TDPDiagRecord(@"send",@{@"op":@(op),@"sid":@(_sid),@"revision":@(_gen),@"packet":@(_seq),@"bytes":@(n)});
  [_transport send:_packet task:task submitted:^(BOOL ok,NSString *native){TMMusicBridge *s=weak;if(!s||![task isEqual:s->_task])return;if(!ok){[s fail:TIOText(@"提交失败，未继续发送。请重连后重试。")];return;}s->_submitted=YES;s->_nativeTask=native;NSArray *early=s->_early;s->_early=nil;for(NSDictionary *e in early)[s consume:e];[s finish];}];
 }
 - (void)close{_needClose=YES;[self pump];}
 - (void)pump{NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(_peer&&![_peer isEqual:TIOProtocolDevice()]){[self fail:TIOText(@"眼镜连接已变化，音乐仍可在手机播放")];return;}if(_failed)return;if(_packet){if(now>=_deadline)[self fail:TIOText(@"眼镜未回执：确认 TMU1 固件和蓝牙。传输已停止。")];return;}if(!_active||now<_next)return;
+ if(self.peerFileInFlight&&self.peerFileInFlight())return;   // navigation owns the file link; music waits
  if(_needClose){[self send:TM_CLOSE data:nil offset:0 final:NO];return;}
  if(_needOpen){_lastClock=now;[self send:TM_OPEN data:[self state] offset:0 final:NO];return;}
  if(TMClockDue(_lastClock,now)){_lastClock=now;[self send:TM_CLOCK data:[self state] offset:0 final:NO];return;}
@@ -60,6 +75,13 @@ static NSData *Clip(NSString *s,NSUInteger max){if(![s isKindOfClass:NSString.cl
  NSDictionary *q;if(!TMMusicReply(e,&q))return NO;BOOL peerMatch=[e[@"message"][@"deviceId"]isEqual:TIOProtocolDevice()];TDPDiagRecord(@"reply_match",@{@"deviceMatch":@(peerMatch),@"eventCode":q[@"event"],@"result":q[@"result"],@"ready":q[@"active"],@"foreground":q[@"awake"],@"sid":q[@"sid"],@"revision":q[@"generation"],@"packet":q[@"sequence"],@"request":q[@"request"]});if(!peerMatch)return YES;
  unsigned event=[q[@"event"]unsignedIntValue];if(event){if(![self setup])return YES;if(event!=TM_RESUME&&([q[@"sid"]unsignedIntValue]!=_sid||[q[@"generation"]unsignedIntValue]!=_gen))return YES;NSNumber *key=q[@"request"];if(![_commands containsObject:key]){[_commands addObject:key];if(_commands.count>128)[_commands removeObjectAtIndex:0];if(event==TM_VIEW_CLOSED){_active=NO;_needOpen=NO;}if(self.command)self.command(q);}return YES;}
  if(!_packet||[q[@"sid"]unsignedIntValue]!=_sid||[q[@"generation"]unsignedIntValue]!=_sendingGen||[q[@"sequence"]unsignedIntValue]!=_seq)return YES;
- if([q[@"result"]unsignedIntValue]!=TM_OK){[self fail:[NSString stringWithFormat:TIOText(@"眼镜拒绝音乐包（%@）"),q[@"result"]]];return YES;}_ack=YES;[self finish];return YES;
+ unsigned result=[q[@"result"]unsignedIntValue];
+ if(result!=TM_OK){
+  // BUSY on OPEN and NO_SESSION on CLOCK/COVER/LYRICS/CLOSE are states, not faults. BAD, STALE and anything else stay fatal.
+  BOOL soft=(result==TM_BUSY&&_op==TM_OPEN)||(result==TM_NO_SESSION&&(_op==TM_CLOCK||_op==TM_COVER||_op==TM_LYRICS||_op==TM_CLOSE));
+  if(!soft){[self fail:[NSString stringWithFormat:TIOText(@"眼镜拒绝音乐包（%@）"),q[@"result"]]];return YES;}
+  _refused=YES;
+ }
+ _ack=YES;[self finish];return YES;
 }
 @end

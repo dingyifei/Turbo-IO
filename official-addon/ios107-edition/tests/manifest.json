@@ -323,6 +323,18 @@
       "status": "run",
       "group": "download-only-safety",
       "note": "G2/G3 for the download-only 1.0.11 host: hook target failures leave the guard off and the export panel unsafe; Auto Update off/on/missing read only, worst key wins."
+    },
+    "tests/MusicNavigationTests.m": {
+      "status": "run",
+      "group": "music-navigation"
+    },
+    "tests/GlassesBenchTests.m": {
+      "status": "run",
+      "group": "glasses-bench"
+    },
+    "tests/GlassesBenchLayout_test.c": {
+      "status": "run",
+      "group": "bench-layout"
     }
   }
 }

@@ -284,13 +284,14 @@ void m8_hook_wheel(void *app,int delta){
   if(tf_slot_visible(focus(app))){tf_slot_wheel(focus(app),delta);return;}
   if(tm_slot_visible(music(app))){tm_slot_wheel(music(app),delta);return;}
   if(tail(app)->page||tn_slot_visible(slot(app)))return;
-  /* One item per 300 counts: the stock carousel needs 600, so it gets 2x. Wrap last <-> first in every layout. */
-  int target=fm_wheel_wrap(app,(int)*word(app,0x88),(int)fm_tile_count(),delta,stream_tick());
-  if(target>=0){
-    *(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET)=(float)target;native_snap(app);
-    m8_hook_label_index(app,target);(void)m8_hook_frame(app,tio_frame_start(target));return;
-  }
-  stock_wheel(app,tio_menu_wheel_scaled(delta));
+  /* Hook-owned stepping (menu_wheel.h): one item per D raw counts, D the live detent, in every layout, and a step past either end is the wrap.
+   * Stock never sees the delta (no 2x, no rounding): eligible() is the same gate stock_wheel applies first, so a delta it would drop is dropped here
+   * before it can build a remainder. Same path as remote_native.c: stock native_snap re-seats the carousel from the selected index (app+0x88), so that
+   * is what must change, and 0x90 (the shown frame) is invalidated so the snap reruns the frame and label hooks itself. */
+  if(!eligible(app))return;
+  int target=fm_wheel_step(app,(int)*word(app,0x88),(int)fm_tile_count(),delta,stream_tick());
+  if(target>=0){*word(app,0x88)=(uint32_t)target;*word(app,0x90)=UINT32_MAX;native_snap(app);return;}
+  if(target==FM_STEP_NO_CONTROL)stock_wheel(app,delta); /* no controller to step with (no nav slot, closing, or fm_show made none: allocation failed, renderer busy, no room): the stock menu keeps its own rate, 600 counts per item */
 }
 bool m8_hook_event(void *app,void *event){
   if(native_event_code(event)!=0xe || native_event_key(event)!=0x3a)return stock_event(app,event);

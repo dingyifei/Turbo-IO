@@ -5,6 +5,7 @@
 #import "TIOConfirm.h"
 #import "MenuLayoutUI.h"
 #import "TDPhoneUI.h"
+#import "GlassesTestBenchUI.h"
 #import "ResearchUI.h"
 #import "EditorUI.h"
 #import "EditorCrop.h"
@@ -170,11 +171,14 @@ static NSDictionary *ReportFor(UIViewController *controller) {
                                   @"movable":@([dataSource respondsToSelector:@selector(tableView:canMoveRowAtIndexPath:)]&&[dataSource tableView:table canMoveRowAtIndexPath:path]),
                                   @"speedStep":[cell.accessoryView isKindOfClass:UISegmentedControl.class]?@(((UISegmentedControl *)cell.accessoryView).selectedSegmentIndex):NSNull.null,
                                   @"switchOn":[cell.accessoryView isKindOfClass:UISwitch.class]?@(((UISwitch *)cell.accessoryView).on):NSNull.null,
+                                  @"stepperValue":[cell.accessoryView isKindOfClass:UIStepper.class]?@(((UIStepper *)cell.accessoryView).value):NSNull.null,
+                                  @"stepperEnabled":[cell.accessoryView isKindOfClass:UIStepper.class]?@(((UIStepper *)cell.accessoryView).enabled):NSNull.null,
                                   @"accessory":@(table.editing?cell.editingAccessoryType:cell.accessoryType),
                                   @"editingSwitch":@([cell.editingAccessoryView isKindOfClass:UISwitch.class]),
                                   @"rendered":@([table cellForRowAtIndexPath:path]!=nil)}];
             }
-            [sections addObject:@{@"title":HeaderTitle(table,section),@"rows":rows}];
+            NSString *footer=[dataSource respondsToSelector:@selector(tableView:titleForFooterInSection:)]?[dataSource tableView:table titleForFooterInSection:section]:nil;
+            [sections addObject:@{@"title":HeaderTitle(table,section),@"footer":footer?:@"",@"rows":rows}];
         }
     }
     __block NSString *subtitle=@"";
@@ -415,6 +419,10 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             UIViewController *page=TIOExperimentalOTAController();
             if (page) navigation=[[UINavigationController alloc] initWithRootViewController:page];
             presented=navigation;
+        } else if ([screen hasPrefix:@"bench-"]) {
+            // The real Glasses test bench with canned values, scrolled to one section: bench-lyrics, bench-song, bench-card or bench-timer.
+            UIViewController *page=TIOGlassesTestBenchPreviewController([screen substringFromIndex:6]);
+            if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"tiles"]) {
             UIViewController *page=TIOTileEditorPreviewController();
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
@@ -422,8 +430,9 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             // The real menu layout screen with canned glasses: layout = TMG8 glasses (carousel stored), layout-tmg7 = older glasses.
             UIViewController *page=TIOMenuLayoutPreviewController([screen isEqual:@"layout"]?@"tmg8":@"tmg7");
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
-        } else if ([screen isEqual:@"runtime"] || [screen isEqual:@"knob"]) {
-            NSString *runtimeFixture=Argument(@"--runtime-fixture")?:([screen isEqual:@"knob"]?@"completed":@"normal");
+        } else if ([screen isEqual:@"runtime"] || [screen isEqual:@"knob"] || [screen hasPrefix:@"knob-"]) {
+            // knob-<fixture> is the knob screen with the knob step setting's canned glasses: tmg9, tmg9-confirmed, tmg9-failed, tmg8 (see TDPhonePreviewController).
+            NSString *runtimeFixture=Argument(@"--runtime-fixture")?:([screen hasPrefix:@"knob-"]?[screen substringFromIndex:5]:[screen isEqual:@"knob"]?@"completed":@"normal");
             UIViewController *page=TDPhonePreviewController(runtimeFixture);
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"music"]) {

@@ -17,5 +17,11 @@ NSDictionary *TNVNormalizeCoordinates(NSArray *);
 - (void)pump;
 - (BOOL)consume:(NSDictionary *)event;
 @property(nonatomic,readonly) BOOL active,busy;
+// One native file in flight across navigation (TNV1) and music (TMU1): both share the phone's single BLE file link.
+// peerFileInFlight: the other feature owns the link now, send nothing. peerWaiting: it has a packet ready, so a
+// non-urgent slot (pose, passing, routine UPDATE) may be given to it once per window. STOP and urgent UPDATE never yield.
+@property(nonatomic,copy) BOOL(^peerFileInFlight)(void);
+@property(nonatomic,copy) BOOL(^peerWaiting)(void);
+@property(nonatomic,readonly) BOOL fileInFlight;
 @property(nonatomic,readonly) NSDictionary *status;
 @end

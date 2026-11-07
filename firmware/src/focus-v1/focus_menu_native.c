@@ -28,9 +28,10 @@ extern bool nav_bonded(void *);
 extern int nav_connection(unsigned);
 extern int64_t fm_local_time(void *);
 extern int fm_battery_level(void *);
-typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;TIOMenuWrap wrap;} FMControl;
+typedef struct {FMView view;void *app,*timer;uint32_t refreshed;int selection;unsigned desired_rows;bool enabled,closing,relabel;TIOMenuStep step;} FMControl;
 _Static_assert(TS_LINE_MAX==FM_LINE_MAX,"the tile status line fits the view line buffer");
 _Static_assert(sizeof(FMControl)<=40960,"menu retained storage (nine grid cells or six carousel slots, two banks) capped at 40 KiB");
+_Static_assert(offsetof(FMControl,view)==0,"the 64 byte aligned canvas banks start at the stream_memalign(64) block");   /* TMG9: bank padding (tio_bank.h) grew FMView by 192 B, still under the cap */
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
@@ -113,5 +114,5 @@ void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
 }
 void fm_hide(void *app){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;if(c){c->enabled=false;c->selection=-1;fm_view_suspend(&c->view);if(c->view.root)c->view.api.visible(c->view.api.ctx,c->view.root,false);}}
 void fm_destroy(void *app){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;if(!c)return;s->quad=NULL;c->app=NULL;c->closing=true;c->enabled=false;(void)dispose(c);/* idle: remove our child now; busy: parent callback + deferred retirement */}
-/* Knob wrap state lives in the heap controller (the owner tail and .bss are fixed). No controller, no wrap. */
-int fm_wheel_wrap(void *app,int index,int count,int delta,uint32_t now){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;return c&&!c->closing?tio_menu_wheel_wrap(&c->wrap,index,count,delta,now):-1;}
+/* Knob step state (the int32 remainder of the gesture) lives in the heap controller next to the view (the owner tail and .bss are fixed). No controller, no state. */
+int fm_wheel_step(void *app,int index,int count,int delta,uint32_t now){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;return c&&!c->closing?tio_menu_wheel_step(&c->step,index,count,delta,now,tio_knob_detent()):FM_STEP_NO_CONTROL;}

@@ -143,6 +143,8 @@ static NSDictionary *RuntimeCalibration(const TDSample *s){
 - (BOOL)sampleFresh{NSTimeInterval now=_clock();return _sampleAt>0&&isfinite(now)&&now>=_sampleAt&&now-_sampleAt<=TDGlassesCapsFreshSeconds;}
 - (uint32_t)glassesCaps{NSNumber *caps=[_peer isEqual:_peerNow()]&&[self sampleFresh]?_sample[@"caps"]:nil;return [caps isKindOfClass:NSNumber.class]?caps.unsignedIntValue:0;}
 - (BOOL)glassesReportTMG8Caps{return (self.glassesCaps&TD_CAP_MENU_CAROUSEL)!=0;}
+- (BOOL)glassesReportTMG9DetentCaps{return (self.glassesCaps&TD_CAP_KNOB_DETENT)!=0;}
+- (uint32_t)glassesDetent{NSNumber *d=[_peer isEqual:_peerNow()]&&[self sampleFresh]?_sample[@"detent"]:nil;return [d isKindOfClass:NSNumber.class]?d.unsignedIntValue:0;}
 - (NSString *)glassesFirmware{NSString *name=[_peer isEqual:_peerNow()]&&[self sampleFresh]?_sample[@"firmware"]:nil;return [name isKindOfClass:NSString.class]&&name.length?name:nil;}
 - (BOOL)idleForOTA{NSTimeInterval now=_clock();if(!isfinite(now))return NO;BOOL lease=_holdsLease&&now<_leaseDeadline,request=_pending&&(now<_sentAt||now<_deadline);return !_fileBusy&&!lease&&!request;}
 - (BOOL)pending{[self poll];return _pending;}

@@ -72,7 +72,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg6-passing',[FW/'tests/tmg6_passing_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')
     ctest('tmg4-diagnostics',[FW/'src/diagnostics-v1/diagnostics_test.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src/diagnostics-v1')
     ctest('tmg8-caps',[FW/'tests/tmg8_caps_test.c',FW/'src/menu-grid-v2/menu_config.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src')
-    ctest('tmg8-wheel',[FW/'tests/tmg8_wheel_test.c'],FW/'src')
+    ctest('tmg9-stepping',[FW/'tests/tmg9_stepping_test.c'],FW/'src')
     ctest('tmg8-music-input',[FW/'src/music-runtime-v1/music_input_test.c'],FW/'src/music-runtime-v1')
     run('tmg8-icons',['python3','-I',FW/'tests/tmg8_icons_test.py'])
     run('tmg8-brightness',['python3','-I',FW/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
@@ -104,6 +104,18 @@ if only is None or 'tmg4-host' in only:
     run('tmg4-cjk',['python3','-I',FW/'tools/check_cjk.py',FW])
     groups.append('tmg4-host');print('tmg4-host: PASS')
 else:skip('tmg4-host','not selected by --only')
+# TMG9 bug 1: the REAL m8_hook_wheel (sliced from menu10.c) against a stock model transcribed from the disassembly; the TMG8 body must fail it.
+seen.add('tmg9-wheel-hook')
+if only is None or 'tmg9-wheel-hook' in only:
+    run('tmg9-wheel-hook',['python3','-I',FW/'tests/tmg9_wheel_host_test.py','--out',out/'tmg9-wheel-hook'])
+    groups.append('tmg9-wheel-hook');print('tmg9-wheel-hook: PASS')
+else:skip('tmg9-wheel-hook','not selected by --only')
+# TMG9 detent D: caps bit 10, the D-carrying TMG2 SET (peer byte 2), D/50 in the menu record, the status pairing; rollback proven against copies of the TMG7/TMG8 decoders.
+seen.add('tmg9-detent')
+if only is None or 'tmg9-detent' in only:
+    ctest('tmg9-detent',[FW/'tests/tmg9_detent_test.c',FW/'src/menu-grid-v2/menu_config.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src')
+    groups.append('tmg9-detent');print('tmg9-detent: PASS')
+else:skip('tmg9-detent','not selected by --only')
 seen.add('shared-sources')
 if only is None or 'shared-sources' in only:
     pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',
@@ -160,6 +172,13 @@ test('catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','
 test('research-catalog-apple',['ResearchCatalogTests.m','ResearchCatalog.m','AppleAICore.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1','-DTIO_APPLE_AI=1'])
 test('music-compatibility',['tests/MusicCompatibilityTests.m','MusicBridge.m','TIOGlassesFileTransport.m','music.c','tests/diagnostic_stub.m'])
 test('music-clock',['tests/MusicClockTests.m'])
+test('music-navigation',['tests/MusicNavigationTests.m','GlassesBench.m','card.c','MusicPlayer.m','MusicBridge.m','NativeNavigationUI.m','NativeNavigation.m','TNVTransport.m','TIOGlassesFileTransport.m','nav_runtime.c','music.c','SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','SpotifyLyrics.m','SpotifyCover.m','tests/diagnostic_stub.m'],extra=['-I',P/'tests/shims','-DNSHomeDirectory=TIOTestHome','-framework','Security','-framework','CoreGraphics','-framework','ImageIO'])
+test('glasses-bench',['tests/GlassesBenchTests.m','GlassesBench.m','card.c'])
+seen.add('bench-layout')
+if only is None or 'bench-layout' in only:
+    ctest('bench-layout',[P/'tests/GlassesBenchLayout_test.c'],FW/'src')   # the bench lyric fixtures under the firmware's own wrapping
+    groups.append('bench-layout');print('bench-layout: PASS')
+else:skip('bench-layout','not selected by --only')
 test('spotify-lyrics',['SpotifyHTTP.m','SpotifyLyrics.m','tests/SpotifyLyricsTests.m'],[P/'tests/fixtures/spotify'])
 test('spotify-auth',['SpotifyHTTP.m','SpotifyAuth.m','tests/SpotifyAuthTests.m'],[P/'tests/fixtures/spotify'],['-framework','Security'])
 test('spotify-api',['SpotifyHTTP.m','SpotifyAuth.m','SpotifyAPI.m','tests/SpotifyAPITests.m'],[P/'tests/fixtures/spotify'],['-framework','Security'])

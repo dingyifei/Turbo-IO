@@ -49,6 +49,7 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "KnowledgeClient.h"
 #import "A2UIProbe.h"
 #import "DashboardCard.h"
+#import "GlassesTestBenchUI.h"
 #import "EditorUI.h"
 #import "AppUI.h"
 #import "EditorAI.h"
@@ -738,6 +739,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"clenchLab"]) screen=TIOClenchLabController();
 #endif
     else if ([key isEqual:@"dashboardCard"]) screen=TDCDashboardController();
+    else if ([key isEqual:@"testBench"]) screen=TIOGlassesTestBenchController();
     else if ([key isEqual:@"a2ui"]) screen=TIOA2UIController();
     else if ([key isEqual:@"subtitleHUD"]) screen=TIOSubtitleHUDController();
     else if ([key isEqual:@"ttsSpeed"]) {[self ttsSpeed];return;}

@@ -1,7 +1,8 @@
 /* TMG8 caps bit and the carousel layout value. Host only; no device I/O.
  * Firmware side: layout value 1 is accepted only from a peer whose command carries the TMG8 caps byte, and only on a
  * SET. Grid values 2 and 3 and every query stay byte-for-byte what TMG7 accepts, so older phones keep working.
- * Status side: TMG8 reports TD_CAP_MENU_CAROUSEL; TMG6/TMG7 caps stay valid and carry no carousel bit. */
+ * Status side: TMG8 reports TD_CAP_MENU_CAROUSEL; TMG6/TMG7 caps stay valid and carry no carousel bit.
+ * TMG9 adds caps bit 10 and the D-carrying SET on top of this (tmg9_detent_test.c); the TMG8 rules below still hold for a TMG8 peer. */
 #include "../src/menu-grid-v2/menu_config.h"
 #include "../src/diagnostics-v1/diagnostics.h"
 #include <assert.h>
@@ -29,16 +30,18 @@ int main(void){
  s.detent=TK_DETENT_LEGACY;assert(!td_encode(&s,wire,sizeof wire));s.detent=TK_DETENT_RAW;
  s.caps=TD_CAPS_TMG6;assert(!td_encode(&s,wire,sizeof wire));s.detent=TK_DETENT_LEGACY;
  s.caps=TD_CAPS_TMG6;assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&!(d.caps&TD_CAP_MENU_CAROUSEL)); /* a TMG7 status still decodes */
- s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG8|(1u<<10);assert(!td_encode(&s,wire,sizeof wire)); /* nothing beyond the TMG8 bit */
+ s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG8|(1u<<11);assert(!td_encode(&s,wire,sizeof wire)); /* nothing beyond bit 10 (TMG9) */
+ s.caps=TD_CAPS_TMG8|TD_CAP_KNOB_DETENT;assert(td_encode(&s,wire,sizeof wire)); /* with bit 10 the detent is the live D (300 is a valid one); bit 9 alone means exactly 300 */
+ s.detent=TK_DETENT_DEFAULT;assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.caps==TD_CAPS_TMG9&&d.detent==400);s.detent=TK_DETENT_RAW;
  s.build=TD_BUILD_TMG5;s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG5|TD_CAP_MENU_CAROUSEL;assert(!td_encode(&s,wire,sizeof wire)); /* older builds never claim it */
- TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample sample;assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&sample)&&sample.caps==TD_CAPS_TMG8&&sample.detent==300u);
+ TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample sample;assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&sample)&&sample.caps==TD_CAPS_TMG9&&sample.detent==400u);
 
  /* Command codec: the caps byte is wire byte 7. */
  uint8_t raw[32];TMLCommand q,set1={.op=TML_SET,.request=2,.client=7,.token=32,.rows=TML_CAROUSEL,.caps=TML_PEER_TMG8};
  tml_encode(raw,&set1);assert(raw[7]==TML_PEER_TMG8&&tml_decode(raw,sizeof raw,&q)&&q.rows==1&&q.caps==TML_PEER_TMG8);
  assert(!tmg7_decode(raw,sizeof raw)); /* TMG7 glasses drop it: the phone must never send it to them */
  raw[7]=0;fix_crc(raw);assert(!tml_decode(raw,sizeof raw,&q)); /* value 1 without the caps byte is rejected */
- raw[7]=2;fix_crc(raw);assert(!tml_decode(raw,sizeof raw,&q)); /* any other caps byte is rejected */
+ raw[7]=TML_PEER_TMG9+1;fix_crc(raw);assert(!tml_decode(raw,sizeof raw,&q)); /* any other caps byte is rejected */
  for(unsigned rows=2;rows<=3;rows++){
   TMLCommand g={.op=TML_SET,.request=3,.client=7,.token=32,.rows=(uint8_t)rows};tml_encode(raw,&g);
   assert(tml_decode(raw,sizeof raw,&q)&&q.caps==0&&tmg7_decode(raw,sizeof raw)); /* grid SETs are byte-for-byte TMG7 */

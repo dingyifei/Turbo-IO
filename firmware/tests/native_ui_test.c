@@ -3,6 +3,7 @@
 #include "common-v1/tio_text.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 typedef struct {void *quad,*music,*focus,*camera;} TNNavSlot;
 static TNNavSlot nav;
@@ -18,7 +19,8 @@ static bool idle(void *p){(void)p;return true;}
 static void *create(void *p,void *parent){(void)p;(void)parent;return (void *)(uintptr_t)++made;}
 static void *label(void *p,void *parent,unsigned font){assert(font==16||font==18||font==24);return create(p,parent);   /* TMG7 menu: names 16, status 18, focused name 24 */}
 static void place(void *p,void *o,int x,int y,int w,int h){(void)p;(void)o;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);}
-static void buffer(void *p,void *o,const uint8_t *b,unsigned w,unsigned h){(void)p;(void)o;assert(b&&w&&h);}
+/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x10427cd1), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
+static void buffer(void *p,void *o,const uint8_t *b,unsigned w,unsigned h){(void)p;(void)o;assert(b&&w&&h);if(((uintptr_t)b&63)!=0){fprintf(stderr,"UNALIGNED canvas buffer w=%u h=%u mod64=%u\n",w,h,(unsigned)((uintptr_t)b&63));abort();}}
 static void text(void *p,void *o,const char *s){(void)p;texts[(uintptr_t)o]=s;}
 static void visible(void *p,void *o,bool b){(void)p;shown[(uintptr_t)o]=b;}
 static void destroy(void *p,void *o){(void)p;(void)o;}

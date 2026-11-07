@@ -4,6 +4,10 @@ BOOL TMMusicReply(NSDictionary *event,NSDictionary **reply);
 @property(nonatomic,copy) void(^command)(NSDictionary *);
 @property(nonatomic,copy) NSDictionary *(^snapshot)(void);
 @property(nonatomic,readonly) BOOL busy;
+// One native file in flight across music (TMU1) and navigation (TNV1). fileInFlight: this bridge owns the link now.
+// waiting: a packet is ready and only the link is missing. peerFileInFlight (set by the owner): the other feature holds the link.
+@property(nonatomic,readonly) BOOL fileInFlight,waiting;
+@property(nonatomic,copy) BOOL(^peerFileInFlight)(void);
 @property(nonatomic,readonly) BOOL active;
 @property(nonatomic,readonly) NSString *note;
 - (void)openWithCover:(NSData *)cover lyrics:(NSArray *)lyrics;

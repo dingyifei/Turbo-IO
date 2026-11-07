@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
+unsigned tio_knob_detent(void){return 300;}   /* the host stand-in for the live D: these cases are cut for 300 (tmg9_stepping_test.c runs every D) */
 int main(void){TMInput s={0};
  for(unsigned i=0;i<1000;i++)assert(!tm_input_wheel(&s,i%2?2:-2,i));
  assert(!tm_input_wheel(&s,200,2000));assert(tm_input_wheel(&s,200,2020)==1);

@@ -453,6 +453,8 @@
 {"key":"knowledge_query / knowledge_query_status：%@。Codex只读检索微信归档、项目与学习资料，引用来源；不修改知识库。\n\ncreate_todo：标题新增，交给官方入口；等待列表新ID才确认，超时不重试。\nweb_search：TinyFish公开搜索，需开启联网。\n\n待办工具不支持修改、删除、完成、提醒时间，暂不写入知识库网页。只有真实语音会话拥有待办执行上下文。","en":"knowledge_query / knowledge_query_status: %@. Codex searches WeChat archives, projects, and learning materials in read-only mode and cites sources; it does not modify the knowledge base.\n\ncreate_todo: Adds a title through the RayNeo app entry point. Confirmed only after a new ID appears in the list; no retry on timeout.\nweb_search: Public TinyFish search; internet access must be enabled.\n\nTo-do tools cannot edit, delete, complete, or set reminder times and currently do not write to knowledge base web pages. Only real voice sessions have the to-do execution context."}
 {"key":"mode3 / status0：测试同一句文字更新；观察覆盖还是追加、是否闪屏。检测到字幕音频消息立即停止；没有音频包不等于全链路未采音。","en":"mode3 / status0: Test updates to the same line of text; check whether it replaces or appends and whether the display flashes. Stop immediately if a caption audio message is detected; no audio packet does not prove that no audio was captured anywhere in the pipeline."}
 {"key":"music.advanced","en":"Advanced","zh":"高级"}
+{"key":"music.bridge.busy","en":"The glasses are on another page. Open Music on the glasses to resume.","zh":"眼镜正停在其他页面。请在眼镜上打开音乐以继续。"}
+{"key":"music.bridge.noSession","en":"The glasses closed the music page. Open Music on the glasses to resume.","zh":"眼镜已关闭音乐页。请在眼镜上打开音乐以继续。"}
 {"key":"music.callback.copy","en":"Copy Spotify callback diagnostics","zh":"复制 Spotify 回调诊断"}
 {"key":"music.callback.none","en":"No callback received this session","zh":"本次会话尚未收到回调"}
 {"key":"music.cancel","en":"Cancel","zh":"取消"}
@@ -490,7 +492,7 @@
 {"key":"music.signin.cancelled","en":"Sign-in cancelled","zh":"已取消登录"}
 {"key":"music.signin.failed","en":"Sign-in failed (%@)","zh":"登录失败（%@）"}
 {"key":"music.spotify","en":"Spotify","zh":"Spotify"}
-{"key":"music.status.blocked","en":"Navigation or a firmware transfer is using the glasses","zh":"导航或固件传输正在占用眼镜"}
+{"key":"music.status.blocked","en":"A firmware transfer is using the glasses","zh":"固件传输正在占用眼镜"}
 {"key":"music.status.config","en":"Add your Spotify Client ID","zh":"请填写 Spotify Client ID"}
 {"key":"music.status.network","en":"Can't reach Spotify","zh":"无法连接 Spotify"}
 {"key":"music.status.noDevice","en":"Open Spotify on your phone","zh":"请在手机上打开 Spotify"}
@@ -511,7 +513,7 @@
 {"key":"nav.alert.endFirst.dest","en":"End the current route before choosing a new destination.","zh":"选择新目的地前，请先结束当前路线。"}
 {"key":"nav.alert.endFirst.options","en":"Options can be changed after the current route ends.","zh":"当前路线结束后才能更改选项。"}
 {"key":"nav.alert.endFirst.title","en":"End navigation first","zh":"请先结束导航"}
-{"key":"nav.alert.glasses.message","en":"Check that the glasses are connected and idle on the home screen, then use ⋯ › Reconnect glasses. Phone navigation continues.","zh":"请确认眼镜已连接并停在主屏幕，然后使用 ⋯ › 重新连接眼镜。手机上的导航会继续。"}
+{"key":"nav.alert.glasses.message","en":"Check that the glasses are connected and idle on the home screen (close the music page if it is open), then use ⋯ › Reconnect glasses. Phone navigation continues.","zh":"请确认眼镜已连接并停在主屏幕（如果音乐页开着，请先关闭），然后使用 ⋯ › 重新连接眼镜。手机上的导航会继续。"}
 {"key":"nav.alert.glasses.title","en":"Glasses didn't start","zh":"眼镜未能启动"}
 {"key":"nav.alert.location.message","en":"Allow location access in Settings for live navigation, or use Simulate.","zh":"请在“设置”中允许定位以使用实时导航，或改用模拟。"}
 {"key":"nav.alert.location.title","en":"Location needed","zh":"需要定位"}
@@ -521,6 +523,7 @@
 {"key":"nav.alert.noResults.title","en":"No results","zh":"没有结果"}
 {"key":"nav.appleMaps","en":"Apple Maps","zh":"Apple 地图"}
 {"key":"nav.back.a11y","en":"Back to Turbo","zh":"返回 Turbo"}
+{"key":"nav.blockedByMusic","en":"The glasses music page is open. Close it on the glasses, then start navigation again.","zh":"眼镜的音乐页正开着。请先在眼镜上关闭，再重新开始导航。"}
 {"key":"nav.busy.captions","en":"Caption navigation is still running.","zh":"字幕导航仍在运行。"}
 {"key":"nav.busy.suffix","en":"Stop it, then use ⋯ › Reconnect glasses.","zh":"请先停止它，然后使用 ⋯ › 重新连接眼镜。"}
 {"key":"nav.dest.default","en":"Destination","zh":"目的地"}
@@ -2263,11 +2266,10 @@
 {"key":"clench.attach.partial","en":"Attached %ld files and %ld events. Some official files could not be copied yet. Attach again in a moment.","zh":"已附加 %ld 个文件和 %ld 条事件。部分官方文件暂时无法复制，请稍后再次附加。"}
 {"key":"clench.attach.settling","en":"Checking that LifeLog has stopped on these glasses. Official audio is attached in a few seconds.","zh":"正在确认这副眼镜上的 LifeLog 已停止。几秒后附加官方音频。"}
 {"key":"clench.delete.busy","en":"This session is being attached or exported. Delete it when that has finished.","zh":"此记录正在附加或导出，完成后再删除。"}
-{"key":"tmg8.knob.detent","en":"One item per 300-count detent, about 6.7 items per turn at 2000 counts per turn. Lists wrap from the last item to the first.","zh":"每 300 计数为一格，移动一项；每圈约 6.7 项（按每圈 2000 计数）。列表从最后一项回到第一项。"}
-{"key":"tmg8.knob.detentLegacy","en":"One item per 600-count detent, about 3.3 items per turn at 2000 counts per turn. The 300-count detent and the wrap from the last item to the first come with TMG8.","zh":"每 600 计数为一格，移动一项；每圈约 3.3 项（按每圈 2000 计数）。300 计数一格和首尾循环需要 TMG8。"}
 {"key":"tmg8.runtime.detent.format","en":"%@ raw units / step","zh":"每步 %@ 原始单位"}
 {"key":"tmg8.layout.carouselNeedsTMG8","en":"The carousel needs glasses firmware TMG8. Nothing was sent.","zh":"轮播需要 TMG8 眼镜固件，未发送任何设置。"}
 {"key":"tmg8.layout.confirmedCarousel","en":"Confirmed by glasses: carousel, one item at a time%@","zh":"眼镜已确认：轮播 · 每次一项%@"}
+{"key":"tmg9.layout.detentNeedsTMG9","en":"The knob step needs glasses firmware TMG9. Nothing was sent.","zh":"旋钮步长需要 TMG9 眼镜固件，未发送任何设置。"}
 {"key":"tmg8.layout.header","en":"Layout","zh":"布局"}
 {"key":"tmg8.layout.seg.carousel","en":"Carousel","zh":"轮播"}
 {"key":"tmg8.layout.seg.rows2","en":"2 rows","zh":"两排"}
@@ -2346,3 +2348,97 @@
 {"key":"hub.status.firmwareExport.guarded","en":"OTA blocked · stock calls seen","zh":"已阻止传输，已看到官方调用"}
 {"key":"hub.status.firmwareExport.unguarded","en":"Guard NOT active","zh":"防护未生效"}
 {"key":"hub.status.firmwareExport.waiting","en":"Guard installed · no stock calls yet","zh":"防护已安装，未见官方调用"}
+{"key":"tmg9.knob.title","en":"Knob step","zh":"旋钮步长"}
+{"key":"tmg9.knob.current","en":"Current step","zh":"当前步长"}
+{"key":"tmg9.knob.format","en":"%@ counts · %@ items per turn","zh":"%@ 计数 · 每圈约 %@ 项"}
+{"key":"tmg9.knob.choose","en":"New step","zh":"新步长"}
+{"key":"tmg9.knob.chooseHint","en":"Changes in steps of 50 counts, from 300 to 600.","zh":"每次调整 50 计数，范围 300 到 600。"}
+{"key":"tmg9.knob.apply","en":"Apply step","zh":"应用步长"}
+{"key":"tmg9.knob.result","en":"Result","zh":"结果"}
+{"key":"tmg9.knob.state.idle","en":"Not changed","zh":"未更改"}
+{"key":"tmg9.knob.state.unavailable","en":"Not available on these glasses","zh":"这副眼镜不支持"}
+{"key":"tmg9.knob.state.pending","en":"Saving %@ counts on the glasses…","zh":"正在把 %@ 计数保存到眼镜…"}
+{"key":"tmg9.knob.state.confirmed","en":"Confirmed by the glasses: %@ counts","zh":"眼镜已确认：%@ 计数"}
+{"key":"tmg9.knob.state.failed","en":"Not confirmed. The glasses did not report the new step; nothing was retried. Read the status and try again.","zh":"未确认：眼镜没有报告新的步长，也没有自动重试。请刷新状态后再试。"}
+{"key":"tmg9.knob.footer.step","en":"One item per %@ counts, about %@ items per turn at 2000 counts per turn.","zh":"每 %@ 计数移动一项；每圈约 %@ 项（按每圈 2000 计数）。"}
+{"key":"tmg8.knob.wrap","en":"Lists wrap from the last item to the first.","zh":"列表从最后一项回到第一项。"}
+{"key":"tmg8.knob.noWrap","en":"Lists stop at the first and last item. Wrapping comes with TMG8.","zh":"列表停在首项和末项；首尾循环需要 TMG8。"}
+{"key":"tmg9.knob.hint","en":"A new step is saved on the glasses, then confirmed by reading it back from their status.","zh":"新步长会保存到眼镜，再从眼镜状态读回来确认。"}
+{"key":"tmg9.knob.readFirst","en":"Refresh the status first, so the step setting can check the glasses.","zh":"请先刷新状态，让步长设置检查眼镜。"}
+{"key":"tmg9.knob.needsTMG9","en":"Changing the knob step needs glasses firmware TMG9. These glasses use a fixed step.","zh":"调整旋钮步长需要 TMG9 眼镜固件。这副眼镜使用固定步长。"}
+{"key":"bench.blocked","en":"A firmware transfer is running, so the test bench sends nothing.","zh":"固件传输进行中，测试台不会发送任何内容。"}
+{"key":"bench.blocked.title","en":"Sending is off","zh":"发送已关闭"}
+{"key":"bench.card.field.claude5h","en":"Claude 5-hour usage","zh":"Claude 5 小时用量"}
+{"key":"bench.card.field.claudeWeek","en":"Claude 7-day usage","zh":"Claude 7 天用量"}
+{"key":"bench.card.field.diskFree","en":"SSD free","zh":"SSD 可用"}
+{"key":"bench.card.field.diskTotal","en":"SSD total","zh":"SSD 总量"}
+{"key":"bench.card.field.icon1","en":"Icon 1","zh":"图标 1"}
+{"key":"bench.card.field.icon2","en":"Icon 2","zh":"图标 2"}
+{"key":"bench.card.field.icon3","en":"Icon 3","zh":"图标 3"}
+{"key":"bench.card.field.ramFree","en":"RAM free","zh":"内存可用"}
+{"key":"bench.card.field.ramTotal","en":"RAM total","zh":"内存总量"}
+{"key":"bench.card.field.weekly","en":"Codex 7-day usage","zh":"Codex 7 天用量"}
+{"key":"bench.card.footer","en":"The icon values are accepted by the card but not drawn. Sending replaces the Developer dashboard card and moves it to the top of the glasses dashboard; remove it when you are done.","zh":"卡片接受图标数值，但不会绘制。发送会替换开发者仪表盘卡片，并把它排到眼镜仪表盘最前；测完请移除。"}
+{"key":"bench.card.header","en":"Dashboard card","zh":"仪表盘卡片"}
+{"key":"bench.card.header.icons","en":"Icons","zh":"图标"}
+{"key":"bench.card.header.memory","en":"Memory","zh":"内存"}
+{"key":"bench.card.header.storage","en":"Storage","zh":"存储"}
+{"key":"bench.card.header.usage","en":"Usage","zh":"用量"}
+{"key":"bench.card.invalid","en":"The card text is not valid, so nothing was sent","zh":"卡片文本无效，未发送"}
+{"key":"bench.card.preset.empty","en":"Preset: empty / 0","zh":"预设：空 / 0"}
+{"key":"bench.card.preset.three100","en":"Preset: three 100%","zh":"预设：三个 100%"}
+{"key":"bench.card.preset.typical","en":"Preset: typical","zh":"预设：典型"}
+{"key":"bench.card.remove","en":"Remove card","zh":"移除卡片"}
+{"key":"bench.card.send","en":"Send card to glasses","zh":"发送卡片到眼镜"}
+{"key":"bench.card.size","en":"%lu of 120 bytes","zh":"%lu / 120 字节"}
+{"key":"bench.card.status","en":"Card status","zh":"卡片状态"}
+{"key":"bench.decrease","en":"Decrease","zh":"减少"}
+{"key":"bench.demo.detail","en":"Everything here is made up. Nothing is read from your accounts or your Mac, and no navigation route is sent.","zh":"这里的内容都是编造的演示数据：不会读取你的账户或 Mac，也不会发送导航路线。"}
+{"key":"bench.demo.title","en":"Demo data only","zh":"仅为演示数据"}
+{"key":"bench.increase","en":"Increase","zh":"增加"}
+{"key":"bench.lyric.en3","en":"English, 3 lines","zh":"英文，3 行"}
+{"key":"bench.lyric.en4","en":"English, 4 lines","zh":"英文，4 行"}
+{"key":"bench.lyric.en4s","en":"English, 4 smaller lines","zh":"英文，4 行小字号"}
+{"key":"bench.lyric.en5","en":"English, 5 lines","zh":"英文，5 行"}
+{"key":"bench.lyric.enell","en":"English, all caps, too long (…)","zh":"英文，全大写过长（…）"}
+{"key":"bench.lyric.ennext","en":"English, long next line","zh":"英文，下一句很长"}
+{"key":"bench.lyric.zh3","en":"Chinese, 3 lines","zh":"中文，3 行"}
+{"key":"bench.lyric.zh4","en":"Chinese, 4 lines","zh":"中文，4 行"}
+{"key":"bench.lyrics.footer","en":"Each tap opens the glasses music page with a paused demo song. The current lyric wraps and shrinks as it gets longer, and a line past 240 bytes is cut before it is sent. Check the wrap, the type size and the ellipsis on the glasses.","zh":"每点一行，眼镜音乐页就会显示一首暂停的演示歌曲。当前歌词越长，换行越多、字号越小；超过 240 字节的歌词会先截断再发送。请在眼镜上查看换行、字号和省略号。"}
+{"key":"bench.lyrics.header","en":"Lyrics","zh":"歌词"}
+{"key":"bench.music.active","en":"Demo song is on the glasses","zh":"演示歌曲已发到眼镜"}
+{"key":"bench.music.artist","en":"Turbo IO test bench","zh":"Turbo IO 测试台"}
+{"key":"bench.music.footer","en":"Playing and Position apply the next time you tap Show. While the demo song is up, the play and pause keys on the glasses move its clock and next and previous do nothing. Your Spotify is not touched.","zh":"「播放中」和「进度」在下次点「显示」时生效。演示歌曲显示期间，眼镜上的播放和暂停键只会改变演示进度，上一首和下一首不起作用。不会动用你的 Spotify。"}
+{"key":"bench.music.header","en":"Now playing","zh":"正在播放"}
+{"key":"bench.music.inactive","en":"No demo song sent","zh":"尚未发送演示歌曲"}
+{"key":"bench.music.line1","en":"First demo lyric line","zh":"演示歌词第一句"}
+{"key":"bench.music.line2","en":"Second demo lyric line","zh":"演示歌词第二句"}
+{"key":"bench.music.line3","en":"Third demo lyric line","zh":"演示歌词第三句"}
+{"key":"bench.music.playing","en":"Playing","zh":"播放中"}
+{"key":"bench.music.position","en":"Position","zh":"进度"}
+{"key":"bench.music.positionOf","en":"%@ of %@","zh":"%@ / %@"}
+{"key":"bench.music.show","en":"Show demo song on glasses","zh":"在眼镜上显示演示歌曲"}
+{"key":"bench.music.stop","en":"Stop demo song","zh":"停止演示歌曲"}
+{"key":"bench.music.title","en":"Demo song","zh":"演示歌曲"}
+{"key":"bench.notes.camera.detail","en":"Live view cannot be tested from here. Check it in the host preview only.","zh":"这里无法测试实时取景，只能在宿主预览中查看。"}
+{"key":"bench.notes.camera.title","en":"Camera live view","zh":"相机实时取景"}
+{"key":"bench.notes.header","en":"Check on the glasses","zh":"在眼镜上查看"}
+{"key":"bench.notes.route.detail","en":"There is no fake route. Test navigation with a real route in the Navigation screen.","zh":"这里没有假路线。请在「导航」页用真实路线测试导航。"}
+{"key":"bench.notes.route.title","en":"Navigation route","zh":"导航路线"}
+{"key":"bench.notes.tile.detail","en":"The Music tile on the glasses menu shows the song line only after the music page closes, and keeps it for 30 seconds.","zh":"眼镜菜单里的音乐磁贴只在音乐页关闭后才显示歌曲行，并保留 30 秒。"}
+{"key":"bench.notes.tile.title","en":"Music tile line","zh":"音乐磁贴的歌曲行"}
+{"key":"bench.timer.footer","en":"This is a real timer on the glasses. The first tap reads the glasses timer, so tap again to send. It ends after one minute or when you stop it.","zh":"这是眼镜上的真实计时。第一次点击会先读取眼镜计时，再点一次才会发送。一分钟后自动结束，也可随时停止。"}
+{"key":"bench.timer.header","en":"Pomodoro timer","zh":"番茄计时"}
+{"key":"bench.timer.pause","en":"Pause timer","zh":"暂停计时"}
+{"key":"bench.timer.resume","en":"Resume timer","zh":"继续计时"}
+{"key":"bench.timer.start","en":"Start 1-minute timer","zh":"开始 1 分钟计时"}
+{"key":"bench.timer.state.done","en":"Finished","zh":"已完成"}
+{"key":"bench.timer.state.idle","en":"No timer running","zh":"没有计时"}
+{"key":"bench.timer.state.left","en":"%@, %@ left","zh":"%@，剩余 %@"}
+{"key":"bench.timer.state.paused","en":"Paused","zh":"已暂停"}
+{"key":"bench.timer.state.running","en":"Running","zh":"计时中"}
+{"key":"bench.timer.state.stopped","en":"Stopped","zh":"已停止"}
+{"key":"bench.timer.state.unread","en":"Timer not read yet","zh":"尚未读取计时"}
+{"key":"bench.timer.stop","en":"Stop timer","zh":"停止计时"}
+{"key":"hub.row.testBench","en":"Glasses test bench","zh":"眼镜测试台"}
+{"key":"music.status.demo","en":"Demo song from the test bench, not your Spotify","zh":"来自测试台的演示歌曲，并非你的 Spotify"}

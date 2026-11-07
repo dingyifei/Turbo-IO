@@ -25,6 +25,7 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
  if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_caps=[caps copy];_send=[send copy];_note=TIOText(@"读取眼镜布局后可切换；需 TMG4 固件");}return self;
 }
 - (BOOL)glassesReportTMG8Caps{return _caps&&[_peerNow()length]&&(_caps()&TD_CAP_MENU_CAROUSEL)!=0;}
+- (BOOL)glassesReportTMG9DetentCaps{return _caps&&[_peerNow()length]&&(_caps()&TD_CAP_KNOB_DETENT)!=0;}
 - (BOOL)busy{return _done!=nil;}
 - (BOOL)ready{return _token&&[_peer isEqual:_peerNow()]&&_allowed()&&_clock()-_confirmedAt<110&&_clock()>=_confirmedAt;}
 - (NSUInteger)rows{return [_peer isEqual:_peerNow()]?_rows:0;}
@@ -34,15 +35,20 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
 - (void)send:(TMLCommand)q done:(void(^)(void))done{
  NSAssert(NSThread.isMainThread,@"main only");
  if(self.busy){if(done)done();return;}
- if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;_note=TIOText(@"请连接眼镜、保持 App 前台并结束升级保护");if(done)done();return;}
- /* The one place a layout record is encoded: value 1 and its caps byte leave the phone only for a TMG8 peer. */
+ if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;_rows=0;_note=TIOText(@"请连接眼镜、保持 App 前台并结束升级保护");if(done)done();return;}
+ /* The one place a layout record is encoded: value 1 and its caps byte leave the phone only for a TMG8 peer, and a D-carrying SET (peer byte
+  * TML_PEER_TMG9) only for a peer that reported TD_CAP_KNOB_DETENT. Queries and every other SET keep the TMG7/TMG8 form with D = 0. */
+ /* A command that is refused here, or never leaves the phone, clears the confirmed layout (_rows) with the token, so a caller never takes the value of the
+  * query that preceded it for the answer to this command (TIOKnobStep reads rows!=0 as "the glasses confirmed"). */
  q.caps=0;
- if(q.op==TML_SET&&q.rows==TML_CAROUSEL){if(!self.glassesReportTMG8Caps){_token=0;_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}q.caps=TML_PEER_TMG8;}
+ if(q.op!=TML_SET)q.detent=0;
+ if(q.op==TML_SET&&q.rows==TML_CAROUSEL){if(!self.glassesReportTMG8Caps){_token=0;_rows=0;_note=TIOText(@"tmg8.layout.carouselNeedsTMG8");if(done)done();return;}q.caps=TML_PEER_TMG8;}
+ if(q.op==TML_SET&&q.detent){if(!self.glassesReportTMG9DetentCaps||!tml_detent_valid(q.detent)){_token=0;_rows=0;_note=TIOText(@"tmg9.layout.detentNeedsTMG9");if(done)done();return;}q.caps=TML_PEER_TMG9;}
  uint8_t raw[32],wire[74];tml_encode(raw,&q);TMLCommand verify;
- if(!tml_decode(raw,32,&verify)){_note=TIOText(@"布局请求校验失败");if(done)done();return;}
+ if(!tml_decode(raw,32,&verify)){_token=0;_rows=0;_note=TIOText(@"布局请求校验失败");if(done)done();return;}
  tml_carrier(wire,raw,false);_request=q.request;_op=q.op;_target=q.rows;_done=done?[done copy]:[^(void){} copy];NSUInteger epoch=++_epoch;
  _note=q.op==TML_QUERY?TIOText(@"正在读取眼镜布局…"):TIOText(@"等待眼镜保存布局…");
- if(!_send([NSData dataWithBytes:wire length:74])){_token=0;[self finish:TIOText(@"发送未确认，请重新读取；没有自动重试")];return;}
+ if(!_send([NSData dataWithBytes:wire length:74])){_token=0;_rows=0;[self finish:TIOText(@"发送未确认，请重新读取；没有自动重试")];return;}
  dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(self->_epoch==epoch&&self.busy){self->_token=0;self->_rows=0;[self finish:TIOText(@"眼镜未回执；需 TMG4 固件。结果未知，请重新读取，不自动重试")];}});
 }
 - (void)query:(void(^)(void))done{
@@ -57,6 +63,13 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
  TMLCommand q={.op=TML_SET,.rows=(uint8_t)rows,.request=arc4random_uniform(UINT32_MAX-1)+1,.token=_token,.generation=_generation,.client=_client};
  _token=0;[self send:q done:done];
 }
+- (void)chooseDetent:(NSUInteger)detent done:(void(^)(void))done{
+ if(!tml_detent_valid((unsigned)detent)||detent>UINT32_MAX||!self.glassesReportTMG9DetentCaps){_note=TIOText(@"tmg9.layout.detentNeedsTMG9");if(done)done();return;}
+ if(self.busy){if(done)done();return;}
+ if(!self.ready||!self.rows){__weak typeof(self) w=self;[self query:^{typeof(self) s=w;if(s.ready&&s.rows)[s chooseDetent:detent done:done];else if(done)done();}];return;}
+ TMLCommand q={.op=TML_SET,.rows=(uint8_t)self.rows,.request=arc4random_uniform(UINT32_MAX-1)+1,.token=_token,.generation=_generation,.client=_client,.detent=(uint32_t)detent};
+ _token=0;[self send:q done:done];
+}
 - (BOOL)consume:(NSDictionary *)e{
  NSData *d=Reply(e);if(!d)return NO;const uint8_t *p=d.bytes;
  if(!self.busy||![_peer isEqual:_peerNow()]||![e[@"message"][@"deviceId"]isEqual:_peer]||U32(p+8)!=_request||U32(p+20)!=_client||p[5]!=_op)return YES;
@@ -67,6 +80,42 @@ void TIOMenuLayoutSetCapsSource(TIOGlassesCapsSource source){CapsSource=[source 
  _rows=p[6];_generation=U32(p+16);_confirmedAt=_clock();if(_op==TML_QUERY)_token=U32(p+12);
  NSString *saved=_op==TML_SET?TIOText(@" · 已保存"):@"",*carousel=TIOText(@"tmg8.layout.confirmedCarousel");
  [self finish:_rows==TML_CAROUSEL?[NSString stringWithFormat:carousel,saved]:[NSString stringWithFormat:TIOText(@"眼镜已确认：%@排 · 每页%@项%@"),@(_rows),@(_rows*3),saved]];return YES;
+}
+@end
+
+const double TIOKnobStepReadbackSeconds=8,TIOKnobStepDeadlineSeconds=20;
+@implementation TIOKnobStep {
+ TIOMenuLayoutLink *_link;uint32_t(^_reported)(void);BOOL(^_refresh)(void);double(^_clock)(void);
+ TIOKnobStepState _state;NSUInteger _target,_epoch;BOOL _layoutConfirmed;double _startedAt,_confirmedAt;
+}
+- (instancetype)initWithLink:(TIOMenuLayoutLink *)link reported:(uint32_t(^)(void))reported refresh:(BOOL(^)(void))refresh clock:(double(^)(void))clock{
+ if((self=[super init])){_link=link;_reported=[reported copy];_refresh=[refresh copy];_clock=[clock copy];}return self;
+}
+- (TIOKnobStepState)state{return _state;}
+- (NSUInteger)target{return _target;}
+- (BOOL)enabled{return _link.glassesReportTMG9DetentCaps;}
+- (void)reset{if(_state!=TIOKnobStepPending)_state=TIOKnobStepIdle;}
+- (BOOL)apply:(NSUInteger)detent{
+ NSAssert(NSThread.isMainThread,@"main only");
+ if(_state==TIOKnobStepPending||_link.busy||!self.enabled||detent>UINT32_MAX||!tml_detent_valid((unsigned)detent)||_reported()==detent)return NO;
+ _target=detent;_state=TIOKnobStepPending;_layoutConfirmed=NO;_startedAt=_clock();NSUInteger epoch=++_epoch;
+ __weak typeof(self) weak=self;
+ [_link chooseDetent:detent done:^{
+  typeof(self) s=weak;if(!s||s->_epoch!=epoch||s->_state!=TIOKnobStepPending)return;
+  /* The link ends a transaction with its rows cleared when the reply was an error, never came, the peer changed, or the command was refused before it was sent. */
+  if(!s->_link.rows||!s.enabled){s->_state=TIOKnobStepFailed;return;}
+  s->_layoutConfirmed=YES;s->_confirmedAt=s->_clock();[s poll];
+ }];
+ return YES;
+}
+- (void)poll{
+ if(_state!=TIOKnobStepPending)return;
+ double now=_clock();
+ if(now<_startedAt||now-_startedAt>TIOKnobStepDeadlineSeconds){_state=TIOKnobStepFailed;_epoch++;return;}
+ if(!_layoutConfirmed)return;
+ if(_reported()==_target){_state=TIOKnobStepConfirmed;_epoch++;return;}
+ if(now<_confirmedAt||now-_confirmedAt>TIOKnobStepReadbackSeconds){_state=TIOKnobStepFailed;_epoch++;return;}
+ if(_refresh)(void)_refresh();
 }
 @end
 

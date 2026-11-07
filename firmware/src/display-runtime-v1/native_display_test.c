@@ -60,7 +60,7 @@ void *stream_add_event(void *o,void (*fn)(void *),uint32_t event,void *user){
 void *stream_canvas_create(void *p){return new_object(p);}
 void *native_label_create(void *p){return new_object(p);}
 void stream_canvas_set_buffer(void *p,void *b,int32_t w,int32_t h,uint8_t color){
- assert(p&&b&&color==6);
+ assert(p&&b&&color==6);assert(((uintptr_t)b&63)==0); /* TMG9: stock rounds the draw buffer up to 64 */
 #ifdef TIO_ANIMATION_EXPERIMENT
  assert((w==512&&h==128)||(w==192&&h==176));
  if(w==192)animation_draws++;

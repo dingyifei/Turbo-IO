@@ -14,9 +14,11 @@ LANGS=('en','zh-Hans')
 APPEARANCES=('light','dark')
 STANDARD_SIZE='UICTContentSizeCategoryL'
 AX_SIZE='UICTContentSizeCategoryAccessibilityXXXL'
-TABLE_SCREENS=('tiles','runtime','knob')
+KNOB_STEP_SCREENS=('knob-tmg9','knob-tmg9-confirmed','knob-tmg9-failed','knob-tmg8')
+TABLE_SCREENS=('tiles','runtime','knob')+KNOB_STEP_SCREENS
 # Screens whose navigation title is localized today; the others only assert the process language.
-LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')
+BENCH_SCREENS=('push-testBench','bench-lyrics','bench-song','bench-card','bench-timer')
+LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')+KNOB_STEP_SCREENS+BENCH_SCREENS
 # The menu layout screen with canned TMG8 glasses (carousel stored) and with older glasses (three rows, Carousel disabled).
 LAYOUT_SCREENS=('layout','layout-tmg7')
 SEGMENTS={'en':['Carousel','2 rows','3 rows'],'zh-Hans':['轮播','两排','三排']}
@@ -41,11 +43,38 @@ def check_table(screen,report,lang,stem,size):
         assert custom[0]['switchOn'] is None and custom[0]['accessory']==3,'Camera must stay visible in reversed fixture'
         assert {r['id'] for r in sections[2]['rows']}=={'tiles-read','tiles-save','tiles-reset'}
     else:
-        assert len(sections)==5 and len(sections[0]['rows'])==8 and len(sections[1]['rows'])==5
-        assert 'TMG4' in sections[0]['rows'][1]['status'] and '44444444' in sections[0]['rows'][1]['status']
-        assert '600' in sections[0]['rows'][6]['status']
+        # Status, calibration, knob step, capture, resources, integrity.
+        assert len(sections)==6 and len(sections[0]['rows'])==8 and len(sections[1]['rows'])==5 and len(sections[2]['rows'])==4,'section shape in '+str(stem)
         assert {r['id'] for r in sections[1]['rows'][2:]}=={'knob-start','knob-finish','knob-cancel'}
         if screen=='knob':assert '4800' in sections[1]['rows'][1]['status'],'completed one-turn fixture missing'
+        check_knob_step(screen,sections,lang,stem)
+# What each canned glasses reports and what the knob step section must then show (docs: ds3.md item 6).
+#   screen -> (firmware label, reported D, items per turn, setting enabled, stepper value, apply enabled)
+KNOB_FIXTURES={'runtime':('TMG4',600,'3.3',False,None,False),'knob':('TMG4',600,'3.3',False,None,False),
+    'knob-tmg8':('TMG6',300,'6.7',False,None,False),'knob-tmg9':('TMG6',400,'5.0',True,400,False),
+    'knob-tmg9-confirmed':('TMG6',450,'4.4',True,450,False),'knob-tmg9-failed':('TMG6',400,'5.0',True,450,True)}
+WORDS={'en':{'items':'items per turn','confirmed':'Confirmed by the glasses','failed':'Not confirmed','unavailable':'Not available','idle':'Not changed','needs':'TMG9','wrap':'wrap from the last item','nowrap':'Wrapping comes with TMG8'},
+       'zh-Hans':{'items':'每圈约','confirmed':'眼镜已确认','failed':'未确认','unavailable':'这副眼镜不支持','idle':'未更改','needs':'TMG9','wrap':'回到第一项','nowrap':'首尾循环需要 TMG8'}}
+def check_knob_step(screen,sections,lang,stem):
+    firmware,detent,items,enabled,value,apply_enabled=KNOB_FIXTURES[screen];w=WORDS[lang];rows=sections[2]['rows'];footer=sections[2]['footer'];tag=' in '+str(stem)
+    assert firmware in sections[0]['rows'][1]['status'] and ('6'*8 if firmware=='TMG6' else '4'*8) in sections[0]['rows'][1]['status'],'wrong fixture glasses'+tag
+    assert str(detent) in sections[0]['rows'][6]['status'],'the status detent row must show the reported D'+tag
+    assert [r['id'] for r in rows]==['knob-step-current','knob-step-choose','knob-step-apply','knob-step-result'],'step rows'+tag
+    current,choose,apply,result=rows
+    assert str(detent) in current['status'] and items in current['status'] and w['items'] in current['status'],'current step must show the reported D and items per turn'+tag
+    assert (choose['stepperEnabled'] is not None)==True and choose['stepperEnabled']==enabled,'stepper enabled only with caps bit 10'+tag
+    if value is not None:assert choose['stepperValue']==value,'stepper value'+tag
+    assert choose['stepperValue'] is not None and 300<=choose['stepperValue']<=600 and choose['stepperValue']%50==0,'stepper range'+tag
+    assert apply['enabled']==apply_enabled,'apply must be live only for a pending change on a TMG9 peer'+tag
+    assert (han(footer) if lang=='zh-Hans' else not han(footer)),'footer language'+tag
+    if not enabled:assert w['needs'] in footer and w['unavailable'] in result['status'],'the disabled setting must say it needs TMG9'+tag
+    else:assert w['needs'] not in footer,'TMG9 glasses must not be told to need TMG9'+tag
+    assert (w['wrap'] in footer) if screen!='knob' and screen!='runtime' else (w['nowrap'] in footer),'wrap sentence follows the TMG8 bit'+tag
+    expect={'knob-tmg9':w['idle'],'knob-tmg9-confirmed':w['confirmed'],'knob-tmg9-failed':w['failed']}.get(screen)
+    if expect:assert expect in result['status'],'result state'+tag+': '+result['status']
+    if screen=='knob-tmg9-confirmed':assert '450' in result['status']
+    text=' '.join([footer]+[r[k] for r in rows for k in ('title','status')])
+    assert 'tmg8.' not in text and 'tmg9.' not in text,'untranslated key'+tag
 def check_layout(screen,report,lang,stem):
     facts=report['layout'];segments=facts['segments'];tmg8=screen=='layout'
     assert [x['title'] for x in segments]==SEGMENTS[lang],'segment titles in '+str(stem)+': '+str([x['title'] for x in segments])
@@ -59,6 +88,40 @@ def check_layout(screen,report,lang,stem):
     if tmg8:assert 'TMG8' not in facts['footer'],'TMG8 glasses must not be told to need TMG8: '+str(stem)
     else:assert 'TMG8' in facts['footer'] and 'TMG6' in facts['footer'] and 'TMG7' in facts['footer'],'older glasses footnote must name TMG8 and the version they run: '+str(stem)
     assert len(report['sections'])==5 and any(r['id']=='layout-read' for s in report['sections'] for r in s['rows']),'sections in '+str(stem)
+def check_bench(screen,report,lang,stem,size):
+    """The Glasses test bench: eleven sections of demo-data rows, the fixtures behind them and nothing untranslated."""
+    sections=report['sections'];ids=[[r['id'] for r in s['rows']] for s in sections]
+    assert report['controllerClass']=='TIOGlassesTestBench','not the test bench in '+str(stem)+': '+report['controllerClass']
+    assert len(sections)==11,'bench sections in '+str(stem)+': '+str(len(sections))
+    assert ids[0]==['bench-demo'],'the demo-data label must be the first row: '+str(stem)
+    assert ids[1]==['bench-lyric-'+x for x in ('en3','en4','en4s','en5','enell','ennext','zh3','zh4')],'lyric fixtures in '+str(stem)
+    assert ids[2]==['bench-song-show','bench-song-playing','bench-song-position','bench-song-stop','bench-song-status'],'song rows in '+str(stem)
+    assert ids[3]==['bench-card-preset-typical','bench-card-preset-three100','bench-card-preset-empty'],'card presets in '+str(stem)
+    assert ids[4]==['bench-card-weekly','bench-card-claude5h','bench-card-claudeWeek'] and ids[5]==['bench-card-ramFree','bench-card-ramTotal'] and ids[6]==['bench-card-diskFree','bench-card-diskTotal'] and ids[7]==['bench-card-icon1','bench-card-icon2','bench-card-icon3'],'the ten card values in '+str(stem)
+    assert ids[8]==['bench-card-text','bench-card-send','bench-card-remove','bench-card-status'],'card actions in '+str(stem)
+    assert ids[9]==['bench-timer-start','bench-timer-pause','bench-timer-stop','bench-timer-status'],'timer rows in '+str(stem)
+    assert ids[10]==['bench-note-tile','bench-note-camera','bench-note-route'],'on-glasses notes in '+str(stem)
+    rows=[r for s in sections for r in s['rows']]
+    assert all(r['enabled'] for r in rows),'a bench row is unselectable (no firmware stage in the preview): '+str(stem)
+    text=' '.join([report['screen']]+[s['title'] for s in sections]+[str(r[k]) for r in rows for k in ('title','status')])
+    assert 'bench.' not in text and 'tmg8.' not in text,'untranslated key in '+str(stem)
+    demo=rows[0];assert ('demo' in demo['title'].lower() if lang=='en' else '演示' in demo['title']),'demo-data label in '+str(stem)
+    # The preview card: "typical" everywhere except bench-card, which loads "three 100%". The card text row carries the wire text and its size.
+    card={r['id']:r for r in rows};want='TDC1;100;100;100;375;1280;1400;2000;0;1;2' if screen=='bench-card' else 'TDC1;99;90;85;375;1280;1400;2000;0;1;2'
+    assert card['bench-card-text']['title']==want and ('120' in card['bench-card-text']['status']),'card text in '+str(stem)+': '+card['bench-card-text']['title']
+    selected=[r['id'] for r in rows if r['id'].startswith('bench-card-preset-') and r['accessory']==3]
+    assert selected==['bench-card-preset-'+('three100' if screen=='bench-card' else 'typical')],'selected preset in '+str(stem)+': '+str(selected)
+    assert card['bench-card-weekly']['status']==('100%' if screen=='bench-card' else '99%'),'weekly value in '+str(stem)
+    assert card['bench-card-ramFree']['status']=='37.5 GB' and card['bench-card-diskFree']['status']=='1.4 TB','units in '+str(stem)
+    if screen=='bench-song':
+        assert card['bench-song-playing']['switchOn'] is True and '1:05' in card['bench-song-position']['status'] and '4:00' in card['bench-song-position']['status'],'song state in '+str(stem)
+    else:
+        assert card['bench-song-playing']['switchOn'] is False and '0:00' in card['bench-song-position']['status'],'song state in '+str(stem)
+    # Fixture text reaches the screen in both languages: the Chinese lyric previews are Chinese whatever the phone's language.
+    assert han(card['bench-lyric-zh3']['status']) and not han(card['bench-lyric-en3']['status']),'lyric previews in '+str(stem)
+    assert (han(card['bench-note-tile']['status']) if lang=='zh-Hans' else not han(card['bench-note-tile']['status'])),'note language in '+str(stem)
+    assert '30' in card['bench-note-tile']['status'] and ('Live view' in card['bench-note-camera']['status'] or '实时取景' in card['bench-note-camera']['status']),'on-screen notes in '+str(stem)
+    assert not card['bench-note-route']['status'].strip()=='' ,'route note in '+str(stem)
 def check_panel(screen,report,stem):
     assert report['controllerClass']==PANELS[screen],'not the real panel in '+str(stem)+': '+report['controllerClass']
     if screen in ('nav','nav-active'):
@@ -86,6 +149,7 @@ def check(root,screens):
             if screen in TABLE_SCREENS:check_table(screen,report,lang,stem,size)
             if screen in LAYOUT_SCREENS:check_layout(screen,report,lang,stem)
             if screen in PANELS:check_panel(screen,report,stem)
+            if screen in BENCH_SCREENS:check_bench(screen,report,lang,stem,size)
             sha=hashlib.sha256(png.read_bytes()).hexdigest();shas[(lang,look,size)]=sha
             receipts.append({'screen':screen,'language':lang,'appearance':look,'contentSize':size,'sha256':sha,'sections':len(report['sections'])})
         for lang in LANGS:

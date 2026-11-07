@@ -9,6 +9,7 @@
 #import <objc/message.h>
 static TNVSession *Session;static TNVTransport *Transport;static NSTimer *Timer;static NSString *Peer;static NSTimeInterval LastSave;
 static NSString *Lifecycle;
+static NSString *StartNote;   // why the last TNVStart said no, shown as the status note until a session runs
 static NSMutableArray *LifecycleTrace;
 static UIBackgroundTaskIdentifier Drain;static BOOL DrainActive;
 static NSUInteger DrainEpoch;static NSTimeInterval DrainUntil;static NSString *DrainResult;
@@ -35,9 +36,15 @@ void TNVLifecycle(NSString *event){Lifecycle=[event copy];if(!LifecycleTrace)Lif
  [LifecycleTrace addObject:@{@"event":event,@"at":@(NSProcessInfo.processInfo.systemUptime),@"busy":@(Session.busy),@"failed":Session.status[@"failed"]?:@NO}];if(LifecycleTrace.count>32)[LifecycleTrace removeObjectAtIndex:0];}
 BOOL TNVAlways(void){return [NSUserDefaults.standardUserDefaults boolForKey:@"TurboNavigationAlwaysOnV1"];}
 void TNVSetAlways(BOOL value){[NSUserDefaults.standardUserDefaults setBool:value forKey:@"TurboNavigationAlwaysOnV1"];[Session setAlways:value];}
-NSDictionary *TNVStatus(void){return Session.status?:@{@"active":@NO,@"busy":@NO,@"snapshots":@0,@"note":TIOText(@"TNV1专用固件：手机开始导航后可自动打开眼镜页面")};}
+NSDictionary *TNVStatus(void){
+ NSDictionary *status=Session.status?:@{@"active":@NO,@"busy":@NO,@"snapshots":@0,@"note":TIOText(@"TNV1专用固件：手机开始导航后可自动打开眼镜页面")};
+ if(StartNote&&TMMusicPauseForOTA())StartNote=nil;
+ if(!StartNote||Session.active||Session.busy)return status;
+ NSMutableDictionary *d=[status mutableCopy];d[@"note"]=StartNote;return d;
+}
 BOOL TNVConsume(NSDictionary *e){if(Peer&&![Peer isEqual:TIOProtocolDevice()])[Session disconnect];BOOL used=[Session consume:e];CheckDrain();return used;}
 BOOL TNVPauseForOTA(void){return !Session.active&&!Session.busy;}
+BOOL TNVFileInFlight(void){return Session.fileInFlight;}
 void TNVPump(void){
  if(Peer&&![Peer isEqual:TIOProtocolDevice()])[Session disconnect];
  [Session setBackground:UIApplication.sharedApplication.applicationState==UIApplicationStateBackground];[Session pump];CheckDrain();NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;if(now-LastSave<1)return;LastSave=now;
@@ -48,7 +55,10 @@ void TNVPump(void){
  NSString *file=[root stringByAppendingPathComponent:@"native-navigation-status.json"];[[NSJSONSerialization dataWithJSONObject:d options:NSJSONWritingSortedKeys error:nil] writeToFile:file options:NSDataWritingAtomic error:nil];[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:file error:nil];
 }
 BOOL TNVStart(NSDictionary *frame){
- NSCAssert(NSThread.isMainThread,@"main only");if(!TMMusicPauseForOTA()||Session.active||Session.busy||[TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue])return NO;
+ NSCAssert(NSThread.isMainThread,@"main only");
+ // The reverse gate stays: the glasses refuse a navigation START while their music page is open. Say so instead of failing silently.
+ if(!TMMusicPauseForOTA()){StartNote=TIOText(@"nav.blockedByMusic");return NO;}
+ if(Session.active||Session.busy||[TIOOTAFlashStatus()[@"stage"] unsignedIntegerValue])return NO;StartNote=nil;
  NSString *device=TIOProtocolDevice();if(!device.length)return NO;TNScene scene;if(!TNVScene(frame,TNVAlways(),&scene))return NO;
  NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;uint64_t last=[[defaults objectForKey:@"TurboNavigationSessionCounterV1"] unsignedLongLongValue];
  uint64_t epoch=(uint64_t)MAX(1,NSDate.date.timeIntervalSince1970);uint64_t sid=MAX(last+1,epoch);if(sid>UINT32_MAX)return NO;
@@ -61,6 +71,7 @@ BOOL TNVStart(NSDictionary *frame){
   @try{id call=((id(*)(id,SEL,id,id))objc_msgSend)(cls,make,method,args);((void(*)(id,SEL,id,id))objc_msgSend)(plugin,handle,call,[result copy]);return YES;}@catch(NSException *e){return NO;}
  }];TNVTransport *transport=Transport;
  Session=[[TNVSession alloc]initWithDevice:device session:(uint32_t)sid clock:^{return NSProcessInfo.processInfo.systemUptime;} sender:^(NSData *packet,NSString *task,TNVSubmitted done){[transport send:packet task:task submitted:done];} cleanup:^(NSString *task){[transport cleanup:task];}];
+ Session.peerFileInFlight=^{return TMMusicFileInFlight();};Session.peerWaiting=^{return TMMusicFileWaiting();};
  if(!Timer){Timer=[NSTimer timerWithTimeInterval:0.05 repeats:YES block:^(NSTimer *t){TNVPump();}];[NSRunLoop.mainRunLoop addTimer:Timer forMode:NSRunLoopCommonModes];}return [Session start:frame always:TNVAlways()];
 }
 void TNVOffer(NSDictionary *frame){[Session offer:frame];}
