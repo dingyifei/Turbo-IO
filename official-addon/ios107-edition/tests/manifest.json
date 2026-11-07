@@ -184,6 +184,11 @@
       "status": "run",
       "group": "coordinates"
     },
+    "tests/Host1011GuardTests.m": {
+      "status": "run",
+      "group": "ios1011-guard",
+      "note": "Download-only 1.0.11/259 host: unchanged OTA policy refuses every business-9 frame but the empty version query. With --app1011 it also runs as ios1011-host against the real Runner."
+    },
     "tests/LanguageFlagTests.m": {
       "status": "run",
       "group": "language-flag"

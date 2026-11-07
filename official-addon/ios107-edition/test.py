@@ -5,6 +5,7 @@ P=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,required=True)
 parser.add_argument('--app107',type=Path)
 parser.add_argument('--patched-app',type=Path)
+parser.add_argument('--app1011',type=Path,help='stock 1.0.11/259 Runner.app (download-only host checks)')
 parser.add_argument('--only',help='comma-separated test groups')
 args=parser.parse_args()
 only=set(args.only.split(',')) if args.only else None
@@ -182,28 +183,70 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     test('feed',['ExperimentalOTAFeedTests.m',*gate,'ExperimentalOTAFeed.m'],[args.firmware],['-lz','-DTIO_OTA_FEED_ARMING_ENABLED=1'])
     test('feed-restart',['tests/OTAFeedRestartTests.m',*gate,'ExperimentalOTAFeed.m'],[],['-lz'])
     test('wizard',['OTAWizardModelTests.m','OTAWizardModel.m',*gate,'ExperimentalOTAFeed.m'],[],['-lz'])
-    seen.add('tmg4-wizard')
-    if only is None or 'tmg4-wizard' in only:
+    def adapted_policy(name,file,substitutions):
         # Execute the unchanged phone policy on macOS. Only platform imports
         # and OS-owned providers are substituted; policy/body bytes are kept.
-        source=(P/'ExperimentalOTAFlash.m').read_text()
-        substitutions={
-            '#include <TargetConditionals.h>':'#include <TargetConditionals.h>\n#undef TARGET_OS_IPHONE\n#define TARGET_OS_IPHONE 1',
-            '#import "DisplayPhoneUI.h"':'BOOL TDPPhonePauseForOTA(void);',
-            'NSHomeDirectory()':'TMG4Home()',
-            'NSProcessInfo.processInfo.systemUptime':'TMG4Now()',
-            'NSBundle.mainBundle.infoDictionary':'TMG4HostInfo()',
-            'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()'}
+        source=(P/file).read_text()
         for old,new in substitutions.items():
             assert old in source, 'wizard platform seam changed: '+old
             source=source.replace(old,new)
-        adapted=out/'tmg4-wizard-policy.m'
+        adapted=out/name
         adapted.write_text('#import "tests/TMG4WizardHost.h"\n'+source)
+        return adapted
+    flash_seams={
+        '#include <TargetConditionals.h>':'#include <TargetConditionals.h>\n#undef TARGET_OS_IPHONE\n#define TARGET_OS_IPHONE 1',
+        '#import "DisplayPhoneUI.h"':'BOOL TDPPhonePauseForOTA(void);',
+        'NSHomeDirectory()':'TMG4Home()',
+        'NSProcessInfo.processInfo.systemUptime':'TMG4Now()',
+        'NSBundle.mainBundle.infoDictionary':'TMG4HostInfo()',
+        'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()'}
+    seen.add('tmg4-wizard')
+    if only is None or 'tmg4-wizard' in only:
+        adapted=adapted_policy('tmg4-wizard-policy.m','ExperimentalOTAFlash.m',flash_seams)
         run('tmg4-wizard-build',flags+[P/'tests/TMG4WizardTests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard'])
         for version in ('1.0.4.12','1.0.5.5'):
             run('tmg4-wizard-'+version,[out/'tmg4-wizard',root/'candidate',root,'Strix OS '+version])
         groups.append('tmg4-wizard');print('tmg4-wizard: PASS')
     else:skip('tmg4-wizard','not selected by --only')
+    # Download-only 1.0.11/259 host: the same unchanged flash policy and feed, with 1.0.11 host info.
+    def host1011_guard(name,argv):
+        flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',flash_seams)
+        feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTA107HostMatches(bundle.infoDictionary)':'TIOOTA107HostMatches(TMG4HostInfo())'})
+        run(name+'-build',flags+[P/'tests/Host1011GuardTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',flash,feed,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/name])
+        run(name,[out/name,*argv])
+        if 'PASS' not in (out/(name+'.log')).read_text():raise RuntimeError(name+' did not report PASS')
+    seen.add('ios1011-guard')
+    if only is None or 'ios1011-guard' in only:
+        host1011_guard('ios1011-guard',[])
+        groups.append('ios1011-guard');print('ios1011-guard: PASS')
+    else:skip('ios1011-guard','not selected by --only')
+    seen.add('ios1011-host')
+    if (only is None or 'ios1011-host' in only) and args.app1011:
+        import hashlib, plistlib
+        app=args.app1011
+        info=plistlib.loads((app/'Info.plist').read_bytes())
+        assert (info.get('CFBundleIdentifier'),info.get('CFBundleShortVersionString'),str(info.get('CFBundleVersion')),info.get('CFBundleExecutable'))==('com.rayneo.venus.pub','1.0.11','259','Runner'),'1.0.11 Info.plist identity'
+        assert not [k for k in info if k.startswith('TIO')] and 'UISupportedDevices' not in info,'stock 1.0.11 Info.plist expected'
+        pins={'Runner':'09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95',
+            'Frameworks/App.framework/App':'0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be',
+            'Frameworks/RayneoNet.framework/RayneoNet':'20afa03444ef7a755002d4fb2e57bacc8e1a363844692e0cbd995b76bc0a2e83',
+            'Frameworks/Flutter.framework/Flutter':'a8ba610db6f1f93b251225d0767638001bacb930e681eaeb1d168f7c33851621'}
+        for rel,want in pins.items():
+            got=hashlib.sha256((app/rel).read_bytes()).hexdigest()
+            if got!=want:raise RuntimeError('1.0.11 pin mismatch: '+rel)
+        uuid=subprocess.run(['xcrun','dwarfdump','--uuid',app/'Runner'],capture_output=True,text=True,check=True).stdout.split()
+        assert uuid[1]=='22724C97-2EF9-388D-8E6A-6E051855A555' and uuid[2]=='(arm64)','1.0.11 Runner UUID'
+        image=(app/'Frameworks/App.framework/App').read_bytes()
+        for route,offset in [(b'/xrlauncherapi/v1/signApi/gray/upgrade',39886000),(b'/xrlauncherhwapi/v1/signApi/gray/upgrade',30868352)]:
+            if image.count(route)!=1 or image.find(route)!=offset:raise RuntimeError('1.0.11 route record moved: '+route.decode())
+        # The packager pins and the native header must name the same host.
+        package=(P/'package.mjs').read_text();header=(P/'HostCompatibility.h').read_text();compat=(P/'host-compatibility.mjs').read_text()
+        for want in pins.values():assert want in package,'package.mjs pin missing'
+        assert '"1.0.11"]&&[build isEqual:@"259"])return @"22724C97-2EF9-388D-8E6A-6E051855A555"' in header
+        assert "version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555'" in compat
+        host1011_guard('ios1011-host',[app/'Runner',app/'Info.plist'])
+        groups.append('ios1011-host');print('ios1011-host: PASS')
+    else:skip('ios1011-host','needs --app1011' if not args.app1011 else 'not selected by --only')
 
 for name,files in [('camera-link',['CameraLink.m','CameraProfiles.c']),('camera-image',['CameraImage.m']),('camera-capture',['CameraCapture.m'])]:
     main={'camera-link':'CameraLinkTests.m','camera-image':'CameraImageTests.m','camera-capture':'CameraCaptureTests.m'}[name]
