@@ -816,12 +816,25 @@ static BOOL Signature(Class cls,NSString *name,NSUInteger argc,const char *retur
     for(NSUInteger i=2;i<argc;i++){char *t=method_copyArgumentType(m,(unsigned)i);NSString *allowed=types[i-2];if(!t||![allowed containsString:[NSString stringWithFormat:@"%c",t[0]]])ok=NO;free(t);}return ok;
 }
 #import "HostCompatibility.h"
+#import "OTAHost.h"
+static const struct mach_header *MainImage(void) {
+    const char *executable=NSBundle.mainBundle.executablePath.fileSystemRepresentation;
+    for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&executable&&strcmp(name,executable)==0)return _dyld_get_image_header(i);}
+    return NULL;
+}
 static BOOL VersionMatches(void) {
     if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return NO;
-    const struct mach_header *h=NULL;
-    const char *executable=NSBundle.mainBundle.executablePath.fileSystemRepresentation;
-    for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&executable&&strcmp(name,executable)==0){h=_dyld_get_image_header(i);break;}}
-    return TIOHostImageMatches(h,NSBundle.mainBundle.infoDictionary);
+    return TIOHostImageMatches(MainImage(),NSBundle.mainBundle.infoDictionary);
+}
+NSString *TIOHostProfile(void) {
+    if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return nil;
+    return TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary);
+}
+// The download-only host's only protection against an OTA session is the
+// business-9 guard in TIOOTAFlashBlockCall, applied by the rayneonet hook.
+BOOL TIOHostDownloadOnlyGuardActive(void) {
+    return [TIOHostProfile() isEqual:@"ios1011-download"]&&!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary)&&
+        TIOOTAFlashBuild()&&TIOGlassesChannelHookInstalled()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue];
 }
 static void AddEntry(void) {
     UIViewController *top=TopController();UIWindow *window=top.view.window;if(!window)return;
@@ -871,6 +884,10 @@ __attribute__((constructor)) static void Load(void) {
                 ^{id instance=((id(*)(id,SEL))objc_msgSend)(helper,NSSelectorFromString(@"shared"));if(instance)((void(*)(id,SEL))objc_msgSend)(instance,NSSelectorFromString(@"stopWorkflow"));});
 #endif
             if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
+            // Download-only host (1.0.11/259): no feature hooks, only the rayneonet
+            // channel hook so TIOOTAFlashBlockCall refuses every OTA frame but the
+            // empty version query. TIOOTA107HostMatches stays false there.
+            else if([TIOHostProfile() isEqual:@"ios1011-download"])TIOInstallGlassesChannelHook();
 #if TIO_IMAGE_RX_LAB
             TIOClenchLabInstallRecovery();
 #endif
@@ -883,6 +900,7 @@ __attribute__((constructor)) static void Load(void) {
             [loadInfo appendString:@"display extension=MUSIC-OTA-PHONE-01; numeric diagnostics; OTA writes disabled; legacy N8W retained\n"];
 #endif
 #endif
+            [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive()];
             [loadInfo appendFormat:@"bundle=%@; version=%@; build=%@\n",NSBundle.mainBundle.bundleIdentifier,[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"]];
             for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&[[NSString stringWithUTF8String:name].lastPathComponent isEqual:@"Runner"]){const struct mach_header *h=_dyld_get_image_header(i);[loadInfo appendFormat:@"Runner image index=%u magic=%x\n",i,h->magic];}}
             for(NSString *sel in @[@"onAsrResult:isFinish:sessionId:",@"onNlpResult:",@"onResponseComplete",@"onAlwaysOnResponse:"]){Method m=class_getInstanceMethod([sel isEqual:@"onAlwaysOnResponse:"]?ao:voice,NSSelectorFromString(sel));[loadInfo appendFormat:@"%@ %s\n",sel,m?method_getTypeEncoding(m):"missing"];}

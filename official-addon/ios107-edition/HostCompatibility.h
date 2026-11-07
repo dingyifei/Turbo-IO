@@ -13,8 +13,17 @@ static inline NSString *TIOHostExpectedUUID(NSDictionary *info) {
     if([version isEqual:@"1.0.7"]&&[build isEqual:@"230"])return @"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B";
     return nil;
 }
-static inline BOOL TIOHostImageMatches(const struct mach_header *h,NSDictionary *info) {
-    NSString *expected=TIOHostExpectedUUID(info);
+// Download-only hosts are deliberately NOT in the table above, so every feature
+// gated on TIOHostImageMatches or TIOHostExpectedUUID stays off there. On a
+// download-only host the addon installs only the rayneonet channel hook, which
+// carries the OTA transfer guard. Exact version, build and UUID; no ranges.
+static inline NSString *TIOHostDownloadOnlyUUID(NSDictionary *info) {
+    NSString *version=info[@"CFBundleShortVersionString"];
+    NSString *build=[info[@"CFBundleVersion"] description];
+    if([version isEqual:@"1.0.11"]&&[build isEqual:@"259"])return @"22724C97-2EF9-388D-8E6A-6E051855A555";
+    return nil;
+}
+static inline BOOL TIOHostImageUUIDIs(const struct mach_header *h,NSString *expected) {
     if(!expected||!h||h->magic!=MH_MAGIC_64||h->filetype!=MH_EXECUTE||h->ncmds>1024||h->sizeofcmds>1024*1024)return NO;
     const uint8_t *p=(const uint8_t *)h+sizeof(struct mach_header_64),*end=p+h->sizeofcmds;
     for(uint32_t i=0;i<h->ncmds;i++){
@@ -26,3 +35,23 @@ static inline BOOL TIOHostImageMatches(const struct mach_header *h,NSDictionary 
     }
     return NO;
 }
+static inline BOOL TIOHostImageMatches(const struct mach_header *h,NSDictionary *info) {
+    return TIOHostImageUUIDIs(h,TIOHostExpectedUUID(info));
+}
+static inline BOOL TIOHostDownloadOnlyImageMatches(const struct mach_header *h,NSDictionary *info) {
+    return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHostImageUUIDIs(h,TIOHostDownloadOnlyUUID(info));
+}
+// "ios107" for the full 1.0.7/230 host, "ios1011-download" for the 1.0.11/259
+// download-only host, nil for anything else (older inspected hosts included).
+static inline NSString *TIOHostProfileFor(const struct mach_header *h,NSDictionary *info) {
+    if(![info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"])return nil;
+    if(TIOHostDownloadOnlyImageMatches(h,info))return @"ios1011-download";
+    if([info[@"CFBundleShortVersionString"] isEqual:@"1.0.7"]&&[[info[@"CFBundleVersion"] description] isEqual:@"230"]&&TIOHostImageMatches(h,info))return @"ios107";
+    return nil;
+}
+// Profile of the running host's main executable image; nil when unknown. Defined in Addon.m.
+FOUNDATION_EXPORT NSString *TIOHostProfile(void);
+// YES only on the download-only host when the OTA guard is compiled in and the
+// rayneonet transport hook that applies it is installed. Defined in Addon.m.
+// The UI must show a loud warning when the profile is download-only and this is NO.
+FOUNDATION_EXPORT BOOL TIOHostDownloadOnlyGuardActive(void);
