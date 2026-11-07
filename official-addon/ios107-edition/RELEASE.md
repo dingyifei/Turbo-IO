@@ -22,3 +22,7 @@
 不含个人 Cookie、Key、签名材料、私用日志、手机备份、智记内容或微信读书网页正文适配。原创源码沿用仓库许可证，第三方权利不变。
 
 **非官方高风险实验预发布。非开发者请勿刷；不保证稳定、回滚或救砖。刷后必须按教程完成收尾，不混用其他版本的候选和授权。**
+
+## Host profile `ios1011-download` (RayNeo AI 1.0.11/259): not packaged, not released
+
+The source now knows a second host profile, `ios1011-download`, matched by exact version, build and Runner UUID `22724C97-2EF9-388D-8E6A-6E051855A555`. It is a download-only build: `App.framework/App` stays byte-identical to stock 1.0.11 (no route patch, no bundled TMG ZIP, no OTA routing key, no `UISupportedDevices`), so the stock app downloads the newest stock firmware from RayNeo's server, and the addon's "Stock firmware export" panel lists, hashes (SHA-256 and MD5) and shares it read-only. The addon installs only the rayneonet channel hook there; with it, every business-9 frame except the empty version query is refused, so no OTA session can start. The hub shows only the export panel and the language row, with no TMG flash wizard. TMG flashing stays on the 1.0.7 builds. Packaging is blocked until the decomp answers Q1; the owner flow and rollback (reinstall C13 over the app) are in [OTA.md](OTA.md).

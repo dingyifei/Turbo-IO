@@ -1,5 +1,36 @@
 # iOS 1.0.7（230）固件向导与 WP6 TMG3 候选
 
+## 1.0.11（259）仅下载构建：导出官方固件（未打包、未发布）
+
+这个构建只做一件事：让**原厂** RayNeo AI 1.0.11（259）从雷鸟真实服务器下载最新的官方眼镜固件，再把下载好的 ZIP 导出到 Mac 上核对哈希。它不刷写眼镜，也不包含 TMG 固件。
+
+**现状：打包被阻塞。** 在反编译确认 1.0.11 的 OTA 传输仍经由 `rayneonet_sendMessage` 业务 9 发送（问题 Q1）之前，不运行 `turbo-package.sh`，不签名，不安装。下面的流程留给 Q1 确认之后、并且机主当时明确同意安装之后使用。
+
+**它做什么、不做什么：**
+
+- `App.framework/App` 与原厂 1.0.11 逐字节一致（只是重新签名）：不改升级路由，不走本地回环源，不内置 TMG ZIP，不写 `TIOExperimentalOTAQueryRouting`，不注入 `UISupportedDevices`。更新请求原样发往雷鸟服务器。
+- 宿主按精确的版本、构建号和 Runner UUID（`22724C97-2EF9-388D-8E6A-6E051855A555`）识别为 `ios1011-download`。在这个宿主上扩展只安装 rayneonet 通道钩子，不装语音、常听、首页等功能钩子。
+- 安全网：钩子装好后，发往眼镜的业务 9 帧中**只放行空的版本查询**，其余一律拒绝，OTA 会话（类型 4）无法开始。所以即使误点了“开始安装”，也刷不进去。但流程本身不依赖这一点。
+- Turbo IO 面板里只有“导出官方固件”和“语言”两项，没有 TMG 刷机向导。
+- “导出官方固件”面板顶部显示宿主和防护状态：
+  - 绿色“已阻止向眼镜传输固件（OTA）”：防护生效。
+  - 红色“防护未生效——不要开始任何安装”：传输钩子没装上。此时不要继续，关闭 App 并报告。
+- 面板只读查找 `Library/Application Support/ota`、`Documents/ota`、`Library/Caches/ota`、`tmp/ota`，以及这几个目录下名字像固件或升级的文件夹，最多 4 层、500 项，不跟随符号链接。每个文件显示名称、大小、修改时间、SHA-256 和 MD5，可以分享（AirDrop 或存储到文件）。不删除、不移动、不修改官方文件。
+- 如果只找到解压后的文件夹（例如 `extracted_*`），可以“重新打包副本”。副本写在 Turbo IO 自己的目录 `Library/Application Support/TurboIOPrivateAddon/FirmwareExport/`，文件名带 `rezipped`，标注为“重新打包的副本，不是服务器原始字节”，哈希不会与服务器固件包一致。
+- 1.0.11 在 iOS 上把固件存在哪里还没有确认（问题 Q2）。面板找不到时，退路是 Xcode 的 Download Container 或 `devicectl copy from`，这属于设备操作，同样需要机主当时同意。
+
+**机主流程（每一步都在手机上由机主亲自操作）：**
+
+1. 开始前记下眼镜状态里的 `build` 字段，确认眼镜当前是哪个 TMG。
+2. 安装签好的 1.0.11 仅下载 IPA，**覆盖安装**到现有 App 上（`com.rayneo.venus.pub`），只对自己的 iPhone。绝不删除 App。
+3. 打开 App，在官方固件页面确认**自动更新仍是关闭的**。打开 Turbo IO →“导出官方固件”，确认显示“RayNeo AI 1.0.11 (259) · 仅下载”和绿色的“已阻止向眼镜传输固件（OTA）”。显示红色警告就停下。
+4. 在官方固件页面检查更新。如果有新版本，下载它。**停在“准备安装”，绝不点“开始安装”。**
+5. 回到“导出官方固件”，点右上角的刷新按钮。记下 ZIP 的 SHA-256 和 MD5（MD5 可以和服务器的 `apkMd5` 对照），然后分享到 Mac。
+6. 在 Mac 上运行 `shasum -a 256 <文件>`，结果必须与手机上显示的 SHA-256 完全一致。不一致就不要使用这个文件。
+7. 把文件存到输入目录下的 `stock-fw/<版本>/`，附上来源说明：App 1.0.11/259、日期、服务器提供的版本号、MD5 与 `apkMd5` 的对照结果。分析和固定哈希是另外的任务。**任何人都不刷这个固件。**
+
+**回滚：** 把 C13 IPA 覆盖安装回去（`signed-20261031-0008-tmg9-c13`，安装前先核对哈希），同样不删除 App。1.0.11 可能已经迁移了容器里的数据，降级后 1.0.7 可能需要重新登录或重新配对；配对后按 OTA 刷机门槛的要求把自动更新开一次再关掉。整个流程不碰眼镜固件，所以眼镜不需要回滚。
+
 ## TMG8 candidate — current development branch
 
 TMG8 supersedes the historical candidate sections below. ZIP SHA256: `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`; ZIP bytes: 8,819,108; ZIP MD5: `2c1a67c2d0108ecdfab139210ad67e7d`; AP size: 7,368,072 bytes (under 9.6 MB); AP SHA256: `5441188525e3fda393028694d093be713de360563ea2bb9696ec5c4c8c4a1fc1`; AP MD5: `2160d6a794be52c37797a06f173e50fe`. Two clean pinned builds are byte-identical. The audit retains 25 patch sites, the unchanged carousel raw edit, 14 untouched stock payloads, and all seven startup descriptors. This is host/build evidence only; the candidate is not approved, not flashed, and no glasses were contacted.
