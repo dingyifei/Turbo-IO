@@ -2282,3 +2282,50 @@
 {"key":"tmg8.layout.version.tmg6","en":"TMG6 or TMG7","zh":"TMG6 或 TMG7"}
 {"key": "tmg8.card.title", "en": "Demo data · 256×194 single card", "zh": "演示数据 · 256×194 单卡"}
 {"key": "tmg8.card.detail", "en": "TDC1 firmware required first. The card shows MacBook Pro · M5 Max; RAM 37.5 of 128 GB free; SSD 1.4 of 2 TB free; then three columns with a bar under each: Codex 7d 99%, Claude 5h 90%, Claude 7d 85%. No icons or divider lines. This is not a live account report. Time and battery are unchanged; to-do cards move down in the order.", "zh": "需先刷入 TDC1 固件。卡片显示 MacBook Pro · M5 Max；RAM 37.5 / 128 GB 可用；SSD 1.4 / 2 TB 可用；下方三列各带一条进度条：Codex 7d 99%、Claude 5h 90%、Claude 7d 85%。无图标、无分隔线。这不是账户实时报表。时间、电池不改，待办顺延。"}
+{"key":"fwexport.action.copyMD5","en":"Copy MD5","zh":"复制 MD5"}
+{"key":"fwexport.action.copySHA","en":"Copy SHA-256","zh":"复制 SHA-256"}
+{"key":"fwexport.action.delete","en":"Delete this copy","zh":"删除此副本"}
+{"key":"fwexport.action.rezip","en":"Re-zip a copy","zh":"重新打包副本"}
+{"key":"fwexport.action.share","en":"Share file","zh":"分享文件"}
+{"key":"fwexport.copied","en":"Copied","zh":"已复制"}
+{"key":"fwexport.copies.empty","en":"None","zh":"无"}
+{"key":"fwexport.copies.footer","en":"Made by Turbo IO from an extracted folder and kept in its own folder. The hash will not match the server's package.","zh":"由 Turbo IO 从解压后的文件夹打包，保存在 Turbo IO 自己的目录。哈希不会与服务器固件包一致。"}
+{"key":"fwexport.delete.failed","en":"Could not delete the copy.","zh":"无法删除副本。"}
+{"key":"fwexport.delete.message","en":"Only Turbo IO's own copy is deleted.","zh":"只删除 Turbo IO 自己的副本。"}
+{"key":"fwexport.delete.title","en":"Delete this re-zipped copy?","zh":"删除这个重新打包的副本？"}
+{"key":"fwexport.empty","en":"No firmware files found yet","zh":"尚未找到固件文件"}
+{"key":"fwexport.error.changed","en":"A file changed while it was being read","zh":"读取期间文件发生变化"}
+{"key":"fwexport.error.limit","en":"The folder exceeds the depth or file limit","zh":"文件夹超出层级或文件数量上限"}
+{"key":"fwexport.error.read","en":"Could not read the file","zh":"无法读取文件"}
+{"key":"fwexport.error.size","en":"Too large for a ZIP without ZIP64","zh":"文件过大，无法生成非 ZIP64 的 ZIP"}
+{"key":"fwexport.error.source","en":"Not a readable folder inside the app container","zh":"不是应用容器内可读取的文件夹"}
+{"key":"fwexport.error.write","en":"Could not write the ZIP","zh":"无法写入 ZIP"}
+{"key":"fwexport.folder.detail","en":"Folder · %lu files · %@ · tap to re-zip a copy","zh":"文件夹 · %lu 个文件 · %@ · 点按可重新打包副本"}
+{"key":"fwexport.found.footer","en":"Read only: nothing here deletes, moves or changes RayNeo's files. Tap a file to share it or copy its hashes. On the Mac, shasum -a 256 must show the same SHA-256.","zh":"只读：不会删除、移动或修改官方文件。点按文件可分享或复制哈希。在 Mac 上用 shasum -a 256 核对，SHA-256 必须一致。"}
+{"key":"fwexport.guard.off","en":"Guard NOT active — do not start any install","zh":"防护未生效——不要开始任何安装"}
+{"key":"fwexport.guard.off.detail","en":"The transport hook that refuses OTA frames is not installed. Do not tap Start install. Close the app and report this.","zh":"拒绝 OTA 帧的传输钩子没有安装。不要点“开始安装”，请关闭应用并报告此问题。"}
+{"key":"fwexport.guard.on","en":"OTA transfer to glasses blocked","zh":"已阻止向眼镜传输固件（OTA）"}
+{"key":"fwexport.guard.on.detail","en":"Only the empty version query reaches the glasses, so this build cannot start an OTA session.","zh":"只放行空的版本查询，本构建无法开启 OTA 会话。"}
+{"key":"fwexport.hash.failed","en":"Hash failed: %@","zh":"哈希计算失败：%@"}
+{"key":"fwexport.hashing","en":"Computing SHA-256 and MD5…","zh":"正在计算 SHA-256 和 MD5…"}
+{"key":"fwexport.host","en":"Host: %@","zh":"宿主：%@"}
+{"key":"fwexport.host.download","en":"RayNeo AI 1.0.11 (259) · download only","zh":"RayNeo AI 1.0.11 (259) · 仅下载"}
+{"key":"fwexport.host.unknown","en":"Not a supported download-only host","zh":"不是受支持的仅下载宿主"}
+{"key":"fwexport.rezip.failed","en":"Re-zip failed: %@","zh":"重新打包失败：%@"}
+{"key":"fwexport.rezip.message","en":"Turbo IO writes a new ZIP into its own folder and only reads RayNeo's files. The result is re-zipped, not the server's bytes, so its hash will differ from the server package.","zh":"Turbo IO 会在自己的目录中写入新的 ZIP，只读取官方文件。结果是重新打包的副本，不是服务器原始字节，哈希会与服务器固件包不同。"}
+{"key":"fwexport.rezip.title","en":"Re-zip this folder?","zh":"重新打包此文件夹？"}
+{"key":"fwexport.roots.deep","en":"Some folders are deeper than the limit and are not fully listed.","zh":"部分文件夹超过层级上限，未完整列出。"}
+{"key":"fwexport.roots.footer","en":"Up to %lu levels deep and %lu entries. Symbolic links are never followed (%lu skipped).","zh":"最多 %lu 层、%lu 项。不跟随符号链接（已跳过 %lu 个）。"}
+{"key":"fwexport.roots.none","en":"None of these folders exist yet.","zh":"这些目录目前都不存在。"}
+{"key":"fwexport.roots.truncated","en":"Entry limit reached: some files are not listed.","zh":"已达条目上限：部分文件未列出。"}
+{"key":"fwexport.scanning","en":"Searching…","zh":"正在查找…"}
+{"key":"fwexport.section.copies","en":"Re-zipped copies (not the server's bytes)","zh":"重新打包的副本（不是服务器原始字节）"}
+{"key":"fwexport.section.found","en":"Found in the RayNeo app's folders","zh":"官方应用目录中找到的文件"}
+{"key":"fwexport.section.roots","en":"Searched locations","zh":"查找位置"}
+{"key":"fwexport.section.status","en":"Status","zh":"状态"}
+{"key":"fwexport.status.footer","en":"Auto Update stays off. In the RayNeo firmware page, check for an update, download it, and stop at Ready to install. Never tap Start install.","zh":"自动更新保持关闭。在官方固件页面检查更新并下载，停在“准备安装”，不要点“开始安装”。"}
+{"key":"fwexport.title","en":"Stock firmware export","zh":"导出官方固件"}
+{"key":"fwexport.wizard.blocked","en":"This download-only build cannot flash the glasses. Use Stock firmware export.","zh":"仅下载构建不能刷写眼镜，请使用“导出官方固件”。"}
+{"key":"hub.row.firmwareExport","en":"Stock firmware export","zh":"导出官方固件"}
+{"key":"hub.status.firmwareExport.guarded","en":"Download only · OTA transfer blocked","zh":"仅下载，已阻止传输"}
+{"key":"hub.status.firmwareExport.unguarded","en":"Guard NOT active","zh":"防护未生效"}
