@@ -119,7 +119,7 @@ symbols_stage() {
     _TIOGlassesChannelHookFailure _TIOChannelHookTargetFailure _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive; do
     grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 guard symbol $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
+  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
 }
 test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"

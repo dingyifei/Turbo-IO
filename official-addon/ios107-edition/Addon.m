@@ -831,6 +831,10 @@ static BOOL VersionMatches(void) {
 }
 NSString *TIOHostProfile(void) {
     if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return nil;
+    // Same test as the refusal (TIOOTADownloadOnlyHost): the pinned 1.0.11 image OR
+    // the packager's TIOHostProfile marker. Load, the hub catalog, the guard row and
+    // the refusal must never disagree about the download-only host.
+    if(TIOOTADownloadOnlyHost())return @"ios1011-download";
     return TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary);
 }
 // The download-only host's only protection against an OTA session is the
@@ -909,6 +913,9 @@ __attribute__((constructor)) static void Load(void) {
 #endif
 #endif
             [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOOTADownloadOnlyGuardMarker];
+            // The image and the packager's marker should agree; say so when only one selects the download-only host.
+            NSString *imageProfile=TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary),*markerProfile=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];
+            if(downloadOnly&&!([imageProfile isEqual:@"ios1011-download"]&&[markerProfile isEqual:@"ios1011-download"]))[loadInfo appendFormat:@"HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only\n",imageProfile?:@"none",[markerProfile isKindOfClass:NSString.class]?markerProfile:@"none"];
             // A failed hook on the download-only host leaves the stock OTA path unguarded: say so.
             if(downloadOnly&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
             [loadInfo appendFormat:@"bundle=%@; version=%@; build=%@\n",NSBundle.mainBundle.bundleIdentifier,[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"]];

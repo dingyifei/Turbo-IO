@@ -55,6 +55,10 @@ static NSUInteger Checked;
 // Every frame body in the sweep. Type 4 {Mode:1..4} covers the start the
 // mandatory update page auto-sends ({Mode:4}) after a forced cloud reply.
 static NSArray *Bodies(void){return @[NSNull.null,@{},@{@"Mode":@1},@{@"Mode":@2},@{@"Mode":@3},@{@"Mode":@4},@{@"OtaSize":@1},@{@"OtaVersion":@"Strix OS 1.0.5.5"},@[]];}
+// G4 businessId width: 9+256k aliases (265, 521, 0x109, 65545), above UINT32_MAX,
+// negatives (-247 is 9 mod 256), floats and bools. Each must be refused with any payload.
+static NSArray *WideIds(void){return @[@265,@521,@0x109,@65545,@0x10009,@256,@0x100000009ULL,@(-247),@(-1),@9.0,@265.0,@9.5,@YES,@NO,[NSNumber numberWithShort:265],@0x7fffff09,@(UINT32_MAX)];}
+static NSArray *WidePayloads(void){NSMutableArray *a=[NSMutableArray arrayWithObject:Frame(1,nil,nil)];for(NSNumber *mode in @[@1,@2,@3,@4])[a addObject:Frame(4,@{@"Mode":mode},nil)];[a addObject:Frame(2,nil,nil)];return a;}
 // One character per call, in a fixed order: '1' blocked, '0' passed.
 static NSString *Sweep(void){
     NSMutableString *bits=[NSMutableString new];
@@ -79,6 +83,7 @@ static NSString *Sweep(void){
         @{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9}},
         @{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@20,@"payload":Frame(4,@{@"Mode":@2},nil)}},
         @{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@22,@"payload":Frame(4,@{@"Mode":@4},nil)}},
+        @{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"payload":Frame(4,@{@"Mode":@4},nil)}},
         @{@"method":@"rayneonet_sendFile",@"arguments":@{@"path":@"/tmp/x.zip"}},
         @{@"method":@"rayneonet_startOta",@"arguments":@{}},
         @{@"method":@"rayneonet_upgrade",@"arguments":@{}},
@@ -86,6 +91,8 @@ static NSString *Sweep(void){
         @{@"method":@"rayneonet_disconnect",@"arguments":@{}},
     ];
     for(id call in calls)[bits appendString:TIOOTAFlashBlockCall(call)?@"1":@"0"];
+    // G4: ids the bridge's UInt8(truncating:) would send as business 9, plus other non-ids.
+    for(id business in WideIds())for(NSData *payload in WidePayloads())[bits appendString:TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":business,@"deviceId":@"fixture-peer",@"payload":payload}})?@"1":@"0"];
     return bits;
 }
 static NSString *Digest(NSString *s){
@@ -119,6 +126,12 @@ static void OnlyVersionQueryPasses(void){
     assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@[]}));
     assert(TIOOTAFlashBlockCall(@{@"arguments":@{@"businessId":@9,@"payload":query}}));
     assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@20,@"payload":Frame(4,@{@"Mode":@2},nil)}}));
+    assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"payload":Frame(4,@{@"Mode":@4},nil)}}));
+    // G4: no id that wraps to 9 (or is not a plain byte) gets past, not even with the version query.
+    for(id business in WideIds())for(NSData *payload in WidePayloads()){
+        NSDictionary *call=@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":business,@"deviceId":@"fixture-peer",@"payload":payload}};
+        assert(TIOOTAFlashBlockCall(call));assert(TIOOTADownloadOnlyBlockCall(call));Checked++;
+    }
     // D3 is deferred: un-scoped sendFile and any OTA/upgrade-named method stay refused, unchanged.
     assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendFile",@"arguments":@{@"path":@"/tmp/x.zip"}}));
     assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_startOta",@"arguments":@{}}));
@@ -206,6 +219,12 @@ int main(int argc,char **argv){@autoreleasepool{
         assert(!TIOOTAFlashProtected());assert(Allowed(Frame(t,j,nil),@"fixture-peer"));
 #endif
     }
+#if TIO_OTA_FLASH_ENABLED
+    // G4 deliberately makes the guarded 1.0.7 path stricter too: wide ids are malformed there as well,
+    // while a plain non-9 byte still passes untouched.
+    for(id business in WideIds())for(NSData *payload in WidePayloads())assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":business,@"deviceId":@"fixture-peer",@"payload":payload}}));
+    assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"payload":Frame(4,@{@"Mode":@4},nil)}}));
+#endif
     Host=d;Image=pinned;assert(!Allowed(Frame(2,nil,nil),@"fixture-peer"));
     NSLog(@"PASS: 1.0.11 download-only guard: %lu frame shapes, only the empty version query passes; type 4 Mode 1-4 refused; feed not started; authorization refused; flash build %s; sweep=%@%s",
         (unsigned long)Checked,TIOOTAFlashBuild()?"on":"off",Digest(sweep),argc==3?"; real 1.0.11 Runner profile":"");

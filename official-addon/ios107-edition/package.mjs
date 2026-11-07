@@ -92,7 +92,7 @@ export function verifySignedStockApp(signed,stock,profileName='ios1011-download'
 // G1/G2 gate for the download-only host: the built addon must carry the
 // flag-independent business-9 refusal, the hook target check and the panel's
 // safety model. Missing any of them fails closed before anything is signed.
-export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent';
+export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused';
 export const DOWNLOAD_ONLY_GUARD_SYMBOLS=Object.freeze(['_TIOOTAFlashBlockCall','_TIOOTADownloadOnlyHost','_TIOOTADownloadOnlyBlockCall','_TIOOTADownloadOnlyGuardMarker','_TIOInstallGlassesChannelHook','_TIOGlassesChannelHookFailure','_TIOChannelHookTargetFailure','_TIODownloadOnlyGuardActiveFor','_TIOFirmwareExportSafetyModel','_TIOHostDownloadOnlyGuardActive']);
 export function validateDownloadOnlyAddon(symbols,addon){
   const names=new Set(String(symbols).split('\n').map(l=>l.trim().split(/\s+/).pop()));

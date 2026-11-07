@@ -116,7 +116,7 @@ download_only_guard() {
     _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive; do
     grep -Eq " $name\$" <<<"$symbols" || { echo "missing $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent' "$1" || { echo 'missing 1.0.11 guard marker' >&2; return 1; }
+  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused' "$1" || { echo 'missing 1.0.11 guard marker' >&2; return 1; }
 }
 if [[ $host == 1011 ]]; then
 # G1/G2: fail closed unless the addon carries the flag-independent 1.0.11 guard

@@ -30,6 +30,17 @@ int main(int argc,char **argv){@autoreleasepool{
  // No TTL/TLG/TDG or nav reply/capability has been provided. The real business-9
  // observer and authorization policy must still permit the old installed OS.
  assert([Snapshot(NO)[@"canDownload"]boolValue]);assert(![Snapshot(NO)[@"canAuthorize"]boolValue]);Refused();
+ // G4: the bridge narrows businessId with UInt8(truncating:). Ids that wrap to 9 (or are not a plain
+ // byte) are refused on send and ignored by the receive monitor; a non-9 byte still passes.
+ NSArray *wide=@[@265,@521,@0x109,@65545,@0x10009,@256,@0x100000009ULL,@(-247),@(-1),@9.0,@265.0,@9.5,@YES,@NO,@(UINT32_MAX)];
+ for(id business in wide){
+  for(NSData *payload in @[Frame(1,nil,nil),Frame(2,nil,nil),Frame(4,@{@"Mode":@1},nil),Frame(4,@{@"Mode":@2},nil),Frame(4,@{@"Mode":@3},nil),Frame(4,@{@"Mode":@4},nil)])
+   assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":business,@"deviceId":@"fixture-peer",@"payload":payload}}));
+  TIOOTAFlashObserveEvent(@{@"eventType":@"messageReceived",@"message":@{@"businessId":business,@"deviceId":@"fixture-peer",@"payload":Frame(1,@{@"OsVersion":version,@"OtaValidationConfirmed":@YES},nil)}});
+  assert(![TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]);
+ }
+ assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"deviceId":@"fixture-peer",@"payload":Frame(4,@{@"Mode":@4},nil)}}));
+ assert(Send(1,nil,nil,@"fixture-peer"));
  Observe(version,YES,@"fixture-peer");assert([TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]);assert([Snapshot(YES)[@"canAuthorize"]boolValue]);
  Now+=120;assert([Snapshot(YES)[@"canAuthorize"]boolValue]);Now+=.001;assert(![Snapshot(YES)[@"canAuthorize"]boolValue]);Refused();Observe(version,YES,@"fixture-peer");
  Observe(version,NO,@"fixture-peer");Refused();Observe(@"Strix OS 1.0.3.15",YES,@"fixture-peer");Refused();Observe(version,YES,@"fixture-peer");

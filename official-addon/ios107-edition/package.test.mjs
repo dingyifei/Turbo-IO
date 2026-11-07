@@ -342,6 +342,12 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
  const addon=src('Addon.m'),load=addon.slice(addon.indexOf('static void Load(void)'));
  assert.match(load,/BOOL downloadOnly=\[TIOHostProfile\(\) isEqual:@"ios1011-download"\];/);
+ // The profile uses the refusal's own host test (image OR packager marker) before the image-only
+ // lookup, so Load installs the hook and the hub hides the 1.0.7 catalog whenever the refusal applies.
+ const profile=addon.match(/NSString \*TIOHostProfile\(void\) \{([\s\S]*?)\n\}/);assert.ok(profile);
+ assert.ok(profile[1].indexOf('if(TIOOTADownloadOnlyHost())return @"ios1011-download";')>0);
+ assert.ok(profile[1].indexOf('if(TIOOTADownloadOnlyHost())')<profile[1].indexOf('TIOHostProfileFor(MainImage()'));
+ assert.match(load,/HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only/);
  assert.match(load,/if\(valid\)\{TIOInstallGlassesChannelHook\(\);TIOInstallTodoRuntime\(\);\}\n(?:\s*\/\/[^\n]*\n)*\s*else if\(downloadOnly\)TIOInstallGlassesChannelHook\(\);/);
  assert.equal([...addon.matchAll(/TIOInstallGlassesChannelHook\(\)/g)].length,2);
  // No addon-originated glasses frames on the download-only host.
@@ -391,6 +397,9 @@ test('download-only addon gate: guard symbols and marker are required',()=>{
   assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols.replace(' T '+name+'\n',' T '+name+'X\n'),addon));
  }
  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,Buffer.alloc(64)),/download_only_guard_missing:marker/);
+ // G4: an addon built before the businessId width check (marker 01) is refused.
+ assert.match(packaging.DOWNLOAD_ONLY_GUARD_MARKER,/GUARD-02; flag-independent; businessId above 255 refused$/);
+ assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,Buffer.from('ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent; business 9 refused except the empty version query')),/download_only_guard_missing:marker/);
  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,undefined),/marker/);
  const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
  assert.match(s,/if\(!host\.routePatch\)validateDownloadOnlyAddon\(symbols,fs\.readFileSync\(o\.addon\)\);/);

@@ -50,6 +50,10 @@ static BOOL Number(id n,NSUInteger *out){
     if(![n isKindOfClass:NSNumber.class]||CFGetTypeID((__bridge CFTypeRef)n)==CFBooleanGetTypeID()||CFNumberIsFloatType((__bridge CFNumberRef)n)||[n longLongValue]<0)return NO;
     uint64_t v=[n unsignedLongLongValue];if(v>UINT32_MAX)return NO;*out=(NSUInteger)v;return YES;
 }
+// G4: the RayneoNet plugin bridge narrows businessId with UInt8(truncating:),
+// so 265 (9+256k) goes on the wire as business 9. Every send path and the
+// receive monitor read the id through this helper: above 255 is malformed.
+static BOOL Business(id n,NSUInteger *out){NSUInteger v=0;if(!Number(n,&v)||v>UINT8_MAX)return NO;*out=v;return YES;}
 static BOOL Var(const uint8_t *b,NSUInteger n,NSUInteger *at,uint64_t *v){*v=0;for(unsigned i=0;i<5;i++){if(*at>=n)return NO;uint8_t x=b[(*at)++];if(i==4&&(x&0xf0))return NO;*v|=(uint64_t)(x&127)<<(i*7);if(!(x&128))return i==0||x!=0;}return NO;}
 NSDictionary *TIOOTAFrame(NSData *data){
     if(![data isKindOfClass:NSData.class]||data.length<4||data.length>65536)return nil;
@@ -157,7 +161,7 @@ static id Get(id obj,NSString *key){@try{return [obj valueForKey:key];}@catch(NS
 // Download-only 1.0.11/259 host (G1). The refusal below is compiled in every
 // build and depends on no TIO_* flag: TIO_OTA_FLASH_ENABLED, TIO_DISPLAY_FLASH
 // and TIO_DISPLAY_PHONE only shape the 1.0.7 path further down.
-NSString *const TIOOTADownloadOnlyGuardMarker=@"ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent; business 9 refused except the empty version query";
+NSString *const TIOOTADownloadOnlyGuardMarker=@"ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused; business 9 refused except the empty version query";
 BOOL TIOOTADownloadOnlyHost(void){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
     // The packager's marker alone also counts: refusing more is the safe side.
@@ -167,7 +171,7 @@ BOOL TIOOTADownloadOnlyBlockCall(id call){
     NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
     if(![method isKindOfClass:NSString.class])return YES;
     if([method isEqual:@"rayneonet_sendMessage"]){
-        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Number(args[@"businessId"],&business))return YES;
+        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
         if(business!=9)return NO;
         id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
         return !TIOOTAIsEmptyVersionQuery(data);
@@ -182,7 +186,7 @@ BOOL TIOOTAFlashBlockCall(id call){
     if(![method isKindOfClass:NSString.class])return YES;
     if([method.lowercaseString containsString:@"disconnect"]||[method.lowercaseString containsString:@"unbind"]||[method.lowercaseString containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
     if([method isEqual:@"rayneonet_sendMessage"]){
-        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Number(args[@"businessId"],&business))return YES;
+        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
         if(business!=9)return NO;
         id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
         if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary))
@@ -199,7 +203,7 @@ BOOL TIOOTAFlashBlockCall(id call){
 }
 void TIOOTAFlashObserveEvent(NSDictionary *event){
     if(!TIOOTAFlashBuild()||![event[@"eventType"] isEqual:@"messageReceived"])return;
-    NSDictionary *m=event[@"message"];NSUInteger business=0;if(![m isKindOfClass:NSDictionary.class]||!Number(m[@"businessId"],&business)||business!=9)return;
+    NSDictionary *m=event[@"message"];NSUInteger business=0;if(![m isKindOfClass:NSDictionary.class]||!Business(m[@"businessId"],&business)||business!=9)return;
     NSDictionary *f=TIOOTAFrame(m[@"payload"]);id j=f[@"json"];
     if([f[@"type"] isEqual:@1]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}}
     if([f[@"type"] isEqual:@1]&&[j isKindOfClass:NSDictionary.class]&&[@[@"Strix OS 1.0.4.12",@"Strix OS 1.0.5.5"] containsObject:j[@"OsVersion"]]&&[j[@"OtaValidationConfirmed"] isEqual:@YES]&&[m[@"deviceId"] isKindOfClass:NSString.class]){
