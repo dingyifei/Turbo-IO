@@ -101,10 +101,25 @@ int main(void) {
         assert(![keys containsObject:@"appleAI"]);
 #endif
         CheckTitles(catalog, 28);
+        // Full host: no firmware export row. Download-only 1.0.11 host: export and language only, never the TMG wizard.
+        assert(![keys containsObject:@"firmwareExport"]);
+        assert([TIOHubCatalogForProfile(@"ios107") isEqual:catalog] && [TIOHubCatalogForProfile(@"other") isEqual:catalog]);
+        NSArray<NSDictionary *> *download = TIOHubCatalogForProfile(@"ios1011-download");
+        assert([[download valueForKey:@"key"] isEqual:(@[@"firmwareExport",@"language"])]);
+        assert(!RowForKey(download, @"experimentalOTA"));
+        NSDictionary *exportRow = RowForKey(download, @"firmwareExport");
+        assert([exportRow[@"section"] integerValue] == TIOHubSectionGlasses && ![exportRow[@"parent"] length] && ![exportRow[@"code"] length]);
+        assert([NSImage imageWithSystemSymbolName:exportRow[@"icon"] accessibilityDescription:nil] != nil);
+        NSArray<NSDictionary *> *downloadRoot = TIOHubSectionsForProfile(@"", @"ios1011-download");
+        CheckSectionOrder(downloadRoot, @"");
+        assert(downloadRoot.count == 1 && [downloadRoot[0][@"rows"] count] == 2);
+        for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert(TIOHubSectionsForProfile(parent, @"ios1011-download").count == 0);
+        CheckTitles(download, 28);
         NSString *englishLanguageTitle = language[@"title"];
         TIOSetUILanguageOverride(@"zh");
         NSArray<NSDictionary *> *chineseCatalog = TIOHubCatalog();
         CheckTitles(chineseCatalog, 14);
+        CheckTitles(TIOHubCatalogForProfile(@"ios1011-download"), 14);
         assert(![RowForKey(chineseCatalog, @"language")[@"title"] isEqualToString:englishLanguageTitle]);
         assert([TIOHubSections(@"").firstObject[@"title"] isEqualToString:TIOText(@"hub.section.glasses")]);
         TIOSetUILanguageOverride(@"auto");

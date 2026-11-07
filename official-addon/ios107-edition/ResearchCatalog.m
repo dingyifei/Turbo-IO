@@ -13,6 +13,7 @@ typedef struct {
 // The only dynamic code is the OTA build name, resolved below.
 static const TIOHubRowDefinition Rows[] = {
     {@"experimentalOTA", @"arrow.down.circle", TIOHubSectionGlasses, @"", @""},
+    {@"firmwareExport", @"square.and.arrow.up.on.square", TIOHubSectionGlasses, @"", @""},
 #if TIO_MAPKIT_ENABLED
     {@"navigation", @"location.north.line", TIOHubSectionGlasses, @"", @"TNV1"},
 #endif
@@ -81,10 +82,21 @@ static NSString *FirmwareCode(void) {
     return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : @"TMG8";
 }
 
-NSArray<NSDictionary *> *TIOHubCatalog(void) {
+// The firmware export row exists only on the download-only host, where it and
+// the language row are the whole hub. Everything else is for the full host.
+static BOOL RowOnHost(NSString *key, BOOL downloadOnly) {
+    BOOL exportRow = [key isEqualToString:@"firmwareExport"];
+    return downloadOnly ? (exportRow || [key isEqualToString:@"language"]) : !exportRow;
+}
+
+NSArray<NSDictionary *> *TIOHubCatalog(void) {return TIOHubCatalogForProfile(nil);}
+
+NSArray<NSDictionary *> *TIOHubCatalogForProfile(NSString *profile) {
+    BOOL downloadOnly = [profile isEqualToString:@"ios1011-download"];
     NSMutableArray<NSDictionary *> *catalog = [NSMutableArray arrayWithCapacity:sizeof(Rows)/sizeof(Rows[0])];
     for (NSUInteger index = 0; index < sizeof(Rows)/sizeof(Rows[0]); index++) {
         const TIOHubRowDefinition *row = &Rows[index];
+        if (!RowOnHost(row->key, downloadOnly)) continue;
         NSString *code = [row->key isEqualToString:@"experimentalOTA"] ? FirmwareCode() : row->code;
         [catalog addObject:@{@"key":row->key,
 #if TIO_APPLE_AI
@@ -110,10 +122,12 @@ NSString *TIOHubSectionTitle(TIOHubSection section) {
     return @"";
 }
 
-NSArray<NSDictionary *> *TIOHubSections(NSString *parent) {
+NSArray<NSDictionary *> *TIOHubSections(NSString *parent) {return TIOHubSectionsForProfile(parent, nil);}
+
+NSArray<NSDictionary *> *TIOHubSectionsForProfile(NSString *parent, NSString *profile) {
     NSMutableArray<NSDictionary *> *sections = [NSMutableArray new];
     NSString *target = parent ?: @"";
-    NSArray<NSDictionary *> *catalog = TIOHubCatalog();
+    NSArray<NSDictionary *> *catalog = TIOHubCatalogForProfile(profile);
     for (TIOHubSection section = TIOHubSectionGlasses; section <= TIOHubSectionDeveloper; section++) {
         NSMutableArray<NSDictionary *> *rows = [NSMutableArray new];
         for (NSDictionary *row in catalog) {

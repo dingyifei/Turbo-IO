@@ -28,6 +28,8 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "MapKitNavigationUI.h"
 #endif
 #import "ResearchCatalog.h"
+#import "HostCompatibility.h"
+#import "FirmwareExportUI.h"
 #import "ExperimentalOTAUI.h"
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAFlash.h"
@@ -468,7 +470,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 
 @implementation TIOPanel
 - (NSDictionary *)catalogRowForKey:(NSString *)key {
-    for (NSDictionary *row in TIOHubCatalog()) if ([row[@"key"] isEqual:key]) return row;
+    for (NSDictionary *row in TIOHubCatalogForProfile(TIOHostProfile())) if ([row[@"key"] isEqual:key]) return row;
     return nil;
 }
 - (void)updateCard {
@@ -494,7 +496,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)viewDidLayoutSubviews {[super viewDidLayoutSubviews];[self fitHeader];}
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {[super traitCollectionDidChange:previous];if(!self.page.length)[self updateCard];}
 - (void)refresh {
-    self.sections=TIOHubSections(self.page);
+    self.sections=TIOHubSectionsForProfile(self.page,TIOHostProfile());
     self.title=self.page.length ? ([self catalogRowForKey:self.page][@"title"] ?: TIOText(@"hub.title")) : TIOText(@"hub.title");
     if (!self.page.length) {
         NSMutableString *body=[TIOText(@"hub.info.body") mutableCopy];
@@ -508,7 +510,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
             [body appendFormat:@"\n\n%@",details];
         }
         [body appendFormat:@"\n\n%@: \n",TIOText(@"hub.info.codes")];
-        for (NSDictionary *row in TIOHubCatalog()) {
+        for (NSDictionary *row in TIOHubCatalogForProfile(TIOHostProfile())) {
             NSString *code=row[@"code"];
             if (code.length) [body appendFormat:@"%@ — %@\n",row[@"title"],code];
         }
@@ -594,6 +596,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     } else if ([key isEqual:@"recordings"]) status=TIOText(@"hub.status.recordings");
     else if ([key isEqual:@"lifelog"] || [key isEqual:@"capture"]) status=TIOText([Prefs boolForKey:@"captureFinalText"]?@"hub.status.lifelog.on":@"hub.status.lifelog.off");
     else if ([key isEqual:@"status"]) status=TIOText(HooksReady?@"hub.status.status.ok":@"hub.status.status.off");
+    else if ([key isEqual:@"firmwareExport"]) status=TIOFirmwareExportHubStatus();
     else if ([key isEqual:@"experimentalOTA"]) {
         NSDictionary *snapshot=TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus()?:@{},@"feed":TIOExperimentalOTAFeedStatus()?:@{},@"guard":TIOOTAGuardStatus()?:@{},@"prefs":NSUserDefaults.standardUserDefaults.dictionaryRepresentation?:@{}});
         NSString *statusKey=TIOOTAWizardHubStatusKey(snapshot);
@@ -686,7 +689,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
     NSDictionary *row=self.sections[ip.section][@"rows"][ip.row];NSString *key=row[@"key"];
     [tableView deselectRowAtIndexPath:ip animated:YES];
-    if ([TIOHubSections(key) count]) {TIOPanel *child=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];child.page=key;[self.navigationController pushViewController:child animated:YES];return;}
+    if ([TIOHubSectionsForProfile(key,TIOHostProfile()) count]) {TIOPanel *child=[[TIOPanel alloc]initWithStyle:UITableViewStyleInsetGrouped];child.page=key;[self.navigationController pushViewController:child animated:YES];return;}
     [self openKey:key];
 }
 - (void)openKey:(NSString *)key {
@@ -694,7 +697,10 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     if([key isEqual:@"appleAI"]){[self.navigationController pushViewController:TIOAppleAIController() animated:YES];return;}
 #endif
     UIViewController *screen=nil;
-    if ([key isEqual:@"experimentalOTA"]) screen=TIOExperimentalOTAController();
+    // The download-only host never shows the TMG flash wizard, even if a stale route asks for it.
+    if ([key isEqual:@"experimentalOTA"] && [TIOHostProfile() isEqual:@"ios1011-download"]) {TIONotice(self,TIOText(@"hub.row.experimentalOTA"),TIOText(@"fwexport.wizard.blocked"));return;}
+    if ([key isEqual:@"firmwareExport"]) screen=TIOFirmwareExportController();
+    else if ([key isEqual:@"experimentalOTA"]) screen=TIOExperimentalOTAController();
 #if TIO_MAPKIT_ENABLED
     else if ([key isEqual:@"navigation"]) screen=TIOMapKitNavigationController();
 #endif
