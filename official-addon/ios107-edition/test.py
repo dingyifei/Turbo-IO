@@ -238,7 +238,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'phone':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,False),
         'noflags':([],[],False),
     }
-    def host1011_guard(name,argv):
+    def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m'):
         seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'}
         flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',seams)
         feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTA107HostMatches(bundle.infoDictionary)':'TIOOTA107HostMatches(TMG4HostInfo())'})
@@ -248,7 +248,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
                 present=any(d.startswith('-D'+flag+'=') for d in defines)
                 if config=='full' and not present or config=='noflags' and present:raise RuntimeError('ios1011 flag set '+config+': '+flag)
             binary=name+'-'+config
-            run(binary+'-build',flags+[P/'tests/Host1011GuardTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',P/'DownloadOnlySafety.m',flash,feed,*sources,'-lz',*defines,'-o',out/binary])
+            run(binary+'-build',flags+[P/test_file,P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',P/'DownloadOnlySafety.m',flash,feed,*sources,'-lz',*defines,'-o',out/binary])
             run(binary,[out/binary,*argv])
             log=(out/(binary+'.log')).read_text()
             if 'PASS' not in log:raise RuntimeError(binary+' did not report PASS')
@@ -261,6 +261,12 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         host1011_guard('ios1011-guard',[])
         groups.append('ios1011-guard');print('ios1011-guard: PASS')
     else:skip('ios1011-guard','not selected by --only')
+    # D5: the stock teleprompter sendFile allow-list, same unchanged policy and the same four flag sets.
+    seen.add('stock-teleprompter')
+    if only is None or 'stock-teleprompter' in only:
+        host1011_guard('stock-teleprompter',[],'tests/StockTeleprompterSendTests.m')
+        groups.append('stock-teleprompter');print('stock-teleprompter: PASS')
+    else:skip('stock-teleprompter','not selected by --only')
     seen.add('ios1011-host')
     if (only is None or 'ios1011-host' in only) and args.app1011:
         import hashlib, plistlib

@@ -189,6 +189,11 @@
       "group": "firmware-export",
       "note": "Download-only 1.0.11 export panel logic: bounded, link-safe enumeration, SHA-256/MD5 checked against shasum and md5, re-zip only into the addon folder, sources unchanged."
     },
+    "tests/StockTeleprompterSendTests.m": {
+      "status": "run",
+      "group": "stock-teleprompter",
+      "note": "D5: the stock teleprompter rayneonet_sendFile is allow-listed on the 1.0.7 flash host and the 1.0.11 download-only host only in its exact shape (three string keys, a regular non-ZIP file of 1 byte to 1 MiB at <container>/Library/Application Support/user_<digits>/teleprompter/<UUID> or <container>/Documents/user_<digits>/teleprompter/<UUID>, no symlink, taskId = UUID, OTA stage 0). Built in the same four TIO_* flag sets as ios1011-guard; every build must print the same sweep digest."
+    },
     "tests/Host1011GuardTests.m": {
       "status": "run",
       "group": "ios1011-guard",
