@@ -1,6 +1,43 @@
 # TurboIO firmware (single tree; current release label in `RELEASE`)
 
-This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg8`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). The restructure kept ZIP8 byte-identical with a one-off `identityCarryOver` for `build.py`; the first TMG9 repin (`tmg9(1)`) removed it, and `build.py` is hashed live again. The TMG8 sections below keep their text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`).
+This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg9`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). The restructure kept ZIP8 byte-identical with a one-off `identityCarryOver` for `build.py`; the first TMG9 repin (`tmg9(1)`) removed it, and `build.py` is hashed live again. The TMG8 sections below keep their text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`). Since TMG10 the tree is built on stock 1.0.5.12 (`stockBase` in `build-inputs.json`); the TMG9 and older sections describe 1.0.5.5 addresses and offsets.
+
+## TMG10 candidate: TMG9 rebased onto stock Strix OS 1.0.5.12
+
+**CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance. The phone side is not ported yet: C13 cannot flash ZIP10, and the phone pins (`FirmwarePins.h`, `firmware-pins.json`, `ExperimentalOTA*.m`) still name ZIP9 and stock 1.0.5.5.**
+
+TMG10 is TMG9 with no feature change, built on stock 1.0.5.12 (`firmware-research/strix-1.0.5.12/stock/`, ZIP `b7bfd3cc…4133`, AP `af701a65…13ae`) instead of 1.0.5.5. Every stock address moved, by 22 different amounts, so nothing was rebased by hand:
+
+- **The table.** `baseline/rebase-1.0.5.5-to-1.0.5.12.json` holds both columns for the 153 link.ld callees (149 moved; memcpy, memset, strcmp and strlen are in the copy region and stay; the strcmp veneer `ce_ext_10941968` moves and still targets 0x100109), the 25 edits, 14 literal values at 34 sites, the 11 stock ABI ranges, the module VA (0x1086fec0 → 0x10889684) and the per-base stock pins. `tools/rebase_derive.py` generated it from the decomp's static study (inputs and hashes in its `provenance`) and the TMG9 tree, and re-checked every value against both stock images; it refuses to write the table if a check fails. Each row lists the checks it passed (see the script's docstring for what each means).
+- **Applying it.** `tools/rebase_apply.py --write --to 1.0.5.12` swaps the columns (`--to 1.0.5.5` swaps them back; a round trip restores the tree exactly). `--check [--stock ZIP]` fails on a tree that is not wholly on one base, on any stale address of the other base anywhere under `src/`, `include/` and `tests/`, and, with the stock ZIP, on a patch site, trampoline prologue, registration literal or string that does not match it. `build.py` runs the same check before it compiles.
+- **Thumb bit.** Values are written exactly as the tree uses them: called or stored code pointers are odd (link.ld, the shim pointer, the render dispatch values), patch sites are even, RAM and `.data` addresses are plain byte addresses (a string may start at an odd address). The swap keeps the bit; `--check` asserts it.
+- **The 16 references past a Ghidra body end** (15 extrapolated by the matcher, plus `tgr_intercept`) all pass the masked 16-byte window and a unique masked signature at the new address (`rebase_derive.py` requires both for these rows). `tgr_intercept` uses the study's corrected 0x1062c439, not the matcher's 0x10625941, which is a different function.
+- **The two re-recorded edits** (the 284-byte menu allocation at 0x10683278 and the tail initialiser at 0x106832a2, both in the routine after FUN_10666c34) get `before` = the old pattern with its BL re-encoded to the moved callee (port_stock_new, stock_ctor); the result equals the 1.0.5.12 bytes. The routine at 0x10666ca4 was reviewed by hand against 0x10683240: same instructions, registers and struct offsets (+0x10, +0xe8/+0xec, the 0xfc allocation); the differences are three `movw r0,#0xb18` → `#0xc18` (an ap-01 trace event ID, +0x100, handed to the trace check and the log helper), BL displacements, and literal-pool words (two log strings, and the index-listener pointer, +116120 like the rest of the block). Neither edit touches an event ID, so both keep their meaning. The full reasoning is in the `tmg10(3)` commit message.
+- **RAM and data addresses.** Launcher global 0x19971594 → 0x19989694 (11 source sites, 8 of them in built files, plus a host-test pattern), file-callback struct 0x196aea48 → 0x196c6988 and the stream registration target 0x10569ba5 → 0x10583605 (decomp votes, and the literals the stock registration at the new edit site actually loads), display unit 0x184d4440 → 0x184ec384 (113 of 120 votes, and the field check below), and the four coexist.S strings (the same bytes at the new `.data` address).
+- **native_light** (`current` 0x184ec540, `peak` 0x184ec544) was an inference in the study (no literal loads them). It is now checked by a second method: they are display unit + 0x1bc and + 0x1c0, and the same stock ldr/str sites (around 0x104a1800 in 1.0.5.5, 0x104b9d24 in 1.0.5.12) read and write those two offsets from the old base literal in the old image and from the new base literal at their matcher partners in the new one. The study's neighbour shift (+0x17f44) gives the same values. The provider therefore stays enabled on 1.0.5.12. Its `#error` now accepts either hash-pinned profile.
+- **Section 3.3 constants.** The two render_idle.c dispatch values (0x10428d89 → 0x10440cf1, 0x105335ff → 0x1054c447) pass window, unique signature and literal votes; the two addresses quoted in comments (align_pointer_cb in tio_bank.h and four test comments, the recorder helper in app_files_native.c) are rewritten the same way so no stale address is left.
+- **The 11 stock ABI ranges** (`tests/stock_abi_test.py`) are paired range by range: equal bytes except moved branch targets that land on the matcher partner (one range also ends with a code-pointer literal that moves with its target), with the new base's hash in the table. The test picks the column of the tree's `stockBase`, and compares the 25 edits with the TMG3 set moved through the same table.
+
+**Build changes.** `build-inputs.json` gains `stockBase` and `stockMembers` (all 15 stock payloads). `build.py` derives the archive name (`StrixOS-1.0.5.12-TurboIO-TMG10-…`), the audit `baseline`, `-DTD_STOCK_10512=1` (`-DTD_STOCK_1055=0`) and the SW_VER/BUILD_VER every core must report from `stockBase`. The 25 edits, the 14 untouched payloads, the 7 startup descriptors and the fixed ZIP date are unchanged. **Never mixed cores:** the audit refuses a stock set or candidate whose AP, APC1 and BTH do not all report `Strix OS 1.0.5` build 12 with one REV_INFO commit (55bc20b0-dirty on 1.0.5.12), and checks every non-AP member against `stockMembers`; a 1.0.5.12 AP can never ship with 1.0.5.5 APC1/BTH (their A2DP RPC changed). **Room:** the AP must stay below 9,600,000 bytes, which leaves 2,286,964 bytes for the module on 1.0.5.12 (2,391,352 on 1.0.5.5); the build asserts the module fits and both the build and the audit report `moduleRoom`, `moduleHeadroom` and `partitionHeadroom`. **Toolchain:** TMG10 is pinned to Homebrew LLVM/LLD 23.1.5 (owner-approved for TMG10 only); TMG9 stays on 23.1.4.
+
+**TMG9 survives at its tag only.** The build identity hashes `build.py` and every source, so no TMG9 build from this tree can be byte-identical to ZIP9; a 1.0.5.5 build from here (`rebase_apply.py --write --to 1.0.5.5`, then `--repin` with 23.1.4) would be a different, never-released ZIP. ZIP9 is rebuilt from the tag: `git archive fw/tmg9 firmware firmware-research/strix-1.0.5.5/stock | tar -x -C DIR`, then `cd DIR && python3 -I firmware/build.py --stock firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip --llvm-bin <LLVM 23.1.4 bin> --out OUT` gives `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` (checked on 2026-11-08 with `$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`).
+
+**Identity.** Caps and the build name are TMG9's (TD_BUILD_TMG6, `TD_CAPS_TMG9`); the status `build` field (build-identity sha256) is `4e4b4c1380dee220bbaa850a064d1fe9e59eece32f5148d25ea352ca51ac37df`.
+
+**Tests.** `tests/stock_base_test.py` (new): labels and defines come from `stockBase`, mixed cores are refused (each of AP, APC1, BTH from the other base, and a BTH with another REV_INFO), the members are pinned, and one stale address makes the tree "on neither base". Not yet registered in the phone `test.py` (phone-side step). The phone `test.py` hard-codes the 1.0.5.5 stock ZIP for its audit and its `pins` group checks ZIP9, so a full `test.py` or `turbo-gate.sh` (without `--only-build`) fails at the first audit until the phone port; its firmware groups (`tmg4-host`, `tmg9-wheel-hook`, `tmg9-detent`, `shared-sources`) pass against ZIP10 and the 1.0.5.12 stock.
+
+**What a static rebase cannot show (device checks, all open).** Everything in the TMG9 checklist, plus: screen-on paths under heat (the display manager gained a panel temperature check and a 10 s VOM settle); the look of labels made through `native_label_create` (1.0.5.12 adds a line-breaking flag TMG does not set); notification dots over the changed ANCS code; heap headroom (the stock 'Umem' region is about 96 KiB smaller); the runtime status `lv` metrics from native_light look plausible. Trace/event IDs ≥ 0x700 moved by +0x100 in ap-01; a hex grep of `src/` found no TMG code that hard-codes one. No 1.0.5.12 rollback pair exists yet; it is defined with the phone port.
+
+### ZIP10 candidate (reproducible, pinned)
+
+Built twice from clean output directories with LLVM/LLD 23.1.5; the two ZIPs are byte-identical, and a build from `git archive` of the commit gives the same bytes. Not copied anywhere outside the build output; rebuild it with the commands in "Rebuild and audit".
+
+| Payload | Bytes | SHA-256 | MD5 |
+| --- | ---: | --- | --- |
+| ZIP | 8846362 | `97657db0d8835b9c43f692cd095e5ca44743d35c7e9ad8473bf29dafdb8ccdd2` | `0af84f9202eab3d4f366c086c74c8097` |
+| AP | 7473032 | `0b2a826e260299ec1f27e96859d41a6ef49e981f957af4becf48544ce100bc0c` | `3c51f74a47d7eed5cd322d95f1b433b7` |
+
+Module 159,996 bytes at 0x10889684 (TMG9: 160,000); 2,126,968 bytes left below the AP cap, 2,947,192 below the partition limit. `build.py --audit` passes: baseline 1.0.5.12, cores build 12 / REV_INFO 55bc20b0-dirty, 25 patch sites, 14 unchanged stock payloads, 7 startup descriptors.
 
 ## TMG9 candidate (Round 3)
 
@@ -300,19 +337,20 @@ POSE2 keeps the existing14-byte body, bounded prediction and timing. The phone s
 
 ## Rebuild and audit
 
-Use the already-provisioned LLVM23.1.4 toolchain. No package manager is required.
+Use the already-provisioned toolchain pinned in `build-inputs.json` (`toolchain`): LLVM/LLD 23.1.5 for TMG10 (`$TURBO_INPUTS/toolchain/llvm-bin`), 23.1.4 for TMG9 and older tags (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`). No package manager is required. The stock ZIP follows `stockBase`.
 
 ```sh
 R=$(git rev-parse --show-toplevel)
 FW=$R/firmware
-ZIP=StrixOS-1.0.5.5-TurboIO-$(cat "$FW/RELEASE")-CANDIDATE-NOT-APPROVED.zip
-IN=$HOME/projects/personal/turboio-inputs
-TC=$IN/toolchain/llvm-bin
-STOCK=$R/firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip
+BASE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["stockBase"])' "$FW/build-inputs.json")
+ZIP=StrixOS-$BASE-TurboIO-$(cat "$FW/RELEASE")-CANDIDATE-NOT-APPROVED.zip
+TC=$TURBO_INPUTS/toolchain/llvm-bin
+STOCK=$R/firmware-research/strix-$BASE/stock/Strix-OS-$BASE-original.zip
 D=$(mktemp -d)
+python3 -I "$FW/tools/rebase_apply.py" --check --stock "$STOCK"
 python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
 python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP"
-python3 -I "$FW/tools/phone_pins.py" --zip "$D/build/$ZIP" --check "$R/official-addon/ios107-edition"
+python3 -I "$FW/tools/phone_pins.py" --zip "$D/build/$ZIP" --check "$R/official-addon/ios107-edition"   # fails for TMG10 until the phone port
 ```
 
 The shared immutable animation is read from `baseline/animation-frames.l8` (provenance in `baseline/README.md`), SHA-256`f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d`; no duplicate binary asset is tracked. Normal builds enforce all pins. `--repin` is a deliberate developer operation, not a runtime update mechanism.
