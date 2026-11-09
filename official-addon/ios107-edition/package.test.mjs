@@ -144,7 +144,9 @@ test('Apple AI wrapper leaves flag-off package argv unchanged',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
  assert.match(wrapper,/apple_args=\(\)/);
  assert.match(wrapper,/if \[\[ -n "\$apple_ai_out" \]\]/);
- assert.match(wrapper,/TIO_APPLE_AI=1 .*bash "\$ED\/build.sh" embedded/);
+ // The Apple AI flag set feeds the one fresh addon build every package run makes.
+ assert.match(wrapper,/build_flags=\(TIO_APPLE_AI=1 [^)]*\)/);
+ assert.match(wrapper,/env "\$\{build_flags\[@\]\}" bash "\$ED\/build.sh" embedded/);
  assert.match(wrapper,/python3 "\$ED\/apple-ai\/build.py" --out "\$apple_ai_out"/);
  const empty=appleExec('bash',['-c','apple_args=(); set -- existing ${apple_args[@]+"${apple_args[@]}"}; printf "%s\\n" "$@"'],{encoding:'utf8'});
  assert.equal(empty,'existing\n');
@@ -393,6 +395,80 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  const check=install.indexOf('NSString *failure=TIOChannelHookTargetFailure(bridge,engine);if(failure){InstallFailure=failure;return NO;}');
  assert.ok(check>0&&check<install.indexOf('method_setImplementation('));
  assert.doesNotMatch(hook,/static BOOL Sign\(/);
+});
+// Wire log port: the hook order is fixed. The stock-traffic evidence must read the original result block
+// (its origin check looks at where the block's code lives; the recorder's wrapper lives in the addon), the
+// recorder wraps before the guard so a blocked call is recorded with the guard's reply, and the guard
+// decides before the prior method runs.
+test('MethodHook order: hop, stock evidence, wire log, guard, prior method',()=>{
+ const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
+ const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
+ const at=s=>{const i=body.indexOf(s);assert.ok(i>0,s);assert.equal(body.indexOf(s,i+1),-1,'once: '+s);return i;};
+ const claim=at('NSString *wireChannel=TIOWireLogClaimBridgeCall();');
+ const hop=at('dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;');
+ const evidence=at('RecordStockEvidence(call,result);');
+ const wrap=at('result=TIOWireLogWrapBridgeResult(wireChannel,call,result);');
+ const guard=at('@try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}');
+ const forward=at('if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}');
+ const noted=at('if(!otaBlocked&&teleprompter)TIOWireLogBridgeForwarded(result,call);');
+ const blocked=at('if(otaBlocked){if(result)((void(^)(id))result)(');
+ const prior=at('PriorMethod(self,cmd,call,result);');
+ assert.ok(claim<hop&&hop<evidence&&evidence<wrap&&wrap<guard&&guard<forward&&forward<noted&&noted<blocked&&blocked<prior);
+ // Nothing replaces the result block before the evidence reads it, and only the recorder replaces it at all.
+ assert.equal([...body.matchAll(/\bresult=/g)].length,1);
+ assert.equal([...body.matchAll(/\bcall=/g)].length,1);
+ // Every wire log line in the shared sources is compiled only with TIO_WIRE_LOG, so the default build has none of it.
+ for(const f of ['GlassesChannelHook.m','Addon.m','ResearchCatalog.m']){
+  const stack=[];let seen=0;
+  for(const line of src(f).split('\n')){
+   if(/^#if/.test(line))stack.push(line.trim());
+   else if(/^#el/.test(line))stack[stack.length-1]='#else';
+   else if(/^#endif/.test(line))stack.pop();
+   else if(/TIOWireLog|WireLog(UI)?\.h|"wireLog"/.test(line)){seen++;assert.ok(stack.includes('#if TIO_WIRE_LOG'),f+': '+line);}
+  }
+  assert.ok(seen>0,f);
+ }
+ // The recorder never reads non-plain objects and never changes what it forwards.
+ const wire=src('WireLog.m');
+ assert.match(wire,/if \(!WLPlain\(v\)\) return WLClassOnly\(v\);/);
+ assert.match(wire,/original\(value\); \/\/ first and unchanged/);
+ assert.doesNotMatch(wire,/TIOOTAFlash|TIOStockTeleprompter|PriorMethod|sendOnChannel:message:binaryReply:/);
+});
+// A package run builds the addon itself (both hosts), so a stale build/mapkit dylib is never packaged.
+test('turbo-package.sh builds the addon fresh with the requested flags before signing',()=>{
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ const pos=s=>{const i=wrapper.indexOf(s);assert.ok(i>0,s);return i;};
+ const scrub=pos('for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done');
+ const remove=pos('rm -f "$ADDON"\n[[ ! -e "$ADDON" ]] ||');
+ const build=pos('run_logged addon-build env "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub');
+ const built=pos("[[ -f \"$ADDON\" ]] || { echo 'PACKAGE FAIL: the addon was not built in this run' >&2; exit 1; }");
+ const check=pos('run_logged addon-check addon_check');
+ const buildOnly=pos('if [[ $build_only == 1 ]]; then');
+ const sign=pos('run_logged signing-preflight codesign');
+ const guard1011=pos('run_logged download-only-guard download_only_guard "$ADDON"\n# Download-only');
+ assert.ok(scrub<remove&&remove<build&&build<built&&built<check&&check<buildOnly&&buildOnly<sign&&sign<guard1011);
+ // The fresh build is not inside a host branch: it runs for 1.0.7 and 1.0.11 alike.
+ assert.ok(build<wrapper.indexOf('if [[ $host == 1011 ]]; then\n  [[ -f "$TURBO_PROFILE"'));
+ assert.equal([...wrapper.matchAll(/build\.sh/g)].length,1);
+ // Flag sets: the default is the gate's own build, --apple-ai keeps its earlier set, --wire-log only adds TIO_WIRE_LOG=1.
+ const gateFlags=gate.match(/build_stage\(\) \{\n  cd "\$ED"\n  ([^\n]*)\\\n    ([^\n]*)\\\n    ([^\n]*) bash build\.sh embedded/);assert.ok(gateFlags);
+ const flags=t=>t.trim().split(/\s+/).filter(x=>x.startsWith('TIO_')).sort();
+ const want=flags(gateFlags.slice(1).join(' '));
+ const defaults=wrapper.match(/else\n  build_flags=\(([^)]*)\)\nfi/);assert.ok(defaults);
+ assert.deepEqual(flags(defaults[1]),want);
+ const apple=wrapper.match(/if \[\[ -n "\$apple_ai_out" \]\]; then\n  build_flags=\(([^)]*)\)/);assert.ok(apple);
+ assert.deepEqual(flags(apple[1]),['TIO_APPLE_AI=1','TIO_CLASSIC_BINDINGS=1','TIO_DISPLAY_FLASH=1','TIO_DISPLAY_PHONE=1','TIO_IMAGE_RX_LAB=1','TIO_MAPKIT_ENABLED=1','TIO_OTA_FLASH_ENABLED=1']);
+ assert.ok(wrapper.includes('[[ $wire_log != 1 ]] || build_flags+=(TIO_WIRE_LOG=1)'));
+ assert.ok(!want.includes('TIO_WIRE_LOG=1'));
+ // The built addon carries the recorder exactly when it was asked for.
+ const addonCheck=wrapper.slice(wrapper.indexOf('addon_check() {'),wrapper.indexOf('run_logged addon-check addon_check'));
+ assert.match(addonCheck,/grep -Eq ' _TIOWireLogStart\$'/);assert.match(addonCheck,/elif grep -q 'WireLog'/);
+ // --build-only stops before the identity is used or an output directory is named.
+ const stop=wrapper.slice(buildOnly,wrapper.indexOf('\nfi\n',buildOnly));
+ assert.match(stop,/exit 0$/);assert.ok(buildOnly<wrapper.indexOf('OUT=$TURBO_INPUTS/signed-'));
+ // The gate's default build must have no recorder at all.
+ assert.match(gate,/if nm "\$addon" \| grep -q 'WireLog'; then echo 'Unexpected wire log symbol in the default build'/);
 });
 // G1: on the download-only host TIOOTAFlashBlockCall delegates before any flag-dependent code.
 test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on no flag',()=>{

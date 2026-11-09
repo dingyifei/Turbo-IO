@@ -9,12 +9,19 @@ apple_ai_out=''
 apple_args=()
 # --host 107 (default): the 1.0.7/230 TMG build. --host 1011: the download-only
 # 1.0.11/259 build (stock App.framework, no firmware, no flashing), from TURBO_APP1011.
+# --wire-log: build the addon with the passive channel recorder (TIO_WIRE_LOG=1).
+# --build-only: build and check the addon as a package run would, then stop before
+# anything touches the signing identity or writes a package.
 host=107
-usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011] <label>'
+wire_log=0
+build_only=0
+usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011] [--wire-log] [--build-only] <label>'
 while [[ $# -gt 1 ]]; do
   case "$1" in
     --apple-ai) [[ -n ${2:-} && -z $apple_ai_out ]] || { echo "$usage" >&2; exit 2; }; apple_ai_out=$2; shift 2 ;;
     --host) [[ ${2:-} == 107 || ${2:-} == 1011 ]] || { echo "$usage" >&2; exit 2; }; host=$2; shift 2 ;;
+    --wire-log) wire_log=1; shift ;;
+    --build-only) build_only=1; shift ;;
     *) echo "$usage" >&2; exit 2 ;;
   esac
 done
@@ -47,31 +54,6 @@ PY
 trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-# Ignore inherited credentials and paths; require the external configuration.
-unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
-[[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'PACKAGE FAIL: missing external package.env' >&2; exit 1; }
-set -a
-source "$TURBO_INPUTS/package.env"
-set +a
-if [[ $host == 1011 ]]; then required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011)
-else required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107); fi
-for name in "${required[@]}"; do
-  [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
-done
-if [[ -n "$apple_ai_out" ]]; then
-  TIO_APPLE_AI=1 TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1 bash "$ED/build.sh" embedded com.rayneo.venus.pub
-  python3 "$ED/apple-ai/build.py" --out "$apple_ai_out"
-  apple_args=(--apple-ai-dylib "$(cd "$apple_ai_out" && pwd)/TurboAppleAI.dylib")
-fi
-ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
-[[ -f "$ADDON" ]] || { echo 'PACKAGE FAIL: missing addon' >&2; exit 1; }
-if [[ $host == 1011 ]]; then
-  [[ -f "$TURBO_PROFILE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
-else
-  [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
-fi
-OUT=$TURBO_INPUTS/signed-$(date +%Y%m%d-%H%M)-$label
-[[ ! -e "$OUT" && ! -L "$OUT" ]] || { echo 'PACKAGE FAIL: output already exists' >&2; exit 1; }
 keychain_error() {
   LC_ALL=C grep -Eiq 'errSecInternalComponent|keychain[^[:cntrl:]]*(locked|is not unlocked)|user interaction is not allowed|interaction with the Security Server is not allowed' "$1"
 }
@@ -104,10 +86,50 @@ PY
     exit 1
   fi
 }
-# The local codesign manual documents that --dryrun uses the identity and
-# normal access checks but discards the signature without writing anything.
-# Probe once because package.mjs deliberately hides child-process stderr.
-run_logged signing-preflight codesign --dryrun --force --sign "$TURBO_SIGN_ID" --timestamp=none "$ADDON"
+# Ignore inherited credentials and paths; require the external configuration.
+unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
+# Build flags come only from the options below, never from the caller's environment.
+for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done
+[[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'PACKAGE FAIL: missing external package.env' >&2; exit 1; }
+set -a
+source "$TURBO_INPUTS/package.env"
+set +a
+if [[ $host == 1011 ]]; then required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011)
+else required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107); fi
+for name in "${required[@]}"; do
+  [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
+done
+# Every package run builds the addon itself, for both hosts, so a dylib left over
+# from an earlier build (other flags, other commit) is never packaged. The flag
+# sets are the ones these builds already used: the gate's set by default, the
+# Apple AI set with --apple-ai. --wire-log adds TIO_WIRE_LOG=1 to either.
+if [[ -n "$apple_ai_out" ]]; then
+  build_flags=(TIO_APPLE_AI=1 TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1)
+else
+  build_flags=(TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_IMAGE_RX_WIDE=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1)
+fi
+[[ $wire_log != 1 ]] || build_flags+=(TIO_WIRE_LOG=1)
+ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
+rm -f "$ADDON"
+[[ ! -e "$ADDON" ]] || { echo 'PACKAGE FAIL: cannot remove the previous addon build' >&2; exit 1; }
+printf '%s\n' "${build_flags[@]}" >"$LOG_DIR/addon-flags.txt"
+run_logged addon-build env "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub
+[[ -f "$ADDON" ]] || { echo 'PACKAGE FAIL: the addon was not built in this run' >&2; exit 1; }
+addon_check() {
+  local symbols
+  symbols=$(nm "$ADDON")
+  if [[ $wire_log == 1 ]]; then
+    grep -Eq ' _TIOWireLogStart$' <<<"$symbols" || { echo 'wire log requested but missing from the addon' >&2; return 1; }
+  elif grep -q 'WireLog' <<<"$symbols"; then
+    echo 'wire log symbols in a build without --wire-log' >&2; return 1
+  fi
+  shasum -a 256 "$ADDON" | cut -d' ' -f1
+}
+run_logged addon-check addon_check
+if [[ -n "$apple_ai_out" ]]; then
+  run_logged apple-ai-build python3 "$ED/apple-ai/build.py" --out "$apple_ai_out"
+  apple_args=(--apple-ai-dylib "$(cd "$apple_ai_out" && pwd)/TurboAppleAI.dylib")
+fi
 download_only_guard() {
   local symbols name
   symbols=$(nm -g "$1")
@@ -119,6 +141,24 @@ download_only_guard() {
   done
   grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$1" || { echo 'missing 1.0.11 guard marker' >&2; return 1; }
 }
+if [[ $build_only == 1 ]]; then
+  [[ $host != 1011 ]] || run_logged download-only-guard download_only_guard "$ADDON"
+  status=PASS
+  active=complete
+  printf 'built %s (%s)\n' "$ADDON" "$(cat "$LOG_DIR/addon-check.log")"
+  exit 0
+fi
+if [[ $host == 1011 ]]; then
+  [[ -f "$TURBO_PROFILE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+else
+  [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+fi
+OUT=$TURBO_INPUTS/signed-$(date +%Y%m%d-%H%M)-$label
+[[ ! -e "$OUT" && ! -L "$OUT" ]] || { echo 'PACKAGE FAIL: output already exists' >&2; exit 1; }
+# The local codesign manual documents that --dryrun uses the identity and
+# normal access checks but discards the signature without writing anything.
+# Probe once because package.mjs deliberately hides child-process stderr.
+run_logged signing-preflight codesign --dryrun --force --sign "$TURBO_SIGN_ID" --timestamp=none "$ADDON"
 if [[ $host == 1011 ]]; then
 # G1/G2: fail closed unless the addon carries the flag-independent 1.0.11 guard
 # (package.mjs repeats this check with the same symbol list before signing).

@@ -111,6 +111,9 @@ symbols_stage() {
   grep -Fq 'TIOMenuLayoutController' "$GATE/symbols.txt"
   grep -Fq 'OBJC_CLASS_$_TIORoadMap' "$GATE/symbols.txt"
   if grep -Fq 'AMapNavi' "$GATE/symbols.txt"; then echo 'Unexpected AMapNavi symbol' >&2; return 1; fi
+  # The default build carries no wire log: its recorder exists only in TIO_WIRE_LOG=1 builds.
+  if nm "$addon" | grep -q 'WireLog'; then echo 'Unexpected wire log symbol in the default build' >&2; return 1; fi
+  if grep -aFq 'turbo-wirelog' "$addon"; then echo 'Unexpected wire log string in the default build' >&2; return 1; fi
   marker_count=$(grep -a -c 'display extension=APP107-OTA-PHONE-01;' "$addon" || true)
   [[ $marker_count -ge 1 ]] || { echo 'Missing APP107 display marker' >&2; return 1; }
   # G1/G2: the flag-independent 1.0.11 download-only guard is in every build.
