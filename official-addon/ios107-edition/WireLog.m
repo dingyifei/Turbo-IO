@@ -8,13 +8,14 @@
 #import <sys/stat.h>
 #import <math.h>
 #import <errno.h>
+#import <CommonCrypto/CommonDigest.h>
 
 // ============================================================ constants and state
 static const unsigned long long kDefaultRotate = 20ull << 20;   // 20 MB per file
 static const unsigned long long kDefaultCap = 200ull << 20;     // 200 MB in total
 static const NSUInteger kFlushBytes = 64 * 1024;
 static const NSUInteger kMaxPending = 8u << 20;                  // queued estimate; beyond it records are dropped and counted
-static const NSUInteger kHexCap = 65536;
+static const NSUInteger kHeadBytes = 32;                         // bytes kept as hex; the rest only as length and SHA-256
 static const NSUInteger kItemCap = 4096;
 static const int kDepthCap = 16;
 static NSString *const kAutoStartKey = @"TIOWireLogAutoStart";
@@ -68,6 +69,12 @@ static NSSet<NSString *> *HardWords(void) {
     });
     return w;
 }
+// Words that name a device or person identifier: sn, serial(Number), mac(Address), uuid.
+static NSSet<NSString *> *IdentifierWords(void) {
+    static NSSet *w; static dispatch_once_t o;
+    dispatch_once(&o, ^{ w = [NSSet setWithArray:@[@"sn", @"serial", @"mac", @"uuid", @"udid", @"imei"]]; });
+    return w;
+}
 BOOL TIOWireLogKeyIsSensitive(NSString *key) {
     if (![key isKindOfClass:NSString.class] || !key.length) return NO;
     static NSArray<NSString *> *suffixes; static NSSet<NSString *> *benignKey; static dispatch_once_t o;
@@ -79,9 +86,11 @@ BOOL TIOWireLogKeyIsSensitive(NSString *key) {
     NSArray<NSString *> *words = Words(key);
     NSMutableString *joined = [NSMutableString new];
     for (NSString *w in words) {
-        if ([HardWords() containsObject:w]) return YES;
+        if ([HardWords() containsObject:w] || [IdentifierWords() containsObject:w]) return YES;
         [joined appendString:w];
     }
+    // Device, account and user identifiers: deviceId, device_id, accountId, userId, bindDeviceIdList.
+    for (NSString *t in @[@"deviceid", @"accountid", @"userid"]) if ([joined containsString:t]) return YES;
     // apiKey, sessionKey, secret_key: "key" closing a longer name. keyCode, keyName and keyboard are left alone.
     NSString *last = words.lastObject;
     if (words.count >= 2 && ([last isEqualToString:@"key"] || [last isEqualToString:@"keys"])) return YES;
@@ -114,7 +123,44 @@ static NSUInteger ValueLength(id v) {
 
 static id JV(id v, int depth);
 
+// Calling-thread copies of Flutter's typed data and error, made by Snap and encoded by JV on the writer queue.
+@interface TIOWireSnapTyped : NSObject
+@property (nonatomic, copy) NSData *data;
+@property (nonatomic) NSUInteger type;
+@end
+@implementation TIOWireSnapTyped
+@end
+@interface TIOWireSnapError : NSObject
+@property (nonatomic, strong) id code, message, details;
+@end
+@implementation TIOWireSnapError
+@end
+static NSString *TypedName(NSUInteger t) {
+    static NSArray *names; static dispatch_once_t o;
+    dispatch_once(&o, ^{ names = @[@"uint8", @"int32", @"int64", @"float32", @"float64"]; });
+    return t < names.count ? names[t] : @"?";
+}
+
+// The owner's numeric user folder (user_<digits>) and app container UUIDs in paths are masked in every
+// recorded string, whatever its length.
+NSString *TIOWireLogScrubIdentifiers(NSString *s) {
+    if (![s isKindOfClass:NSString.class] || s.length < 6) return s;
+    BOOL user = [s rangeOfString:@"user_"].location != NSNotFound;
+    BOOL container = [s rangeOfString:@"/Application/"].location != NSNotFound || [s rangeOfString:@"/AppGroup/"].location != NSNotFound || [s rangeOfString:@"/PluginKitPlugin/"].location != NSNotFound;
+    if (!user && !container) return s;
+    static NSRegularExpression *userRe, *containerRe; static dispatch_once_t o;
+    dispatch_once(&o, ^{
+        userRe = [NSRegularExpression regularExpressionWithPattern:@"(?<![A-Za-z0-9])user_[0-9]+" options:0 error:nil];
+        containerRe = [NSRegularExpression regularExpressionWithPattern:@"(/(?:Application|AppGroup|PluginKitPlugin)/)[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" options:0 error:nil];
+    });
+    NSString *out = s;
+    if (user) out = [userRe stringByReplacingMatchesInString:out options:0 range:NSMakeRange(0, out.length) withTemplate:@"user_<n>"];
+    if (container) out = [containerRe stringByReplacingMatchesInString:out options:0 range:NSMakeRange(0, out.length) withTemplate:@"$1<uuid>"];
+    return out;
+}
+
 static NSString *RedactStringAt(NSString *s, int depth) {
+    s = TIOWireLogScrubIdentifiers(s);
     if (s.length < 12 || s.length > 262144) return s;
     static NSRegularExpression *bearer, *jwt, *pair; static dispatch_once_t o;
     dispatch_once(&o, ^{
@@ -122,7 +168,7 @@ static NSString *RedactStringAt(NSString *s, int depth) {
         jwt = [NSRegularExpression regularExpressionWithPattern:@"\\beyJ[A-Za-z0-9_-]{6,}\\.[A-Za-z0-9_-]{6,}\\.[A-Za-z0-9_-]*" options:0 error:nil];
         // name=value, name: value, "name":"value" and the same with escaped quotes, for names that contain a credential word.
         pair = [NSRegularExpression regularExpressionWithPattern:
-            @"([A-Za-z0-9_-]*(?:token|secret|password|passwd|cookie|signature|credential|ticket|authorization|authcode|api_?key|app_?key|access_?key|secret_?key)[A-Za-z0-9_-]*)(\\\\?\"?\\s*[:=]\\s*\\\\?\"?)(?!<redacted)([^\"&\\s,}\\\\\\]]{4,})"
+            @"([A-Za-z0-9_-]*(?:token|secret|password|passwd|cookie|signature|credential|ticket|authorization|authcode|api_?key|app_?key|access_?key|secret_?key|device_?id|account_?id|user_?id|serial(?:_?number)?|mac_?address|uuid)[A-Za-z0-9_-]*)(\\\\?\"?\\s*[:=]\\s*\\\\?\"?)(?!<redacted)([^\"&\\s,}\\\\\\]]{4,})"
             options:NSRegularExpressionCaseInsensitive error:nil];
     });
     NSString *out = s;
@@ -159,7 +205,7 @@ static id KVC(id o, NSString *k) { @try { return [o valueForKey:k]; } @catch (__
 
 static NSString *Hex(NSData *d, BOOL *truncated) {
     static const char digits[] = "0123456789abcdef";
-    NSUInteger n = MIN(d.length, kHexCap);
+    NSUInteger n = MIN(d.length, kHeadBytes);
     *truncated = d.length > n;
     char *buf = malloc(n * 2 + 1);
     const uint8_t *p = d.bytes;
@@ -168,9 +214,18 @@ static NSString *Hex(NSData *d, BOOL *truncated) {
     return s ?: @"";
 }
 
+static NSString *SHA256Hex(NSData *d) {
+    unsigned char md[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(d.bytes, (CC_LONG)d.length, md);
+    NSMutableString *out = [NSMutableString stringWithCapacity:2 * CC_SHA256_DIGEST_LENGTH];
+    for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++) [out appendFormat:@"%02x", md[i]];
+    return out;
+}
+
+// Bytes are written as their length, SHA-256 and at most the first 32 bytes as hex ($hex), never in full.
 static NSDictionary *BytesObject(NSData *d, NSString *kind) {
     BOOL t = NO; NSString *hex = Hex(d, &t);
-    NSMutableDictionary *m = [@{@"$hex": hex, @"len": @(d.length)} mutableCopy];
+    NSMutableDictionary *m = [@{@"$hex": hex, @"len": @(d.length), @"sha256": SHA256Hex(d)} mutableCopy];
     if (kind) m[@"kind"] = kind;
     if (t) m[@"truncated"] = @YES;
     return m;
@@ -189,7 +244,9 @@ static id JVDictionary(NSDictionary *d, int depth) {
         if (++count > kItemCap) { out[@"$truncated"] = @(pairs.count - kItemCap); break; }
         id val = p[1];
         BOOL hide = val != NSNull.null && (TIOWireLogKeyIsSensitive(p[0]) || (KeyIsSoft(p[0]) && LooksLikeCredential(val)));
-        out[p[0]] = hide ? RedactedMarker(ValueLength(val)) : JV(val, depth + 1);
+        NSString *outKey = TIOWireLogScrubIdentifiers(p[0]);
+        if (out[outKey]) outKey = [NSString stringWithFormat:@"%@#%lu", outKey, (unsigned long)count];
+        out[outKey] = hide ? RedactedMarker(ValueLength(val)) : JV(val, depth + 1);
     }
     return out;
 }
@@ -216,13 +273,19 @@ static id JV(id v, int depth) {
         return out;
     }
     if ([v isKindOfClass:NSDate.class]) return @{@"$date": @([(NSDate *)v timeIntervalSince1970])};
+    if ([v isKindOfClass:TIOWireSnapTyped.class]) {
+        TIOWireSnapTyped *t = v;
+        return BytesObject(t.data, [@"typed:" stringByAppendingString:TypedName(t.type)]);
+    }
+    if ([v isKindOfClass:TIOWireSnapError.class]) {
+        TIOWireSnapError *e = v;
+        return @{@"$error": @{@"code": JV(e.code, depth + 1), @"message": JV(e.message, depth + 1), @"details": JV(e.details, depth + 1)}};
+    }
     NSString *cls = NSStringFromClass([v class]);
     if ([cls isEqualToString:@"FlutterStandardTypedData"]) {
         id data = KVC(v, @"data"), type = KVC(v, @"type");
-        static NSArray *names; static dispatch_once_t o;
-        dispatch_once(&o, ^{ names = @[@"uint8", @"int32", @"int64", @"float32", @"float64"]; });
         NSUInteger t = [type isKindOfClass:NSNumber.class] ? [type unsignedIntegerValue] : NSNotFound;
-        if ([data isKindOfClass:NSData.class]) return BytesObject(data, [@"typed:" stringByAppendingString:t < names.count ? names[t] : @"?"]);
+        if ([data isKindOfClass:NSData.class]) return BytesObject(data, [@"typed:" stringByAppendingString:TypedName(t)]);
     }
     if ([cls isEqualToString:@"FlutterError"])
         return @{@"$error": @{@"code": JV(KVC(v, @"code"), depth + 1), @"message": JV(KVC(v, @"message"), depth + 1), @"details": JV(KVC(v, @"details"), depth + 1)}};
@@ -474,6 +537,8 @@ static BOOL OpenFile(void) {
     if (!wDir) wDir = TIOWireLogDirectory();
     if (!wBuf) wBuf = [NSMutableData new];
     [NSFileManager.defaultManager createDirectoryAtURL:wDir withIntermediateDirectories:YES attributes:nil error:nil];
+    // Kept out of iCloud and computer backups; the in-app export shares the files directly.
+    [wDir setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
     if (!wName) wName = Formatter(@"yyyyMMdd'T'HHmmss.SSS'Z'");
     for (NSString *n in [NSFileManager.defaultManager contentsOfDirectoryAtPath:wDir.path error:nil] ?: @[]) {
         if (![n hasPrefix:@"wirelog-"] || ![n hasSuffix:@".jsonl"]) continue;
@@ -709,24 +774,46 @@ static id Snap(id v, NSUInteger *bytes, int depth) {
     if (!v) return nil;
     if (!WLPlain(v)) return WLClassOnly(v);
     if (depth > kDepthCap) return @"<depth limit>";
-    if ([v isKindOfClass:NSString.class]) { *bytes += [(NSString *)v length]; return [v copy]; }
-    if ([v isKindOfClass:NSData.class]) { *bytes += [(NSData *)v length]; return [v copy]; }
+    // Shared leaves: immutable value objects only.
+    if ([v isKindOfClass:NSNumber.class] || v == NSNull.null || [v isKindOfClass:NSDate.class]) return v;
+    if ([v isKindOfClass:NSString.class]) { *bytes += [(NSString *)v length]; return [[NSString alloc] initWithString:v]; }
+    if ([v isKindOfClass:NSData.class]) { *bytes += [(NSData *)v length]; return [[NSData alloc] initWithData:v]; }
     if ([v isKindOfClass:NSDictionary.class]) {
+        // One internal enumeration: no keyed lookups, and a key is checked before anything is sent to it.
         NSMutableDictionary *m = [NSMutableDictionary dictionaryWithCapacity:MIN([(NSDictionary *)v count], kItemCap)];
-        NSUInteger n = 0;
-        for (id k in v) {
-            if (++n > kItemCap) break;
-            id key = WLPlain(k) ? k : [NSString stringWithFormat:@"$key:%s#%lu", class_getName(object_getClass(k)), (unsigned long)n];
-            m[key] = Snap(((NSDictionary *)v)[k], bytes, depth + 1) ?: NSNull.null;
-        }
+        __block NSUInteger n = 0;
+        [(NSDictionary *)v enumerateKeysAndObjectsUsingBlock:^(id k, id val, BOOL *stop) {
+            if (++n > kItemCap) { *stop = YES; return; }
+            id key;
+            if (WLPlain(k) && [k isKindOfClass:NSString.class]) key = [[NSString alloc] initWithString:k];
+            else if (WLPlain(k) && [k isKindOfClass:NSNumber.class]) key = [NSString stringWithFormat:@"%@", k];
+            else key = [NSString stringWithFormat:@"$key:%s#%lu", class_getName(object_getClass(k)), (unsigned long)n];
+            if (m[key]) key = [NSString stringWithFormat:@"%@#%lu", key, (unsigned long)n];
+            m[key] = Snap(val, bytes, depth + 1) ?: NSNull.null;
+        }];
         return m;
     }
-    if ([v isKindOfClass:NSArray.class]) {
-        NSMutableArray *a = [NSMutableArray arrayWithCapacity:MIN([(NSArray *)v count], kItemCap)];
-        for (id e in v) { if (a.count >= kItemCap) break; [a addObject:Snap(e, bytes, depth + 1) ?: NSNull.null]; }
+    if ([v isKindOfClass:NSArray.class] || [v isKindOfClass:NSSet.class] || [v isKindOfClass:NSOrderedSet.class]) {
+        // Sets and ordered sets become arrays, element by element; each element is checked by Snap itself.
+        NSMutableArray *a = [NSMutableArray new];
+        for (id e in (id<NSFastEnumeration>)v) { if (a.count >= kItemCap) break; [a addObject:Snap(e, bytes, depth + 1) ?: NSNull.null]; }
         return a;
     }
-    return v;
+    const char *name = class_getName(object_getClass(v));
+    if (!strcmp(name, "FlutterStandardTypedData")) {
+        id data = KVC(v, @"data"), type = KVC(v, @"type");
+        if (![data isKindOfClass:NSData.class] || !WLPlain(data)) return WLClassOnly(v);
+        TIOWireSnapTyped *t = [TIOWireSnapTyped new];
+        t.data = [[NSData alloc] initWithData:data]; t.type = WLPlain(type) && [type isKindOfClass:NSNumber.class] ? [type unsignedIntegerValue] : NSNotFound;
+        *bytes += t.data.length;
+        return t;
+    }
+    if (!strcmp(name, "FlutterError")) {
+        TIOWireSnapError *e = [TIOWireSnapError new];
+        e.code = Snap(KVC(v, @"code"), bytes, depth + 1); e.message = Snap(KVC(v, @"message"), bytes, depth + 1); e.details = Snap(KVC(v, @"details"), bytes, depth + 1);
+        return e;
+    }
+    return WLClassOnly(v); // any other plain class (NSURL, NSValue, ...) is named, not read
 }
 
 static const void *kBridgeLink = &kBridgeLink;

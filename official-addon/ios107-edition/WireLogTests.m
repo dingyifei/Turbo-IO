@@ -1,5 +1,11 @@
 #import "WireLog.h"
+#import <CommonCrypto/CommonDigest.h>
 #include <assert.h>
+static NSString *SHA(NSData *d) {
+    unsigned char md[CC_SHA256_DIGEST_LENGTH]; CC_SHA256(d.bytes, (CC_LONG)d.length, md);
+    NSMutableString *s = [NSMutableString new]; for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++) [s appendFormat:@"%02x", md[i]];
+    return s;
+}
 
 // Stand-ins for the Flutter classes the recorder recognises by name.
 @interface FlutterStandardTypedData : NSObject
@@ -35,6 +41,16 @@ static NSUInteger ProxyMessages;
 + (instancetype)make { return [CountingProxy alloc]; }
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)sel { ProxyMessages++; return [NSObject instanceMethodSignatureForSelector:@selector(description)]; }
 - (void)forwardInvocation:(NSInvocation *)inv { ProxyMessages++; __unsafe_unretained NSString *r = @"proxy"; [inv setReturnValue:&r]; }
+@end
+// A dictionary key (or set element) that counts every message the recorder could send it.
+static NSUInteger KeyMessages;
+@interface CountingKey : NSObject <NSCopying>
+@end
+@implementation CountingKey
+- (NSUInteger)hash { KeyMessages++; return 7; }
+- (BOOL)isEqual:(id)o { KeyMessages++; return o == self; }
+- (id)copyWithZone:(NSZone *)z { KeyMessages++; return self; }
+- (NSString *)description { KeyMessages++; return @"key"; }
 @end
 // A dictionary subclass that counts reads.
 static NSUInteger SubclassReads;
@@ -107,10 +123,26 @@ static void TestRedaction(void) {
         assert(TIOWireLogKeyIsSensitive(k));
     // False hits that must stay readable: glasses business fields.
     for (NSString *k in @[@"businessId", @"customId", @"keyboard", @"monkey", @"design", @"signal", @"assign", @"author", @"tokenizer",
-                          @"eventType", @"deviceId", @"payload", @"message", @"taskId", @"fileName", @"cmd", @"data", @"value", @"mode", @"turkey", @"ticketing",
+                          @"eventType", @"payload", @"message", @"taskId", @"fileName", @"cmd", @"data", @"value", @"mode", @"turkey", @"ticketing",
                           @"key", @"keys", @"session", @"sign", @"keyCode", @"keyName", @"sessionId", @"hotkey", @"hockey"])
         assert(!TIOWireLogKeyIsSensitive(k));
     assert(!TIOWireLogKeyIsSensitive(@"") && !TIOWireLogKeyIsSensitive(nil));
+    // Device, account and user identifiers, any case or separator.
+    for (NSString *k in @[@"deviceId", @"DEVICE_ID", @"device_id", @"peerDeviceId", @"bindDeviceIdList", @"sn", @"SN", @"deviceSn", @"serial", @"serialNumber",
+                          @"mac", @"macAddress", @"MAC_ADDRESS", @"uuid", @"UUID", @"deviceUUID", @"accountId", @"account_id", @"userId", @"USERID", @"Token"])
+        assert(TIOWireLogKeyIsSensitive(k));
+    for (NSString *k in @[@"machine", @"snapshot", @"serialize", @"businessId", @"taskId", @"sessionId", @"streamId"]) assert(!TIOWireLogKeyIsSensitive(k));
+    NSDictionary *ids = TIOWireLogJSON(@{@"deviceId": @"AA:BB:CC:DD:EE:FF", @"sn": @"R1234", @"businessId": @9, @"q": @"device_id=ABCDEF12&x=1"});
+    assert([ids[@"deviceId"] isEqualToString:@"<redacted len=17>"] && [ids[@"sn"] isEqualToString:@"<redacted len=5>"] && [ids[@"businessId"] isEqual:@9]);
+    assert([ids[@"q"] isEqualToString:@"device_id=<redacted len=8>&x=1"]);
+    // The owner's user folder and app container UUIDs are masked in every string, short or long, and in keys.
+    assert([TIOWireLogScrubIdentifiers(@"user_123") isEqualToString:@"user_<n>"]);
+    assert([TIOWireLogScrubIdentifiers(@"/var/mobile/Containers/Data/Application/0A1B2C3D-4E5F-6789-ABCD-EF0123456789/Documents/user_98765/teleprompter/11111111-2222-3333-4444-555555555555")
+            isEqualToString:@"/var/mobile/Containers/Data/Application/<uuid>/Documents/user_<n>/teleprompter/11111111-2222-3333-4444-555555555555"]);
+    assert([TIOWireLogScrubIdentifiers(@"/private/var/containers/Bundle/Application/0a1b2c3d-4e5f-6789-abcd-ef0123456789/Runner.app") isEqualToString:@"/private/var/containers/Bundle/Application/<uuid>/Runner.app"]);
+    assert([TIOWireLogScrubIdentifiers(@"superuser_1 and user_") isEqualToString:@"superuser_1 and user_"]);
+    NSDictionary *paths = TIOWireLogJSON(@{@"user_42": @"user_42", @"list": @[@"Documents/user_7/x"]});
+    assert([paths[@"user_<n>"] isEqualToString:@"user_<n>"] && [paths[@"list"][0] isEqualToString:@"Documents/user_<n>/x"]);
 
     NSDictionary *j = TIOWireLogJSON(@{@"businessId": @22, @"token": @"abcdef", @"nested": @{@"password": @"hunter2", @"customId": @7, @"list": @[@{@"Authorization": @"Bearer abc"}]},
                                        @"note": @"curl -H 'Authorization: Bearer abcdefghijklmnop' x", @"jwt": @"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2ln",
@@ -177,10 +209,19 @@ static void TestJSON(void) {
     assert(j[@"arr"][1][1][@"y"] == NSNull.null);
     assert([j[@"1"] isEqualToString:@"numeric key"]);
     assert([j[@"date"][@"$date"] isEqual:@5]);
-    // Big blobs are length-capped with the real length kept.
-    NSMutableData *big = [NSMutableData dataWithLength:70000];
+    // Bytes: length, SHA-256 and at most the first 32 bytes as hex.
+    NSMutableData *big = [NSMutableData dataWithLength:70000]; ((uint8_t *)big.mutableBytes)[0] = 0xab;
     NSDictionary *b = TIOWireLogJSON(big);
-    assert([b[@"len"] isEqual:@70000] && [b[@"truncated"] boolValue] && [b[@"$hex"] length] == 131072);
+    assert([b[@"len"] isEqual:@70000] && [b[@"truncated"] boolValue] && [b[@"$hex"] length] == 64 && [b[@"$hex"] hasPrefix:@"ab00"]);
+    assert([b[@"sha256"] isEqualToString:SHA(big)]);
+    NSDictionary *small = TIOWireLogJSON([NSData dataWithBytes:"\x01\x02" length:2]);
+    assert([small[@"$hex"] isEqualToString:@"0102"] && !small[@"truncated"] && [small[@"sha256"] isEqualToString:SHA([NSData dataWithBytes:"\x01\x02" length:2])]);
+    FlutterStandardTypedData *bigTyped = [FlutterStandardTypedData new]; bigTyped.data = big; bigTyped.type = 0;
+    NSDictionary *bt = TIOWireLogJSON(bigTyped);
+    assert([bt[@"$hex"] length] == 64 && [bt[@"len"] isEqual:@70000] && [bt[@"kind"] isEqualToString:@"typed:uint8"] && [bt[@"sha256"] isEqualToString:SHA(big)]);
+    NSMutableData *rawBig = [NSMutableData dataWithLength:100]; memset(rawBig.mutableBytes, 0x80, 100);
+    NSDictionary *rawRec = TIOWireLogDecodeMessage(rawBig, NO);
+    assert([rawRec[@"codec"] isEqualToString:@"raw"] && [rawRec[@"data"][@"$hex"] length] == 64 && [rawRec[@"data"][@"len"] isEqual:@100] && [rawRec[@"data"][@"sha256"] isEqualToString:SHA(rawBig)]);
     // Depth is bounded.
     id deep = @"leaf"; for (int i = 0; i < 40; i++) deep = @[deep];
     assert([NSJSONSerialization dataWithJSONObject:TIOWireLogJSON(deep) options:0 error:nil].length < 400);
@@ -587,6 +628,65 @@ static void TestNewerShapes(void) {
     for (NSUInteger i = 3; i < 6; i++) assert([r[i][@"codec"] isEqualToString:@"raw"] && [r[i][@"data"][@"$hex"] length] > 0);
 }
 
+// Snap copies containers element by element and reads keys only after checking their class.
+static void TestSnapContainers(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    CountingKey *k1 = [CountingKey new], *k2 = [CountingKey new];
+    NSDictionary *byKey = @{k1: @"a", @"plain": @"b", @5: @"five"};
+    NSSet *set = [NSSet setWithObjects:k2, @"s", nil];
+    NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"o1", @"o2"]];
+    NSMutableString *mutableString = [@"before" mutableCopy];
+    KeyMessages = 0;
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_x";
+    call.arguments = @{@"map": byKey, @"set": set, @"ordered": ordered, @"url": [NSURL URLWithString:@"https://example.invalid/"], @"s": mutableString, @"n": @1, @"date": [NSDate dateWithTimeIntervalSince1970:5]};
+    ((void (^)(id))TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(__unused id v) {}))(nil);
+    [mutableString setString:@"after"]; // the snapshot was taken before this
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    assert(KeyMessages == 0);
+    NSDictionary *a = Records(dir)[0][@"arguments"];
+    assert([a[@"map"][@"plain"] isEqualToString:@"b"] && [a[@"map"][@"5"] isEqualToString:@"five"]);
+    BOOL keyMarked = NO; for (NSString *k in a[@"map"]) if ([k hasPrefix:@"$key:CountingKey#"]) keyMarked = YES;
+    assert(keyMarked && [a[@"map"] count] == 3);
+    assert([a[@"set"] isKindOfClass:NSArray.class] && [a[@"set"] count] == 2 && [a[@"set"] containsObject:@"s"]);
+    assert([a[@"ordered"] isEqual:(@[@"o1", @"o2"])]);
+    assert([a[@"url"][@"$class"] length] > 0 && [a[@"url"][@"$unread"] boolValue]);
+    assert([a[@"s"] isEqualToString:@"before"] && [a[@"n"] isEqual:@1] && [a[@"date"][@"$date"] isEqual:@5]);
+}
+
+// Privacy: identifiers in d2n.call and d2n.forwarded, bytes as length + SHA-256 + head, folder out of backups.
+static void TestPrivacy(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    NSString *path = @"/var/mobile/Containers/Data/Application/0A1B2C3D-4E5F-6789-ABCD-EF0123456789/Documents/user_98765/teleprompter/11111111-2222-3333-4444-555555555555";
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendFile";
+    call.arguments = @{@"filePath": path, @"deviceId": @"AA:BB:CC:DD:EE:FF", @"blob": [NSMutableData dataWithLength:40]};
+    id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(__unused id v) {});
+    FlutterMethodCall *checked = [FlutterMethodCall new]; checked.method = @"rayneonet_sendFile"; checked.arguments = @{@"filePath": path, @"taskId": @"11111111-2222-3333-4444-555555555555"};
+    TIOWireLogBridgeForwarded(wrapped, checked);
+    ((void (^)(id))wrapped)(@{@"path": path});
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", Envelope(@{@"eventType": @"x", @"file": @"Documents/user_5/a", @"userId": @"12345678"}));
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *r = Records(dir);
+    assert(r.count == 4);
+    NSString *masked = @"/var/mobile/Containers/Data/Application/<uuid>/Documents/user_<n>/teleprompter/11111111-2222-3333-4444-555555555555";
+    assert([r[0][@"arguments"][@"filePath"] isEqualToString:masked] && [r[0][@"arguments"][@"deviceId"] isEqualToString:@"<redacted len=17>"]);
+    assert([r[0][@"arguments"][@"blob"][@"$hex"] length] == 64 && [r[0][@"arguments"][@"blob"][@"truncated"] boolValue] && [r[0][@"arguments"][@"blob"][@"sha256"] length] == 64);
+    assert([r[1][@"dir"] isEqualToString:@"d2n.forwarded"] && [r[1][@"arguments"][@"filePath"] isEqualToString:masked]);
+    assert([r[2][@"value"][@"path"] isEqualToString:masked]);
+    assert([r[3][@"value"][@"file"] isEqualToString:@"Documents/user_<n>/a"] && [r[3][@"value"][@"userId"] isEqualToString:@"<redacted len=8>"]);
+    // Nothing in the files mentions the raw identifiers.
+    for (NSString *n in [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir.path error:nil]) {
+        NSString *text = [NSString stringWithContentsOfFile:[dir.path stringByAppendingPathComponent:n] encoding:NSUTF8StringEncoding error:nil];
+        assert([text rangeOfString:@"98765"].location == NSNotFound && [text rangeOfString:@"0A1B2C3D"].location == NSNotFound && [text rangeOfString:@"AA:BB"].location == NSNotFound);
+    }
+    // The folder is excluded from iCloud and computer backups (a fresh URL, so no cached value is read).
+    NSNumber *excluded = nil;
+    assert([[NSURL fileURLWithPath:dir.path isDirectory:YES] getResourceValue:&excluded forKey:NSURLIsExcludedFromBackupKey error:nil] && excluded.boolValue);
+}
+
 int main(void) {
     @autoreleasepool {
         TestRedaction();
@@ -601,6 +701,8 @@ int main(void) {
         TestUnreadObjects();
         TestForwarded();
         TestNewerShapes();
+        TestSnapContainers();
+        TestPrivacy();
         puts("WireLogTests: PASS");
     }
     return 0;

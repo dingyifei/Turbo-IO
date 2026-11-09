@@ -49,6 +49,8 @@ FOUNDATION_EXPORT BOOL TIOWireLogMethodIsSizeOnly(NSString *method);
 
 // ---- exposed for the host tests ----
 FOUNDATION_EXPORT BOOL TIOWireLogKeyIsSensitive(NSString *key);
+// user_<digits> -> user_<n>, and app container UUIDs in paths -> <uuid>. Applied to every recorded string.
+FOUNDATION_EXPORT NSString *TIOWireLogScrubIdentifiers(NSString *s);
 // A redacted, JSON-safe copy of a Foundation / Flutter value tree.
 FOUNDATION_EXPORT id TIOWireLogJSON(id value);
 // Decodes a Flutter StandardMessageCodec buffer. ok=NO when the bytes are not a complete standard value.
