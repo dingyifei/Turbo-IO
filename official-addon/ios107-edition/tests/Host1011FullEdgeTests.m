@@ -6,7 +6,8 @@
 // every case's verdict goes into sweep=, which must be the same in every set.
 // No device, network or signing.
 //
-// XFAIL: cases the intended rule refuses but the current policy accepts. Each is listed
+// XFAIL: cases the intended rule refuses but the current policy accepts (none at present;
+// the five found in d7(7) are fixed and checked as normal cases). Each is listed
 // with input, expected, actual and the deciding line; it is checked to still fail, and
 // when a fix makes it pass the run aborts with XPASS so the case moves into the normal
 // list. They are not hidden: the run prints every one.
@@ -187,12 +188,17 @@ static void FrameCases(void){
         Check("frames",[@"type 3 " stringByAppendingString:json],Allowed(RawFrame(3,json.length?json:nil,nil)),NO);
     Check("frames",@"type 3 exact size with an empty binary field",Allowed(RawFrame(3,size(n),[NSData data])),YES); // empty bytes field: no binary content
     Check("frames",@"type 3 exact size with a 1-byte binary",Allowed(RawFrame(3,size(n),[NSData dataWithBytes:"\0" length:1])),NO);
-    // Duplicate key: NSJSONSerialization keeps the first value (as cJSON's lookup does). The body is not the
-    // exact one-key query, so the intended rule refuses it either way; today the first-exact form passes.
+    // Duplicate key: NSJSONSerialization keeps one value (cJSON's lookup takes the first). The body is not the
+    // exact one-key query, so the rule refuses it either way: the raw text must name "OtaSize" once, with no
+    // backslash, so an escaped spelling of the key cannot hide a second one either.
     Check("frames",[NSString stringWithFormat:@"type 3 {\"OtaSize\":1,\"OtaSize\":%@} (duplicate key, first wrong)",n],
         Allowed(RawFrame(3,[NSString stringWithFormat:@"{\"OtaSize\":1,\"OtaSize\":%@}",n],nil)),NO);
-    XFail("frames",[NSString stringWithFormat:@"type 3 {\"OtaSize\":%@,\"OtaSize\":1} (duplicate key, first exact)",n],
-        Allowed(RawFrame(3,[NSString stringWithFormat:@"{\"OtaSize\":%@,\"OtaSize\":1}",n],nil)),NO,"ExperimentalOTAFlash.m:350 TIOOTADisarmedReadAllowed (parsed dictionary has one key; the duplicate is not seen)");
+    Check("frames",[NSString stringWithFormat:@"type 3 {\"OtaSize\":%@,\"OtaSize\":1} (duplicate key, first exact)",n],
+        Allowed(RawFrame(3,[NSString stringWithFormat:@"{\"OtaSize\":%@,\"OtaSize\":1}",n],nil)),NO);
+    for(NSString *json in @[[NSString stringWithFormat:@"{\"OtaSize\":%@,\"Ota\\u0053ize\":1}",n],[NSString stringWithFormat:@"{\"Ota\\u0053ize\":1,\"OtaSize\":%@}",n],
+            [NSString stringWithFormat:@"{\"Ota\\u0053ize\":%@}",n],[NSString stringWithFormat:@"{\"OtaSize\":%@,\"\\u004ftaSize\":%@}",n,n],[NSString stringWithFormat:@"{\"OtaSize\":%@,\"OtaSize\":%@}",n,n],
+            [NSString stringWithFormat:@"{\"OtaSize\":%@}\"OtaSize\"",n]])
+        Check("frames",[@"type 3 " stringByAppendingString:json],Allowed(RawFrame(3,json,nil)),NO);
     // Reads: an empty or whitespace-only object only.
     for(NSNumber *t in @[@1,@2,@11]){
         unsigned long long type=t.unsignedLongLongValue;
@@ -299,9 +305,9 @@ static void RecordCases(void){
     field(@"v",[NSNumber numberWithLongLong:1],YES);field(@"armedAt",@0,YES);field(@"armedAt",@1762560000,YES);
     // v: only the integer 1.
     for(id v in @[@0,@2,@(-1),@"1",@" 1",NSNull.null,@[@1],@{@"v":@1},[@"1" dataUsingEncoding:NSUTF8StringEncoding]])field(@"v",v,NO);
-    XFail("record",@"v=@YES (CFBoolean) counts as v 1",({store[ArmKey]=With(good,@"v",@YES);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO,"ExperimentalOTAFlash.m:402 ArmRecordValid [r[@\"v\"] isEqual:@1]");
-    XFail("record",@"v=@1.0 (double) counts as v 1",({store[ArmKey]=With(good,@"v",@1.0);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO,"ExperimentalOTAFlash.m:402 ArmRecordValid [r[@\"v\"] isEqual:@1]");
-    XFail("record",@"v=NSDecimalNumber 1 counts as v 1",({store[ArmKey]=With(good,@"v",[NSDecimalNumber decimalNumberWithString:@"1"]);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO,"ExperimentalOTAFlash.m:402 ArmRecordValid [r[@\"v\"] isEqual:@1]");
+    Check("record",@"v=@YES (CFBoolean) counts as v 1",({store[ArmKey]=With(good,@"v",@YES);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO);
+    Check("record",@"v=@1.0 (double) counts as v 1",({store[ArmKey]=With(good,@"v",@1.0);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO);
+    Check("record",@"v=NSDecimalNumber 1 counts as v 1",({store[ArmKey]=With(good,@"v",[NSDecimalNumber decimalNumberWithString:@"1"]);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO);
     // host: exact lower case, no padding.
     unichar nul[]={'i','o','s','1','0','1','1',0};
     for(id h in @[@"IOS1011",@"Ios1011",@"ios1011 ",@" ios1011",@"ios1011\n",[NSString stringWithCharacters:nul length:8],@"ios1011-download",@"ios107",@"",NSNull.null,@1011,@[@"ios1011"],
@@ -315,7 +321,7 @@ static void RecordCases(void){
             [install dataUsingEncoding:NSUTF8StringEncoding],@[install],NSNull.null])field(@"install",i,NO);
     // armedAt: a number; not a string, date object, container, data or null.
     for(id t in @[@"1",@"2026-11-08",NSNull.null,[NSDate dateWithTimeIntervalSince1970:1],@[@1],@{@"t":@1},[@"1" dataUsingEncoding:NSUTF8StringEncoding]])field(@"armedAt",t,NO);
-    XFail("record",@"armedAt=@YES (CFBoolean) counts as a time",({store[ArmKey]=With(good,@"armedAt",@YES);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO,"ExperimentalOTAFlash.m:403 ArmRecordValid [r[@\"armedAt\"] isKindOfClass:NSNumber.class]");
+    Check("record",@"armedAt=@YES (CFBoolean) counts as a time",({store[ArmKey]=With(good,@"armedAt",@YES);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO);
     // Shape: renamed, missing or extra keys; key case.
     for(NSString *k in good){
         NSMutableDictionary *m=[good mutableCopy];id v=m[k];[m removeObjectForKey:k];m[k.uppercaseString]=v;

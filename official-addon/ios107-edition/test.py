@@ -219,8 +219,9 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'NSProcessInfo.processInfo.systemUptime':'TMG4Now()',
         'NSBundle.mainBundle.infoDictionary':'TMG4HostInfo()',
         'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()',
-        # The arm record store: an in-memory dictionary, never the Mac's preferences.
-        '[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.official-private-addon"]':'(NSUserDefaults *)TMG4ArmStore()'}
+        # The arm record store: an in-memory dictionary, never the Mac's preferences
+        # (ios1011-arm-store runs the real CFPreferences calls on a throwaway suite).
+        'CFPreferencesCopyValue(':'TMG4ArmCopyValue(','CFPreferencesSetValue(':'TMG4ArmSetValue(','CFPreferencesSynchronize(':'TMG4ArmSynchronize('}
     seen.add('tmg4-wizard')
     if only is None or 'tmg4-wizard' in only:
         adapted=adapted_policy('tmg4-wizard-policy.m','ExperimentalOTAFlash.m',flash_seams)
@@ -239,6 +240,21 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
             run('tmg4-wizard-1011-'+version,[out/'tmg4-wizard-1011',root/'candidate',root,'Strix OS '+version])
         groups.append('tmg4-wizard-1011');print('tmg4-wizard-1011: PASS')
     else:skip('tmg4-wizard-1011','not selected by --only')
+    # Full 1.0.11 host: the arm record comes only from the addon suite's persistent domain. The real
+    # CFPreferences calls run against a throwaway suite (removed afterwards); a launch argument, the
+    # argument domain and a registered default must not arm.
+    seen.add('ios1011-arm-store')
+    if only is None or 'ios1011-arm-store' in only:
+        store_seams={k:v for k,v in flash_seams.items() if not k.startswith('CFPreferences')}
+        store_seams.update({'TIOHostMainImage()':'TMG4MainImage()','return @"io.turboio.official-private-addon";':'NSString *TMG4ArmSuite(void);return TMG4ArmSuite();'})
+        adapted=adapted_policy('ios1011-arm-store-policy.m','ExperimentalOTAFlash.m',store_seams)
+        run('ios1011-arm-store-build',flags+[P/'tests/Host1011ArmStoreTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'ios1011-arm-store'])
+        try:run('ios1011-arm-store',[out/'ios1011-arm-store'])
+        finally:
+            for leftover in (Path.home()/'Library/Preferences').glob('io.turboio.test-armstore.*.plist'):leftover.unlink()
+        if 'PASS' not in (out/'ios1011-arm-store.log').read_text() or 'child: launch argument record ignored' not in (out/'ios1011-arm-store.log').read_text():raise RuntimeError('ios1011-arm-store did not report PASS')
+        groups.append('ios1011-arm-store');print('ios1011-arm-store: PASS')
+    else:skip('ios1011-arm-store','not selected by --only')
     # Download-only 1.0.11/259 host: the same unchanged flash policy and feed, with 1.0.11 host info.
     # G1: the refusal must not depend on build flags. The same test is built with the
     # full flash flag set and with none of them; every build must print the same sweep.

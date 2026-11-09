@@ -43,8 +43,16 @@ test('phone gates require exact host, healthy source and inspected new offsets',
  assert.doesNotMatch(s,/TIOOTA107HostMatches/);
  // C15: the full 1.0.11 host is refused while disarmed, before the flash-build early return, and authorization checks the arm.
  const snapshot=s.slice(s.indexOf('BOOL TIOOTAFlashBlockCallSnapshot('));
- assert.ok(snapshot.indexOf('if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(')<snapshot.indexOf('if(TIOOTAArmRequired()&&!ArmedForTransfer())return DisarmedBlock(call,teleprompter);'));
- assert.ok(snapshot.indexOf('if(TIOOTAArmRequired()&&!ArmedForTransfer())return DisarmedBlock(call,teleprompter);')<snapshot.indexOf('if(!TIOOTAFlashBuild())return NO;'));
+ // Only business-9 frames read the arm record; once a transfer has started (stage 2) it is not read again.
+ const armBlock="if(TIOOTAArmRequired()){";
+ const nonOta="if(!Business9Call(call)){ObserveDisconnect(Get(call,@\"method\"));return DisarmedBlock(call,teleprompter);}";
+ const armed='if(!(GateStage()==2?ArmTransferHost():ArmedForTransfer()))return DisarmedBlock(call,teleprompter);';
+ assert.ok(snapshot.indexOf('if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(')<snapshot.indexOf(armBlock));
+ assert.ok(snapshot.indexOf(armBlock)<snapshot.indexOf(nonOta)&&snapshot.indexOf(nonOta)<snapshot.indexOf(armed));
+ assert.ok(snapshot.indexOf(armed)<snapshot.indexOf('if(!TIOOTAFlashBuild())return NO;'));
+ assert.match(s,/static BOOL ArmedForTransfer\(void\)\{return TIOOTAFlashArmed\(\)&&ArmTransferHost\(\);\}/);
+ // The addon image's LC_UUID is read once.
+ assert.match(s,/static NSString \*ArmInstallID\(void\)\{\n    static NSString \*uuid;static dispatch_once_t once;dispatch_once\(&once,\^\{uuid=ArmImageUUID\(\);\}\);return uuid;\n\}/);
  assert.match(s,/BOOL TIOOTAFlashAuthorize[^\n]*\n[^\n]*TIOOTAHostMatches[^\n]*\n\s*if\(TIOOTAArmRequired\(\)&&!ArmedForTransfer\(\)\)\{Error\(/);
  assert.match(s,/bootstrapEligible[\s\S]*?healthPassed/);
  assert.match(fs.readFileSync(new URL('./ExperimentalOTAFeed.m',import.meta.url),'utf8'),/TIOOTAHostProfile\(bundle\.infoDictionary\)[\s\S]*?TIOHostFullImageMatches\(TIOHostMainImage\(\),bundle\.infoDictionary\)[\s\S]*?TIOOTARouteFileMatches\(file,profile\)/);
@@ -551,7 +559,10 @@ test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on n
  const flash=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
  const body=flash.slice(flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
  // C15: the full 1.0.11 host's disarmed refusal comes next, also before any flag-dependent code.
- assert.match(body,/^BOOL TIOOTAFlashBlockCallSnapshot\(id call,NSDictionary \*\*teleprompter\)\{\n    if\(teleprompter\)\*teleprompter=nil;\n    if\(TIOOTADownloadOnlyHost\(\)\)return DownloadOnlyBlock\(call,teleprompter\);\n    if\(TIOOTAArmRequired\(\)&&!ArmedForTransfer\(\)\)return DisarmedBlock\(call,teleprompter\);\n    if\(!TIOOTAFlashBuild\(\)\)return NO;/);
+ // Inside the arm block nothing reads a build flag before the disarmed refusal (comments aside).
+ const head=body.slice(0,body.indexOf('    if(!TIOOTAFlashBuild())return NO;')).replace(/\n\s*\/\/[^\n]*/g,'');
+ assert.equal(head,'BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){\n    if(teleprompter)*teleprompter=nil;\n    if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);\n    if(TIOOTAArmRequired()){\n        if(!Business9Call(call)){ObserveDisconnect(Get(call,@"method"));return DisarmedBlock(call,teleprompter);}\n        if(!(GateStage()==2?ArmTransferHost():ArmedForTransfer()))return DisarmedBlock(call,teleprompter);\n    }\n');
+ for(const f of ['static void ObserveDisconnect(','static BOOL Business9Call(']){const fn=flash.slice(flash.indexOf(f),flash.indexOf('\n}\n',flash.indexOf(f)));assert.ok(fn.length>0);assert.doesNotMatch(fn,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild/);}
  assert.match(flash,/\nBOOL TIOOTAFlashBlockCall\(id call\)\{return TIOOTAFlashBlockCallSnapshot\(call,NULL\);\}\n/);
  assert.match(flash,/\nBOOL TIOOTADownloadOnlyBlockCall\(id call\)\{return DownloadOnlyBlock\(call,NULL\);\}\n/);
  const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('// Full 1.0.11 host (ios1011, C15)'));

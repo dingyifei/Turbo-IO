@@ -36,6 +36,15 @@ static void Observe(NSString *version){TIOOTAFlashObserveEvent(@{@"eventType":@"
 static BOOL Send(unsigned type,id json,NSData *binary){return !TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":@"fixture-peer",@"payload":Frame(type,json,binary)}});}
 static NSDictionary *Snapshot(void){return TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus(),@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"prefs":Prefs?:@{},@"packageOK":@YES,@"directoryOK":@YES});}
 static int Stage(void){return [TIOOTAFlashStatus()[@"stage"] intValue];}
+static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
+// Disarm from a background queue, as the wizard's runAction does, while the main run loop turns.
+static BOOL DisarmOffMain(void){
+    __block BOOL ok=NO,done=NO;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{BOOL r=TIOOTAFlashDisarm();dispatch_async(dispatch_get_main_queue(),^{ok=r;done=YES;});});
+    NSDate *limit=[NSDate dateWithTimeIntervalSinceNow:10];
+    while(!done&&limit.timeIntervalSinceNow>0)[NSRunLoop.mainRunLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+    assert(done);return ok;
+}
 int main(int argc,char **argv){@autoreleasepool{
     assert(argc==4);NSString *version=@(argv[3]);assert(([@[@"Strix OS 1.0.4.12",@"Strix OS 1.0.5.5"] containsObject:version]));
     Home=[@(argv[2]) stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"];NSFileManager *fm=NSFileManager.defaultManager;
@@ -56,6 +65,9 @@ int main(int argc,char **argv){@autoreleasepool{
     // Disarm before the transfer revokes the grant and closes the gate again.
     assert(TIOOTAFlashAuthorize(nil)&&Stage()==1);assert(TIOOTAFlashDisarm()&&Stage()==0&&!TIOOTAFlashArmed());
     assert(!Send(4,@{@"Mode":@2},nil));assert(!TIOOTAFlashAuthorize(nil));
+    // Disarm called off the main thread runs on it (the guard's thread): it revokes and clears the record there.
+    assert(TIOOTAFlashArm(nil)&&TIOOTAFlashAuthorize(nil)&&Stage()==1);*TMG4ArmLastWriteOnMain()=NO;
+    assert(DisarmOffMain()&&Stage()==0&&!TIOOTAFlashArmed()&&*TMG4ArmLastWriteOnMain());assert(!Send(4,@{@"Mode":@2},nil));
     // Re-arm: one confirmation, one authorization; the forced page's Mode 4 is refused, Mode 2 starts.
     assert(TIOOTAFlashArm(nil));Observe(version);
     unsigned confirmations=0;assert([Snapshot()[@"canAuthorize"] boolValue]);confirmations++;e=nil;assert(TIOOTAFlashAuthorize(&e)&&!e&&confirmations==1&&Stage()==1);
@@ -65,10 +77,19 @@ int main(int argc,char **argv){@autoreleasepool{
     // Mid-transfer: disarm is refused and the record stays; the transfer continues as on 1.0.7.
     assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed()&&Stage()==2);
     NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==16);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
-    assert(Send(5,@{@"OtaVersion":@"Strix OS 1.0.5.5"},nil));assert(Send(6,manifest,nil));unsigned slices=0;NSUInteger total=0;
+    // A started transfer no longer reads the arm record: with the record gone (a read failure, a
+    // preferences glitch or a disarm that raced the guard) or replaced by junk, the 1.0.7 gate decides.
+    NSDictionary *record=TMG4ArmStore()[ArmKey];assert(record);[TMG4ArmStore() removeObjectForKey:ArmKey];assert(!TIOOTAFlashArmed());
+    assert(Send(5,@{@"OtaVersion":@"Strix OS 1.0.5.5"},nil));TMG4ArmStore()[ArmKey]=@"junk";assert(Send(6,manifest,nil));[TMG4ArmStore() removeObjectForKey:ArmKey];unsigned slices=0;NSUInteger total=0;
     for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)]));slices++;total+=n;}}
     assert(slices==TIO_FW_PAYLOAD_SLICES&&total==TIO_FW_PAYLOAD_BYTES);assert([TIOOTAFlashStatus()[@"validatedSlices"] unsignedIntegerValue]==slices);
-    assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed());
+    assert(Stage()==2);TMG4ArmStore()[ArmKey]=record;
+    assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed());assert(!DisarmOffMain()&&TIOOTAFlashArmed());
+    // A slice that does not match fails the transfer (stage 3). The gate then refuses to cancel,
+    // so disarm is refused too and the record stays; nothing passes either way.
+    assert(!Send(7,@{@"Name":manifest[0][@"Name"],@"Start":@0,@"Size":@1},({uint8_t bad=((const uint8_t *)[files[manifest[0][@"Name"]] bytes])[0]^0xff;[NSData dataWithBytes:&bad length:1];}))&&Stage()==3);
+    assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed()&&Stage()==3);
+    for(NSNumber *mode in @[@1,@2,@4])assert(!Send(4,@{@"Mode":mode},nil));
     [fm removeItemAtPath:Home error:nil];[TMG4ArmStore() removeAllObjects];
-    printf("PASS full 1.0.11 wizard/gate from %s: disarmed cannot authorize; armed takes the 1.0.7 gate (Auto Update toggle, one authorization, Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 and is refused at stage 2; deviceIO=false\n",version.UTF8String);
+    printf("PASS full 1.0.11 wizard/gate from %s: disarmed cannot authorize; armed takes the 1.0.7 gate (Auto Update toggle, one authorization, Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 (also off main, run on main), is refused at stage 2 and 3 with the record kept; a started transfer ignores the arm record; deviceIO=false\n",version.UTF8String);
 }return 0;}

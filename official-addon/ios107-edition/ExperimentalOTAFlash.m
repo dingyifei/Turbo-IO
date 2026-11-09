@@ -347,7 +347,11 @@ NSString *const TIOOTAArmGuardMarker=@"ota guard=IOS1011-FULL-DISARM-01; flag-in
 BOOL TIOOTADisarmedReadAllowed(NSData *data){
     if(TIOPhoneOTAReadAllowed(data))return YES;
     NSDictionary *f=TIOOTAFrame(data);id j=f[@"json"];NSUInteger n=0;
-    return [f[@"type"] isEqual:@3]&&[j isKindOfClass:NSDictionary.class]&&[j count]==1&&Number(j[@"OtaSize"],&n)&&n==TIO_FW_ZIP_BYTES&&[f[@"binary"] length]==0;
+    if(!([f[@"type"] isEqual:@3]&&[j isKindOfClass:NSDictionary.class]&&[j count]==1&&Number(j[@"OtaSize"],&n)&&n==TIO_FW_ZIP_BYTES&&[f[@"binary"] length]==0))return NO;
+    // NSJSONSerialization keeps one value of a repeated key, so {"OtaSize":<bytes>,"OtaSize":1}
+    // parses as one exact key. The raw text must name the key once: no backslash (so no
+    // escaped spelling of it) and exactly one "OtaSize".
+    return TIOOTARawJSONNamesKeyOnce(data,@"OtaSize");
 }
 // The file-call rule both full hosts share: an addon scoped sender, then the stock
 // teleprompter shape (only at stage 0), else TIOOTAFileCallBlocked.
@@ -373,6 +377,27 @@ static BOOL DisarmedBlock(id call,NSDictionary **teleprompter){
     return FileCallBlock(method,args,teleprompter);
 }
 BOOL TIOOTADisarmedBlockCall(id call){return DisarmedBlock(call,NULL);}
+// A well-formed rayneonet_sendMessage call with businessId 9 (the same reading DisarmedBlock uses).
+static BOOL Business9Call(id call){
+    NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");NSUInteger business=0;
+    return [method isKindOfClass:NSString.class]&&[@"rayneonet_sendMessage" isEqualToString:method]&&[args isKindOfClass:NSDictionary.class]&&Business(args[@"businessId"],&business)&&business==9;
+}
+// The type 3 frame's raw JSON text (field 3): no backslash anywhere and exactly one
+// occurrence of the quoted key. Without escapes every key's raw text is its decoded
+// text, so a second key with the same name would show up as a second occurrence.
+BOOL TIOOTARawJSONNamesKeyOnce(NSData *data,NSString *key){
+    if(![data isKindOfClass:NSData.class]||!TIOOTAFrame(data))return NO;
+    const uint8_t *b=data.bytes;NSUInteger at=0;uint64_t k,v;NSData *json=nil;
+    // TIOOTAFrame accepted this payload, so every field below parses and appears at most once.
+    while(at<data.length){if(!Var(b,data.length,&at,&k))return NO;
+        if((k&7)==2){if(!Var(b,data.length,&at,&v)||v>data.length-at)return NO;if((k>>3)==3)json=[data subdataWithRange:NSMakeRange(at,(NSUInteger)v)];at+=(NSUInteger)v;}
+        else if(!Var(b,data.length,&at,&v))return NO;}
+    if(!json.length||memchr(json.bytes,'\\',json.length))return NO;
+    NSData *quoted=[[NSString stringWithFormat:@"\"%@\"",key] dataUsingEncoding:NSUTF8StringEncoding];
+    NSRange first=[json rangeOfData:quoted options:0 range:NSMakeRange(0,json.length)];if(first.location==NSNotFound)return NO;
+    NSUInteger after=NSMaxRange(first);
+    return [json rangeOfData:quoted options:0 range:NSMakeRange(after,json.length-after)].location==NSNotFound;
+}
 BOOL TIOOTAArmRequired(void){
     if(TIOOTADownloadOnlyHost())return NO;
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
@@ -381,11 +406,26 @@ BOOL TIOOTAArmRequired(void){
         [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1011_ROUTING_MARKER];
 }
 // The arm record lives in the addon's own preferences suite, never in the host's.
-// It names the addon image it was made by (LC_UUID): another addon build, a fresh
-// install of a new package included, reads as disarmed.
+// It names the addon image it was made by: that image's LC_UUID. LC_UUID is a hash of
+// the dylib's contents, not an install identity. An addon dylib that differs by one byte
+// reads as disarmed, but a repackage with a byte-identical dylib stays armed, and a
+// C15 -> C13 -> C15 round trip keeps the record (C13 never reads or clears it).
+// Disarm before rolling back.
 static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
-static NSUserDefaults *ArmPrefs(void){return [[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.official-private-addon"];}
-static NSString *ArmInstallID(void){
+static NSString *ArmSuite(void){return @"io.turboio.official-private-addon";}
+// Only the suite's own persistent domain (current user, any host). CFPreferencesCopyValue
+// looks in that one domain and nowhere else, so a launch argument (NSArgumentDomain,
+// e.g. -otaFlashArmRecord.ios1011 <dict>), a registered default or the host's own
+// preferences can never arm. -[NSUserDefaults initWithSuiteName:] searches the argument
+// domain too, so it is not used here.
+static id ArmRecord(void){
+    return CFBridgingRelease(CFPreferencesCopyValue((__bridge CFStringRef)ArmKey,(__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost));
+}
+static void ArmRecordWrite(id record){
+    CFPreferencesSetValue((__bridge CFStringRef)ArmKey,(__bridge CFPropertyListRef)record,(__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
+    CFPreferencesSynchronize((__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
+}
+static NSString *ArmImageUUID(void){
     Dl_info info;if(!dladdr((const void *)&TIOOTAArmRequired,&info)||!info.dli_fbase)return nil;
     const struct mach_header_64 *h=info.dli_fbase;if(h->magic!=MH_MAGIC_64||h->ncmds>1024||h->sizeofcmds>1024*1024)return nil;
     const uint8_t *p=(const uint8_t *)(h+1),*end=p+h->sizeofcmds;
@@ -397,32 +437,47 @@ static NSString *ArmInstallID(void){
     }
     return nil;
 }
+// The addon image does not change while it is loaded: read its load commands once.
+static NSString *ArmInstallID(void){
+    static NSString *uuid;static dispatch_once_t once;dispatch_once(&once,^{uuid=ArmImageUUID();});return uuid;
+}
+// A CFNumber (so not a CFBoolean, not an NSDecimalNumber or other NSNumber subclass).
+static BOOL ArmPlainNumber(id n){
+    return [n isKindOfClass:NSNumber.class]&&![n isKindOfClass:NSDecimalNumber.class]&&CFGetTypeID((__bridge CFTypeRef)n)==CFNumberGetTypeID();
+}
 static BOOL ArmRecordValid(id r){
     NSString *install=ArmInstallID();
-    return install&&[r isKindOfClass:NSDictionary.class]&&[r count]==4&&[r[@"v"] isEqual:@1]&&[r[@"host"] isEqual:@"ios1011"]&&
-        [r[@"install"] isKindOfClass:NSString.class]&&[r[@"install"] isEqualToString:install]&&[r[@"armedAt"] isKindOfClass:NSNumber.class];
+    if(!install||![r isKindOfClass:NSDictionary.class]||[r count]!=4)return NO;
+    // v: the integer 1, written as an integer (not @YES, @1.0 or a decimal number).
+    id v=r[@"v"];if(!ArmPlainNumber(v)||CFNumberIsFloatType((__bridge CFNumberRef)v)||[v longLongValue]!=1)return NO;
+    return [r[@"host"] isEqual:@"ios1011"]&&[r[@"install"] isKindOfClass:NSString.class]&&[r[@"install"] isEqualToString:install]&&ArmPlainNumber(r[@"armedAt"]);
 }
-static id ArmRecord(void){@try{return [ArmPrefs() objectForKey:ArmKey];}@catch(__unused id e){return nil;}}
 BOOL TIOOTAFlashArmed(void){return TIOOTAArmRequired()&&ArmRecordValid(ArmRecord());}
-// Armed AND the flash build AND the full host's routing marker AND the pinned image.
-static BOOL ArmedForTransfer(void){
+// The flash build AND the full host's routing marker AND the pinned image: fixed for the process.
+static BOOL ArmTransferHost(void){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
-    return TIOOTAFlashArmed()&&TIOOTAFlashBuild()&&TIOOTA1011HostMatches(info)&&TIOHostFullImageMatches(TIOHostMainImage(),info);
+    return TIOOTAFlashBuild()&&TIOOTA1011HostMatches(info)&&TIOHostFullImageMatches(TIOHostMainImage(),info);
 }
+// Armed AND ArmTransferHost.
+static BOOL ArmedForTransfer(void){return TIOOTAFlashArmed()&&ArmTransferHost();}
 BOOL TIOOTAFlashArm(NSError **error){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
     if(!TIOOTAArmRequired()||!TIOOTA1011HostMatches(info)||!TIOHostFullImageMatches(TIOHostMainImage(),info)){Error(error,TIOText(@"只有完整版 1.0.11 宿主需要并允许启用 TMG 刷写；未启用。"));return NO;}
     if(!TIOOTAFlashProtected()){Error(error,TIOText(@"没有试刷构建与发送保护；未开放。"));return NO;}
     NSString *install=ArmInstallID();if(!install){Error(error,TIOText(@"无法确认本次安装；未启用。"));return NO;}
-    @try{[ArmPrefs() setObject:@{@"v":@1,@"host":@"ios1011",@"install":install,@"armedAt":@(floor(NSDate.date.timeIntervalSince1970))} forKey:ArmKey];}@catch(__unused id e){}
+    ArmRecordWrite(@{@"v":@1,@"host":@"ios1011",@"install":install,@"armedAt":@(floor(NSDate.date.timeIntervalSince1970))});
     if(!TIOOTAFlashArmed()){Error(error,TIOText(@"无法保存启用状态；未启用。"));return NO;}
     return YES;
 }
 BOOL TIOOTAFlashDisarm(void){
-    // Never cut a running transfer: the glasses would be left mid-flash.
-    if(GateStage()==2)return NO;
-    [Current() cancel];
-    @try{[ArmPrefs() removeObjectForKey:ArmKey];}@catch(__unused id e){}
+    // The guard runs on the main thread (the rayneonet hook); disarm runs there too, so no
+    // business-9 frame can move the gate between the cancel and the record removal.
+    if(!NSThread.isMainThread){__block BOOL done=NO;dispatch_sync(dispatch_get_main_queue(),^{done=TIOOTAFlashDisarm();});return done;}
+    // Never cut a running transfer: the glasses would be left mid-flash. The cancel itself
+    // decides (it refuses at stage 2 and after a failed transfer, stage 3); if it refuses,
+    // the record stays.
+    if(![Current() cancel])return NO;
+    ArmRecordWrite(nil);
     return !ArmRecordValid(ArmRecord());
 }
 NSDictionary *TIOOTAFlashArmStatus(void){
@@ -431,14 +486,29 @@ NSDictionary *TIOOTAFlashArmStatus(void){
     if(armed)s[@"armedAt"]=r[@"armedAt"];
     return s;
 }
+// A disconnect, unbind or unpair call forgets the version read and revokes a stage 1 grant.
+static void ObserveDisconnect(id method){
+    if(![method isKindOfClass:NSString.class])return;
+    if([[method lowercaseString] containsString:@"disconnect"]||[[method lowercaseString] containsString:@"unbind"]||[[method lowercaseString] containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
+}
 BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
     if(teleprompter)*teleprompter=nil;
     if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);
-    if(TIOOTAArmRequired()&&!ArmedForTransfer())return DisarmedBlock(call,teleprompter);
+    if(TIOOTAArmRequired()){
+        // Only a business-9 frame can depend on the arm state: for every other call the
+        // disarmed rule and the armed (1.0.7) rule give the same verdict, so the record is
+        // not read for them. The 1.0.7 path's disconnect side effect (forget the version
+        // read, revoke a stage 1 grant) still runs, armed or not, in every build.
+        if(!Business9Call(call)){ObserveDisconnect(Get(call,@"method"));return DisarmedBlock(call,teleprompter);}
+        // Once a transfer has started (stage 2) the record is not read again: a record read
+        // failure, a preferences glitch or a disarm racing the guard cannot cut it. The host
+        // checks still apply, and the 1.0.7 gate below decides every frame.
+        if(!(GateStage()==2?ArmTransferHost():ArmedForTransfer()))return DisarmedBlock(call,teleprompter);
+    }
     if(!TIOOTAFlashBuild())return NO;
     NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
     if(![method isKindOfClass:NSString.class])return YES;
-    if([method.lowercaseString containsString:@"disconnect"]||[method.lowercaseString containsString:@"unbind"]||[method.lowercaseString containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
+    ObserveDisconnect(method);
     if([@"rayneonet_sendMessage" isEqualToString:method]){
         NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
         if(business!=9)return NO;

@@ -213,10 +213,15 @@
       "group": "ios1011-full-guard",
       "note": "Full 1.0.11/259 host (ios1011, C15): TMG flashing disarmed by default, only the empty reads 1, 2, 11 and the exact size query pass business 9, in the same six TIO_* flag sets as ios1011-guard with one sweep digest; malformed or foreign arm records count as disarmed; armed (flash builds only) the business-9 sweep equals the 1.0.7 host; disarm restores the refusal. With --app1011 it also checks the real Runner."
     },
+    "tests/Host1011ArmStoreTests.m": {
+      "status": "run",
+      "group": "ios1011-arm-store",
+      "note": "Full 1.0.11 host: the arm record is read only from the addon suite's persistent domain, with the real CFPreferences calls on a throwaway suite (removed afterwards). A launch argument -otaFlashArmRecord.ios1011 <XML dict> in a child process, an in-process argument domain and a registered default must not arm; arm and disarm round-trip through the persistent domain."
+    },
     "tests/Host1011FullEdgeTests.m": {
       "status": "run",
       "group": "ios1011-full-edge",
-      "note": "Full 1.0.11/259 host (ios1011) edge cases beyond ios1011-full-guard: TIOHostProfile near misses fall to ios1011-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, arm record field types, near-miss keys and the standard defaults never arm, disarm removes any record. Same six TIO_* flag sets, one sweep digest. Known gaps print as XFAIL and abort as XPASS once fixed."
+      "note": "Full 1.0.11/259 host (ios1011) edge cases beyond ios1011-full-guard: TIOHostProfile near misses fall to ios1011-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, arm record field types, near-miss keys and the standard defaults never arm, disarm removes any record. Duplicate or escaped OtaSize keys in the raw size query are refused; v must be the integer 1 and armedAt a plain number. Same six TIO_* flag sets, one sweep digest. Known gaps would print as XFAIL (none at present) and abort as XPASS once fixed."
     },
     "tests/LanguageFlagTests.m": {
       "status": "run",
@@ -317,7 +322,7 @@
     "tests/TMG4Wizard1011Tests.m": {
       "status": "run",
       "group": "tmg4-wizard-1011",
-      "note": "Full 1.0.11 host, armed: the unchanged 1.0.7 wizard and gate on the real candidate (Auto Update toggle, one authorization, forced-page Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 and is refused at stage 2."
+      "note": "Full 1.0.11 host, armed: the unchanged 1.0.7 wizard and gate on the real candidate (Auto Update toggle, one authorization, forced-page Mode 4 refused, Mode 2 starts, all slices); a started transfer no longer reads the arm record (removed or junk record mid-transfer); disarm revokes at stage 1, also when called off the main thread (it runs on main), and is refused with the record kept at stage 2 and after a failed transfer (stage 3)."
     },
     "tests/TileRoundTripTests.m": {
       "status": "run",
