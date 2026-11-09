@@ -23,9 +23,20 @@ BOOL TIOOTAFileCallBlocked(NSString *method, BOOL scopedImage, NSUInteger stage)
 // ZIP) at <container>/Library/Application Support/user_<digits>/teleprompter/<UUID>
 // or <container>/Documents/user_<digits>/teleprompter/<UUID> with no symlink,
 // taskId that UUID, and OTA stage 0. Flag-independent; both host profiles use it.
+// Also: no ZIP end-of-central-directory signature in the last 65557 bytes, deviceId
+// at most 256 characters, at most 20 digits after user_, plain Foundation objects only.
 BOOL TIOStockTeleprompterSendAllowed(NSString *method, id args, NSUInteger otaStage);
 // The same check against an explicit container (tests); the app uses NSHomeDirectory().
 BOOL TIOStockTeleprompterSendAllowedIn(NSString *container, NSString *method, id args, NSUInteger otaStage);
+// The checked snapshot of args (a fresh immutable dictionary of fresh strings,
+// read once from plain Foundation objects) when allowed, otherwise nil. Never throws.
+NSDictionary *TIOStockTeleprompterSendSnapshotIn(NSString *container, NSString *method, id args, NSUInteger otaStage);
+// A new FlutterMethodCall from the literal method name and that snapshot, or nil.
+id TIOStockTeleprompterForwardCall(NSDictionary *snapshot);
+// TIOOTAFlashBlockCall, and when the call passes as the stock teleprompter send,
+// *teleprompterArgs (if given) receives the snapshot the hook must forward instead
+// of the caller's arguments; it is nil for every other call.
+BOOL TIOOTAFlashBlockCallSnapshot(id call, NSDictionary *_Nullable *_Nullable teleprompterArgs);
 BOOL TIOPhoneOTAReadAllowed(NSData *data);
 void TIOOTAFlashObserveEvent(NSDictionary *event);
 BOOL TIOOTAFlashAuthorize(NSError **error);

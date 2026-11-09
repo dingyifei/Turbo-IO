@@ -367,16 +367,20 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  assert.match(load,/downloadOnlyGuard=%d; stockTraffic=%d\\n%@\\n",[^;]*TIOGlassesChannelStockTrafficSeen\(\),TIOOTADownloadOnlyGuardMarker\]/);
  // The hook applies the OTA guard before any observer or the stock handler runs.
  const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
- const block=body.indexOf('BOOL otaBlocked=TIOOTAFlashBlockCall(call);');assert.ok(block>0);
+ const block=body.indexOf('@try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}');assert.ok(block>0);
+ // D5: the guard starts from blocked, and a teleprompter pass forwards the checked snapshot (or blocks when none can be built).
+ assert.ok(body.includes('NSDictionary *teleprompter=nil;BOOL otaBlocked=YES;'));
+ assert.ok(body.includes('if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}'));
+ assert.ok(body.indexOf('TIOStockTeleprompterForwardCall(')<body.indexOf('if(otaBlocked)'));
  assert.ok(block<body.indexOf('TIOProtocolObserveCall(')&&block<body.indexOf('PriorMethod(self,cmd,call,result)'));
  assert.match(body,/if\(otaBlocked\)\{[^\n]*return;\}/);
  // G2 runtime evidence: MethodHook records a stock rayneonet call before TIOOTAFlashBlockCall can
  // refuse it and return, and after the off-main sendFile redispatch (so one call counts once).
  const evidence=body.indexOf('RecordStockEvidence(call,result);');assert.ok(evidence>0);
  assert.equal(body.split('RecordStockEvidence(call,result);').length,2);
- assert.ok(evidence<body.indexOf('TIOOTAFlashBlockCall(call)')&&evidence<body.indexOf('if(otaBlocked)'));
+ assert.ok(evidence<body.indexOf('TIOOTAFlashBlockCallSnapshot(call,')&&evidence<body.indexOf('if(otaBlocked)'));
  assert.ok(evidence>body.indexOf('dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;'));
- assert.ok(body.indexOf('TIOOTAFlashBlockCall(')===body.lastIndexOf('TIOOTAFlashBlockCall('));
+ assert.ok(body.indexOf('TIOOTAFlashBlockCallSnapshot(')===body.lastIndexOf('TIOOTAFlashBlockCallSnapshot('));assert.ok(!body.includes('TIOOTAFlashBlockCall('));
  // Only stock calls count: the origin is the image of the result block's invoke function, checked by
  // the tested TIOChannelResultImageIsStock; the addon's own senders count separately as addonCalls.
  const record=hook.slice(hook.indexOf('static void RecordStockEvidence('),hook.indexOf('static void MethodHook('));
@@ -393,9 +397,11 @@ test('download-only host: Load installs only the guard hook and sends nothing on
 // G1: on the download-only host TIOOTAFlashBlockCall delegates before any flag-dependent code.
 test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on no flag',()=>{
  const flash=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
- const body=flash.slice(flash.indexOf('BOOL TIOOTAFlashBlockCall(id call){'));
- assert.match(body,/^BOOL TIOOTAFlashBlockCall\(id call\)\{\n    if\(TIOOTADownloadOnlyHost\(\)\)return TIOOTADownloadOnlyBlockCall\(call\);\n    if\(!TIOOTAFlashBuild\(\)\)return NO;/);
- const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('BOOL TIOOTAFlashBlockCall(id call){'));
+ const body=flash.slice(flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
+ assert.match(body,/^BOOL TIOOTAFlashBlockCallSnapshot\(id call,NSDictionary \*\*teleprompter\)\{\n    if\(teleprompter\)\*teleprompter=nil;\n    if\(TIOOTADownloadOnlyHost\(\)\)return DownloadOnlyBlock\(call,teleprompter\);\n    if\(!TIOOTAFlashBuild\(\)\)return NO;/);
+ assert.match(flash,/\nBOOL TIOOTAFlashBlockCall\(id call\)\{return TIOOTAFlashBlockCallSnapshot\(call,NULL\);\}\n/);
+ assert.match(flash,/\nBOOL TIOOTADownloadOnlyBlockCall\(id call\)\{return DownloadOnlyBlock\(call,NULL\);\}\n/);
+ const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
  assert.ok(pure.length>0);assert.doesNotMatch(pure,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild|ScopedFileSenders/);
  assert.ok(pure.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
  // test.py builds the guard test with and without the flash/phone flags and compares the sweep.

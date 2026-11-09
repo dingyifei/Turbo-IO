@@ -16,6 +16,9 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
+#import <objc/runtime.h>
+#import <objc/message.h>
 #if TIO_IMAGE_RX_LAB
 #import "ImageUploadTransport.h"
 #endif
@@ -46,7 +49,9 @@ static const TIOOTAScopedSender ScopedFileSenders[]={
 NSUInteger TIOOTAScopedSenderCount(void){NSUInteger n=0;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s;s++)n++;return n;}
 BOOL TIOOTAFileCallBlocked(NSString *method,BOOL scopedImage,NSUInteger stage){
     if(![method isKindOfClass:NSString.class])return YES;
-    if([method isEqual:@"rayneonet_sendFile"]&&scopedImage&&stage==0)return NO;
+    // Compared from the literal's side, on a plain copy: a subclass's own -isEqual: or -lowercaseString never decides.
+    method=[[NSString alloc] initWithString:method];
+    if([@"rayneonet_sendFile" isEqualToString:method]&&scopedImage&&stage==0)return NO;
     NSString *lower=method.lowercaseString;
     return [lower containsString:@"sendfile"]||[lower containsString:@"ota"]||[lower containsString:@"upgrade"];
 }
@@ -55,8 +60,23 @@ BOOL TIOOTAFileCallBlocked(NSString *method,BOOL scopedImage,NSUInteger stage){
 // TIOOTAFileCallBlocked. Stock 1.0.7 sends {deviceId, filePath, taskId} with
 // filePath <container>/Library/Application Support/user_<digits>/teleprompter/<UUID>
 // and taskId the same UUID; 1.0.11 may stage under Documents/user_<digits>/teleprompter/.
-// The glasses' business 0x11 receiver keeps the bytes in RAM (about 1 MiB).
+// Limits beyond the observed shape, kept on purpose: deviceId at most 256
+// characters, at most 20 digits after user_, file name a UUID in one case.
+// Where the bytes go, from a static decomp read only (not checked on the
+// device): the stock 1.0.5.5 business-0x11 receiver assembles the file in RAM
+// (at most 20 MiB, MD5-checked) and only business 0x14 consumes it, with about a
+// 1 MiB RAM cap; no storage write was found, but indirect calls were not
+// resolved. 1.0.5.12 is inferred to behave the same.
 static const off_t TIOTeleprompterMaxBytes=1048576;
+// A ZIP's end-of-central-directory record sits in the last 22 + 65535 bytes.
+static const off_t TIOTeleprompterEOCDWindow=65557;
+// Only objects of Foundation's or CoreFoundation's own classes: no subclass
+// whose count, keys, characters or equality could answer differently per read.
+static BOOL TeleprompterPlain(id o,Class kind){
+    if(!o||![o isKindOfClass:kind])return NO;
+    const char *image=class_getImageName(object_getClass(o));
+    return image&&!strncmp(image,"/System/Library/Frameworks/",27)&&(strstr(image,"/CoreFoundation.framework/")||strstr(image,"/Foundation.framework/"));
+}
 static BOOL TeleprompterString(id v,NSUInteger max){return [v isKindOfClass:NSString.class]&&[(NSString *)v length]>0&&[(NSString *)v length]<=max;}
 // Printable ASCII only: no NUL, no Unicode normalization questions.
 static BOOL TeleprompterASCII(NSString *s){for(NSUInteger i=0;i<s.length;i++){unichar c=[s characterAtIndex:i];if(c<0x20||c>0x7e)return NO;}return YES;}
@@ -81,8 +101,26 @@ static NSString *TeleprompterRealPath(NSString *path){
     char resolved[PATH_MAX];if(!realpath(path.UTF8String,resolved))return nil;
     NSString *r=@(resolved);return TeleprompterASCII(r)?r:nil;
 }
+// One enumeration of a plain dictionary of plain strings into a fresh immutable
+// dictionary of fresh strings. Everything after this reads only the snapshot,
+// and the hook forwards the snapshot, so the plugin reads what was checked.
+static NSDictionary *TeleprompterSnapshot(id args){
+    if(!TeleprompterPlain(args,NSDictionary.class))return nil;
+    NSMutableDictionary *m=[NSMutableDictionary dictionaryWithCapacity:3];
+    for(id k in (NSDictionary *)args){
+        if(m.count>=3)return nil;
+        id v=[(NSDictionary *)args objectForKey:k];
+        if(!TeleprompterPlain(k,NSString.class)||!TeleprompterPlain(v,NSString.class))return nil;
+        NSString *key=[[NSString alloc] initWithString:k];if(m[key])return nil;
+        m[key]=[[NSString alloc] initWithString:v];
+    }
+    return [m copy];
+}
 // Walks root/components with O_NOFOLLOW at every step, so no component can be
 // a symlink at open time, then checks the file on the descriptor it opened.
+// Accepted window: the plugin opens the path again after this check. Only the
+// app writes under its container (UIFileSharingEnabled is false on both hosts),
+// and the glasses-side receiver is the backstop for anything swapped in between.
 static BOOL TeleprompterFileOK(NSString *root,NSArray<NSString *> *components,NSString *path){
     struct stat ls,fs;
     if(lstat(path.UTF8String,&ls)||!S_ISREG(ls.st_mode))return NO;
@@ -94,36 +132,59 @@ static BOOL TeleprompterFileOK(NSString *root,NSArray<NSString *> *components,NS
     int fd=openat(dir,components.lastObject.UTF8String,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);close(dir);
     if(fd<0)return NO;
     BOOL ok=!fstat(fd,&fs)&&S_ISREG(fs.st_mode)&&fs.st_dev==ls.st_dev&&fs.st_ino==ls.st_ino&&fs.st_nlink==1&&fs.st_size>0&&fs.st_size<=TIOTeleprompterMaxBytes;
+    // Not a ZIP: no "PK" at offset 0 and no end-of-central-directory signature in the tail
+    // (catches a ZIP behind a BOM or any other prefix). Both reads use this descriptor.
     if(ok){uint8_t magic[2]={0,0};ssize_t n=pread(fd,magic,2,0);ok=n>=1&&!(n==2&&magic[0]=='P'&&magic[1]=='K');}
+    if(ok){
+        off_t start=fs.st_size>TIOTeleprompterEOCDWindow?fs.st_size-TIOTeleprompterEOCDWindow:0;size_t want=(size_t)(fs.st_size-start);
+        uint8_t *tail=malloc(want);ok=tail!=NULL;
+        if(ok){size_t got=0;while(got<want){ssize_t r=pread(fd,tail+got,want-got,start+(off_t)got);if(r<=0)break;got+=(size_t)r;}
+            ok=got==want&&!memmem(tail,want,"PK\x05\x06",4);free(tail);}
+    }
     close(fd);return ok;
 }
-BOOL TIOStockTeleprompterSendAllowedIn(NSString *container,NSString *method,id args,NSUInteger otaStage){
-    if(otaStage!=0||![method isKindOfClass:NSString.class]||![method isEqualToString:@"rayneonet_sendFile"])return NO;
-    if(![args isKindOfClass:NSDictionary.class]||[args count]!=3)return NO;
-    NSDictionary *a=args;
-    if(![[NSSet setWithArray:a.allKeys] isEqualToSet:[NSSet setWithObjects:@"deviceId",@"filePath",@"taskId",nil]])return NO;
+static NSDictionary *TeleprompterCheck(NSString *container,NSString *method,id args,NSUInteger otaStage){
+    if(otaStage!=0||!TeleprompterPlain(method,NSString.class))return nil;
+    if(![@"rayneonet_sendFile" isEqualToString:[[NSString alloc] initWithString:method]])return nil;
+    NSDictionary *a=TeleprompterSnapshot(args);
+    if(a.count!=3||![[NSSet setWithArray:a.allKeys] isEqualToSet:[NSSet setWithObjects:@"deviceId",@"filePath",@"taskId",nil]])return nil;
     NSString *device=a[@"deviceId"],*path=a[@"filePath"],*task=a[@"taskId"];
-    if(!TeleprompterString(device,256)||!TeleprompterString(path,PATH_MAX-1)||!TeleprompterString(task,36))return NO;
-    if(!TeleprompterASCII(path)||![path hasPrefix:@"/"]||!TeleprompterUUID(task))return NO;
+    if(!TeleprompterString(device,256)||!TeleprompterString(path,PATH_MAX-1)||!TeleprompterString(task,36))return nil;
+    if(!TeleprompterASCII(path)||![path hasPrefix:@"/"]||!TeleprompterUUID(task))return nil;
     // The container comes from the app (NSHomeDirectory()), never from the path.
-    if(!TeleprompterString(container,PATH_MAX-1)||!TeleprompterASCII(container)||![container hasPrefix:@"/"]||[container hasSuffix:@"/"])return NO;
-    NSString *root=TeleprompterRealPath(container);if(!root)return NO;
+    if(!TeleprompterString(container,PATH_MAX-1))return nil;
+    container=[[NSString alloc] initWithString:container];
+    if(!TeleprompterASCII(container)||![container hasPrefix:@"/"]||[container hasSuffix:@"/"])return nil;
+    NSString *root=TeleprompterRealPath(container);if(!root)return nil;
     // iOS reports the container as /var/..., whose realpath is /private/var/...: accept either spelling of the same root.
     NSString *suffix=nil;
     for(NSString *prefix in @[container,root]){NSString *p=[prefix stringByAppendingString:@"/"];if([path hasPrefix:p]){suffix=[path substringFromIndex:p.length];break;}}
-    if(!suffix)return NO;
+    if(!suffix)return nil;
     NSArray<NSString *> *c=[suffix componentsSeparatedByString:@"/"];NSUInteger user;
-    if(c.count==5&&[c[0] isEqualToString:@"Library"]&&[c[1] isEqualToString:@"Application Support"])user=2;
-    else if(c.count==4&&[c[0] isEqualToString:@"Documents"])user=1;
-    else return NO;
-    if(!TeleprompterUser(c[user])||![c[user+1] isEqualToString:@"teleprompter"]||![c[user+2] isEqualToString:task])return NO;
+    if(c.count==5&&[@"Library" isEqualToString:c[0]]&&[@"Application Support" isEqualToString:c[1]])user=2;
+    else if(c.count==4&&[@"Documents" isEqualToString:c[0]])user=1;
+    else return nil;
+    if(!TeleprompterUser(c[user])||![@"teleprompter" isEqualToString:c[user+1]]||![task isEqualToString:c[user+2]])return nil;
     // No symlink anywhere below the root, no "..", "." or "//": the resolved path is the path itself.
     NSString *expected=[[root stringByAppendingString:@"/"] stringByAppendingString:suffix];
-    if(![TeleprompterRealPath(path) isEqualToString:expected])return NO;
-    return TeleprompterFileOK(root,c,expected);
+    if(![expected isEqualToString:TeleprompterRealPath(path)])return nil;
+    return TeleprompterFileOK(root,c,expected)?a:nil;
+}
+NSDictionary *TIOStockTeleprompterSendSnapshotIn(NSString *container,NSString *method,id args,NSUInteger otaStage){
+    @try{return TeleprompterCheck(container,method,args,otaStage);}@catch(__unused id e){return nil;}
+}
+BOOL TIOStockTeleprompterSendAllowedIn(NSString *container,NSString *method,id args,NSUInteger otaStage){
+    return TIOStockTeleprompterSendSnapshotIn(container,method,args,otaStage)!=nil;
 }
 BOOL TIOStockTeleprompterSendAllowed(NSString *method,id args,NSUInteger otaStage){
     return TIOStockTeleprompterSendAllowedIn(NSHomeDirectory(),method,args,otaStage);
+}
+// The call the hook forwards for an allowed teleprompter send: built from the
+// method literal and the checked snapshot, never from the caller's objects.
+id TIOStockTeleprompterForwardCall(NSDictionary *snapshot){
+    Class cls=NSClassFromString(@"FlutterMethodCall");SEL make=NSSelectorFromString(@"methodCallWithMethodName:arguments:");
+    if(![snapshot isKindOfClass:NSDictionary.class]||![cls respondsToSelector:make])return nil;
+    @try{return ((id(*)(id,SEL,id,id))objc_msgSend)(cls,make,@"rayneonet_sendFile",snapshot);}@catch(__unused id e){return nil;}
 }
 static id Error(NSError **error,NSString *s){if(error)*error=[NSError errorWithDomain:@"TurboIO.OTAFlash" code:1 userInfo:@{NSLocalizedDescriptionKey:s}];return nil;}
 static BOOL Number(id n,NSUInteger *out){
@@ -219,6 +280,8 @@ BOOL TIOOTAAutoUpdateDisabled(NSDictionary *preferences){
     return found>0;
 }
 static TIOOTAFlashGate *Current(void){@synchronized(NSProcessInfo.processInfo){if(!Gate)Gate=[TIOOTAFlashGate new];return Gate;}}
+// The flash session stage the file guard reads (test.py's stock-teleprompter group substitutes this seam).
+static NSUInteger GateStage(void){return [[Current() status][@"stage"] unsignedIntegerValue];}
 BOOL TIOOTAFlashProtected(void){
 #if TARGET_OS_IPHONE && TIO_DISPLAY_FLASH
     if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary))return NO;
@@ -247,10 +310,11 @@ BOOL TIOOTADownloadOnlyHost(void){
     // The packager's marker alone also counts: refusing more is the safe side.
     return [TIOHostProfileFor(TIOHostMainImage(),info) isEqual:@"ios1011-download"]||[info[@"TIOHostProfile"] isEqual:@"ios1011-download"];
 }
-BOOL TIOOTADownloadOnlyBlockCall(id call){
+// teleprompter (may be NULL) receives the checked snapshot when the call passes as the stock teleprompter send.
+static BOOL DownloadOnlyBlock(id call,NSDictionary **teleprompter){
     NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
     if(![method isKindOfClass:NSString.class])return YES;
-    if([method isEqual:@"rayneonet_sendMessage"]){
+    if([@"rayneonet_sendMessage" isEqualToString:method]){
         NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
         if(business!=9)return NO;
         id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
@@ -258,16 +322,21 @@ BOOL TIOOTADownloadOnlyBlockCall(id call){
     }
     // No addon file sender is scoped here: the download-only host sends nothing of its own.
     // D5: the one stock file send let through is the narrow teleprompter shape; the stage must be 0 here too.
-    NSUInteger stage=[[Current() status][@"stage"] unsignedIntegerValue];
-    return TIOOTAFileCallBlocked(method,TIOStockTeleprompterSendAllowed(method,args,stage),stage);
+    NSUInteger stage=GateStage();
+    NSDictionary *snapshot=TIOStockTeleprompterSendSnapshotIn(NSHomeDirectory(),method,args,stage);
+    BOOL blocked=TIOOTAFileCallBlocked(method,snapshot!=nil,stage);
+    if(teleprompter&&!blocked)*teleprompter=snapshot;
+    return blocked;
 }
-BOOL TIOOTAFlashBlockCall(id call){
-    if(TIOOTADownloadOnlyHost())return TIOOTADownloadOnlyBlockCall(call);
+BOOL TIOOTADownloadOnlyBlockCall(id call){return DownloadOnlyBlock(call,NULL);}
+BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
+    if(teleprompter)*teleprompter=nil;
+    if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);
     if(!TIOOTAFlashBuild())return NO;
     NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
     if(![method isKindOfClass:NSString.class])return YES;
     if([method.lowercaseString containsString:@"disconnect"]||[method.lowercaseString containsString:@"unbind"]||[method.lowercaseString containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
-    if([method isEqual:@"rayneonet_sendMessage"]){
+    if([@"rayneonet_sendMessage" isEqualToString:method]){
         NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
         if(business!=9)return NO;
         id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
@@ -281,11 +350,14 @@ BOOL TIOOTAFlashBlockCall(id call){
     }
     // The pinned files path uses business 9 frames, never sendFile / ZIP mode.
     BOOL scopedImage=NO;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s&&!scopedImage;s++)scopedImage=(*s)(method,args);
-    NSUInteger stage=[[Current() status][@"stage"] unsignedIntegerValue];
-    // D5: the stock teleprompter shape passes like a scoped call, and only at stage 0.
-    if(!scopedImage)scopedImage=TIOStockTeleprompterSendAllowed(method,args,stage);
-    return TIOOTAFileCallBlocked(method,scopedImage,stage);
+    NSUInteger stage=GateStage();
+    // D5: an addon scoped sender decides first; otherwise the stock teleprompter shape passes like a scoped call, only at stage 0.
+    NSDictionary *snapshot=scopedImage?nil:TIOStockTeleprompterSendSnapshotIn(NSHomeDirectory(),method,args,stage);
+    BOOL blocked=TIOOTAFileCallBlocked(method,scopedImage||snapshot,stage);
+    if(teleprompter&&!blocked)*teleprompter=snapshot;
+    return blocked;
 }
+BOOL TIOOTAFlashBlockCall(id call){return TIOOTAFlashBlockCallSnapshot(call,NULL);}
 void TIOOTAFlashObserveEvent(NSDictionary *event){
     if(!TIOOTAFlashBuild()||![event[@"eventType"] isEqual:@"messageReceived"])return;
     NSDictionary *m=event[@"message"];NSUInteger business=0;if(![m isKindOfClass:NSDictionary.class]||!Business(m[@"businessId"],&business)||business!=9)return;
