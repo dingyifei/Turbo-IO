@@ -9,17 +9,19 @@ apple_ai_out=''
 apple_args=()
 # --host 107 (default): the 1.0.7/230 TMG build. --host 1011: the download-only
 # 1.0.11/259 build (stock App.framework, no firmware, no flashing), from TURBO_APP1011.
+# --host 1011-full: the full 1.0.11/259 build (C15) from TURBO_APP1011: route patch at the
+# 1.0.11 offsets, the TMG ZIP, no device-model list; TMG flashing disarmed until armed on the phone.
 # --wire-log: build the addon with the passive channel recorder (TIO_WIRE_LOG=1).
 # --build-only: build and check the addon as a package run would, then stop before
 # anything touches the signing identity or writes a package.
 host=107
 wire_log=0
 build_only=0
-usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011] [--wire-log] [--build-only] <label>'
+usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011|1011-full] [--wire-log] [--build-only] <label>'
 while [[ $# -gt 1 ]]; do
   case "$1" in
     --apple-ai) [[ -n ${2:-} && -z $apple_ai_out ]] || { echo "$usage" >&2; exit 2; }; apple_ai_out=$2; shift 2 ;;
-    --host) [[ ${2:-} == 107 || ${2:-} == 1011 ]] || { echo "$usage" >&2; exit 2; }; host=$2; shift 2 ;;
+    --host) [[ ${2:-} == 107 || ${2:-} == 1011 || ${2:-} == 1011-full ]] || { echo "$usage" >&2; exit 2; }; host=$2; shift 2 ;;
     --wire-log) wire_log=1; shift ;;
     --build-only) build_only=1; shift ;;
     *) echo "$usage" >&2; exit 2 ;;
@@ -96,6 +98,7 @@ set +a
 # or package.env: the addon build also runs in an emptied environment (env -i).
 for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done
 if [[ $host == 1011 ]]; then required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011)
+elif [[ $host == 1011-full ]]; then required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_FIRMWARE TURBO_APP1011)
 else required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107); fi
 for name in "${required[@]}"; do
   [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
@@ -151,8 +154,21 @@ download_only_guard() {
   done
   grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$1" || { echo 'missing 1.0.11 guard marker' >&2; return 1; }
 }
+# C15: the full 1.0.11 build also needs the disarm guard and the arm step (and keeps the
+# download-only guard, which takes over if the profile marker is ever missing).
+full_1011_guard() {
+  local symbols name
+  download_only_guard "$1"
+  symbols=$(nm -g "$1")
+  for name in _TIOOTAArmRequired _TIOOTADisarmedBlockCall _TIOOTADisarmedReadAllowed _TIOOTAArmGuardMarker \
+    _TIOOTAFlashArm _TIOOTAFlashDisarm _TIOOTAFlashArmed _TIOOTAFlashArmStatus _TIOFirmwareExportSafetyModelFull; do
+    grep -Eq " $name\$" <<<"$symbols" || { echo "missing $name" >&2; return 1; }
+  done
+  grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$1" || { echo 'missing 1.0.11 arm guard marker' >&2; return 1; }
+}
 if [[ $build_only == 1 ]]; then
   [[ $host != 1011 ]] || run_logged download-only-guard download_only_guard "$ADDON"
+  [[ $host != 1011-full ]] || run_logged full-1011-guard full_1011_guard "$ADDON"
   status=PASS
   active=complete
   printf 'built %s (%s)\n' "$ADDON" "$addon_sha"
@@ -160,6 +176,8 @@ if [[ $build_only == 1 ]]; then
 fi
 if [[ $host == 1011 ]]; then
   [[ -f "$TURBO_PROFILE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+elif [[ $host == 1011-full ]]; then
+  [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 else
   [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 fi
@@ -193,6 +211,34 @@ assert info.get('TIOHostProfile')=='ios1011-download', 'missing host profile mar
 for key in ('TIOExperimentalOTAQueryRouting','TIOExperimentalOTABuild','UISupportedDevices'):
     assert key not in info, 'unexpected '+key
 assert not (app/'TurboWeReadCandidate.zip').exists(), 'unexpected firmware resource'
+digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
+assert report['ipaSHA256']==digest, 'IPA digest mismatch'
+print(digest)
+PY
+elif [[ $host == 1011-full ]]; then
+# C15: fail closed unless the addon carries both 1.0.11 guards (package.mjs repeats this check).
+run_logged full-1011-guard full_1011_guard "$ADDON"
+# Full 1.0.11: route patch (pinned output) and the ZIP; no device-model list, so no product argument.
+run_logged addon-unchanged addon_unchanged
+run_logged package node "$ED/package.mjs" --host ios1011 --app "$TURBO_APP1011" --addon "$ADDON" \
+  --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
+  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$TURBO_FIRMWARE" ${apple_args[@]+"${apple_args[@]}"}
+run_logged codesign codesign --verify --deep --strict "$OUT/Payload/Runner.app"
+run_logged unzip unzip -tq "$OUT/TurboIO-local-only.ipa"
+run_logged report python3 - "$OUT" <<'PY'
+import hashlib,json,pathlib,plistlib,sys
+out=pathlib.Path(sys.argv[1])
+with (out/'report.json').open() as stream: report=json.load(stream)
+assert report['status']=='SIGNED_NOT_DEVICE_ACCEPTED', 'unexpected package status'
+assert report['hostProfile']=='ios1011' and report['flashAuthorized'] is False and report['flashArmed'] is False, 'unexpected host profile, flash authorization or arm state'
+assert report['routePatched'] is True and report['firmwareBundled'] is True, 'full 1.0.11 build lacks its route patch or ZIP'
+app=out/'Payload/Runner.app'
+info=plistlib.loads((app/'Info.plist').read_bytes())
+assert info.get('TIOHostProfile')=='ios1011', 'missing full host profile marker'
+assert info.get('TIOExperimentalOTAQueryRouting')=='ios1011-tmg-loopback-flash-gated-arm-required', 'missing 1.0.11 routing marker'
+assert 'UISupportedDevices' not in info, 'unexpected UISupportedDevices'
+assert (app/'TurboWeReadCandidate.zip').exists(), 'missing firmware resource'
+assert report['postSigningRouteVerified'] is True, 'route records not verified after signing'
 digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
 assert report['ipaSHA256']==digest, 'IPA digest mismatch'
 print(digest)

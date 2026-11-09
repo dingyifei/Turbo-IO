@@ -123,6 +123,12 @@ symbols_stage() {
     grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 guard symbol $name" >&2; return 1; }
   done
   grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
+  # C15: the flag-independent disarm guard and the arm step of the full 1.0.11 host are in every build too.
+  for name in _TIOOTAArmRequired _TIOOTADisarmedBlockCall _TIOOTADisarmedReadAllowed _TIOOTAArmGuardMarker \
+    _TIOOTAFlashArm _TIOOTAFlashDisarm _TIOOTAFlashArmed _TIOOTAFlashArmStatus _TIOFirmwareExportSafetyModelFull; do
+    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 arm guard symbol $name" >&2; return 1; }
+  done
+  grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$addon" || { echo 'Missing 1.0.11 arm guard marker' >&2; return 1; }
 }
 test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
@@ -142,14 +148,16 @@ package_test_stage() {
   export IOS107_TEST_UNSIGNED_APP=$TURBO_APP107
   IOS107_TEST_FIRMWARE="$TURBO_FIRMWARE" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
 }
-# Optional: download-only 1.0.11/259 host checks. Runs only when TURBO_APP1011 is set.
+# Optional: 1.0.11/259 host checks, download-only and full (C15). Runs only when TURBO_APP1011 is set.
 host1011_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   [[ -d "$TURBO_APP1011" ]] || { echo 'TURBO_APP1011 is not a directory' >&2; return 1; }
   cd "$ED"
-  python3 test.py --firmware "$TURBO_FIRMWARE" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host
+  python3 test.py --firmware "$TURBO_FIRMWARE" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
   unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE IOS107_TEST_FIRMWARE
   IOS1011_TEST_APP="$TURBO_APP1011" node --test package.test.mjs
+  # The full 1.0.11 package path up to (not including) signing: fresh addon build and both 1.0.11 guards.
+  bash "$REPO/scripts/turbo-package.sh" --host 1011-full --build-only gate-1011-full
 }
 source_audit_stage() {
   cd "$REPO"

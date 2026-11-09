@@ -73,7 +73,7 @@ export function stripCodeSignature(bytes) {
 
 function prepare() {
   const [sourceArg,outArg,addonArg,bundle,mode]=process.argv.slice(2);
-  // --strip-stale-signature is for download-only hosts, whose input still carries an invalid Apple signature.
+  // --strip-stale-signature is for the 1.0.11 input (both profiles), which still carries an invalid Apple signature.
   const strip=process.argv.length===7&&mode==='--strip-stale-signature';
   if(!sourceArg||!outArg||!addonArg||!bundle||(process.argv.length!==6&&!strip))throw Error('Usage: node macho-embed.mjs /absolute/Runner.app /absolute/new/Runner.app /absolute/embedded/TurboIOPrivateAddon.dylib your.bundle.id [--strip-stale-signature]');
   if(![sourceArg,outArg,addonArg].every(path.isAbsolute)||![sourceArg,outArg].every(x=>x.endsWith('.app')))throw Error('Use absolute app and addon paths');
@@ -85,7 +85,7 @@ function prepare() {
   const exe=path.join(source,'Runner'),original=fs.readFileSync(exe),header=inspectMachO(original);
   const host=inspectedHost(info,header.uuid);
   if(!host)throw Error('Unsupported official source app version/build/UUID');
-  if(!!host.downloadOnly!==strip)throw Error('Download-only hosts, and only they, require --strip-stale-signature');
+  if(!!host.staleSignature!==strip)throw Error('Hosts with a stale input signature, and only they, require --strip-stale-signature');
   const embedded=fs.readFileSync(addon),addonInfo=inspectMachO(embedded);
   if(addonInfo.fileType!==6||addonInfo.installName!=='@rpath/TurboIOPrivateAddon.dylib'||addonInfo.encrypted||addonInfo.dependencies.some(x=>/\/var\/jb\/|frida|ellekit|substrate/i.test(x)))throw Error('Use the embedded addon build, with no jailbreak runtime dependency');
   if(!embedded.includes(Buffer.from(bundle+'\0')))throw Error('Build addon for exactly the requested Bundle ID');
@@ -101,7 +101,8 @@ function prepare() {
   if(plist(path.join(out,'Info.plist')).CFBundleIdentifier!==bundle)throw Error('Bundle ID update failed');
   const hash=b=>createHash('sha256').update(b).digest('hex');
   const report={status:'PREPARED_ONLY_NOT_SIGNED_NOT_INSTALLABLE',originalExecutableSHA256:hash(original),preparedExecutableSHA256:hash(patched),addonSHA256:hash(embedded),binaryCount:inventory.length,uuid:header.uuid,sourcePreserved:hash(fs.readFileSync(exe))===hash(original),requires:['matching developer provisioning profile','review entitlements for every nested code bundle','sign nested code then app','non-jailbroken hardware acceptance']};
-  if(strip)Object.assign(report,{hostProfile:host.profile,staleSignatureRemoved:true,unsignedExecutableSHA256:hash(unsigned)});
+  // The image only: which addon profile runs is the packager's TIOHostProfile marker.
+  if(strip)Object.assign(report,{hostImage:`${host.version}/${host.build}`,staleSignatureRemoved:true,unsignedExecutableSHA256:hash(unsigned)});
   fs.writeFileSync(path.join(out,'TurboIOPrivatePreparation.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});
   console.log(JSON.stringify(report,null,2));
 }

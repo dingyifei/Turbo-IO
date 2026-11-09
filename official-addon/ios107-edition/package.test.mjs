@@ -37,10 +37,19 @@ test('unknown original image bytes and private markers rejected',()=>{
 });
 test('phone gates require exact host, healthy source and inspected new offsets',()=>{
  const s=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
- assert.match(s,/if\(!TIOOTA107HostMatches\(NSBundle.mainBundle.infoDictionary\)\)\s*return !TIOOTAIsEmptyVersionQuery\(data\)/);
- assert.match(s,/BOOL TIOOTAFlashAuthorize[\s\S]*?TIOOTA107HostMatches[\s\S]*?return NO;/);
+ // Each OTA host (ios107, or the full ios1011 with its own marker) passes only through TIOOTAHostMatches.
+ assert.match(s,/if\(!TIOOTAHostMatches\(NSBundle.mainBundle.infoDictionary\)\)\s*return !TIOOTAIsEmptyVersionQuery\(data\)/);
+ assert.match(s,/BOOL TIOOTAFlashAuthorize[\s\S]*?TIOOTAHostMatches[\s\S]*?return NO;/);
+ assert.doesNotMatch(s,/TIOOTA107HostMatches/);
+ // C15: the full 1.0.11 host is refused while disarmed, before the flash-build early return, and authorization checks the arm.
+ const snapshot=s.slice(s.indexOf('BOOL TIOOTAFlashBlockCallSnapshot('));
+ assert.ok(snapshot.indexOf('if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(')<snapshot.indexOf('if(TIOOTAArmRequired()&&!ArmedForTransfer())return DisarmedBlock(call,teleprompter);'));
+ assert.ok(snapshot.indexOf('if(TIOOTAArmRequired()&&!ArmedForTransfer())return DisarmedBlock(call,teleprompter);')<snapshot.indexOf('if(!TIOOTAFlashBuild())return NO;'));
+ assert.match(s,/BOOL TIOOTAFlashAuthorize[^\n]*\n[^\n]*TIOOTAHostMatches[^\n]*\n\s*if\(TIOOTAArmRequired\(\)&&!ArmedForTransfer\(\)\)\{Error\(/);
  assert.match(s,/bootstrapEligible[\s\S]*?healthPassed/);
- assert.match(fs.readFileSync(new URL('./ExperimentalOTAFeed.m',import.meta.url),'utf8'),/TIOHostImageMatches/);
+ assert.match(fs.readFileSync(new URL('./ExperimentalOTAFeed.m',import.meta.url),'utf8'),/TIOOTAHostProfile\(bundle\.infoDictionary\)[\s\S]*?TIOHostFullImageMatches\(TIOHostMainImage\(\),bundle\.infoDictionary\)[\s\S]*?TIOOTARouteFileMatches\(file,profile\)/);
+ // TIOOTA107HostMatches itself is unchanged.
+ assert.match(fs.readFileSync(new URL('./OTAHost.h',import.meta.url),'utf8'),/static inline BOOL TIOOTA107HostMatches\(NSDictionary \*info\) \{\n    return \[info\[@"CFBundleIdentifier"\] isEqual:@"com\.rayneo\.venus\.pub"\] &&\n        \[info\[@"CFBundleShortVersionString"\] isEqual:@"1\.0\.7"\] &&\n        \[info\[@"CFBundleVersion"\] isEqual:@"230"\] &&\n        \[info\[@"TIOExperimentalOTAQueryRouting"\] isEqual:@"ios107-tmg2-loopback-flash-gated"\];\n\}/);
  assert.equal(fs.existsSync(new URL('./patch-ios106-route.mjs',import.meta.url)),false);
 });
 test('exact firmware resource, not a flash authorization',t=>{
@@ -226,10 +235,11 @@ const info1011={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Ru
 const options1011={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios1011-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',host:'ios1011-download'};
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 test('host profile table: ios107 keeps the route patch and firmware; ios1011-download has neither',()=>{
- assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011-download','ios107']);
- assert.equal(hostProfile(),HOST_PROFILES.ios107);assert.throws(()=>hostProfile('ios1011'));assert.throws(()=>hostProfile('__proto__'));
+ assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011','ios1011-download','ios107']);
+ assert.equal(hostProfile(),HOST_PROFILES.ios107);for(const bad of ['ios1011-full','IOS1011','1011','__proto__'])assert.throws(()=>hostProfile(bad));
  const a=HOST_PROFILES.ios107,d=HOST_PROFILES['ios1011-download'];
  assert.equal(a.routePatch,true);assert.equal(a.firmware,true);assert.equal(a.stripStaleSignature,undefined);
+ assert.equal(a.routeProfile,'ios107');assert.equal(a.routingMarker,'ios107-tmg2-loopback-flash-gated');assert.equal(a.packagingRevision,'APP107-OTA-PUBLIC-SOURCE-01');assert.equal(a.hostProfileMarker,undefined);
  assert.equal(d.routePatch,false);assert.equal(d.firmware,false);assert.equal(d.stripStaleSignature,true);
  assert.equal(d.acceptedPairs.length,1);assert.deepEqual(d.acceptedPairs[0],['09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95','0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be']);
  assert.deepEqual(d.routes,[['/xrlauncherapi/v1/signApi/gray/upgrade',39886000],['/xrlauncherhwapi/v1/signApi/gray/upgrade',30868352]]);
@@ -237,7 +247,7 @@ test('host profile table: ios107 keeps the route patch and firmware; ios1011-dow
  // The packager pin, the JS host matrix and the native header name the same UUID.
  const native=fs.readFileSync(new URL('./HostCompatibility.h',import.meta.url),'utf8').match(/"1\.0\.11"\]&&\[build isEqual:@"259"\]\)return @"([0-9A-F-]{36})"/);
  assert.ok(native);assert.equal(native[1].replaceAll('-','').toLowerCase(),d.uuid);
- assert.equal(inspectedHost(info1011,d.uuid).profile,'ios1011-download');assert.equal(inspectedHost(info1011,d.uuid).downloadOnly,true);
+ assert.equal(inspectedHost(info1011,d.uuid).profile,'ios1011-download');assert.equal(inspectedHost(info1011,d.uuid).downloadOnly,true);assert.equal(inspectedHost(info1011,d.uuid).staleSignature,true);
  assert.equal(inspectedHost({...info1011,CFBundleVersion:'260'},d.uuid),null);assert.equal(inspectedHost(info1011,HOST_PROFILES.ios107.uuid),null);
  assert.equal(inspectedHost(info,d.uuid),null);assert.equal(inspectedHost(info,HOST_PROFILES.ios107.uuid).downloadOnly,undefined);
 });
@@ -317,7 +327,7 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
   assert.equal(fs.existsSync(path.join(out,'_CodeSignature')),false);assert.ok(fs.existsSync(path.join(src,'_CodeSignature/CodeResources')));
   const runner=fs.readFileSync(path.join(out,'Runner')),report=JSON.parse(fs.readFileSync(path.join(out,'TurboIOPrivatePreparation.json'),'utf8'));
   assert.equal(stripCodeSignature(runner).stripped,false);assert.equal(inspectMachO(runner).uuid,'22724c972ef9388d8e6a6e051855a555');
-  assert.equal(report.hostProfile,'ios1011-download');assert.equal(report.staleSignatureRemoved,true);
+  assert.equal(report.hostImage,'1.0.11/259');assert.equal(report.hostProfile,undefined);assert.equal(report.staleSignatureRemoved,true);
   assert.equal(report.originalExecutableSHA256,'09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95');
   assert.equal(report.unsignedExecutableSHA256,'c28032569765077b0246a3ba9c54fede700f5bed4d3445f61cea0e40fcdbd6f6');
   assert.equal(report.preparedExecutableSHA256,sha256(runner));
@@ -328,7 +338,7 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
 });
 test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('\nelif [[ $host == 1011-full ]]; then\n# C15'));
  assert.match(branch,/--host ios1011-download --app "\$TURBO_APP1011"/);
  assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
  assert.match(branch,/hostProfile'\]=='ios1011-download'/);
@@ -469,8 +479,9 @@ test('turbo-package.sh builds the addon fresh with the requested flags before si
  const copy=pos('cp -p "$ADDON" "$LOG_DIR/addon/TurboIOPrivateAddon.dylib"\nADDON=$LOG_DIR/addon/TurboIOPrivateAddon.dylib');
  assert.ok(sourced<scrub&&scrub<remove&&remove<build&&build<built&&built<check&&check<copy&&copy<buildOnly&&buildOnly<sign&&sign<guard1011);
  // The signed dylib is the checked copy: its SHA-256 is checked again right before each package.mjs run.
- assert.equal([...wrapper.matchAll(/run_logged addon-unchanged addon_unchanged\nrun_logged package node "\$ED\/package\.mjs"/g)].length,2);
- assert.equal([...wrapper.matchAll(/run_logged package node/g)].length,2);
+ // Three package runs: 1.0.7, download-only 1.0.11 and full 1.0.11 (C15).
+ assert.equal([...wrapper.matchAll(/run_logged addon-unchanged addon_unchanged\nrun_logged package node "\$ED\/package\.mjs"/g)].length,3);
+ assert.equal([...wrapper.matchAll(/run_logged package node/g)].length,3);
  assert.ok(wrapper.includes("addon_sha=$(tail -n 1 \"$LOG_DIR/addon-check.log\")"));
  // The fresh build is not inside a host branch: it runs for 1.0.7 and 1.0.11 alike.
  assert.ok(build<wrapper.indexOf('if [[ $host == 1011 ]]; then\n  [[ -f "$TURBO_PROFILE"'));
@@ -522,12 +533,19 @@ test('wirelog-absent.sh fails on a TIO_WIRE_LOG=1 build',()=>{
 test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on no flag',()=>{
  const flash=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
  const body=flash.slice(flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
- assert.match(body,/^BOOL TIOOTAFlashBlockCallSnapshot\(id call,NSDictionary \*\*teleprompter\)\{\n    if\(teleprompter\)\*teleprompter=nil;\n    if\(TIOOTADownloadOnlyHost\(\)\)return DownloadOnlyBlock\(call,teleprompter\);\n    if\(!TIOOTAFlashBuild\(\)\)return NO;/);
+ // C15: the full 1.0.11 host's disarmed refusal comes next, also before any flag-dependent code.
+ assert.match(body,/^BOOL TIOOTAFlashBlockCallSnapshot\(id call,NSDictionary \*\*teleprompter\)\{\n    if\(teleprompter\)\*teleprompter=nil;\n    if\(TIOOTADownloadOnlyHost\(\)\)return DownloadOnlyBlock\(call,teleprompter\);\n    if\(TIOOTAArmRequired\(\)&&!ArmedForTransfer\(\)\)return DisarmedBlock\(call,teleprompter\);\n    if\(!TIOOTAFlashBuild\(\)\)return NO;/);
  assert.match(flash,/\nBOOL TIOOTAFlashBlockCall\(id call\)\{return TIOOTAFlashBlockCallSnapshot\(call,NULL\);\}\n/);
  assert.match(flash,/\nBOOL TIOOTADownloadOnlyBlockCall\(id call\)\{return DownloadOnlyBlock\(call,NULL\);\}\n/);
- const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
+ const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('// Full 1.0.11 host (ios1011, C15)'));
  assert.ok(pure.length>0);assert.doesNotMatch(pure,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild|ScopedFileSenders/);
  assert.ok(pure.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
+ // The disarm region compiles in every build: no preprocessor branch. Only arming and the armed
+ // check read TIOOTAFlashBuild (an armed transfer needs the flash path); the business-9 refusal never does.
+ const arm=flash.slice(flash.indexOf('// Full 1.0.11 host (ios1011, C15)'),flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
+ assert.ok(arm.includes(packaging.FULL_1011_ARM_MARKER));assert.doesNotMatch(arm,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_/);
+ const disarmed=arm.slice(arm.indexOf('static BOOL DisarmedBlock('),arm.indexOf('BOOL TIOOTADisarmedBlockCall('));
+ assert.ok(disarmed.length>0);assert.doesNotMatch(disarmed,/TIOOTAFlashBuild|Current\(\)|AutoUpdate/);
  // test.py builds the guard test with and without the flash/phone flags and compares the sweep.
  const py=fs.readFileSync(new URL('./test.py',import.meta.url),'utf8');
  assert.match(py,/'noflags':\(\[\],\[\],False\)/);assert.match(py,/refusal differs between flag sets/);
@@ -581,4 +599,84 @@ test('export panel reads Auto Update without writing preferences',()=>{
  assert.match(ui,/- \(void\)viewWillAppear:\(BOOL\)animated\{\[super viewWillAppear:animated\];\[self updateSafety\];\}/);
  assert.match(ui,/if\(s==SectionStatus\)return 3;/);
  assert.match(ui,/self\.tableView\.tableHeaderView=box;/);
+});
+// Full 1.0.11/259 profile (ios1011, C15): the same pinned input as the download-only row,
+// with the route patch at the 1.0.11 offsets, the TMG ZIP, both Info.plist markers and no
+// device-model list. Flashing stays disarmed on the phone until armed there.
+import {ROUTE_PROFILES,routeProfile} from './patch-route.mjs';
+test('full 1.0.11 profile row: same pinned input, 1.0.11 route offsets, firmware, markers, no product',()=>{
+ const f=HOST_PROFILES.ios1011,d=HOST_PROFILES['ios1011-download'];
+ for(const k of ['version','build','uuid','hostError','sourceIPASHA256'])assert.equal(f[k],d[k],k);
+ assert.deepEqual(f.acceptedPairs,d.acceptedPairs);assert.deepEqual(f.frameworks,d.frameworks);
+ assert.equal(f.routePatch,true);assert.equal(f.routeProfile,'ios1011');assert.equal(f.firmware,true);assert.equal(f.stripStaleSignature,true);
+ assert.equal(f.noProduct,true);assert.equal(f.hostProfileMarker,'ios1011');assert.equal(f.packagingRevision,'APP1011-OTA-FULL-01');
+ const otaHost=fs.readFileSync(new URL('./OTAHost.h',import.meta.url),'utf8');
+ assert.equal(otaHost.match(/#define TIO_OTA_1011_ROUTING_MARKER @"([^"]+)"/)[1],f.routingMarker);
+ assert.match(fs.readFileSync(new URL('./HostCompatibility.h',import.meta.url),'utf8'),/#define TIO_HOST_PROFILE_1011_FULL @"ios1011"/);
+ // One offset table in three places: patch-route.mjs, OTAHost.h and the download-only row's stock route records.
+ const r=routeProfile('ios1011');
+ assert.deepEqual([...r.offsets],d.routes.map(([,o])=>o));assert.deepEqual([...r.inputs],[d.acceptedPairs[0][1]]);
+ assert.equal(r.outputSHA,'592d48d0e42869f11def2dde99a3a6960d4da7b83b99df47d228311dfc3b8ba6');assert.equal(ROUTE_PROFILES.ios107.outputSHA,null);
+ for(const [name,want] of Object.entries(ROUTE_PROFILES)){const m=otaHost.match(new RegExp(`if\\(\\[profile isEqual:@"${name}"\\]\\)return @\\[@(\\d+),@(\\d+)\\];`));assert.ok(m,name);assert.deepEqual([+m[1],+m[2]],[...want.offsets]);}
+ for(const bad of ['ios1011-download','IOS1011','','__proto__'])assert.throws(()=>routeProfile(bad),/Unknown route profile/);
+});
+test('full 1.0.11 options: firmware required, no product, exact candidate only',()=>{
+ const o={...options1011,host:'ios1011',firmware:'/example/TMG9.zip'};
+ validateOptions(o);validateOptions({...o,'experimental-ota':'TMG9'});
+ assert.throws(()=>validateOptions({...o,firmware:undefined}),/exact_host_and_firmware_resource_required/);
+ assert.throws(()=>validateOptions({...o,product:'iPhone17,1'}),/full_1011_host_takes_no_product/);
+ for(const extra of [{'experimental-ota':'TMG8'},{bundle:'example.other'},{firmware:'relative/TMG9.zip'}])assert.throws(()=>validateOptions({...o,...extra}));
+});
+test('full 1.0.11 addon gate: both 1.0.11 guards and the arm step required',()=>{
+ const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_1011_ARM_SYMBOLS];
+ const symbols=names.map(n=>'0000000000000000 T '+n).join('\n'),addon=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_1011_ARM_MARKER+'\0');
+ assert.ok(packaging.validateFull1011Addon(symbols,addon));
+ for(const n of names)assert.throws(()=>packaging.validateFull1011Addon(symbols.split('\n').filter(l=>!l.endsWith(' '+n)).join('\n'),addon),/guard_missing/,n);
+ assert.throws(()=>packaging.validateFull1011Addon(symbols,Buffer.from(packaging.DOWNLOAD_ONLY_GUARD_MARKER)),/full_1011_arm_guard_missing:marker/);
+ assert.throws(()=>packaging.validateFull1011Addon(symbols,Buffer.from(packaging.FULL_1011_ARM_MARKER)),/download_only_guard_missing:marker/);
+ // The native marker starts with the packager's string; the wrapper checks the same names and marker.
+ assert.ok(fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8').includes('TIOOTAArmGuardMarker=@"'+packaging.FULL_1011_ARM_MARKER));
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ for(const n of packaging.FULL_1011_ARM_SYMBOLS)assert.ok(wrapper.includes(n),n);assert.ok(wrapper.includes(packaging.FULL_1011_ARM_MARKER));
+});
+test('real addon build carries the full 1.0.11 arm guard',t=>{
+ const addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');if(!fs.existsSync(addon))return t.skip('build the embedded addon first');
+ assert.ok(packaging.validateFull1011Addon(runFixtureCommand('/usr/bin/nm',['-g',addon],{encoding:'utf8',maxBuffer:64*1024*1024}),fs.readFileSync(addon)));
+});
+test('packager source: the ios1011 build patches its own offsets, writes both markers and checks the pinned output',()=>{
+ const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
+ assert.match(s,/if\(host\.name==='ios1011'\)validateFull1011Addon\(symbols,fs\.readFileSync\(o\.addon\)\);/);
+ assert.ok(s.indexOf('validateFull1011Addon(symbols,')<s.indexOf('fs.mkdirSync(destination'));
+ assert.match(s,/patchOTARoute\(fs\.readFileSync\(image\),host\.routeProfile\)\.output/);
+ assert.match(s,/if\(host\.hostProfileMarker\)run\('plutil',\['-insert','TIOHostProfile','-string',host\.hostProfileMarker,plist\]\);/);
+ assert.match(s,/run\('plutil',\['-insert','TIOExperimentalOTAQueryRouting','-string',host\.routingMarker,plist\]\);/);
+ assert.match(s,/plist\.TIOHostProfile!=='ios1011'\|\|plist\.TIOExperimentalOTAQueryRouting!==host\.routingMarker\|\|plist\.TIOExperimentalOTABuild!==pins\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
+ assert.match(s,/digest\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\)\)!==routeProfile\('ios1011'\)\.outputSHA/);
+ assert.match(s,/if\(host\.routePatch\)verifyRoute\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\),host\.routeProfile\);/);
+});
+test('real 1.0.11 input: route patch profile ios1011 gives the pinned output and nothing else',t=>{
+ const p=process.env.IOS1011_TEST_APP;if(!p)return t.skip('set IOS1011_TEST_APP');
+ const r=fs.readFileSync(p+'/Runner'),a=fs.readFileSync(p+'/Frameworks/App.framework/App');
+ const frameworks={'RayneoNet.framework/RayneoNet':fs.readFileSync(p+'/Frameworks/RayneoNet.framework/RayneoNet'),'Flutter.framework/Flutter':fs.readFileSync(p+'/Frameworks/Flutter.framework/Flutter')};
+ const plist=JSON.parse(runFixtureCommand('plutil',['-convert','json','-o','-',p+'/Info.plist'],{encoding:'utf8'}));
+ validateHost(plist,r,a,'ios1011',frameworks);assert.throws(()=>validateHost({...plist,TIOHostProfile:'ios1011'},r,a,'ios1011',frameworks),/requires_original_ios1011_259/);
+ const {output,report}=patch(a,'ios1011');
+ assert.equal(sha256(output),routeProfile('ios1011').outputSHA);assert.equal(report.profile,'ios1011');assert.equal(report.host,'1.0.11');assert.equal(report.build,259);
+ assert.deepEqual(report.changes.map(c=>c.offset),[39886000,30868352]);assert.equal(report.deviceIO,false);assert.equal(output.length,a.length);
+ assert.ok(verifyRoute(output,'ios1011'));assert.throws(()=>verifyRoute(output,'ios107'));assert.throws(()=>verifyRoute(output));assert.throws(()=>verifyRoute(a,'ios1011'));
+ assert.throws(()=>patch(a),/1\.0\.7\/230/);assert.throws(()=>patch(output,'ios1011'),/requires pinned 1\.0\.11\/259/);assert.throws(()=>patch(a,'ios1011-download'));
+ let differing=0;for(let i=0;i<a.length;i++)if(a[i]!==output[i])differing++;assert.ok(differing>0&&differing<=report.changes.reduce((n,c)=>n+c.bytes,0));
+});
+test('wrappers: --host 1011-full packages the full 1.0.11 build with firmware and without product; --host 1011 unchanged',()=>{
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const branch=wrapper.slice(wrapper.indexOf('elif [[ $host == 1011-full ]]; then\n# C15'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
+ assert.match(branch,/run_logged full-1011-guard full_1011_guard "\$ADDON"/);
+ assert.match(branch,/--host ios1011 --app "\$TURBO_APP1011"/);assert.match(branch,/--firmware "\$TURBO_FIRMWARE"/);
+ assert.doesNotMatch(branch,/--product|TURBO_APP107|ios1011-download/);
+ assert.match(branch,/report\['hostProfile'\]=='ios1011' and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
+ assert.match(branch,/'UISupportedDevices' not in info/);
+ assert.match(wrapper,/elif \[\[ \$host == 1011-full \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_FIRMWARE TURBO_APP1011\)/);
+ assert.match(wrapper,/if \[\[ \$host == 1011 \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011\)/);
+ assert.match(wrapper,/\[\[ \$host != 1011-full \]\] \|\| run_logged full-1011-guard full_1011_guard "\$ADDON"/);
+ assert.match(wrapper,/full_1011_guard\(\) \{\n  local symbols name\n  download_only_guard "\$1"/);
 });
