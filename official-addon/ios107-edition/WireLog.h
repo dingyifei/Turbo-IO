@@ -51,6 +51,11 @@ FOUNDATION_EXPORT BOOL TIOWireLogMethodIsSizeOnly(NSString *method);
 FOUNDATION_EXPORT BOOL TIOWireLogKeyIsSensitive(NSString *key);
 // user_<digits> -> user_<n>, and app container UUIDs in paths -> <uuid>. Applied to every recorded string.
 FOUNDATION_EXPORT NSString *TIOWireLogScrubIdentifiers(NSString *s);
+// Glasses protocol frames keep their payload/data bytes in full (up to 64 KiB): rayneonet_sendMessage calls and
+// their replies on a rayneo bridge channel, and receive events on the rayneonet event channel. Every other byte
+// field is written as length, SHA-256 and the first 32 bytes.
+FOUNDATION_EXPORT BOOL TIOWireLogIsProtocolCall(NSString *channel, NSString *method);
+FOUNDATION_EXPORT BOOL TIOWireLogIsProtocolEventChannel(NSString *channel);
 // A redacted, JSON-safe copy of a Foundation / Flutter value tree.
 FOUNDATION_EXPORT id TIOWireLogJSON(id value);
 // Decodes a Flutter StandardMessageCodec buffer. ok=NO when the bytes are not a complete standard value.

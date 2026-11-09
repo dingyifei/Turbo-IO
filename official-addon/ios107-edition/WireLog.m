@@ -15,7 +15,8 @@ static const unsigned long long kDefaultRotate = 20ull << 20;   // 20 MB per fil
 static const unsigned long long kDefaultCap = 200ull << 20;     // 200 MB in total
 static const NSUInteger kFlushBytes = 64 * 1024;
 static const NSUInteger kMaxPending = 8u << 20;                  // queued estimate; beyond it records are dropped and counted
-static const NSUInteger kHeadBytes = 32;                         // bytes kept as hex; the rest only as length and SHA-256
+static const NSUInteger kHeadBytes = 32;                         // bytes kept as hex outside the glasses protocol; the rest only as length and SHA-256
+static const NSUInteger kHexCap = 65536;                         // glasses protocol frames: hex in full up to this per field
 static const NSUInteger kItemCap = 4096;
 static const int kDepthCap = 16;
 static NSString *const kAutoStartKey = @"TIOWireLogAutoStart";
@@ -203,9 +204,9 @@ static NSString *RedactStringAt(NSString *s, int depth) {
 // ============================================================ JSON-safe tree
 static id KVC(id o, NSString *k) { @try { return [o valueForKey:k]; } @catch (__unused id e) { return nil; } }
 
-static NSString *Hex(NSData *d, BOOL *truncated) {
+static NSString *HexUpTo(NSData *d, NSUInteger cap, BOOL *truncated) {
     static const char digits[] = "0123456789abcdef";
-    NSUInteger n = MIN(d.length, kHeadBytes);
+    NSUInteger n = MIN(d.length, cap);
     *truncated = d.length > n;
     char *buf = malloc(n * 2 + 1);
     const uint8_t *p = d.bytes;
@@ -222,13 +223,38 @@ static NSString *SHA256Hex(NSData *d) {
     return out;
 }
 
-// Bytes are written as their length, SHA-256 and at most the first 32 bytes as hex ($hex), never in full.
-static NSDictionary *BytesObject(NSData *d, NSString *kind) {
-    BOOL t = NO; NSString *hex = Hex(d, &t);
+static NSDictionary *BytesObjectCapped(NSData *d, NSString *kind, NSUInteger cap) {
+    BOOL t = NO; NSString *hex = HexUpTo(d, cap, &t);
     NSMutableDictionary *m = [@{@"$hex": hex, @"len": @(d.length), @"sha256": SHA256Hex(d)} mutableCopy];
     if (kind) m[@"kind"] = kind;
     if (t) m[@"truncated"] = @YES;
     return m;
+}
+// Any byte field outside the glasses protocol: length, SHA-256 and at most the first 32 bytes as hex ($hex).
+static NSDictionary *BytesObject(NSData *d, NSString *kind) { return BytesObjectCapped(d, kind, kHeadBytes); }
+
+// ---- glasses protocol frames: kept in full ----
+// The rayneonet glasses frames are what the wire log exists to record: the payload (or data) bytes of
+// rayneonet_sendMessage arguments and of the replies to it on the RayneoNet bridge, and of the frames in
+// the receive events on the rayneonet event channel (value.payload / value.message.payload, any
+// eventType). Matched on channel + method + field, never on size. These fields are re-encoded with the
+// full hex (up to kHexCap); every other byte field keeps head + SHA-256.
+static NSArray<NSString *> *ProtocolByteKeys(void) { return @[@"payload", @"data"]; }
+static BOOL ProtocolChannel(NSString *channel) { return [channel isKindOfClass:NSString.class] && [channel.lowercaseString containsString:@"rayneo"] && TIOWireLogClassifyChannel(channel) == TIOWireLogChannelFull; }
+BOOL TIOWireLogIsProtocolCall(NSString *channel, NSString *method) { return ProtocolChannel(channel) && [method isEqual:@"rayneonet_sendMessage"]; }
+BOOL TIOWireLogIsProtocolEventChannel(NSString *channel) { return ProtocolChannel(channel) && [channel.lowercaseString containsString:@"rayneonet"]; }
+static NSDictionary *ProtocolBytes(id v) {
+    if ([v isKindOfClass:NSData.class]) return BytesObjectCapped(v, nil, kHexCap);
+    if ([v isKindOfClass:TIOWireSnapTyped.class]) { TIOWireSnapTyped *t = v; return BytesObjectCapped(t.data, [@"typed:" stringByAppendingString:TypedName(t.type)], kHexCap); }
+    return nil;
+}
+// `original` is the recorder's own snapshot or decoded tree (plain dictionaries), `encoded` its JV output.
+static void PromoteProtocolFields(id encoded, id original) {
+    if (![encoded isKindOfClass:NSMutableDictionary.class] || ![original isKindOfClass:NSDictionary.class]) return;
+    for (NSString *k in ProtocolByteKeys()) {
+        NSDictionary *full = ProtocolBytes(((NSDictionary *)original)[k]);
+        if (full && [((NSDictionary *)encoded)[k] isKindOfClass:NSDictionary.class]) ((NSMutableDictionary *)encoded)[k] = full;
+    }
 }
 
 static id JVDictionary(NSDictionary *d, int depth) {
@@ -424,16 +450,23 @@ static NSDictionary *TryMessage(NSData *d) {
     return ok ? @{@"codec": @"message", @"value": v} : nil;
 }
 
-NSDictionary *TIOWireLogDecodeMessage(NSData *data, BOOL preferEnvelope) {
+static NSDictionary *DecodeMessage(NSData *data, BOOL preferEnvelope, BOOL protocolEvent) {
     if (!data.length) return @{@"codec": @"empty", @"len": @0};
     NSDictionary *hit = nil;
     if (preferEnvelope) hit = TryEnvelope(data) ?: TryMethodCall(data) ?: TryMessage(data);
     else hit = TryMethodCall(data) ?: TryEnvelope(data) ?: TryMessage(data);
-    if (!hit) hit = @{@"codec": @"raw", @"data": data};
+    if (!hit) hit = @{@"codec": @"raw", @"data": data}; // undecodable: head + SHA-256 only, whatever the channel
     NSMutableDictionary *out = [JV(hit, 0) mutableCopy];
+    if (protocolEvent && [hit[@"codec"] isEqual:@"envelope"]) {
+        id value = hit[@"value"];
+        PromoteProtocolFields(out[@"value"], value);
+        if ([value isKindOfClass:NSDictionary.class] && [out[@"value"] isKindOfClass:NSDictionary.class])
+            PromoteProtocolFields(out[@"value"][@"message"], ((NSDictionary *)value)[@"message"]);
+    }
     out[@"len"] = @(data.length);
     return out;
 }
+NSDictionary *TIOWireLogDecodeMessage(NSData *data, BOOL preferEnvelope) { return DecodeMessage(data, preferEnvelope, NO); }
 
 // ============================================================ channel policy
 TIOWireLogChannelClass TIOWireLogClassifyChannel(NSString *channel) {
@@ -626,6 +659,8 @@ static void WLEnqueue(NSMutableDictionary *rec) {
             if (!atomic_load(&gFailed)) { // a normal Stop still drains what was queued before it
                 NSMutableDictionary *r = rec;
                 NSData *bytes = r[@"_raw"];
+                BOOL protocolCall = TIOWireLogIsProtocolCall(r[@"channel"], r[@"method"]);
+                id originalArguments = r[@"_jv_arguments"], originalValue = r[@"_jv_value"];
                 // Snapshots taken on the calling thread (_jv_x) are encoded and redacted here, off that thread.
                 for (NSString *k in [r.allKeys copy]) {
                     if (![k hasPrefix:@"_jv_"]) continue;
@@ -635,12 +670,13 @@ static void WLEnqueue(NSMutableDictionary *rec) {
                     [r removeObjectForKey:k];
                 }
                 [r removeObjectForKey:@"_est"];
+                if (protocolCall) { PromoteProtocolFields(r[@"arguments"], originalArguments); PromoteProtocolFields(r[@"value"], originalValue); }
                 if (bytes) {
                     // Unknown shapes (newer plugin builders, custom codec types) end up as raw hex, never as a lost session.
                     NSDictionary *d = nil;
-                    @try { d = TIOWireLogDecodeMessage(bytes, [r[@"_env"] boolValue]); } @catch (__unused id e) { d = nil; }
+                    @try { d = DecodeMessage(bytes, [r[@"_env"] boolValue], [r[@"_proto"] boolValue]); } @catch (__unused id e) { d = nil; }
                     if (![d isKindOfClass:NSDictionary.class]) d = @{@"codec": @"raw", @"data": BytesObject(bytes, nil), @"len": @(bytes.length)};
-                    [r removeObjectForKey:@"_raw"]; [r removeObjectForKey:@"_env"];
+                    [r removeObjectForKey:@"_raw"]; [r removeObjectForKey:@"_env"]; [r removeObjectForKey:@"_proto"];
                     BOOL sizeOnly = [d[@"codec"] isEqual:@"methodCall"] && TIOWireLogMethodIsSizeOnly(d[@"method"]);
                     for (NSString *k in d) {
                         if (sizeOnly && ([k isEqualToString:@"arguments"] || [k isEqualToString:@"value"])) continue;
@@ -882,7 +918,7 @@ void TIOWireLogNativeToDart(NSString *channel, NSData *message) {
         if (c == TIOWireLogChannelIgnored) return;
         NSMutableDictionary *rec = NewRecord(@"n2d.message", channel);
         if (c == TIOWireLogChannelOpaque) { rec[@"opaque"] = @YES; rec[@"bytes"] = @(message.length); }
-        else if (message.length) { rec[@"_raw"] = [message isKindOfClass:NSData.class] ? [message copy] : [NSData data]; rec[@"_env"] = @(PrefersEnvelope(channel)); }
+        else if (message.length) { rec[@"_raw"] = [message isKindOfClass:NSData.class] ? [message copy] : [NSData data]; rec[@"_env"] = @(PrefersEnvelope(channel)); rec[@"_proto"] = @(TIOWireLogIsProtocolEventChannel(channel)); }
         else rec[@"len"] = @0;
         WLEnqueue(rec);
     } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }

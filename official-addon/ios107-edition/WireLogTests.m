@@ -721,6 +721,50 @@ static void TestMainThreadHop(void) {
     assert([r[0][@"thread"] isEqualToString:@"main"] && [r[1][@"callSeq"] isEqual:r[0][@"seq"]]);
 }
 
+// Glasses protocol frames are recorded in full; the same bytes anywhere else keep only head + SHA-256 + len.
+static NSData *Bytes300(void) { NSMutableData *d = [NSMutableData dataWithLength:300]; for (int i = 0; i < 300; i++) ((uint8_t *)d.mutableBytes)[i] = (uint8_t)(i * 7 + 1); return d; }
+static NSString *HexOf(NSData *d) { NSMutableString *s = [NSMutableString new]; const uint8_t *p = d.bytes; for (NSUInteger i = 0; i < d.length; i++) [s appendFormat:@"%02x", p[i]]; return s; }
+static BOOL IsFull(NSDictionary *b, NSData *d) { return [b[@"$hex"] isEqualToString:HexOf(d)] && [b[@"len"] isEqual:@(d.length)] && !b[@"truncated"] && [b[@"sha256"] isEqualToString:SHA(d)]; }
+static BOOL IsHead(NSDictionary *b, NSData *d) { return [b[@"$hex"] isEqualToString:HexOf([d subdataWithRange:NSMakeRange(0, 32)])] && [b[@"len"] isEqual:@(d.length)] && [b[@"truncated"] boolValue] && [b[@"sha256"] isEqualToString:SHA(d)]; }
+static void TestProtocolBytes(void) {
+    NSData *frame = Bytes300();
+    assert(TIOWireLogIsProtocolCall(@"com.rayneo/sdk", @"rayneonet_sendMessage") && !TIOWireLogIsProtocolCall(@"com.rayneo/sdk", @"rayneonet_sendFile"));
+    assert(!TIOWireLogIsProtocolCall(@"com.example/sdk", @"rayneonet_sendMessage") && !TIOWireLogIsProtocolCall(@"rayneo/account/login", @"rayneonet_sendMessage"));
+    assert(TIOWireLogIsProtocolEventChannel(@"com.rayneo/sdk/rayneonet") && !TIOWireLogIsProtocolEventChannel(@"rayneo_venus_sdk_plugin/asr"));
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    // 1. A business-9 sendMessage with a 300-byte payload, and its reply with a 300-byte data field: in full.
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendMessage";
+    call.arguments = @{@"businessId": @9, @"deviceId": @"AA:BB:CC:DD:EE:FF", @"payload": frame};
+    ((void (^)(id))TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(__unused id v) {}))(@{@"success": @YES, @"data": frame, @"blob": frame});
+    // 2. A Uint8List payload (typed data) on the same call: in full, with its kind.
+    FlutterStandardTypedData *typed = [FlutterStandardTypedData new]; typed.data = frame; typed.type = 0;
+    FlutterMethodCall *typedCall = [FlutterMethodCall new]; typedCall.method = @"rayneonet_sendMessage"; typedCall.arguments = @{@"businessId": @9, @"payload": typed};
+    ((void (^)(id))TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", typedCall, ^(__unused id v) {}))(nil);
+    // 3. The same bytes in another method on the bridge: head + hash.
+    FlutterMethodCall *other = [FlutterMethodCall new]; other.method = @"rayneonet_sendFile"; other.arguments = @{@"payload": frame};
+    ((void (^)(id))TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", other, ^(__unused id v) {}))(nil);
+    // 4. A receive event on the rayneonet channel: the frame in full. The same event on a non-protocol channel: head.
+    NSData *event = Envelope(@{@"eventType": @"messageReceived", @"message": @{@"businessId": @9, @"deviceId": @"AA:BB:CC:DD:EE:FF", @"payload": frame, @"note": @"Documents/user_77/x"}});
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", event);
+    TIOWireLogNativeToDart(@"rayneo_venus_sdk_plugin/asr", event);
+    // 5. An undecodable 300-byte buffer on the rayneonet channel: head + hash.
+    NSMutableData *garbage = [frame mutableCopy]; ((uint8_t *)garbage.mutableBytes)[0] = 0xfe;
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", garbage);
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *r = Records(dir);
+    assert(r.count == 9);
+    assert(IsFull(r[0][@"arguments"][@"payload"], frame) && [r[0][@"arguments"][@"deviceId"] isEqualToString:@"<redacted len=17>"]);
+    assert(IsFull(r[1][@"value"][@"data"], frame) && IsHead(r[1][@"value"][@"blob"], frame));
+    assert(IsFull(r[2][@"arguments"][@"payload"], frame) && [r[2][@"arguments"][@"payload"][@"kind"] isEqualToString:@"typed:uint8"]);
+    assert(IsHead(r[4][@"arguments"][@"payload"], frame));
+    assert(IsFull(r[6][@"value"][@"message"][@"payload"], frame) && [r[6][@"value"][@"message"][@"note"] isEqualToString:@"Documents/user_<n>/x"]);
+    assert([r[6][@"value"][@"message"][@"deviceId"] isEqualToString:@"<redacted len=17>"]);
+    assert(IsHead(r[7][@"value"][@"message"][@"payload"], frame));
+    assert([r[8][@"codec"] isEqualToString:@"raw"] && IsHead(r[8][@"data"], garbage));
+}
+
 int main(void) {
     @autoreleasepool {
         TestRedaction();
@@ -738,6 +782,7 @@ int main(void) {
         TestSnapContainers();
         TestPrivacy();
         TestMainThreadHop();
+        TestProtocolBytes();
         puts("WireLogTests: PASS");
     }
     return 0;
