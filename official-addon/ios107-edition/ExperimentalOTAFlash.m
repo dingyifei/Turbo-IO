@@ -17,6 +17,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <dlfcn.h>
+#include <mach-o/loader.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
 #if TIO_IMAGE_RX_LAB
@@ -263,7 +265,7 @@ BOOL TIOOTAFlashBuild(void){
     // Authorization/feed still require the exact marker below.
     return YES;
 #else
-    return TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary);
+    return TIOOTAHostMatches(NSBundle.mainBundle.infoDictionary);
 #endif
 #else
     return NO;
@@ -284,7 +286,7 @@ static TIOOTAFlashGate *Current(void){@synchronized(NSProcessInfo.processInfo){i
 static NSUInteger GateStage(void){return [[Current() status][@"stage"] unsignedIntegerValue];}
 BOOL TIOOTAFlashProtected(void){
 #if TARGET_OS_IPHONE && TIO_DISPLAY_FLASH
-    if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary))return NO;
+    if(!TIOOTAHostMatches(NSBundle.mainBundle.infoDictionary))return NO;
 #endif
     return TIOOTAFlashBuild()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue];
 }
@@ -329,25 +331,27 @@ static BOOL DownloadOnlyBlock(id call,NSDictionary **teleprompter){
     return blocked;
 }
 BOOL TIOOTADownloadOnlyBlockCall(id call){return DownloadOnlyBlock(call,NULL);}
-BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
-    if(teleprompter)*teleprompter=nil;
-    if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);
-    if(!TIOOTAFlashBuild())return NO;
-    NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
-    if(![method isKindOfClass:NSString.class])return YES;
-    if([method.lowercaseString containsString:@"disconnect"]||[method.lowercaseString containsString:@"unbind"]||[method.lowercaseString containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
-    if([@"rayneonet_sendMessage" isEqualToString:method]){
-        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
-        if(business!=9)return NO;
-        id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
-        if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary))
-            return !TIOOTAIsEmptyVersionQuery(data);
-#if TIO_DISPLAY_PHONE && !TIO_DISPLAY_FLASH
-        // Phone-only test package: no OTA mutation, even if an old gate was armed.
-        return !TIOPhoneOTAReadAllowed(data);
-#endif
-        return ![Current() allows:data device:args[@"deviceId"] uptime:NSProcessInfo.processInfo.systemUptime];
-    }
+// Full 1.0.11 host (ios1011, C15): TMG flashing is disarmed until the owner arms it
+// in the flash wizard. Like G1 this refusal is compiled in every build and depends
+// on no TIO_* flag. While disarmed, business 9 lets through only the reads the
+// stock firmware page makes (empty OS version 1, battery 2, idle 11) and the size
+// query (3, OtaSize equal to the bundled ZIP), so its update check against the
+// loopback feed and the wire log see the real sequence; type 4 (any Mode) and the
+// version, manifest and slice frames (5, 6, 7) are refused, whatever the Auto Update
+// toggle says. The 1.0.11 order (2/3/1/4), the type 3 shape and the normal page's
+// Mode are known only from a static read: the C15 capture must confirm them before
+// anyone arms. Armed, the host takes the 1.0.7 path below unchanged (TIOOTAFlashGate:
+// Mode 2 only, so a forced page's Mode 4 is still refused; Auto Update off; fresh
+// version read; single confirmation).
+NSString *const TIOOTAArmGuardMarker=@"ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install; business 9 transfer frames refused while disarmed; reads and the exact size query pass";
+BOOL TIOOTADisarmedReadAllowed(NSData *data){
+    if(TIOPhoneOTAReadAllowed(data))return YES;
+    NSDictionary *f=TIOOTAFrame(data);id j=f[@"json"];NSUInteger n=0;
+    return [f[@"type"] isEqual:@3]&&[j isKindOfClass:NSDictionary.class]&&[j count]==1&&Number(j[@"OtaSize"],&n)&&n==TIO_FW_ZIP_BYTES&&[f[@"binary"] length]==0;
+}
+// The file-call rule both full hosts share: an addon scoped sender, then the stock
+// teleprompter shape (only at stage 0), else TIOOTAFileCallBlocked.
+static BOOL FileCallBlock(NSString *method,id args,NSDictionary **teleprompter){
     // The pinned files path uses business 9 frames, never sendFile / ZIP mode.
     BOOL scopedImage=NO;for(const TIOOTAScopedSender *s=ScopedFileSenders;*s&&!scopedImage;s++)scopedImage=(*s)(method,args);
     NSUInteger stage=GateStage();
@@ -356,6 +360,98 @@ BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
     BOOL blocked=TIOOTAFileCallBlocked(method,scopedImage||snapshot,stage);
     if(teleprompter&&!blocked)*teleprompter=snapshot;
     return blocked;
+}
+static BOOL DisarmedBlock(id call,NSDictionary **teleprompter){
+    NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
+    if(![method isKindOfClass:NSString.class])return YES;
+    if([@"rayneonet_sendMessage" isEqualToString:method]){
+        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
+        if(business!=9)return NO;
+        id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
+        return !TIOOTADisarmedReadAllowed(data);
+    }
+    return FileCallBlock(method,args,teleprompter);
+}
+BOOL TIOOTADisarmedBlockCall(id call){return DisarmedBlock(call,NULL);}
+BOOL TIOOTAArmRequired(void){
+    if(TIOOTADownloadOnlyHost())return NO;
+    NSDictionary *info=NSBundle.mainBundle.infoDictionary;
+    // Any one sign of the full 1.0.11 build asks for the arm step: refusing more is the safe side.
+    return [TIOHostProfileFor(TIOHostMainImage(),info) isEqual:@"ios1011"]||[info[@"TIOHostProfile"] isEqual:@"ios1011"]||
+        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1011_ROUTING_MARKER];
+}
+// The arm record lives in the addon's own preferences suite, never in the host's.
+// It names the addon image it was made by (LC_UUID): another addon build, a fresh
+// install of a new package included, reads as disarmed.
+static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
+static NSUserDefaults *ArmPrefs(void){return [[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.official-private-addon"];}
+static NSString *ArmInstallID(void){
+    Dl_info info;if(!dladdr((const void *)&TIOOTAArmRequired,&info)||!info.dli_fbase)return nil;
+    const struct mach_header_64 *h=info.dli_fbase;if(h->magic!=MH_MAGIC_64||h->ncmds>1024||h->sizeofcmds>1024*1024)return nil;
+    const uint8_t *p=(const uint8_t *)(h+1),*end=p+h->sizeofcmds;
+    for(uint32_t i=0;i<h->ncmds;i++){
+        if((size_t)(end-p)<sizeof(struct load_command))return nil;
+        const struct load_command *c=(const void *)p;if(c->cmdsize<sizeof(*c)||c->cmdsize>(size_t)(end-p))return nil;
+        if(c->cmd==LC_UUID&&c->cmdsize==sizeof(struct uuid_command))return [[[NSUUID alloc]initWithUUIDBytes:((const struct uuid_command *)c)->uuid] UUIDString];
+        p+=c->cmdsize;
+    }
+    return nil;
+}
+static BOOL ArmRecordValid(id r){
+    NSString *install=ArmInstallID();
+    return install&&[r isKindOfClass:NSDictionary.class]&&[r count]==4&&[r[@"v"] isEqual:@1]&&[r[@"host"] isEqual:@"ios1011"]&&
+        [r[@"install"] isKindOfClass:NSString.class]&&[r[@"install"] isEqualToString:install]&&[r[@"armedAt"] isKindOfClass:NSNumber.class];
+}
+static id ArmRecord(void){@try{return [ArmPrefs() objectForKey:ArmKey];}@catch(__unused id e){return nil;}}
+BOOL TIOOTAFlashArmed(void){return TIOOTAArmRequired()&&ArmRecordValid(ArmRecord());}
+// Armed AND the flash build AND the full host's routing marker AND the pinned image.
+static BOOL ArmedForTransfer(void){
+    NSDictionary *info=NSBundle.mainBundle.infoDictionary;
+    return TIOOTAFlashArmed()&&TIOOTAFlashBuild()&&TIOOTA1011HostMatches(info)&&TIOHostFullImageMatches(TIOHostMainImage(),info);
+}
+BOOL TIOOTAFlashArm(NSError **error){
+    NSDictionary *info=NSBundle.mainBundle.infoDictionary;
+    if(!TIOOTAArmRequired()||!TIOOTA1011HostMatches(info)||!TIOHostFullImageMatches(TIOHostMainImage(),info)){Error(error,TIOText(@"只有完整版 1.0.11 宿主需要并允许启用 TMG 刷写；未启用。"));return NO;}
+    if(!TIOOTAFlashProtected()){Error(error,TIOText(@"没有试刷构建与发送保护；未开放。"));return NO;}
+    NSString *install=ArmInstallID();if(!install){Error(error,TIOText(@"无法确认本次安装；未启用。"));return NO;}
+    @try{[ArmPrefs() setObject:@{@"v":@1,@"host":@"ios1011",@"install":install,@"armedAt":@(floor(NSDate.date.timeIntervalSince1970))} forKey:ArmKey];}@catch(__unused id e){}
+    if(!TIOOTAFlashArmed()){Error(error,TIOText(@"无法保存启用状态；未启用。"));return NO;}
+    return YES;
+}
+BOOL TIOOTAFlashDisarm(void){
+    // Never cut a running transfer: the glasses would be left mid-flash.
+    if(GateStage()==2)return NO;
+    [Current() cancel];
+    @try{[ArmPrefs() removeObjectForKey:ArmKey];}@catch(__unused id e){}
+    return !ArmRecordValid(ArmRecord());
+}
+NSDictionary *TIOOTAFlashArmStatus(void){
+    BOOL required=TIOOTAArmRequired();id r=required?ArmRecord():nil;BOOL armed=required&&ArmRecordValid(r);
+    NSMutableDictionary *s=[@{@"armRequired":@(required),@"armed":@(armed),@"armedForTransfer":@(required&&ArmedForTransfer())} mutableCopy];
+    if(armed)s[@"armedAt"]=r[@"armedAt"];
+    return s;
+}
+BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
+    if(teleprompter)*teleprompter=nil;
+    if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);
+    if(TIOOTAArmRequired()&&!ArmedForTransfer())return DisarmedBlock(call,teleprompter);
+    if(!TIOOTAFlashBuild())return NO;
+    NSString *method=Get(call,@"method");NSDictionary *args=Get(call,@"arguments");
+    if(![method isKindOfClass:NSString.class])return YES;
+    if([method.lowercaseString containsString:@"disconnect"]||[method.lowercaseString containsString:@"unbind"]||[method.lowercaseString containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
+    if([@"rayneonet_sendMessage" isEqualToString:method]){
+        NSUInteger business=0;if(![args isKindOfClass:NSDictionary.class]||!Business(args[@"businessId"],&business))return YES;
+        if(business!=9)return NO;
+        id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
+        if(!TIOOTAHostMatches(NSBundle.mainBundle.infoDictionary))
+            return !TIOOTAIsEmptyVersionQuery(data);
+#if TIO_DISPLAY_PHONE && !TIO_DISPLAY_FLASH
+        // Phone-only test package: no OTA mutation, even if an old gate was armed.
+        return !TIOPhoneOTAReadAllowed(data);
+#endif
+        return ![Current() allows:data device:args[@"deviceId"] uptime:NSProcessInfo.processInfo.systemUptime];
+    }
+    return FileCallBlock(method,args,teleprompter);
 }
 BOOL TIOOTAFlashBlockCall(id call){return TIOOTAFlashBlockCallSnapshot(call,NULL);}
 void TIOOTAFlashObserveEvent(NSDictionary *event){
@@ -368,7 +464,8 @@ void TIOOTAFlashObserveEvent(NSDictionary *event){
     }
 }
 BOOL TIOOTAFlashAuthorize(NSError **error){
-    if(!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary)){Error(error,TIOText(@"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。"));return NO;}
+    if(!TIOOTAHostMatches(NSBundle.mainBundle.infoDictionary)){Error(error,TIOText(@"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。"));return NO;}
+    if(TIOOTAArmRequired()&&!ArmedForTransfer()){Error(error,TIOText(@"本机 TMG 刷写尚未启用；先在向导中启用，未授权。"));return NO;}
     NSDictionary *feed=TIOExperimentalOTAFeedStatus();
     if(![feed[@"bootstrapEligible"] boolValue]||![feed[@"running"] boolValue]||![feed[@"healthPassed"] boolValue]){Error(error,TIOText(@"未确认本机下载来源与健康检查，未授权。"));return NO;}
 #if TARGET_OS_IPHONE && TIO_DISPLAY_PHONE
@@ -386,4 +483,4 @@ BOOL TIOOTAFlashAuthorize(NSError **error){
     return [Current() prepareDirectory:dir device:device uptime:now error:error];
 }
 BOOL TIOOTAFlashCancel(void){return [Current() cancel];}
-NSDictionary *TIOOTAFlashStatus(void){NSMutableDictionary *s=[[Current() status] mutableCopy];s[@"flashBuild"]=@(TIOOTAFlashBuild());s[@"automaticUpdateDisabled"]=@(TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation));@synchronized(NSProcessInfo.processInfo){s[@"recentTargetVersionRead"]=@(ObservedDevice.length&&NSProcessInfo.processInfo.systemUptime-ObservedAt<=120);s[@"versionReadAge"]=@(ObservedDevice.length?MAX(0,NSProcessInfo.processInfo.systemUptime-ObservedAt):-1);}return s;}
+NSDictionary *TIOOTAFlashStatus(void){NSMutableDictionary *s=[[Current() status] mutableCopy];s[@"flashBuild"]=@(TIOOTAFlashBuild());[s addEntriesFromDictionary:TIOOTAFlashArmStatus()];s[@"automaticUpdateDisabled"]=@(TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation));@synchronized(NSProcessInfo.processInfo){s[@"recentTargetVersionRead"]=@(ObservedDevice.length&&NSProcessInfo.processInfo.systemUptime-ObservedAt<=120);s[@"versionReadAge"]=@(ObservedDevice.length?MAX(0,NSProcessInfo.processInfo.systemUptime-ObservedAt):-1);}return s;}

@@ -67,3 +67,24 @@ NSDictionary *TIOFirmwareExportSafetyModel(NSString *profile,BOOL hookInstalled,
     else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
     return m;
 }
+NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady,BOOL armed,NSDictionary *preferences){
+    NSString *guardLevel=!armGuardReady?@"danger":armed?@"warn":@"ok";
+    NSString *guardKey=!armGuardReady?@"fwexport.guard.off":armed?@"fwexport.guard.armed":@"fwexport.guard.disarmed";
+    TIOAutoUpdateReading autoUpdate=TIOAutoUpdateReadingFor(preferences);
+    NSString *autoLevel=autoUpdate==TIOAutoUpdateReadingOff?@"ok":autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"danger";
+    NSString *level=[guardLevel isEqual:@"danger"]||autoUpdate==TIOAutoUpdateReadingOn?@"danger":
+        [guardLevel isEqual:@"warn"]||autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"ok";
+    NSMutableDictionary *m=[@{
+        @"guardActive":@(armGuardReady),@"armed":@(armGuardReady&&armed),@"guardLevel":guardLevel,
+        @"guardKey":guardKey,@"guardDetail":[guardKey stringByAppendingString:@".detail"],
+        @"autoUpdate":TIOAutoUpdateReadingName(autoUpdate),@"autoLevel":autoLevel,
+        @"autoKey":[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)],
+        @"autoDetail":[[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)] stringByAppendingString:@".detail"],
+        @"safe":@([guardLevel isEqual:@"ok"]&&autoUpdate==TIOAutoUpdateReadingOff),@"level":level,
+    } mutableCopy];
+    if(!armGuardReady)m[@"bannerKey"]=@"fwexport.banner.unguarded";
+    else if(autoUpdate==TIOAutoUpdateReadingOn)m[@"bannerKey"]=@"fwexport.banner.autoOn";
+    else if(armed)m[@"bannerKey"]=@"fwexport.banner.armed";
+    else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
+    return m;
+}

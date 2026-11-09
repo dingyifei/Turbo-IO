@@ -139,5 +139,25 @@ int main(void){@autoreleasepool{
     // Read only: the model never changes the preferences it is given.
     NSMutableDictionary *prefs=[@{@"a_ota_firmware_auto_update":@YES} mutableCopy];NSDictionary *before=[prefs copy];
     TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,prefs);assert([prefs isEqual:before]);
-    NSLog(@"PASS: download-only safety: %zu hook target failures leave the guard off and the panel unsafe; guard row ok/warn/danger on stock traffic; Auto Update off/on/missing with worst key wins; read only",sizeof bad/sizeof *bad);
+    // Full 1.0.11 host (C15): the guard row is the arm state. Disarmed is green, armed amber, no arm guard red.
+    NSDictionary *disarmed=TIOFirmwareExportSafetyModelFull(YES,NO,off);
+    assert([disarmed[@"guardLevel"] isEqual:@"ok"]&&[disarmed[@"guardKey"] isEqual:@"fwexport.guard.disarmed"]&&[disarmed[@"safe"] boolValue]&&!disarmed[@"bannerKey"]);
+    assert([disarmed[@"armed"] isEqual:@NO]&&[disarmed[@"guardActive"] isEqual:@YES]&&[disarmed[@"level"] isEqual:@"ok"]);Localized(disarmed);
+    NSDictionary *armed=TIOFirmwareExportSafetyModelFull(YES,YES,off);
+    assert([armed[@"guardLevel"] isEqual:@"warn"]&&[armed[@"guardKey"] isEqual:@"fwexport.guard.armed"]&&![armed[@"safe"] boolValue]);
+    assert([armed[@"bannerKey"] isEqual:@"fwexport.banner.armed"]&&[armed[@"armed"] isEqual:@YES]&&[armed[@"level"] isEqual:@"warn"]);Localized(armed);
+    assert([TIOFirmwareExportSafetyModelFull(YES,YES,@{@"a_ota_firmware_auto_update":@YES})[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
+    assert([TIOFirmwareExportSafetyModelFull(YES,NO,@{})[@"bannerKey"] isEqual:@"fwexport.banner.autoMissing"]);
+    assert([TIOFirmwareExportSafetyModelFull(YES,YES,@{})[@"bannerKey"] isEqual:@"fwexport.banner.armed"]);
+    for(NSDictionary *p in @[off,@{},@{@"a_ota_firmware_auto_update":@YES}])for(int a=0;a<2;a++){
+        // No arm guard in force: red, never armed, whatever the stored arm record says.
+        NSDictionary *m=TIOFirmwareExportSafetyModelFull(NO,a,p);Localized(m);
+        assert([m[@"guardKey"] isEqual:@"fwexport.guard.off"]&&[m[@"bannerKey"] isEqual:@"fwexport.banner.unguarded"]&&[m[@"level"] isEqual:@"danger"]&&[m[@"armed"] isEqual:@NO]&&![m[@"safe"] boolValue]);
+    }
+    for(NSString *k in @[@"fwexport.host.full",@"hub.status.firmwareExport.armed",@"hub.status.firmwareExport.disarmed"]){
+        assert(![TIOTextForLanguage(k,TIOLangEnglish) isEqual:k]&&![TIOTextForLanguage(k,TIOLangChinese) isEqual:k]);
+    }
+    // The download-only model never carries an arm state.
+    assert(!TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,off)[@"armed"]);
+    NSLog(@"PASS: download-only safety: %zu hook target failures leave the guard off and the panel unsafe; guard row ok/warn/danger on stock traffic; Auto Update off/on/missing with worst key wins; read only; full 1.0.11 guard row shows the arm state",sizeof bad/sizeof *bad);
 }return 0;}

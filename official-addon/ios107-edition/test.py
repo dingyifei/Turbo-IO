@@ -1,6 +1,6 @@
 """Portable macOS offline tests. No phone, network, signing or flashing."""
 from pathlib import Path
-import argparse, fnmatch, json, os, re, subprocess, tempfile, zipfile
+import argparse, fnmatch, json, os, re, shutil, subprocess, tempfile, zipfile
 P=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,required=True)
 parser.add_argument('--app107',type=Path)
@@ -218,7 +218,9 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'NSHomeDirectory()':'TMG4Home()',
         'NSProcessInfo.processInfo.systemUptime':'TMG4Now()',
         'NSBundle.mainBundle.infoDictionary':'TMG4HostInfo()',
-        'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()'}
+        'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()',
+        # The arm record store: an in-memory dictionary, never the Mac's preferences.
+        '[[NSUserDefaults alloc]initWithSuiteName:@"io.turboio.official-private-addon"]':'(NSUserDefaults *)TMG4ArmStore()'}
     seen.add('tmg4-wizard')
     if only is None or 'tmg4-wizard' in only:
         adapted=adapted_policy('tmg4-wizard-policy.m','ExperimentalOTAFlash.m',flash_seams)
@@ -227,6 +229,16 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
             run('tmg4-wizard-'+version,[out/'tmg4-wizard',root/'candidate',root,'Strix OS '+version])
         groups.append('tmg4-wizard');print('tmg4-wizard: PASS')
     else:skip('tmg4-wizard','not selected by --only')
+    # Full 1.0.11 host (ios1011, C15), armed: the same unchanged policy and gate on the
+    # real candidate, plus the arm step around it (main image seam as in ios1011-guard).
+    seen.add('tmg4-wizard-1011')
+    if only is None or 'tmg4-wizard-1011' in only:
+        adapted=adapted_policy('tmg4-wizard-1011-policy.m','ExperimentalOTAFlash.m',{**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'})
+        run('tmg4-wizard-1011-build',flags+[P/'tests/TMG4Wizard1011Tests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard-1011'])
+        for version in ('1.0.4.12','1.0.5.5'):
+            run('tmg4-wizard-1011-'+version,[out/'tmg4-wizard-1011',root/'candidate',root,'Strix OS '+version])
+        groups.append('tmg4-wizard-1011');print('tmg4-wizard-1011: PASS')
+    else:skip('tmg4-wizard-1011','not selected by --only')
     # Download-only 1.0.11/259 host: the same unchanged flash policy and feed, with 1.0.11 host info.
     # G1: the refusal must not depend on build flags. The same test is built with the
     # full flash flag set and with none of them; every build must print the same sweep.
@@ -241,10 +253,12 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'wire-full':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-DTIO_WIRE_LOG=1'],phone_sources+[P/'WireLog.m'],True),
         'wire-noflags':(['-DTIO_WIRE_LOG=1'],[P/'WireLog.m'],False),
     }
-    def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m',extra_seams=None):
+    # flash_on: per flag set, whether the flash path is compiled in on the tested host (default: the download-only host's).
+    def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m',extra_seams=None,flash_on_for=None):
         seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()',**(extra_seams or {})}
         flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',seams)
-        feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTA107HostMatches(bundle.infoDictionary)':'TIOOTA107HostMatches(TMG4HostInfo())'})
+        feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTAHostProfile(bundle.infoDictionary)':'TIOOTAHostProfile(TMG4HostInfo())',
+            'TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)':'TIOHostFullImageMatches(TMG4MainImage(),TMG4HostInfo())'})
         sweeps={}
         for config,(defines,sources,flash_on) in host1011_configs.items():
             for flag in ('TIO_OTA_FLASH_ENABLED','TIO_DISPLAY_FLASH','TIO_DISPLAY_PHONE'):
@@ -256,7 +270,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
             log=(out/(binary+'.log')).read_text()
             if 'PASS' not in log:raise RuntimeError(binary+' did not report PASS')
             sweeps[config]=re.search(r'sweep=([0-9a-f]{64})',log).group(1)
-            if ('flash build on' in log)!=flash_on:raise RuntimeError(binary+': unexpected flash build state')
+            if ('flash build on' in log)!=(flash_on if flash_on_for is None else flash_on_for[config]):raise RuntimeError(binary+': unexpected flash build state')
             if ('wirelog harness: ' in log)!=('-DTIO_WIRE_LOG=1' in defines):raise RuntimeError(binary+': wire log harness state does not match the build')
         if len(set(sweeps.values()))!=1:raise RuntimeError(name+': refusal differs between flag sets '+repr(sweeps))
         print(name+': same refusal in flag sets '+', '.join(sweeps)+' (sweep '+next(iter(sweeps.values()))[:16]+')')
@@ -273,6 +287,15 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         host1011_guard('stock-teleprompter',[],'tests/StockTeleprompterSendTests.m',stage_seam)
         groups.append('stock-teleprompter');print('stock-teleprompter: PASS')
     else:skip('stock-teleprompter','not selected by --only')
+    # Full 1.0.11 host (ios1011, C15): disarmed by default in every flag set (same sweep), armed equals
+    # the 1.0.7 rule where a flash path exists. The full host is an OTA host, so the phone-only set
+    # (TIO_OTA_FLASH_ENABLED without TIO_DISPLAY_FLASH) has the flash path there.
+    seen.add('ios1011-full-guard')
+    if only is None or 'ios1011-full-guard' in only:
+        full_flash={config:'-DTIO_OTA_FLASH_ENABLED=1' in defines for config,(defines,_s,_f) in host1011_configs.items()}
+        host1011_guard('ios1011-full-guard',[args.app1011/'Runner',args.app1011/'Info.plist'] if args.app1011 else [],'tests/Host1011FullGuardTests.m',None,full_flash)
+        groups.append('ios1011-full-guard');print('ios1011-full-guard: PASS')
+    else:skip('ios1011-full-guard','not selected by --only')
     seen.add('ios1011-host')
     if (only is None or 'ios1011-host' in only) and args.app1011:
         import hashlib, plistlib
@@ -312,6 +335,20 @@ if args.app107 and args.patched_app:
     test('ota-host',['OTAHostTests.m'],[args.app107/'Frameworks/App.framework/App',args.patched_app/'Frameworks/App.framework/App'])
 else:
     skip('ota-host','needs --app107/--patched-app')
+# Full 1.0.11 host: patch-route.mjs (profile ios1011) on the stock App must give the pinned
+# output, and OTAHost.h must accept it only for ios1011, at the 1.0.11 offsets.
+seen.add('ota-host-1011')
+if (only is None or 'ota-host-1011' in only) and args.app1011:
+    import hashlib
+    route_out=out/'ota-host-1011-route'
+    shutil.rmtree(route_out,ignore_errors=True)
+    run('ota-host-1011-patch',['node',P/'patch-route.mjs',args.app1011/'Frameworks/App.framework/App',route_out,'ios1011'])
+    if hashlib.sha256((route_out/'App').read_bytes()).hexdigest()!='592d48d0e42869f11def2dde99a3a6960d4da7b83b99df47d228311dfc3b8ba6':raise RuntimeError('1.0.11 route output does not match its pin')
+    report=json.loads((route_out/'report.json').read_text())
+    assert report['profile']=='ios1011' and [c['offset'] for c in report['changes']]==[39886000,30868352] and report['deviceIO'] is False
+    test('ota-host-1011',['OTAHost1011Tests.m'],[args.app1011/'Frameworks/App.framework/App',route_out/'App',args.patched_app/'Frameworks/App.framework/App' if args.patched_app else '-'])
+else:
+    skip('ota-host-1011','needs --app1011' if not args.app1011 else 'not selected by --only')
 # Every host method the addon hooks or calls, with its exact type encoding, in each stock host given.
 seen.add('host-selectors')
 selector_apps=[a for a in (args.app107,args.app1011) if a]

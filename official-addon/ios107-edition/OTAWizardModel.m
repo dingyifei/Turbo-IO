@@ -65,11 +65,15 @@ NSDictionary *TIOOTAWizardSnapshot(NSDictionary *inputs) {
     BOOL canDownload = package == TIOOTACheckOK && downloadSource == TIOOTACheckOK &&
         protect == TIOOTACheckOK && stage == 0;
     BOOL canContinue = canDownload && autoUpdate == TIOOTACheckOK;
-    BOOL canAuthorize = canContinue && version == TIOOTACheckOK && directory == TIOOTACheckOK && stage == 0;
+    // Full 1.0.11 host: flashing stays disarmed until the explicit arm step (TIOOTAFlashArm).
+    BOOL armRequired = [flash[@"armRequired"] boolValue], armed = armRequired && [flash[@"armed"] boolValue];
+    TIOOTACheck arm = !armRequired || armed ? TIOOTACheckOK : TIOOTACheckAction;
+    BOOL canAuthorize = canContinue && version == TIOOTACheckOK && directory == TIOOTACheckOK && arm == TIOOTACheckOK && stage == 0;
     NSInteger suggestedStep = stage >= 1 ? 3 : !canContinue ? 1 : directory != TIOOTACheckOK ? 2 : 3;
     return @{
         @"package": @(package), @"source": @(downloadSource), @"protect": @(protect),
         @"autoUpdate": @(autoUpdate), @"version": @(version), @"directory": @(directory),
+        @"arm": @(arm), @"armRequired": @(armRequired), @"armed": @(armed),
         @"autoUpdateState": @(autoState), @"autoUpdateFixable": @(TIOOTAAutoUpdateFixable(prefs)),
         @"versionAge": ageNumber, @"versionSecondsLeft": @(secondsLeft),
         @"downloadArmed": @([feed[@"armed"] boolValue]),
@@ -88,7 +92,9 @@ NSString *TIOOTAWizardHubStatusKey(NSDictionary *snapshot) {
         case TIOOTAPhaseFailed: return @"ota.hub.failed";
         case TIOOTAPhaseInstalling: return @"ota.hub.installing";
         case TIOOTAPhaseAuthorized: return @"ota.hub.authorized";
-        default: return [snapshot[@"downloadArmed"] boolValue] ? @"ota.hub.download" : @"ota.hub.ready";
+        default:
+            if ([snapshot[@"downloadArmed"] boolValue]) return @"ota.hub.download";
+            return [snapshot[@"armRequired"] boolValue] && ![snapshot[@"armed"] boolValue] ? @"ota.hub.disarmed" : @"ota.hub.ready";
     }
 }
 

@@ -5,6 +5,7 @@
 #import "DownloadOnlySafety.h"
 #import "GlassesChannelHook.h"
 #import "ExperimentalOTAGuard.h"
+#import "ExperimentalOTAFlash.h"
 #import "ResearchUI.h"
 #import "TIOConfirm.h"
 #import "TIODesign.h"
@@ -20,6 +21,11 @@ static NSURL *Home(void){return [NSURL fileURLWithPath:NSHomeDirectory() isDirec
 // flag-independent. Auto Update is read from RayNeo's preferences, never written.
 static BOOL Guarded(void){return TIOHostDownloadOnlyGuardActive();}
 static NSDictionary *SafetyModel(void){
+    // Full 1.0.11 host: the guard row shows the arm state; the arm guard runs in the same transport hook.
+    if([TIOHostProfile() isEqual:@"ios1011"]){
+        NSDictionary *arm=TIOOTAFlashArmStatus();
+        return TIOFirmwareExportSafetyModelFull([TIOOTAGuardStatus()[@"transportHookReady"] boolValue]&&[arm[@"armRequired"] boolValue],[arm[@"armed"] boolValue],NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
+    }
     // Guarded() also checks the refusal's own host test; it has the last word on the guard row.
     // Green needs runtime evidence too: a stock rayneonet call has passed the hook in this launch.
     return TIOFirmwareExportSafetyModel(TIOHostProfile(),TIOGlassesChannelHookInstalled()&&Guarded(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue],TIOGlassesChannelStockTrafficSeen(),NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
@@ -28,6 +34,7 @@ NSString *TIOFirmwareExportHubStatus(void){
     NSDictionary *m=SafetyModel();
     if(![m[@"guardActive"] boolValue])return TIOText(@"hub.status.firmwareExport.unguarded");
     if([m[@"autoUpdate"] isEqual:@"on"])return TIOText(@"hub.status.firmwareExport.autoOn");
+    if(m[@"armed"])return TIOText([m[@"armed"] boolValue]?@"hub.status.firmwareExport.armed":@"hub.status.firmwareExport.disarmed");
     if([m[@"guardLevel"] isEqual:@"warn"])return TIOText(@"hub.status.firmwareExport.waiting");
     return TIOText(@"hub.status.firmwareExport.guarded");
 }
@@ -152,7 +159,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     if(ip.section==SectionStatus){
         if(ip.row==0){
             NSString *profile=TIOHostProfile();
-            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):TIOText(@"fwexport.host.unknown"));
+            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1011"]?TIOText(@"fwexport.host.full"):TIOText(@"fwexport.host.unknown"));
             c.detailTextLabel.text=profile?:@"none";c.accessibilityIdentifier=@"fwexport-host";
         }else if(ip.row==2){
             // G3: read only. Red when on, amber when not recorded, green when explicitly off.
@@ -162,16 +169,20 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
             c.imageView.image=[UIImage systemImageNamed:[m[@"autoLevel"] isEqual:@"ok"]?@"checkmark.circle.fill":@"exclamationmark.triangle.fill"];c.imageView.tintColor=color;
             c.accessibilityIdentifier=[@"fwexport-auto-" stringByAppendingString:m[@"autoUpdate"]];
         }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"ok"]){
-            // Green: guard installed and a stock rayneonet call has passed the hook in this launch.
-            c.textLabel.text=TIOText(@"fwexport.guard.on");c.detailTextLabel.text=TIOText(@"fwexport.guard.on.detail");
+            // Green: guard installed and a stock rayneonet call has passed the hook in this launch
+            // (full 1.0.11 host: flashing disarmed). The model names the row's strings.
+            NSDictionary *m=self.safety?:SafetyModel();
+            c.textLabel.text=TIOText(m[@"guardKey"]);c.detailTextLabel.text=TIOText(m[@"guardDetail"]);
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusOk);c.imageView.image=[UIImage systemImageNamed:@"checkmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusOk);
-            c.accessibilityIdentifier=@"fwexport-guard-on";
+            c.accessibilityIdentifier=[m[@"guardKey"] stringByReplacingOccurrencesOfString:@"." withString:@"-"];
         }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"warn"]){
-            // Amber: the hook is installed, but nothing yet shows the stock path goes through it.
-            c.textLabel.text=TIOText(@"fwexport.guard.waiting");c.detailTextLabel.text=TIOText(@"fwexport.guard.waiting.detail");
+            // Amber: the hook is installed, but nothing yet shows the stock path goes through it
+            // (full 1.0.11 host: flashing armed on this install).
+            NSDictionary *m=self.safety?:SafetyModel();
+            c.textLabel.text=TIOText(m[@"guardKey"]);c.detailTextLabel.text=TIOText(m[@"guardDetail"]);
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusWarn);c.textLabel.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);
             c.imageView.image=[UIImage systemImageNamed:@"exclamationmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusWarn);
-            c.accessibilityIdentifier=@"fwexport-guard-waiting";
+            c.accessibilityIdentifier=[m[@"guardKey"] stringByReplacingOccurrencesOfString:@"." withString:@"-"];
         }else{
             // Loud on purpose: without the hook nothing stops an OTA session from this app.
             // Danger fill with the on-accent token: white text in light mode, dark text on the lighter dark-mode red.

@@ -118,6 +118,11 @@
       "status": "run",
       "group": "ota-host"
     },
+    "OTAHost1011Tests.m": {
+      "status": "run",
+      "group": "ota-host-1011",
+      "note": "Full 1.0.11 host: the ios1011 host marker is exact and never the 1.0.7 one; patch-route.mjs ios1011 on the stock 1.0.11 App gives the pinned output, accepted only for ios1011 at the 1.0.11 offsets. Needs --app1011."
+    },
     "PhoneOTAGateTests.m": {
       "status": "run",
       "group": "phone-ota-gate"
@@ -202,6 +207,11 @@
       "status": "run",
       "group": "ios1011-guard",
       "note": "Download-only 1.0.11/259 host: every business-9 frame but the empty version query is refused, built in six TIO_* flag sets (full, flash, phone, none, and full and none with the wire log recording every guard call through tests/WireLogGuardHarness.h) that must print the same sweep digest. With --app1011 it also runs as ios1011-host against the real Runner."
+    },
+    "tests/Host1011FullGuardTests.m": {
+      "status": "run",
+      "group": "ios1011-full-guard",
+      "note": "Full 1.0.11/259 host (ios1011, C15): TMG flashing disarmed by default, only the empty reads 1, 2, 11 and the exact size query pass business 9, in the same six TIO_* flag sets as ios1011-guard with one sweep digest; malformed or foreign arm records count as disarmed; armed (flash builds only) the business-9 sweep equals the 1.0.7 host; disarm restores the refusal. With --app1011 it also checks the real Runner."
     },
     "tests/LanguageFlagTests.m": {
       "status": "run",
@@ -298,6 +308,11 @@
     "tests/TMG4WizardTests.m": {
       "status": "run",
       "group": "tmg4-wizard"
+    },
+    "tests/TMG4Wizard1011Tests.m": {
+      "status": "run",
+      "group": "tmg4-wizard-1011",
+      "note": "Full 1.0.11 host, armed: the unchanged 1.0.7 wizard and gate on the real candidate (Auto Update toggle, one authorization, forced-page Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 and is refused at stage 2."
     },
     "tests/TileRoundTripTests.m": {
       "status": "run",

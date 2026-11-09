@@ -118,9 +118,37 @@ static void CheckGateMismatchesAndBoundaries(void) {
     }
 }
 
+// Full 1.0.11 host: the arm step is one more required check before authorization, and only there.
+static void CheckArm(void) {
+    NSDictionary *base = TIOOTAWizardFixture(@"ready-authorize");
+    NSDictionary *snapshot = TIOOTAWizardSnapshot(base);
+    assert([snapshot[@"arm"] integerValue] == TIOOTACheckOK && ![snapshot[@"armRequired"] boolValue] && [snapshot[@"canAuthorize"] boolValue]);
+    NSDictionary *disarmed = Changed(base, @"flash", @"armRequired", @YES);
+    snapshot = TIOOTAWizardSnapshot(disarmed);
+    assert([snapshot[@"arm"] integerValue] == TIOOTACheckAction && ![snapshot[@"armed"] boolValue]);
+    assert(![snapshot[@"canAuthorize"] boolValue] && [snapshot[@"canDownload"] boolValue] && [snapshot[@"canContinueFromCheck"] boolValue]);
+    assert([TIOOTAWizardHubStatusKey(snapshot) isEqualToString:@"ota.hub.disarmed"]);
+    assert([TIOOTAWizardHubStatusKey(TIOOTAWizardSnapshot(Changed(disarmed, @"feed", @"armed", @YES))) isEqualToString:@"ota.hub.download"]);
+    snapshot = TIOOTAWizardSnapshot(Changed(disarmed, @"flash", @"armed", @YES));
+    assert([snapshot[@"arm"] integerValue] == TIOOTACheckOK && [snapshot[@"armed"] boolValue] && [snapshot[@"canAuthorize"] boolValue]);
+    assert([TIOOTAWizardHubStatusKey(snapshot) isEqualToString:@"ota.hub.ready"]);
+    // An "armed" bit without the requirement means nothing; a non-boolean value is not armed.
+    snapshot = TIOOTAWizardSnapshot(Changed(base, @"flash", @"armed", @YES));
+    assert(![snapshot[@"armed"] boolValue] && [snapshot[@"canAuthorize"] boolValue]);
+    snapshot = TIOOTAWizardSnapshot(Changed(disarmed, @"flash", @"armed", @NO));
+    assert(![snapshot[@"canAuthorize"] boolValue]);
+    // Armed does not lift any other check.
+    snapshot = TIOOTAWizardSnapshot(Changed(Changed(disarmed, @"flash", @"armed", @YES), @"flash", @"recentTargetVersionRead", @NO));
+    assert(![snapshot[@"canAuthorize"] boolValue]);
+    NSMutableDictionary *autoOn = [Changed(disarmed, @"flash", @"armed", @YES) mutableCopy];
+    autoOn[@"prefs"] = @{@"flutter.fixture_ota_firmware_auto_update":(__bridge id)kCFBooleanTrue};
+    assert(![TIOOTAWizardSnapshot(autoOn)[@"canAuthorize"] boolValue]);
+}
+
 int main(void) {
     @autoreleasepool {
         CheckFixtures();
+        CheckArm();
         CheckAutoUpdate();
         CheckGateMismatchesAndBoundaries();
         assert([TIOOTAFormatClock(872) isEqualToString:@"14:32"]);
