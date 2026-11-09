@@ -88,12 +88,13 @@ PY
 }
 # Ignore inherited credentials and paths; require the external configuration.
 unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
-# Build flags come only from the options below, never from the caller's environment.
-for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done
 [[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'PACKAGE FAIL: missing external package.env' >&2; exit 1; }
 set -a
 source "$TURBO_INPUTS/package.env"
 set +a
+# Build flags come only from the options below, never from the caller's environment
+# or package.env: the addon build also runs in an emptied environment (env -i).
+for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done
 if [[ $host == 1011 ]]; then required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011)
 else required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107); fi
 for name in "${required[@]}"; do
@@ -113,19 +114,28 @@ ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
 rm -f "$ADDON"
 [[ ! -e "$ADDON" ]] || { echo 'PACKAGE FAIL: cannot remove the previous addon build' >&2; exit 1; }
 printf '%s\n' "${build_flags[@]}" >"$LOG_DIR/addon-flags.txt"
-run_logged addon-build env "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub
+run_logged addon-build env -i PATH="$PATH" HOME="$HOME" ${DEVELOPER_DIR:+DEVELOPER_DIR="$DEVELOPER_DIR"} "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub
 [[ -f "$ADDON" ]] || { echo 'PACKAGE FAIL: the addon was not built in this run' >&2; exit 1; }
 addon_check() {
   local symbols
   symbols=$(nm "$ADDON")
   if [[ $wire_log == 1 ]]; then
     grep -Eq ' _TIOWireLogStart$' <<<"$symbols" || { echo 'wire log requested but missing from the addon' >&2; return 1; }
-  elif grep -q 'WireLog' <<<"$symbols"; then
-    echo 'wire log symbols in a build without --wire-log' >&2; return 1
+  else
+    bash "$REPO/scripts/wirelog-absent.sh" "$ADDON"
   fi
   shasum -a 256 "$ADDON" | cut -d' ' -f1
 }
 run_logged addon-check addon_check
+# Everything after this point uses a private copy of the checked dylib, so a later
+# build into build/mapkit cannot change what is signed. Its SHA-256 is checked
+# again right before packaging.
+addon_sha=$(tail -n 1 "$LOG_DIR/addon-check.log")
+mkdir "$LOG_DIR/addon"
+cp -p "$ADDON" "$LOG_DIR/addon/TurboIOPrivateAddon.dylib"
+ADDON=$LOG_DIR/addon/TurboIOPrivateAddon.dylib
+addon_unchanged() { [[ $(shasum -a 256 "$ADDON" | cut -d' ' -f1) == "$addon_sha" ]] || { echo 'addon changed after its check' >&2; return 1; }; }
+run_logged addon-copy addon_unchanged
 if [[ -n "$apple_ai_out" ]]; then
   run_logged apple-ai-build python3 "$ED/apple-ai/build.py" --out "$apple_ai_out"
   apple_args=(--apple-ai-dylib "$(cd "$apple_ai_out" && pwd)/TurboAppleAI.dylib")
@@ -145,7 +155,7 @@ if [[ $build_only == 1 ]]; then
   [[ $host != 1011 ]] || run_logged download-only-guard download_only_guard "$ADDON"
   status=PASS
   active=complete
-  printf 'built %s (%s)\n' "$ADDON" "$(cat "$LOG_DIR/addon-check.log")"
+  printf 'built %s (%s)\n' "$ADDON" "$addon_sha"
   exit 0
 fi
 if [[ $host == 1011 ]]; then
@@ -164,6 +174,7 @@ if [[ $host == 1011 ]]; then
 # (package.mjs repeats this check with the same symbol list before signing).
 run_logged download-only-guard download_only_guard "$ADDON"
 # Download-only: no firmware resource and no device-model list; package.mjs keeps App.framework stock.
+run_logged addon-unchanged addon_unchanged
 run_logged package node "$ED/package.mjs" --host ios1011-download --app "$TURBO_APP1011" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
   --out "$OUT" --bundle com.rayneo.venus.pub ${apple_args[@]+"${apple_args[@]}"}
@@ -187,6 +198,7 @@ assert report['ipaSHA256']==digest, 'IPA digest mismatch'
 print(digest)
 PY
 else
+run_logged addon-unchanged addon_unchanged
 run_logged package node "$ED/package.mjs" --app "$TURBO_APP107" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
   --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$TURBO_FIRMWARE" --product "$TURBO_PRODUCT" ${apple_args[@]+"${apple_args[@]}"}

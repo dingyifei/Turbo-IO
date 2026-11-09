@@ -146,7 +146,7 @@ test('Apple AI wrapper leaves flag-off package argv unchanged',()=>{
  assert.match(wrapper,/if \[\[ -n "\$apple_ai_out" \]\]/);
  // The Apple AI flag set feeds the one fresh addon build every package run makes.
  assert.match(wrapper,/build_flags=\(TIO_APPLE_AI=1 [^)]*\)/);
- assert.match(wrapper,/env "\$\{build_flags\[@\]\}" bash "\$ED\/build.sh" embedded/);
+ assert.match(wrapper,/env -i [^\n]*"\$\{build_flags\[@\]\}" bash "\$ED\/build.sh" embedded/);
  assert.match(wrapper,/python3 "\$ED\/apple-ai\/build.py" --out "\$apple_ai_out"/);
  const empty=appleExec('bash',['-c','apple_args=(); set -- existing ${apple_args[@]+"${apple_args[@]}"}; printf "%s\\n" "$@"'],{encoding:'utf8'});
  assert.equal(empty,'existing\n');
@@ -441,13 +441,19 @@ test('turbo-package.sh builds the addon fresh with the requested flags before si
  const pos=s=>{const i=wrapper.indexOf(s);assert.ok(i>0,s);return i;};
  const scrub=pos('for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done');
  const remove=pos('rm -f "$ADDON"\n[[ ! -e "$ADDON" ]] ||');
- const build=pos('run_logged addon-build env "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub');
+ const sourced=pos('source "$TURBO_INPUTS/package.env"');
+ const build=pos('run_logged addon-build env -i PATH="$PATH" HOME="$HOME" ${DEVELOPER_DIR:+DEVELOPER_DIR="$DEVELOPER_DIR"} "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub');
  const built=pos("[[ -f \"$ADDON\" ]] || { echo 'PACKAGE FAIL: the addon was not built in this run' >&2; exit 1; }");
  const check=pos('run_logged addon-check addon_check');
  const buildOnly=pos('if [[ $build_only == 1 ]]; then');
  const sign=pos('run_logged signing-preflight codesign');
  const guard1011=pos('run_logged download-only-guard download_only_guard "$ADDON"\n# Download-only');
- assert.ok(scrub<remove&&remove<build&&build<built&&built<check&&check<buildOnly&&buildOnly<sign&&sign<guard1011);
+ const copy=pos('cp -p "$ADDON" "$LOG_DIR/addon/TurboIOPrivateAddon.dylib"\nADDON=$LOG_DIR/addon/TurboIOPrivateAddon.dylib');
+ assert.ok(sourced<scrub&&scrub<remove&&remove<build&&build<built&&built<check&&check<copy&&copy<buildOnly&&buildOnly<sign&&sign<guard1011);
+ // The signed dylib is the checked copy: its SHA-256 is checked again right before each package.mjs run.
+ assert.equal([...wrapper.matchAll(/run_logged addon-unchanged addon_unchanged\nrun_logged package node "\$ED\/package\.mjs"/g)].length,2);
+ assert.equal([...wrapper.matchAll(/run_logged package node/g)].length,2);
+ assert.ok(wrapper.includes("addon_sha=$(tail -n 1 \"$LOG_DIR/addon-check.log\")"));
  // The fresh build is not inside a host branch: it runs for 1.0.7 and 1.0.11 alike.
  assert.ok(build<wrapper.indexOf('if [[ $host == 1011 ]]; then\n  [[ -f "$TURBO_PROFILE"'));
  assert.equal([...wrapper.matchAll(/build\.sh/g)].length,1);
@@ -463,12 +469,36 @@ test('turbo-package.sh builds the addon fresh with the requested flags before si
  assert.ok(!want.includes('TIO_WIRE_LOG=1'));
  // The built addon carries the recorder exactly when it was asked for.
  const addonCheck=wrapper.slice(wrapper.indexOf('addon_check() {'),wrapper.indexOf('run_logged addon-check addon_check'));
- assert.match(addonCheck,/grep -Eq ' _TIOWireLogStart\$'/);assert.match(addonCheck,/elif grep -q 'WireLog'/);
+ assert.match(addonCheck,/grep -Eq ' _TIOWireLogStart\$' <<<"\$symbols"/);
  // --build-only stops before the identity is used or an output directory is named.
  const stop=wrapper.slice(buildOnly,wrapper.indexOf('\nfi\n',buildOnly));
  assert.match(stop,/exit 0$/);assert.ok(buildOnly<wrapper.indexOf('OUT=$TURBO_INPUTS/signed-'));
  // The gate's default build must have no recorder at all.
- assert.match(gate,/if nm "\$addon" \| grep -q 'WireLog'; then echo 'Unexpected wire log symbol in the default build'/);
+ assert.match(gate,/\n  bash "\$REPO\/scripts\/wirelog-absent\.sh" "\$addon"\n/);
+ assert.match(addonCheck,/bash "\$REPO\/scripts\/wirelog-absent\.sh" "\$ADDON"/);
+ // No piped nm check anywhere in the scripts: under pipefail a match reads as nm's SIGPIPE.
+ for(const text of [wrapper,gate,fs.readFileSync(new URL('../../scripts/wirelog-absent.sh',import.meta.url),'utf8')])assert.doesNotMatch(text.split('\n').filter(l=>!/^\s*#/.test(l)).join('\n'),/\bnm [^\n|]*\|\s*grep/);
+});
+// The leak check must really fire. A dylib with the real recorder (WireLog.m built with TIO_WIRE_LOG=1) and
+// enough other symbols that nm is still writing when grep matches: the check fails on it and passes without
+// the recorder, while the old piped form (`nm | grep -q` under pipefail) misses it.
+import {spawnSync} from 'node:child_process';
+test('wirelog-absent.sh fails on a TIO_WIRE_LOG=1 build',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wirelog-absent-'));
+ try{
+  const filler=path.join(dir,'filler.c');
+  let c='';for(let i=0;i<30000;i++)c+=`int tio_filler_${String(i).padStart(5,'0')}(void){return ${i};}\n`;
+  fs.writeFileSync(filler,c);
+  const wire=path.join(dir,'wire.dylib'),plain=path.join(dir,'plain.dylib');
+  const cc=(out,extra)=>{const r=spawnSync('xcrun',['clang','-dynamiclib','-O0','-fobjc-arc','-framework','Foundation','-o',out,filler,...extra],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);};
+  cc(wire,['-DTIO_WIRE_LOG=1','-I',packageTestDirectory,path.join(packageTestDirectory,'WireLog.m')]);
+  cc(plain,[]);
+  const check=f=>spawnSync('bash',[path.join(packageTestDirectory,'../../scripts/wirelog-absent.sh'),f],{encoding:'utf8'});
+  const hit=check(wire);assert.equal(hit.status,1,hit.stdout+hit.stderr);assert.match(hit.stderr,/Unexpected wire log symbol/);
+  const clean=check(plain);assert.equal(clean.status,0,clean.stderr);
+  const piped=spawnSync('bash',['-c','set -o pipefail; if nm "$1" | grep -q WireLog; then exit 0; else exit 1; fi','x',wire]);
+  assert.equal(piped.status,1,'the piped form should miss the match here, or this test proves nothing');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 // G1: on the download-only host TIOOTAFlashBlockCall delegates before any flag-dependent code.
 test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on no flag',()=>{
