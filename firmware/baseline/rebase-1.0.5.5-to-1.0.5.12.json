@@ -3512,7 +3512,13 @@
    "checks": [
     "votes",
     "field"
-   ]
+   ],
+   "addedSites": {
+    "src/image-upload-test/render_idle_test.c": 1
+   },
+   "addedSitesReason": {
+    "src/image-upload-test/render_idle_test.c": "tmg10(6): the fixture key was 0x18617cb0, the 1.0.4.12 display unit 0x18617b8c + 0x124, never moved to 1.0.5.5, so the test failed on TMG9 too; it is now written as display unit + 0x124 like render_idle.c"
+   }
   },
   {
    "name": "native_light_current",
@@ -3665,8 +3671,43 @@
     "window",
     "sig"
    ]
+  },
+  {
+   "name": "lv_timer_create_comment",
+   "kind": "code",
+   "old": "0x105f6170",
+   "new": "0x10602514",
+   "sites": {
+    "src/image-upload-test/native_page.c": 1
+   },
+   "evidence": "native_page.c comment: stock lv_timer_create (native_page.c is not in build-inputs.json); matcher 0x105f6070+0x100 (inside body, identical)",
+   "checks": [
+    "window",
+    "sig"
+   ]
   }
  ],
+ "notStock": {
+  "0x10190000": "FLASH base of the AP image (a region bound)",
+  "0x18000000": "RAM base, .data copy destination (a region bound)",
+  "0x18001000": "fake display unit in native_display_test.c",
+  "0x18002000": "fake display in native_display_test.c",
+  "0x19000000": "fake unit in render_idle_test.c",
+  "0x1900000c": "fake unit field",
+  "0x19000018": "fake unit field",
+  "0x19000100": "fake unit in render_idle_test.c",
+  "0x1900010c": "fake unit field",
+  "0x19000118": "fake unit field",
+  "0x19100000": "fake display in render_idle_test.c",
+  "0x191002a0": "fake display field",
+  "0x19200000": "fake layer in render_idle_test.c",
+  "0x19200038": "fake layer field",
+  "0x19200040": "fake layer field"
+ },
+ "scanExempt": {
+  "tests/stock_abi_test.py": "pins the 11 ranges at their 1.0.5.5 addresses and maps them through this table",
+  "tests/rebase_independent_test.py": "the independent verifier quotes known-bad and reference values"
+ },
  "stockAbiRanges": [
   {
    "old": "0x10669be6",

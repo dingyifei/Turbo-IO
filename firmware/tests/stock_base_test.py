@@ -50,5 +50,14 @@ def main():
         path=tree/sorted(v['sites'])[0];path.write_text(path.read_text().replace(v[col],v[rebase.other(col)],1))
         refused(lambda:rebase.tree_state(tree,table),'mixed tree')
         assert any('stale' in p for p in rebase.problems(tree,table,base))
-    print('PASS stock base: labels and defines from stockBase, mixed cores refused (AP/APC1/BTH, REV_INFO), members pinned, tree wholly on %s'%base)
+        path.write_text(path.read_text().replace(v[rebase.other(col)],v[col],1));assert rebase.tree_state(tree,table)==base
+        # A stock address the table does not know (here 1.0.5.5 lv_timer_create, as the native_page.c comment had it
+        # before tmg10(6), and an arbitrary flash word) also makes the tree on neither base.
+        for unknown in ['0x'+t for t in ('105f6170','10600000','184d0000')]:   # split so this file holds no stock-window token
+            extra=tree/'src/common-v1/unknown_address_probe.h';extra.write_text('/* stock address %s */\n'%unknown)
+            refused(lambda:rebase.tree_state(tree,table),'unknown stock-window token '+unknown)
+            assert any(unknown in p for p in rebase.problems(tree,table,base)),unknown
+            extra.unlink()
+        assert rebase.tree_state(tree,table)==base
+    print('PASS stock base: labels and defines from stockBase, mixed cores refused (AP/APC1/BTH, REV_INFO), members pinned, stale and unknown stock-window addresses refused, tree wholly on %s'%base)
 if __name__=='__main__':main()

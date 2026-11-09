@@ -22,9 +22,11 @@ The 14 trampoline prologues in trampolines.S are byte-identical in both bases an
 them against the stock bytes at every build. Thumb bit: see the table's thumbConvention (values are swapped exactly
 as written, so the bit is preserved; --check asserts it).
 
-`--check` fails on a mixed tree (some values on one base, some on the other) and on any old-base literal left
-anywhere under src/, include/ and tests/, so a stale address cannot hide in a newly added file. build.py runs the same
-check before every build.
+`--check` fails on a mixed tree (some values on one base, some on the other), on any old-base literal left
+anywhere under src/, include/ and tests/, and on any hex token in a stock window (either base's AP flash, RAM
+0x18000000-0x1a000000, the copy region) that is not an address of the tree's base in the table and not listed in the
+table's notStock, so a stock address the table does not know cannot hide either. build.py runs the same check before
+every build.
 """
 import argparse
 import hashlib
@@ -48,6 +50,41 @@ def load_table(path=TABLE):
     table = json.loads(Path(path).read_text())
     assert table['format'] == 'turboio-rebase-1'
     return table
+
+
+HEX = re.compile(r'(?<![0-9A-Za-z_])0x([0-9a-fA-F]{1,8})(?![0-9A-Za-z_])')
+
+
+def sites(v):
+    """Value sites: those of the TMG9 tree the table was derived from, plus sites written after it."""
+    out = dict(v['sites'])
+    for f, c in v.get('addedSites', {}).items():
+        out[f] = out.get(f, 0) + c
+    return out
+
+
+def leftovers(table, base, texts):
+    """Every hex token in a stock window that is not an address of `base` and not listed as not-stock.
+
+    Windows: the AP flash of either base (FLASH .. FLASH + AP bytes), RAM 0x18000000-0x1a000000 and the copy region
+    0x100000-0x101000. Accounted for: the base's link.ld callees, value sites, edit addresses, module VA and stock
+    ABI ranges. So a stock address the table does not know (a gap like the native_page.c comment that tmg10(5)
+    found) fails the check whichever base it came from."""
+    col = column(table, base)
+    top = FLASH + max(b['stockAPBytes'] for b in table['bases'].values())
+    known = {int(r[col], 16) for r in table['linkld']} | {int(v[col], 16) for v in table['values']}
+    known |= {int(e[col + 'Address'], 16) for e in table['edits']} | {int(table['moduleVA'][col], 16)}
+    known |= {int(r[col], 16) for r in table['stockAbiRanges']}
+    known |= {int(t, 16) for t in table.get('notStock', {})}
+    out = []
+    for path, text in texts.items():
+        if path in table.get('scanExempt', {}):
+            continue
+        for m in HEX.finditer(text):
+            v = int(m.group(1), 16)
+            if (FLASH <= v < top or 0x18000000 <= v < 0x1a000000 or 0x100000 <= v < 0x101000) and v not in known:
+                out.append('%s: %s is in a stock window but is not a %s address in the table (stale or unknown)' % (path, m.group(0), base))
+    return out
 
 
 def token(value):
@@ -120,13 +157,14 @@ def problems(fw, table, base):
         good, stale = token(v[col]), token(v[other(col)])
         for path, text in texts.items():
             n_good, n_stale = len(good.findall(text)), len(stale.findall(text))
-            expect = v['sites'].get(path, 0)
+            expect = sites(v).get(path, 0)
             if n_stale:
                 out.append('%s: %d stale %s (%s, %s value)' % (path, n_stale, v[other(col)], v['name'], other(col)))
             if n_good != expect:
                 out.append('%s: %d x %s (%s), table says %d' % (path, n_good, v[col], v['name'], expect))
         if v['kind'] == 'code' and int(v['old'], 16) & 1 != int(v['new'], 16) & 1:
             out.append('table Thumb bit differs for ' + v['name'])
+    out += leftovers(table, base, texts)
     return out
 
 
@@ -188,7 +226,7 @@ def write(fw, table, base):
         changed.append('link.ld')
     # value sites
     for v in table['values']:
-        for rel, count in v['sites'].items():
+        for rel, count in sites(v).items():
             path = fw/rel
             text = path.read_text()
             stale = token(v[src])
@@ -266,7 +304,7 @@ def main():
     if left:
         raise SystemExit('REBASE CHECK FAIL (%s):\n  %s' % (base, '\n  '.join(left)))
     print('PASS rebase: tree wholly on stock %s (%d link.ld callees, 25 edits, %d value sites%s)' % (
-        base, len(table['linkld']), sum(sum(v['sites'].values()) for v in table['values']),
+        base, len(table['linkld']), sum(sum(sites(v).values()) for v in table['values']),
         '; patch sites, trampoline prologues, registration literals and strings match the stock ZIP' if args.stock else ''))
 
 

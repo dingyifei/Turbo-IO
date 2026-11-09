@@ -6,7 +6,9 @@ static bool cycle_unit,cycle_layer,cycle_display,fail_read;
 static bool read(uint32_t p,uint32_t *v){
  if(fail_read)return false;
  switch(p){
- case 0x18617cb0:*v=0x19000000;return true;
+ /* The unit list head render_idle.c reads: display unit + 0x124 (rebase table value display_unit). Until tmg10(6)
+  * the key was the 1.0.4.12 display unit + 0x124, never moved to 1.0.5.5, so this test failed on TMG9 as well. */
+ case 0x184ec384+0x124:*v=0x19000000;return true;
  case 0x19000000:*v=0x19000100;return true;
  case 0x1900000c:*v=gpu_dispatch;return true;
  case 0x19000018:*v=gpu;return true;

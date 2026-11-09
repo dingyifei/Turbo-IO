@@ -43,6 +43,7 @@ ROOT = FW.parent
 FLASH = 0x10190000
 DATA_RUNTIME = 0x18000000
 DATA_FILE = 0x401bc  # file offset of the .data copy source (copy descriptor +0x674); same in both images
+DATA_BYTES = {'1.0.5.5': 0x221260, '1.0.5.12': 0x2391c0}  # its length (study section 5)
 OLD_BASE, NEW_BASE = '1.0.5.5', '1.0.5.12'
 STOCK = {OLD_BASE: ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip',
          NEW_BASE: ROOT/'firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip'}
@@ -50,6 +51,36 @@ STOCK = {OLD_BASE: ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-
 CORRECTIONS = {'tgr_intercept': 0x1062c439}
 # Copy +0x408 region (memcpy, memset, strcmp, strlen): copied to the same address in both images.
 COPY_REGION = range(0x100000, 0x101000)
+# Stock code addresses in the TMG9 tree that the decomp study did not collect (it skipped files outside
+# build-inputs.json). Each is derived here from the matcher pair + offset and must pass window and unique signature.
+# Found by the independent check (tests/rebase_independent_test.py, tmg10(5)).
+EXTRA_CODE = (
+    (0x105f6170, 'lv_timer_create_comment', 'native_page.c comment: stock lv_timer_create (native_page.c is not in build-inputs.json)'),
+)
+# Sites written after TMG9, so not in the TMG9 tree the table is derived from: {value name: {file: (count, reason)}}.
+ADDED_SITES = {
+    'display_unit': {'src/image-upload-test/render_idle_test.c': (1,
+        'tmg10(6): the fixture key was 0x18617cb0, the 1.0.4.12 display unit 0x18617b8c + 0x124, never moved to 1.0.5.5, '
+        'so the test failed on TMG9 too; it is now written as display unit + 0x124 like render_idle.c')},
+}
+# Hex tokens inside the stock windows (AP flash of either base, RAM 0x18000000-0x1a000000, copy region) that are not
+# stock addresses. Each must have no literal in either stock image (checked here). rebase_apply.py --check fails on
+# any other such token that is not a value of the tree's base.
+NOT_STOCK = {
+    '0x10190000': 'FLASH base of the AP image (a region bound)',
+    '0x18000000': 'RAM base, .data copy destination (a region bound)',
+    '0x18001000': 'fake display unit in native_display_test.c', '0x18002000': 'fake display in native_display_test.c',
+    '0x19000000': 'fake unit in render_idle_test.c', '0x1900000c': 'fake unit field', '0x19000018': 'fake unit field',
+    '0x19000100': 'fake unit in render_idle_test.c', '0x1900010c': 'fake unit field', '0x19000118': 'fake unit field',
+    '0x19100000': 'fake display in render_idle_test.c', '0x191002a0': 'fake display field',
+    '0x19200000': 'fake layer in render_idle_test.c', '0x19200038': 'fake layer field', '0x19200040': 'fake layer field',
+}
+# Files that quote addresses of both bases on purpose; the leftover scan skips them (their values are checked by
+# the tests themselves).
+SCAN_EXEMPT = {
+    'tests/stock_abi_test.py': 'pins the 11 ranges at their 1.0.5.5 addresses and maps them through this table',
+    'tests/rebase_independent_test.py': 'the independent verifier quotes known-bad and reference values',
+}
 THUMB_CONVENTION = ('Every value is written exactly as the tree uses it. Function addresses that are called or '
     'stored as code pointers (link.ld symbols, the shim pointer, the render dispatch values, the align_pointer_cb '
     'comment) carry the Thumb bit (odd). Patch sites (edits offset/address) are even byte addresses. RAM and .data '
@@ -482,6 +513,25 @@ def main():
         require('window' in p and 'sig' in p, name + ': window+sig')
         value(name, 'code', o, nv, 'decomp matcher %s+%s (%s body); literal votes %s' %
               (r['func'], hex(r['offset']), 'inside' if r['inside_body'] else 'outside', r['votes'] or 'none'), p)
+    for o, name, why in EXTRA_CODE:
+        na = matcher.map(o)
+        require(na is not None and na & 1 == o & 1, name + ': no matcher partner inside a body')
+        p, notes = checks_code(old, new, matcher, o & ~1, na & ~1)
+        require('window' in p and 'sig' in p, name + ': window+sig')
+        f, _ = matcher.containing(o)
+        value(name, 'code', o, na, '%s; matcher %s+%s (inside body, %s)' % (why, f['addr'], hex(o - H(f['addr'])), f['class']), p)
+    for x in values:
+        if x['name'] in ADDED_SITES:
+            x['addedSites'] = {f: c for f, (c, _) in ADDED_SITES[x['name']].items()}
+            x['addedSitesReason'] = {f: r for f, (_, r) in ADDED_SITES[x['name']].items()}
+    for t, why in NOT_STOCK.items():
+        word = struct.pack('<I', H(t))
+        bound = t in ('0x10190000', '0x18000000')
+        # An aligned word outside the .data copy source (initialised data, not code literals).
+        aligned = lambda image, data: any(i % 4 == 0 and not DATA_FILE <= i < DATA_FILE + data
+                                          for i in (m.start() for m in re.finditer(re.escape(word), image)))
+        require(bound or not (aligned(old, DATA_BYTES[OLD_BASE]) or aligned(new, DATA_BYTES[NEW_BASE])),
+                t + ': listed as not stock but is an aligned code literal in a stock image')
     news = {x['new'].lower() for x in values}
     olds = {x['old'].lower() for x in values}
     require(not news & olds, 'a new value equals an old value: rewriting would be ambiguous')
@@ -546,6 +596,8 @@ def main():
         'linkld': rows,
         'edits': edits,
         'values': values,
+        'notStock': NOT_STOCK,
+        'scanExempt': SCAN_EXEMPT,
         'stockAbiRanges': ranges,
     }
     args.out.write_text(json.dumps(table, indent=1) + '\n')

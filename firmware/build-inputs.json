@@ -253,7 +253,7 @@
   ],
   "moduleBytes": 159996,
   "moduleVA": "0x10889684",
-  "moduleSHA256": "5658348456a2be5f92167e3904e27c7f26da7abfe35f8b350859c8cb4cca4f17",
+  "moduleSHA256": "e77fb149b99737525aa356673ff401b58b7a39e9427c80717b4b58687462616d",
   "stockAP": "af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae",
   "stockBase": "1.0.5.12",
   "stockMembers": {
@@ -275,9 +275,9 @@
   },
   "APBytes": 7473032,
   "archive": {
-    "bytes": 8846362,
-    "sha256": "97657db0d8835b9c43f692cd095e5ca44743d35c7e9ad8473bf29dafdb8ccdd2",
-    "md5": "0af84f9202eab3d4f366c086c74c8097"
+    "bytes": 8846364,
+    "sha256": "4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c",
+    "md5": "5f1284094ccc03496215122051416693"
   },
   "sources": [
     {
@@ -478,7 +478,7 @@
     }
   ],
   "stockZIP": "b7bfd3cc73528e3e9995ad227dc877c8334d43dc8051436e2d2ccff2ca0b4133",
-  "APSHA256": "0b2a826e260299ec1f27e96859d41a6ef49e981f957af4becf48544ce100bc0c",
+  "APSHA256": "da16ecfa0757a58ad32cf763c138624e1d4bd9f23e13a55bd77e7da13e2fd4b6",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.5",
     "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"
