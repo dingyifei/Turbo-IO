@@ -109,9 +109,14 @@ static void MethodHook(id self,SEL cmd,id call,id result){
     if([Get(call,@"method") isEqual:@"rayneonet_sendFile"]&&!NSThread.isMainThread){
         dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;
     }
+    // Fixed order (package.test.mjs checks it): main-thread hop, stock evidence, wire log, guard, prior method.
     // Evidence first: a stock call proves the stock path reaches this hook even when the guard refuses it below.
+    // It must see the original result block: its origin check reads where that block's code lives, and the
+    // wire log's wrapper block lives in the addon.
     RecordStockEvidence(call,result);
 #if TIO_WIRE_LOG
+    // Passive: records the call and wraps the result so a blocked call is recorded with the guard's reply.
+    // It reads plain Foundation objects only, so the guard below sees what it would see without it.
     result=TIOWireLogWrapBridgeResult(wireChannel,call,result); // forwards unchanged; records the call, the value and the latency
 #endif
     // A guard that throws counts as a refusal: the call is answered like any block and never reaches PriorMethod.
@@ -123,6 +128,9 @@ static void MethodHook(id self,SEL cmd,id call,id result){
     // D5: an allowed stock teleprompter send goes on as a new call built from the checked snapshot,
     // so the plugin reads exactly what the guard checked. Every other call is forwarded unchanged.
     if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}
+#if TIO_WIRE_LOG
+    if(!otaBlocked&&teleprompter)TIOWireLogBridgeForwarded(result,call); // what the plugin actually receives, linked to the recorded original
+#endif
     if(otaBlocked){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO transfer gate: not authorized or packet mismatch"});return;}
     if(TIOGlassesLogBlockCall(call)){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":@"Turbo IO glasses log study isolated: duplicate request suppressed"});return;}
     {NSString *method=Get(call,@"method");id args=Get(call,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}

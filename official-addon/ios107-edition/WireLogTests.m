@@ -14,16 +14,38 @@
 @end
 @implementation FlutterError
 @end
-@interface FakeCall : NSObject
+// The recorder reads a call only through a plain dictionary or this exact class name.
+@interface FlutterMethodCall : NSObject
 @property (nonatomic, copy) NSString *method;
 @property (nonatomic, strong) id arguments;
 @end
-@implementation FakeCall
+@implementation FlutterMethodCall
 @end
 @interface Poison : NSObject
 @end
 @implementation Poison
 - (NSString *)description { @throw [NSException exceptionWithName:@"Poison" reason:@"description" userInfo:nil]; }
+@end
+// Counts every message that reaches it. The recorder must send it none: a proxy or subclass could answer
+// differently per read, and the OTA guard reads the same arguments after the recorder.
+static NSUInteger ProxyMessages;
+@interface CountingProxy : NSProxy
+@end
+@implementation CountingProxy
++ (instancetype)make { return [CountingProxy alloc]; }
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel { ProxyMessages++; return [NSObject instanceMethodSignatureForSelector:@selector(description)]; }
+- (void)forwardInvocation:(NSInvocation *)inv { ProxyMessages++; __unsafe_unretained NSString *r = @"proxy"; [inv setReturnValue:&r]; }
+@end
+// A dictionary subclass that counts reads.
+static NSUInteger SubclassReads;
+@interface CountingDictionary : NSDictionary
+@end
+@implementation CountingDictionary { NSDictionary *_inner; }
+- (instancetype)initWithInner:(NSDictionary *)d { if ((self = [super init])) _inner = d; return self; }
+- (NSUInteger)count { SubclassReads++; return _inner.count; }
+- (id)objectForKey:(id)k { SubclassReads++; return _inner[k]; }
+- (NSEnumerator *)keyEnumerator { SubclassReads++; return _inner.keyEnumerator; }
+- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)st objects:(id __unsafe_unretained [])b count:(NSUInteger)n { SubclassReads++; return [_inner countByEnumeratingWithState:st objects:b count:n]; }
 @end
 
 // ---- a tiny StandardMessageCodec encoder, independent of the decoder under test ----
@@ -288,7 +310,7 @@ static void TestWriter(void) {
 static void TestPassivity(void) {
     NSURL *dir = TempDir();
     Fresh(dir, 0, 0);
-    FakeCall *call = [FakeCall new]; call.method = @"rayneonet_sendMessage"; call.arguments = @{@"businessId": @22, @"payload": [NSData dataWithBytes:"\x01" length:1], @"token": @"zzz"};
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendMessage"; call.arguments = @{@"businessId": @22, @"payload": [NSData dataWithBytes:"\x01" length:1], @"token": @"zzz"};
     __block int hits = 0; __block id seen = nil;
     id result = ^(id value) { hits++; seen = value; };
 
@@ -323,18 +345,25 @@ static void TestPassivity(void) {
     assert(hits == 1 && !TIOWireLogActive() && [TIOWireLogStatus()[@"disabledReason"] length] > 0);
     TIOWireLogDrainForTest();
 
-    // Same for an argument whose description throws: the calling thread only takes a structural snapshot, so the
-    // failure shows up on the writer queue. The caller is never touched and the recorder switches itself off.
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", Envelope(@{@"a": @1})); // inactive: a no-op, not a crash
+    TIOWireLogDrainForTest();
+
+    // An argument that is not a plain Foundation object (here one whose description throws) is recorded by its
+    // class name only and never messaged; the caller is untouched and the recorder stays on.
     Fresh(dir = TempDir(), 0, 0);
     hits = 0; TIOWireLogStart();
     call.arguments = @{@"x": [Poison new]};
     @try { out = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, result); } @catch (__unused id e) { assert(!"observer exception reached the caller"); }
-    ((void (^)(id))out)(@2);
+    ((void (^)(id))out)([Poison new]);
     assert(hits == 1);
-    TIOWireLogDrainForTest();
-    assert(!TIOWireLogActive() && [TIOWireLogStatus()[@"disabledReason"] length] > 0);
-    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", Envelope(@{@"a": @1})); // inactive: a no-op, not a crash
-    TIOWireLogDrainForTest();
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    recs = Records(dir);
+    assert(recs.count == 2 && [TIOWireLogStatus()[@"disabledReason"] length] == 0);
+    assert([recs[0][@"arguments"][@"x"][@"$class"] isEqualToString:@"Poison"] && [recs[0][@"arguments"][@"x"][@"$unread"] boolValue]);
+    assert([recs[1][@"value"][@"$class"] isEqualToString:@"Poison"]);
+    // Reached directly (the JSON helper), a throwing description is kept as the class name, not a thrown exception.
+    NSDictionary *poison = TIOWireLogJSON([Poison new]);
+    assert([poison[@"$class"] isEqualToString:@"Poison"] && [poison[@"$desc"] isEqualToString:@"<description unavailable>"]);
 
     // Generic handler wrapper: same handler call count, same message object, same reply object and value.
     Fresh(dir = TempDir(), 0, 0);
@@ -383,7 +412,7 @@ static void TestSizeOnly(void) {
     Fresh(dir, 0, 0);
     TIOWireLogStart();
     // Bridge: a token method records its name and nothing else, on the call and on the result.
-    FakeCall *call = [FakeCall new]; call.method = @"refreshToken"; call.arguments = @{@"refreshToken": @"zzzzzzzzzzzz", @"uid": @7};
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"refreshToken"; call.arguments = @{@"refreshToken": @"zzzzzzzzzzzz", @"uid": @7};
     __block int hits = 0;
     id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(id v) { hits++; });
     ((void (^)(id))wrapped)(@{@"accessToken": @"aaaaaaaaaaaa", @"expires": @3600});
@@ -462,7 +491,7 @@ static void TestBacklogBound(void) {
     NSURL *dir = TempDir();
     Fresh(dir, 0, 0);
     TIOWireLogStart();
-    FakeCall *call = [FakeCall new]; call.method = @"rayneonet_sendMessage";
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendMessage";
     call.arguments = @{@"blob": [@"" stringByPaddingToLength:3u << 20 withString:@"ab" startingAtIndex:0]};
     __block int hits = 0;
     id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(id v) { hits++; });
@@ -472,6 +501,90 @@ static void TestBacklogBound(void) {
     NSDictionary *st = TIOWireLogStatus();
     assert([st[@"dropped"] unsignedLongLongValue] == 1);          // the call record
     assert([st[@"records"] unsignedLongLongValue] == 1);          // the small result record
+}
+
+// Arguments and results that are not plain Foundation objects are recorded by class name and never messaged.
+static void TestUnreadObjects(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    ProxyMessages = 0; SubclassReads = 0;
+    CountingDictionary *sub = [[CountingDictionary alloc] initWithInner:@{@"path": @"/x", @"taskId": @"y"}];
+    id proxy = [CountingProxy make];
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendFile";
+    call.arguments = @{@"nested": sub, @"proxy": proxy, @"plain": @"ok", @"list": @[proxy, @1]};
+    __block int hits = 0;
+    id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(__unused id v) { hits++; });
+    ((void (^)(id))wrapped)(proxy);
+    // A whole-argument subclass and a call that is neither a dictionary nor FlutterMethodCall are not read either.
+    FlutterMethodCall *call2 = [FlutterMethodCall new]; call2.method = @"rayneonet_sendFile"; call2.arguments = sub;
+    ((void (^)(id))TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call2, ^(__unused id v) { hits++; }))(sub);
+    ((void (^)(id))TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", proxy, ^(__unused id v) { hits++; }))(@YES);
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    assert(hits == 3 && ProxyMessages == 0 && SubclassReads == 0);
+    NSArray *r = Records(dir);
+    assert(r.count == 6);
+    assert([r[0][@"arguments"][@"plain"] isEqualToString:@"ok"] && [r[0][@"arguments"][@"nested"][@"$class"] isEqualToString:@"CountingDictionary"]);
+    assert([r[0][@"arguments"][@"proxy"][@"$class"] isEqualToString:@"CountingProxy"] && [r[0][@"arguments"][@"list"][0][@"$unread"] boolValue]);
+    assert([r[1][@"value"][@"$class"] isEqualToString:@"CountingProxy"]);
+    assert([r[2][@"arguments"][@"$class"] isEqualToString:@"CountingDictionary"] && [r[3][@"value"][@"$class"] isEqualToString:@"CountingDictionary"]);
+    assert([r[4][@"method"] isEqualToString:@"?"] && !r[4][@"arguments"]);
+}
+
+// D5 forwards an allowed teleprompter send as a new call built from the checked snapshot. The recorder keeps the
+// original d2n.call and adds the call the plugin received as d2n.forwarded with the same callSeq.
+static void TestForwarded(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendFile";
+    call.arguments = [@{@"path": @"/a", @"taskId": @"t"} mutableCopy];
+    __block int hits = 0;
+    id stock = ^(__unused id v) { hits++; };
+    TIOWireLogBridgeForwarded(stock, call); // inactive: nothing
+    TIOWireLogStart();
+    id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, stock);
+    FlutterMethodCall *checked = [FlutterMethodCall new]; checked.method = @"rayneonet_sendFile"; checked.arguments = @{@"path": @"/a", @"taskId": @"t", @"name": @"n"};
+    TIOWireLogBridgeForwarded(wrapped, checked);
+    TIOWireLogBridgeForwarded(stock, checked);   // not a recorder wrapper: ignored
+    TIOWireLogBridgeForwarded(nil, checked);
+    ((void (^)(id))wrapped)(@{@"success": @YES});
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *r = Records(dir);
+    assert(hits == 1 && r.count == 3);
+    assert([r[0][@"dir"] isEqualToString:@"d2n.call"] && !r[0][@"arguments"][@"name"]);
+    assert([r[1][@"dir"] isEqualToString:@"d2n.forwarded"] && [r[1][@"callSeq"] isEqual:r[0][@"seq"]] && [r[1][@"arguments"][@"name"] isEqualToString:@"n"]);
+    assert([r[2][@"dir"] isEqualToString:@"d2n.result"] && [r[2][@"callSeq"] isEqual:r[0][@"seq"]]);
+}
+
+// 1.0.11 (RayneoNet 1.4.0) builds new send_success / send_error / received shapes and assembles streams. The
+// recorder assumes no shape: unknown values, unknown event types and undecodable bytes are kept raw.
+@interface RayneoSendResult : NSObject
+@end
+@implementation RayneoSendResult
+@end
+static void TestNewerShapes(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendMessage";
+    call.arguments = @{@"businessId": @300, @"deviceId": @"fixture-peer", @"payload": [NSData dataWithBytes:"\x01\x02" length:2], @"streamId": @7, @"chunk": @[@0, @3]};
+    __block int hits = 0;
+    id wrapped = TIOWireLogWrapBridgeResult(@"com.rayneo/sdk", call, ^(__unused id v) { hits++; });
+    ((void (^)(id))wrapped)(@{@"type": @"send_success", @"result": [RayneoSendResult new], @"lost": @[]});
+    ((void (^)(id))wrapped)(@{@"type": @"send_error", @"code": @-3}); // a second answer is forwarded, recorded once
+    // Events: a new event type, a pigeon value (custom type 0x80) inside an envelope, a cut envelope, and garbage.
+    NSData *received = Envelope(@{@"eventType": @"received", @"message": @{@"businessId": @265, @"seq": @1, @"payload": [NSData dataWithBytes:"\xff" length:1]}});
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", received);
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [NSData dataWithBytes:"\x00\x0c\x01\x06\x01k\x80\x00" length:8]);
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [received subdataWithRange:NSMakeRange(0, received.length - 3)]);
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [NSData dataWithBytes:"\xfe\xfe\xfe" length:3]);
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *r = Records(dir);
+    assert(hits == 2 && r.count == 6 && [TIOWireLogStatus()[@"disabledReason"] length] == 0);
+    assert([r[0][@"arguments"][@"businessId"] isEqual:@300] && [r[0][@"arguments"][@"chunk"] isEqual:(@[@0, @3])]);
+    assert([r[1][@"value"][@"type"] isEqualToString:@"send_success"] && [r[1][@"value"][@"result"][@"$class"] isEqualToString:@"RayneoSendResult"]);
+    assert([r[2][@"eventType"] isEqualToString:@"received"] && [r[2][@"value"][@"message"][@"payload"][@"$hex"] isEqualToString:@"ff"]);
+    for (NSUInteger i = 3; i < 6; i++) assert([r[i][@"codec"] isEqualToString:@"raw"] && [r[i][@"data"][@"$hex"] length] > 0);
 }
 
 int main(void) {
@@ -485,6 +598,9 @@ int main(void) {
         TestSizeOnly();
         TestNaming();
         TestBacklogBound();
+        TestUnreadObjects();
+        TestForwarded();
+        TestNewerShapes();
         puts("WireLogTests: PASS");
     }
     return 0;

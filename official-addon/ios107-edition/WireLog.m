@@ -227,7 +227,11 @@ static id JV(id v, int depth) {
     if ([cls isEqualToString:@"FlutterError"])
         return @{@"$error": @{@"code": JV(KVC(v, @"code"), depth + 1), @"message": JV(KVC(v, @"message"), depth + 1), @"details": JV(KVC(v, @"details"), depth + 1)}};
     if ([cls isEqualToString:@"NSObject"]) return @{@"$": @"sentinel (FlutterMethodNotImplemented)"};
-    NSString *desc = [v description];
+    // An unknown class (a newer plugin's reply type, say) is kept as its class and a short description.
+    // A description that throws is not the recorder's problem: the record keeps the class name only.
+    NSString *desc = nil;
+    @try { desc = [v description]; } @catch (__unused id e) { desc = nil; }
+    if (![desc isKindOfClass:NSString.class]) return @{@"$class": cls, @"$desc": @"<description unavailable>"};
     if (desc.length > 256) desc = [desc substringToIndex:256];
     return @{@"$class": cls, @"$desc": RedactStringAt(desc, depth)};
 }
@@ -560,12 +564,17 @@ static void WLEnqueue(NSMutableDictionary *rec) {
                 // Snapshots taken on the calling thread (_jv_x) are encoded and redacted here, off that thread.
                 for (NSString *k in [r.allKeys copy]) {
                     if (![k hasPrefix:@"_jv_"]) continue;
-                    r[[k substringFromIndex:4]] = JV(r[k], 0);
+                    id field = nil;
+                    @try { field = JV(r[k], 0); } @catch (__unused id e) { field = @{@"$unencodable": @YES}; }
+                    r[[k substringFromIndex:4]] = field;
                     [r removeObjectForKey:k];
                 }
                 [r removeObjectForKey:@"_est"];
                 if (bytes) {
-                    NSDictionary *d = TIOWireLogDecodeMessage(bytes, [r[@"_env"] boolValue]);
+                    // Unknown shapes (newer plugin builders, custom codec types) end up as raw hex, never as a lost session.
+                    NSDictionary *d = nil;
+                    @try { d = TIOWireLogDecodeMessage(bytes, [r[@"_env"] boolValue]); } @catch (__unused id e) { d = nil; }
+                    if (![d isKindOfClass:NSDictionary.class]) d = @{@"codec": @"raw", @"data": BytesObject(bytes, nil), @"len": @(bytes.length)};
                     [r removeObjectForKey:@"_raw"]; [r removeObjectForKey:@"_env"];
                     BOOL sizeOnly = [d[@"codec"] isEqual:@"methodCall"] && TIOWireLogMethodIsSizeOnly(d[@"method"]);
                     for (NSString *k in d) {
@@ -674,44 +683,71 @@ NSString *TIOWireLogClaimBridgeCall(void) {
     return ch;
 }
 
+// Plain: an object of Foundation's or CoreFoundation's own classes (what the Flutter codec builds), or of
+// Flutter's typed-data and error classes themselves (matched by exact class name, so never a subclass).
+// Decided from the runtime class alone, without sending the object a message, so an object that answers
+// differently per read (a subclass or a proxy) is never read by the recorder, and the guard after it sees
+// exactly what it would have seen without the recorder.
+static BOOL WLPlain(id o) {
+    if (!o) return NO;
+    Class c = object_getClass(o);
+    const char *image = c ? class_getImageName(c) : NULL;
+    if (image && !strncmp(image, "/System/Library/Frameworks/", 27) && (strstr(image, "/CoreFoundation.framework/") || strstr(image, "/Foundation.framework/"))) return YES;
+    const char *name = c ? class_getName(c) : "";
+    return !strcmp(name, "FlutterStandardTypedData") || !strcmp(name, "FlutterError");
+}
+// The call itself: a plain dictionary or Flutter's own FlutterMethodCall class (not a subclass).
+static BOOL WLCallReadable(id call) { return call && (WLPlain(call) || !strcmp(class_getName(object_getClass(call)), "FlutterMethodCall")); }
+static id WLCallField(id call, NSString *key) { return WLCallReadable(call) ? KVC(call, key) : nil; }
+static NSDictionary *WLClassOnly(id o) { return @{@"$class": @(class_getName(object_getClass(o))), @"$unread": @YES}; }
+
 // A structural copy taken on the calling thread: containers are rebuilt, immutable strings and data are shared,
 // nothing is encoded, redacted or described here. `bytes` accumulates a size estimate for the backlog bound.
+// Objects that are not plain are recorded by class name only and never messaged.
 static id Snap(id v, NSUInteger *bytes, int depth) {
     *bytes += 16;
+    if (!v) return nil;
+    if (!WLPlain(v)) return WLClassOnly(v);
     if (depth > kDepthCap) return @"<depth limit>";
     if ([v isKindOfClass:NSString.class]) { *bytes += [(NSString *)v length]; return [v copy]; }
     if ([v isKindOfClass:NSData.class]) { *bytes += [(NSData *)v length]; return [v copy]; }
     if ([v isKindOfClass:NSDictionary.class]) {
         NSMutableDictionary *m = [NSMutableDictionary dictionaryWithCapacity:MIN([(NSDictionary *)v count], kItemCap)];
         NSUInteger n = 0;
-        for (id k in v) { if (++n > kItemCap) break; m[k] = Snap(((NSDictionary *)v)[k], bytes, depth + 1); }
+        for (id k in v) {
+            if (++n > kItemCap) break;
+            id key = WLPlain(k) ? k : [NSString stringWithFormat:@"$key:%s#%lu", class_getName(object_getClass(k)), (unsigned long)n];
+            m[key] = Snap(((NSDictionary *)v)[k], bytes, depth + 1) ?: NSNull.null;
+        }
         return m;
     }
     if ([v isKindOfClass:NSArray.class]) {
         NSMutableArray *a = [NSMutableArray arrayWithCapacity:MIN([(NSArray *)v count], kItemCap)];
-        for (id e in v) { if (a.count >= kItemCap) break; [a addObject:Snap(e, bytes, depth + 1)]; }
+        for (id e in v) { if (a.count >= kItemCap) break; [a addObject:Snap(e, bytes, depth + 1) ?: NSNull.null]; }
         return a;
     }
     return v;
 }
 
+static const void *kBridgeLink = &kBridgeLink;
+
 id TIOWireLogWrapBridgeResult(NSString *channel, id call, id result) {
     if (!atomic_load(&gActive) || !result) return result;
     @try {
-        NSString *method = KVC(call, @"method");
-        NSString *methodName = [method isKindOfClass:NSString.class] ? [method copy] : @"?";
+        id method = WLCallField(call, @"method");
+        NSString *methodName = WLPlain(method) && [method isKindOfClass:NSString.class] ? [method copy] : @"?";
         BOOL sizeOnly = TIOWireLogMethodIsSizeOnly(methodName);
         NSMutableDictionary *rec = NewRecord(@"d2n.call", channel);
         NSNumber *callSeq = rec[@"seq"];
         rec[@"method"] = methodName;
         NSUInteger bytes = 0;
         if (sizeOnly) rec[@"opaque"] = @YES;
-        else { rec[@"_jv_arguments"] = Snap(KVC(call, @"arguments"), &bytes, 0); rec[@"_est"] = @(bytes); }
+        else { rec[@"_jv_arguments"] = Snap(WLCallField(call, @"arguments"), &bytes, 0); rec[@"_est"] = @(bytes); }
         WLEnqueue(rec);
         NSTimeInterval t0 = NSProcessInfo.processInfo.systemUptime;
         void (^original)(id) = result;
         __block atomic_flag recorded = ATOMIC_FLAG_INIT;
-        return [^(id value) {
+        id wrapper = [^(id value) {
             original(value); // first and unchanged: the observer only looks afterwards
             if (!atomic_load(&gActive) || atomic_flag_test_and_set(&recorded)) return;
             @try {
@@ -723,10 +759,28 @@ id TIOWireLogWrapBridgeResult(NSString *channel, id call, id result) {
                 WLEnqueue(r);
             } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
         } copy];
+        // Lets TIOWireLogBridgeForwarded link a forwarded call to this record.
+        objc_setAssociatedObject(wrapper, kBridgeLink, @{@"callSeq": callSeq, @"channel": channel ?: @"?"}, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        return wrapper;
     } @catch (NSException *e) {
         Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]);
         return result;
     }
+}
+
+void TIOWireLogBridgeForwarded(id wrappedResult, id call) {
+    if (!atomic_load(&gActive) || !wrappedResult) return;
+    @try {
+        NSDictionary *link = objc_getAssociatedObject(wrappedResult, kBridgeLink);
+        if (!link) return; // not a recorder wrapper: the original call was not recorded either
+        id method = WLCallField(call, @"method");
+        NSString *methodName = WLPlain(method) && [method isKindOfClass:NSString.class] ? [method copy] : @"?";
+        NSMutableDictionary *r = NewRecord(@"d2n.forwarded", link[@"channel"]);
+        r[@"callSeq"] = link[@"callSeq"]; r[@"method"] = methodName;
+        if (TIOWireLogMethodIsSizeOnly(methodName)) r[@"opaque"] = @YES;
+        else { NSUInteger bytes = 0; r[@"_jv_arguments"] = Snap(WLCallField(call, @"arguments"), &bytes, 0); r[@"_est"] = @(bytes); }
+        WLEnqueue(r);
+    } @catch (NSException *e) { Fail([NSString stringWithFormat:@"%@: %@", e.name, e.reason ?: @""]); }
 }
 
 static BOOL PrefersEnvelope(NSString *channel) {

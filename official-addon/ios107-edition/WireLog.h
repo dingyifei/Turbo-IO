@@ -27,6 +27,10 @@ FOUNDATION_EXPORT NSString *TIOWireLogClaimBridgeCall(void);
 // Returns a block that forwards to `result` unchanged and records the call, the value and the latency.
 // Returns `result` itself when recording is off or result is nil.
 FOUNDATION_EXPORT id TIOWireLogWrapBridgeResult(NSString *channel, id call, id result);
+// The guard replaced the call with a checked copy (the D5 teleprompter snapshot). Records what the plugin
+// actually receives as d2n.forwarded, linked by callSeq to the d2n.call that recorded the original.
+// `wrappedResult` is the block TIOWireLogWrapBridgeResult returned; anything else is ignored.
+FOUNDATION_EXPORT void TIOWireLogBridgeForwarded(id wrappedResult, id call);
 // Native -> Dart message (FlutterEngine sendOnChannel). Cheap; decoding happens on the writer queue.
 FOUNDATION_EXPORT void TIOWireLogNativeToDart(NSString *channel, NSData *message);
 // Wraps a FlutterBinaryMessageHandler for a matching channel; returns it unchanged otherwise.
