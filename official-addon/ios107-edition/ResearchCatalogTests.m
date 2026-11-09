@@ -105,14 +105,28 @@ int main(void) {
         assert(![keys containsObject:@"firmwareExport"]);
         assert([TIOHubCatalogForProfile(@"ios107") isEqual:catalog] && [TIOHubCatalogForProfile(@"other") isEqual:catalog]);
         NSArray<NSDictionary *> *download = TIOHubCatalogForProfile(@"ios1011-download");
+#if TIO_WIRE_LOG
+        // A wire log build also shows the passive recorder row on the download-only host, and on the full host.
+        assert([keys containsObject:@"wireLog"]);
+        assert([[download valueForKey:@"key"] isEqual:(@[@"firmwareExport",@"language",@"wireLog"])]);
+        NSDictionary *wireRow = RowForKey(download, @"wireLog");
+        assert([wireRow[@"section"] integerValue] == TIOHubSectionDeveloper && ![wireRow[@"parent"] length]);
+#else
+        assert(![keys containsObject:@"wireLog"]);
         assert([[download valueForKey:@"key"] isEqual:(@[@"firmwareExport",@"language"])]);
+#endif
         assert(!RowForKey(download, @"experimentalOTA"));
         NSDictionary *exportRow = RowForKey(download, @"firmwareExport");
         assert([exportRow[@"section"] integerValue] == TIOHubSectionGlasses && ![exportRow[@"parent"] length] && ![exportRow[@"code"] length]);
         assert([NSImage imageWithSystemSymbolName:exportRow[@"icon"] accessibilityDescription:nil] != nil);
         NSArray<NSDictionary *> *downloadRoot = TIOHubSectionsForProfile(@"", @"ios1011-download");
         CheckSectionOrder(downloadRoot, @"");
+#if TIO_WIRE_LOG
+        assert(downloadRoot.count == 2 && [downloadRoot[0][@"rows"] count] == 2 && [downloadRoot[1][@"rows"] count] == 1);
+        assert([downloadRoot[1][@"rows"][0][@"key"] isEqual:@"wireLog"]);
+#else
         assert(downloadRoot.count == 1 && [downloadRoot[0][@"rows"] count] == 2);
+#endif
         for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert(TIOHubSectionsForProfile(parent, @"ios1011-download").count == 0);
         CheckTitles(download, 28);
         NSString *englishLanguageTitle = language[@"title"];

@@ -4,7 +4,7 @@
 // exactly like ios1011-guard) against fake app containers in a temp directory.
 // No device, network or signing.
 //
-// test.py builds this file in the same four TIO_* flag sets as ios1011-guard and
+// test.py builds this file in the same six TIO_* flag sets as ios1011-guard (two with the wire log) and
 // requires the same sweep= digest from each: the allow-list depends on no flag.
 #import "TMG4WizardHost.h"
 #import "HostCompatibility.h"
@@ -21,6 +21,9 @@
 #if TIO_DISPLAY_PHONE
 #import "DisplayPhoneTransport.h"
 #import "display_client.h"
+#endif
+#if TIO_WIRE_LOG
+#import "WireLogGuardHarness.h" // the sweep runs through the wire log; its digest must not change
 #endif
 static NSString *Home;
 static NSDictionary *Host;

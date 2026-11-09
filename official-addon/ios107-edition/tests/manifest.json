@@ -137,7 +137,7 @@
     "ResearchCatalogTests.m": {
       "status": "run",
       "group": "research-catalog",
-      "note": "Also exercised by catalog; WP0 research-catalog group retained."
+      "note": "Also exercised by catalog and, with TIO_WIRE_LOG=1, by research-catalog-wire; WP0 research-catalog group retained."
     },
     "SubtitleHUDTests.m": {
       "status": "run",
@@ -196,12 +196,12 @@
     "tests/StockTeleprompterSendTests.m": {
       "status": "run",
       "group": "stock-teleprompter",
-      "note": "D5: the stock teleprompter rayneonet_sendFile is allow-listed on the 1.0.7 flash host and the 1.0.11 download-only host only in its exact shape (three string keys, a regular non-ZIP file of 1 byte to 1 MiB at <container>/Library/Application Support/user_<digits>/teleprompter/<UUID> or <container>/Documents/user_<digits>/teleprompter/<UUID>, no symlink, taskId = UUID, OTA stage 0). Built in the same four TIO_* flag sets as ios1011-guard; every build must print the same sweep digest."
+      "note": "D5: the stock teleprompter rayneonet_sendFile is allow-listed on the 1.0.7 flash host and the 1.0.11 download-only host only in its exact shape (three string keys, a regular non-ZIP file of 1 byte to 1 MiB at <container>/Library/Application Support/user_<digits>/teleprompter/<UUID> or <container>/Documents/user_<digits>/teleprompter/<UUID>, no symlink, taskId = UUID, OTA stage 0). Built in the same six TIO_* flag sets as ios1011-guard; every build must print the same sweep digest."
     },
     "tests/Host1011GuardTests.m": {
       "status": "run",
       "group": "ios1011-guard",
-      "note": "Download-only 1.0.11/259 host: every business-9 frame but the empty version query is refused, built in four TIO_* flag sets (full, flash, phone, none) that must print the same sweep digest. With --app1011 it also runs as ios1011-host against the real Runner."
+      "note": "Download-only 1.0.11/259 host: every business-9 frame but the empty version query is refused, built in six TIO_* flag sets (full, flash, phone, none, and full and none with the wire log recording every guard call through tests/WireLogGuardHarness.h) that must print the same sweep digest. With --app1011 it also runs as ios1011-host against the real Runner."
     },
     "tests/LanguageFlagTests.m": {
       "status": "run",

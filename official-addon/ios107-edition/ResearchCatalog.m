@@ -88,10 +88,17 @@ static NSString *FirmwareCode(void) {
 }
 
 // The firmware export row exists only on the download-only host, where it and
-// the language row are the whole hub. Everything else is for the full host.
+// the language row are the whole hub, plus the wire log row when the build has
+// it (TIO_WIRE_LOG=1): the recorder is passive and only reads the channel.
+// Everything else is for the full host.
 static BOOL RowOnHost(NSString *key, BOOL downloadOnly) {
     BOOL exportRow = [key isEqualToString:@"firmwareExport"];
-    return downloadOnly ? (exportRow || [key isEqualToString:@"language"]) : !exportRow;
+    if (!downloadOnly) return !exportRow;
+    if (exportRow || [key isEqualToString:@"language"]) return YES;
+#if TIO_WIRE_LOG
+    if ([key isEqualToString:@"wireLog"]) return YES;
+#endif
+    return NO;
 }
 
 NSArray<NSDictionary *> *TIOHubCatalog(void) {return TIOHubCatalogForProfile(nil);}

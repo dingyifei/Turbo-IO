@@ -18,6 +18,9 @@
 #import "TIOLanguage.h"
 #import <CommonCrypto/CommonDigest.h>
 #include <assert.h>
+#if TIO_WIRE_LOG
+#import "WireLogGuardHarness.h" // the sweep runs through the wire log; its digest must not change
+#endif
 static NSString *Home;
 static NSTimeInterval Now=100;
 static NSDictionary *Prefs,*Host;

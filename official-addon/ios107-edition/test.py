@@ -237,6 +237,9 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'flash':(['-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1'],[],True),
         'phone':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,False),
         'noflags':([],[],False),
+        # Wire log on (tests/WireLogGuardHarness.h runs every guard call through the recorder): same digest required.
+        'wire-full':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-DTIO_WIRE_LOG=1'],phone_sources+[P/'WireLog.m'],True),
+        'wire-noflags':(['-DTIO_WIRE_LOG=1'],[P/'WireLog.m'],False),
     }
     def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m',extra_seams=None):
         seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()',**(extra_seams or {})}
@@ -254,6 +257,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
             if 'PASS' not in log:raise RuntimeError(binary+' did not report PASS')
             sweeps[config]=re.search(r'sweep=([0-9a-f]{64})',log).group(1)
             if ('flash build on' in log)!=flash_on:raise RuntimeError(binary+': unexpected flash build state')
+            if ('wirelog harness: ' in log)!=('-DTIO_WIRE_LOG=1' in defines):raise RuntimeError(binary+': wire log harness state does not match the build')
         if len(set(sweeps.values()))!=1:raise RuntimeError(name+': refusal differs between flag sets '+repr(sweeps))
         print(name+': same refusal in flag sets '+', '.join(sweeps)+' (sweep '+next(iter(sweeps.values()))[:16]+')')
     seen.add('ios1011-guard')
@@ -316,6 +320,8 @@ test('todo-tool-flow',['TodoToolFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],e
 test('web-search-flow',['WebSearchFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],extra=['-fmodules'])
 test('web-search',['WebSearchTests.m', 'WebSearch.m', 'Core.m'],argv=[],extra=['-fmodules'])
 test('research-catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1'])
+# A wire log build: the recorder row also shows on the 1.0.11 download-only host.
+test('research-catalog-wire',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1','-DTIO_WIRE_LOG=1'])
 test('todo-protocol',['TodoProtocolTests.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules'])
 restart_dir=out/'protocol-restart-dir'
 if only is None or 'protocol-restart' in only:
