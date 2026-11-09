@@ -155,8 +155,9 @@ static BOOL WatchOTAIdle(void) {
 @end
 UIViewController *TIOWatchRemoteController(void){return [[TIOWatchSettings alloc]initWithStyle:UITableViewStyleInsetGrouped];}
 #ifndef TIO_WATCH_TESTING
-// The download-only host (1.0.11/259) hides the watch row, so it must not take
-// the WCSession delegate or re-arm from defaults saved on 1.0.7.
+// The download-only host (1.0.11/259 without the full-profile marker) hides the
+// watch row, so it must not take the WCSession delegate or re-arm from defaults
+// saved on 1.0.7. The full 1.0.11 profile ("ios1011") runs it like 1.0.7.
 __attribute__((constructor)) static void TIOWatchLoad(void){dispatch_async(dispatch_get_main_queue(),^{if([TIOHostProfile() isEqual:@"ios1011-download"])return;
     [TIOWatchHost.shared activate];
     [TIOWatchHost.shared restoreAuthorization];

@@ -129,6 +129,23 @@ int main(void) {
 #endif
         for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert(TIOHubSectionsForProfile(parent, @"ios1011-download").count == 0);
         CheckTitles(download, 28);
+        // Full 1.0.11 host: every 1.0.7 row (the TMG wizard included) plus the export row, under Developer.
+        NSArray<NSDictionary *> *full1011 = TIOHubCatalogForProfile(@"ios1011");
+        assert(full1011.count == catalog.count + 1);
+        NSMutableArray *withoutExport = [full1011 mutableCopy];
+        NSDictionary *fullExport = RowForKey(full1011, @"firmwareExport");
+        assert(fullExport && [fullExport[@"section"] integerValue] == TIOHubSectionDeveloper && ![fullExport[@"parent"] length] && ![fullExport[@"code"] length]);
+        [withoutExport removeObject:fullExport];
+        assert([withoutExport isEqual:catalog]);
+        assert(RowForKey(full1011, @"experimentalOTA") && RowForKey(full1011, @"watchRemote") && RowForKey(full1011, @"mode"));
+        NSArray<NSDictionary *> *fullRoot = TIOHubSectionsForProfile(@"", @"ios1011");
+        CheckSectionOrder(fullRoot, @"");
+        assert([fullRoot.lastObject[@"section"] integerValue] == TIOHubSectionDeveloper && [[fullRoot.lastObject[@"rows"] valueForKey:@"key"] containsObject:@"firmwareExport"]);
+        assert(![[fullRoot.firstObject[@"rows"] valueForKey:@"key"] containsObject:@"firmwareExport"]);
+        for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert([TIOHubSectionsForProfile(parent, @"ios1011") isEqual:TIOHubSectionsForProfile(parent, @"ios107")]);
+        CheckTitles(full1011, 28);
+        // Near-miss profile names get the 1.0.7 hub, never the export row or the download-only hub.
+        for (NSString *near in @[@"ios1011-full",@"IOS1011",@"ios1011 ",@"ios10111"]) assert([TIOHubCatalogForProfile(near) isEqual:catalog]);
         NSString *englishLanguageTitle = language[@"title"];
         TIOSetUILanguageOverride(@"zh");
         NSArray<NSDictionary *> *chineseCatalog = TIOHubCatalog();

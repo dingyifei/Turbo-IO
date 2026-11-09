@@ -8,7 +8,7 @@ static id NativeController(void){
     // Exact exported stored property, matched to the inspected Runner UUID; no guessed Swift getter ABI.
     void *slot=dlsym(RTLD_DEFAULT,"$s23rayneo_venus_sdk_plugin28AlwaysOnDebugAudioControllerC6sharedACvpZ");Dl_info info={0};if(!slot||!dladdr(slot,&info))return nil;
     const struct mach_header_64 *h=info.dli_fbase;if(!h||h->magic!=MH_MAGIC_64||h->filetype!=MH_EXECUTE)return nil;
-    BOOL valid=TIOHostImageMatches((const struct mach_header *)h,NSBundle.mainBundle.infoDictionary);
+    BOOL valid=TIOHostFullImageMatches((const struct mach_header *)h,NSBundle.mainBundle.infoDictionary);
     if(!valid)return nil;Class cls=NSClassFromString(@"rayneo_venus_sdk_plugin.AlwaysOnDebugAudioController");id obj=*(__unsafe_unretained id *)slot;return obj&&cls&&object_getClass(obj)==cls?obj:nil;
 }
 NSDictionary *TIOAOStatus(void){

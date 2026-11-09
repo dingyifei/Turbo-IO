@@ -87,12 +87,14 @@ static NSString *FirmwareCode(void) {
     return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : TIO_FW_NAME;
 }
 
-// The firmware export row exists only on the download-only host, where it and
-// the language row are the whole hub, plus the wire log row when the build has
-// it (TIO_WIRE_LOG=1): the recorder is passive and only reads the channel.
-// Everything else is for the full host.
-static BOOL RowOnHost(NSString *key, BOOL downloadOnly) {
+// The firmware export row exists only on the 1.0.11 hosts. On the download-only
+// host it and the language row are the whole hub, plus the wire log row when the
+// build has it (TIO_WIRE_LOG=1): the recorder is passive and only reads the channel.
+// The full 1.0.11 host ("ios1011") gets every row, with the export row moved under
+// Developer. Everything else is the full 1.0.7 hub without the export row.
+static BOOL RowOnHost(NSString *key, BOOL downloadOnly, BOOL full1011) {
     BOOL exportRow = [key isEqualToString:@"firmwareExport"];
+    if (full1011) return YES;
     if (!downloadOnly) return !exportRow;
     if (exportRow || [key isEqualToString:@"language"]) return YES;
 #if TIO_WIRE_LOG
@@ -105,10 +107,12 @@ NSArray<NSDictionary *> *TIOHubCatalog(void) {return TIOHubCatalogForProfile(nil
 
 NSArray<NSDictionary *> *TIOHubCatalogForProfile(NSString *profile) {
     BOOL downloadOnly = [profile isEqualToString:@"ios1011-download"];
+    BOOL full1011 = [profile isEqualToString:@"ios1011"];
     NSMutableArray<NSDictionary *> *catalog = [NSMutableArray arrayWithCapacity:sizeof(Rows)/sizeof(Rows[0])];
     for (NSUInteger index = 0; index < sizeof(Rows)/sizeof(Rows[0]); index++) {
         const TIOHubRowDefinition *row = &Rows[index];
-        if (!RowOnHost(row->key, downloadOnly)) continue;
+        if (!RowOnHost(row->key, downloadOnly, full1011)) continue;
+        TIOHubSection section = full1011 && [row->key isEqualToString:@"firmwareExport"] ? TIOHubSectionDeveloper : row->section;
         NSString *code = [row->key isEqualToString:@"experimentalOTA"] ? FirmwareCode() : row->code;
         [catalog addObject:@{@"key":row->key,
 #if TIO_APPLE_AI
@@ -117,7 +121,7 @@ NSArray<NSDictionary *> *TIOHubCatalogForProfile(NSString *profile) {
                              @"title":TIOText([@"hub.row." stringByAppendingString:row->key]),
 #endif
                              @"icon":row->icon,
-                             @"section":@(row->section),
+                             @"section":@(section),
                              @"parent":row->parent,
                              @"code":code}];
     }
