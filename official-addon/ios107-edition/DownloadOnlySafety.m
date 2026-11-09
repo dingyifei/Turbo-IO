@@ -67,15 +67,17 @@ NSDictionary *TIOFirmwareExportSafetyModel(NSString *profile,BOOL hookInstalled,
     else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
     return m;
 }
-NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady,BOOL armed,NSDictionary *preferences){
-    NSString *guardLevel=!armGuardReady?@"danger":armed?@"warn":@"ok";
-    NSString *guardKey=!armGuardReady?@"fwexport.guard.off":armed?@"fwexport.guard.armed":@"fwexport.guard.disarmed";
+NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady,BOOL stockTrafficSeen,BOOL armed,NSDictionary *preferences){
+    // Green needs runtime evidence, as on the download-only host: a stock rayneonet call has passed
+    // the hook in this launch. Until then a disarmed guard is amber (fwexport.guard.waiting).
+    NSString *guardLevel=!armGuardReady?@"danger":armed||!stockTrafficSeen?@"warn":@"ok";
+    NSString *guardKey=!armGuardReady?@"fwexport.guard.off":armed?@"fwexport.guard.armed":!stockTrafficSeen?@"fwexport.guard.waiting":@"fwexport.guard.disarmed";
     TIOAutoUpdateReading autoUpdate=TIOAutoUpdateReadingFor(preferences);
     NSString *autoLevel=autoUpdate==TIOAutoUpdateReadingOff?@"ok":autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"danger";
     NSString *level=[guardLevel isEqual:@"danger"]||autoUpdate==TIOAutoUpdateReadingOn?@"danger":
         [guardLevel isEqual:@"warn"]||autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"ok";
     NSMutableDictionary *m=[@{
-        @"guardActive":@(armGuardReady),@"armed":@(armGuardReady&&armed),@"guardLevel":guardLevel,
+        @"guardActive":@(armGuardReady),@"stockTrafficSeen":@(stockTrafficSeen),@"armed":@(armGuardReady&&armed),@"guardLevel":guardLevel,
         @"guardKey":guardKey,@"guardDetail":[guardKey stringByAppendingString:@".detail"],
         @"autoUpdate":TIOAutoUpdateReadingName(autoUpdate),@"autoLevel":autoLevel,
         @"autoKey":[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)],
@@ -85,6 +87,7 @@ NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady,BOOL armed,NSD
     if(!armGuardReady)m[@"bannerKey"]=@"fwexport.banner.unguarded";
     else if(autoUpdate==TIOAutoUpdateReadingOn)m[@"bannerKey"]=@"fwexport.banner.autoOn";
     else if(armed)m[@"bannerKey"]=@"fwexport.banner.armed";
+    else if(!stockTrafficSeen)m[@"bannerKey"]=@"fwexport.banner.noTraffic";
     else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
     return m;
 }

@@ -61,10 +61,12 @@ FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModel(NSString *_Nullable
 // The same panel model on the full 1.0.11 host (profile ios1011, C15), where the
 // guard is the arm state rather than the download-only refusal. guardActive is
 // armGuardReady (the transport hook ready and the arm requirement in force).
-//   "ok"     disarmed: every OTA transfer frame is refused (fwexport.guard.disarmed)
-//   "warn"   armed on this install: the TMG wizard gate decides (fwexport.guard.armed)
+//   "ok"     disarmed and a stock rayneonet call has passed the hook in this launch:
+//            every OTA transfer frame is refused (fwexport.guard.disarmed)
+//   "warn"   armed on this install: the TMG wizard gate decides (fwexport.guard.armed);
+//            or disarmed with no stock call seen yet (fwexport.guard.waiting)
 //   "danger" the arm guard is not in force (fwexport.guard.off)
-// Banner order: unguarded, Auto Update on, armed, Auto Update not recorded.
-FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady, BOOL armed, NSDictionary *_Nullable preferences);
+// Banner order: unguarded, Auto Update on, armed, no stock traffic, Auto Update not recorded.
+FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady, BOOL stockTrafficSeen, BOOL armed, NSDictionary *_Nullable preferences);
 
 NS_ASSUME_NONNULL_END

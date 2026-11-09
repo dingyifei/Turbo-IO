@@ -253,7 +253,8 @@ int main(int argc,char **argv){@autoreleasepool{
     {NSError *e=nil;assert(!TIOOTAArmRequired());assert(!TIOOTAFlashArm(&e)&&e&&!store.count);}
     Host=full;Image=pinned;
     // The export panel's guard row reads the same arm state.
-    assert([TIOFirmwareExportSafetyModelFull(YES,TIOOTAFlashArmed(),Prefs)[@"guardKey"] isEqual:@"fwexport.guard.disarmed"]);
+    assert([TIOFirmwareExportSafetyModelFull(YES,YES,TIOOTAFlashArmed(),Prefs)[@"guardKey"] isEqual:@"fwexport.guard.disarmed"]);
+    assert([TIOFirmwareExportSafetyModelFull(YES,NO,TIOOTAFlashArmed(),Prefs)[@"guardKey"] isEqual:@"fwexport.guard.waiting"]);
     NSLog(@"PASS: 1.0.11 full host: disarmed by default, %lu frame shapes, only the empty reads and the exact size query pass; type 4 Mode 1-4 and frames 5-7 refused; %lu bad arm records refused; arm %s; flash build %s; sweep=%@%s",
         (unsigned long)Checked,(unsigned long)bad.count,TIOOTAFlashBuild()?"then disarm checked":"refused",TIOOTAFlashBuild()?"on":"off",Digest(sweep),argc==3?"; real 1.0.11 Runner profile":"");
 }return 0;}

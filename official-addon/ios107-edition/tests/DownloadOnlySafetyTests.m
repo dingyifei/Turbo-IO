@@ -139,19 +139,27 @@ int main(void){@autoreleasepool{
     // Read only: the model never changes the preferences it is given.
     NSMutableDictionary *prefs=[@{@"a_ota_firmware_auto_update":@YES} mutableCopy];NSDictionary *before=[prefs copy];
     TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,prefs);assert([prefs isEqual:before]);
-    // Full 1.0.11 host (C15): the guard row is the arm state. Disarmed is green, armed amber, no arm guard red.
-    NSDictionary *disarmed=TIOFirmwareExportSafetyModelFull(YES,NO,off);
+    // Full 1.0.11 host (C15): the guard row is the arm state. Disarmed is green only once a stock call has
+    // passed the hook (amber "waiting" before that, as on the download-only host), armed amber, no arm guard red.
+    NSDictionary *disarmed=TIOFirmwareExportSafetyModelFull(YES,YES,NO,off);
     assert([disarmed[@"guardLevel"] isEqual:@"ok"]&&[disarmed[@"guardKey"] isEqual:@"fwexport.guard.disarmed"]&&[disarmed[@"safe"] boolValue]&&!disarmed[@"bannerKey"]);
     assert([disarmed[@"armed"] isEqual:@NO]&&[disarmed[@"guardActive"] isEqual:@YES]&&[disarmed[@"level"] isEqual:@"ok"]);Localized(disarmed);
-    NSDictionary *armed=TIOFirmwareExportSafetyModelFull(YES,YES,off);
-    assert([armed[@"guardLevel"] isEqual:@"warn"]&&[armed[@"guardKey"] isEqual:@"fwexport.guard.armed"]&&![armed[@"safe"] boolValue]);
-    assert([armed[@"bannerKey"] isEqual:@"fwexport.banner.armed"]&&[armed[@"armed"] isEqual:@YES]&&[armed[@"level"] isEqual:@"warn"]);Localized(armed);
-    assert([TIOFirmwareExportSafetyModelFull(YES,YES,@{@"a_ota_firmware_auto_update":@YES})[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
-    assert([TIOFirmwareExportSafetyModelFull(YES,NO,@{})[@"bannerKey"] isEqual:@"fwexport.banner.autoMissing"]);
-    assert([TIOFirmwareExportSafetyModelFull(YES,YES,@{})[@"bannerKey"] isEqual:@"fwexport.banner.armed"]);
-    for(NSDictionary *p in @[off,@{},@{@"a_ota_firmware_auto_update":@YES}])for(int a=0;a<2;a++){
-        // No arm guard in force: red, never armed, whatever the stored arm record says.
-        NSDictionary *m=TIOFirmwareExportSafetyModelFull(NO,a,p);Localized(m);
+    NSDictionary *quiet=TIOFirmwareExportSafetyModelFull(YES,NO,NO,off);
+    assert([quiet[@"guardLevel"] isEqual:@"warn"]&&[quiet[@"guardKey"] isEqual:@"fwexport.guard.waiting"]&&![quiet[@"safe"] boolValue]);
+    assert([quiet[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]&&[quiet[@"armed"] isEqual:@NO]&&[quiet[@"level"] isEqual:@"warn"]&&[quiet[@"stockTrafficSeen"] isEqual:@NO]);Localized(quiet);
+    assert([TIOFirmwareExportSafetyModelFull(YES,NO,NO,@{})[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]);
+    assert([TIOFirmwareExportSafetyModelFull(YES,NO,NO,@{@"a_ota_firmware_auto_update":@YES})[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
+    for(int seen=0;seen<2;seen++){
+        NSDictionary *armed=TIOFirmwareExportSafetyModelFull(YES,seen,YES,off);
+        assert([armed[@"guardLevel"] isEqual:@"warn"]&&[armed[@"guardKey"] isEqual:@"fwexport.guard.armed"]&&![armed[@"safe"] boolValue]);
+        assert([armed[@"bannerKey"] isEqual:@"fwexport.banner.armed"]&&[armed[@"armed"] isEqual:@YES]&&[armed[@"level"] isEqual:@"warn"]);Localized(armed);
+        assert([TIOFirmwareExportSafetyModelFull(YES,seen,YES,@{@"a_ota_firmware_auto_update":@YES})[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
+        assert([TIOFirmwareExportSafetyModelFull(YES,seen,YES,@{})[@"bannerKey"] isEqual:@"fwexport.banner.armed"]);
+    }
+    assert([TIOFirmwareExportSafetyModelFull(YES,YES,NO,@{})[@"bannerKey"] isEqual:@"fwexport.banner.autoMissing"]);
+    for(NSDictionary *p in @[off,@{},@{@"a_ota_firmware_auto_update":@YES}])for(int a=0;a<2;a++)for(int seen=0;seen<2;seen++){
+        // No arm guard in force: red, never armed, whatever the stored arm record or the traffic says.
+        NSDictionary *m=TIOFirmwareExportSafetyModelFull(NO,seen,a,p);Localized(m);
         assert([m[@"guardKey"] isEqual:@"fwexport.guard.off"]&&[m[@"bannerKey"] isEqual:@"fwexport.banner.unguarded"]&&[m[@"level"] isEqual:@"danger"]&&[m[@"armed"] isEqual:@NO]&&![m[@"safe"] boolValue]);
     }
     for(NSString *k in @[@"fwexport.host.full",@"hub.status.firmwareExport.armed",@"hub.status.firmwareExport.disarmed"]){
