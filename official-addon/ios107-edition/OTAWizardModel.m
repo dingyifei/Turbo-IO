@@ -69,11 +69,15 @@ NSDictionary *TIOOTAWizardSnapshot(NSDictionary *inputs) {
     BOOL armRequired = [flash[@"armRequired"] boolValue], armed = armRequired && [flash[@"armed"] boolValue];
     TIOOTACheck arm = !armRequired || armed ? TIOOTACheckOK : TIOOTACheckAction;
     BOOL canAuthorize = canContinue && version == TIOOTACheckOK && directory == TIOOTACheckOK && arm == TIOOTACheckOK && stage == 0;
-    NSInteger suggestedStep = stage >= 1 ? 3 : !canContinue ? 1 : directory != TIOOTACheckOK ? 2 : 3;
+    // On the full 1.0.11 host the stock firmware page offers an update only while the loopback feed serves one,
+    // that is while the download window is open. A stock OTA folder left by an earlier 1.0.7 flash passes the
+    // directory check but does not make the page offer anything, so step 2 is never skipped there.
+    BOOL downloadRequired = armRequired;
+    NSInteger suggestedStep = stage >= 1 ? 3 : !canContinue ? 1 : downloadRequired || directory != TIOOTACheckOK ? 2 : 3;
     return @{
         @"package": @(package), @"source": @(downloadSource), @"protect": @(protect),
         @"autoUpdate": @(autoUpdate), @"version": @(version), @"directory": @(directory),
-        @"arm": @(arm), @"armRequired": @(armRequired), @"armed": @(armed),
+        @"arm": @(arm), @"armRequired": @(armRequired), @"armed": @(armed), @"downloadRequired": @(downloadRequired),
         @"autoUpdateState": @(autoState), @"autoUpdateFixable": @(TIOOTAAutoUpdateFixable(prefs)),
         @"versionAge": ageNumber, @"versionSecondsLeft": @(secondsLeft),
         @"downloadArmed": @([feed[@"armed"] boolValue]),
@@ -98,6 +102,24 @@ NSString *TIOOTAWizardHubStatusKey(NSDictionary *snapshot) {
     }
 }
 
+NSDictionary *TIOOTAWizardDownloadButtons(NSDictionary *snapshot) {
+    BOOL open = [snapshot[@"downloadArmed"] boolValue];
+    BOOL directoryOK = [snapshot[@"directory"] integerValue] == TIOOTACheckOK;
+    BOOL required = [snapshot[@"downloadRequired"] boolValue];
+    NSMutableDictionary *buttons = [NSMutableDictionary dictionary];
+    if (directoryOK && !required) {
+        [buttons addEntriesFromDictionary:@{@"primary":@"ota.continue", @"primaryAction":@"continue", @"primaryEnabled":@YES}];
+    } else if (open) {
+        [buttons addEntriesFromDictionary:@{@"primary":@"common.goRayNeo", @"primaryAction":@"leave", @"primaryEnabled":@YES}];
+    } else {
+        [buttons addEntriesFromDictionary:@{@"primary":@"ota.download.open", @"primaryAction":@"open",
+            @"primaryEnabled":@([snapshot[@"canDownload"] boolValue])}];
+    }
+    if (open) [buttons addEntriesFromDictionary:@{@"secondary":@"ota.download.stop", @"secondaryAction":@"stop", @"secondaryDestructive":@YES}];
+    else if (required && directoryOK) [buttons addEntriesFromDictionary:@{@"secondary":@"ota.continue", @"secondaryAction":@"continue", @"secondaryDestructive":@NO}];
+    return buttons;
+}
+
 NSString *TIOOTAFormatClock(NSInteger seconds) {
     NSInteger bounded = MAX(0, seconds);
     return [NSString stringWithFormat:@"%ld:%02ld", (long)(bounded / 60), (long)(bounded % 60)];
@@ -105,7 +127,7 @@ NSString *TIOOTAFormatClock(NSInteger seconds) {
 
 NSArray<NSString *> *TIOOTAWizardFixtureNames(void) {
     return @[@"unavailable", @"missing-key", @"auto-on", @"ready-download", @"download-open",
-             @"stale-version", @"ready-authorize", @"authorized", @"installing", @"failed"];
+             @"stale-version", @"ready-authorize", @"authorized", @"installing", @"failed", @"1011-directory"];
 }
 
 NSDictionary *TIOOTAWizardFixture(NSString *name) {
@@ -119,15 +141,18 @@ NSDictionary *TIOOTAWizardFixture(NSString *name) {
     BOOL authorized = [name isEqualToString:@"authorized"];
     BOOL installing = [name isEqualToString:@"installing"];
     BOOL failed = [name isEqualToString:@"failed"];
+    // Full 1.0.11 host, disarmed, with a stock OTA folder from an earlier 1.0.7 flash already in the container.
+    BOOL fullHostDirectory = [name isEqualToString:@"1011-directory"];
     NSInteger stage = authorized ? 1 : installing ? 2 : failed ? 3 : 0;
-    BOOL directoryReady = staleVersion || readyAuthorize || stage >= 1;
+    BOOL directoryReady = staleVersion || readyAuthorize || fullHostDirectory || stage >= 1;
     BOOL recentVersion = readyAuthorize || stage >= 1;
     NSNumber *age = staleVersion ? @300 : recentVersion ? @30 : @(-1);
     NSDictionary *prefs = missingKey || unavailable ? @{} :
         @{@"flutter.fixture_ota_firmware_auto_update":autoOn ? (__bridge id)kCFBooleanTrue : (__bridge id)kCFBooleanFalse};
     NSDictionary *flash = @{@"flashBuild":@(!unavailable), @"stage":@(stage),
         @"recentTargetVersionRead":@(recentVersion), @"versionReadAge":age,
-        @"validatedSlices":@(installing ? 120 : 0), @"failure":failed ? @"unexpected slice" : @""};
+        @"validatedSlices":@(installing ? 120 : 0), @"failure":failed ? @"unexpected slice" : @"",
+        @"armRequired":@(fullHostDirectory), @"armed":@NO};
     NSDictionary *feed = @{@"bootstrapEligible":@(!unavailable), @"running":@(!unavailable),
         @"healthPassed":@(!unavailable), @"armed":@(downloadOpen),
         @"remainingSeconds":@(downloadOpen ? 600 : 0)};

@@ -445,18 +445,15 @@ static NSString *ShortStatus(NSString *value) {
     self.actionBar.hidden=unavailable;
     if (unavailable) return;
     NSInteger stage=[s[@"stage"] integerValue];
-    BOOL armed=[s[@"downloadArmed"] boolValue];
-    BOOL directoryOK=[s[@"directory"] integerValue]==TIOOTACheckOK;
     NSString *primaryTitle=nil,*secondaryTitle=nil;
     BOOL primaryEnabled=NO,primaryDestructive=NO,secondaryDestructive=NO;
     if (self.step==1) {
         primaryTitle=TIOText(@"ota.continue");
         primaryEnabled=[s[@"canContinueFromCheck"] boolValue];
     } else if (self.step==2) {
-        if (directoryOK) { primaryTitle=TIOText(@"ota.continue");primaryEnabled=YES; }
-        else if (armed) { primaryTitle=TIOText(@"common.goRayNeo");primaryEnabled=YES; }
-        else { primaryTitle=TIOText(@"ota.download.open");primaryEnabled=[s[@"canDownload"] boolValue]; }
-        if (armed) { secondaryTitle=TIOText(@"ota.download.stop");secondaryDestructive=YES; }
+        NSDictionary *b=TIOOTAWizardDownloadButtons(s);
+        primaryTitle=TIOText(b[@"primary"]);primaryEnabled=[b[@"primaryEnabled"] boolValue];
+        if (b[@"secondary"]) { secondaryTitle=TIOText(b[@"secondary"]);secondaryDestructive=[b[@"secondaryDestructive"] boolValue]; }
     } else {
         if (stage==0) {
             primaryTitle=TIOText(@"ota.install.authorize");
@@ -787,10 +784,11 @@ static NSString *ShortStatus(NSString *value) {
         return;
     }
     if (self.step==2) {
-        if ([s[@"directory"] integerValue]==TIOOTACheckOK) {
+        NSString *action=TIOOTAWizardDownloadButtons(s)[@"primaryAction"];
+        if ([action isEqual:@"continue"]) {
             self.step=3;self.choseStep=YES;[self refreshSnapshot];return;
         }
-        if ([s[@"downloadArmed"] boolValue]) { TIOCloseResearch(self);return; }
+        if ([action isEqual:@"leave"]) { TIOCloseResearch(self);return; }
         if (![s[@"canDownload"] boolValue]) return;
         [self runAction:^BOOL(NSError **error){return OpenDownload(error);} completion:^(BOOL ok,NSError *error){
             if (!ok) TIONotice(self,TIOText(@"ota.download.failed"),error.localizedDescription);
@@ -813,8 +811,12 @@ static NSString *ShortStatus(NSString *value) {
 
 - (void)secondaryTapped {
     if (self.actionBusy) return;
-    if (self.step==2 && [self.snapshot[@"downloadArmed"] boolValue]) {
+    NSString *downloadAction=self.step==2?TIOOTAWizardDownloadButtons(self.snapshot)[@"secondaryAction"]:nil;
+    if ([downloadAction isEqual:@"stop"]) {
         [self runAction:^BOOL(__unused NSError **error){CloseDownload();return YES;} completion:nil];
+    } else if ([downloadAction isEqual:@"continue"]) {
+        if (self.packageBusy || self.directoryBusy) return;
+        self.step=3;self.choseStep=YES;[self refreshSnapshot];
     } else if (self.step==3 && [self.snapshot[@"stage"] integerValue]==1) {
         [self runAction:^BOOL(__unused NSError **error){return Revoke();} completion:^(BOOL ok,__unused NSError *error){
             if (ok) TIONotice(self,TIOText(@"ota.install.revoked"),nil);

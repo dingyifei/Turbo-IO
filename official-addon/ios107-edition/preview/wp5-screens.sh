@@ -66,7 +66,7 @@ shoot() {
     cp "$container/Documents/ui-report.json" "$stem.json"
 }
 
-fixtures=(unavailable missing-key auto-on ready-download download-open stale-version ready-authorize authorized installing failed)
+fixtures=(unavailable missing-key auto-on ready-download download-open stale-version ready-authorize authorized installing failed 1011-directory)
 for lang in en zh; do
     shoot hub "$lang" --hub
     shoot hub-dev "$lang" --hub --expand-developer --scroll-bottom

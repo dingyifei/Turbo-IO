@@ -26,6 +26,9 @@ FOUNDATION_EXPORT NSUInteger TIOOTAAutoUpdateKeyCount(NSDictionary *prefs);
 FOUNDATION_EXPORT BOOL TIOOTAAutoUpdateFixable(NSDictionary *prefs);
 FOUNDATION_EXPORT NSDictionary *TIOOTAWizardSnapshot(NSDictionary *inputs);
 FOUNDATION_EXPORT NSString *TIOOTAWizardHubStatusKey(NSDictionary *snapshot);
+// Step 2 (download) buttons for a snapshot: primary/secondary are string keys (secondary absent when hidden),
+// primaryAction is "continue", "open" or "leave", secondaryAction is "stop" or "continue".
+FOUNDATION_EXPORT NSDictionary *TIOOTAWizardDownloadButtons(NSDictionary *snapshot);
 FOUNDATION_EXPORT NSString *TIOOTAFormatClock(NSInteger seconds);
 FOUNDATION_EXPORT NSArray<NSString *> *TIOOTAWizardFixtureNames(void);
 FOUNDATION_EXPORT NSDictionary *TIOOTAWizardFixture(NSString *name);

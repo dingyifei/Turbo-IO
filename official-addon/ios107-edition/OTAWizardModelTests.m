@@ -13,15 +13,15 @@ static NSDictionary *Changed(NSDictionary *base, NSString *section, NSString *ke
 
 static void CheckFixtures(void) {
     NSArray<NSString *> *names = @[@"unavailable",@"missing-key",@"auto-on",@"ready-download",
-        @"download-open",@"stale-version",@"ready-authorize",@"authorized",@"installing",@"failed"];
-    NSArray<NSNumber *> *phases = @[@0,@1,@1,@1,@1,@1,@1,@2,@3,@4];
-    NSArray<NSNumber *> *steps = @[@0,@1,@1,@2,@2,@3,@3,@3,@3,@3]; // 0 means no step assertion.
-    NSArray<NSNumber *> *download = @[@NO,@YES,@YES,@YES,@YES,@YES,@YES,@NO,@NO,@NO];
-    NSArray<NSNumber *> *continueFromCheck = @[@NO,@NO,@NO,@YES,@YES,@YES,@YES,@NO,@NO,@NO];
-    NSArray<NSNumber *> *authorize = @[@NO,@NO,@NO,@NO,@NO,@NO,@YES,@NO,@NO,@NO];
+        @"download-open",@"stale-version",@"ready-authorize",@"authorized",@"installing",@"failed",@"1011-directory"];
+    NSArray<NSNumber *> *phases = @[@0,@1,@1,@1,@1,@1,@1,@2,@3,@4,@1];
+    NSArray<NSNumber *> *steps = @[@0,@1,@1,@2,@2,@3,@3,@3,@3,@3,@2]; // 0 means no step assertion.
+    NSArray<NSNumber *> *download = @[@NO,@YES,@YES,@YES,@YES,@YES,@YES,@NO,@NO,@NO,@YES];
+    NSArray<NSNumber *> *continueFromCheck = @[@NO,@NO,@NO,@YES,@YES,@YES,@YES,@NO,@NO,@NO,@YES];
+    NSArray<NSNumber *> *authorize = @[@NO,@NO,@NO,@NO,@NO,@NO,@YES,@NO,@NO,@NO,@NO];
     NSArray<NSString *> *hubKeys = @[@"ota.hub.unavailable",@"ota.hub.ready",@"ota.hub.ready",
         @"ota.hub.ready",@"ota.hub.download",@"ota.hub.ready",@"ota.hub.ready",
-        @"ota.hub.authorized",@"ota.hub.installing",@"ota.hub.failed"];
+        @"ota.hub.authorized",@"ota.hub.installing",@"ota.hub.failed",@"ota.hub.disarmed"];
     assert([TIOOTAWizardFixtureNames() isEqualToArray:names]);
     for (NSUInteger i = 0; i < names.count; i++) {
         NSDictionary *inputs = TIOOTAWizardFixture(names[i]);
@@ -118,6 +118,64 @@ static void CheckGateMismatchesAndBoundaries(void) {
     }
 }
 
+static void CheckButtons(NSDictionary *snapshot, NSString *primary, NSString *action, BOOL enabled, NSString *secondary, NSString *secondaryAction) {
+    NSDictionary *b = TIOOTAWizardDownloadButtons(snapshot);
+    assert([b[@"primary"] isEqualToString:primary] && [b[@"primaryAction"] isEqualToString:action]);
+    assert([b[@"primaryEnabled"] boolValue] == enabled);
+    assert(secondary ? [b[@"secondary"] isEqualToString:secondary] : b[@"secondary"] == nil);
+    assert(secondaryAction ? [b[@"secondaryAction"] isEqualToString:secondaryAction] : b[@"secondaryAction"] == nil);
+}
+
+// Step 2 on both hosts. On 1.0.7 a stock OTA folder already on disk skips the download step (the stock page
+// installs from disk). On the full 1.0.11 host the stock page offers an update only while the download window
+// is open, so a leftover folder must not skip step 2 or hide "Open download".
+static void CheckDownloadStep(void) {
+    // 1.0.7: unchanged.
+    NSDictionary *ready = TIOOTAWizardFixture(@"ready-authorize");
+    NSDictionary *snapshot = TIOOTAWizardSnapshot(ready);
+    assert(![snapshot[@"downloadRequired"] boolValue] && [snapshot[@"suggestedStep"] integerValue] == 3);
+    CheckButtons(snapshot, @"ota.continue", @"continue", YES, nil, nil);
+    CheckButtons(TIOOTAWizardSnapshot(Changed(ready, @"feed", @"armed", @YES)), @"ota.continue", @"continue", YES, @"ota.download.stop", @"stop");
+    CheckButtons(TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"ready-download")), @"ota.download.open", @"open", YES, nil, nil);
+    CheckButtons(TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"download-open")), @"common.goRayNeo", @"leave", YES, @"ota.download.stop", @"stop");
+    NSMutableDictionary *noPackage = [TIOOTAWizardFixture(@"ready-download") mutableCopy];
+    noPackage[@"packageOK"] = @NO;
+    CheckButtons(TIOOTAWizardSnapshot(noPackage), @"ota.download.open", @"open", NO, nil, nil);
+
+    // Full 1.0.11 host (arm required), directory present: stay on step 2 with "Open download" primary.
+    NSDictionary *full = Changed(ready, @"flash", @"armRequired", @YES);
+    snapshot = TIOOTAWizardSnapshot(full);
+    assert([snapshot[@"downloadRequired"] boolValue] && [snapshot[@"directory"] integerValue] == TIOOTACheckOK);
+    assert([snapshot[@"suggestedStep"] integerValue] == 2);
+    CheckButtons(snapshot, @"ota.download.open", @"open", YES, @"ota.continue", @"continue");
+    snapshot = TIOOTAWizardSnapshot(Changed(full, @"flash", @"armed", @YES));
+    assert([snapshot[@"suggestedStep"] integerValue] == 2 && [snapshot[@"canAuthorize"] boolValue]);
+    CheckButtons(snapshot, @"ota.download.open", @"open", YES, @"ota.continue", @"continue");
+    CheckButtons(TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"1011-directory")), @"ota.download.open", @"open", YES, @"ota.continue", @"continue");
+    // Window open: the existing leave / stop pair, with or without the folder.
+    CheckButtons(TIOOTAWizardSnapshot(Changed(full, @"feed", @"armed", @YES)), @"common.goRayNeo", @"leave", YES, @"ota.download.stop", @"stop");
+    NSMutableDictionary *noDirectory = [Changed(full, @"feed", @"armed", @YES) mutableCopy];
+    [noDirectory removeObjectForKey:@"directoryOK"];
+    CheckButtons(TIOOTAWizardSnapshot(noDirectory), @"common.goRayNeo", @"leave", YES, @"ota.download.stop", @"stop");
+    // No folder and window closed: "Open download" alone, enabled per canDownload.
+    noDirectory = [full mutableCopy];
+    noDirectory[@"directoryOK"] = @NO;
+    snapshot = TIOOTAWizardSnapshot(noDirectory);
+    assert([snapshot[@"suggestedStep"] integerValue] == 2);
+    CheckButtons(snapshot, @"ota.download.open", @"open", YES, nil, nil);
+    NSMutableDictionary *fullNoPackage = [full mutableCopy];
+    fullNoPackage[@"packageOK"] = @NO;
+    snapshot = TIOOTAWizardSnapshot(fullNoPackage);
+    assert([snapshot[@"suggestedStep"] integerValue] == 1);
+    CheckButtons(snapshot, @"ota.download.open", @"open", NO, @"ota.continue", @"continue");
+    // Failed checks still land on step 1; a started flash still lands on step 3.
+    NSMutableDictionary *autoOn = [full mutableCopy];
+    autoOn[@"prefs"] = @{@"flutter.fixture_ota_firmware_auto_update":(__bridge id)kCFBooleanTrue};
+    assert([TIOOTAWizardSnapshot(autoOn)[@"suggestedStep"] integerValue] == 1);
+    for (NSInteger stage = 1; stage <= 3; stage++)
+        assert([TIOOTAWizardSnapshot(Changed(full, @"flash", @"stage", @(stage)))[@"suggestedStep"] integerValue] == 3);
+}
+
 // Full 1.0.11 host: the arm step is one more required check before authorization, and only there.
 static void CheckArm(void) {
     NSDictionary *base = TIOOTAWizardFixture(@"ready-authorize");
@@ -149,6 +207,7 @@ int main(void) {
     @autoreleasepool {
         CheckFixtures();
         CheckArm();
+        CheckDownloadStep();
         CheckAutoUpdate();
         CheckGateMismatchesAndBoundaries();
         assert([TIOOTAFormatClock(872) isEqualToString:@"14:32"]);
