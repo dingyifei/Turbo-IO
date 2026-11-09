@@ -99,7 +99,8 @@ static void PureCases(NSString *C){
         [Lower stringByAppendingString:@".txt"],@"0f8e2c1a_3b4d_4e5f_8a9b_0c1d2e3f4a5b",@"0f8e2c1a3-b4d-4e5f-8a9b-0c1d2e3f4a5b",@"0f8e2c1a-3b4d-4e5f-8a9b0-c1d2e3f4a5b",
         @"0f8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5B",@"0g8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5b",@"{f8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5}",@"0f8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5é",
         @"0f8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5 ",@"0f8e2c1a--b4d-4e5f-8a9b-0c1d2e3f4a5b",@"------------------------------------"];
-    for(NSString *n in names){NSString *p=Put([NSString stringWithFormat:@"%@/%@/%@",C,Lib,n],Text(8));Refuse(C,Args(p,n));}
+    // Each in its own folder: on a case-insensitive disk a case variant would otherwise reopen the valid file.
+    NSUInteger u=600;for(NSString *n in names){NSString *p=Put([NSString stringWithFormat:@"%@/Library/Application Support/user_%lu/teleprompter/%@",C,(unsigned long)u++,n],Text(8));Refuse(C,Args(p,n));}
     // Path spelling: .., //, /./, trailing slash, relative, NUL, outside the container.
     Refuse(C,Args([NSString stringWithFormat:@"%@/Library/Application Support/user_123/../user_123/teleprompter/%@",C,Lower],Lower));
     Refuse(C,Args([NSString stringWithFormat:@"%@/Library/Application Support/user_123/teleprompter/../teleprompter/%@",C,Lower],Lower));
