@@ -474,7 +474,8 @@ BOOL TIOOTAFlashDisarm(void){
     // business-9 frame can move the gate between the cancel and the record removal.
     if(!NSThread.isMainThread){__block BOOL done=NO;dispatch_sync(dispatch_get_main_queue(),^{done=TIOOTAFlashDisarm();});return done;}
     // Never cut a running transfer: the glasses would be left mid-flash. The cancel itself
-    // decides (it refuses at stage 2 and after a failed transfer, stage 3); if it refuses,
+    // decides (it refuses at stage 2, a started or completed transfer, and at stage 3, a failed
+    // one; both last until the app restarts); if it refuses,
     // the record stays.
     if(![Current() cancel])return NO;
     ArmRecordWrite(nil);

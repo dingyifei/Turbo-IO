@@ -57,8 +57,9 @@ BOOL TIOOTADisarmedBlockCall(id call);
 BOOL TIOOTAFlashArmed(void);
 BOOL TIOOTAFlashArm(NSError **error);
 // Runs on the main thread (hops there synchronously from any other thread), like the guard.
-// Refused (NO), record kept, whenever the gate refuses to cancel (stage 2, a running transfer,
-// or stage 3, a failed one); otherwise revokes a stage 1 grant and clears the record.
+// Refused (NO), record kept, whenever the gate refuses to cancel (stage 2, a started or
+// completed transfer, or stage 3, a failed one; either lasts until the app restarts);
+// otherwise revokes a stage 1 grant and clears the record.
 BOOL TIOOTAFlashDisarm(void);
 // armRequired, armed, armedForTransfer (armed plus flash build, host marker and image), armedAt.
 NSDictionary *TIOOTAFlashArmStatus(void);

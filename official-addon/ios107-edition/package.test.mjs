@@ -356,6 +356,16 @@ test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gat
  assert.match(gate,/if \[\[ -n "\$TURBO_APP1011" \]\]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi/);
  assert.match(gate,/stage test test_stage\n    stage package-test package_test_stage/);
 });
+// The full 1.0.11 export panel model is pure and tested (DownloadOnlySafetyTests); pin the UI's call so
+// the guard row's green still needs the installed hook and a stock call seen in this launch.
+test('full 1.0.11 host: the export panel passes the hook state and stock traffic to the guard row model',()=>{
+ const ui=fs.readFileSync(new URL('./FirmwareExportUI.m',import.meta.url),'utf8');
+ const model=ui.slice(ui.indexOf('static NSDictionary *SafetyModel(void){'),ui.indexOf('NSString *TIOFirmwareExportHubStatus(void){'));
+ const full=model.slice(model.indexOf('if([TIOHostProfile() isEqual:@"ios1011"]){'),model.indexOf('\n    }\n'));
+ assert.equal([...model.matchAll(/TIOFirmwareExportSafetyModelFull\(/g)].length,1);
+ assert.match(full,/return TIOFirmwareExportSafetyModelFull\(TIOGlassesChannelHookInstalled\(\)&&\[TIOOTAGuardStatus\(\)\[@"transportHookReady"\] boolValue\]&&\[arm\[@"armRequired"\] boolValue\],\s*TIOGlassesChannelStockTrafficSeen\(\),\[arm\[@"armed"\] boolValue\],NSUserDefaults\.standardUserDefaults\.dictionaryRepresentation\);/);
+ assert.match(fs.readFileSync(new URL('./DownloadOnlySafety.h',import.meta.url),'utf8'),/TIOFirmwareExportSafetyModelFull\(BOOL armGuardReady, BOOL stockTrafficSeen, BOOL armed, NSDictionary \*_Nullable preferences\);/);
+});
 // The full 1.0.11 host's arm guard lives in the same rayneonet hook. Load must install it
 // whenever the arm step applies, not only when the voice/AlwaysOn signatures match, and the
 // install must be idempotent (the valid path may already have installed it).

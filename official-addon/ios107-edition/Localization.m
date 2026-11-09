@@ -910,6 +910,7 @@ static const TIOStringRow Rows[]={
     {"ota.continue.why","Fix the items above to continue.","处理以上事项后即可继续。"},
     {"ota.disarm.action","Disarm","停用"},
     {"ota.disarm.failed","Cannot disarm while a transfer is running","传输进行中，无法停用"},
+    {"ota.disarm.failedEnded","The transfer has ended: restart the app, then disarm","传输已结束，请重启 App 后再停用"},
     {"ota.download.closed","Closed","已关闭"},
     {"ota.download.failed","Download not opened","未开放下载"},
     {"ota.download.how","1. Go to RayNeo › Software version.\n2. Tap Download.\n3. Stop at “Ready to install” and come back.","1. 前往 RayNeo › 软件版本。\n2. 点“下载”。\n3. 出现“软件就绪”后停下并返回。"},

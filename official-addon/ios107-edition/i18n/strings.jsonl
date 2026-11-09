@@ -2452,6 +2452,7 @@
 {"key":"ota.arm.confirm.action","en":"Arm flashing","zh":"启用刷写"}
 {"key":"ota.arm.failed","en":"Could not arm flashing","zh":"无法启用刷写"}
 {"key":"ota.disarm.failed","en":"Cannot disarm while a transfer is running","zh":"传输进行中，无法停用"}
+{"key":"ota.disarm.failedEnded","en":"The transfer has ended: restart the app, then disarm","zh":"传输已结束，请重启 App 后再停用"}
 {"key":"ota.hub.disarmed","en":"Flashing disarmed","zh":"刷写未启用"}
 {"key":"fwexport.host.full","en":"RayNeo AI 1.0.11 (259) · full","zh":"RayNeo AI 1.0.11 (259) · 完整版"}
 {"key":"fwexport.guard.disarmed","en":"Flashing disarmed: OTA transfer refused","zh":"刷写未启用：拒绝 OTA 传输"}

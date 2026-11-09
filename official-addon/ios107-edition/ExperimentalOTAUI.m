@@ -736,7 +736,9 @@ static NSString *ShortStatus(NSString *value) {
         [self armFlashing];
     } else if (sender.tag==5) {
         [self runAction:^BOOL(__unused NSError **error){return Disarm();} completion:^(BOOL ok,__unused NSError *error){
-            if (!ok) TIONotice(self,TIOText(@"ota.disarm.failed"),nil);
+            // Stage 2 is a started (or completed) transfer, stage 3 a failed one: neither can be
+            // cancelled in this launch, so after stage 3 the owner restarts the app to disarm.
+            if (!ok) TIONotice(self,TIOText([self.snapshot[@"stage"] integerValue]==3?@"ota.disarm.failedEnded":@"ota.disarm.failed"),nil);
         }];
     }
 }
