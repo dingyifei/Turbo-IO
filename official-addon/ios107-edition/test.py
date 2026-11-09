@@ -312,6 +312,13 @@ if args.app107 and args.patched_app:
     test('ota-host',['OTAHostTests.m'],[args.app107/'Frameworks/App.framework/App',args.patched_app/'Frameworks/App.framework/App'])
 else:
     skip('ota-host','needs --app107/--patched-app')
+# Every host method the addon hooks or calls, with its exact type encoding, in each stock host given.
+seen.add('host-selectors')
+selector_apps=[a for a in (args.app107,args.app1011) if a]
+if (only is None or 'host-selectors' in only) and selector_apps:
+    run('host-selectors',['python3','-I',P/'tests/host_selectors.py',P,*selector_apps])
+    groups.append('host-selectors');print('host-selectors: PASS')
+else:skip('host-selectors','needs --app107 or --app1011' if not selector_apps else 'not selected by --only')
 
 # WP0 step 7: previously orphaned tests.
 test('core',['Tests.m', 'Core.m'],argv=[],extra=['-fmodules', '-Wno-unused-parameter'])
