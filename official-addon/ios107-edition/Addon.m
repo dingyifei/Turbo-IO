@@ -914,6 +914,10 @@ __attribute__((constructor)) static void Load(void) {
             // channel hook so TIOOTAFlashBlockCall refuses every OTA frame but the
             // empty version query. TIOOTA107HostMatches stays false there.
             else if(downloadOnly)TIOInstallGlassesChannelHook();
+            // Full 1.0.11 host (C15): the same hook carries the arm guard (TIOOTAFlashBlockCall), so it is
+            // installed whenever the arm step applies, whatever the voice and AlwaysOn signature checks
+            // said. TIOInstallGlassesChannelHook returns at once if the hook is already in place.
+            if(TIOOTAArmRequired())TIOInstallGlassesChannelHook();
 #if TIO_IMAGE_RX_LAB
             if(!downloadOnly)TIOClenchLabInstallRecovery();
 #endif
@@ -935,6 +939,7 @@ __attribute__((constructor)) static void Load(void) {
             if(downloadOnly&&!([imageProfile isEqual:@"ios1011-download"]&&[markerProfile isEqual:@"ios1011-download"]))[loadInfo appendFormat:@"HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only\n",imageProfile?:@"none",[markerProfile isKindOfClass:NSString.class]?markerProfile:@"none"];
             // A failed hook on the download-only host leaves the stock OTA path unguarded: say so.
             if(downloadOnly&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
+            if(TIOOTAArmRequired()&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"ARM GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
             [loadInfo appendFormat:@"bundle=%@; version=%@; build=%@\n",NSBundle.mainBundle.bundleIdentifier,[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"]];
             for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&[[NSString stringWithUTF8String:name].lastPathComponent isEqual:@"Runner"]){const struct mach_header *h=_dyld_get_image_header(i);[loadInfo appendFormat:@"Runner image index=%u magic=%x\n",i,h->magic];}}
             for(NSString *sel in @[@"onAsrResult:isFinish:sessionId:",@"onNlpResult:",@"onResponseComplete",@"onAlwaysOnResponse:"]){Method m=class_getInstanceMethod([sel isEqual:@"onAlwaysOnResponse:"]?ao:voice,NSSelectorFromString(sel));[loadInfo appendFormat:@"%@ %s\n",sel,m?method_getTypeEncoding(m):"missing"];}

@@ -348,6 +348,23 @@ test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gat
  assert.match(gate,/if \[\[ -n "\$TURBO_APP1011" \]\]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi/);
  assert.match(gate,/stage test test_stage\n    stage package-test package_test_stage/);
 });
+// The full 1.0.11 host's arm guard lives in the same rayneonet hook. Load must install it
+// whenever the arm step applies, not only when the voice/AlwaysOn signatures match, and the
+// install must be idempotent (the valid path may already have installed it).
+test('full 1.0.11 host: Load installs the guard hook whenever the arm step applies',()=>{
+ const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
+ const addon=src('Addon.m'),load=addon.slice(addon.indexOf('static void Load(void)'));
+ const valid=load.indexOf('if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}');
+ const arm=load.indexOf('\n            if(TIOOTAArmRequired())TIOInstallGlassesChannelHook();\n');
+ assert.ok(valid>0&&arm>valid,'arm-required hook install missing or before the feature hooks');
+ // Unconditional on the feature checks: the line is not part of an if/else chain on valid.
+ const between=load.slice(valid,arm);assert.doesNotMatch(between.split('\n').slice(-1)[0],/else/);
+ assert.ok(arm<load.indexOf('TCCameraReportLoaded();'),'the hook must be installed before setup reports loaded');
+ assert.match(load,/if\(TIOOTAArmRequired\(\)&&!TIOGlassesChannelHookInstalled\(\)\)\[loadInfo appendFormat:@"ARM GUARD NOT ACTIVE:/);
+ const hook=src('GlassesChannelHook.m');
+ assert.match(hook,/BOOL TIOInstallGlassesChannelHook\(void\)\{if\(Installed\)return YES;/);
+ assert.match(hook,/Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady\(\);/);
+});
 // The 1.0.11 guard depends on Load() installing the rayneonet hook on the
 // download-only host; no host test links Addon.m, so pin the source shape here.
 test('download-only host: Load installs only the guard hook and sends nothing on its own',()=>{
@@ -361,7 +378,7 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  assert.ok(profile[1].indexOf('if(TIOOTADownloadOnlyHost())')<profile[1].indexOf('TIOHostProfileFor(MainImage()'));
  assert.match(load,/HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only/);
  assert.match(load,/if\(valid\)\{TIOInstallGlassesChannelHook\(\);TIOInstallTodoRuntime\(\);\}\n(?:\s*\/\/[^\n]*\n)*\s*else if\(downloadOnly\)TIOInstallGlassesChannelHook\(\);/);
- assert.equal([...addon.matchAll(/TIOInstallGlassesChannelHook\(\)/g)].length,2);
+ assert.equal([...addon.matchAll(/TIOInstallGlassesChannelHook\(\)/g)].length,3);
  // No addon-originated glasses frames on the download-only host.
  assert.equal([...addon.matchAll(/TIOLanguageFlagStart\(\)/g)].length,1);assert.match(load,/if\(!downloadOnly\)TIOLanguageFlagStart\(\);/);
  assert.equal([...addon.matchAll(/TIOClenchLabInstallRecovery\(\)/g)].length,1);assert.match(load,/if\(!downloadOnly\)TIOClenchLabInstallRecovery\(\);/);
