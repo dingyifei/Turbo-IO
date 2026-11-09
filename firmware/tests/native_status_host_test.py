@@ -9,7 +9,7 @@ def main():
         source=(FW/'src/diagnostics-v1/diagnostics_service.c').read_text()
         replacements={
             'return p?*(void **)((uint8_t *)p+off):NULL;':'return host_ptr(p,off);',
-            'return ptr(*(void **)(uintptr_t)0x19971594,0x3c);':'return host_manager();',
+            'return ptr(*(void **)(uintptr_t)0x19989694,0x3c);':'return host_manager();',
             '((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation':'host_slot(app)',
             '*(Control **)((uint8_t *)timer+12)':'((Control *)host_timer_user(timer))',
         }

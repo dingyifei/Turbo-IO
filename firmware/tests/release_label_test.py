@@ -8,6 +8,7 @@ def stage(root,label,folder):
     """A copy of the two label readers inside a folder with a deliberately misleading name."""
     tree=root/folder;(tree/'tools').mkdir(parents=True)
     shutil.copyfile(FW/'build.py',tree/'build.py');shutil.copyfile(FW/'tools/phone_pins.py',tree/'tools/phone_pins.py')
+    shutil.copyfile(FW/'build-inputs.json',tree/'build-inputs.json')
     if label is not None:(tree/'RELEASE').write_text(label)
     return tree
 def main():
@@ -17,7 +18,12 @@ def main():
     # The real tree: both readers agree with the file, and the pinned archive name has no stored copy.
     build=load(FW/'build.py','release_label_build');pins=load(FW/'tools/phone_pins.py','release_label_pins')
     assert build.release_label()==pins.release_label()==label
-    assert build.archive_name()=='StrixOS-1.0.5.5-TurboIO-%s-CANDIDATE-NOT-APPROVED.zip'%label
+    base=json.loads((FW/'build-inputs.json').read_text())['stockBase']
+    assert base in build.STOCK_BASES
+    assert build.archive_name()=='StrixOS-%s-TurboIO-%s-CANDIDATE-NOT-APPROVED.zip'%(base,label)
+    # The stock base in the name comes from build-inputs.json stockBase too, never from a folder name.
+    for other in build.STOCK_BASES:
+        assert build.archive_name(base=other)=='StrixOS-%s-TurboIO-%s-CANDIDATE-NOT-APPROVED.zip'%(other,label)
     assert 'name' not in json.loads((FW/'build-inputs.json').read_text())['archive'],'the archive name has one source: RELEASE'
     with tempfile.TemporaryDirectory(prefix='release-label-') as tmp:
         tmp=Path(tmp)
@@ -27,7 +33,7 @@ def main():
             b=load(tree/'build.py','b_'+folder.replace('-','_').replace('.','_'));p=load(tree/'tools/phone_pins.py','p_'+folder.replace('-','_').replace('.','_'))
             want=value.strip()
             assert b.release_label()==p.release_label()==want,(folder,b.release_label(),p.release_label())
-            assert b.archive_name()=='StrixOS-1.0.5.5-TurboIO-%s-CANDIDATE-NOT-APPROVED.zip'%want
+            assert b.archive_name()=='StrixOS-%s-TurboIO-%s-CANDIDATE-NOT-APPROVED.zip'%(base,want)
         # Changing only the file changes the label, with the folder name constant.
         tree=stage(tmp/'same','TMG8\n','release-tmg8')
         first=load(tree/'tools/phone_pins.py','p_same_1').release_label();(tree/'RELEASE').write_text('TMG9\n')
