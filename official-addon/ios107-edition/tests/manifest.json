@@ -213,6 +213,11 @@
       "group": "ios1011-full-guard",
       "note": "Full 1.0.11/259 host (ios1011, C15): TMG flashing disarmed by default, only the empty reads 1, 2, 11 and the exact size query pass business 9, in the same six TIO_* flag sets as ios1011-guard with one sweep digest; malformed or foreign arm records count as disarmed; armed (flash builds only) the business-9 sweep equals the 1.0.7 host; disarm restores the refusal. With --app1011 it also checks the real Runner."
     },
+    "tests/Host1011FullEdgeTests.m": {
+      "status": "run",
+      "group": "ios1011-full-edge",
+      "note": "Full 1.0.11/259 host (ios1011) edge cases beyond ios1011-full-guard: TIOHostProfile near misses fall to ios1011-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, arm record field types, near-miss keys and the standard defaults never arm, disarm removes any record. Same six TIO_* flag sets, one sweep digest. Known gaps print as XFAIL and abort as XPASS once fixed."
+    },
     "tests/LanguageFlagTests.m": {
       "status": "run",
       "group": "language-flag"

@@ -296,6 +296,15 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         host1011_guard('ios1011-full-guard',[args.app1011/'Runner',args.app1011/'Info.plist'] if args.app1011 else [],'tests/Host1011FullGuardTests.m',None,full_flash)
         groups.append('ios1011-full-guard');print('ios1011-full-guard: PASS')
     else:skip('ios1011-full-guard','not selected by --only')
+    # Full 1.0.11 host edge cases (profile marker near misses, raw-JSON size queries, frame, payload
+    # and businessId shapes, arm record and store near misses): same six flag sets, one digest.
+    # Known gaps print as XFAIL and abort as XPASS once fixed.
+    seen.add('ios1011-full-edge')
+    if only is None or 'ios1011-full-edge' in only:
+        full_flash={config:'-DTIO_OTA_FLASH_ENABLED=1' in defines for config,(defines,_s,_f) in host1011_configs.items()}
+        host1011_guard('ios1011-full-edge',[],'tests/Host1011FullEdgeTests.m',None,full_flash)
+        groups.append('ios1011-full-edge');print('ios1011-full-edge: PASS')
+    else:skip('ios1011-full-edge','not selected by --only')
     seen.add('ios1011-host')
     if (only is None or 'ios1011-host' in only) and args.app1011:
         import hashlib, plistlib
