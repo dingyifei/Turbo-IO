@@ -65,7 +65,7 @@ static NSUInteger SubclassReads;
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)st objects:(id __unsafe_unretained [])b count:(NSUInteger)n { SubclassReads++; return [_inner countByEnumeratingWithState:st objects:b count:n]; }
 @end
 
-// ---- a tiny StandardMessageCodec encoder, independent of the decoder under test ----
+// ---- a tiny StandardMessageCodec encoder, independent of the decoder under test; TestDecoder pins its bytes to the spec ----
 static void PutSize(NSMutableData *d, NSUInteger n) {
     if (n < 254) { uint8_t b = (uint8_t)n; [d appendBytes:&b length:1]; }
     else if (n <= 0xffff) { uint8_t b = 254; uint16_t v = (uint16_t)n; [d appendBytes:&b length:1]; [d appendBytes:&v length:2]; }
@@ -76,14 +76,14 @@ static void PutValue(NSMutableData *d, id v);
 static void PutAlign(NSMutableData *d, NSUInteger a) { while (d.length % a) PutByte(d, 0); }
 static void PutValue(NSMutableData *d, id v) {
     if (v == NSNull.null) PutByte(d, 0);
-    else if ([v isKindOfClass:NSString.class]) { NSData *u = [(NSString *)v dataUsingEncoding:NSUTF8StringEncoding]; PutByte(d, 6); PutSize(d, u.length); [d appendData:u]; }
-    else if ([v isKindOfClass:NSData.class]) { PutByte(d, 7); PutSize(d, [(NSData *)v length]); [d appendData:v]; }
-    else if ([v isKindOfClass:NSArray.class]) { PutByte(d, 11); PutSize(d, [(NSArray *)v count]); for (id e in v) PutValue(d, e); }
-    else if ([v isKindOfClass:NSDictionary.class]) { PutByte(d, 12); PutSize(d, [(NSDictionary *)v count]); for (id k in [[v allKeys] sortedArrayUsingSelector:@selector(compare:)]) { PutValue(d, k); PutValue(d, v[k]); } }
+    else if ([v isKindOfClass:NSString.class]) { NSData *u = [(NSString *)v dataUsingEncoding:NSUTF8StringEncoding]; PutByte(d, 7); PutSize(d, u.length); [d appendData:u]; }
+    else if ([v isKindOfClass:NSData.class]) { PutByte(d, 8); PutSize(d, [(NSData *)v length]); [d appendData:v]; }
+    else if ([v isKindOfClass:NSArray.class]) { PutByte(d, 12); PutSize(d, [(NSArray *)v count]); for (id e in v) PutValue(d, e); }
+    else if ([v isKindOfClass:NSDictionary.class]) { PutByte(d, 13); PutSize(d, [(NSDictionary *)v count]); for (id k in [[v allKeys] sortedArrayUsingSelector:@selector(compare:)]) { PutValue(d, k); PutValue(d, v[k]); } }
     else if ([v isKindOfClass:NSNumber.class]) {
         const char *t = [v objCType];
         if (CFGetTypeID((__bridge CFTypeRef)v) == CFBooleanGetTypeID()) PutByte(d, [v boolValue] ? 1 : 2);
-        else if (t[0] == 'd') { PutByte(d, 5); PutAlign(d, 8); double x = [v doubleValue]; [d appendBytes:&x length:8]; }
+        else if (t[0] == 'd') { PutByte(d, 6); PutAlign(d, 8); double x = [v doubleValue]; [d appendBytes:&x length:8]; }
         else if (t[0] == 'q') { PutByte(d, 4); int64_t x = [v longLongValue]; [d appendBytes:&x length:8]; }
         else { PutByte(d, 3); int32_t x = [v intValue]; [d appendBytes:&x length:4]; }
     }
@@ -228,7 +228,80 @@ static void TestJSON(void) {
     assert([NSJSONSerialization dataWithJSONObject:TIOWireLogJSON(deep) options:0 error:nil].length < 400);
 }
 
+// ---- fixtures written by hand from the StandardMessageCodec spec, independent of both the decoder and PutValue ----
+// Type bytes: 0 null, 1 true, 2 false, 3 int32, 4 int64, 5 largeInt, 6 float64 (8-aligned), 7 string, 8 Uint8List,
+// 9 Int32List (4-aligned), 10 Int64List (8), 11 Float64List (8), 12 list, 13 map, 14 Float32List (4).
+static NSData *Hex(NSString *hex) {
+    NSMutableData *d = [NSMutableData new];
+    for (NSUInteger i = 0; i + 1 < hex.length; i += 2) { unsigned x = 0; sscanf([hex substringWithRange:NSMakeRange(i, 2)].UTF8String, "%2x", &x); uint8_t b = (uint8_t)x; [d appendBytes:&b length:1]; }
+    return d;
+}
+static void Lit(NSMutableData *d, const char *bytes, NSUInteger n) { [d appendBytes:bytes length:n]; }
+// A rayneonet receive event as captured on the owner's phone (the first 32 bytes below are the capture, verbatim),
+// completed with a "message" map: businessId int32 9, deviceId, a container path and a 300-byte Uint8List payload.
+static NSData *CapturedEvent(NSData *payload) {
+    NSMutableData *d = [Hex(@"000d0207096576656e745479706507126d65737361676553656e645375636365") mutableCopy];
+    Lit(d, "ss", 2);                                                              // "messageSendSuccess" (0x12 bytes)
+    Lit(d, "\x07\x07" "message" "\x0d\x04", 11);                                  // key "message", map of 4
+    Lit(d, "\x07\x0a" "businessId" "\x03\x09\x00\x00\x00", 17);                   // int32 9
+    Lit(d, "\x07\x08" "deviceId" "\x07\x11" "AA:BB:CC:DD:EE:FF", 29);
+    NSString *path = @"/var/mobile/Containers/Data/Application/0A1B2C3D-4E5F-6071-8293-A4B5C6D7E8F9/Documents/user_4242/x";
+    NSData *utf8 = [path dataUsingEncoding:NSUTF8StringEncoding]; assert(utf8.length < 254);
+    Lit(d, "\x07\x04" "note" "\x07", 7); uint8_t n = (uint8_t)utf8.length; [d appendBytes:&n length:1]; [d appendData:utf8];
+    assert(payload.length >= 254 && payload.length <= 0xffff);
+    Lit(d, "\x07\x07" "payload" "\x08\xfe", 11); uint16_t len = (uint16_t)payload.length; [d appendBytes:&len length:2]; [d appendData:payload];
+    return d;
+}
+static NSData *Bytes300(void);
+static NSString *HexOf(NSData *d);
+static BOOL IsFull(NSDictionary *b, NSData *d);
+static void TestSpecFixtures(void) {
+    // Every type byte, with the alignment padding the spec asks for (offsets count from the message start).
+    NSData *all = [NSData dataWithBytes:"\x0c\x0f\x00\x01\x02\x03\xfe\xff\xff\xff\x04\x00\x00\x00\x00\x00\x01\x00\x00\x05\x02\x31\x66\x06\x00\x00\x00\x00\x00\x00\x04\x40\x07\x02\xc3\xa9\x08\x02\xde\xad\x09\x02\x00\x00\x07\x00\x00\x00\xf7\xff\xff\xff\x0a\x01\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x0b\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf8\x3f\x0e\x01\x00\x00\x00\x00\x00\x3f\x0d\x01\x07\x01\x6b\x03\x01\x00\x00\x00\x0c\x00" length:100];
+    BOOL ok = NO; NSArray *v = TIOWireLogDecodeStandard(all, &ok);
+    assert(ok && [v isKindOfClass:NSArray.class] && v.count == 15);
+    assert(v[0] == NSNull.null && [v[1] isEqual:@YES] && [v[2] isEqual:@NO] && [v[3] isEqual:@-2] && [v[4] isEqual:@(1LL << 40)]);
+    assert([v[5] isEqual:@"1f"] && [v[6] isEqual:@2.5] && [v[7] isEqual:@"é"] && [v[8] isEqual:[NSData dataWithBytes:"\xde\xad" length:2]]);
+    assert([v[9][@"$typed"] isEqual:@"int32"] && [v[9][@"values"] isEqual:(@[@7, @-9])]);
+    assert([v[10][@"$typed"] isEqual:@"int64"] && [v[10][@"values"] isEqual:@[@5]]);
+    assert([v[11][@"$typed"] isEqual:@"float64"] && [v[11][@"values"] isEqual:@[@1.5]]);
+    assert([v[12][@"$typed"] isEqual:@"float32"] && [v[12][@"values"] isEqual:@[@0.5]]);
+    assert([v[13] isEqual:@{@"k": @1}] && [v[14] isEqual:@[]]);
+    // A float64 that needs padding: its type byte sits at offset 2, so five zero bytes precede the value.
+    NSData *padded = [NSData dataWithBytes:"\x0c\x01\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf8\x3f" length:16];
+    v = TIOWireLogDecodeStandard(padded, &ok); assert(ok && [v isEqual:@[@1.5]]);
+    // A method call and an error envelope, by hand.
+    NSData *call = [NSData dataWithBytes:"\x07\x15" "rayneonet_sendMessage" "\x0d\x01\x07\x0a" "businessId" "\x03\x16\x00\x00\x00" length:42];
+    NSDictionary *c = TIOWireLogDecodeMessage(call, NO);
+    assert([c[@"codec"] isEqual:@"methodCall"] && [c[@"method"] isEqual:@"rayneonet_sendMessage"] && [c[@"arguments"][@"businessId"] isEqual:@22]);
+    NSDictionary *err = TIOWireLogDecodeMessage([NSData dataWithBytes:"\x01\x07\x01" "E" "\x07\x02" "no" "\x00" length:9], YES);
+    assert([err[@"codec"] isEqual:@"errorEnvelope"] && [err[@"code"] isEqual:@"E"] && [err[@"message"] isEqual:@"no"]);
+    // The old off-by-one numbering is not the codec: a "string" under byte 6 is a float64 here and fails.
+    assert([TIOWireLogDecodeMessage([NSData dataWithBytes:"\x00\x0c\x01\x06\x01k\x03\x01\x00\x00\x00" length:11], YES)[@"codec"] isEqual:@"raw"]);
+
+    // The captured rayneonet receive event decodes as an envelope, on its own and through the recorder.
+    NSData *frame = Bytes300(), *event = CapturedEvent(frame);
+    assert([HexOf([event subdataWithRange:NSMakeRange(0, 32)]) isEqualToString:@"000d0207096576656e745479706507126d65737361676553656e645375636365"]);
+    NSDictionary *e = TIOWireLogDecodeMessage(event, YES);
+    assert([e[@"codec"] isEqual:@"envelope"] && [e[@"value"][@"eventType"] isEqual:@"messageSendSuccess"] && [e[@"value"][@"message"][@"businessId"] isEqual:@9]);
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet", event);
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *r = Records(dir);
+    assert(r.count == 1 && [r[0][@"codec"] isEqual:@"envelope"] && [r[0][@"eventType"] isEqual:@"messageSendSuccess"]);
+    NSDictionary *message = r[0][@"value"][@"message"];
+    assert(IsFull(message[@"payload"], frame));                                         // promoted in full, not cut to 32 bytes
+    assert([message[@"deviceId"] isEqualToString:@"<redacted len=17>"]);
+    assert([message[@"note"] isEqualToString:@"/var/mobile/Containers/Data/Application/<uuid>/Documents/user_<n>/x"]);
+    assert([r[0][@"len"] isEqual:@(event.length)]);
+}
+
 static void TestDecoder(void) {
+    // PutValue writes the spec's bytes (checked against hand-written ones, not against the decoder).
+    NSMutableData *pin = [NSMutableData new]; PutValue(pin, @{@"k": @[@1, @"é", [NSData dataWithBytes:"\xff" length:1], NSNull.null, @YES, @(1LL << 40), @0.5]});
+    assert([pin isEqualToData:[NSData dataWithBytes:"\x0d\x01\x07\x01\x6b\x0c\x07\x03\x01\x00\x00\x00\x07\x02\xc3\xa9\x08\x01\xff\x00\x01\x04\x00\x00\x00\x00\x00\x01\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\xe0\x3f" length:40]]);
     NSDictionary *args = @{@"businessId": @22, @"token": @"s3cret", @"list": @[@YES, NSNull.null, @2.5, @"é"], @"blob": [NSData dataWithBytes:"\x01\x02" length:2], @"big": @(1LL << 40)};
     NSDictionary *call = TIOWireLogDecodeMessage(MethodCall(@"rayneonet_sendMessage", args), NO);
     assert([call[@"codec"] isEqualToString:@"methodCall"] && [call[@"method"] isEqualToString:@"rayneonet_sendMessage"]);
@@ -254,7 +327,7 @@ static void TestDecoder(void) {
 
     // Typed lists keep their alignment padding (int32 list after one byte of header).
     NSMutableData *typedList = [NSMutableData new];
-    PutByte(typedList, 8); PutSize(typedList, 2); PutAlign(typedList, 4); int32_t a = 7, b = -9; [typedList appendBytes:&a length:4]; [typedList appendBytes:&b length:4];
+    PutByte(typedList, 9); PutSize(typedList, 2); PutAlign(typedList, 4); int32_t a = 7, b = -9; [typedList appendBytes:&a length:4]; [typedList appendBytes:&b length:4];
     BOOL ok = NO; id v = TIOWireLogDecodeStandard(typedList, &ok);
     assert(ok && [v[@"values"] isEqual:(@[@7, @-9])] && [v[@"$typed"] isEqualToString:@"int32"]);
 
@@ -266,7 +339,7 @@ static void TestDecoder(void) {
     assert([TIOWireLogDecodeMessage([whole subdataWithRange:NSMakeRange(0, whole.length - 2)], NO)[@"codec"] isEqualToString:@"raw"]);
     NSMutableData *trailing = [whole mutableCopy]; PutByte(trailing, 0);
     assert([TIOWireLogDecodeMessage(trailing, NO)[@"codec"] isEqualToString:@"raw"]);
-    assert([TIOWireLogDecodeMessage([NSData dataWithBytes:"\x06\xfd" length:2], NO)[@"codec"] isEqualToString:@"raw"]);
+    assert([TIOWireLogDecodeMessage([NSData dataWithBytes:"\x07\xfd" length:2], NO)[@"codec"] isEqualToString:@"raw"]);
     assert([TIOWireLogDecodeMessage([NSData data], NO)[@"codec"] isEqualToString:@"empty"]);
     // Every prefix of a valid buffer must be handled without crashing (the sanitizers watch this).
     for (NSUInteger n = 0; n < whole.length; n++) (void)TIOWireLogDecodeMessage([whole subdataWithRange:NSMakeRange(0, n)], NO);
@@ -617,7 +690,7 @@ static void TestNewerShapes(void) {
     // Events: a new event type, a pigeon value (custom type 0x80) inside an envelope, a cut envelope, and garbage.
     NSData *received = Envelope(@{@"eventType": @"received", @"message": @{@"businessId": @265, @"seq": @1, @"payload": [NSData dataWithBytes:"\xff" length:1]}});
     TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", received);
-    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [NSData dataWithBytes:"\x00\x0c\x01\x06\x01k\x80\x00" length:8]);
+    TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [NSData dataWithBytes:"\x00\x0d\x01\x07\x01k\x80\x00" length:8]);
     TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [received subdataWithRange:NSMakeRange(0, received.length - 3)]);
     TIOWireLogNativeToDart(@"com.rayneo/sdk/rayneonet_event", [NSData dataWithBytes:"\xfe\xfe\xfe" length:3]);
     TIOWireLogStop(); TIOWireLogDrainForTest();
@@ -769,6 +842,7 @@ int main(void) {
     @autoreleasepool {
         TestRedaction();
         TestJSON();
+        TestSpecFixtures();
         TestDecoder();
         TestChannelPolicy();
         TestWriter();

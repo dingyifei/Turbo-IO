@@ -344,6 +344,13 @@ static NSUInteger RSize(Reader *r) {
 }
 static void Align(Reader *r, NSUInteger a) { NSUInteger m = r->i % a; if (m) r->i += a - m; if (r->i > r->n) r->bad = YES; }
 
+// Type bytes of Flutter's StandardMessageCodec (dart:services message_codecs.dart, FlutterStandardCodec on iOS;
+// checked against -[FlutterStandardWriter writeValue:] in the 1.0.7 app's Flutter.framework).
+enum {
+    kStdNull = 0, kStdTrue = 1, kStdFalse = 2, kStdInt32 = 3, kStdInt64 = 4, kStdLargeInt = 5, kStdFloat64 = 6,
+    kStdString = 7, kStdUint8List = 8, kStdInt32List = 9, kStdInt64List = 10, kStdFloat64List = 11,
+    kStdList = 12, kStdMap = 13, kStdFloat32List = 14,
+};
 static id RV(Reader *r);
 static id RTyped(Reader *r, NSString *name, NSUInteger width, NSUInteger align, int kind) {
     NSUInteger count = RSize(r);
@@ -368,23 +375,24 @@ static id RV(Reader *r) {
     id out = nil;
     uint8_t t = RB(r);
     switch (t) {
-        case 0: out = NSNull.null; break;
-        case 1: out = @YES; break;
-        case 2: out = @NO; break;
-        case 3: { const uint8_t *q = RBytes(r, 4); if (q) { int32_t x; memcpy(&x, q, 4); out = @(x); } break; }
-        case 4: { const uint8_t *q = RBytes(r, 8); if (q) { int64_t x; memcpy(&x, q, 8); out = @(x); } break; }
-        case 5: { Align(r, 8); const uint8_t *q = r->bad ? NULL : RBytes(r, 8); if (q) { double x; memcpy(&x, q, 8); out = @(x); } break; }
-        case 6: {
+        case kStdNull: out = NSNull.null; break;
+        case kStdTrue: out = @YES; break;
+        case kStdFalse: out = @NO; break;
+        case kStdInt32: { const uint8_t *q = RBytes(r, 4); if (q) { int32_t x; memcpy(&x, q, 4); out = @(x); } break; }
+        case kStdInt64: { const uint8_t *q = RBytes(r, 8); if (q) { int64_t x; memcpy(&x, q, 8); out = @(x); } break; }
+        case kStdLargeInt: // the digits as size-prefixed UTF-8; kept as a string
+        case kStdString: {
             NSUInteger len = RSize(r); const uint8_t *q = RBytes(r, len);
             if (q) { out = [[NSString alloc] initWithBytes:q length:len encoding:NSUTF8StringEncoding]; if (!out) r->bad = YES; }
             break;
         }
-        case 7: { NSUInteger len = RSize(r); const uint8_t *q = RBytes(r, len); if (q) out = [NSData dataWithBytes:q length:len]; break; }
-        case 8: out = RTyped(r, @"int32", 4, 4, 0); break;
-        case 9: out = RTyped(r, @"int64", 8, 8, 1); break;
-        case 10: out = RTyped(r, @"float64", 8, 8, 2); break;
-        case 14: out = RTyped(r, @"float32", 4, 4, 3); break;
-        case 11: {
+        case kStdFloat64: { Align(r, 8); const uint8_t *q = r->bad ? NULL : RBytes(r, 8); if (q) { double x; memcpy(&x, q, 8); out = @(x); } break; }
+        case kStdUint8List: { NSUInteger len = RSize(r); const uint8_t *q = RBytes(r, len); if (q) out = [NSData dataWithBytes:q length:len]; break; }
+        case kStdInt32List: out = RTyped(r, @"int32", 4, 4, 0); break;
+        case kStdInt64List: out = RTyped(r, @"int64", 8, 8, 1); break;
+        case kStdFloat64List: out = RTyped(r, @"float64", 8, 8, 2); break;
+        case kStdFloat32List: out = RTyped(r, @"float32", 4, 4, 3); break;
+        case kStdList: {
             NSUInteger count = RSize(r);
             if (r->bad || count > r->n - r->i) { r->bad = YES; break; }
             NSMutableArray *a = [NSMutableArray new];
@@ -392,7 +400,7 @@ static id RV(Reader *r) {
             if (!r->bad) out = a;
             break;
         }
-        case 12: {
+        case kStdMap: {
             NSUInteger count = RSize(r);
             if (r->bad || count > (r->n - r->i) / 2) { r->bad = YES; break; }
             NSMutableDictionary *m = [NSMutableDictionary new];
@@ -421,7 +429,7 @@ id TIOWireLogDecodeStandard(NSData *data, BOOL *ok) {
 }
 
 static NSDictionary *TryMethodCall(NSData *d) {
-    if (d.length < 3 || ((const uint8_t *)d.bytes)[0] != 6) return nil;
+    if (d.length < 3 || ((const uint8_t *)d.bytes)[0] != kStdString) return nil;
     Reader r = {d.bytes, d.length, 0, NO, 0};
     id method = RV(&r);
     if (r.bad || ![method isKindOfClass:NSString.class]) return nil;
@@ -926,7 +934,7 @@ void TIOWireLogNativeToDart(NSString *channel, NSData *message) {
 
 // The method name of a standard-codec method call, read without decoding the arguments.
 static NSString *PeekMethod(NSData *d) {
-    if (![d isKindOfClass:NSData.class] || d.length < 3 || ((const uint8_t *)d.bytes)[0] != 6) return nil;
+    if (![d isKindOfClass:NSData.class] || d.length < 3 || ((const uint8_t *)d.bytes)[0] != kStdString) return nil;
     Reader r = {d.bytes, d.length, 0, NO, 0};
     id m = RV(&r);
     return !r.bad && [m isKindOfClass:NSString.class] ? m : nil;
