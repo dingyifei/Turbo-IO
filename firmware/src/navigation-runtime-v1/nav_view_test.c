@@ -20,7 +20,7 @@ static void place(void *p,void *obj,int x,int y,int w,int h){
 }
 static unsigned map_px_checked;
 static const uint8_t *last_map;
-/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x10427cd1), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
+/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x1043fc39), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
 static void buffer(void *p,void *obj,const uint8_t *bytes,unsigned w,unsigned h){assert(obj&&bytes);assert(((uintptr_t)bytes&63)==0);
  if(w==192){ /* the board's map window is x 372..520: nothing is lit outside it, the scale bar included */
   last_map=bytes;

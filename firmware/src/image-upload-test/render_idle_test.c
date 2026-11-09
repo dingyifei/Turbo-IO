@@ -1,17 +1,19 @@
 #include "render_idle.h"
 #include <assert.h>
 #include <stdio.h>
-static uint32_t gpu=0,sw=0,task=0,gpu_dispatch=0x10428d89;
+static uint32_t gpu=0,sw=0,task=0,gpu_dispatch=0x10440cf1;
 static bool cycle_unit,cycle_layer,cycle_display,fail_read;
 static bool read(uint32_t p,uint32_t *v){
  if(fail_read)return false;
  switch(p){
- case 0x18617cb0:*v=0x19000000;return true;
+ /* The unit list head render_idle.c reads: display unit + 0x124 (rebase table value display_unit). Until tmg10(6)
+  * the key was the 1.0.4.12 display unit + 0x124, never moved to 1.0.5.5, so this test failed on TMG9 as well. */
+ case 0x184ec384+0x124:*v=0x19000000;return true;
  case 0x19000000:*v=0x19000100;return true;
  case 0x1900000c:*v=gpu_dispatch;return true;
  case 0x19000018:*v=gpu;return true;
  case 0x19000100:*v=cycle_unit?0x19000000:0;return true;
- case 0x1900010c:*v=0x105335ff;return true;
+ case 0x1900010c:*v=0x1054c447;return true;
  case 0x19000118:*v=sw;return true;
  case 0x191002a0:*v=0x19200000;return true;
  case 0x19200038:*v=task;return true;
@@ -25,7 +27,7 @@ int main(void){
  gpu=1;assert(!tio_render_graph_idle(read,next));gpu=0;
  sw=1;assert(!tio_render_graph_idle(read,next));sw=0;
  task=1;assert(!tio_render_graph_idle(read,next));task=0;
- gpu_dispatch=123;assert(!tio_render_graph_idle(read,next));gpu_dispatch=0x10428d89;
+ gpu_dispatch=123;assert(!tio_render_graph_idle(read,next));gpu_dispatch=0x10440cf1;
  cycle_unit=true;assert(!tio_render_graph_idle(read,next));cycle_unit=false;
  cycle_layer=true;assert(!tio_render_graph_idle(read,next));cycle_layer=false;
  cycle_display=true;assert(!tio_render_graph_idle(read,next));cycle_display=false;

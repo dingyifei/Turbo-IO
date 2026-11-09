@@ -37,7 +37,7 @@ static void *label(void *p,void *parent,unsigned font){Widget *w=create(p,parent
 static void place(void *p,void *o,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);Widget *v=o;v->x=x;v->y=y;v->w=w;v->h=h;}
 /* Heap views are stream_memalign(64) on the glasses (their canvas banks are _Alignas(64)); the host allocates the same way so the buffer() check sees the real alignment. */
 static void *calloc64(size_t n){void *p=NULL;if(posix_memalign(&p,64,(n+63)&~(size_t)63))return NULL;memset(p,0,n);return p;}
-/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x10427cd1), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
+/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x1043fc39), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
 static void buffer(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;if(((uintptr_t)pixels&63)!=0){fprintf(stderr,"UNALIGNED canvas buffer w=%u h=%u mod64=%u\n",w,h,(unsigned)((uintptr_t)pixels&63));abort();}assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
 static void text(void *p,void *o,const char *s){(void)p;((Widget *)o)->text=s;}
 static void visible(void *p,void *o,bool show){(void)p;((Widget *)o)->shown=show;}

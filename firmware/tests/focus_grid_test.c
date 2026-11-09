@@ -11,7 +11,7 @@ static bool idle(void *ctx){return ((Fake *)ctx)->idle;}
 static void *create(void *ctx,void *parent){(void)parent;Fake *f=ctx;unsigned n=++f->made;return n==f->fail?NULL:(void *)(uintptr_t)n;}
 static void *label(void *ctx,void *parent,unsigned font){assert(font==16||font==18||font==24);return create(ctx,parent);}   /* cell names and the carousel status line 16, status 18, focused name 24 */
 static void place(void *ctx,void *obj,int x,int y,int w,int h){assert(x>=0&&y>=0&&w>0&&h>0&&x+w<=540&&y+h<=220);Fake *f=ctx;uintptr_t k=(uintptr_t)obj;f->x[k]=x;f->y[k]=y;f->w[k]=w;f->h[k]=h;}
-/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x10427cd1), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
+/* TMG9: the stock draw buffer rounds the pointer up to 64 (align_pointer_cb at 0x1043fc39), so a canvas buffer that is not 64 byte aligned is drawn from the next boundary. */
 static void buffer(void *ctx,void *obj,const uint8_t *p,unsigned w,unsigned h){Fake *f=ctx;assert(p);if(((uintptr_t)p&63)!=0){fprintf(stderr,"UNALIGNED canvas buffer w=%u h=%u mod64=%u\n",w,h,(unsigned)((uintptr_t)p&63));abort();}assert((w==32&&h==32)||(w==28&&h==28)||(w==FM_CARET_W&&h==FM_CARET_H)||(w==36&&h==4)||(w==FM_STATE_W&&h==FM_STATE_H)||(w==NT_ARROW&&h==NT_ARROW)||(w==h&&w>=32&&w<=80));f->buf[(uintptr_t)obj]=p;f->bw[(uintptr_t)obj]=w;f->bh[(uintptr_t)obj]=h;}
 static void text(void *ctx,void *obj,const char *s){Fake *f=ctx;assert(strlen(s)<FM_LINE_MAX);f->texts[(uintptr_t)obj]=s;f->text_calls++;}
 static void visible(void *ctx,void *obj,bool show){((Fake *)ctx)->visible[(uintptr_t)obj]=show;}

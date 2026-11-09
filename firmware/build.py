@@ -1,6 +1,7 @@
-"""Reproduce pinned TMG4 from the exact official ZIP. Never connects to a device."""
+"""Reproduce the pinned candidate from the exact official ZIP of its stock base. Never connects to a device."""
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -10,6 +11,13 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 FLASH = 0x10190000
+AP_CAP = 9_600_000          # the patched AP must stay below this (audit)
+PARTITION_END = 0x10b7fff8  # link.ld: __module_end < AP partition limit
+# The stock bases this tree can be built on: the two columns of baseline/rebase-1.0.5.5-to-1.0.5.12.json.
+# Everything version-specific (archive name, audit baseline, -DTD_STOCK_* define, the SW_VER/BUILD_VER every core
+# must report) is derived from the base string; the hashes are pinned in build-inputs.json.
+STOCK_BASES = ('1.0.5.5', '1.0.5.12')
+CORES = {'nuttx_ap.bin': 'ap', 'nuttx_apc1.bin': 'apc1', 'nuttx_bth.bin': 'bth'}
 
 
 def sha(data, algorithm='sha256'):
@@ -59,8 +67,69 @@ def release_label(root=None):
     return label
 
 
-def archive_name(root=None):
-    return 'StrixOS-1.0.5.5-TurboIO-' + release_label(root) + '-CANDIDATE-NOT-APPROVED.zip'
+def stock_base(spec):
+    base = spec.get('stockBase')
+    assert base in STOCK_BASES, 'build-inputs.json stockBase must be one of ' + ', '.join(STOCK_BASES)
+    return base
+
+
+def stock_versions(base):
+    """What every core of that stock reports: SW_VER (first three fields) and BUILD_VER (the fourth)."""
+    major, build = base.rsplit('.', 1)
+    return {'SW_VER': 'Strix OS ' + major, 'BUILD_VER': build}
+
+
+def stock_defines(base):
+    """-DTD_STOCK_1055 / -DTD_STOCK_10512: exactly one is 1, named from the base string."""
+    return ['-DTD_STOCK_10412=0'] + ['-DTD_STOCK_%s=%d' % (b.replace('.', ''), b == base) for b in STOCK_BASES]
+
+
+def archive_name(root=None, base=None):
+    if base is None:
+        base = stock_base(json.loads(((root or HERE)/'build-inputs.json').read_text()))
+    assert base in STOCK_BASES
+    return 'StrixOS-' + base + '-TurboIO-' + release_label(root) + '-CANDIDATE-NOT-APPROVED.zip'
+
+
+def core_identity(files, base):
+    """Never mix cores: AP, APC1 and BTH must each carry one version block with the base's SW_VER and BUILD_VER
+    and the same REV_INFO commit (REV_INFO=<commit>:nx_bestbsp_<core>)."""
+    want = stock_versions(base)
+    revs = set()
+    for name, core in CORES.items():
+        block = {}
+        for key in ('SW_VER', 'BUILD_VER', 'REV_INFO'):
+            found = re.findall(rb'(?<![A-Za-z0-9_])' + key.encode() + rb'=([^\n\x00]*)', files[name])
+            assert len(found) == 1, name + ': expected one ' + key
+            block[key] = found[0].decode('ascii').strip('"')
+        assert block['SW_VER'] == want['SW_VER'] and block['BUILD_VER'] == want['BUILD_VER'], \
+            '%s reports %s build %s, not stock %s' % (name, block['SW_VER'], block['BUILD_VER'], base)
+        commit, _, board = block['REV_INFO'].partition(':')
+        assert board == 'nx_bestbsp_' + core, name + ': REV_INFO board ' + board
+        revs.add(commit)
+    assert len(revs) == 1, 'AP, APC1 and BTH come from different stock builds: ' + ', '.join(sorted(revs))
+    return {'swVer': want['SW_VER'], 'buildVer': want['BUILD_VER'], 'revInfo': revs.pop()}
+
+
+def check_stock_members(files, spec):
+    """The 15 stock payloads, each pinned by SHA-256 (stockMembers)."""
+    members = {n: sha(b) for n, b in files.items() if n != 'OtaFileInfo.json'}
+    assert members == spec['stockMembers'], 'pin mismatch: stockMembers'
+
+
+def module_room(stock_ap_bytes, ap_bytes, module_va, module_bytes):
+    room = AP_CAP - stock_ap_bytes   # the AP is the stock image (minus its trailer) + module + padding + trailer
+    return {'moduleBytes': module_bytes, 'moduleRoom': room, 'moduleHeadroom': AP_CAP - ap_bytes,
+            'partitionHeadroom': PARTITION_END - (module_va + module_bytes)}
+
+
+def rebase_state(root=None):
+    """The one stock base the tree's addresses are on (tools/rebase_apply.py); fails on a mixed tree."""
+    path = (root or HERE)/'tools'/'rebase_apply.py'
+    spec = importlib.util.spec_from_file_location('tmg_rebase_apply', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.tree_state(root or HERE)
 
 
 def animation_asset():
@@ -91,18 +160,29 @@ def safe_zip(path, expected):
 
 
 def audit(stock_path, candidate_path, spec):
+    stock_base_name = stock_base(spec)
     stock, before = safe_zip(stock_path, spec['stockZIP'])
+    check_stock_members(stock, spec)
     files, after = safe_zip(candidate_path, spec['archive']['sha256'])
     ap = files['nuttx_ap.bin']
     base = stock['nuttx_ap.bin']
+    assert sha(base) == spec['stockAP'], 'pin mismatch: stockAP'
     assert len(ap) == spec['APBytes'] and sha(ap) == spec['APSHA256']
-    assert len(ap) < 9_600_000
+    assert len(ap) < AP_CAP, 'patched AP reaches the %d byte cap' % AP_CAP
     assert [r['Name'] for r in before] == [r['Name'] for r in after]
+    unchanged = 0
     for old, new in zip(before, after):
         if old['Name'] == 'nuttx_ap.bin':
             assert {k:v for k,v in old.items() if k not in ('Size','Md5')} == {k:v for k,v in new.items() if k not in ('Size','Md5')}
         else:
+            # Every non-AP member is the stock member of the same base, byte for byte.
             assert old == new and stock[old['Name']] == files[new['Name']]
+            assert sha(files[new['Name']]) == spec['stockMembers'][new['Name']]
+            unchanged += 1
+    assert unchanged == 14
+    # Never mix cores: the stock and the candidate both carry one stock build in AP, APC1 and BTH.
+    cores = core_identity(stock, stock_base_name)
+    assert core_identity(files, stock_base_name) == cores
     assert ap[:16] == base[:16] and ap[-8:] == base[-8:]
     for at in (0x408, 0x414, 0x574, 0x580, 0x58c, 0x598, 0x674):
         assert ap[at:at+12] == base[at:at+12]
@@ -119,8 +199,10 @@ def audit(stock_path, candidate_path, spec):
     assert not any(ap[len(base)-8:at])
     assert sha(ap[at:at+spec['moduleBytes']]) == spec['moduleSHA256']
     assert not any(ap[at+spec['moduleBytes']:-8])
-    return {'passed':True, 'baseline':'1.0.5.5','customChangedPayloads':['nuttx_ap.bin'],
-        'unchangedNewStockPayloads':14,'manifestPayloads':15,'archiveEntries':16,
+    room = module_room(len(base), len(ap), int(spec['moduleVA'], 16), spec['moduleBytes'])
+    assert room['moduleHeadroom'] > 0 and room['partitionHeadroom'] > 0, 'module does not fit'
+    return {'passed':True, 'baseline':stock_base_name,'stockCores':cores,'customChangedPayloads':['nuttx_ap.bin'],
+        'unchangedNewStockPayloads':unchanged,'manifestPayloads':15,'archiveEntries':16,**room,
         'APBytes':len(ap),'APSHA256':sha(ap),'APMD5':sha(ap,'md5'),
         'archiveSHA256':sha(candidate_path.read_bytes()),'archiveMD5':sha(candidate_path.read_bytes(),'md5'),
         'whitelistedPatches':len(spec['edits']),'startupDescriptorsPreserved':7,'deviceIO':False}
@@ -159,7 +241,7 @@ def build_input_identity(spec, versions, flags, asset_sha):
         'sources':[row['source'] for row in spec['sources']],
         'extras':[row['path'] for row in spec['extras']],
         'toolchain':versions,'flags':[str(flag).replace(str(HERE),'$FW4') for flag in flags]+['-include','$BUILD/tmg4-identity.h'],
-        'stockZIP':spec['stockZIP'],'stockAP':spec['stockAP'],
+        'stockBase':spec['stockBase'],'stockZIP':spec['stockZIP'],'stockAP':spec['stockAP'],
         'assetSHA256':asset_sha,'moduleVA':spec['moduleVA'],'edits':descriptors}
     canonical = (json.dumps(manifest,sort_keys=True,separators=(',',':'))+'\n').encode('utf-8')
     return manifest, sha(canonical)
@@ -175,9 +257,14 @@ def load_spec(repin=False):
 
 def build(stock_path, llvm, out, repin=False, compile_only=False):
     spec = load_spec(repin)
+    base_name = stock_base(spec)
     # The immutable stock baseline is required in every mode.
     stock, rows = safe_zip(stock_path, spec['stockZIP'])
     assert sha(stock['nuttx_ap.bin']) == spec['stockAP'], 'pin mismatch: stockAP'
+    check_stock_members(stock, spec)
+    core_identity(stock, base_name)
+    # Every stock address in the tree (link.ld, edits, value sites) must be on this base; a mixed tree fails here.
+    assert rebase_state() == base_name, 'tree addresses are not on stock ' + base_name
     assert not out.exists(), 'Choose a fresh output directory'
     out.mkdir(parents=True)
     src = HERE / 'src'
@@ -188,7 +275,7 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
         '-include',str(src/'firmware_profile.h'),'-DTIO_IMAGE_RX_WIDE=1',
         '-DTIO_DISPLAY_RUNTIME=1','-DTDP_FREESTANDING','-DTIO_ANIMATION_EXPERIMENT=1',
         '-DTIO_MUSIC_RUNTIME=1','-DTD_DIAGNOSTICS_RUNTIME=1','-DTD_FREESTANDING=1',
-        '-DTD_STOCK_10412=0','-DTD_STOCK_1055=1']
+        *stock_defines(base_name)]
     versions = {'clang':run([llvm/'clang','--version']).splitlines()[0],
                 'lld':run([llvm/'ld.lld','--version']).splitlines()[0]}
     if not compile_only:
@@ -237,7 +324,11 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
     pin(spec,'moduleBytes',len(module),repin)
     pin(spec,'moduleSHA256',sha(module),repin)
     base = stock['nuttx_ap.bin']; at = module_va-FLASH
-    assert at >= len(base)-8
+    assert at == len(base)-8, 'moduleVA must be the stock AP end minus its 8-byte trailer'
+    room = module_room(len(base), len(base)+len(module)+(-(len(base)+len(module))%4), module_va, len(module))
+    assert room['moduleHeadroom'] > 0, 'module %d bytes does not fit: %d bytes of room below the %d byte AP cap' % (
+        len(module), room['moduleRoom'], AP_CAP)
+    assert room['partitionHeadroom'] > 0, 'module overruns the AP partition'
     ap = bytearray(base[:-8]) + bytearray(at-(len(base)-8)) + module
     ap += bytearray((-len(ap))%4) + base[-8:]
     assert len(spec['edits']) == 25
@@ -262,14 +353,15 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
         assert len(new) == len(old)
         pin(e,'after',new.hex(),repin)
         ap[offset:offset+len(new)] = new
-    assert len(ap) < 9_600_000
+    assert len(ap) < AP_CAP
+    assert AP_CAP - len(ap) == room['moduleHeadroom']
     pin(spec,'APBytes',len(ap),repin)
     pin(spec,'APSHA256',sha(ap),repin)
     stock['nuttx_ap.bin'] = bytes(ap)
     for row in rows:
         if row['Name'] == 'nuttx_ap.bin': row.update(Size=len(ap),Md5=sha(ap,'md5'))
     stock['OtaFileInfo.json'] = (json.dumps(rows,indent=2)+'\n').encode()
-    archive = out/archive_name()
+    archive = out/archive_name(base=base_name)
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         for name,data in sorted(stock.items()):
             info = zipfile.ZipInfo(name,(2026,10,27,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED

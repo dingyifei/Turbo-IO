@@ -1,238 +1,238 @@
 {
   "edits": [
     {
-      "offset": "0x4da940",
-      "address": "0x1066a940",
+      "offset": "0x4f6ed8",
+      "address": "0x10686ed8",
       "before": "90b583b0",
-      "after": "14f293b9",
+      "after": "11f2a9ba",
       "role": "Entry trampoline show",
       "kind": "bw",
       "target": "m8_hook_show",
       "pad": 0
     },
     {
-      "offset": "0x4da974",
-      "address": "0x1066a974",
+      "offset": "0x4f6f0c",
+      "address": "0x10686f0c",
       "before": "b0b582b0",
-      "after": "14f29eb9",
+      "after": "11f2b4ba",
       "role": "Entry trampoline hide",
       "kind": "bw",
       "target": "m8_hook_hide",
       "pad": 0
     },
     {
-      "offset": "0x4d99fc",
-      "address": "0x106699fc",
+      "offset": "0x4f5f94",
+      "address": "0x10685f94",
       "before": "f0b50446",
-      "after": "15f292b9",
+      "after": "12f2a8ba",
       "role": "Entry trampoline destroy",
       "kind": "bw",
       "target": "m8_hook_destroy",
       "pad": 0
     },
     {
-      "offset": "0x4da6ae",
-      "address": "0x1066a6ae",
+      "offset": "0x4f6c46",
+      "address": "0x10686c46",
       "before": "2de9f041",
-      "after": "14f28cbb",
+      "after": "11f2a2bc",
       "role": "Entry trampoline wheel",
       "kind": "bw",
       "target": "m8_hook_wheel",
       "pad": 0
     },
     {
-      "offset": "0x4daa40",
-      "address": "0x1066aa40",
+      "offset": "0x4f6fd8",
+      "address": "0x10686fd8",
       "before": "b0b582b0",
-      "after": "14f25cba",
+      "after": "11f272bb",
       "role": "Entry trampoline event",
       "kind": "bw",
       "target": "m8_hook_event",
       "pad": 0
     },
     {
-      "offset": "0x3ec04c",
-      "address": "0x1057c04c",
+      "offset": "0x405aac",
+      "address": "0x10595aac",
       "before": "b0b50c46",
-      "after": "03f374b8",
+      "after": "02f326bf",
       "role": "Entry trampoline message",
       "kind": "bw",
       "target": "m8_hook_message",
       "pad": 0
     },
     {
-      "offset": "0x5a12b0",
-      "address": "0x107312b0",
+      "offset": "0x5b9ea8",
+      "address": "0x10749ea8",
       "before": "f0b5c3b0",
-      "after": "42f15cbf",
+      "after": "43f142bd",
       "role": "Entry trampoline dc_text",
       "kind": "bw",
       "target": "m8_hook_dc_text",
       "pad": 0
     },
     {
-      "offset": "0x4da1fc",
-      "address": "0x1066a1fc",
+      "offset": "0x4f6794",
+      "address": "0x10686794",
       "before": "2de9f04f",
-      "after": "13f2f1be",
+      "after": "11f207b8",
       "role": "Entry trampoline names",
       "kind": "bw",
       "target": "m8_hook_names",
       "pad": 0
     },
     {
-      "offset": "0x4d9cc8",
-      "address": "0x10669cc8",
+      "offset": "0x4f6260",
+      "address": "0x10686260",
       "before": "2de9f047",
-      "after": "14f25cbc",
+      "after": "11f272bd",
       "role": "Entry trampoline dots",
       "kind": "bw",
       "target": "m8_hook_dots",
       "pad": 0
     },
     {
-      "offset": "0x4d9ca6",
-      "address": "0x10669ca6",
+      "offset": "0x4f623e",
+      "address": "0x1068623e",
       "before": "98b50446",
-      "after": "14f24dbc",
+      "after": "11f263bd",
       "role": "Entry trampoline delete_dots",
       "kind": "bw",
       "target": "m8_hook_delete_dots",
       "pad": 0
     },
     {
-      "offset": "0x4da068",
-      "address": "0x1066a068",
+      "offset": "0x4f6600",
+      "address": "0x10686600",
       "before": "b0b584b0",
-      "after": "14f20ebb",
+      "after": "11f224bc",
       "role": "Entry trampoline lottie",
       "kind": "bw",
       "target": "m8_hook_lottie",
       "pad": 0
     },
     {
-      "offset": "0x4d9c48",
-      "address": "0x10669c48",
+      "offset": "0x4f61e0",
+      "address": "0x106861e0",
       "before": "80b500af",
-      "after": "14f2afb9",
+      "after": "11f2c5ba",
       "role": "Entry trampoline app_id",
       "kind": "bw",
       "target": "m8_hook_app_id",
       "pad": 0
     },
     {
-      "offset": "0x4da02a",
-      "address": "0x1066a02a",
+      "offset": "0x4f65c2",
+      "address": "0x106865c2",
       "before": "2de9f041",
-      "after": "14f27dba",
+      "after": "11f293bb",
       "role": "Entry trampoline refresh_label",
       "kind": "bw",
       "target": "m8_hook_refresh_label",
       "pad": 0
     },
     {
-      "offset": "0x4d8d8c",
-      "address": "0x10668d8c",
+      "offset": "0x4f5324",
+      "address": "0x10685324",
       "before": "f0b585b0",
-      "after": "1bf2e0bc",
+      "after": "18f2f6bd",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
       "pad": 0
     },
     {
-      "offset": "0x4d984a",
-      "address": "0x1066984a",
+      "offset": "0x4f5de2",
+      "address": "0x10685de2",
       "before": "0628a8bf",
-      "after": "1ff293bd",
+      "after": "1cf2a9be",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
       "pad": 0
     },
     {
-      "offset": "0x4d9860",
-      "address": "0x10669860",
+      "offset": "0x4f5df8",
+      "address": "0x10685df8",
       "before": "1e22a0f10f03",
-      "after": "1ff28cbd00bf",
+      "after": "1cf2a2be00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
       "pad": 1
     },
     {
-      "offset": "0x4da42c",
-      "address": "0x1066a42c",
+      "offset": "0x4f69c4",
+      "address": "0x106869c4",
       "before": "2de9f04f",
-      "after": "14f2bcba",
+      "after": "11f2d2bb",
       "role": "Menu replacement label_frame",
       "kind": "bw",
       "target": "m8_hook_label_frame",
       "pad": 0
     },
     {
-      "offset": "0x4da780",
-      "address": "0x1066a780",
+      "offset": "0x4f6d18",
+      "address": "0x10686d18",
       "before": "0629a8bf",
-      "after": "14f2a8b9",
+      "after": "11f2beba",
       "role": "Menu replacement label_index",
       "kind": "bw",
       "target": "m8_hook_label_index",
       "pad": 0
     },
     {
-      "offset": "0x4d9e54",
-      "address": "0x10669e54",
+      "offset": "0x4f63ec",
+      "address": "0x106863ec",
       "before": "2de9f04f",
-      "after": "14f24abe",
+      "after": "11f260bf",
       "role": "Menu replacement indicator",
       "kind": "bw",
       "target": "m8_hook_indicator",
       "pad": 0
     },
     {
-      "offset": "0x4da148",
-      "address": "0x1066a148",
+      "offset": "0x4f66e0",
+      "address": "0x106866e0",
       "before": "b0b50446",
-      "after": "13f237be",
+      "after": "10f24dbf",
       "role": "Menu replacement frame",
       "kind": "bw",
       "target": "m8_hook_frame",
       "pad": 0
     },
     {
-      "offset": "0x4da17e",
-      "address": "0x1066a17e",
+      "offset": "0x4f6716",
+      "address": "0x10686716",
       "before": "80b5b3ee0e7a",
-      "after": "13f2ddbd00bf",
+      "after": "10f2f3be00bf",
       "role": "Menu replacement render_slide",
       "kind": "bw",
       "target": "m8_hook_render_slide",
       "pad": 1
     },
     {
-      "offset": "0x4d6cdc",
-      "address": "0x10666cdc",
-      "before": "fc204bf02dff",
-      "after": "22f200fb00bf",
+      "offset": "0x4f3278",
+      "address": "0x10683278",
+      "before": "fc204ef043fe",
+      "after": "1ff214fc00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
       "pad": 1
     },
     {
-      "offset": "0x4d6d06",
-      "address": "0x10666d06",
-      "before": "02f04dff",
-      "after": "17f285ff",
+      "offset": "0x4f32a2",
+      "address": "0x106832a2",
+      "before": "02f04bff",
+      "after": "15f299f8",
       "role": "Initialize tail after new stock constructor",
       "kind": "bl",
       "target": "m8_hook_ctor",
       "pad": 0
     },
     {
-      "offset": "0x4d9bec",
-      "address": "0x10669bec",
+      "offset": "0x4f6184",
+      "address": "0x10686184",
       "before": "0721",
       "after": "0d21",
       "role": "Carousel item count 7 to 13",
@@ -241,25 +241,43 @@
       "pad": 0
     },
     {
-      "offset": "0x3da186",
-      "address": "0x1056a186",
+      "offset": "0x3f3be6",
+      "address": "0x10583be6",
       "before": "00241f48204b84610360",
-      "after": "1ff3e7f800bf00bf00bf",
+      "after": "1ef399ff00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 160000,
-  "moduleVA": "0x1086fec0",
-  "moduleSHA256": "2daa52802eb3960621abfc0ba557835b85b5e1b5f8a4ee55210707cd9e6f777d",
-  "stockAP": "b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c",
-  "APBytes": 7368648,
+  "moduleBytes": 159996,
+  "moduleVA": "0x10889684",
+  "moduleSHA256": "e77fb149b99737525aa356673ff401b58b7a39e9427c80717b4b58687462616d",
+  "stockAP": "af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae",
+  "stockBase": "1.0.5.12",
+  "stockMembers": {
+    "bt_controller.bin": "0060cc360b04577e8f5ce8f5d54fabde6103a6fef5a1a052260097920165a0c6",
+    "cb_fw_venus.bin": "8799f12071bdac082218e3601c24ab0989275fc2f7db74e37b8314a225c2cf7d",
+    "fac_test_img.bin": "18eb0901c3e0daeae48dd5f015252b6931ea7368f0160c2c985c4e74296d17eb",
+    "images.bin": "219ba2f7935850a059ac7e6a1ffa181056ce70891501db28238940dfbdc44cc5",
+    "lotties.bin": "ad66d83a3394034f825a12769aad292fc03e59fa865fe06bc43536b918a0b32b",
+    "nuttx_ap.bin": "af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae",
+    "nuttx_apc1.bin": "abee438702d29936a01e60b863f3f3ecdea73097d60c09bcded1a61606098e08",
+    "nuttx_audio.bin": "549a72c032595e3829da7d63b7e1fd13cceda1a55dfefa7a7cad02db5a9b42ab",
+    "nuttx_bth.bin": "a7c4618ac992170d71fe0951ef6febfa46f13409c0bfc73c06ba74b0a00033f0",
+    "ota_installer_progress.bin": "6fd65d296a667e1a7d94ec129adfd26458a4008ef403b331f855192c36eb3e3f",
+    "pil_algo_up_demo_nand.dll": "e266726fe055ac6ec6f785a9440e8da7421402f2b4d3d7889039ad9b94e119c2",
+    "pil_algo_vad_demo.dll": "5391fd024f1dfd38d031aeff5b1f4e91b13ca6d51f30e67763cd9fdf9db521a8",
+    "pil_algo_wakeup_dll_nand.dll": "d1594cb8658b228e52c2606d02f1eab696d35a11ed42ddcb725e76a745f5550f",
+    "rives.bin": "836bc019f7152890b94cafafe2edaa024f317526318349f7833319e41158b104",
+    "smf.json": "2713dc3a302a65c101fa981500cd8b217766c526b6045bf02db5e9e6763d076d"
+  },
+  "APBytes": 7473032,
   "archive": {
-    "bytes": 8819595,
-    "sha256": "def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd",
-    "md5": "7559e900c1f5aae1d165dbe353ec91f1"
+    "bytes": 8846364,
+    "sha256": "4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c",
+    "md5": "5f1284094ccc03496215122051416693"
   },
   "sources": [
     {
@@ -280,7 +298,7 @@
     },
     {
       "source": "app-runtime-v1/app_files_native.c",
-      "sha256": "adcc644b5daf52b3059dcf5e7b057520ddd854ba1c87ceb96621582281f070bf"
+      "sha256": "24601ecd0b97915829a0be68d6f4268235a4760f6145558ac5ef72d146ac433a"
     },
     {
       "source": "app-runtime-v1/app_lvgl.c",
@@ -292,7 +310,7 @@
     },
     {
       "source": "app-runtime-v1/app_service.c",
-      "sha256": "3b513041ea38ab2fcedb9faa079e9e69d7ff9a5379864d63deaf79c93ae40c36"
+      "sha256": "6b1b1db889a20ecdd6edbfb92b15e3451195e302ff88b5de59add9cb4f7dacfe"
     },
     {
       "source": "app-runtime-v1/app_shelf.c",
@@ -332,11 +350,11 @@
     },
     {
       "source": "diagnostics-v1/diagnostics_service.c",
-      "sha256": "a152f7878e287faf4f844260aa338aa8f46c2e160708ad1f24911b2ce1043715"
+      "sha256": "f08a2f4c4cc044d55984d58daf9cb8c885d1d482cfa14bda5d67d209ed268fec"
     },
     {
       "source": "diagnostics-v1/native_light.c",
-      "sha256": "686bc9afbef20848c217f5ced374deead512b9be421d3724df0dcdaeeba8b70f"
+      "sha256": "d34e13f7369905eb47406a7bf0740cb2666b7930a71ca7140e2d66fc1a03dd63"
     },
     {
       "source": "display-runtime-v1/display_carrier.c",
@@ -368,7 +386,7 @@
     },
     {
       "source": "focus-v1/focus_service.c",
-      "sha256": "c20baa4afe0f23749280726883311586f9a4a33e60c1eb47a76c10ce709fc4fb"
+      "sha256": "4063668f90afcb54fc0a2bf2e7093cb70d310470493d122d390c9f1b61215a15"
     },
     {
       "source": "focus-v1/focus_view.c",
@@ -384,7 +402,7 @@
     },
     {
       "source": "image-upload-test/render_idle.c",
-      "sha256": "9cf5a90ba554d9371bb74e8eebac89b6a40ff262ebb72a22a086e7bdc2d36177"
+      "sha256": "8617ef885b4b67f66f257ef7cc1b70b9924730aa6da92e57cf2df66d705d8f52"
     },
     {
       "source": "menu8-native-lvgl.c",
@@ -396,7 +414,7 @@
     },
     {
       "source": "music-runtime-v1/menu10.c",
-      "sha256": "da50a5bc12689c477d885f56ea900b11b63b359c47789f05411ec9ad63540e8a"
+      "sha256": "d7560ad755f0ecd621958357fccce842bb25e4f5a16528e2bdb8b85e0030d530"
     },
     {
       "source": "music-runtime-v1/music.c",
@@ -404,7 +422,7 @@
     },
     {
       "source": "music-runtime-v1/music_service.c",
-      "sha256": "a73c12c6e6574444914c63b5bd5a29025db419cdecab4bd7d64cfd2f1da172ac"
+      "sha256": "0d2e53d0bd1875fc0c1622c1748e3e9403ce43540bb1c34357eb37f54c58a05f"
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
@@ -416,7 +434,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_service.c",
-      "sha256": "327e6bd8b21f470c4a1d07d8cf8458c857b48680b6902a52e3aa799a2f8e39e8"
+      "sha256": "595f79a6fe06e0d63102aae0fba5a109177317f3206a4ac264f1459a2cd859a9"
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
@@ -432,11 +450,11 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "af31550cdbfecafce71f8926a620ac6bf932d3b3d6f3505681a823a5b069e68d"
+      "sha256": "ba3050d4e5e2d1fed07f2d59ebe4e87a08899cdc036a46c52326bd2b2e04f08a"
     },
     {
       "source": "common-v1/business_idle.c",
-      "sha256": "1c5f4b69e8dc9c980b9b24affcc06283997da6b1c242d14085847fd79c566b62"
+      "sha256": "f4b49b4e3b53483201c8438c014a55c19d90c46924d07a94f938b4ab7396f98b"
     },
     {
       "source": "global-remote-v1/lang_flag.c",
@@ -459,11 +477,11 @@
       "sha256": "5c4737328a9e69166efd177724e48bcb4161d882ee961b5b68c8858151e26de4"
     }
   ],
-  "stockZIP": "2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367",
-  "APSHA256": "f209a2780e3e5dd5f87ab49320aa667bf33bcef3eeba2de6fc932a59c33bf2fb",
+  "stockZIP": "b7bfd3cc73528e3e9995ad227dc877c8334d43dc8051436e2d2ccff2ca0b4133",
+  "APSHA256": "da16ecfa0757a58ad32cf763c138624e1d4bd9f23e13a55bd77e7da13e2fd4b6",
   "toolchain": {
-    "clang": "Homebrew clang version 23.1.4",
-    "lld": "Homebrew LLD 23.1.4 (compatible with GNU linkers)"
+    "clang": "Homebrew clang version 23.1.5",
+    "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"
   },
   "extras": [
     {
@@ -472,7 +490,7 @@
     },
     {
       "path": "trampolines.S",
-      "sha256": "81cef0444d490eb02b44b086298e3f404023677d2d8d2493aea2aace8ac7cbae"
+      "sha256": "86c4323f8599e9d98a68985e426716486c9d7d86a9b51a8f6513e88447142240"
     },
     {
       "path": "src/app-runtime-v1/app_abi.S",
@@ -480,7 +498,7 @@
     },
     {
       "path": "src/common-v1/coexist.S",
-      "sha256": "df4fcf7426a34f660c99017333baf8649940f2c0a960ba6cec4667d85042c69c"
+      "sha256": "8d10d7717887ced8867543f68f3d55105edc5d96ec9546c32f60ea8a9638c0a0"
     }
   ]
 }
