@@ -1,4 +1,5 @@
 #import "WireLog.h"
+#import "MethodHookStages.h"
 #import <CommonCrypto/CommonDigest.h>
 #include <assert.h>
 static NSString *SHA(NSData *d) {
@@ -687,6 +688,39 @@ static void TestPrivacy(void) {
     assert([[NSURL fileURLWithPath:dir.path isDirectory:YES] getResourceValue:&excluded forKey:NSURLIsExcludedFromBackupKey error:nil] && excluded.boolValue);
 }
 
+// The hook's off-main sendFile hop (TIOMethodHookHopToMain): a call made on a background queue re-enters on
+// main, the stock result block runs once and the recorder records the call and its result once, on main.
+static void TestMainThreadHop(void) {
+    NSURL *dir = TempDir();
+    Fresh(dir, 0, 0);
+    TIOWireLogStart();
+    __block int stockCalls = 0, entries = 0, hops = 0;
+    id stock = ^(__unused id v) { stockCalls++; };
+    FlutterMethodCall *call = [FlutterMethodCall new]; call.method = @"rayneonet_sendFile"; call.arguments = @{@"path": @"/a"};
+    __block void (^hook)(id, id);
+    hook = ^(id c, id r) { // the first stages of MethodHook, in its order
+        entries++;
+        NSString *channel = TIOWireLogClaimBridgeCall();
+        if (TIOMethodHookHopToMain(c, ^{ hook(c, r); })) { hops++; return; }
+        assert(NSThread.isMainThread);
+        id wrapped = TIOWireLogWrapBridgeResult(channel, c, r);
+        ((void (^)(id))wrapped)(@{@"success": @YES});
+    };
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{ hook(call, stock); });
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:10];
+    while (stockCalls == 0 && deadline.timeIntervalSinceNow > 0) [NSRunLoop.mainRunLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+    hook = nil;
+    // Other methods never hop, even off main.
+    FlutterMethodCall *other = [FlutterMethodCall new]; other.method = @"rayneonet_sendMessage";
+    __block BOOL otherHopped = YES;
+    dispatch_sync(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{ otherHopped = TIOMethodHookHopToMain(other, ^{ assert(!"hopped"); }); });
+    TIOWireLogStop(); TIOWireLogDrainForTest();
+    NSArray *r = Records(dir);
+    assert(stockCalls == 1 && entries == 2 && hops == 1 && !otherHopped);
+    assert(r.count == 2 && [r[0][@"dir"] isEqualToString:@"d2n.call"] && [r[1][@"dir"] isEqualToString:@"d2n.result"]);
+    assert([r[0][@"thread"] isEqualToString:@"main"] && [r[1][@"callSeq"] isEqual:r[0][@"seq"]]);
+}
+
 int main(void) {
     @autoreleasepool {
         TestRedaction();
@@ -703,6 +737,7 @@ int main(void) {
         TestNewerShapes();
         TestSnapContainers();
         TestPrivacy();
+        TestMainThreadHop();
         puts("WireLogTests: PASS");
     }
     return 0;

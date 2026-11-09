@@ -328,7 +328,7 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
 });
 test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('\nelse\nrun_logged package'));
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
  assert.match(branch,/--host ios1011-download --app "\$TURBO_APP1011"/);
  assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
  assert.match(branch,/hostProfile'\]=='ios1011-download'/);
@@ -367,22 +367,29 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  assert.match(load,/if\(downloadOnly&&!TIOGlassesChannelHookInstalled\(\)\)\[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: [^"]*",TIOGlassesChannelHookFailure\(\)\];/);
  assert.match(load,/TIOOTADownloadOnlyGuardMarker\]/);
  assert.match(load,/downloadOnlyGuard=%d; stockTraffic=%d\\n%@\\n",[^;]*TIOGlassesChannelStockTrafficSeen\(\),TIOOTADownloadOnlyGuardMarker\]/);
- // The hook applies the OTA guard before any observer or the stock handler runs.
+ // The hook applies the OTA guard before any observer or the stock handler runs. The guard stage is the
+ // shared TIOMethodHookGuardStage (MethodHookStages.h), which the host guard sweeps also run.
  const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
- const block=body.indexOf('@try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}');assert.ok(block>0);
+ const stages=src('MethodHookStages.h'),stage=stages.slice(stages.indexOf('static inline BOOL TIOMethodHookGuardStage('));
+ const block=stage.indexOf('@try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}');assert.ok(block>0);
  // D5: the guard starts from blocked, and a teleprompter pass forwards the checked snapshot (or blocks when none can be built).
- assert.ok(body.includes('NSDictionary *teleprompter=nil;BOOL otaBlocked=YES;'));
- assert.ok(body.includes('if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}'));
- assert.ok(body.indexOf('TIOStockTeleprompterForwardCall(')<body.indexOf('if(otaBlocked)'));
- assert.ok(block<body.indexOf('TIOProtocolObserveCall(')&&block<body.indexOf('PriorMethod(self,cmd,call,result)'));
- assert.match(body,/if\(otaBlocked\)\{[^\n]*return;\}/);
- // G2 runtime evidence: MethodHook records a stock rayneonet call before TIOOTAFlashBlockCall can
+ assert.ok(stage.includes('NSDictionary *teleprompter=nil;BOOL otaBlocked=YES;'));
+ assert.ok(stage.includes('if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}'));
+ assert.ok(stage.indexOf('TIOStockTeleprompterForwardCall(')<stage.indexOf('if(otaBlocked)'));
+ assert.match(stage,/if\(otaBlocked\)\{if\(result\)\(\(void\(\^\)\(id\)\)result\)\(@\{@"success":@NO,@"message":TIOMethodHookBlockedMessage\}\);return YES;\}\n    allowed\(call,result\);/);
+ // Observers and the prior method run only inside `allowed`, i.e. after the guard let the call through.
+ const allowed=body.indexOf('^(id forwarded,id reply){');assert.ok(allowed>0);
+ for(const s of ['TIOGlassesLogBlockCall(forwarded)','TIOProtocolObserveCall(','TIOTodoObserveSnapshotMessage(','PriorMethod(self,cmd,forwarded,reply);'])assert.ok(body.indexOf(s)>allowed,s);
+ assert.equal([...body.matchAll(/PriorMethod\(/g)].length,1);
+ // G2 runtime evidence: MethodHook records a stock rayneonet call before the guard stage can
  // refuse it and return, and after the off-main sendFile redispatch (so one call counts once).
  const evidence=body.indexOf('RecordStockEvidence(call,result);');assert.ok(evidence>0);
  assert.equal(body.split('RecordStockEvidence(call,result);').length,2);
- assert.ok(evidence<body.indexOf('TIOOTAFlashBlockCallSnapshot(call,')&&evidence<body.indexOf('if(otaBlocked)'));
- assert.ok(evidence>body.indexOf('dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;'));
- assert.ok(body.indexOf('TIOOTAFlashBlockCallSnapshot(')===body.lastIndexOf('TIOOTAFlashBlockCallSnapshot('));assert.ok(!body.includes('TIOOTAFlashBlockCall('));
+ assert.ok(evidence<body.indexOf('TIOMethodHookGuardStage(wireChannel,call,result,'));
+ assert.ok(evidence>body.indexOf('if(TIOMethodHookHopToMain(call,^{MethodHook(self,cmd,call,result);}))return;'));
+ assert.match(stages,/if\(\[TIOMethodHookRead\(call,@"method"\) isEqual:@"rayneonet_sendFile"\]&&!NSThread\.isMainThread\)\{\n        dispatch_async\(dispatch_get_main_queue\(\),again\);return YES;/);
+ assert.ok(stage.indexOf('TIOOTAFlashBlockCallSnapshot(')===stage.lastIndexOf('TIOOTAFlashBlockCallSnapshot('));
+ assert.ok(!body.includes('TIOOTAFlashBlockCall'));
  // Only stock calls count: the origin is the image of the result block's invoke function, checked by
  // the tested TIOChannelResultImageIsStock; the addon's own senders count separately as addonCalls.
  const record=hook.slice(hook.indexOf('static void RecordStockEvidence('),hook.indexOf('static void MethodHook('));
@@ -403,22 +410,33 @@ test('download-only host: Load installs only the guard hook and sends nothing on
 test('MethodHook order: hop, stock evidence, wire log, guard, prior method',()=>{
  const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
  const hook=src('GlassesChannelHook.m'),body=hook.slice(hook.indexOf('static void MethodHook('),hook.indexOf('static void Send('));
- const at=s=>{const i=body.indexOf(s);assert.ok(i>0,s);assert.equal(body.indexOf(s,i+1),-1,'once: '+s);return i;};
- const claim=at('NSString *wireChannel=TIOWireLogClaimBridgeCall();');
- const hop=at('dispatch_async(dispatch_get_main_queue(),^{MethodHook(self,cmd,call,result);});return;');
- const evidence=at('RecordStockEvidence(call,result);');
- const wrap=at('result=TIOWireLogWrapBridgeResult(wireChannel,call,result);');
- const guard=at('@try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}');
- const forward=at('if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}');
- const noted=at('if(!otaBlocked&&teleprompter)TIOWireLogBridgeForwarded(result,call);');
- const blocked=at('if(otaBlocked){if(result)((void(^)(id))result)(');
- const prior=at('PriorMethod(self,cmd,call,result);');
- assert.ok(claim<hop&&hop<evidence&&evidence<wrap&&wrap<guard&&guard<forward&&forward<noted&&noted<blocked&&blocked<prior);
- // Nothing replaces the result block before the evidence reads it, and only the recorder replaces it at all.
- assert.equal([...body.matchAll(/\bresult=/g)].length,1);
- assert.equal([...body.matchAll(/\bcall=/g)].length,1);
+ const stages=src('MethodHookStages.h'),stage=stages.slice(stages.indexOf('static inline BOOL TIOMethodHookGuardStage('));
+ const once=(t,s)=>{const i=t.indexOf(s);assert.ok(i>0,s);assert.equal(t.indexOf(s,i+1),-1,'once: '+s);return i;};
+ // In MethodHook: claim, hop, evidence (original result block), the shared guard stage; the prior method only in `allowed`.
+ const claim=once(body,'wireChannel=TIOWireLogClaimBridgeCall();');
+ const hop=once(body,'if(TIOMethodHookHopToMain(call,^{MethodHook(self,cmd,call,result);}))return;');
+ const evidence=once(body,'RecordStockEvidence(call,result);');
+ const guardStage=once(body,'TIOMethodHookGuardStage(wireChannel,call,result,');
+ const prior=once(body,'PriorMethod(self,cmd,forwarded,reply);');
+ assert.ok(claim<hop&&hop<evidence&&evidence<guardStage&&guardStage<prior);
+ // Nothing in MethodHook replaces the call or the result block; the evidence reads the stock block.
+ assert.doesNotMatch(body,/\bresult=|\bcall=/);
+ // In the shared stage: wrap, guard, verdict, forward, forwarded note, blocked reply, allowed.
+ const wrap=once(stage,'result=TIOWireLogWrapBridgeResult(wireChannel,call,result);');
+ const guard=once(stage,'@try{otaBlocked=TIOOTAFlashBlockCallSnapshot(call,&teleprompter);}@catch(__unused id e){otaBlocked=YES;teleprompter=nil;}');
+ const verdict=once(stage,'if(decided)decided(otaBlocked);');
+ const forward=once(stage,'if(!otaBlocked&&teleprompter){id checked=TIOStockTeleprompterForwardCall(teleprompter);if(checked)call=checked;else otaBlocked=YES;}');
+ const noted=once(stage,'if(!otaBlocked&&teleprompter)TIOWireLogBridgeForwarded(result,call);');
+ const blocked=once(stage,'if(otaBlocked){if(result)((void(^)(id))result)(');
+ const allowed=once(stage,'allowed(call,result);');
+ assert.ok(wrap<guard&&guard<verdict&&verdict<forward&&forward<noted&&noted<blocked&&blocked<allowed);
+ assert.equal([...stage.matchAll(/\bresult=/g)].length,1);assert.equal([...stage.matchAll(/\bcall=/g)].length,1);
+ // The host guard sweeps call the same stage function, not a copy of it.
+ const harness=src('tests/WireLogGuardHarness.h');
+ assert.match(harness,/#import "MethodHookStages\.h"/);assert.match(harness,/TIOMethodHookGuardStage\(@"com\.rayneo\/sdk",call,stock,/);
+ assert.doesNotMatch(harness,/TIOOTAFlashBlockCallSnapshot|TIOWireLogWrapBridgeResult|TIOStockTeleprompterForwardCall/);
  // Every wire log line in the shared sources is compiled only with TIO_WIRE_LOG, so the default build has none of it.
- for(const f of ['GlassesChannelHook.m','Addon.m','ResearchCatalog.m']){
+ for(const f of ['GlassesChannelHook.m','Addon.m','ResearchCatalog.m','MethodHookStages.h']){
   const stack=[];let seen=0;
   for(const line of src(f).split('\n')){
    if(/^#if/.test(line))stack.push(line.trim());
