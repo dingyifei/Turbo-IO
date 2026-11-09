@@ -14,7 +14,14 @@
 #import <CommonCrypto/CommonDigest.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
+#include <zlib.h>
+#if TIO_DISPLAY_PHONE
+#import "DisplayPhoneTransport.h"
+#import "display_client.h"
+#endif
 static NSString *Home;
 static NSDictionary *Host;
 static const struct mach_header *Image;
@@ -24,6 +31,55 @@ NSDictionary *TMG4HostInfo(void){return Host;}
 NSDictionary *TMG4Prefs(void){return @{@"fixture_ota_firmware_auto_update":@NO};}
 const struct mach_header *TMG4MainImage(void){return Image;}
 BOOL TDPPhonePauseForOTA(void){return YES;}
+// R3 seam: test.py makes the policy's GateStage() return this unless it is NSUIntegerMax.
+static NSUInteger StageOverride=NSUIntegerMax;
+NSUInteger TMG4StageOverride(void){return StageOverride;}
+// Host stand-in for Flutter's FlutterMethodCall, so the forwarded call can be inspected.
+@interface FlutterMethodCall:NSObject
+@property(nonatomic,readonly) NSString *method;
+@property(nonatomic,readonly) id arguments;
++ (instancetype)methodCallWithMethodName:(NSString *)method arguments:(id)arguments;
+@end
+@implementation FlutterMethodCall{NSString *_m;id _a;}
++ (instancetype)methodCallWithMethodName:(NSString *)method arguments:(id)arguments{FlutterMethodCall *c=[self new];c->_m=method;c->_a=arguments;return c;}
+- (NSString *)method{return _m;}
+- (id)arguments{return _a;}
+@end
+// Argument objects that answer differently from what they hold (E2/E3), or throw (E5).
+@interface OddDict:NSDictionary
+@property NSDictionary *backing;@property NSInteger countValue;@property NSArray *enumKeys;@property NSString *flipKey;@property id flipValue;@property NSUInteger reads;@property NSString *throwOn;
+@end
+@implementation OddDict
+- (NSUInteger)count{if([self.throwOn isEqual:@"count"])[NSException raise:@"OddCount" format:@"x"];return self.countValue>=0?(NSUInteger)self.countValue:self.backing.count;}
+- (NSEnumerator *)keyEnumerator{if([self.throwOn isEqual:@"enum"])[NSException raise:@"OddEnum" format:@"x"];return (self.enumKeys?:self.backing.allKeys).objectEnumerator;}
+- (id)objectForKey:(id)k{
+    if([self.throwOn isEqual:@"objectForKey"])[NSException raise:@"OddObjectForKey" format:@"x"];
+    if(self.flipKey&&[k isEqual:self.flipKey]&&++self.reads>1)return self.flipValue;
+    return self.backing[k];
+}
+- (BOOL)isKindOfClass:(Class)c{if([self.throwOn isEqual:@"isKind"])[NSException raise:@"OddKind" format:@"x"];return [super isKindOfClass:c];}
+@end
+static OddDict *Odd(NSDictionary *b){OddDict *d=[OddDict new];d.backing=b;d.countValue=-1;return d;}
+@interface OddString:NSString
+@property NSString *chars;@property BOOL eqAlways;@property NSString *throwOn;
+@end
+@implementation OddString
+- (NSUInteger)length{if([self.throwOn isEqual:@"length"])[NSException raise:@"OddLength" format:@"x"];return self.chars.length;}
+- (unichar)characterAtIndex:(NSUInteger)i{return [self.chars characterAtIndex:i];}
+- (void)getCharacters:(unichar *)b range:(NSRange)r{[self.chars getCharacters:b range:r];}
+- (BOOL)isEqual:(id)o{return self.eqAlways?YES:[super isEqual:o];}
+- (BOOL)isEqualToString:(NSString *)o{return self.eqAlways?YES:[super isEqualToString:o];}
+- (NSString *)lowercaseString{return self.eqAlways?@"rayneonet_harmless":[super lowercaseString];}
+@end
+static OddString *OS(NSString *s){OddString *o=[OddString new];o.chars=s;return o;}
+// A proxy that forwards everything, isKindOfClass: included, to a real dictionary.
+@interface DictProxy:NSProxy
+@property NSDictionary *target;
+@end
+@implementation DictProxy
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel{return [self.target methodSignatureForSelector:sel];}
+- (void)forwardInvocation:(NSInvocation *)inv{[inv invokeWithTarget:self.target];}
+@end
 #if TIO_DISPLAY_PHONE
 #import "AppBridge.h"
 @implementation TAPPhoneBridge
@@ -52,6 +108,18 @@ static void Dir(NSString *path){assert([FM createDirectoryAtPath:path withInterm
 static NSString *Put(NSString *path,NSData *bytes){Dir(path.stringByDeletingLastPathComponent);assert([bytes writeToFile:path atomically:NO]);return path;}
 static NSData *Text(NSUInteger n){NSMutableData *d=[NSMutableData dataWithLength:n];memset(d.mutableBytes,'t',n);return d;}
 static NSDictionary *Args(NSString *path,NSString *task){return @{@"deviceId":@"fixture-peer",@"filePath":path,@"taskId":task};}
+static void LE(NSMutableData *d,uint32_t v,int n){for(int i=0;i<n;i++){uint8_t b=(v>>(8*i))&255;[d appendBytes:&b length:1];}}
+// A real one-entry stored ZIP ("a.txt" = "hi"): local header, data, central directory, end record.
+static NSData *Zip(void){
+    NSMutableData *z=[NSMutableData new];uint32_t crc=(uint32_t)crc32(0,(const Bytef *)"hi",2);
+    LE(z,0x04034b50,4);LE(z,20,2);LE(z,0,2);LE(z,0,2);LE(z,0,2);LE(z,0,2);LE(z,crc,4);LE(z,2,4);LE(z,2,4);LE(z,5,2);LE(z,0,2);[z appendBytes:"a.txt" length:5];[z appendBytes:"hi" length:2];
+    uint32_t cd=(uint32_t)z.length;
+    LE(z,0x02014b50,4);LE(z,20,2);LE(z,20,2);LE(z,0,2);LE(z,0,2);LE(z,0,2);LE(z,0,2);LE(z,crc,4);LE(z,2,4);LE(z,2,4);LE(z,5,2);LE(z,0,2);LE(z,0,2);LE(z,0,2);LE(z,0,2);LE(z,0,4);LE(z,0,4);[z appendBytes:"a.txt" length:5];
+    uint32_t cdSize=(uint32_t)z.length-cd;
+    LE(z,0x06054b50,4);LE(z,0,2);LE(z,0,2);LE(z,1,2);LE(z,1,2);LE(z,cdSize,4);LE(z,cd,4);LE(z,0,2);
+    return z;
+}
+static NSData *Cat(NSData *a,NSData *b){NSMutableData *m=[a mutableCopy];[m appendData:b];return m;}
 // One check, recorded in the sweep (unless the outcome is flag-dependent by design).
 static void Expect(NSString *container,NSString *method,id args,NSUInteger stage,BOOL want){
     BOOL got=TIOStockTeleprompterSendAllowedIn(container,method,args,stage);
@@ -187,6 +255,71 @@ static void PureCases(NSString *C){
     // Unreadable file: refused, not crashed.
     NSString *locked=At(@"user_508",Text(8));chmod(locked.UTF8String,0);Refuse(C,Args(locked,Lower));chmod(locked.UTF8String,0600);
 }
+// Edge cases from the D5 review (R2, E1-E5), recorded in the sweep like PureCases.
+static void EdgeCases(NSString *C){
+    NSString *(^At)(NSString *,NSData *)=^(NSString *user,NSData *bytes){return Put([NSString stringWithFormat:@"%@/Documents/%@/teleprompter/%@",C,user,Lower],bytes);};
+    NSString *good=At(@"user_700",Text(64));Allow(C,Args(good,Lower));
+    // R2: a ZIP is refused wherever it starts: at 0, behind junk, behind a UTF-8 BOM, or only its end record in the tail.
+    NSData *zip=Zip();
+    Refuse(C,Args(At(@"user_701",zip),Lower));
+    Refuse(C,Args(At(@"user_702",Cat(Text(1000),zip)),Lower));
+    Refuse(C,Args(At(@"user_703",Cat([NSData dataWithBytes:"\xEF\xBB\xBF" length:3],zip)),Lower));
+    Refuse(C,Args(At(@"user_704",Cat([NSData dataWithBytes:"\xFF\xFE" length:2],zip)),Lower));
+    Refuse(C,Args(At(@"user_705",Cat(Text(10),[NSData dataWithBytes:"PK\x05\x06" length:4])),Lower));
+    {NSMutableData *m=[Text(1048576) mutableCopy];memcpy((uint8_t *)m.mutableBytes+1048576-65557,"PK\x05\x06",4);Refuse(C,Args(At(@"user_706",m),Lower));
+     // An end signature far before the last 65557 bytes cannot belong to a ZIP of this file: allowed.
+     m=[Text(1048576) mutableCopy];memcpy((uint8_t *)m.mutableBytes+100,"PK\x05\x06",4);Allow(C,Args(At(@"user_707",m),Lower));}
+    Allow(C,Args(At(@"user_708",[NSData dataWithBytes:"\xEF\xBB\xBFPK\x03\x04" length:7]),Lower)); // BOM + local header only: no end record
+    // E1: the deliberate caps.
+    {NSMutableDictionary *m=[Args(good,Lower) mutableCopy];m[@"deviceId"]=[@"" stringByPaddingToLength:257 withString:@"d" startingAtIndex:0];Refuse(C,m);
+     m[@"deviceId"]=@"g\u00e9r\u00e4t";Allow(C,m);}
+    Allow(C,Args(Put([NSString stringWithFormat:@"%@/Documents/user_00000000000000000000/teleprompter/%@",C,Lower],Text(8)),Lower));
+    Refuse(C,Args(Put([NSString stringWithFormat:@"%@/Documents/user_000000000000000000000/teleprompter/%@",C,Lower],Text(8)),Lower));
+    // Normalisation and look-alikes.
+    for(NSString *m in @[@"rayn\u0435onet_sendFile",@"rayneonet_send\uFF26ile",@"rayneonet_\u200BsendFile",[NSString stringWithFormat:@"rayneonet_sendFile%C",(unichar)0],@"rayneonet_sendFile\n",@"RAYNEONET_SENDFILE"])Expect(C,m,Args(good,Lower),0,NO);
+    for(NSString *rel in @[@"Documents/user_\uFF11\uFF12\uFF13/teleprompter",@"Documents/user_\u0661\u0662/teleprompter",@"Documents/user_1\uFE0F/teleprompter",@"Documents/user_1/t\u00e9leprompter",@"Documents/user_1/te\u0301leprompter",@"Documents/user_1/teleprompter\u0301"]){
+        NSString *p=[NSString stringWithFormat:@"%@/%@/%@",C,rel,Lower];Put(p,Text(8));Refuse(C,Args(p,Lower));}
+    Refuse(C,Args([NSString stringWithFormat:@"%@%C/x",good,(unichar)0],Lower));
+    Refuse(C,Args([good stringByAppendingString:@"\n"],Lower));Refuse(C,Args(good,[Lower stringByAppendingString:@"\n"]));
+    Refuse(C,Args([good stringByAppendingString:@"/..namedfork/rsrc"],Lower));
+    // FIFO and UNIX socket named like the UUID.
+    {NSString *d=[NSString stringWithFormat:@"%@/Documents/user_710/teleprompter",C];Dir(d);NSString *p=[d stringByAppendingPathComponent:Lower];
+     assert(mkfifo(p.UTF8String,0600)==0);Refuse(C,Args(p,Lower));unlink(p.UTF8String);
+     char cwd[PATH_MAX];assert(getcwd(cwd,sizeof cwd));assert(chdir(d.UTF8String)==0);int fd=socket(AF_UNIX,SOCK_STREAM,0);struct sockaddr_un sa={0};sa.sun_family=AF_UNIX;strlcpy(sa.sun_path,Lower.UTF8String,sizeof sa.sun_path);
+     assert(bind(fd,(struct sockaddr *)&sa,sizeof sa)==0);assert(chdir(cwd)==0);Refuse(C,Args(p,Lower));close(fd);unlink(p.UTF8String);}
+    // Swaps: the file replaced by a ZIP, by a symlink to a ZIP, or moved away between two checks.
+    {NSString *p=At(@"user_711",Text(8));Allow(C,Args(p,Lower));Put(p,zip);Refuse(C,Args(p,Lower));
+     Put(p,Text(8));Allow(C,Args(p,Lower));unlink(p.UTF8String);NSString *z=At(@"user_712",zip);assert(symlink(z.UTF8String,p.UTF8String)==0);Refuse(C,Args(p,Lower));unlink(p.UTF8String);
+     Put(p,Text(8));Allow(C,Args(p,Lower));assert(rename(p.UTF8String,[p stringByAppendingString:@"-moved"].UTF8String)==0);Refuse(C,Args(p,Lower));}
+    // E3: the snapshot is fresh and immutable; a later change to the caller's dictionary does not reach it.
+    {NSString *z=At(@"user_713",zip);NSMutableDictionary *m=[Args(good,Lower) mutableCopy];
+     NSDictionary *snap=TIOStockTeleprompterSendSnapshotIn(C,@"rayneonet_sendFile",m,0);assert(snap&&snap!=m&&[snap isEqual:m]);
+     NSMutableString *path=[good mutableCopy];m[@"filePath"]=path;snap=TIOStockTeleprompterSendSnapshotIn(C,@"rayneonet_sendFile",m,0);assert(snap);
+     assert(snap[@"filePath"]!=path);[path setString:z];assert([snap[@"filePath"] isEqualToString:good]);
+     m[@"filePath"]=z;assert(!TIOStockTeleprompterSendSnapshotIn(C,@"rayneonet_sendFile",m,0));
+     [Bits appendString:@"1"];Cases++;}
+    // E2: subclasses and proxies are refused, honest or not: only Foundation's own classes pass.
+    Refuse(C,Odd(Args(good,Lower)));
+    {OddDict *o=Odd(Args(good,Lower));o.enumKeys=@[@"deviceId",@"filePath",@"taskId",@"offset"];Refuse(C,o);
+     o=Odd(Args(good,Lower));o.countValue=3;o.backing=@{@"deviceId":@"d",@"filePath":good,@"taskId":Lower,@"extra":@1};o.enumKeys=@[@"deviceId",@"filePath",@"taskId"];Refuse(C,o);
+     o=Odd(Args(good,Lower));o.flipKey=@"filePath";o.flipValue=At(@"user_714",zip);Refuse(C,o);
+     DictProxy *px=[DictProxy alloc];px.target=Args(good,Lower);Refuse(C,px);}
+    for(NSString *key in @[@"deviceId",@"filePath",@"taskId"]){
+        NSMutableDictionary *m=[Args(good,Lower) mutableCopy];OddString *v=OS(m[key]);m[key]=v;Refuse(C,m);
+        v=OS(m[key]?:@"");v.eqAlways=YES;m[key]=v;Refuse(C,m);}
+    {OddString *mth=OS(@"rayneonet_sendFile");Expect(C,mth,Args(good,Lower),0,NO);
+     mth=OS(@"rayneonet_upgrade");mth.eqAlways=YES;Expect(C,mth,Args(good,Lower),0,NO);}
+    // E5: anything that throws is a refusal, never an exception out of the check.
+    for(NSString *t in @[@"count",@"enum",@"objectForKey",@"isKind"]){OddDict *o=Odd(Args(good,Lower));o.throwOn=t;Refuse(C,o);}
+    {NSMutableDictionary *m=[Args(good,Lower) mutableCopy];OddString *v=OS(good);v.throwOn=@"length";m[@"filePath"]=v;Refuse(C,m);
+     OddString *mth=OS(@"rayneonet_sendFile");mth.throwOn=@"length";Expect(C,mth,Args(good,Lower),0,NO);
+     OddString *ctr=OS(C);ctr.throwOn=@"length";Expect(ctr,@"rayneonet_sendFile",Args(good,Lower),0,NO);}
+    // E4: TIOOTAFileCallBlocked compares from the literal's side on a plain copy.
+    {OddString *liar=OS(@"rayneonet_upgrade");liar.eqAlways=YES;assert(TIOOTAFileCallBlocked(liar,YES,0));
+     OddString *liar2=OS(@"rayneonet_sendFileX");liar2.eqAlways=YES;assert(TIOOTAFileCallBlocked(liar2,YES,0));
+     assert(!TIOOTAFileCallBlocked(OS(@"rayneonet_sendFile"),YES,0));assert(!TIOOTAFileCallBlocked(OS(@"rayneonet_connect"),NO,0));
+     [Bits appendString:@"1"];Cases++;}
+}
 // The dispatching entry point on the given host: the teleprompter shape passes, the rest is unchanged.
 static void HostCases(BOOL downloadOnly){
     NSString *lib=[NSString stringWithFormat:@"%@/%@/%@",Home,Lib,Lower],*doc=[NSString stringWithFormat:@"%@/%@/%@",Home,Doc,Upper];
@@ -208,6 +341,9 @@ static void HostCases(BOOL downloadOnly){
         @{@"arguments":Args(lib,Lower)},
     ];
     NSData *query=[NSData dataWithBytes:"\x08\x01\x10\x01" length:4];
+    // E4: a method that claims to equal everything is judged by its characters on both paths.
+    OddString *liar=OS(@"rayneonet_sendFile");liar.eqAlways=YES;
+    NSDictionary *liarCall=@{@"method":liar,@"arguments":@{@"businessId":@17,@"deviceId":@"fixture-peer",@"payload":query}};
     NSData *start=[NSData dataWithBytes:"\x08\x01\x10\x04\x1a\x0a{\"Mode\":4}" length:16];
     if(downloadOnly){
         assert(TIOOTADownloadOnlyHost());
@@ -220,8 +356,13 @@ static void HostCases(BOOL downloadOnly){
         assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":@"fixture-peer",@"payload":start}}));
         assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@265,@"deviceId":@"fixture-peer",@"payload":query}}));
         assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@17,@"deviceId":@"fixture-peer",@"payload":start}}));
+        assert(TIOOTAFlashBlockCall(liarCall));
         // Recorded in the sweep: these outcomes must not depend on the build flags.
         for(NSDictionary *c in [refusedCalls arrayByAddingObject:call])[Bits appendString:TIOOTAFlashBlockCall(c)?@"1":@"0"];
+        // R3: at OTA stage 1, 2 or 3 the teleprompter call is refused here too.
+        for(NSUInteger stage=1;stage<=3;stage++){StageOverride=stage;NSDictionary *snap=@{};
+            [Bits appendString:TIOOTAFlashBlockCallSnapshot(call,&snap)?@"1":@"0"];assert(TIOOTAFlashBlockCall(call)&&TIOOTADownloadOnlyBlockCall(call)&&snap==nil);}
+        StageOverride=NSUIntegerMax;
     }else{
         assert(!TIOOTADownloadOnlyHost());assert(TIOOTA107HostMatches(Host));
 #if TIO_OTA_FLASH_ENABLED
@@ -229,6 +370,10 @@ static void HostCases(BOOL downloadOnly){
         assert(TIOOTAFlashBuild());assert([TIOOTAFlashStatus()[@"stage"] intValue]==0);
         assert(!TIOOTAFlashBlockCall(call));assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendFile",@"arguments":Args(doc,Upper)}));
         for(NSDictionary *c in refusedCalls)assert(TIOOTAFlashBlockCall(c));
+        assert(TIOOTAFlashBlockCall(liarCall));
+        // R3: at OTA stage 1, 2 or 3 the teleprompter call is refused on the flash host.
+        for(NSUInteger stage=1;stage<=3;stage++){StageOverride=stage;NSDictionary *snap=@{};assert(TIOOTAFlashBlockCallSnapshot(call,&snap)&&snap==nil);assert(TIOOTAFlashBlockCall(call));}
+        StageOverride=0;assert(!TIOOTAFlashBlockCall(call));StageOverride=NSUIntegerMax;
         assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":@"fixture-peer",@"payload":start}}));
         assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@265,@"deviceId":@"fixture-peer",@"payload":query}}));
 #else
@@ -236,6 +381,33 @@ static void HostCases(BOOL downloadOnly){
         assert(!TIOOTAFlashBuild());assert(!TIOOTAFlashBlockCall(call));
 #endif
     }
+    // E3: an allowed call hands back the checked snapshot; the forwarded call is built from the literal and that snapshot.
+    {NSMutableDictionary *mutableArgs=[Args(lib,Lower) mutableCopy];NSDictionary *snap=nil;
+     BOOL blocked=TIOOTAFlashBlockCallSnapshot(@{@"method":[@"rayneonet_" stringByAppendingString:@"sendFile"],@"arguments":mutableArgs},&snap);
+     BOOL guarded=downloadOnly||TIOOTAFlashBuild();
+     assert(!blocked);assert(guarded?(snap&&snap!=mutableArgs&&[snap isEqual:mutableArgs]):snap==nil);
+     if(snap){FlutterMethodCall *fwd=TIOStockTeleprompterForwardCall(snap);assert([fwd isKindOfClass:FlutterMethodCall.class]&&[fwd.method isEqualToString:@"rayneonet_sendFile"]&&fwd.arguments==snap);}
+     assert(!TIOStockTeleprompterForwardCall(nil));assert(!TIOStockTeleprompterForwardCall((id)@"x"));
+     for(NSDictionary *c in refusedCalls){snap=@{};TIOOTAFlashBlockCallSnapshot(c,&snap);assert(snap==nil);}
+     snap=@{};assert(!TIOOTAFlashBlockCallSnapshot(@{@"method":@"rayneonet_connect",@"arguments":@{}},&snap)&&snap==nil);
+     snap=@{};assert(!TIOOTAFlashBlockCallSnapshot(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@17,@"deviceId":@"fixture-peer",@"payload":start}},&snap)&&snap==nil);}
+#if TIO_DISPLAY_PHONE && TIO_OTA_FLASH_ENABLED
+    // R3: an addon scoped sender still decides first on the 1.0.7 flash host: it passes at stage 0 with no
+    // snapshot (its own arguments go on untouched) and is refused at stages 1-3.
+    if(!downloadOnly){
+        NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];__block BOOL entered=NO,failed=NO;
+        TDPPhoneTransport *t=[[TDPPhoneTransport alloc]initWithRoot:root device:@"test" currentDevice:^{return @"test";} call:^BOOL(NSString *m,NSDictionary *a,void(^cb)(id)){
+            assert(TDPPhoneIsScopedCall(m,a));NSDictionary *snap=@{};
+            assert(!TIOOTAFlashBlockCallSnapshot(@{@"method":m,@"arguments":a},&snap)&&snap==nil);
+            for(NSUInteger stage=1;stage<=3;stage++){StageOverride=stage;assert(TIOOTAFlashBlockCall(@{@"method":m,@"arguments":a}));}
+            StageOverride=NSUIntegerMax;entered=YES;@throw [NSException exceptionWithName:@"Synthetic" reason:nil userInfo:nil];
+        }];
+        uint8_t pkt[32];tdp_client_query(pkt,sizeof pkt,1);
+        [t send:[NSData dataWithBytes:pkt length:32] task:NSUUID.UUID.UUIDString submitted:^(BOOL ok,NSString *nativeTask){failed=YES;}];
+        NSDate *deadline=[NSDate dateWithTimeIntervalSinceNow:2];while(!failed&&deadline.timeIntervalSinceNow>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+        assert(entered&&failed);[FM removeItemAtURL:root error:nil];
+    }
+#endif
     // Scoped addon calls: the stage rule is unchanged (scoped passes only at stage 0).
     assert(!TIOOTAFileCallBlocked(@"rayneonet_sendFile",YES,0));
     for(NSUInteger stage=1;stage<=3;stage++){assert(TIOOTAFileCallBlocked(@"rayneonet_sendFile",YES,stage));assert(TIOOTAFileCallBlocked(@"rayneonet_sendFile",NO,stage));}
@@ -252,6 +424,7 @@ int main(void){@autoreleasepool{
     // The same cases against the resolved container spelling.
     NSString *home2=[base stringByAppendingPathComponent:NSUUID.UUID.UUIDString];Dir(home2);assert(realpath(home2.UTF8String,real));
     PureCases(@(real));
+    EdgeCases(Home);
     // 1.0.11 download-only host.
     Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",@"TIOHostProfile":@"ios1011-download"};
     Image=FakeImage(@"22724C97-2EF9-388D-8E6A-6E051855A555");

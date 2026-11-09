@@ -238,8 +238,8 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'phone':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,False),
         'noflags':([],[],False),
     }
-    def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m'):
-        seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'}
+    def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m',extra_seams=None):
+        seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()',**(extra_seams or {})}
         flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',seams)
         feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTA107HostMatches(bundle.infoDictionary)':'TIOOTA107HostMatches(TMG4HostInfo())'})
         sweeps={}
@@ -264,7 +264,9 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     # D5: the stock teleprompter sendFile allow-list, same unchanged policy and the same four flag sets.
     seen.add('stock-teleprompter')
     if only is None or 'stock-teleprompter' in only:
-        host1011_guard('stock-teleprompter',[],'tests/StockTeleprompterSendTests.m')
+        # R3: the test sets the OTA gate stage through this seam.
+        stage_seam={'static NSUInteger GateStage(void){return ':'NSUInteger TMG4StageOverride(void);\nstatic NSUInteger GateStage(void){if(TMG4StageOverride()!=NSUIntegerMax)return TMG4StageOverride();return '}
+        host1011_guard('stock-teleprompter',[],'tests/StockTeleprompterSendTests.m',stage_seam)
         groups.append('stock-teleprompter');print('stock-teleprompter: PASS')
     else:skip('stock-teleprompter','not selected by --only')
     seen.add('ios1011-host')
