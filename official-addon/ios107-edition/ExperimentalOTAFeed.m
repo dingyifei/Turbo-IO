@@ -246,9 +246,12 @@ void TIOStartExperimentalOTAFeedIfMarked(void){
         LaunchID=NSUUID.UUID.UUIDString;
         NSBundle *bundle=NSBundle.mainBundle;
         if(!TIOOTAFlashBuild())return;
-        if(!TIOOTA107HostMatches(bundle.infoDictionary)||!TIOHostImageMatches(_dyld_get_image_header(0),bundle.infoDictionary)){BootstrapFailure=TIOText(@"1.0.7 实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
+        // ios107 or the full ios1011 host, each with its own routing marker, pinned image and route offsets.
+        // On ios1011 the feed runs while TMG flashing is disarmed: answering the stock update check is not a transfer.
+        NSString *profile=TIOOTAHostProfile(bundle.infoDictionary);
+        if(!profile||!TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)){BootstrapFailure=TIOText(@"1.0.7 实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
         NSString *file=[bundle.bundlePath stringByAppendingPathComponent:@"Frameworks/App.framework/App"];
-        if(!TIOOTA107RouteFileMatches(file)){BootstrapFailure=TIOText(@"1.0.7 实验查询路径或对象头不匹配，未启动服务");TIORefreshExperimentalOTAReport();return;}
+        if(!TIOOTARouteFileMatches(file,profile)){BootstrapFailure=TIOText(@"1.0.7 实验查询路径或对象头不匹配，未启动服务");TIORefreshExperimentalOTAReport();return;}
         BootstrapEligible=YES;EnsureFeedListening();ScheduleHealthCheck();
         TIORefreshExperimentalOTAReport();
 #if TARGET_OS_IPHONE
