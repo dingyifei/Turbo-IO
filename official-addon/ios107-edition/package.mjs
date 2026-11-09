@@ -92,8 +92,8 @@ export function verifySignedStockApp(signed,stock,profileName='ios1011-download'
 // G1/G2 gate for the download-only host: the built addon must carry the
 // flag-independent business-9 refusal, the hook target check and the panel's
 // safety model. Missing any of them fails closed before anything is signed.
-export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused';
-export const DOWNLOAD_ONLY_GUARD_SYMBOLS=Object.freeze(['_TIOOTAFlashBlockCall','_TIOOTADownloadOnlyHost','_TIOOTADownloadOnlyBlockCall','_TIOOTADownloadOnlyGuardMarker','_TIOInstallGlassesChannelHook','_TIOGlassesChannelHookFailure','_TIOChannelHookTargetFailure','_TIODownloadOnlyGuardActiveFor','_TIOFirmwareExportSafetyModel','_TIOHostDownloadOnlyGuardActive']);
+export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed';
+export const DOWNLOAD_ONLY_GUARD_SYMBOLS=Object.freeze(['_TIOOTAFlashBlockCall','_TIOOTADownloadOnlyHost','_TIOOTADownloadOnlyBlockCall','_TIOOTADownloadOnlyGuardMarker','_TIOInstallGlassesChannelHook','_TIOGlassesChannelHookFailure','_TIOChannelHookTargetFailure','_TIODownloadOnlyGuardActiveFor','_TIOFirmwareExportSafetyModel','_TIOHostDownloadOnlyGuardActive','_TIOStockTeleprompterSendAllowed']);
 export function validateDownloadOnlyAddon(symbols,addon){
   const names=new Set(String(symbols).split('\n').map(l=>l.trim().split(/\s+/).pop()));
   for(const name of DOWNLOAD_ONLY_GUARD_SYMBOLS)if(!names.has(name))throw Error('download_only_guard_missing:'+name);

@@ -116,10 +116,11 @@ symbols_stage() {
   # G1/G2: the flag-independent 1.0.11 download-only guard is in every build.
   local name
   for name in _TIOOTADownloadOnlyHost _TIOOTADownloadOnlyBlockCall _TIOOTADownloadOnlyGuardMarker \
-    _TIOGlassesChannelHookFailure _TIOChannelHookTargetFailure _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive; do
+    _TIOGlassesChannelHookFailure _TIOChannelHookTargetFailure _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive \
+    _TIOStockTeleprompterSendAllowed; do
     grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 guard symbol $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
+  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
 }
 test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"

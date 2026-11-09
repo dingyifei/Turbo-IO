@@ -412,7 +412,9 @@ test('download-only addon gate: guard symbols and marker are required',()=>{
  }
  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,Buffer.alloc(64)),/download_only_guard_missing:marker/);
  // G4: an addon built before the businessId width check (marker 01) is refused.
- assert.match(packaging.DOWNLOAD_ONLY_GUARD_MARKER,/GUARD-02; flag-independent; businessId above 255 refused$/);
+ assert.match(packaging.DOWNLOAD_ONLY_GUARD_MARKER,/GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed$/);
+ // D5: an addon built before the teleprompter allow-list (marker 02) is refused.
+ assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,Buffer.from('ota guard=IOS1011-DOWNLOAD-GUARD-02; flag-independent; businessId above 255 refused; business 9 refused except the empty version query')),/download_only_guard_missing:marker/);
  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,Buffer.from('ota guard=IOS1011-DOWNLOAD-GUARD-01; flag-independent; business 9 refused except the empty version query')),/download_only_guard_missing:marker/);
  assert.throws(()=>packaging.validateDownloadOnlyAddon(symbols,undefined),/marker/);
  const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
