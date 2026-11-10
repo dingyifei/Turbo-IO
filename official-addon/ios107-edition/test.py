@@ -7,6 +7,9 @@ parser.add_argument('--app107',type=Path)
 parser.add_argument('--patched-app',type=Path)
 parser.add_argument('--app1011',type=Path,help='stock 1.0.11/259 Runner.app (download-only host checks)')
 parser.add_argument('--only',help='comma-separated test groups')
+parser.add_argument('--release',default='default',help='phone release configuration from releases.json (default, c16, c17); --firmware must be its ZIP')
+parser.add_argument('--out',type=Path,help='log and binary directory (default build/tests)')
+parser.add_argument('--tree-firmware',type=Path,help='the ZIP built from the current firmware tree, for the tree audit (default: --firmware)')
 args=parser.parse_args()
 only=set(args.only.split(',')) if args.only else None
 manifest=json.loads((P/'tests/manifest.json').read_text())['tests']
@@ -25,14 +28,25 @@ for file,entry in manifest.items():
 
 ROOT=P.parents[1]
 FW=ROOT/'firmware'   # the single firmware tree; released candidates are the fw/tmgN tags, not folders
-stock=ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
-subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.firmware],check=True)
-out=P/'build/tests';out.mkdir(parents=True,exist_ok=True)
+def stock_zip(base):return ROOT/('firmware-research/strix-%s/stock/Strix-OS-%s-original.zip'%(base,base))
+# The tree audit follows the tree's stock base (build-inputs.json stockBase) and audits the tree's own ZIP.
+stock=stock_zip(json.loads((FW/'build-inputs.json').read_text())['stockBase'])
+subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.tree_firmware or args.firmware],check=True)
+# The phone groups test one release configuration: its ZIP (--firmware), its stock base and its version policy.
+releases=json.loads((P/'releases.json').read_text())['releases']
+if args.release not in releases:raise SystemExit('unknown release '+args.release)
+release=releases[args.release]
+release_stock=stock_zip(release['stockBase'])
+release_versions=['Strix OS '+v for v in release['acceptCurrent']]
+release_define=[] if args.release=='default' else ['-DTIO_RELEASE_%s=1'%args.release.upper()]
+print('release: '+args.release+' ('+release['firmware']+' on stock '+release['stockBase']+'; accepts '+', '.join(release_versions)+')')
+out=(args.out or P/'build/tests').resolve();out.mkdir(parents=True,exist_ok=True)
 def run(name,cmd,env=None):
     r=subprocess.run(list(map(str,cmd)),capture_output=True,text=True,timeout=180,env=env)
     (out/(name+'.log')).write_text(r.stdout+r.stderr)
     if r.returncode:raise RuntimeError(name+' failed: '+r.stdout+r.stderr)
 flags=['xcrun','clang','-O1','-g','-fobjc-arc','-fblocks','-Wno-incompatible-pointer-types','-fsanitize=address,undefined','-framework','Foundation','-I',P]
+flags+=release_define
 flags+=['-DTIO_TEST_UI_LANGUAGE_ZH=1','-framework','NaturalLanguage',P/'TIOLanguage.m',P/'TIOTextLanguage.m',P/'Localization.m']
 groups=[]
 skipped=[]
@@ -102,6 +116,9 @@ if only is None or 'tmg4-host' in only:
     run('tmg4-stock-abi',['python3','-I',FW/'tests/stock_abi_test.py','--stock',stock])
     run('tmg4-kept',['python3','-I',FW/'tools/check_kept.py',FW/'baseline/kept',FW])
     run('tmg4-cjk',['python3','-I',FW/'tools/check_cjk.py',FW])
+    run('tmg10-stock-base',['python3','-I',FW/'tests/stock_base_test.py'])   # labels from stockBase, mixed cores refused, tree on one base
+    run('tmg10-rebase-independent',['python3','-I',FW/'tests/rebase_independent_test.py'])   # every rebased address re-derived without the table (exports fw/tmg9)
+    ctest('tmg10-render-idle',[FW/'src/image-upload-test/render_idle_test.c',FW/'src/image-upload-test/render_idle.c'],FW/'src/image-upload-test')
     groups.append('tmg4-host');print('tmg4-host: PASS')
 else:skip('tmg4-host','not selected by --only')
 # TMG9 bug 1: the REAL m8_hook_wheel (sliced from menu10.c) against a stock model transcribed from the disassembly; the TMG8 body must fail it.
@@ -140,7 +157,11 @@ else:skip('shared-sources','not selected by --only')
 
 seen.add('pins')
 if only is None or 'pins' in only:
-    run('pins',['python3','-I',FW/'tools/phone_pins.py','--zip',args.firmware,'--check',P])
+    # This release's ZIP against its firmware-pins JSON and its stock base; the gate runs the full generator --check.
+    run('pins',['python3','-I',FW/'tools/phone_pins.py','--verify',args.release,'--zip',args.firmware,'--dir',P])
+    # The generator itself, when this run has two different release ZIPs (the gate's default run: ZIP9 and the tree's ZIP10).
+    if args.tree_firmware and args.tree_firmware.resolve()!=args.firmware.resolve():
+        run('pins-generator',['python3','-I',FW/'tests/phone_pins_test.py',args.firmware,args.tree_firmware])
     groups.append('pins');print('pins: PASS')
 else:skip('pins','not selected by --only')
 
@@ -189,13 +210,13 @@ test('runtime-status',['tests/TDRuntimeTests.m','TDPhoneRun.m','TDPhoneStore.m',
 test('voice-tts',['VoiceTTSTests.m','VoiceTTSText.m'])
 with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     root=Path(tmp)
-    for name,archive in [('stock',stock),('candidate',args.firmware)]:
+    for name,archive in [('stock',release_stock),('candidate',args.firmware)]:
         target=root/name;target.mkdir()
         with zipfile.ZipFile(archive) as z:
             for member in z.namelist():
                 assert Path(member).name==member
                 (target/member).write_bytes(z.read(member))
-    test('archive',['ExperimentalOTATests.m','ExperimentalOTA.m'],[args.firmware,stock],['-lz'])
+    test('archive',['ExperimentalOTATests.m','ExperimentalOTA.m'],[args.firmware,release_stock],['-lz'])
     test('directory',['ExperimentalOTADirectoryTests.m','ExperimentalOTA.m'],[root/'candidate',root/'stock'],['-lz'])
     gate=['ExperimentalOTA.m','ExperimentalOTAFlash.m','ExperimentalOTAGuard.m']
     test('flash',['ExperimentalOTAFlashTests.m',*gate,'ExperimentalOTAFeed.m'],[root/'candidate',root/'stock'],['-lz'])
@@ -226,8 +247,8 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     if only is None or 'tmg4-wizard' in only:
         adapted=adapted_policy('tmg4-wizard-policy.m','ExperimentalOTAFlash.m',flash_seams)
         run('tmg4-wizard-build',flags+[P/'tests/TMG4WizardTests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard'])
-        for version in ('1.0.4.12','1.0.5.5'):
-            run('tmg4-wizard-'+version,[out/'tmg4-wizard',root/'candidate',root,'Strix OS '+version])
+        for version in release_versions:
+            run('tmg4-wizard-'+version[len('Strix OS '):],[out/'tmg4-wizard',root/'candidate',root,version])
         groups.append('tmg4-wizard');print('tmg4-wizard: PASS')
     else:skip('tmg4-wizard','not selected by --only')
     # Full 1.0.11 host (ios1011, C15), armed: the same unchanged policy and gate on the
@@ -236,8 +257,8 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     if only is None or 'tmg4-wizard-1011' in only:
         adapted=adapted_policy('tmg4-wizard-1011-policy.m','ExperimentalOTAFlash.m',{**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'})
         run('tmg4-wizard-1011-build',flags+[P/'tests/TMG4Wizard1011Tests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard-1011'])
-        for version in ('1.0.4.12','1.0.5.5'):
-            run('tmg4-wizard-1011-'+version,[out/'tmg4-wizard-1011',root/'candidate',root,'Strix OS '+version])
+        for version in release_versions:
+            run('tmg4-wizard-1011-'+version[len('Strix OS '):],[out/'tmg4-wizard-1011',root/'candidate',root,version])
         groups.append('tmg4-wizard-1011');print('tmg4-wizard-1011: PASS')
     else:skip('tmg4-wizard-1011','not selected by --only')
     # Full 1.0.11 host: the arm record comes only from the addon suite's persistent domain. The real
