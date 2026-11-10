@@ -130,12 +130,41 @@ symbols_stage() {
   done
   grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$addon" || { echo 'Missing 1.0.11 arm guard marker' >&2; return 1; }
 }
+# Release configurations (releases.json). The phone pins of every release are generated from the release ZIPs,
+# found under $TURBO_INPUTS at the paths releases.json names and checked by size and SHA-256.
+PINS=$REPO/firmware/tools/phone_pins.py
+pins_stage() {
+  python3 -I "$PINS" --check "$ED" --inputs "$TURBO_INPUTS"
+}
+# The ZIP built from the current firmware tree (RELEASE, build-inputs.json), for test.py's tree audit.
+tree_zip() {
+  python3 -I "$PINS" --resolve "$(python3 -I "$PINS" --tree-release)" --inputs "$TURBO_INPUTS"
+}
+named_releases() {
+  python3 -I -c 'import json,sys;print(" ".join(n for n in json.load(open(sys.argv[1]))["releases"] if n!="default"))' "$ED/releases.json"
+}
 test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   : "${TURBO_APP107:?package.env must set TURBO_APP107}"
   : "${TURBO_PATCHED_APP:?package.env must set TURBO_PATCHED_APP}"
+  local tree
+  tree=$(tree_zip)
   cd "$ED"
-  python3 test.py --firmware "$TURBO_FIRMWARE" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
+  # The default release (C14/C15) with TURBO_FIRMWARE; test.py's pins group refuses any other ZIP.
+  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
+}
+# Every named release (C16, C17): its pins, archive, directory, gate, feed, wizard and 1.0.11 full-host groups,
+# compiled with its TIO_RELEASE define against its own ZIP and stock base.
+RELEASE_GROUPS=pins,archive,directory,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1011,ios1011-arm-store,ios1011-full-guard,ios1011-full-edge,phone-ota-gate,firmware-export
+release_stage() {
+  local tree name zip
+  tree=$(tree_zip)
+  cd "$ED"
+  for name in $(named_releases); do
+    zip=$(python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS")
+    rm -rf "build/tests-$name"
+    python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} --only "$RELEASE_GROUPS"
+  done
 }
 package_test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
@@ -152,12 +181,19 @@ package_test_stage() {
 host1011_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   [[ -d "$TURBO_APP1011" ]] || { echo 'TURBO_APP1011 is not a directory' >&2; return 1; }
+  local tree
+  tree=$(tree_zip)
   cd "$ED"
-  python3 test.py --firmware "$TURBO_FIRMWARE" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
+  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
   unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE IOS107_TEST_FIRMWARE
   IOS1011_TEST_APP="$TURBO_APP1011" node --test package.test.mjs
-  # The full 1.0.11 package path up to (not including) signing: fresh addon build and both 1.0.11 guards.
+  # The full 1.0.11 package path up to (not including) signing: fresh addon build and both 1.0.11 guards,
+  # for the default release and for every named release (its TIO_RELEASE build and its checked ZIP).
   bash "$REPO/scripts/turbo-package.sh" --host 1011-full --build-only gate-1011-full
+  local name
+  for name in $(named_releases); do
+    bash "$REPO/scripts/turbo-package.sh" --host 1011-full --release "$name" --build-only "gate-1011-full-$name"
+  done
 }
 source_audit_stage() {
   cd "$REPO"
@@ -170,15 +206,18 @@ preview_stage() {
 stage private private_stage
 stage build build_stage
 stage symbols symbols_stage
+stage pins pins_stage
 if [[ $only_build == 1 ]]; then
-  for name in test package-test host1011 source-audit preview; do report skip "$name" '--only-build'; done
+  for name in test releases package-test host1011 source-audit preview; do report skip "$name" '--only-build'; done
 else
   if [[ $skip_tests == 1 ]]; then
     report skip test '--skip-tests'
+    report skip releases '--skip-tests'
     report skip package-test '--skip-tests'
     report skip host1011 '--skip-tests'
   else
     stage test test_stage
+    stage releases release_stage
     stage package-test package_test_stage
     if [[ -n "$TURBO_APP1011" ]]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi
   fi

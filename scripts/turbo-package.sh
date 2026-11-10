@@ -11,17 +11,23 @@ apple_args=()
 # 1.0.11/259 build (stock App.framework, no firmware, no flashing), from TURBO_APP1011.
 # --host 1011-full: the full 1.0.11/259 build (C15) from TURBO_APP1011: route patch at the
 # 1.0.11 offsets, the TMG ZIP, no device-model list; TMG flashing disarmed until armed on the phone.
+# --release cN (with --host 1011-full only): build release cN of official-addon/ios107-edition/releases.json:
+# the addon is compiled with TIO_RELEASE=cN (that release's FirmwarePins.h block) and bundles that release's ZIP,
+# found under $TURBO_INPUTS at the path releases.json names and refused unless its size and SHA-256 match.
+# Without --release the build is the default release (TURBO_FIRMWARE). C16 flashes TMG10; C17 rolls back to TMG9.
 # --wire-log: build the addon with the passive channel recorder (TIO_WIRE_LOG=1).
 # --build-only: build and check the addon as a package run would, then stop before
 # anything touches the signing identity or writes a package.
 host=107
+release=''
 wire_log=0
 build_only=0
-usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011|1011-full] [--wire-log] [--build-only] <label>'
+usage='Usage: turbo-package.sh [--apple-ai <new-directory>] [--host 107|1011|1011-full] [--release cN] [--wire-log] [--build-only] <label>'
 while [[ $# -gt 1 ]]; do
   case "$1" in
     --apple-ai) [[ -n ${2:-} && -z $apple_ai_out ]] || { echo "$usage" >&2; exit 2; }; apple_ai_out=$2; shift 2 ;;
     --host) [[ ${2:-} == 107 || ${2:-} == 1011 || ${2:-} == 1011-full ]] || { echo "$usage" >&2; exit 2; }; host=$2; shift 2 ;;
+    --release) [[ ${2:-} =~ ^c[0-9]+$ && -z $release ]] || { echo "$usage" >&2; exit 2; }; release=$2; shift 2 ;;
     --wire-log) wire_log=1; shift ;;
     --build-only) build_only=1; shift ;;
     *) echo "$usage" >&2; exit 2 ;;
@@ -103,6 +109,11 @@ else required=(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRM
 for name in "${required[@]}"; do
   [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
 done
+firmware=${TURBO_FIRMWARE:-}
+if [[ -n $release ]]; then
+  [[ $host == 1011-full ]] || { echo 'PACKAGE FAIL: --release needs --host 1011-full' >&2; exit 2; }
+  firmware=$(python3 -I "$REPO/firmware/tools/phone_pins.py" --resolve "$release" --inputs "$TURBO_INPUTS") || { echo "PACKAGE FAIL: no checked ZIP for release $release" >&2; exit 1; }
+fi
 # Every package run builds the addon itself, for both hosts, so a dylib left over
 # from an earlier build (other flags, other commit) is never packaged. The flag
 # sets are the ones these builds already used: the gate's set by default, the
@@ -113,6 +124,7 @@ else
   build_flags=(TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_IMAGE_RX_WIDE=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1)
 fi
 [[ $wire_log != 1 ]] || build_flags+=(TIO_WIRE_LOG=1)
+[[ -z $release ]] || build_flags+=(TIO_RELEASE="$release")
 ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
 rm -f "$ADDON"
 [[ ! -e "$ADDON" ]] || { echo 'PACKAGE FAIL: cannot remove the previous addon build' >&2; exit 1; }
@@ -127,6 +139,10 @@ addon_check() {
   else
     bash "$REPO/scripts/wirelog-absent.sh" "$ADDON"
   fi
+  # The addon names its release once; it must be the requested one (default without --release).
+  local want=${release:-default} other
+  [[ $(grep -a -o 'ota release=[a-z0-9]*; ' "$ADDON" | sort -u) == "ota release=$want; " ]] || { echo "addon is not release $want" >&2; return 1; }
+  grep -a -o "ota release=$want; [^\"]*target Strix OS [0-9.]*" "$ADDON" | head -n 1 >&2
   shasum -a 256 "$ADDON" | cut -d' ' -f1
 }
 run_logged addon-check addon_check
@@ -171,13 +187,13 @@ if [[ $build_only == 1 ]]; then
   [[ $host != 1011-full ]] || run_logged full-1011-guard full_1011_guard "$ADDON"
   status=PASS
   active=complete
-  printf 'built %s (%s)\n' "$ADDON" "$addon_sha"
+  printf 'built %s (%s, release %s)\n' "$ADDON" "$addon_sha" "${release:-default}"
   exit 0
 fi
 if [[ $host == 1011 ]]; then
   [[ -f "$TURBO_PROFILE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 elif [[ $host == 1011-full ]]; then
-  [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+  [[ -f "$TURBO_PROFILE" && -f "$firmware" && -d "$TURBO_APP1011" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 else
   [[ -f "$TURBO_PROFILE" && -f "$TURBO_FIRMWARE" && -d "$TURBO_APP107" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 fi
@@ -222,14 +238,15 @@ run_logged full-1011-guard full_1011_guard "$ADDON"
 run_logged addon-unchanged addon_unchanged
 run_logged package node "$ED/package.mjs" --host ios1011 --app "$TURBO_APP1011" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
-  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$TURBO_FIRMWARE" ${apple_args[@]+"${apple_args[@]}"}
+  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$firmware" ${release:+--release "$release"} ${apple_args[@]+"${apple_args[@]}"}
 run_logged codesign codesign --verify --deep --strict "$OUT/Payload/Runner.app"
 run_logged unzip unzip -tq "$OUT/TurboIO-local-only.ipa"
-run_logged report python3 - "$OUT" <<'PY'
+run_logged report python3 - "$OUT" "${release:-default}" <<'PY'
 import hashlib,json,pathlib,plistlib,sys
 out=pathlib.Path(sys.argv[1])
 with (out/'report.json').open() as stream: report=json.load(stream)
 assert report['status']=='SIGNED_NOT_DEVICE_ACCEPTED', 'unexpected package status'
+assert report['release']==sys.argv[2], 'unexpected release'
 assert report['hostProfile']=='ios1011' and report['flashAuthorized'] is False and report['flashArmed'] is False, 'unexpected host profile, flash authorization or arm state'
 assert report['routePatched'] is True and report['firmwareBundled'] is True, 'full 1.0.11 build lacks its route patch or ZIP'
 app=out/'Payload/Runner.app'

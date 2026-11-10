@@ -354,7 +354,7 @@ test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gat
  assert.match(wrapper,/--firmware "\$TURBO_FIRMWARE" --product "\$TURBO_PRODUCT"/);
  const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
  assert.match(gate,/if \[\[ -n "\$TURBO_APP1011" \]\]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi/);
- assert.match(gate,/stage test test_stage\n    stage package-test package_test_stage/);
+ assert.match(gate,/stage test test_stage\n    stage releases release_stage\n    stage package-test package_test_stage/);
 });
 // The full 1.0.11 export panel model is pure and tested (DownloadOnlySafetyTests); pin the UI's call so
 // the guard row's green still needs the installed hook and a stock call seen in this launch.
@@ -688,7 +688,7 @@ test('packager source: the ios1011 build patches its own offsets, writes both ma
  assert.match(s,/patchOTARoute\(fs\.readFileSync\(image\),host\.routeProfile\)\.output/);
  assert.match(s,/if\(host\.hostProfileMarker\)run\('plutil',\['-insert','TIOHostProfile','-string',host\.hostProfileMarker,plist\]\);/);
  assert.match(s,/run\('plutil',\['-insert','TIOExperimentalOTAQueryRouting','-string',host\.routingMarker,plist\]\);/);
- assert.match(s,/plist\.TIOHostProfile!=='ios1011'\|\|plist\.TIOExperimentalOTAQueryRouting!==host\.routingMarker\|\|plist\.TIOExperimentalOTABuild!==pins\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
+ assert.match(s,/plist\.TIOHostProfile!=='ios1011'\|\|plist\.TIOExperimentalOTAQueryRouting!==host\.routingMarker\|\|plist\.TIOExperimentalOTABuild!==release\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
  assert.match(s,/digest\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\)\)!==routeProfile\('ios1011'\)\.outputSHA/);
  assert.match(s,/if\(host\.routePatch\)verifyRoute\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\),host\.routeProfile\);/);
 });
@@ -709,7 +709,11 @@ test('wrappers: --host 1011-full packages the full 1.0.11 build with firmware an
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
  const branch=wrapper.slice(wrapper.indexOf('elif [[ $host == 1011-full ]]; then\n# C15'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
  assert.match(branch,/run_logged full-1011-guard full_1011_guard "\$ADDON"/);
- assert.match(branch,/--host ios1011 --app "\$TURBO_APP1011"/);assert.match(branch,/--firmware "\$TURBO_FIRMWARE"/);
+ assert.match(branch,/--host ios1011 --app "\$TURBO_APP1011"/);assert.match(branch,/--firmware "\$firmware" \$\{release:\+--release "\$release"\}/);
+ // The default release's ZIP is TURBO_FIRMWARE; --release cN takes its checked ZIP from releases.json and only on 1011-full.
+ assert.match(wrapper,/firmware=\$\{TURBO_FIRMWARE:-\}\nif \[\[ -n \$release \]\]; then\n  \[\[ \$host == 1011-full \]\] \|\| \{ echo 'PACKAGE FAIL: --release needs --host 1011-full' >&2; exit 2; \}\n  firmware=\$\(python3 -I "\$REPO\/firmware\/tools\/phone_pins\.py" --resolve "\$release" --inputs "\$TURBO_INPUTS"\)/);
+ assert.match(wrapper,/\[\[ -z \$release \]\] \|\| build_flags\+=\(TIO_RELEASE="\$release"\)/);
+ assert.match(branch,/report\['release'\]==sys\.argv\[2\]/);
  assert.doesNotMatch(branch,/--product|TURBO_APP107|ios1011-download/);
  assert.match(branch,/report\['hostProfile'\]=='ios1011' and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
  assert.match(branch,/'UISupportedDevices' not in info/);
@@ -717,4 +721,25 @@ test('wrappers: --host 1011-full packages the full 1.0.11 build with firmware an
  assert.match(wrapper,/if \[\[ \$host == 1011 \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011\)/);
  assert.match(wrapper,/\[\[ \$host != 1011-full \]\] \|\| run_logged full-1011-guard full_1011_guard "\$ADDON"/);
  assert.match(wrapper,/full_1011_guard\(\) \{\n  local symbols name\n  download_only_guard "\$1"/);
+});
+
+// Release configurations (releases.json, firmware/tools/phone_pins.py): default = C14/C15 (ZIP9), c16 (ZIP10), c17 (ZIP9 rollback).
+test('releases: pins per release, the addon release marker and the full-host-only --release',async()=>{
+ const m=await import('./package.mjs');
+ const d=m.releasePins(),c16=m.releasePins('c16'),c17=m.releasePins('c17');
+ assert.equal(d.release,'default');assert.equal(d.name,'TMG9');assert.equal(d.zipSHA256,'def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd');
+ assert.equal(c16.name,'TMG10');assert.equal(c16.zipSHA256,'4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c');assert.equal(c16.zipBytes,8846364);
+ assert.deepEqual(c16.acceptOsVersions,['Strix OS 1.0.5.5','Strix OS 1.0.5.12']);assert.equal(c16.otaVersion,'Strix OS 1.0.5.12');assert.equal(c16.folder,'Strix_OS_1.0.5.12');
+ assert.deepEqual(c16.acceptQueryCodes,['01.00.05.0005','01.00.05.0012']);assert.equal(c16.feedVersionName,'0100050012');assert.equal(c16.feedVersionCode,100050012);
+ assert.equal(c17.name,'TMG9');assert.equal(c17.zipSHA256,d.zipSHA256);assert.deepEqual(c17.acceptOsVersions,['Strix OS 1.0.5.12']);assert.equal(c17.otaVersion,'Strix OS 1.0.5.5');
+ for(const bad of ['c99','C16','default ','../c16','',null,1])assert.throws(()=>m.releasePins(bad),/unknown_release/);
+ const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+'Strix OS 1.0.5.5; target Strix OS 1.0.5.12\0y');
+ assert.ok(m.validateReleaseAddon(addon(c16),c16));assert.ok(m.validateReleaseAddon(addon(d),d));
+ assert.throws(()=>m.validateReleaseAddon(addon(d),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(addon(c17),c16),/addon_release_mismatch/);
+ assert.throws(()=>m.validateReleaseAddon(addon(c16),c17),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
+ assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG10',Buffer.alloc(8846364),c16),/navs3_firmware_identity_mismatch/);
+ const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};
+ assert.throws(()=>m.validateOptions({...base,release:'c16'}),/release_requires_full_1011_host/);
+ assert.throws(()=>m.validateOptions({...base,host:'ios1011-download',firmware:undefined,release:'c16'}),/release_requires_full_1011_host/);
+ m.validateOptions({...base,host:'ios1011',release:'c16'});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:'c18'}),/unknown_release/);
 });
