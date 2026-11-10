@@ -39,10 +39,16 @@ export function releasePins(name){
 }
 // The addon names its release in one string (ExperimentalOTA.m, from FirmwarePins.h): it must be the requested
 // release with that ZIP, and a named release build must not also carry the default block's marker.
+// Every release name in releases.json (the generator's input), so a new release is covered without editing this file.
+export function releaseNames(){
+  const names=Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases??{});
+  if(!names.includes('default')||names.some(n=>!/^(default|c[0-9]+)$/.test(n)))throw Error('invalid_releases_json');
+  return names;
+}
 export function releaseMarker(p){return `ota release=${p.release}; firmware=${p.name}; zip=${p.zipSHA256}; accepts `;}
 export function validateReleaseAddon(addon,p){
   if(!Buffer.isBuffer(addon)||!addon.includes(Buffer.from(releaseMarker(p))))throw Error('addon_release_mismatch');
-  for(const other of ['default','c16','c17'])if(other!==p.release&&addon.includes(Buffer.from(`ota release=${other}; `)))throw Error('addon_release_mismatch');
+  for(const other of releaseNames())if(other!==p.release&&addon.includes(Buffer.from(`ota release=${other}; `)))throw Error('addon_release_mismatch');
   return true;
 }
 const digest=b=>createHash('sha256').update(b).digest('hex');

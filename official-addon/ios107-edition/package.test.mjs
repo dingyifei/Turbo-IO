@@ -714,6 +714,7 @@ test('wrappers: --host 1011-full packages the full 1.0.11 build with firmware an
  assert.match(wrapper,/firmware=\$\{TURBO_FIRMWARE:-\}\nif \[\[ -n \$release \]\]; then\n  \[\[ \$host == 1011-full \]\] \|\| \{ echo 'PACKAGE FAIL: --release needs --host 1011-full' >&2; exit 2; \}\n  firmware=\$\(python3 -I "\$REPO\/firmware\/tools\/phone_pins\.py" --resolve "\$release" --inputs "\$TURBO_INPUTS"\)/);
  assert.match(wrapper,/\[\[ -z \$release \]\] \|\| build_flags\+=\(TIO_RELEASE="\$release"\)/);
  assert.match(branch,/report\['release'\]==sys\.argv\[2\]/);
+ assert.match(branch,/ipa\.read\('Payload\/Runner\.app\/TurboWeReadCandidate\.zip'\)/);assert.match(branch,/bundled ZIP in the signed IPA is not the release ZIP/);
  assert.doesNotMatch(branch,/--product|TURBO_APP107|ios1011-download/);
  assert.match(branch,/report\['hostProfile'\]=='ios1011' and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
  assert.match(branch,/'UISupportedDevices' not in info/);
@@ -736,7 +737,9 @@ test('releases: pins per release, the addon release marker and the full-host-onl
  const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+'Strix OS 1.0.5.5; target Strix OS 1.0.5.12\0y');
  assert.ok(m.validateReleaseAddon(addon(c16),c16));assert.ok(m.validateReleaseAddon(addon(d),d));
  assert.throws(()=>m.validateReleaseAddon(addon(d),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(addon(c17),c16),/addon_release_mismatch/);
- assert.throws(()=>m.validateReleaseAddon(addon(c16),c17),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
+ assert.throws(()=>m.validateReleaseAddon(addon(c16),c17),/addon_release_mismatch/);
+ assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['default','c16','c17']);
+ assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),Buffer.from('ota release=c17; ')]),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
  assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG10',Buffer.alloc(8846364),c16),/navs3_firmware_identity_mismatch/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};
  assert.throws(()=>m.validateOptions({...base,release:'c16'}),/release_requires_full_1011_host/);

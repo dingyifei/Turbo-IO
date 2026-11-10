@@ -241,8 +241,8 @@ run_logged package node "$ED/package.mjs" --host ios1011 --app "$TURBO_APP1011" 
   --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$firmware" ${release:+--release "$release"} ${apple_args[@]+"${apple_args[@]}"}
 run_logged codesign codesign --verify --deep --strict "$OUT/Payload/Runner.app"
 run_logged unzip unzip -tq "$OUT/TurboIO-local-only.ipa"
-run_logged report python3 - "$OUT" "${release:-default}" <<'PY'
-import hashlib,json,pathlib,plistlib,sys
+run_logged report python3 - "$OUT" "${release:-default}" "$ED" <<'PY'
+import hashlib,json,pathlib,plistlib,sys,zipfile
 out=pathlib.Path(sys.argv[1])
 with (out/'report.json').open() as stream: report=json.load(stream)
 assert report['status']=='SIGNED_NOT_DEVICE_ACCEPTED', 'unexpected package status'
@@ -255,6 +255,11 @@ assert info.get('TIOHostProfile')=='ios1011', 'missing full host profile marker'
 assert info.get('TIOExperimentalOTAQueryRouting')=='ios1011-tmg-loopback-flash-gated-arm-required', 'missing 1.0.11 routing marker'
 assert 'UISupportedDevices' not in info, 'unexpected UISupportedDevices'
 assert (app/'TurboWeReadCandidate.zip').exists(), 'missing firmware resource'
+# The ZIP inside the signed IPA is the selected release's ZIP, byte for byte.
+pins=json.loads((pathlib.Path(sys.argv[3])/('firmware-pins.json' if sys.argv[2]=='default' else 'firmware-pins-'+sys.argv[2]+'.json')).read_text())
+with zipfile.ZipFile(out/'TurboIO-local-only.ipa') as ipa: bundled=ipa.read('Payload/Runner.app/TurboWeReadCandidate.zip')
+assert len(bundled)==pins['zipBytes'] and hashlib.sha256(bundled).hexdigest()==pins['zipSHA256'], 'bundled ZIP in the signed IPA is not the release ZIP'
+assert report['firmwareSHA256']==pins['zipSHA256'], 'report names another ZIP'
 assert report['postSigningRouteVerified'] is True, 'route records not verified after signing'
 digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
 assert report['ipaSHA256']==digest, 'IPA digest mismatch'

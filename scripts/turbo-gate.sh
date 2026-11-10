@@ -143,6 +143,14 @@ tree_zip() {
 named_releases() {
   python3 -I -c 'import json,sys;print(" ".join(n for n in json.load(open(sys.argv[1]))["releases"] if n!="default"))' "$ED/releases.json"
 }
+# The named releases as a checked list: a failed read aborts the stage (an assignment keeps errexit), and an
+# empty list fails rather than silently testing nothing.
+release_list() {
+  local names
+  names=$(named_releases)
+  [[ -n $names ]] || { echo 'releases.json lists no named release' >&2; return 1; }
+  printf '%s\n' "$names"
+}
 test_stage() {
   : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   : "${TURBO_APP107:?package.env must set TURBO_APP107}"
@@ -157,10 +165,11 @@ test_stage() {
 # compiled with its TIO_RELEASE define against its own ZIP and stock base.
 RELEASE_GROUPS=pins,archive,directory,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1011,ios1011-arm-store,ios1011-full-guard,ios1011-full-edge,phone-ota-gate,firmware-export
 release_stage() {
-  local tree name zip
+  local tree name zip names
   tree=$(tree_zip)
+  names=$(release_list)
   cd "$ED"
-  for name in $(named_releases); do
+  for name in $names; do
     zip=$(python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS")
     rm -rf "build/tests-$name"
     python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} --only "$RELEASE_GROUPS"
@@ -190,8 +199,9 @@ host1011_stage() {
   # The full 1.0.11 package path up to (not including) signing: fresh addon build and both 1.0.11 guards,
   # for the default release and for every named release (its TIO_RELEASE build and its checked ZIP).
   bash "$REPO/scripts/turbo-package.sh" --host 1011-full --build-only gate-1011-full
-  local name
-  for name in $(named_releases); do
+  local name names
+  names=$(release_list)
+  for name in $names; do
     bash "$REPO/scripts/turbo-package.sh" --host 1011-full --release "$name" --build-only "gate-1011-full-$name"
   done
 }
