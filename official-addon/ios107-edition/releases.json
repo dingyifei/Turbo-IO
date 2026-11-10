@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins*.json; --check runs in the gate. 'default' is the build with no TIO_RELEASE (C14 on 1.0.7, C15 on 1.0.11). C16 and C17 are 1.0.11 full-host builds selected with turbo-package.sh --release. The accepted current versions of C16 and C17 are the owner-approved pin widenings of 2026-11-08 (plan decision 9).",
+  "releases": {
+    "default": {
+      "builds": "C14 (host 107), C15 (host 1011-full)",
+      "hosts": ["107", "1011-full"],
+      "firmware": "TMG9",
+      "stockBase": "1.0.5.5",
+      "zip": {
+        "input": "tmg9/StrixOS-1.0.5.5-TurboIO-TMG9-CANDIDATE-NOT-APPROVED.zip",
+        "bytes": 8819595,
+        "sha256": "def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd"
+      },
+      "acceptCurrent": ["1.0.4.12", "1.0.5.5"]
+    },
+    "c16": {
+      "builds": "C16: flashes TMG10",
+      "hosts": ["1011-full"],
+      "firmware": "TMG10",
+      "stockBase": "1.0.5.12",
+      "zip": {
+        "input": "tmg10/StrixOS-1.0.5.12-TurboIO-TMG10-CANDIDATE-NOT-APPROVED.zip",
+        "bytes": 8846364,
+        "sha256": "4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c"
+      },
+      "acceptCurrent": ["1.0.5.5", "1.0.5.12"]
+    },
+    "c17": {
+      "builds": "C17: rolls TMG10 back to TMG9 (best effort; the glasses may refuse)",
+      "hosts": ["1011-full"],
+      "firmware": "TMG9",
+      "stockBase": "1.0.5.5",
+      "zip": {
+        "input": "tmg9/StrixOS-1.0.5.5-TurboIO-TMG9-CANDIDATE-NOT-APPROVED.zip",
+        "bytes": 8819595,
+        "sha256": "def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd"
+      },
+      "acceptCurrent": ["1.0.5.12"]
+    }
+  }
+}

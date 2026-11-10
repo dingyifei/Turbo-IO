@@ -1,0 +1,24 @@
+{
+  "name": "TMG9",
+  "zipBytes": 8819595,
+  "zipSHA256": "def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd",
+  "apBytes": 7368648,
+  "apSHA256": "f209a2780e3e5dd5f87ab49320aa667bf33bcef3eeba2de6fc932a59c33bf2fb",
+  "apMD5": "9b037e23817c94b043ed3495b6fad39b",
+  "manifestBytes": 2700,
+  "manifestSHA256": "9faded6c0752c92258d96f13c71f3981b8f48507399ae44feaeff0e7be82c02d",
+  "payloadBytes": 16984141,
+  "payloadSlices": 339,
+  "release": "c17",
+  "stockBase": "1.0.5.5",
+  "otaVersion": "Strix OS 1.0.5.5",
+  "folder": "Strix_OS_1.0.5.5",
+  "feedVersionName": "0100050005",
+  "feedVersionCode": 100050005,
+  "acceptOsVersions": [
+    "Strix OS 1.0.5.12"
+  ],
+  "acceptQueryCodes": [
+    "01.00.05.0012"
+  ]
+}
