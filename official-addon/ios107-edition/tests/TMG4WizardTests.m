@@ -4,6 +4,8 @@
 #import "ExperimentalOTA.h"
 #import "ExperimentalOTAGuard.h"
 #import "FirmwarePins.h"
+#import "ReleasePolicy.h"
+#import "TIOLanguage.h"
 #include <assert.h>
 static NSString *Home;
 static NSTimeInterval Now=100;
@@ -20,10 +22,25 @@ static NSData *Frame(unsigned type,id json,NSData *binary){NSMutableData *d=[NSM
 static void Observe(NSString *version,BOOL confirmed,NSString *peer){TIOOTAFlashObserveEvent(@{@"eventType":@"messageReceived",@"message":@{@"businessId":@9,@"deviceId":peer,@"payload":Frame(1,@{@"OsVersion":version,@"OtaValidationConfirmed":@(confirmed)},nil)}});}
 static BOOL Send(unsigned type,id json,NSData *binary,NSString *peer){return !TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":peer,@"payload":Frame(type,json,binary)}});}
 static NSDictionary *Snapshot(BOOL directory){return TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus(),@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"prefs":Prefs?:@{},@"packageOK":@YES,@"directoryOK":@(directory)});}
+// Folder collision: the official folder holds other bytes of the same name (RayNeo's own download of the
+// target version, here the stock ZIP of the release's base, argv[2]/stock). Authorization is refused with the
+// folder message, nothing is modified, and putting the release back makes it pass again.
+static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSError **)){
+    NSFileManager *fm=NSFileManager.defaultManager;NSString *aside=[directory stringByAppendingString:@".release"];
+    assert([fm moveItemAtPath:directory toPath:aside error:nil]&&[fm copyItemAtPath:stock toPath:directory error:nil]);
+    NSError *e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
+    NSString *want=[NSString stringWithFormat:TIOText(@"ota.directory.foreign"),[@"ota/" stringByAppendingString:TRPFolder],TIO_FW_NAME,@""];
+    assert([e.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
+    NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
+    NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==16&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
+    for(NSString *name in before)assert([[NSData dataWithContentsOfFile:[directory stringByAppendingPathComponent:name]] isEqual:[NSData dataWithContentsOfFile:[stock stringByAppendingPathComponent:name]]]);
+    assert([fm removeItemAtPath:directory error:nil]&&[fm moveItemAtPath:aside toPath:directory error:nil]);
+    assert(TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
+}
 static void Refused(void){NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e)&&e&&[TIOOTAFlashStatus()[@"stage"]intValue]==0);}
 int main(int argc,char **argv){@autoreleasepool{
- assert(argc==4);NSString *version=@(argv[3]);assert(([@[@"Strix OS 1.0.4.12",@"Strix OS 1.0.5.5"]containsObject:version]));
- Home=[@(argv[2])stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"];NSFileManager *fm=NSFileManager.defaultManager;
+ assert(argc==4);NSString *version=@(argv[3]);assert([TRPAccepted() containsObject:version]&&[TIO_FW_ACCEPTED_OS_VERSIONS isEqual:TRPAccepted()]&&[TIO_FW_OTA_FOLDER isEqual:TRPFolder]);
+ Home=[@(argv[2])stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TRPFolder]];NSFileManager *fm=NSFileManager.defaultManager;
  assert([fm createDirectoryAtPath:[directory stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil]);assert([fm copyItemAtPath:@(argv[1]) toPath:directory error:nil]);
  Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.7",@"CFBundleVersion":@"230",@"TIOExperimentalOTAQueryRouting":@"ios107-tmg2-loopback-flash-gated"};
  Prefs=@{@"fixture_ota_firmware_auto_update":@NO};TIOOTARecordTransportHookReady();assert(TIOOTAFlashBuild()&&TIOOTAFlashProtected());assert(TIOOTAScopedSenderCount()==0);
@@ -43,7 +60,10 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(Send(1,nil,nil,@"fixture-peer"));
  Observe(version,YES,@"fixture-peer");assert([TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]);assert([Snapshot(YES)[@"canAuthorize"]boolValue]);
  Now+=120;assert([Snapshot(YES)[@"canAuthorize"]boolValue]);Now+=.001;assert(![Snapshot(YES)[@"canAuthorize"]boolValue]);Refused();Observe(version,YES,@"fixture-peer");
- Observe(version,NO,@"fixture-peer");Refused();Observe(@"Strix OS 1.0.3.15",YES,@"fixture-peer");Refused();Observe(version,YES,@"fixture-peer");
+ Observe(version,NO,@"fixture-peer");Refused();Observe(@"Strix OS 1.0.3.15",YES,@"fixture-peer");Refused();
+ for(NSString *other in TRPKnown())if(![TRPAccepted() containsObject:other]){Observe(other,YES,@"fixture-peer");assert(![TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]);Refused();}
+ Observe(version,YES,@"fixture-peer");
+ Collide(directory,[@(argv[2]) stringByAppendingPathComponent:@"stock"],^BOOL(NSError **e){return TIOOTAFlashAuthorize(e);});
  Prefs=@{};Refused();Prefs=@{@"fixture_ota_firmware_auto_update":@YES};Refused();Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
  Idle=NO;Refused();Idle=YES;Healthy=NO;Refused();Healthy=YES;
  NSDictionary *validHost=Host;Host=@{};Refused();Host=validHost;
@@ -57,7 +77,7 @@ int main(int argc,char **argv){@autoreleasepool{
  Observe(version,YES,@"other-peer");assert(TIOOTAFlashAuthorize(nil));assert(!Send(4,@{@"Mode":@2},nil,@"fixture-peer"));assert(TIOOTAFlashCancel());Observe(version,YES,@"fixture-peer");assert(TIOOTAFlashAuthorize(nil));
  assert(Send(4,@{@"Mode":@2},nil,@"fixture-peer"));assert([Snapshot(YES)[@"phase"]intValue]==TIOOTAPhaseInstalling);assert(!TIOOTAFlashCancel());
  NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==16);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
- assert(Send(5,@{@"OtaVersion":@"Strix OS 1.0.5.5"},nil,@"fixture-peer"));assert(Send(6,manifest,nil,@"fixture-peer"));unsigned slices=0;NSUInteger total=0;
+ assert(Send(5,@{@"OtaVersion":TRPTarget},nil,@"fixture-peer"));assert(Send(6,manifest,nil,@"fixture-peer"));unsigned slices=0;NSUInteger total=0;
  for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)],@"fixture-peer"));slices++;total+=n;}}
  assert(slices==TIO_FW_PAYLOAD_SLICES&&total==TIO_FW_PAYLOAD_BYTES);assert([TIOOTAFlashStatus()[@"validatedSlices"]unsignedIntegerValue]==slices);
  [fm removeItemAtPath:Home error:nil];printf("PASS real OTA wizard/gate from %s: fresh validated business9, exact candidate and all slices, one authorization transition, no feature caps, stale/hash/peer/idle refusals; deviceIO=false\n",version.UTF8String);

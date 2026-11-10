@@ -28,7 +28,7 @@ static NSString *QueryKind(NSString *target){
     NSURLComponents *u=[NSURLComponents componentsWithString:[@"http://127.0.0.1" stringByAppendingString:[target stringByReplacingOccurrencesOfString:@"+" withString:@"%20"]]];
     NSMutableDictionary *params=[NSMutableDictionary new];
     for(NSURLQueryItem *item in u.queryItems){if(params[item.name])return @"invalid";params[item.name]=item.value?:@"";}
-    if([params[@"packageType"] isEqual:@"firmware"]&&[params[@"packageName"] isEqual:@"strix OS"]&&[params[@"glassesType"] isEqual:@"S3"]&&[params[@"deviceType"] isEqual:@"iOS"]&&[@[@"01.00.04.0012",@"01.00.05.0005"] containsObject:params[@"versionCode"]])return @"firmware";
+    if([params[@"packageType"] isEqual:@"firmware"]&&[params[@"packageName"] isEqual:@"strix OS"]&&[params[@"glassesType"] isEqual:@"S3"]&&[params[@"deviceType"] isEqual:@"iOS"]&&[TIO_FW_ACCEPTED_QUERY_CODES containsObject:params[@"versionCode"]])return @"firmware";
     if([params[@"packageType"] isEqual:@"app"])return @"app";
     return @"unknown";
 }
@@ -148,9 +148,9 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
         else if([QueryPaths() containsObject:[[target componentsSeparatedByString:@"?"] firstObject]]){
             _queries++;id data=NSNull.null;
             NSString *kind=QueryKind(target);if([kind isEqual:@"firmware"])_firmwareQueries++;else if([kind isEqual:@"app"])_appQueries++;else _unknownQueries++;
-            if(_archive&&[kind isEqual:@"firmware"])data=@{@"taskName":[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",TIO_FW_NAME],@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":@"0100050005",@"versionCode":@100050005,@"upgradeType":@1,@"userScope":@0,@"updateDesc":@"PRIVATE EXPERIMENT: AP modified, other 14 payloads unchanged. Runtime unverified.",@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/Strix_OS_1.0.5.5.zip",_port,_token]};
+            if(_archive&&[kind isEqual:@"firmware"])data=@{@"taskName":[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",TIO_FW_NAME],@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":TIO_FW_FEED_VERSION_NAME,@"versionCode":@(TIO_FW_FEED_VERSION_CODE),@"upgradeType":@1,@"userScope":@0,@"updateDesc":@"PRIVATE EXPERIMENT: AP modified, other 14 payloads unchanged. Runtime unverified.",@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/%@.zip",_port,_token,TIO_FW_OTA_FOLDER]};
             response=@{@"error_code":@1000,@"error_msg":@"success",@"data":data};
-        }else if(_archive&&[target isEqual:[NSString stringWithFormat:@"/p/%@/Strix_OS_1.0.5.5.zip",_token]]){
+        }else if(_archive&&[target isEqual:[NSString stringWithFormat:@"/p/%@/%@.zip",_token,TIO_FW_OTA_FOLDER]]){
             body=_archive;mime=@"application/zip";extra=@{@"Accept-Ranges":@"bytes"};
             NSString *range=headers[@"range"];
             if(range){
@@ -229,8 +229,8 @@ void TIORefreshExperimentalOTAReport(void){
             if(TIOOTAFlashBuild()){report[@"build"]=@"APP107-OTA-PHONE-01";report[@"flashGate"]=TIOOTAFlashStatus();report[@"flashAuthorized"]=report[@"flashGate"][@"authorized"];}
             NSURL *zip=[directory URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];error=nil;
             report[@"archive"]=TIOReadExperimentalOTA(zip,&error)?:@{@"integrityPassed":@NO};
-            NSURL *official=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"] isDirectory:YES];error=nil;
-            report[@"officialDirectory"]=TIOCheckExperimentalOTADirectory(official,&error)?:@{@"integrityPassed":@NO,@"note":error.localizedDescription?:TIOText(@"尚未读取")};
+            NSURL *official=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];error=nil;
+            report[@"officialDirectory"]=TIOCheckOfficialOTADirectory(official,&error)?:@{@"integrityPassed":@NO,@"note":error.localizedDescription?:TIOText(@"尚未读取")};
             NSURL *file=[directory URLByAppendingPathComponent:@"preparation-status.json"];
             NSData *data=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
             [data writeToURL:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil];

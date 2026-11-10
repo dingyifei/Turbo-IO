@@ -17,11 +17,23 @@ static NSDictionary *Fetch(uint16_t port,NSString *method,NSString *target,NSStr
     NSInteger status=[[[header componentsSeparatedByString:@" "] objectAtIndex:1] integerValue];return @{@"code":@(status),@"body":body,@"header":header};
 }
 static NSDictionary *Query(uint16_t port,NSString *path){NSDictionary *r=Fetch(port,@"GET",path,@"");assert([r[@"code"] intValue]==200);return [NSJSONSerialization JSONObjectWithData:r[@"body"] options:0 error:nil];}
+// The release's feed policy, written out here by hand (not from FirmwarePins.h) so a wrong generated value fails.
+#if defined(TIO_RELEASE_C16)
+static NSArray *Accepted(void){return @[@"01.00.05.0005",@"01.00.05.0012"];}
+static NSString *const WantName=@"0100050012";static const int WantCode=100050012;static NSString *const WantFile=@"Strix_OS_1.0.5.12.zip";
+#elif defined(TIO_RELEASE_C17)
+static NSArray *Accepted(void){return @[@"01.00.05.0012"];}
+static NSString *const WantName=@"0100050005";static const int WantCode=100050005;static NSString *const WantFile=@"Strix_OS_1.0.5.5.zip";
+#else
+static NSArray *Accepted(void){return @[@"01.00.04.0012",@"01.00.05.0005"];}
+static NSString *const WantName=@"0100050005";static const int WantCode=100050005;static NSString *const WantFile=@"Strix_OS_1.0.5.5.zip";
+#endif
 int main(int argc,const char **argv){@autoreleasepool{
+    assert([TIO_FW_ACCEPTED_QUERY_CODES isEqual:Accepted()]);
     assert(argc==2);NSURL *file=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];NSError *error=nil;
     TIOExperimentalOTAFeed *feed=[TIOExperimentalOTAFeed new];assert([feed startOnPort:0 error:&error]);uint16_t port=feed.port;assert(port);
     TIOExperimentalOTAFeed *duplicate=[TIOExperimentalOTAFeed new];assert(![duplicate startOnPort:port error:&error]);assert(!duplicate.port);
-    NSString *path=@"/g/xxxxxxxA78p2M?packageType=firmware&packageName=strix%20OS&glassesType=S3&deviceType=iOS&versionCode=01.00.04.0012";assert(Query(port,path)[@"data"]==NSNull.null);assert(Query(port,@"/g/xxxxxxxxxxCCXhB?sn=TEST_ONLY")[ @"data"]==NSNull.null);
+    NSString *path=[@"/g/xxxxxxxA78p2M?packageType=firmware&packageName=strix%20OS&glassesType=S3&deviceType=iOS&versionCode=" stringByAppendingString:Accepted()[0]];assert(Query(port,path)[@"data"]==NSNull.null);assert(Query(port,@"/g/xxxxxxxxxxCCXhB?sn=TEST_ONLY")[ @"data"]==NSNull.null);
     assert([Fetch(port,@"POST",path,@"")[@"code"] intValue]==405);
     assert([Fetch(port,@"GET",path,@"Host: evil.example\r\n")[@"code"] intValue]==400);
     assert([Fetch(port,@"GET",path,@"Transfer-Encoding: chunked\r\n")[@"code"] intValue]==400);
@@ -31,8 +43,13 @@ int main(int argc,const char **argv){@autoreleasepool{
 #if TIO_OTA_FEED_ARMING_ENABLED
     assert(![feed armArchive:file lifetime:901 error:&error]);
     assert([feed armArchive:file lifetime:60 error:&error]);NSDictionary *metadata=Query(port,path)[@"data"];
-    for(NSString *wrong in @[@"/g/xxxxxxxA78p2M",@"/g/xxxxxxxA78p2M?packageType=app",[path stringByAppendingString:@"&packageType=firmware"],[path stringByReplacingOccurrencesOfString:@"S3" withString:@"OTHER"],[path stringByReplacingOccurrencesOfString:@"01.00.04.0012" withString:@"01.00.03.0015"]])assert(Query(port,wrong)[@"data"]==NSNull.null);
-    assert([metadata[@"apkSize"] unsignedIntegerValue]==TIO_FW_ZIP_BYTES);assert([metadata[@"versionName"] isEqual:@"0100050005"]);assert([metadata[@"versionCode"] intValue]==100050005);
+    for(NSString *wrong in @[@"/g/xxxxxxxA78p2M",@"/g/xxxxxxxA78p2M?packageType=app",[path stringByAppendingString:@"&packageType=firmware"],[path stringByReplacingOccurrencesOfString:@"S3" withString:@"OTHER"],[path stringByReplacingOccurrencesOfString:Accepted()[0] withString:@"01.00.03.0015"]])assert(Query(port,wrong)[@"data"]==NSNull.null);
+    // Every accepted current version gets the offer; every other known version gets nothing.
+    for(NSString *code in @[@"01.00.03.0015",@"01.00.04.0012",@"01.00.05.0005",@"01.00.05.0012",@"01.00.05.0006",@"1.0.5.12"]){
+        NSString *query=[path stringByReplacingOccurrencesOfString:Accepted()[0] withString:code];
+        if([Accepted() containsObject:code])assert([Query(port,query)[@"data"][@"versionCode"] intValue]==WantCode);else assert(Query(port,query)[@"data"]==NSNull.null);
+    }
+    assert([metadata[@"apkSize"] unsignedIntegerValue]==TIO_FW_ZIP_BYTES);assert([metadata[@"versionName"] isEqual:WantName]);assert([metadata[@"versionCode"] intValue]==WantCode);assert([[NSURL URLWithString:metadata[@"downloadUrl"]].lastPathComponent isEqual:WantFile]);
     NSData *zip=[NSData dataWithContentsOfURL:file];uint8_t digest[16];CC_MD5(zip.bytes,(CC_LONG)zip.length,digest);NSMutableString *md5=[NSMutableString new];for(unsigned i=0;i<16;i++)[md5 appendFormat:@"%02x",digest[i]];
     assert([metadata[@"apkMd5"] isEqual:md5]);assert(![metadata[@"apkMd5"] isEqual:@"bfc21e823f991962c852de22f02d62c1"]);
     NSString *download=[NSURL URLWithString:metadata[@"downloadUrl"]].path;NSDictionary *full=Fetch(port,@"GET",download,@"");assert([full[@"code"] intValue]==200);assert(TIOCheckExperimentalOTA(full[@"body"],nil));

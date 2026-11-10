@@ -133,8 +133,8 @@ static NSString *ShortStatus(NSString *value) {
     };
     ImportPackage=^BOOL(NSURL *source,NSError **error){ return TIOImportExperimentalOTA(source,StoreDirectory(),error)!=nil; };
     CheckDirectory=^BOOL(NSError **error){
-        NSURL *directory=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"] isDirectory:YES];
-        return TIOCheckExperimentalOTADirectory(directory,error)!=nil;
+        NSURL *directory=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];
+        return TIOCheckOfficialOTADirectory(directory,error)!=nil;
     };
 }
 
@@ -143,7 +143,7 @@ static NSString *ShortStatus(NSString *value) {
     self.title=TIOText(@"ota.title");
     self.view.backgroundColor=TIODesignColor(TIODesignColorBg);
     self.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeAlways;
-    TIOAttachInfo(self,TIOText(@"ota.info.title"),TIOFormat(@"ota.info.body",FirmwareName()));
+    TIOAttachInfo(self,TIOText(@"ota.info.title"),TIOFormat(@"ota.info.body",FirmwareName(),TIO_FW_BASE));
     [self buildTable];
     [self buildActionBar];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(didBecomeActive)

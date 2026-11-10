@@ -4,6 +4,12 @@
 #include <assert.h>
 static void V(NSMutableData *d,NSUInteger n){do{uint8_t b=n&127;n>>=7;if(n)b|=128;[d appendBytes:&b length:1];}while(n);}
 static NSData *F(NSUInteger type,id json,NSData *binary){NSMutableData *d=[NSMutableData new];V(d,8);V(d,1);V(d,16);V(d,type);if(json){NSData *j=[NSJSONSerialization dataWithJSONObject:json options:0 error:nil];V(d,26);V(d,j.length);[d appendData:j];}if(binary){V(d,34);V(d,binary.length);[d appendData:binary];}return d;}
+// The release's type-5 target, written out by hand so a wrong generated value fails.
+#if defined(TIO_RELEASE_C16)
+static NSString *const Target=@"Strix OS 1.0.5.12";
+#else
+static NSString *const Target=@"Strix OS 1.0.5.5";
+#endif
 static TIOOTAFlashGate *Ready(NSURL *dir){TIOOTAFlashGate *g=[TIOOTAFlashGate new];NSError *e=nil;assert([g prepareDirectory:dir device:@"TEST_DEVICE" uptime:10 error:&e]);return g;}
 int main(int argc,const char **argv){@autoreleasepool{
     assert(argc==3);NSURL *dir=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];
@@ -13,7 +19,7 @@ int main(int argc,const char **argv){@autoreleasepool{
     for(id v in @[@"true",@YES,@0,@1,@"unknown",NSNull.null])assert(!TIOOTAAutoUpdateDisabled(@{@"test_ota_firmware_auto_update":v}));assert(!TIOOTAAutoUpdateDisabled(@{}));assert(!TIOOTAAutoUpdateDisabled(@{@"one_ota_firmware_auto_update":@"false",@"two_ota_firmware_auto_update":@"true"}));
     NSDictionary *files=TIOCopyExperimentalOTAPayloads(dir,nil);assert(files.count==16);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
     for(NSDictionary *row in manifest)if([row[@"Name"] isEqual:@"nuttx_ap.bin"]){assert([row[@"Md5"] isEqual:TIO_FW_AP_MD5]);assert([row[@"Size"] unsignedIntegerValue]==TIO_FW_AP_BYTES);}
-    NSData *start=F(4,@{@"Mode":@2},nil),*version=F(5,@{@"OtaVersion":@"Strix OS 1.0.5.5"},nil),*info=F(6,manifest,nil);
+    NSData *start=F(4,@{@"Mode":@2},nil),*version=F(5,@{@"OtaVersion":Target},nil),*info=F(6,manifest,nil);
     TIOOTAFlashGate *g=[TIOOTAFlashGate new];assert(![g allows:start device:@"TEST_DEVICE" uptime:10]);assert(![g allows:info device:@"TEST_DEVICE" uptime:10]);
     assert([g allows:F(1,nil,nil) device:@"TEST_DEVICE" uptime:10]);assert([g allows:F(2,nil,nil) device:@"TEST_DEVICE" uptime:10]);assert([g allows:F(3,@{@"OtaSize":@(TIO_FW_ZIP_BYTES)},nil) device:@"TEST_DEVICE" uptime:10]);
     // Regression: the real official failure recovery asks idle with type 11.
@@ -27,6 +33,9 @@ int main(int argc,const char **argv){@autoreleasepool{
     g=Ready(dir);assert(![g allows:start device:@"TEST_DEVICE" uptime:910]);assert(![g.status[@"authorized"] boolValue]);
     g=Ready(dir);assert([g allows:start device:@"TEST_DEVICE" uptime:11]);assert(![g cancel]);assert(![g allows:info device:@"TEST_DEVICE" uptime:12]);assert([g.status[@"stage"] intValue]==3);
     g=Ready(dir);assert([g allows:start device:@"TEST_DEVICE" uptime:11]);assert([g allows:version device:@"TEST_DEVICE" uptime:12]);assert([g allows:info device:@"TEST_DEVICE" uptime:13]);
+    // Any other target version ends the session.
+    for(NSString *other in @[@"Strix OS 1.0.5.5",@"Strix OS 1.0.5.12",@"Strix OS 1.0.4.12",@"1.0.5.12",@"Strix OS 1.0.5.6"]){if([other isEqual:Target])continue;
+        TIOOTAFlashGate *probe=Ready(dir);assert([probe allows:start device:@"TEST_DEVICE" uptime:11]);assert(![probe allows:F(5,@{@"OtaVersion":other},nil) device:@"TEST_DEVICE" uptime:12]);assert([probe.status[@"stage"] intValue]==3);}
     NSUInteger slices=0,total=0;
     for(NSDictionary *row in manifest){NSString *name=row[@"Name"];NSData *file=files[name];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger size=MIN((NSUInteger)51200,file.length-at);NSData *part=[file subdataWithRange:NSMakeRange(at,size)];assert([g allows:F(7,@{@"Name":name,@"Start":@(at),@"Size":@(size)},part) device:@"TEST_DEVICE" uptime:20]);slices++;total+=size;}}
     assert([g.status[@"validatedSlices"] unsignedIntegerValue]==slices);assert([g.status[@"validatedSliceBytes"] unsignedIntegerValue]==total);

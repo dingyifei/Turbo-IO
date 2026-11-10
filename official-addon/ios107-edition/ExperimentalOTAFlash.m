@@ -243,7 +243,7 @@ BOOL TIOPhoneOTAReadAllowed(NSData *data){
         if(_stage==1&&now>=_deadline){[self cancel];return NO;}
         BOOL ok=[device isEqual:_device];
         if(t==4)ok=ok&&_stage==1&&dict&&[j count]==1&&Number(j[@"Mode"],&n)&&n==2&&!binary.length;
-        else if(t==5)ok=ok&&_stage==2&&dict&&[j isEqual:@{@"OtaVersion":@"Strix OS 1.0.5.5"}]&&!binary.length;
+        else if(t==5)ok=ok&&_stage==2&&dict&&[j isEqual:@{@"OtaVersion":TIO_FW_OTA_VERSION}]&&!binary.length;
         else if(t==6)ok=ok&&_stage==2&&_versionSent&&[j isKindOfClass:NSArray.class]&&[j isEqual:_manifest]&&!binary.length;
         else if(t==7){
             NSUInteger start=0,size=0;NSString *name=dict?j[@"Name"]:nil;NSData *file=[name isKindOfClass:NSString.class]?_files[name]:nil;
@@ -530,7 +530,7 @@ void TIOOTAFlashObserveEvent(NSDictionary *event){
     NSDictionary *m=event[@"message"];NSUInteger business=0;if(![m isKindOfClass:NSDictionary.class]||!Business(m[@"businessId"],&business)||business!=9)return;
     NSDictionary *f=TIOOTAFrame(m[@"payload"]);id j=f[@"json"];
     if([f[@"type"] isEqual:@1]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}}
-    if([f[@"type"] isEqual:@1]&&[j isKindOfClass:NSDictionary.class]&&[@[@"Strix OS 1.0.4.12",@"Strix OS 1.0.5.5"] containsObject:j[@"OsVersion"]]&&[j[@"OtaValidationConfirmed"] isEqual:@YES]&&[m[@"deviceId"] isKindOfClass:NSString.class]){
+    if([f[@"type"] isEqual:@1]&&[j isKindOfClass:NSDictionary.class]&&[TIO_FW_ACCEPTED_OS_VERSIONS containsObject:j[@"OsVersion"]]&&[j[@"OtaValidationConfirmed"] isEqual:@YES]&&[m[@"deviceId"] isKindOfClass:NSString.class]){
         @synchronized(NSProcessInfo.processInfo){ObservedDevice=[m[@"deviceId"] copy];ObservedAt=NSProcessInfo.processInfo.systemUptime;}
     }
 }
@@ -549,8 +549,9 @@ BOOL TIOOTAFlashAuthorize(NSError **error){
     if(!TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation)){Error(error,TIOText(@"请先在官方眼镜软件版本页关闭自动更新；未读到明确关闭状态，不授予试刷权限。"));return NO;}
     NSString *device;NSTimeInterval at;@synchronized(NSProcessInfo.processInfo){device=ObservedDevice;at=ObservedAt;}
     NSTimeInterval now=NSProcessInfo.processInfo.systemUptime;
-    if(!device.length||now-at>120){Error(error,TIOText(@"请先从官方固件页重新检查版本；需要两分钟内的 1.0.4.12 或 1.0.5.5 有效回读。"));return NO;}
-    NSURL *dir=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"] isDirectory:YES];
+    if(!device.length||now-at>120){Error(error,[NSString stringWithFormat:TIOText(@"ota.version.recheck"),TIO_FW_ACCEPTED_VERSIONS_TEXT]);return NO;}
+    NSURL *dir=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];
+    if(!TIOCheckOfficialOTADirectory(dir,error))return NO;
     return [Current() prepareDirectory:dir device:device uptime:now error:error];
 }
 BOOL TIOOTAFlashCancel(void){return [Current() cancel];}

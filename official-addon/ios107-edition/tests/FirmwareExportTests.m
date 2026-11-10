@@ -108,7 +108,7 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert([TIOFirmwareExportVersion(@"StrixOS-1.0.5.5-TurboIO-TMG9-CANDIDATE-NOT-APPROVED.zip") isEqual:@"1.0.5.5"]&&[TIOFirmwareExportVersion(@"Strix OS 1.0.6") isEqual:@"1.0.6"]&&!TIOFirmwareExportVersion(@"fota_1.bin"));
     // Turbo candidates: the compiled-in pin and every recorded ZIP hash, case-insensitive; anything else is not one.
     assert([TIOFirmwareExportTurboCandidate(TIO_FW_ZIP_SHA256) isEqual:TIO_FW_NAME]&&[TIOFirmwareExportTurboCandidate(TIO_FW_ZIP_SHA256.uppercaseString) isEqual:TIO_FW_NAME]);
-    assert([TIOFirmwareExportTurboCandidate(@"def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd") isEqual:@"TMG9"]&&[TIOFirmwareExportTurboCandidate(@"6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473") isEqual:@"TMG2"]);
+    assert([TIOFirmwareExportTurboCandidate(@"def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd") isEqual:@"TMG9"]&&[TIOFirmwareExportTurboCandidate(@"4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c") isEqual:@"TMG10"]&&[TIOFirmwareExportTurboCandidate(@"6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473") isEqual:@"TMG2"]);
     assert(!TIOFirmwareExportTurboCandidate(Shasum(P(@"Library/Application Support/ota/Strix_OS_1.0.5.6.zip")))&&!TIOFirmwareExportTurboCandidate(nil)&&!TIOFirmwareExportTurboCandidate(@""));
     {NSError *e=nil;NSDictionary *h=TIOFirmwareExportHash([NSURL fileURLWithPath:leftZip],&e);assert(h&&!e);
      if(argc>1)assert([TIOFirmwareExportTurboCandidate(h[@"sha256"]) hasPrefix:@"TMG"]);else assert(!TIOFirmwareExportTurboCandidate(h[@"sha256"]));}

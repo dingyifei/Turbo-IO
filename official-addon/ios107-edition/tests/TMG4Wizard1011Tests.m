@@ -10,6 +10,7 @@
 #import "ExperimentalOTA.h"
 #import "ExperimentalOTAGuard.h"
 #import "FirmwarePins.h"
+#import "ReleasePolicy.h"
 #import "TIOLanguage.h"
 #import <mach-o/loader.h>
 #include <assert.h>
@@ -37,6 +38,21 @@ static BOOL Send(unsigned type,id json,NSData *binary){return !TIOOTAFlashBlockC
 static NSDictionary *Snapshot(void){return TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus(),@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"prefs":Prefs?:@{},@"packageOK":@YES,@"directoryOK":@YES});}
 static int Stage(void){return [TIOOTAFlashStatus()[@"stage"] intValue];}
 static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
+// Folder collision: the official folder holds other bytes of the same name (RayNeo's own download of the
+// target version, here the stock ZIP of the release's base, argv[2]/stock). Authorization is refused with the
+// folder message, nothing is modified, and putting the release back makes it pass again.
+static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSError **)){
+    NSFileManager *fm=NSFileManager.defaultManager;NSString *aside=[directory stringByAppendingString:@".release"];
+    assert([fm moveItemAtPath:directory toPath:aside error:nil]&&[fm copyItemAtPath:stock toPath:directory error:nil]);
+    NSError *e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
+    NSString *want=[NSString stringWithFormat:TIOText(@"ota.directory.foreign"),[@"ota/" stringByAppendingString:TRPFolder],TIO_FW_NAME,@""];
+    assert([e.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
+    NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
+    NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==16&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
+    for(NSString *name in before)assert([[NSData dataWithContentsOfFile:[directory stringByAppendingPathComponent:name]] isEqual:[NSData dataWithContentsOfFile:[stock stringByAppendingPathComponent:name]]]);
+    assert([fm removeItemAtPath:directory error:nil]&&[fm moveItemAtPath:aside toPath:directory error:nil]);
+    assert(TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
+}
 // Disarm from a background queue, as the wizard's runAction does, while the main run loop turns.
 static BOOL DisarmOffMain(void){
     __block BOOL ok=NO,done=NO;
@@ -46,8 +62,8 @@ static BOOL DisarmOffMain(void){
     assert(done);return ok;
 }
 int main(int argc,char **argv){@autoreleasepool{
-    assert(argc==4);NSString *version=@(argv[3]);assert(([@[@"Strix OS 1.0.4.12",@"Strix OS 1.0.5.5"] containsObject:version]));
-    Home=[@(argv[2]) stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:@"Library/Application Support/ota/Strix_OS_1.0.5.5"];NSFileManager *fm=NSFileManager.defaultManager;
+    assert(argc==4);NSString *version=@(argv[3]);assert([TRPAccepted() containsObject:version]&&[TIO_FW_ACCEPTED_OS_VERSIONS isEqual:TRPAccepted()]&&[TIO_FW_OTA_FOLDER isEqual:TRPFolder]);
+    Home=[@(argv[2]) stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TRPFolder]];NSFileManager *fm=NSFileManager.defaultManager;
     assert([fm createDirectoryAtPath:[directory stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil]);assert([fm copyItemAtPath:@(argv[1]) toPath:directory error:nil]);
     Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",@"TIOHostProfile":@"ios1011",@"TIOExperimentalOTAQueryRouting":TIO_OTA_1011_ROUTING_MARKER};
     Image=FakeImage(@"22724C97-2EF9-388D-8E6A-6E051855A555");[TMG4ArmStore() removeAllObjects];
@@ -62,6 +78,9 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(TIOOTAFlashArm(nil));s=Snapshot();assert([s[@"armed"] boolValue]&&[s[@"arm"] integerValue]==TIOOTACheckOK&&[s[@"canAuthorize"] boolValue]);
     Prefs=@{@"fixture_ota_firmware_auto_update":@YES};assert(![Snapshot()[@"canAuthorize"] boolValue]&&!TIOOTAFlashAuthorize(nil)&&Stage()==0);
     Prefs=@{};assert(!TIOOTAFlashAuthorize(nil)&&Stage()==0);Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
+    // Armed, every other check passes: a glasses version outside this release's set, or other files in the folder, still refuse.
+    for(NSString *other in TRPKnown())if(![TRPAccepted() containsObject:other]){Observe(other);assert(![TIOOTAFlashStatus()[@"recentTargetVersionRead"] boolValue]&&!TIOOTAFlashAuthorize(nil)&&Stage()==0);}
+    Observe(version);Collide(directory,[@(argv[2]) stringByAppendingPathComponent:@"stock"],^BOOL(NSError **e){return TIOOTAFlashAuthorize(e);});
     // Disarm before the transfer revokes the grant and closes the gate again.
     assert(TIOOTAFlashAuthorize(nil)&&Stage()==1);assert(TIOOTAFlashDisarm()&&Stage()==0&&!TIOOTAFlashArmed());
     assert(!Send(4,@{@"Mode":@2},nil));assert(!TIOOTAFlashAuthorize(nil));
@@ -80,7 +99,7 @@ int main(int argc,char **argv){@autoreleasepool{
     // A started transfer no longer reads the arm record: with the record gone (a read failure, a
     // preferences glitch or a disarm that raced the guard) or replaced by junk, the 1.0.7 gate decides.
     NSDictionary *record=TMG4ArmStore()[ArmKey];assert(record);[TMG4ArmStore() removeObjectForKey:ArmKey];assert(!TIOOTAFlashArmed());
-    assert(Send(5,@{@"OtaVersion":@"Strix OS 1.0.5.5"},nil));TMG4ArmStore()[ArmKey]=@"junk";assert(Send(6,manifest,nil));[TMG4ArmStore() removeObjectForKey:ArmKey];unsigned slices=0;NSUInteger total=0;
+    assert(Send(5,@{@"OtaVersion":TRPTarget},nil));TMG4ArmStore()[ArmKey]=@"junk";assert(Send(6,manifest,nil));[TMG4ArmStore() removeObjectForKey:ArmKey];unsigned slices=0;NSUInteger total=0;
     for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)]));slices++;total+=n;}}
     assert(slices==TIO_FW_PAYLOAD_SLICES&&total==TIO_FW_PAYLOAD_BYTES);assert([TIOOTAFlashStatus()[@"validatedSlices"] unsignedIntegerValue]==slices);
     assert(Stage()==2);TMG4ArmStore()[ArmKey]=record;

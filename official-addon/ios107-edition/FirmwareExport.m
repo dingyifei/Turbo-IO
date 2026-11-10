@@ -72,6 +72,8 @@ NSString *TIOFirmwareExportTurboCandidate(NSString *sha256){
             @"a4ca066249c277c06bebf327970b4c1c31935a3f84aeab371bf11c99b9d5a36b":@"TMG9",
             @"a6e5d4e7f1e9c3dbcc5efab292a6010b50301d9472e5af0e36b4e7a4089c8c91":@"TMG9",
             @"def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd":@"TMG9",
+            @"97657db0d8835b9c43f692cd095e5ca44743d35c7e9ad8473bf29dafdb8ccdd2":@"TMG10",
+            @"4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c":@"TMG10",
         } mutableCopy];
         d[TIO_FW_ZIP_SHA256.lowercaseString]=TIO_FW_NAME;known=d;
     });
