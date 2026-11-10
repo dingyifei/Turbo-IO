@@ -52,7 +52,10 @@ Build inputs live outside the repo: the stock app, signing configuration and fir
 - `bash scripts/turbo-gate.sh` runs the full check: addon build, symbol checks, `test.py` against the pinned firmware, the node tests, and the source audit.
 - `bash scripts/turbo-gate.sh --only-build` is the quick check for each commit.
 - `bash scripts/turbo-gate.sh --preview` adds the preview screenshot matrix and takes about 15 minutes. Run it once on the final commit before handing off, not after every commit.
-- `python3 official-addon/ios107-edition/test.py --firmware <zip> --app107 <Runner.app> --patched-app <Runner.app>` runs the test groups directly; the gate fills in these paths from `package.env`.
+- `python3 official-addon/ios107-edition/test.py --firmware <release zip> --tree-firmware <tree zip> [--release default|c16|c17] --app107 <Runner.app> --patched-app <Runner.app>` runs the test groups directly.
+  - `--firmware` is the ZIP of the phone release under test (`releases.json`; the default release is ZIP9), and `--release` picks that release's pins, stock base and wizard versions.
+  - `--tree-firmware` is the ZIP built from the current `firmware/` tree, which the tree audit checks on its own stock base (today ZIP10). It defaults to `--firmware`, which fails whenever the two differ.
+  - The gate fills in these paths from `package.env` and `releases.json` (release ZIPs under `$TURBO_INPUTS`), and runs C16 and C17 on their OTA groups with `--release` and `--only`.
 - `bash scripts/turbo-package.sh <label>` builds and signs an IPA into a new directory. Run it only when the task asks for it. It never installs anything.
 - For the firmware build, the ZIP audit and pin updates, see the firmware tree's README. A release build must reproduce the ZIP recorded for its tag byte for byte.
 

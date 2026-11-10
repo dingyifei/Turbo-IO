@@ -212,6 +212,7 @@ TMG4 adds persistent custom tile order/visibility (stock0–6 fixed, Camera alwa
 6. For rollback, install the earlier **C5** phone package, then manually flash the matching **TMG2 ZIP**. C8 accepts only TMG4; it cannot authorize a TMG2 rollback. Recovery has not been tested by this worker.
 
 ```sh
+# Historical (TMG4) form. Today: test.py --firmware <release zip> --tree-firmware <tree zip> [--release cN] ...; see AGENTS.md.
 python3 test.py --firmware /absolute/path/to/exact-TMG4-CANDIDATE-NOT-APPROVED.zip --app107 /absolute/original/Runner.app --patched-app /absolute/patched/Runner.app
 ```
 

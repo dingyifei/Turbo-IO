@@ -104,6 +104,7 @@ TMG4 adds persistent custom tile order/visibility (stock0–6 fixed, Camera alwa
 6. For rollback, install the earlier **C5** phone package, then manually flash the matching **TMG2 ZIP**. C8 accepts only TMG4; it cannot authorize a TMG2 rollback. Recovery has not been tested by this worker.
 
 ```sh
+# Historical (TMG4) form. Today: test.py --firmware <release zip> --tree-firmware <tree zip> [--release cN] ...; see AGENTS.md.
 python3 test.py --firmware /absolute/path/to/exact-TMG4-CANDIDATE-NOT-APPROVED.zip --app107 /absolute/original/Runner.app --patched-app /absolute/patched/Runner.app
 ```
 
@@ -155,6 +156,7 @@ TIO_MAPKIT_ENABLED=1 TIO_OTA_FLASH_ENABLED=1 TIO_DISPLAY_FLASH=1 TIO_CLASSIC_BIN
 TIO_DEV=1 TIO_MAPKIT_ENABLED=1 TIO_OTA_FLASH_ENABLED=1 TIO_DISPLAY_FLASH=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
 
 node --test package.test.mjs
+# Historical (TMG3) form. Today: test.py --firmware <release zip> --tree-firmware <tree zip> [--release cN]; see AGENTS.md.
 python3 test.py --firmware /absolute/path/to/exact-TMG3-CANDIDATE-NOT-APPROVED.zip
 ```
 
@@ -218,10 +220,10 @@ With `TIO_APPLE_AI=1`, Apple on-device mode (3), or endpoint mode (2) with Apple
 
 每次启动后，请先完成一次官方问答以确认聊天域，再重新选择回答模式。状态、等待时间和可复制的元数据时间线位于「开发者 › Apple Intelligence」。两个实验开关默认关闭；后台监听不保证锁屏可用。队列溢出时会停止新的合成接管并保序回放，需重新启动应用恢复；时间线不保存问题、答案或错误消息。
 
-Portable regression group (supply the audited firmware archive):
+Portable regression group (supply the release ZIP and the ZIP of the current firmware tree; see AGENTS.md for `--release`):
 
 ```bash
-python3 test.py --firmware "$FWZIP" --only no-network-turn
+python3 test.py --firmware "$FWZIP" --tree-firmware "$TREEZIP" --only no-network-turn   # FWZIP: the release ZIP (default: ZIP9); TREEZIP: the firmware tree's ZIP (ZIP10)
 ```
 
 The tests inject a clock and scheduler and cover cancellation, duplicates, pre-accept replies, ordered hold/replay, synchronous reentry, stale generations, overflow, wrapper failures and default-OFF options. Build and simulator gates do not establish device acceptance. No entitlements, Info.plist keys or firmware changes are introduced by WP7c.
