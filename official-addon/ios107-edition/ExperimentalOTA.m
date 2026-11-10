@@ -78,12 +78,40 @@ NSDictionary<NSString *,NSData *> *TIOCopyExperimentalOTAPayloads(NSURL *directo
     }
     return TIOCheckExperimentalOTADirectory(directory,error)?[copy copy]:nil;
 }
+// A complete, self-consistent package that is not this release: exactly this release's 16 member names, each a
+// plain file (never followed), and an OtaFileInfo.json whose 15 rows name the other 15 files with their sizes on
+// disk. RayNeo leaves such a folder after its own download of the same version. Anything less (missing, extra
+// or truncated members, an unreadable manifest) is an incomplete download and keeps the ordinary message.
+static BOOL CompleteOtherPackage(NSURL *directory){
+    NSDictionary *pins=PayloadPins();NSError *e=nil;
+    NSArray *names=[NSFileManager.defaultManager contentsOfDirectoryAtPath:directory.path error:&e];
+    if(!names||![[NSSet setWithArray:names] isEqualToSet:[NSSet setWithArray:pins.allKeys]]||names.count!=pins.count)return NO;
+    NSMutableDictionary *sizes=[NSMutableDictionary new];
+    for(NSString *name in names){struct stat item;
+        if(lstat([directory URLByAppendingPathComponent:name].path.fileSystemRepresentation,&item)||!S_ISREG(item.st_mode))return NO;
+        sizes[name]=@(item.st_size);}
+    if([sizes[@"OtaFileInfo.json"] longLongValue]>1<<20)return NO;
+    NSData *data=[NSData dataWithContentsOfURL:[directory URLByAppendingPathComponent:@"OtaFileInfo.json"] options:0 error:&e];
+    id rows=data?[NSJSONSerialization JSONObjectWithData:data options:0 error:&e]:nil;
+    if(![rows isKindOfClass:NSArray.class]||[rows count]!=pins.count-1)return NO;
+    NSMutableSet *seen=[NSMutableSet new];
+    for(id row in rows){
+        if(![row isKindOfClass:NSDictionary.class]||![row[@"Name"] isKindOfClass:NSString.class]||![row[@"Size"] isKindOfClass:NSNumber.class])return NO;
+        NSString *name=row[@"Name"];
+        if([name isEqual:@"OtaFileInfo.json"]||!sizes[name]||[seen containsObject:name]||[row[@"Size"] longLongValue]!=[sizes[name] longLongValue])return NO;
+        [seen addObject:name];
+    }
+    return seen.count==pins.count-1;
+}
 NSDictionary *TIOCheckOfficialOTADirectory(NSURL *directory,NSError **error){
     NSError *problem=nil;NSDictionary *result=TIOCheckExperimentalOTADirectory(directory,&problem);if(result)return result;
-    struct stat item;
-    if(directory.isFileURL&&!lstat(directory.path.fileSystemRepresentation,&item)&&S_ISDIR(item.st_mode))
-        return Fail(error,[NSString stringWithFormat:TIOText(@"ota.directory.foreign"),[@"ota/" stringByAppendingString:directory.lastPathComponent],TIO_FW_NAME,problem.localizedDescription?:@""]);
-    if(error)*error=problem;return nil;
+    // Fails closed either way; only the wording differs.
+    if(directory.isFileURL&&CompleteOtherPackage(directory)){
+        NSString *format=TIOText(@"ota.directory.foreign");
+        return Fail(error,[NSString stringWithFormat:format,[@"ota/" stringByAppendingString:directory.lastPathComponent],TIO_FW_NAME,problem.localizedDescription?:@""]);
+    }
+    if(error)*error=problem?:[NSError errorWithDomain:@"TurboIO.ExperimentalOTA" code:1 userInfo:@{NSLocalizedDescriptionKey:TIOText(@"待传目录不存在、不可读或为符号链接；未发送。")}];
+    return nil;
 }
 NSDictionary *TIOCheckExperimentalOTADirectory(NSURL *directory,NSError **error){
     if(!directory.isFileURL)return Fail(error,TIOText(@"只接受本地待传目录。"));

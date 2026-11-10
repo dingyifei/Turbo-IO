@@ -34,7 +34,23 @@ static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSErro
     NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
     NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==16&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
     for(NSString *name in before)assert([[NSData dataWithContentsOfFile:[directory stringByAppendingPathComponent:name]] isEqual:[NSData dataWithContentsOfFile:[stock stringByAppendingPathComponent:name]]]);
-    assert([fm removeItemAtPath:directory error:nil]&&[fm moveItemAtPath:aside toPath:directory error:nil]);
+    // A partial download (a member missing, a member cut short, or an empty folder) is not called foreign:
+    // it keeps the incomplete-download message, and it is refused just the same.
+    for(NSString *damage in @[@"missing",@"truncated",@"empty",@"extra"]){
+        assert([fm removeItemAtPath:directory error:nil]&&[fm copyItemAtPath:stock toPath:directory error:nil]);
+        NSString *victim=[directory stringByAppendingPathComponent:@"smf.json"];
+        if([damage isEqual:@"missing"])assert([fm removeItemAtPath:victim error:nil]);
+        if([damage isEqual:@"truncated"]){NSData *d=[NSData dataWithContentsOfFile:victim];assert([[d subdataWithRange:NSMakeRange(0,d.length/2)] writeToFile:victim atomically:NO]);}
+        if([damage isEqual:@"empty"])for(NSString *n in [fm contentsOfDirectoryAtPath:directory error:nil])assert([fm removeItemAtPath:[directory stringByAppendingPathComponent:n] error:nil]);
+        if([damage isEqual:@"extra"])assert([[NSData dataWithBytes:"x" length:1] writeToFile:[directory stringByAppendingPathComponent:@"fota_1.bin"] atomically:NO]);
+        e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
+        assert(e&&![e.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
+        direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct));
+        NSError *plain=nil;assert(!TIOCheckExperimentalOTADirectory([NSURL fileURLWithPath:directory],&plain)&&[direct.localizedDescription isEqual:plain.localizedDescription]);
+    }
+    // A missing folder: refused, with the ordinary message.
+    assert([fm removeItemAtPath:directory error:nil]);direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&direct&&![direct.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
+    assert([fm moveItemAtPath:aside toPath:directory error:nil]);
     assert(TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
 }
 static void Refused(void){NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e)&&e&&[TIOOTAFlashStatus()[@"stage"]intValue]==0);}
