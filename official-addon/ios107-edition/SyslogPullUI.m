@@ -2,6 +2,7 @@
 #import "SyslogPull.h"
 #import "TIOConfirm.h"
 #import "TIOLanguage.h"
+#import "TIODesign.h"
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
 #include <stdatomic.h>
@@ -92,7 +93,7 @@ static void Start(void){
   if(p.row==0){c.textLabel.text=TIOText(@"common.ui.sensorLog.status");c.detailTextLabel.text=Detail?:TIOText(@"common.ui.sensorLog.state.idle");}
   else{c.textLabel.text=TIOText(@"common.ui.sensorLog.request");c.detailTextLabel.text=Ready()?TIOText(@"common.ui.sensorLog.ready"):TIOText(@"common.ui.sensorLog.notready");}
   return c;}
- c.textLabel.font=[UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightRegular];c.textLabel.text=Lines.count?Lines[p.row]:(Decoded?TIOText(@"common.ui.sensorLog.nomatch"):@"-");return c;
+ c.textLabel.font=TIODesignMonospacedDigitFont(TIODesignTextStyleFootnote);c.textLabel.text=Lines.count?Lines[p.row]:(Decoded?TIOText(@"common.ui.sensorLog.nomatch"):@"-");return c;
 }
 - (void)tableView:(UITableView *)v didSelectRowAtIndexPath:(NSIndexPath *)p{[v deselectRowAtIndexPath:p animated:YES];if(p.section!=0||p.row!=1)return;
  TIOConfirm(self,TIOText(@"common.ui.sensorLog.confirm.title"),TIOText(@"common.ui.sensorLog.confirm.message"),TIOText(@"common.ui.sensorLog.confirm.action"),NO,^{Start();});}
