@@ -127,6 +127,7 @@ nav_link = 0x10592acd;
 nav_input = 0x10592ac5;
 nav_bonded = 0x10583b15;
 nav_folded = 0x1058073d;
+tio_imu_family = 0x1985ac50;
 nav_business_idle = 0x1057d001;
 nav_connection = 0x104eca55;
 nav_stop_event = 0x104b6b43;

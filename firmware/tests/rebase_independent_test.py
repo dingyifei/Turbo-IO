@@ -97,6 +97,9 @@ NOT_STOCK = {
     '0x19200000': 'fake layer in render_idle_test.c', '0x19200038': 'fake layer field',
     '0x19200040': 'fake layer field',
 }
+# Link symbols added after the TMG9 tree (which this test takes its universe from): RAM data, not code. The table row is
+# verified by pool_context_check below instead of by the old-tree universe.
+ADDED_AFTER_TMG9 = {'tio_imu_family'}
 # The one value known to be wrong upstream: the decomp matcher's tgr_intercept partner (a different function).
 KNOWN_BAD = {'tgr_intercept': (0x10625941, 0x1062c439)}
 COPY_CALLEES = ('memcpy', 'memset', 'strcmp', 'strlen')
@@ -729,6 +732,32 @@ def compare_tree(old_u, rows, new_fw, new_img):
     return out
 
 
+def pool_context_check(row, old, new):
+    """A RAM address with no old-tree row: every literal word of the new address in the new image sits in a pool whose RAM
+    neighbours (within 12 words) are, shifted by the row's delta, the neighbours of one literal of the old address in the
+    old image; and the old address has no other pool context. Returns problems."""
+    o, n = int(row['old'], 16), int(row['new'], 16)
+    delta = n - o
+    def pools(img, value):
+        out = []
+        for i in range(0, len(img.raw) - 3, 4):
+            if struct.unpack_from('<I', img.raw, i)[0] == value:
+                lo, hi = max(0, i - 48), min(len(img.raw) - 3, i + 52)
+                out.append(frozenset(w for w in struct.unpack_from('<%dI' % ((hi - lo) // 4), img.raw, lo)
+                                     if 0x19000000 <= w < RAM_HI and w != value))
+        return out
+    new_pools, old_pools = pools(new, n), pools(old, o)
+    if not new_pools or not old_pools:
+        return ['%s: no literal of %s in the new image or of %s in the old one' % (row['symbol'], hex(n), hex(o))]
+    bad = [] if len(new_pools) == len(old_pools) else ['%s: %d literals in the new image, %d in the old' % (
+        row['symbol'], len(new_pools), len(old_pools))]
+    for np_ in new_pools:
+        shifted = {w - delta for w in np_ if (w - delta) >= RAM_LO}
+        if not any(len(shifted & op) >= min(3, len(np_)) for op in old_pools):
+            bad.append('%s: new pool at literal has no old counterpart shifted by %s' % (row['symbol'], hex(delta)))
+    return bad
+
+
 def compare_table(rows, table, new_img=None):
     out = []
     checked = 0
@@ -736,6 +765,8 @@ def compare_table(rows, table, new_img=None):
     for key in ([('link', r['symbol']) for r in table['linkld']] + [('edit', r['role']) for r in table['edits']] +
                 [('abi', int(r['old'], 16)) for r in table['stockAbiRanges']] +
                 [('value', int(v['old'], 16)) for v in table['values']]):
+        if key[0] == 'link' and key[1] in ADDED_AFTER_TMG9:
+            continue
         if key not in mine and not (key[0] == 'abi' and any(r['kind'] == 'abi' and r['old'] == key[1] for r in rows)):
             out.append('table row %s %s is not an address of the old tree' % key)
     tl = {r['symbol']: r for r in table['linkld']}
@@ -828,7 +859,14 @@ def run(old_fw, new_fw, table, old, new):
         if r['new'] is None and not r['problems']:
             problems.append('%s %s %s: unresolved' % (r['kind'], r['name'], hex(r['old'])))
     tree_problems = compare_tree(u, rows, new_fw, new)
+    added = [r for r in table['linkld'] if r['symbol'] in ADDED_AFTER_TMG9]
+    table_extra = [x for r in added for x in pool_context_check(r, old, new)]
+    link_text = (new_fw/'link.ld').read_text()
+    for r in added:
+        if '%s = %s;' % (r['symbol'], r['new']) not in link_text:
+            table_extra.append('link.ld does not define %s = %s' % (r['symbol'], r['new']))
     table_problems, table_checked = compare_table(rows, table, new)
+    table_problems += table_extra
     for r in rows:
         if r['kind'] == 'abi' and r['new'] is not None and 'abi_new_sha' in r:
             n = r['abi'][0]

@@ -21,9 +21,11 @@
 #include "../display-runtime-v1/native_display_file.h"
 #define m8_page_open tdp_native_open
 #define m8_page_retire tdp_native_retire
+#define m8_page_knob tdp_native_knob
 #else
 #define m8_page_open tio_native_page_open
 #define m8_page_retire tio_native_page_retire
+#define m8_page_knob(page,delta,press) ((void)(page),(void)(delta),(void)(press))
 #endif
 extern const M8RenderAPI m8_native_api;
 extern void *stock_ctor(void *);
@@ -283,7 +285,8 @@ void m8_hook_wheel(void *app,int delta){
   if(tap_service_visible(app)){tap_service_wheel(app,delta);return;}
   if(tf_slot_visible(focus(app))){tf_slot_wheel(focus(app),delta);return;}
   if(tm_slot_visible(music(app))){tm_slot_wheel(music(app),delta);return;}
-  if(tail(app)->page||tn_slot_visible(slot(app)))return;
+  if(tail(app)->page){m8_page_knob(tail(app)->page,delta,false);return;} /* only the open Display Test page sees it; no other page changes */
+  if(tn_slot_visible(slot(app)))return;
   /* Hook-owned stepping (menu_wheel.h): one item per D raw counts, D the live detent, in every layout, and a step past either end is the wrap.
    * Stock never sees the delta (no 2x, no rounding): eligible() is the same gate stock_wheel applies first, so a delta it would drop is dropped here
    * before it can build a remainder. Same path as remote_native.c: stock native_snap re-seats the carousel from the selected index (app+0x88), so that
@@ -298,7 +301,8 @@ bool m8_hook_event(void *app,void *event){
   tgr_knob_cancel(app,stream_tick());
   if(tc_native_visible(app))return true;
   if(tf_back_blocked(slot(app),stream_tick()))return true;
-  if(tap_service_visible(app)||tail(app)->page)return true;
+  if(tap_service_visible(app))return true;
+  if(tail(app)->page){m8_page_knob(tail(app)->page,0,true);return true;} /* swallowed as before; the open page also counts it */
   if(tm_slot_visible(music(app)))return true;
   /* Preserve native seven-item eligibility and keyboard behavior exactly. */
   if(*word(app,0x88)<7)return stock_event(app,event);

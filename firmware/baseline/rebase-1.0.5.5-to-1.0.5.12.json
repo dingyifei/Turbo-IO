@@ -2428,6 +2428,24 @@
    ]
   },
   {
+   "symbol": "tio_imu_family",
+   "old": "0x197f2d08",
+   "new": "0x1985ac50",
+   "delta": 425800,
+   "oldFunction": null,
+   "insideGhidraBody": false,
+   "class": "ram byte (not code)",
+   "decomp": {
+    "method": "literal-pool context: the pools around each of the 3 literals of 0x1985ac50 in 1.0.5.12 (neighbour globals at +3, +1, -0x10, sibling globals all shifted by 0x67f48) have exactly one equivalent in 1.0.5.5"
+   },
+   "checks": [
+    "literal-pool-context"
+   ],
+   "notes": [
+    "AP RAM byte read 10 times a second by the Sensors screen: 0 unknown, 1 none, 2 ST, 3 TDK. Read only."
+   ]
+  },
+  {
    "symbol": "nav_business_idle",
    "old": "0x105635a1",
    "new": "0x1057d001",
