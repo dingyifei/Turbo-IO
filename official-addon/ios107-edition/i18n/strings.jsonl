@@ -301,6 +301,29 @@
 {"key":"common.ui.recordingText.notice.title","en":"Recording and Lifelog","zh":"录音与智记"}
 {"key":"common.ui.recordingText.send.action","en":"Confirm summary","zh":"确认整理"}
 {"key":"common.ui.recordingText.send.title","en":"Send transcript text?","zh":"发送转写文字？"}
+{"key":"common.ui.sensorLog.confirm.action","en":"Request once","zh":"请求一次"}
+{"key":"common.ui.sensorLog.confirm.message","en":"Asks the glasses for their system log once and reads the sensor lines out of it on this phone. Nothing is uploaded. Keep the official connection open.","zh":"向眼镜请求一次系统日志，并在本机读取其中的传感器行。不会上传任何内容。请保持官方连接。"}
+{"key":"common.ui.sensorLog.confirm.title","en":"Request the glasses log?","zh":"请求眼镜日志？"}
+{"key":"common.ui.sensorLog.footer","en":"Read-only. Sends one request and only watches the reply; the stock app still handles the file. Results stay on this phone. Pull soon after power-on, since the glasses log ring is small.","zh":"只读。只发送一次请求并旁听回复，文件仍由官方应用处理。结果只留在本机。请在眼镜开机后尽早读取，日志环形缓冲区很小。"}
+{"key":"common.ui.sensorLog.lines","en":"Sensor lines","zh":"传感器行"}
+{"key":"common.ui.sensorLog.nomatch","en":"The log decoded but holds no sensor lines.","zh":"日志已解码，但没有传感器行。"}
+{"key":"common.ui.sensorLog.notready","en":"Not ready: open the official home page first","zh":"未就绪：请先打开官方首页"}
+{"key":"common.ui.sensorLog.ready","en":"Ready","zh":"就绪"}
+{"key":"common.ui.sensorLog.request","en":"Request sensor log","zh":"请求传感器日志"}
+{"key":"common.ui.sensorLog.state.abi","en":"Not sent: the official transport is not available","zh":"未发送：官方传输不可用"}
+{"key":"common.ui.sensorLog.state.done","en":"Decoded %lu bytes of log; %lu sensor lines","zh":"已解码 %lu 字节日志；传感器行 %lu 条"}
+{"key":"common.ui.sensorLog.state.doneEarly","en":"Completion notice arrived before a file notice; nothing to read","zh":"完成通知早于文件通知；没有可读内容"}
+{"key":"common.ui.sensorLog.state.exception","en":"The send call raised an error; result unknown, not retried","zh":"发送调用出错；结果未知，不重试"}
+{"key":"common.ui.sensorLog.state.idle","en":"Not requested yet","zh":"尚未请求"}
+{"key":"common.ui.sensorLog.state.nodata","en":"Completion notice arrived but no file bytes were seen (%@)","zh":"收到完成通知，但没有看到文件数据（%@）"}
+{"key":"common.ui.sensorLog.state.nodecode","en":"Received %lu of %llu bytes; could not decode them as lz4","zh":"收到 %lu / %llu 字节；无法按 lz4 解码"}
+{"key":"common.ui.sensorLog.state.notaccepted","en":"The transport did not confirm the request; result unknown, not retried","zh":"传输层未确认请求；结果未知，不重试"}
+{"key":"common.ui.sensorLog.state.notice","en":"Glasses announced %@ (%llu bytes)","zh":"眼镜通知了 %@（%llu 字节）"}
+{"key":"common.ui.sensorLog.state.notready","en":"Not sent: no recent official traffic; open the official home page and try again","zh":"未发送：没有近期官方通信；请打开官方首页后重试"}
+{"key":"common.ui.sensorLog.state.progress","en":"Received %lu of %llu bytes","zh":"已收到 %lu / %llu 字节"}
+{"key":"common.ui.sensorLog.state.requested","en":"Requested once; waiting for the glasses","zh":"已请求一次；等待眼镜"}
+{"key":"common.ui.sensorLog.state.timeout","en":"No log in 180 seconds; result unknown, not retried","zh":"180 秒内没有日志；结果未知，不重试"}
+{"key":"common.ui.sensorLog.status","en":"Status","zh":"状态"}
 {"key":"common.ui.subtitle.confirm.action","en":"I checked the glasses","zh":"已实际确认"}
 {"key":"common.ui.subtitle.confirm.message","en":"Are the glasses on the home page with recording, Lifelog, teleprompter, captions, and voice conversations stopped?","zh":"眼镜已回首页，且录音、智记、提词、字幕、语音对话均已结束？"}
 {"key":"common.ui.subtitle.confirm.title","en":"Confirm based on the actual glasses state","zh":"请以实际眼镜状态确认"}
@@ -405,6 +428,7 @@
 {"key":"hub.row.recordings","en":"Recordings","zh":"录音"}
 {"key":"hub.row.search","en":"Web search","zh":"联网搜索"}
 {"key":"hub.row.searchTest","en":"Test web search","zh":"测试联网搜索"}
+{"key":"hub.row.sensorLog","en":"Sensor log","zh":"传感器日志"}
 {"key":"hub.row.status","en":"Hook status","zh":"挂钩状态"}
 {"key":"hub.row.subtitleHUD","en":"Subtitle navigation","zh":"字幕导航"}
 {"key":"hub.row.summary","en":"Transcript cleanup","zh":"转写整理"}

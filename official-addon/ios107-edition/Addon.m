@@ -57,6 +57,7 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "AppUI.h"
 #import "EditorAI.h"
 #import "GlassesLogProbe.h"
+#import "SyslogPullUI.h"
 #import "SubtitleHUD.h"
 #import "VoiceTTS.h"
 #if __has_include("TIOLanguage.h")
@@ -737,6 +738,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"localTranslation"]) {TIOOpenLocalTranslation(self);return;}
     else if ([key isEqual:@"diagnosticsRuntime"]) screen=TDDiagnosticsController();
     else if ([key isEqual:@"glassesLog"]) screen=TIOGlassesLogController();
+    else if ([key isEqual:@"sensorLog"]) screen=TIOSyslogPullController();
 #if TIO_WIRE_LOG
     else if ([key isEqual:@"wireLog"]) screen=TIOWireLogController();
 #endif
