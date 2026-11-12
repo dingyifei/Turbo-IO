@@ -153,6 +153,10 @@
       "group": "core",
       "note": "Asserts Chinese voice-exit phrases and persona; WP1/WP2 must update these tests."
     },
+    "SyslogPullTests.m": {
+      "status": "run",
+      "group": "syslog-pull"
+    },
     "TodoProtocolTests.m": {
       "status": "run",
       "group": "todo-protocol"
