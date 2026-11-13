@@ -58,6 +58,7 @@ static const TIOHubRowDefinition Rows[] = {
     {@"status", @"checkmark.shield", TIOHubSectionDeveloper, @"", @""},
     {@"diagnosticsRuntime", @"gauge.with.dots.needle.67percent", TIOHubSectionDeveloper, @"", @"TDG1"},
     {@"glassesLog", @"doc.text.magnifyingglass", TIOHubSectionDeveloper, @"", @""},
+    {@"sensorLog", @"sensor", TIOHubSectionDeveloper, @"", @""},
 #if TIO_WIRE_LOG
     {@"wireLog", @"record.circle", TIOHubSectionDeveloper, @"", @""},
 #endif

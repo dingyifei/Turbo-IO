@@ -87,6 +87,7 @@
       "TDPhoneRun.m",
       "TDPhoneStore.m",
       "GlassesLogProbe.m",
+      "SyslogPullUI.m",
       "ImageUploadUI.m",
       "RoadMap.m",
       "NativeNavigation.m",

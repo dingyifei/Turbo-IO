@@ -16,6 +16,7 @@
 #import "EditorTransport.h"
 #import "AppBridge.h"
 #import "GlassesLogProbe.h"
+#import "SyslogPullUI.h"
 #import "SubtitleHUD.h"
 #import "ExperimentalOTAGuard.h"
 #import "ExperimentalOTAFlash.h"
@@ -123,7 +124,7 @@ static void MethodHook(id self,SEL cmd,id call,id result){
 #endif
         ^(id forwarded,id reply){
         if(TIOGlassesLogBlockCall(forwarded)){if(reply)((void(^)(id))reply)(@{@"success":@NO,@"message":@"Turbo IO glasses log study isolated: duplicate request suppressed"});return;}
-        {NSString *method=Get(forwarded,@"method");id args=Get(forwarded,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
+        {NSString *method=Get(forwarded,@"method");id args=Get(forwarded,@"arguments");if([args isKindOfClass:NSDictionary.class]){void(^work)(void)=^{TIOProtocolObserveCall(self,method,args);TIOA2UIObserveCall(self,method,args);TIOGlassesLogObserveCall(self,method,args);TIOSyslogObserveCall(self,method,args);TIOSubtitleObserveCall(self,method,args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
         if([Get(forwarded,@"method") isEqual:@"rayneonet_sendMessage"]){id args=Get(forwarded,@"arguments");if([args isKindOfClass:NSDictionary.class]&&[args[@"businessId"] isEqual:@22]){void (^work)(void)=^{TIOTodoObserveSnapshotMessage(args);};if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);}}
         PriorMethod(self,cmd,forwarded,reply);
     });
@@ -140,6 +141,8 @@ static void Send(id self,SEL cmd,NSString *channel,NSData *message,id reply){
         Class cls=NSClassFromString(@"FlutterStandardMethodCodec");
         @try{if([cls respondsToSelector:@selector(sharedInstance)]){id codec=((id(*)(id,SEL))objc_msgSend)(cls,@selector(sharedInstance));id event=((id(*)(id,SEL,id))objc_msgSend)(codec,NSSelectorFromString(@"decodeEnvelope:"),message);
             if([event isKindOfClass:NSDictionary.class]){dispatch_async(dispatch_get_main_queue(),^{TCCameraObserveConnection(event);});NSMutableDictionary *copy=[event mutableCopy];id original=copy[@"message"];if([original isKindOfClass:NSDictionary.class]){NSMutableDictionary *m=[original mutableCopy];NSData *data=Data(m[@"payload"]);if(data)m[@"payload"]=data;copy[@"message"]=m;}
+                // Sensor log: read-only copy to the main queue, only while its one request is open; the event continues unchanged.
+                if(TIOSyslogCapturing()){NSDictionary *seen=[copy copy];dispatch_async(dispatch_get_main_queue(),^{TIOSyslogObserveEvent(seen);});}
 #if TIO_DISPLAY_PHONE
                 TDPDiagEnvelope(copy);
 #endif

@@ -207,6 +207,8 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   GlassesLogContract.m \
   GlassesLogGate.m \
   GlassesLogProbe.m \
+  SyslogPull.m \
+  SyslogPullUI.m \
   RecordingExports.m \
   RecordingExportsUI.m \
   FirmwareExport.m \
