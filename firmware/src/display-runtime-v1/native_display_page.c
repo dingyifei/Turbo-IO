@@ -6,12 +6,20 @@
 #include "display_memory.h"
 #include "../menu8-renderer.h"
 #include "../image-upload-test/render_idle.h"
+#include "../diagnostics-v1/native_light.h"
 #ifdef TIO_ANIMATION_EXPERIMENT
 #include "../animation-runtime-v1/animation.h"
 extern const uint8_t ta_asset[TA_BYTES*TA_FRAMES];
 extern void native_log(unsigned,unsigned,unsigned,unsigned,const char *,...);
 extern void stream_timer_period(void *,uint32_t);
 #endif
+/* Read-only Sensors screen: 1.0.5.12 AP byte tio_imu_family (link.ld; 0 unknown, 1 none, 2 ST, 3 TDK), the stock light
+ * current/peak (td_stock_light), the hinge Hall state and the knob counters forwarded by menu10. It never writes the
+ * PMU, a sensor, a setting or flash, and starts no sensor report or handler. */
+extern volatile uint8_t tio_imu_family;
+extern int td_gettid(void);
+extern void *nav_monitors(void),*nav_input(void *);
+extern bool nav_folded(void *);
 struct TDPNativePage {
  TDPRuntime runtime;
  void *parent,*root,*canvas,*label,*timer;
@@ -23,6 +31,10 @@ struct TDPNativePage {
  TAPlayer animation;
  bool animation_mode;
 #endif
+ bool sensor_mode;
+ int32_t knob_delta;uint32_t knob_press;
+ TDDiagnostics light;
+ char shown[120];
 };
 extern const M8RenderAPI m8_native_api;
 extern void *stream_memalign(size_t,size_t);
@@ -70,6 +82,7 @@ static bool submit(void *ctx,const uint8_t *pixels,unsigned w,unsigned h){
 #ifdef TIO_ANIMATION_EXPERIMENT
  ta_stop(&p->animation);p->animation_mode=false;
  if(p->timer)stream_timer_period(p->timer,100);
+ p->sensor_mode=false;m8_native_api.hidden(p->canvas,false);
  tio_lv_obj_set_size(p->canvas,512,128);native_align(p->canvas,5,0,0);
  tio_lv_obj_set_size(p->label,512,44);native_align(p->label,2,0,0);
 #endif
@@ -105,6 +118,39 @@ static void animation_step(TDPNativePage *p,uint32_t now){
  if(was_running&&!p->animation.running)stream_timer_period(p->timer,100);
 }
 #endif
+static char *text_add(char *s,const char *t){while(*t)*s++=*t++;return s;}
+static char *signed_number(char *s,int32_t n){if(n<0){*s++='-';return number(s,0u-(uint32_t)n);}*s++='+';return number(s,(uint32_t)n);}
+static void sensors_text(TDPNativePage *p){
+ if(!p->label)return;
+ char text[120];char *s=text_add(text,"Sensors (read only)\nIMU ");
+ uint32_t imu=tio_imu_family;
+ s=text_add(s,imu==2?"ST":imu==3?"TDK":imu==1?"none":"unknown");*s++=' ';*s++='(';s=number(s,imu);*s++=')';
+ s=text_add(s,"\nLight ");
+ TDDiagnostics *d=&p->light;TDLightOwner owner={td_gettid()};td_init(d,0);td_stock_light(&owner,d);
+ if(d->valid&(1u<<TD_LV_USED)){s=number(s,d->values[TD_LV_USED]);s=text_add(s," pk ");s=number(s,d->values[TD_LV_PEAK]);}
+ else s=text_add(s,"n/a");
+ s=text_add(s,"\nFold ");
+ void *m=nav_monitors(),*i=m?nav_input(m):NULL;
+ s=text_add(s,i?(nav_folded(i)?"closed":"open"):"n/a");
+ s=text_add(s,"\nKnob ");s=signed_number(s,p->knob_delta);s=text_add(s," press ");s=number(s,p->knob_press);*s=0;
+ if(!memcmp(text,p->shown,(size_t)(s-text)+1))return;
+ memcpy(p->shown,text,(size_t)(s-text)+1);native_label_text(p->label,text);
+}
+void tdp_native_knob(TDPNativePage *p,int32_t delta,bool press){
+ if(!p||p->retired||!p->root||!p->label||!p->canvas)return;
+ if(!p->sensor_mode){
+  if(!press)return;
+  /* First press leaves the display screen for the Sensors screen. */
+#ifdef TIO_ANIMATION_EXPERIMENT
+  ta_stop(&p->animation);p->animation_mode=false;
+#endif
+  p->sensor_mode=true;m8_native_api.hidden(p->canvas,true);
+  tio_lv_obj_set_size(p->label,512,164);native_align(p->label,2,0,0);
+  p->runtime.deadline=stream_tick()+300000u;p->shown[0]=0;sensors_text(p);return;
+ }
+ p->knob_delta+=delta;if(press)p->knob_press++;
+ sensors_text(p);
+}
 static void emit(TDPReply result){
  result.max_rect_bytes=TDP_NATIVE_PIXELS_MAX;
  uint8_t bytes[TDP_UPLINK_MAX];size_t n=tdp_carrier_reply(&result,bytes,sizeof bytes);
@@ -144,6 +190,7 @@ static void tick(void *timer){
   stream_timer_delete(timer);stream_free(p);return;
  }
  flush_reply(p);
+ if(p->sensor_mode)sensors_text(p);
  (void)tdp_tick(&p->runtime,&callbacks,now);
 #ifdef TIO_ANIMATION_EXPERIMENT
  if(p->animation_mode)animation_step(p,now);
