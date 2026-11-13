@@ -3,16 +3,24 @@ static const NSUInteger kMaxFile=16u<<20,kMaxLines=200,kMaxLineLen=300;
 
 NSDictionary *TIOSyslogRequest(void){const uint8_t b[4]={0xA1,0x00,0x00,0x12};return @{@"businessId":@16,@"payload":[NSData dataWithBytes:b length:4]};}
 
+// Glasses -> phone on business 16, as seen on the device (C18 wire log, 2026-11-12):
+//   0x13 | file size, 4 bytes big-endian | name, 50 bytes NUL-padded   (55 bytes; "file announced")
+//   0x14 | name, 50 bytes NUL-padded                                  (51 bytes; "file sent")
+// There is no A1 prefix on these replies; only the phone's request (A1 00 00 12) has it.
+static NSString *Name50(const uint8_t *b){
+    NSUInteger n=0;while(n<50&&b[n])n++;if(!n)return nil;
+    for(NSUInteger i=0;i<n;i++)if(b[i]<0x21||b[i]>0x7e)return nil;
+    for(NSUInteger i=n;i<50;i++)if(b[i])return nil;
+    return [[NSString alloc]initWithBytes:b length:n encoding:NSASCIIStringEncoding];
+}
 NSDictionary *TIOSyslogParseNotice(NSData *p){
-    if(![p isKindOfClass:NSData.class]||p.length<4)return nil;const uint8_t *b=p.bytes;if(b[0]!=0xA1)return nil;
-    if(b[3]==0x13){
-        if(p.length<58)return nil;
-        uint32_t size=((uint32_t)b[4]<<24)|((uint32_t)b[5]<<16)|((uint32_t)b[6]<<8)|b[7];
-        NSUInteger n=0;while(n<50&&b[8+n])n++;
-        NSString *name=[[NSString alloc]initWithBytes:b+8 length:n encoding:NSUTF8StringEncoding]?:@"";
+    if(![p isKindOfClass:NSData.class])return nil;const uint8_t *b=p.bytes;
+    if(p.length==55&&b[0]==0x13){
+        NSString *name=Name50(b+5);if(!name)return nil;
+        uint32_t size=((uint32_t)b[1]<<24)|((uint32_t)b[2]<<16)|((uint32_t)b[3]<<8)|b[4];
         return @{@"sub":@0x13,@"size":@(size),@"name":name};
     }
-    if(b[3]==0x14)return @{@"sub":@0x14,@"raw":[p copy]};
+    if(p.length==51&&b[0]==0x14){NSString *name=Name50(b+1);if(!name)return nil;return @{@"sub":@0x14,@"name":name,@"raw":[p copy]};}
     return nil;
 }
 

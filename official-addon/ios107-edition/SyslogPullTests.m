@@ -9,22 +9,28 @@ static void Field(NSMutableData *d,uint32_t f,NSData *body){Var(d,(f<<3)|2);Var(
 static NSData *Str(NSString *s){return [s dataUsingEncoding:NSUTF8StringEncoding];}
 static NSData *Sync(NSString *uuid,NSString *name,uint64_t size){NSMutableData *b=[NSMutableData new],*o=[NSMutableData new];Field(b,1,Str(uuid));Field(b,2,Str(name));Var(b,3<<3);Var(b,size);Field(b,4,Str(@"2234567890abcdef"));Var(b,5<<3);Var(b,17);Field(o,1,b);return o;}
 static NSData *Chunk(NSString *uuid,uint64_t start,NSData *bytes){NSMutableData *b=[NSMutableData new],*o=[NSMutableData new];Field(b,1,Str(uuid));Var(b,3<<3);Var(b,start);Field(b,5,bytes);Field(o,4,b);return o;}
-static NSData *Notice13(uint32_t size,NSString *name){const uint8_t h[4]={0xA1,0,0,0x13};NSMutableData *d=[NSMutableData dataWithBytes:h length:4];uint8_t s[4]={size>>24,size>>16,size>>8,size};[d appendBytes:s length:4];NSMutableData *n=[NSMutableData dataWithData:Str(name)];n.length=50;[d appendData:n];return d;}
+static NSData *Notice13(uint32_t size,NSString *name){const uint8_t h[1]={0x13};NSMutableData *d=[NSMutableData dataWithBytes:h length:1];uint8_t s[4]={size>>24,size>>16,size>>8,size};[d appendBytes:s length:4];NSMutableData *n=[NSMutableData dataWithData:Str(name)];n.length=50;[d appendData:n];return d;}
+static NSData *Hex(NSString *h){NSMutableData *d=[NSMutableData new];for(NSUInteger i=0;i+1<h.length;i+=2){unsigned v;[[NSScanner scannerWithString:[h substringWithRange:NSMakeRange(i,2)]] scanHexInt:&v];uint8_t c=(uint8_t)v;[d appendBytes:&c length:1];}return d;}
 int main(void){@autoreleasepool{
     // builder
     NSDictionary *r=TIOSyslogRequest();assert([r[@"businessId"] isEqual:@16]);
     const uint8_t want[4]={0xA1,0,0,0x12};assert([r[@"payload"] isEqual:[NSData dataWithBytes:want length:4]]);
-    // 0x13 parse
-    NSString *name=@"rnsyslog_20261112-14-30-00.lz4";
-    NSDictionary *n=TIOSyslogParseNotice(Notice13(3670016,name));
+    // 0x13 / 0x14 as the glasses sent them on the device (C18 wire log, 2026-11-12): no A1 prefix.
+    NSDictionary *n=TIOSyslogParseNotice(Hex(@"130002c053726e7379736c6f675f32303236313131332d30322d34382d30312e6c7a340000000000000000000000000000000000000000"));
+    assert([n[@"sub"] isEqual:@0x13]&&[n[@"size"] isEqual:@180307]&&[n[@"name"] isEqual:@"rnsyslog_20261113-02-48-01.lz4"]);
+    NSData *dn=Hex(@"14726e7379736c6f675f32303236313131332d30322d34382d30312e6c7a340000000000000000000000000000000000000000");
+    n=TIOSyslogParseNotice(dn);assert([n[@"sub"] isEqual:@0x14]&&[n[@"name"] isEqual:@"rnsyslog_20261113-02-48-01.lz4"]&&[n[@"raw"] isEqual:dn]);
+    NSString *name=@"rnsyslog_20261112-14-03-07.lz4";n=TIOSyslogParseNotice(Notice13(3670016,name));
     assert([n[@"sub"] isEqual:@0x13]&&[n[@"size"] isEqual:@3670016]&&[n[@"name"] isEqual:name]);
-    NSMutableData *odd=[Notice13(7,@"x") mutableCopy];((uint8_t *)odd.mutableBytes)[1]=0x55;((uint8_t *)odd.mutableBytes)[2]=0x66;assert([TIOSyslogParseNotice(odd)[@"size"] isEqual:@7]); // ?? bytes ignored
-    assert(!TIOSyslogParseNotice([Notice13(1,@"x") subdataWithRange:NSMakeRange(0,57)])); // truncated
-    NSMutableData *bad=[Notice13(1,@"x") mutableCopy];((uint8_t *)bad.mutableBytes)[0]=0xA2;assert(!TIOSyslogParseNotice(bad));
-    assert(!TIOSyslogParseNotice(nil)&&!TIOSyslogParseNotice([NSData dataWithBytes:want length:3]));
-    // 0x14 raw
-    const uint8_t done[6]={0xA1,0,0,0x14,0x00,0x07};NSData *dn=[NSData dataWithBytes:done length:6];
-    n=TIOSyslogParseNotice(dn);assert([n[@"sub"] isEqual:@0x14]&&[n[@"raw"] isEqual:dn]);
+    assert([TIOSyslogParseNotice(Notice13(1,@"defult_log"))[@"name"] isEqual:@"defult_log"]);
+    assert(!TIOSyslogParseNotice([Notice13(1,@"x") subdataWithRange:NSMakeRange(0,54)])); // truncated
+    NSMutableData *longer=[Notice13(1,@"x") mutableCopy];[longer appendBytes:"\0" length:1];assert(!TIOSyslogParseNotice(longer)); // wrong length
+    NSMutableData *bad=[Notice13(1,@"x") mutableCopy];((uint8_t *)bad.mutableBytes)[0]=0x15;assert(!TIOSyslogParseNotice(bad));
+    NSMutableData *junk=[Notice13(1,@"x") mutableCopy];((uint8_t *)junk.mutableBytes)[40]='y';assert(!TIOSyslogParseNotice(junk)); // bytes after the NUL
+    assert(!TIOSyslogParseNotice(Notice13(1,@""))); // empty name
+    NSMutableData *ctl=[Notice13(1,@"ab") mutableCopy];((uint8_t *)ctl.mutableBytes)[6]=0x01;assert(!TIOSyslogParseNotice(ctl)); // control byte in the name
+    const uint8_t old[4]={0xA1,0,0,0x13};assert(!TIOSyslogParseNotice([NSData dataWithBytes:old length:4]));
+    assert(!TIOSyslogParseNotice(nil));
     assert(!TIOSyslogParseNotice(r[@"payload"])); // our own request is not a notice
     // reassembly from raw 0x11 frames, out of order and duplicated
     NSData *blob=[NSData dataWithBytes:kLZ4 length:sizeof kLZ4];
