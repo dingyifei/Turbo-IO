@@ -6,7 +6,8 @@ the ZIP is built on, the ZIP's path under $TURBO_INPUTS with its size and SHA-25
 versions). For each release this reads the ZIP, checks its manifest, its pinned identity, that every non-AP member
 is byte-for-byte the member of the stock ZIP of its base, and that AP, APC1 and BTH all report that base (build.py's
 core_identity). The release whose firmware is the tree's label (../RELEASE) must also be the ZIP in
-../build-inputs.json, on the same stock base.
+../build-inputs.json, on the same stock base. An emulator-only build is never a phone release: a base whose
+phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP name are all refused.
 
 Output (--write DIR / --check DIR):
   FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME> (no define = default)
@@ -49,16 +50,18 @@ def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def read_archive(raw):
-    """The manifest and the 15 payloads of a release ZIP, every row checked against its bytes."""
+def read_archive(raw, base):
+    """The manifest and the payloads of a release ZIP, every row checked against its bytes. The base is required: the
+    package shape (payload names and row count) is the one build.package_shape(base) names."""
+    shape = load_build().package_shape(base)
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
         names = z.namelist()
         if len(names) != len(set(names)):
             raise ValueError('duplicate ZIP member')
         manifest_data = z.read('OtaFileInfo.json')
         manifest = json.loads(manifest_data)
-        if not isinstance(manifest, list) or len(manifest) != 15:
-            raise ValueError('expected 15 payload manifest rows')
+        if not isinstance(manifest, list) or len(manifest) != shape['manifestRows']:
+            raise ValueError('expected %d payload manifest rows for stock %s' % (shape['manifestRows'], base))
         payloads = {}
         for row in manifest:
             if not isinstance(row, dict):
@@ -75,16 +78,18 @@ def read_archive(raw):
             payloads[name] = data
         if set(names) != set(payloads) | {'OtaFileInfo.json'}:
             raise ValueError('ZIP member set differs from manifest')
+        if set(payloads) != set(shape['payloads']):
+            raise ValueError('ZIP payload names are not the stock %s payloads' % base)
     return manifest_data, payloads
 
 
-def pins_for(archive, name=None):
-    """The identity pins of one ZIP (the ten fields of firmware-pins.json)."""
+def pins_for(archive, name, base):
+    """The identity pins of one ZIP (the ten fields of firmware-pins.json); the base is the stock base it is built on."""
     raw = Path(archive).read_bytes()
-    manifest_data, payloads = read_archive(raw)
+    manifest_data, payloads = read_archive(raw, base)
     ap = payloads['nuttx_ap.bin']
     return {
-        'name': name or release_label(),
+        'name': name,
         'zipBytes': len(raw),
         'zipSHA256': sha256(raw),
         'apBytes': len(ap),
@@ -123,8 +128,9 @@ def feed_version_name(version):
     return query_code(version).replace('.', '')
 
 
-def stock_zip(base):
-    return ROOT/'firmware-research'/('strix-' + base)/'stock'/('Strix-OS-' + base + '-original.zip')
+def stock_zip(base, inputs=None):
+    """The stock ZIP of a base: build.stock_zip_path is the one resolver (a repository file, or one under $TURBO_INPUTS)."""
+    return load_build().stock_zip_path(base, inputs)
 
 
 def load_build(root=FW):
@@ -171,13 +177,26 @@ def resolve(spec, inputs):
 
 def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=None):
     """Everything the phone compiles in for one release, derived from its ZIP and checked against its stock base."""
+    base = spec['stockBase']
+    build = build or load_build()
+    tree_spec = tree_spec if tree_spec is not None else json.loads((FW/'build-inputs.json').read_text())
+    tree_label = tree_label or release_label()
+    # An emulator-only build never becomes a phone release: not on a base that has none, not under an emuOnly tree's
+    # label or ZIP, and not under an EMU name.
+    if not build.package_shape(base)['phoneRelease']:
+        raise ValueError(name + ': stock ' + base + ' has no phone release (emulator only)')
+    if '-EMU-ONLY-' in spec['zip']['input']:
+        raise ValueError(name + ': an -EMU-ONLY- ZIP cannot be a phone release')
+    if build.emu_only(tree_spec):
+        if spec['firmware'] == tree_label:
+            raise ValueError(name + ': ' + tree_label + ' is the label of an emuOnly tree')
+        if spec['zip']['sha256'] == tree_spec['archive']['sha256']:
+            raise ValueError(name + ': this is the ZIP of an emuOnly tree')
     raw = Path(archive).read_bytes()
     if len(raw) != spec['zip']['bytes'] or sha256(raw) != spec['zip']['sha256']:
         raise ValueError(name + ': ZIP does not match releases.json')
-    manifest_data, payloads = read_archive(raw)
-    base = spec['stockBase']
-    build = build or load_build()
-    _stock_manifest, stock_payloads = read_archive(stock_zip(base).read_bytes())
+    manifest_data, payloads = read_archive(raw, base)
+    _stock_manifest, stock_payloads = read_archive(stock_zip(base).read_bytes(), base)
     if set(stock_payloads) != set(payloads):
         raise ValueError(name + ': member names differ from stock ' + base)
     for member, data in payloads.items():
@@ -186,11 +205,9 @@ def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=Non
     # Never mix cores, and the base in releases.json is the one the ZIP's own cores report.
     if build.core_identity(payloads, base) != build.core_identity(stock_payloads, base):
         raise ValueError(name + ': cores differ from stock ' + base)
-    tree_spec = tree_spec if tree_spec is not None else json.loads((FW/'build-inputs.json').read_text())
-    tree_label = tree_label or release_label()
     if spec['firmware'] == tree_label and (spec['zip']['sha256'] != tree_spec['archive']['sha256'] or base != tree_spec['stockBase']):
         raise ValueError(name + ': ' + tree_label + ' is the tree label but this is not the ZIP in build-inputs.json')
-    pins = pins_for(archive, spec['firmware'])
+    pins = pins_for(archive, spec['firmware'], base)
     members = {member: [len(data), sha256(data)] for member, data in payloads.items()}
     members['OtaFileInfo.json'] = [len(manifest_data), sha256(manifest_data)]
     members = dict(sorted(members.items()))
@@ -296,9 +313,12 @@ def main(argv=None):
     parser.add_argument('--dir', type=Path, default=ED)
     args = parser.parse_args(argv)
     try:
-        releases = load_releases(args.releases)
         if args.tree_release:
             tree = json.loads((FW/'build-inputs.json').read_text())
+            if load_build().emu_only(tree):
+                raise ValueError('--tree-release: emuOnly tree has no phone release')
+        releases = load_releases(args.releases)
+        if args.tree_release:
             found = [n for n, s in releases.items() if s['firmware'] == release_label() and s['zip']['sha256'] == tree['archive']['sha256']]
             if not found:
                 raise ValueError('no release carries the tree build ' + release_label())

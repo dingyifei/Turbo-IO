@@ -1,7 +1,7 @@
 """The phone pin generator (tools/phone_pins.py): version strings, release validation, the stock-base and tree checks,
 and --check catching a changed or stale output. Usage: phone_pins_test.py ZIP [ZIP ...] (release ZIPs in any order; a release ZIP not given is read from $TURBO_INPUTS at its releases.json path)."""
 from pathlib import Path
-import copy,hashlib,importlib.util,json,os,shutil,sys,tempfile
+import contextlib,copy,hashlib,importlib.util,io,json,os,shutil,sys,tempfile,zipfile
 FW=Path(__file__).resolve().parents[1]
 ED=FW.parent/'official-addon'/'ios107-edition'
 def load(path,name):
@@ -9,6 +9,12 @@ def load(path,name):
 def refused(call,why):
     try:call()
     except (ValueError,AssertionError,KeyError):return
+    raise SystemExit('accepted: '+why)
+def refused_with(call,why,text):
+    try:call()
+    except (ValueError,AssertionError,KeyError) as error:
+        if text in str(error):return
+        raise SystemExit('refused for the wrong reason: '+why+': '+str(error))
     raise SystemExit('accepted: '+why)
 def main():
     pp=load(FW/'tools/phone_pins.py','phone_pins_under_test')
@@ -46,6 +52,38 @@ def main():
         # The tree's label must be carried by the tree's own ZIP.
         tree={'archive':{'sha256':'0'*64},'stockBase':spec['stockBase']}
         refused(lambda:pp.release_pins(name,spec,own,build,tree,spec['firmware']),name+' named as the tree release with another ZIP')
+    # An emulator-only build is never a phone release. Each probe is refused with its own message, and the same
+    # inputs without the emuOnly condition are accepted (the ZIP and label probes use c18, a real release).
+    c18=releases['c18'];c18_zip=zip_of(c18);real_tree={'archive':{'sha256':c18['zip']['sha256']},'stockBase':c18['stockBase']}
+    pp.release_pins('c18',c18,c18_zip,build,real_tree,'TMG99')
+    shape_base=copy.deepcopy(c18);shape_base['stockBase']='1.0.6.11'
+    refused_with(lambda:pp.release_pins('c18',shape_base,c18_zip,build),'a stock base with no phone release','has no phone release')
+    emu_tree={**real_tree,'emuOnly':True}
+    refused_with(lambda:pp.release_pins('c18',c18,c18_zip,build,{**emu_tree,'archive':{'sha256':'0'*64}},c18['firmware']),'the label of an emuOnly tree','label of an emuOnly tree')
+    refused_with(lambda:pp.release_pins('c18',c18,c18_zip,build,emu_tree,'TMG99'),'the ZIP of an emuOnly tree','ZIP of an emuOnly tree')
+    emu_name=copy.deepcopy(c18);emu_name['zip']['input']='tmg12/StrixOS-1.0.5.12-TurboIO-TMG12-EMU-ONLY-NOT-FOR-DEVICE.zip'
+    refused_with(lambda:pp.release_pins('c18',emu_name,c18_zip,build),'an -EMU-ONLY- input name','-EMU-ONLY-')
+    refused_with(lambda:pp.pins_for(zip9,'TMG9','1.0.6.11'),'a 1.0.5.5 ZIP read with the 1.0.6.11 package shape','payload manifest rows')
+    # Same row count, one payload renamed (in the ZIP and its manifest): only the payload-name check can refuse it.
+    with tempfile.TemporaryDirectory(prefix='phone-pins-names-') as tmp:
+        renamed=Path(tmp)/'renamed.zip'
+        with zipfile.ZipFile(zip11) as src,zipfile.ZipFile(renamed,'w',zipfile.ZIP_DEFLATED) as dst:
+            rows=json.loads(src.read('OtaFileInfo.json'));assert any(r['Name']=='rives.bin' for r in rows)
+            for r in rows:
+                if r['Name']=='rives.bin':r['Name']='rivez.bin'
+            dst.writestr('OtaFileInfo.json',json.dumps(rows))
+            for n in src.namelist():
+                if n!='OtaFileInfo.json':dst.writestr('rivez.bin' if n=='rives.bin' else n,src.read(n))
+        refused_with(lambda:pp.pins_for(renamed,'TMG11','1.0.5.12'),'a ZIP with a renamed payload, same row count','payload names are not the stock')
+    # --tree-release on an emuOnly tree: refused before any release lookup (a throwaway copy of the tool and build.py
+    # whose build-inputs.json says emuOnly; the releases file it is given does not exist, so a lookup would fail differently).
+    with tempfile.TemporaryDirectory(prefix='phone-pins-emu-') as tmp:
+        tmp=Path(tmp);(tmp/'tools').mkdir()
+        shutil.copy(FW/'tools/phone_pins.py',tmp/'tools');shutil.copy(FW/'build.py',tmp)
+        (tmp/'build-inputs.json').write_text(json.dumps({**json.loads((FW/'build-inputs.json').read_text()),'emuOnly':True}))
+        copy_pp=load(tmp/'tools/phone_pins.py','phone_pins_emu_copy');err=io.StringIO()
+        with contextlib.redirect_stderr(err):code=copy_pp.main(['--tree-release','--releases',str(tmp/'missing.json')])
+        assert code==1 and '--tree-release: emuOnly tree has no phone release' in err.getvalue(),err.getvalue()
     # releases.json validation.
     data=json.loads((ED/'releases.json').read_text())
     def bad_releases(mutate,why):
@@ -66,7 +104,7 @@ def main():
     header=out['FirmwarePins.h'].decode()
     assert header.count('#define TIO_FW_ZIP_SHA256 ')==4 and '#error "more than one TIO_RELEASE_<NAME> defined"' in header
     assert header.index('#if defined(TIO_RELEASE_C16)')<header.index('#elif defined(TIO_RELEASE_C17)')<header.index('#elif defined(TIO_RELEASE_C18)')<header.index('#else')
-    assert json.loads(out['firmware-pins.json'])==pp.pins_for(zip9,'TMG9')
+    assert json.loads(out['firmware-pins.json'])==pp.pins_for(zip9,'TMG9','1.0.5.5')
     assert set(out)=={'FirmwarePins.h','firmware-pins.json','firmware-pins-c16.json','firmware-pins-c17.json','firmware-pins-c18.json'}
     # --check: the committed files match; a changed byte or a stale release file is caught.
     with tempfile.TemporaryDirectory(prefix='phone-pins-') as tmp:
@@ -84,5 +122,5 @@ def main():
         # A release ZIP whose bytes differ from its pin is refused before anything is read from it.
         z=inputs/releases['c16']['zip']['input'];raw=bytearray(z.read_bytes());raw[100]^=1;z.write_bytes(raw)
         assert pp.main(['--inputs',str(inputs),'--check',str(ED)])==1 and pp.main(['--inputs',str(inputs),'--resolve','c16'])==1
-    print('PASS phone pins: version strings, per-release ZIP/base/tree checks, releases.json validation, one block per release, --check catches changed and stale outputs')
+    print('PASS phone pins: version strings, per-release ZIP/base/tree checks, emulator-only refusals, releases.json validation, one block per release, --check catches changed and stale outputs')
 if __name__=='__main__':main()

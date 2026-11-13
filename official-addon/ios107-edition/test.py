@@ -2,16 +2,25 @@
 from pathlib import Path
 import argparse, fnmatch, json, os, re, shutil, subprocess, tempfile, zipfile
 P=Path(__file__).resolve().parent
-parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,required=True)
+parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,help='the release ZIP under test (required unless --firmware-only)')
 parser.add_argument('--app107',type=Path)
 parser.add_argument('--patched-app',type=Path)
 parser.add_argument('--app1011',type=Path,help='stock 1.0.11/259 Runner.app (download-only host checks)')
 parser.add_argument('--only',help='comma-separated test groups')
-parser.add_argument('--release',default='default',help='phone release configuration from releases.json (default, c16, c17, c18); --firmware must be its ZIP')
+parser.add_argument('--release',help='phone release configuration from releases.json (default, c16, c17, c18; default: default); --firmware must be its ZIP')
 parser.add_argument('--out',type=Path,help='log and binary directory (default build/tests)')
 parser.add_argument('--tree-firmware',type=Path,help='the ZIP built from the current firmware tree, for the tree audit (default: --firmware)')
+parser.add_argument('--tree-stock',type=Path,help="the stock ZIP of the tree's base, for the tree audit and tmg4-stock-abi (default: build.py --show stock-zip)")
+parser.add_argument('--firmware-only',action='store_true',help='the tree audit and the firmware groups only (tmg4-host, tmg9-wheel-hook, tmg9-detent); needs --tree-firmware, refuses --firmware and --release')
 args=parser.parse_args()
+FIRMWARE_GROUPS={'tmg4-host','tmg9-wheel-hook','tmg9-detent'}
+if args.firmware_only:
+    if args.firmware is not None:raise SystemExit('--firmware-only refuses --firmware')
+    if args.release is not None:raise SystemExit('--firmware-only refuses --release')
+    if args.tree_firmware is None:raise SystemExit('--firmware-only needs --tree-firmware')
+elif args.firmware is None:raise SystemExit('pass --firmware')
 only=set(args.only.split(',')) if args.only else None
+if args.firmware_only and only and only-FIRMWARE_GROUPS:raise SystemExit('--firmware-only runs only '+', '.join(sorted(FIRMWARE_GROUPS))+'; not: '+', '.join(sorted(only-FIRMWARE_GROUPS)))
 manifest=json.loads((P/'tests/manifest.json').read_text())['tests']
 test_files={str(f.relative_to(P)) for f in P.rglob('*') if f.is_file()
     and 'build' not in f.relative_to(P).parts
@@ -28,18 +37,27 @@ for file,entry in manifest.items():
 
 ROOT=P.parents[1]
 FW=ROOT/'firmware'   # the single firmware tree; released candidates are the fw/tmgN tags, not folders
-def stock_zip(base):return ROOT/('firmware-research/strix-%s/stock/Strix-OS-%s-original.zip'%(base,base))
+def show_stock_zip(base=None):
+    # The one resolver of stock ZIP paths: build.py --show stock-zip (the tree's base, or --base).
+    r=subprocess.run(['python3','-I',str(FW/'build.py'),'--show','stock-zip']+(['--base',base] if base else []),capture_output=True,text=True)
+    if r.returncode:raise SystemExit('cannot resolve the stock ZIP: '+(r.stderr.strip() or r.stdout.strip()))
+    return Path(r.stdout.strip())
 # The tree audit follows the tree's stock base (build-inputs.json stockBase) and audits the tree's own ZIP.
-stock=stock_zip(json.loads((FW/'build-inputs.json').read_text())['stockBase'])
-subprocess.run(['python3',FW/'build.py','--stock',stock,'--audit',args.tree_firmware or args.firmware],check=True)
-# The phone groups test one release configuration: its ZIP (--firmware), its stock base and its version policy.
-releases=json.loads((P/'releases.json').read_text())['releases']
-if args.release not in releases:raise SystemExit('unknown release '+args.release)
-release=releases[args.release]
-release_stock=stock_zip(release['stockBase'])
-release_versions=['Strix OS '+v for v in release['acceptCurrent']]
-release_define=[] if args.release=='default' else ['-DTIO_RELEASE_%s=1'%args.release.upper()]
-print('release: '+args.release+' ('+release['firmware']+' on stock '+release['stockBase']+'; accepts '+', '.join(release_versions)+')')
+tree_stock=args.tree_stock or show_stock_zip()
+if not tree_stock.is_file():raise SystemExit('stock ZIP not found: pass --tree-stock (looked for '+str(tree_stock)+')')
+subprocess.run(['python3',FW/'build.py','--stock',tree_stock,'--audit',args.tree_firmware or args.firmware],check=True)
+if args.firmware_only:release=release_stock=None;release_versions=[];release_define=[]
+else:
+    # The phone groups test one release configuration: its ZIP (--firmware), its stock base and its version policy.
+    args.release=args.release or 'default'
+    releases=json.loads((P/'releases.json').read_text())['releases']
+    if args.release not in releases:raise SystemExit('unknown release '+args.release)
+    release=releases[args.release]
+    release_stock=show_stock_zip(release['stockBase'])
+    if not release_stock.is_file():raise SystemExit('stock ZIP not found: '+str(release_stock)+' (stock '+release['stockBase']+' of release '+args.release+')')
+    release_versions=['Strix OS '+v for v in release['acceptCurrent']]
+    release_define=[] if args.release=='default' else ['-DTIO_RELEASE_%s=1'%args.release.upper()]
+    print('release: '+args.release+' ('+release['firmware']+' on stock '+release['stockBase']+'; accepts '+', '.join(release_versions)+')')
 out=(args.out or P/'build/tests').resolve();out.mkdir(parents=True,exist_ok=True)
 def run(name,cmd,env=None):
     r=subprocess.run(list(map(str,cmd)),capture_output=True,text=True,timeout=180,env=env)
@@ -113,7 +131,7 @@ if only is None or 'tmg4-host' in only:
     run('tmg4-native-ui',['python3','-I',FW/'tests/native_ui_host_test.py','--out',out/'tmg4-native-ui-host'])
     run('tmg4-native-status',['python3','-I',FW/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
     run('tmg4-native',['python3','-I',FW/'tests/native_host_test.py','--out',out/'tmg4-native-host'])
-    run('tmg4-stock-abi',['python3','-I',FW/'tests/stock_abi_test.py','--stock',stock])
+    run('tmg4-stock-abi',['python3','-I',FW/'tests/stock_abi_test.py','--stock',tree_stock])
     run('tmg4-kept',['python3','-I',FW/'tools/check_kept.py',FW/'baseline/kept',FW])
     run('tmg4-cjk',['python3','-I',FW/'tools/check_cjk.py',FW])
     run('tmg10-stock-base',['python3','-I',FW/'tests/stock_base_test.py'])   # labels from stockBase, mixed cores refused, tree on one base
@@ -133,6 +151,11 @@ if only is None or 'tmg9-detent' in only:
     ctest('tmg9-detent',[FW/'tests/tmg9_detent_test.c',FW/'src/menu-grid-v2/menu_config.c',FW/'src/diagnostics-v1/diagnostics.c'],FW/'src')
     groups.append('tmg9-detent');print('tmg9-detent: PASS')
 else:skip('tmg9-detent','not selected by --only')
+if args.firmware_only:
+    # Every other manifest group is skipped by name; the run ends before the release ZIP is opened.
+    for group in sorted({v['group'] for v in manifest.values() if v['status']=='run'}-FIRMWARE_GROUPS):skip(group,'firmware-only')
+    (out/'report.json').write_text(json.dumps({'passed':True,'firmwareOnly':True,'groups':groups,'deviceIO':False,'hardwareValidated':False,'skipped':skipped,'excluded':sum(v['status']=='excluded' for v in manifest.values())},indent=2)+'\n')
+    raise SystemExit(0)
 seen.add('shared-sources')
 if only is None or 'shared-sources' in only:
     pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',

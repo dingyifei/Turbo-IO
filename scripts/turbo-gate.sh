@@ -9,19 +9,41 @@ export TURBO_INPUTS   # phone_pins_test.py reads release ZIPs that test.py does 
 preview=0
 only_build=0
 skip_tests=0
-for arg in "$@"; do
-  case "$arg" in
+firmware_only=0
+tree_zip_arg=
+usage() {
+  printf 'Usage: %s [--preview] [--only-build] [--skip-tests]\n       %s --firmware-only [--tree-zip ZIP]\n' "$0" "$0" >&2
+  exit 2
+}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --preview) preview=1 ;;
     --only-build) only_build=1 ;;
     --skip-tests) skip_tests=1 ;;
-    *) printf 'Usage: %s [--preview] [--only-build] [--skip-tests]\n' "$0" >&2; exit 2 ;;
+    --firmware-only) firmware_only=1 ;;
+    --tree-zip) [[ $# -ge 2 && -n $2 ]] || usage; tree_zip_arg=$2; shift ;;
+    *) usage ;;
   esac
+  shift
 done
 if [[ $only_build == 1 && $preview == 1 ]]; then
   echo '--only-build and --preview cannot be combined' >&2
   exit 2
 fi
-GATE=$ED/build/gate
+if [[ $firmware_only == 1 && ( $preview == 1 || $only_build == 1 || $skip_tests == 1 ) ]]; then
+  echo '--firmware-only cannot be combined with --preview, --only-build or --skip-tests' >&2
+  exit 2
+fi
+if [[ -n $tree_zip_arg && $firmware_only == 0 ]]; then
+  echo '--tree-zip is valid only with --firmware-only' >&2
+  exit 2
+fi
+if [[ -n $tree_zip_arg ]]; then
+  [[ -f $tree_zip_arg ]] || { echo "--tree-zip: no such file: $tree_zip_arg" >&2; exit 2; }
+  tree_zip_arg=$(cd "$(dirname "$tree_zip_arg")" && pwd)/$(basename "$tree_zip_arg")
+fi
+# The firmware-only gate has its own directory, so it never overwrites the full gate's report.
+if [[ $firmware_only == 1 ]]; then GATE=$ED/build/gate-firmware; else GATE=$ED/build/gate; fi
 mkdir -p "$GATE"
 REPORT=$GATE/report.json
 started=$(python3 -c 'import time; print(time.monotonic())')
@@ -40,6 +62,7 @@ if event=='stage':
     data['stages'].append({'name':name,'seconds':round(time.monotonic()-float(start),3),
                            'status':status,'exitCode':int(code),'log':name+'.log'})
 elif event=='skip': data['skipped'].append({'name':args[0],'reason':args[1]})
+elif event=='set': data[args[0]]=args[1]
 elif event=='finish':
     status,start,code,active=args
     data.update(status=status,passed=status=='PASS',seconds=round(time.monotonic()-float(start),3),exitCode=int(code))
@@ -50,6 +73,10 @@ os.replace(temporary,path)
 PY
 }
 report init
+if [[ $firmware_only == 1 ]]; then
+  report set mode firmware-only
+  if [[ -n $tree_zip_arg ]]; then report set build compile-only; else report set build plain; fi
+fi
 on_exit() {
   rc=$?
   trap - EXIT
@@ -81,15 +108,21 @@ stage() {
     exit 1
   fi
 }
-# The external configuration is the only source of packaging inputs.
+# The stock ZIP of the tree's base and the toolchain, in both modes. A tree ZIP built by an earlier run is never reused.
+STOCK=$(python3 -I "$REPO/firmware/build.py" --show stock-zip --inputs "$TURBO_INPUTS")
+TC=$TURBO_INPUTS/toolchain/llvm-bin
+rm -rf "$GATE/tree-build"
+# The external configuration is the only source of packaging inputs. The firmware-only gate reads none of it.
 # TURBO_APP1011 (optional, read-only test input) may also come from the environment.
-inherited_app1011=${TURBO_APP1011:-}
-unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
-[[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'Missing external package.env' >&2; exit 1; }
-set -a
-source "$TURBO_INPUTS/package.env"
-set +a
-TURBO_APP1011=${TURBO_APP1011:-$inherited_app1011}
+if [[ $firmware_only == 0 ]]; then
+  inherited_app1011=${TURBO_APP1011:-}
+  unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011
+  [[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'Missing external package.env' >&2; exit 1; }
+  set -a
+  source "$TURBO_INPUTS/package.env"
+  set +a
+  TURBO_APP1011=${TURBO_APP1011:-$inherited_app1011}
+fi
 private_stage() {
   local backup=$TURBO_INPUTS/private-backup/ios107 file
   for file in PrivateBootstrap.h PrivateBootstrap.m; do
@@ -137,9 +170,30 @@ PINS=$REPO/firmware/tools/phone_pins.py
 pins_stage() {
   python3 -I "$PINS" --check "$ED" --inputs "$TURBO_INPUTS"
 }
+# A plain build of the tree into the fresh directory $1; prints the path of the one StrixOS-*.zip it wrote.
+# The build's own output goes to stderr (callers capture stdout). Command substitutions do not keep errexit,
+# so every step ends in an explicit "|| return 1".
+build_tree_zip() {
+  local out=$1 zips=() file
+  rm -rf "$out" || return 1
+  python3 -I "$REPO/firmware/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$out" >&2 || return 1
+  for file in "$out"/StrixOS-*.zip; do [[ -f $file ]] && zips+=("$file"); done
+  [[ ${#zips[@]} == 1 ]] || { echo "expected exactly one StrixOS-*.zip in $out" >&2; return 1; }
+  printf '%s\n' "${zips[0]}"
+}
 # The ZIP built from the current firmware tree (RELEASE, build-inputs.json), for test.py's tree audit.
+# An emulator-only tree has no phone release and no pinned ZIP: it is built once, into $GATE/tree-build, and reused
+# by the stages after it (the directory is cleared at the start of every run). Any other tree is its pinned release ZIP.
 tree_zip() {
-  python3 -I "$PINS" --resolve "$(python3 -I "$PINS" --tree-release)" --inputs "$TURBO_INPUTS"
+  local zips=() file
+  for file in "$GATE"/tree-build/StrixOS-*.zip; do [[ -f $file ]] && zips+=("$file"); done
+  if [[ ${#zips[@]} == 1 ]]; then printf '%s\n' "${zips[0]}"; return 0; fi
+  local emu
+  emu=$(python3 -I "$REPO/firmware/build.py" --show emu-only) || return 1
+  if [[ $emu == true ]]; then build_tree_zip "$GATE/tree-build"; return; fi
+  local release
+  release=$(python3 -I "$PINS" --tree-release) || return 1
+  python3 -I "$PINS" --resolve "$release" --inputs "$TURBO_INPUTS"
 }
 named_releases() {
   python3 -I -c 'import json,sys;print(" ".join(n for n in json.load(open(sys.argv[1]))["releases"] if n!="default"))' "$ED/releases.json"
@@ -160,7 +214,7 @@ test_stage() {
   tree=$(tree_zip)
   cd "$ED"
   # The default release (C14/C15) with TURBO_FIRMWARE; test.py's pins group refuses any other ZIP.
-  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
+  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --tree-stock "$STOCK" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
 }
 # Every named release (C16, C17): its pins, archive, directory, gate, feed, wizard and 1.0.11 full-host groups,
 # compiled with its TIO_RELEASE define against its own ZIP and stock base.
@@ -173,7 +227,7 @@ release_stage() {
   for name in $names; do
     zip=$(python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS")
     rm -rf "build/tests-$name"
-    python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} --only "$RELEASE_GROUPS"
+    python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} --only "$RELEASE_GROUPS"
   done
 }
 package_test_stage() {
@@ -194,7 +248,7 @@ host1011_stage() {
   local tree
   tree=$(tree_zip)
   cd "$ED"
-  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
+  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --tree-stock "$STOCK" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
   unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE IOS107_TEST_FIRMWARE
   IOS1011_TEST_APP="$TURBO_APP1011" node --test package.test.mjs
   # The full 1.0.11 package path up to (not including) signing: fresh addon build and both 1.0.11 guards,
@@ -214,6 +268,78 @@ preview_stage() {
   bash "$ED/preview/build.sh"
   bash "$ED/preview/shoot.sh"
 }
+# The firmware-only gate: the firmware tree's own checks, with no phone build, no package.env, no releases.json
+# entry and no phone_pins.py call. Without --tree-zip it builds the tree (a plain build, which asserts every pin);
+# with it, only the compile path runs and the given ZIP is audited and tested (the tree's pins may not match it).
+fw_tree_zip() {
+  local zips=() file
+  if [[ -n $tree_zip_arg ]]; then printf '%s\n' "$tree_zip_arg"; return 0; fi
+  for file in "$GATE"/fw-build/StrixOS-*.zip; do [[ -f $file ]] && zips+=("$file"); done
+  [[ ${#zips[@]} == 1 ]] || { echo "expected exactly one StrixOS-*.zip in $GATE/fw-build" >&2; return 1; }
+  printf '%s\n' "${zips[0]}"
+}
+fw_rebase_stage() {
+  python3 -I "$REPO/firmware/tools/rebase_apply.py" --check --stock "$STOCK"
+}
+fw_build_stage() {
+  local built
+  if [[ -n $tree_zip_arg ]]; then
+    rm -rf "$GATE/fw-compile"
+    python3 -I "$REPO/firmware/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$GATE/fw-compile" --compile-only
+    printf 'compile-only build; tree ZIP given, not built: %s\n' "$tree_zip_arg"
+  else
+    built=$(build_tree_zip "$GATE/fw-build")
+    printf 'plain build: %s\n' "$built"
+  fi
+}
+fw_audit_stage() {
+  local zip
+  zip=$(fw_tree_zip)
+  python3 -I "$REPO/firmware/build.py" --stock "$STOCK" --audit "$zip"
+}
+fw_tests_stage() {
+  local zip
+  zip=$(fw_tree_zip)
+  cd "$ED"
+  rm -rf build/tests-firmware
+  python3 test.py --firmware-only --tree-firmware "$zip" --tree-stock "$STOCK" --out build/tests-firmware
+}
+# C18's firmware is the newest released fw/tmgN tag. The tree itself may no longer build that ZIP (build.py's identity
+# moves with every edit), so the tag is exported and rebuilt with its own build.py and pins, which require its ZIP.
+fw_reproduce_stage() {
+  local tag base dir zips=() file
+  tag=$(git -C "$REPO" tag --merged HEAD --list 'fw/tmg*' --sort=-version:refname | head -n 1) || return 1
+  [[ -n $tag ]] || { echo 'no fw/tmgN tag is merged into HEAD' >&2; return 1; }
+  base=$(git -C "$REPO" show "$tag":firmware/build-inputs.json | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["stockBase"])') || return 1
+  [[ $base =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad stock base in $tag: $base" >&2; return 1; }
+  dir=$GATE/reproduce
+  rm -rf "$dir" || return 1
+  mkdir -p "$dir" || return 1
+  git -C "$REPO" archive "$tag" firmware "firmware-research/strix-$base/stock" | tar -x -C "$dir" || return 1
+  python3 -I "$dir/firmware/build.py" --stock "$dir/firmware-research/strix-$base/stock/Strix-OS-$base-original.zip" --llvm-bin "$TC" --out "$dir/out" || return 1
+  for file in "$dir"/out/StrixOS-*.zip; do [[ -f $file ]] && zips+=("$file"); done
+  [[ ${#zips[@]} == 1 ]] || { echo "expected exactly one StrixOS-*.zip in $dir/out" >&2; return 1; }
+  printf 'tag %s\nzip %s\n' "$tag" "$(basename "${zips[0]}")"
+  printf 'sha256 %s\n' "$(shasum -a 256 "${zips[0]}" | cut -d' ' -f1)"
+}
+if [[ $firmware_only == 1 ]]; then
+  stage fw-rebase fw_rebase_stage
+  stage fw-build fw_build_stage
+  stage fw-audit fw_audit_stage
+  stage fw-tests fw_tests_stage
+  stage fw-reproduce fw_reproduce_stage
+  stage source-audit source_audit_stage
+  for name in private build symbols pins test releases package-test host1011 preview; do report skip "$name" '--firmware-only'; done
+  active=finish
+  report finish PASS "$started" 0 ''
+  if [[ -n $tree_zip_arg ]]; then
+    echo 'GATE PASS (firmware-only, compile-only build; tree ZIP given, not built)'
+  else
+    echo 'GATE PASS (firmware-only, plain build)'
+  fi
+  trap - EXIT
+  exit 0
+fi
 stage private private_stage
 stage build build_stage
 stage symbols symbols_stage

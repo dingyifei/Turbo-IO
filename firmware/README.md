@@ -383,32 +383,52 @@ POSE2 keeps the existing14-byte body, bounded prediction and timing. The phone s
 
 ## Rebuild and audit
 
-Use the already-provisioned toolchain pinned in `build-inputs.json` (`toolchain`): LLVM/LLD 23.1.5 for TMG10 (`$TURBO_INPUTS/toolchain/llvm-bin`), 23.1.4 for TMG9 and older tags (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`). No package manager is required. The stock ZIP follows `stockBase`.
+Use the already-provisioned toolchain pinned in `build-inputs.json` (`toolchain`): LLVM/LLD 23.1.5 for TMG10 and TMG11 (`$TURBO_INPUTS/toolchain/llvm-bin`), 23.1.4 for TMG9 and older tags (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`). No package manager is required. There is no llvm-objdump in that folder, so no tool here may depend on one. The stock ZIP is the one `build.py --show stock-zip` prints for the tree's `stockBase` (a repository file for 1.0.5.x, a file under `$TURBO_INPUTS` for 1.0.6.11); never spell the path out by hand.
+
+Export `TURBO_INPUTS` (the folder with the toolchain, release ZIPs and `package.env`) in every shell before running `official-addon/ios107-edition/test.py` or any test in `firmware/tests/` directly. `scripts/turbo-gate.sh` exports it for its own stages, but a direct run does not. `stock_base_test.py` always reads the 1.0.6.11 canonical stock ZIP from it; `rebase_independent_test.py` reads that ZIP only for the 1.0.5.12 to 1.0.6.11 pair (`--pair 1.0.5.12:1.0.6.11`, or by default once that table exists), while its F1 default pair (1.0.5.5 to 1.0.5.12) uses repository stock ZIPs only. Both fail with a message that names the fix when the variable is missing and they need it.
 
 ```sh
+export TURBO_INPUTS=<the inputs folder>
 R=$(git rev-parse --show-toplevel)
 FW=$R/firmware
-BASE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["stockBase"])' "$FW/build-inputs.json")
-ZIP=StrixOS-$BASE-TurboIO-$(cat "$FW/RELEASE")-CANDIDATE-NOT-APPROVED.zip
 TC=$TURBO_INPUTS/toolchain/llvm-bin
-STOCK=$R/firmware-research/strix-$BASE/stock/Strix-OS-$BASE-original.zip
+STOCK=$(python3 -I "$FW/build.py" --show stock-zip --inputs "$TURBO_INPUTS")
+ZIP11=StrixOS-1.0.5.12-TurboIO-TMG11-CANDIDATE-NOT-APPROVED.zip   # C18's firmware, published at $TURBO_INPUTS/tmg11/
 D=$(mktemp -d)
 python3 -I "$FW/tools/rebase_apply.py" --check --stock "$STOCK"
 python3 -I "$FW/tests/rebase_independent_test.py"   # re-derives every rebased address; about 40 s
-python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
-python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP"
-cmp "$D/build/$ZIP" "$TURBO_INPUTS/tmg10/$ZIP"   # the pinned copy the phone pins are generated from
+python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/compile" --compile-only   # compiles only: no pins, no link
+python3 -I "$FW/build.py" --stock "$STOCK" --audit "$TURBO_INPUTS/tmg11/$ZIP11"
+# The reproduction check for C18's firmware is the newest fw/tmgN tag, rebuilt with its own build.py and pins:
+mkdir "$D/r11" && git -C "$R" archive fw/tmg11 firmware firmware-research/strix-1.0.5.12/stock | tar -x -C "$D/r11"
+python3 -I "$D/r11/firmware/build.py" --stock "$D/r11/firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip" --llvm-bin "$TC" --out "$D/r11/out"
+cmp "$D/r11/out/$ZIP11" "$TURBO_INPUTS/tmg11/$ZIP11"   # the pinned copy the phone pins are generated from
 python3 -I "$FW/tools/phone_pins.py" --check "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"   # every release in releases.json
 ```
 
+**State after F1 (tooling for the move to stock 1.0.6.11).** The tree is still on 1.0.5.12 and `build-inputs.json` is unchanged, but `build.py` itself changed (three stock bases, package shapes, `--show`, the EMU name), and its identity is hashed into the module. So the tree **cannot plain-build its pinned ZIP**: a plain build of the tree stops at `pin mismatch: moduleSHA256`, and repinning would cut C18's tie to the TMG11 ZIP. In the tree, `--compile-only` and the audit of the given ZIP stand in for the build. The byte-for-byte reproduction of TMG11 comes from the tag, as in the block above (`fw/tmg11` carries its own `build.py`, `build-inputs.json` and stock ZIP).
+
+**Firmware-only gate.** `bash scripts/turbo-gate.sh --firmware-only [--tree-zip ZIP]` runs the firmware checks with no phone build, no `package.env`, no `releases.json` entry and no `phone_pins.py` call. It writes `official-addon/ios107-edition/build/gate-firmware/` (its own `report.json`, with `"mode": "firmware-only"` and `"build": "plain"` or `"compile-only"`), and cannot be combined with `--preview`, `--only-build` or `--skip-tests`. The stages, in order:
+
+1. `fw-rebase`: `rebase_apply.py --check`.
+2. `fw-build`: a plain build of the tree, or, with `--tree-zip`, `build.py --compile-only` (the given ZIP is then the tree ZIP and is not built).
+3. `fw-audit`: `build.py --audit` of the tree ZIP.
+4. `fw-tests`: `test.py --firmware-only` (the tree audit, then only `tmg4-host`, `tmg9-wheel-hook` and `tmg9-detent`, which include the independent re-derivation, `stock_base_test` and `stock_abi_test`).
+5. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD from `git archive` with that tag's own `build.py` and pins, which require its pinned ZIP (today `fw/tmg11`, ZIP `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1`, C18's firmware). Because the main tree's `build.py` no longer reproduces TMG11, this stage is now the reproduction check for C18's firmware.
+6. `source-audit`.
+
+The run ends with `GATE PASS (firmware-only, plain build)` or `GATE PASS (firmware-only, compile-only build; tree ZIP given, not built)`. Until the tree can plain-build again, run it with `--tree-zip "$TURBO_INPUTS/tmg11/$ZIP11"`. The full gate is unchanged in stages and order, except that every `test.py` call also gets `--tree-stock`, and an emulator-only tree (`build.py --show emu-only` prints `true`) is built once per run for the stages that need its ZIP instead of being looked up in `releases.json`. An emulator-only tree is never a phone release: `phone_pins.py --tree-release` refuses it.
+
 The shared immutable animation is read from `baseline/animation-frames.l8` (provenance in `baseline/README.md`), SHA-256`f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d`; no duplicate binary asset is tracked. Normal builds enforce all pins. `--repin` is a deliberate developer operation, not a runtime update mechanism.
+
+The pins of `fw/tmg11` (ZIP11, C18's firmware), from that tag's `build-inputs.json` (`archive`, `APBytes`, `APSHA256`); the AP MD5 is computed from the AP member of the pinned ZIP:
 
 | Payload | Bytes | SHA-256 | MD5 |
 | --- | ---: | --- | --- |
-| ZIP | 8809015 | `aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126` | `f72c9a3a79ab02d968dc1415ee117509` |
-| AP | 7353800 | `0d6a3ec1d4aac08351afa6b60031c96f4e3904887a61a62def3da561f6c0c02b` | `ea89c1d953fff0b0ffe932c2ed2b5c46` |
+| ZIP | 8847234 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` | `5b14d0dcd637157af2813c1f3554c912` |
+| AP | 7474312 | `611b6bad89b2eda0e8501121a8af64c102576b3450b29931ad165c8f9a07bea5` | `4f49638d26755f635b9da85e7dea3062` |
 
-The audit enforces25 patch sites,14 unchanged stock payloads,7 startup descriptors, stock header/tail and AP below9.6MB. Host ASan/UBSan tests cover every new codec/file, malformed inputs, A/B faults and generation wrap, exhaustive720×32 maps, renderer rows/pages, timer wrap, and native adapter fault/ownership cases. These checks do not establish physical boot or flash acceptance.
+The audit enforces25 patch sites, every manifest row but `nuttx_ap.bin` as an unchanged stock payload (rows minus one: 14 on 1.0.5.x, 15 on 1.0.6.11),7 startup descriptors, stock header/tail and AP below9.6MB. Host ASan/UBSan tests cover every new codec/file, malformed inputs, A/B faults and generation wrap, exhaustive720×32 maps, renderer rows/pages, timer wrap, and native adapter fault/ownership cases. These checks do not establish physical boot or flash acceptance.
 
 ## Human flash and rollback
 
