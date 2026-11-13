@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""Independent re-derivation of the stock 1.0.5.5 -> 1.0.5.12 rebase. Offline: reads two stock ZIPs and two trees.
+"""Independent re-derivation of one stock rebase pair. Offline: reads two stock ZIPs and two trees.
 
-  python3 -I firmware/tests/rebase_independent_test.py                 # exports fw/tmg9 itself with git archive
-  python3 -I firmware/tests/rebase_independent_test.py --old-tree DIR  # DIR = a `git archive fw/tmg9 firmware
-                                                                       #   firmware-research/strix-1.0.5.5/stock` export
+  python3 -I firmware/tests/rebase_independent_test.py                 # default pair; exports its old tag itself
+  python3 -I firmware/tests/rebase_independent_test.py --pair FROM:TO  # another pair of PAIRS
+  python3 -I firmware/tests/rebase_independent_test.py --old-tree DIR  # DIR = a `git archive <oldTag> firmware
+                                                                       #   <oldStock>` export
+  python3 -I firmware/tests/rebase_independent_test.py --derive-only [--json PATH]   # developer/acceptance only
 
-It does not read the rebase table to find an address, and it does not use the decomp study or rebase_derive.py. Every
-address is derived again here, at run time, from the two stock AP images, and only then compared with the new tree
-and with the table (baseline/rebase-1.0.5.5-to-1.0.5.12.json).
+The pairs, their old tags, stock ZIPs, AP hashes and known-bad rows are in PAIRS. The default pair is the last pair
+whose table exists in the new tree. The new stock ZIP is a repository file or a file under $TURBO_INPUTS (which must
+be exported for such a pair); both AP images must have the pinned SHA-256.
 
-Universe. Every stock address in the OLD tree (fw/tmg9): the link.ld callees and module start, the 25 edits of
-build-inputs.json, the stock ABI ranges of tests/stock_abi_test.py, and every hex token under src/, include/, tests/,
-trampolines.S and ImageWireFormat.h that falls inside the 1.0.5.5 AP image or the RAM window 0x18000000-0x1a000000.
-A token in that window that is not a stock address must be listed in NOT_STOCK with a reason, else the run fails.
+It does not read the rebase table to find an address, and it does not use the decomp study, rebase_apply.py,
+rebase_derive.py, stock_zip.py or any readiness TSV. Every address is derived again here, at run time, from the two
+stock AP images, and only then compared with the new tree and with the pair's table. --derive-only stops after the
+derivation: it prints a summary marked "derive-only", compares with no tree or table, and exits 0 when every row
+resolves, 3 when some rows are unresolved (each listed with its reason), and 1 when a known-bad row fails or on any
+other error.
+
+Universe. Every stock address in the OLD tree (the pair's old tag): the link.ld symbols and module start, the 25 edits
+of build-inputs.json, the stock ABI ranges, and every hex token under src/, include/, tests/, trampolines.S and
+ImageWireFormat.h that falls inside the old AP image or the RAM window 0x18000000-0x1a000000. A token in that window
+that is not a stock address must be listed in NOT_STOCK with a reason, else the run fails. The old tree's
+tests/stock_abi_test.py lists the ranges on the first base only; for a later pair their old addresses come from the
+frozen earlier tables in the old tree (each one's old column must equal the previous result), and the old image must
+have the listed hash at every range. A link.ld symbol in the RAM window is derived like a RAM value.
 
 Image layout. The AP image is mapped at FLASH 0x10190000. Its start-up copy table (word triples src, src_end, dst
 in the first 4 KiB) is parsed from each image, which gives the copy region (dst 0x100000) and the .data copy
@@ -43,7 +55,8 @@ Methods.
   field  For a RAM value with no literal of its own: a resolved RAM base R with 0 < value - R < 0x400, the old
          ldr.w/str.w [Rn,#value-R] sites that use the base literal R, and at their paired new sites the same
          instruction with the same offset and the new base literal. Then new = R' + (value - R).
-  str    For .data values: the NUL-terminated string at the old address equals the one at the new address.
+  str    For .data values: the NUL-terminated string at the old address equals the one at the new address, or differs
+         from it by exactly the reviewed substring change of the pair's stringChanges for that old address.
   struct The module VA: the old tree's module start is FLASH + AP bytes - k with the same k-byte trailer in both
          images; the new one is FLASH + new AP bytes - k.
   copy   Copy-region callees (below FLASH): the function bytes in the copy region are identical in both images,
@@ -52,8 +65,16 @@ Methods.
 Checks, all fatal: every universe address resolved (no conflicts, every method that applies agrees); every value in
 the new tree equals the derived one at the same files and counts as the old tree (and no old value is left); every
 table value equals it; universe count == count of rows checked (printed); the edits' `before` bytes match the new
-image at the derived address; ABI range hashes match the new image; the known-bad tgr_intercept value 0x10625941 is
-rejected and 0x1062c439 found; the four copy-region callees are unchanged and the strcmp veneer still reaches strcmp.
+image at the derived address; ABI range hashes match the new image; every known-bad row of the pair has no caller
+vote for the bad value (and, where windowsDiffer is True, every forward window mismatches at the bad value) and
+either is derived to its good value with at least one caller vote for it ("resolved"), or, only for an entry marked
+split=True, stays unresolved with "sig X and call Y disagree" as its one problem, where Y (the callers' winning
+address) is the good value without its Thumb bit, the good value has the old value's Thumb bit, and at least three
+quarters of all caller votes go to Y ("split, unresolved"). The split case is a function stock split in two: the
+signature finds the old first bytes in one place and every caller calls the other. It does not resolve the row: the
+row stays unresolved in the rows, the JSON and the exit code (3 in --derive-only) and needs a reviewed decision. The
+derivation rule (any disagreement between methods leaves a row unresolved) is the same for every row. The four
+copy-region callees are unchanged and the strcmp veneer still reaches strcmp.
 resume_X equals trampoline edit X + 5. A mutation check (in a temp copy, never the repo) sets one link.ld address
 and one source RAM value of the new tree, and one link.ld row and one edit row of the table, to a neighbour's value,
 and requires each to be reported.
@@ -63,6 +84,7 @@ from collections import Counter, defaultdict
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -77,9 +99,6 @@ FW = Path(__file__).resolve().parents[1]
 ROOT = FW.parent
 FLASH = 0x10190000
 RAM_LO, RAM_HI = 0x18000000, 0x1a000000
-OLD_STOCK_REL = 'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip'
-NEW_STOCK_REL = 'firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip'
-TABLE_REL = 'baseline/rebase-1.0.5.5-to-1.0.5.12.json'
 SCANNED = ('src', 'include', 'tests', 'trampolines.S', 'ImageWireFormat.h')
 SELF = 'tests/rebase_independent_test.py'
 
@@ -97,11 +116,36 @@ NOT_STOCK = {
     '0x19200000': 'fake layer in render_idle_test.c', '0x19200038': 'fake layer field',
     '0x19200040': 'fake layer field',
 }
-# Link symbols added after the TMG9 tree (which this test takes its universe from): RAM data, not code. The table row is
-# verified by pool_context_check below instead of by the old-tree universe.
-ADDED_AFTER_TMG9 = {'tio_imu_family'}
-# The one value known to be wrong upstream: the decomp matcher's tgr_intercept partner (a different function).
-KNOWN_BAD = {'tgr_intercept': (0x10625941, 0x1062c439)}
+# The rebase pairs, in rebase order. Stock paths, AP hashes and known-bad rows are written here in this file's own form,
+# independently of build.py's STOCK_SHAPES and of the tables' `bases`. oldStock is a path inside the oldTag export;
+# newStock is ('repo', path) or ('inputs', path under $TURBO_INPUTS). addedAfterOldTree: link symbols added after the
+# old tree (RAM data, not code), verified by pool_context_check instead of by the old-tree universe. stringChanges:
+# old .data address -> the one reviewed substring change its string may have. knownBad: values known to be wrong
+# upstream; `good` only cross-checks the derivation and is never used to derive anything. windowsDiffer=None asserts
+# nothing about the masked windows at the bad value (native_label_create has an identical-code twin). A known-bad entry
+# passes when the bad value has no caller vote and the row resolves to `good`. split=True allows one more case, for a
+# function stock split in two (1.0.6.11 split the one at old 0x1057_cfc4): the row is unresolved with the signature and
+# caller methods disagreeing as its only problem, the callers' winning address is `good` without its Thumb bit, `good`
+# keeps the old value's Thumb bit, and at least 3/4 of all caller votes go to the winning address. The row then stays unresolved (exit 3 in --derive-only) and needs a reviewed
+# decision; split never changes the derivation. An entry without split must resolve to `good`. rebase_apply counts
+# value tokens in every scanned file, this one included, so a value address here is written with a digit separator.
+PAIRS = {  # insertion order = rebase_apply.TABLES order
+ ('1.0.5.5', '1.0.5.12'): dict(oldTag='fw/tmg9', table='baseline/rebase-1.0.5.5-to-1.0.5.12.json',
+    oldStock='firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip',   # from the export
+    newStock=('repo', 'firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip'),
+    oldAP='b3d6d9d7a4ece97e1dbaa64fc080eb5db8a5f7c9fecf340888ebb97a9112cc6c',
+    newAP='af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae',
+    addedAfterOldTree={'tio_imu_family'}, stringChanges={},
+    knownBad={'tgr_intercept': dict(bad=0x10625941, good=0x1062c439, windowsDiffer=True)}),
+ ('1.0.5.12', '1.0.6.11'): dict(oldTag='fw/tmg11', table='baseline/rebase-1.0.5.12-to-1.0.6.11.json',
+    oldStock='firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip',
+    newStock=('inputs', 'tmg12-emu/stock/Strix-OS-1.0.6.11-members-canonical.zip'),
+    oldAP='af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae', newAP='9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260',
+    addedAfterOldTree=set(), stringChanges={0x1804_338b: (':58]', ':62]')},   # '_': not a value token for rebase_apply
+    knownBad={'nav_top_app': dict(bad=0x106f4b25, good=0x106f4b59, windowsDiffer=None, split=True),
+              'ce_ext_106d3310': dict(bad=0x106f4b25, good=0x106f4b59, windowsDiffer=None, split=True),
+              'native_label_create': dict(bad=0x104e7234, good=0x104e587d, windowsDiffer=None)}),
+}
 COPY_CALLEES = ('memcpy', 'memset', 'strcmp', 'strlen')
 STRCMP_VENEER = 'ce_ext_10941968'
 
@@ -491,19 +535,26 @@ MODULE_START = re.compile(r'^\s*\.\s*=\s*(0x[0-9a-fA-F]+)\s*;', re.M)
 ABI_RANGE = re.compile(r'^\s*\((0x[0-9a-fA-F]+),(\d+),\'([0-9a-f]{64})\'\)', re.M)
 
 
-def read_tree(fw, img):
-    """The stock-address universe of one tree, from its files alone."""
+def abi_listed(fw):
+    """The ABI ranges as tests/stock_abi_test.py lists them (on the first base)."""
+    return [(int(a, 16), int(n), h) for a, n, h in ABI_RANGE.findall((fw/'tests/stock_abi_test.py').read_text())]
+
+
+def read_tree(fw, img, abi=None):
+    """The stock-address universe of one tree, from its files alone (abi: the ranges on this tree's base, when the
+    tree's stock_abi_test lists them on an earlier base)."""
     link = (fw/'link.ld').read_text()
     spec = json.loads((fw/'build-inputs.json').read_text())
+    listed = abi_listed(fw)
     u = {'link': {m.group(1): int(m.group(2), 16) for m in LINK_SYMBOL.finditer(link)},
          'module': [int(x, 16) for x in MODULE_START.findall(link)],
          'moduleVA': int(spec['moduleVA'], 16),
          'edits': {e['role']: e for e in spec['edits']},
-         'abi': [(int(a, 16), int(n), h) for a, n, h in ABI_RANGE.findall((fw/'tests/stock_abi_test.py').read_text())],
+         'abi': listed if abi is None else abi,
          'tramp_bytes': {m.group(1): bytes(int(x, 0) for x in m.group(2).split(',')) for m in re.finditer(
              r'^stock_(\w+):\n\.byte ([^\n]+)\n', (fw/'trampolines.S').read_text(), re.M)},
          'sites': defaultdict(Counter)}          # value -> {file: count}
-    abi_text = set(hex(a) for a, _, _ in u['abi'])
+    abi_text = set(hex(a) for a, _, _ in listed + u['abi'])
     for rel, text in scanned(fw):
         for t in hex_tokens(text):
             v = int(t, 16)
@@ -528,10 +579,11 @@ def not_stock_seen(fw, img):
 
 # ---------------------------------------------------------------- derivation
 
-def derive(old_fw, old, new):
+def derive(old_fw, old, new, abi=None, string_changes=None):
     """Rows: one per universe address, each with the derived new value and the evidence."""
     d = Deriver(old, new)
-    u = read_tree(old_fw, old)
+    u = read_tree(old_fw, old, abi)
+    string_changes = string_changes or {}
     rows = []
 
     def code_row(kind, name, value):
@@ -579,14 +631,51 @@ def derive(old_fw, old, new):
             row['problems'].append('unresolved: ' + row['methods']['sig'])
         return row
 
+    def ram_row(kind, name, v, sites):
+        row = {'kind': kind, 'name': name, 'old': v, 'new': None, 'methods': {}, 'problems': []}
+        if sites is not None:
+            row['sites'] = dict(sites)
+        rows.append(row)
+        votes = d.lit_votes(v)
+        if votes:
+            top, n = votes.most_common(1)[0]
+            total = sum(votes.values())
+            row['methods']['lit'] = '%d/%d votes for %s' % (n, total, hex(top))
+            if n * 4 >= total * 3:
+                row['new'] = top
+            else:
+                row['problems'].append('literal votes split: ' + str({hex(a): b for a, b in votes.most_common(4)}))
+        s_old = cstring(old, v) if old.file_of(v) is not None and v < old.region(RAM_LO)[2] + 0x400000 else None
+        if s_old and len(s_old) >= 4 and all(32 <= c < 127 for c in s_old):
+            row['string'] = s_old.decode()
+            if row['new'] is not None:
+                s_new = cstring(new, row['new'])
+                ok = s_new == s_old
+                change = string_changes.get(v)
+                if not ok and change and s_new is not None:
+                    a, b = change[0].encode(), change[1].encode()
+                    if s_old.count(a) == 1 and s_new == s_old.replace(a, b):
+                        row['methods']['str'] = '%r -> %r: the reviewed change %r -> %r' % (
+                            s_old.decode()[:32], s_new.decode()[:32], change[0], change[1])
+                        return row
+                row['methods']['str'] = '%r %s' % (s_old.decode()[:32], 'same at new address' if ok else 'DIFFERS')
+                if not ok:
+                    row['problems'].append('string differs at new address')
+        return row
+
     for name, v in u['link'].items():
-        code_row('link', name, v)
+        if RAM_LO <= v < RAM_HI:
+            ram_row('link', name, v, None)
+        else:
+            code_row('link', name, v)
     for role, e in u['edits'].items():
         r = code_row('edit', role, int(e['address'], 16))
         r['edit'] = e
     for a, n, h in u['abi']:
         r = code_row('abi', 'range %d bytes' % n, a)
         r['abi'] = (n, h)
+        if not old.has(a, n) or hashlib.sha256(old.raw[a - FLASH:a - FLASH + n]).hexdigest() != h:
+            r['problems'].append('the old image does not have the listed hash at this range')
     # module VA (struct)
     k = FLASH + len(old.raw) - u['moduleVA']
     row = {'kind': 'module', 'name': 'moduleVA', 'old': u['moduleVA'], 'new': None, 'methods': {}, 'problems': []}
@@ -614,31 +703,12 @@ def derive(old_fw, old, new):
         else:
             pending.append((v, sites))
     for v, sites in pending:
-        row = {'kind': 'value', 'name': 'ram/.data', 'old': v, 'new': None, 'methods': {}, 'problems': [],
-               'sites': dict(sites)}
-        rows.append(row)
-        votes = d.lit_votes(v)
-        if votes:
-            top, n = votes.most_common(1)[0]
-            total = sum(votes.values())
-            row['methods']['lit'] = '%d/%d votes for %s' % (n, total, hex(top))
-            if n * 4 >= total * 3:
-                row['new'] = top
-            else:
-                row['problems'].append('literal votes split: ' + str({hex(a): b for a, b in votes.most_common(4)}))
-        s_old = cstring(old, v) if old.file_of(v) is not None and v < old.region(RAM_LO)[2] + 0x400000 else None
-        if s_old and len(s_old) >= 4 and all(32 <= c < 127 for c in s_old):
-            row['string'] = s_old.decode()
-            if row['new'] is not None:
-                ok = cstring(new, row['new']) == s_old
-                row['methods']['str'] = '%r %s' % (s_old.decode()[:32], 'same at new address' if ok else 'DIFFERS')
-                if not ok:
-                    row['problems'].append('string differs at new address')
+        ram_row('value', 'ram/.data', v, sites)
     # field method for RAM values without literals, from resolved RAM bases nearby
-    resolved = {r['old']: r['new'] for r in rows if r['kind'] == 'value' and r['new'] is not None and
+    resolved = {r['old']: r['new'] for r in rows if r['kind'] in ('value', 'link') and r['new'] is not None and
                 RAM_LO <= r['old'] < RAM_HI}
     for row in rows:
-        if row['kind'] != 'value' or row['new'] is not None or not (RAM_LO <= row['old'] < RAM_HI):
+        if row['kind'] not in ('value', 'link') or row['new'] is not None or not (RAM_LO <= row['old'] < RAM_HI):
             continue
         bases = sorted((b for b in resolved if 0 < row['old'] - b < 0x400), key=lambda b: row['old'] - b)
         for b in bases:
@@ -758,14 +828,14 @@ def pool_context_check(row, old, new):
     return bad
 
 
-def compare_table(rows, table, new_img=None):
+def compare_table(rows, table, new_img=None, added=frozenset()):
     out = []
     checked = 0
     mine = {(r['kind'], r['name'] if r['kind'] in ('link', 'edit') else r['old']) for r in rows}
     for key in ([('link', r['symbol']) for r in table['linkld']] + [('edit', r['role']) for r in table['edits']] +
                 [('abi', int(r['old'], 16)) for r in table['stockAbiRanges']] +
                 [('value', int(v['old'], 16)) for v in table['values']]):
-        if key[0] == 'link' and key[1] in ADDED_AFTER_TMG9:
+        if key[0] == 'link' and key[1] in added:
             continue
         if key not in mine and not (key[0] == 'abi' and any(r['kind'] == 'abi' and r['old'] == key[1] for r in rows)):
             out.append('table row %s %s is not an address of the old tree' % key)
@@ -833,14 +903,21 @@ def compare_table(rows, table, new_img=None):
 
 # ---------------------------------------------------------------- main
 
-def load_ap(path):
+def load_ap(path, pinned):
+    """nuttx_ap.bin of a stock ZIP; its SHA-256 must be the pair's pinned AP hash."""
+    if not Path(path).is_file():
+        raise SystemExit('stock ZIP not found: %s' % path)
     with zipfile.ZipFile(path) as z:
-        return z.read('nuttx_ap.bin')
+        raw = z.read('nuttx_ap.bin')
+    got = hashlib.sha256(raw).hexdigest()
+    if got != pinned:
+        raise SystemExit('%s: nuttx_ap.bin sha256 %s, the pair pins %s' % (path, got, pinned))
+    return raw
 
 
-def export_tmg9(dest):
-    blob = subprocess.run(['git', '-C', str(ROOT), 'archive', 'fw/tmg9', 'firmware',
-                           'firmware-research/strix-1.0.5.5/stock'], check=True, capture_output=True).stdout
+def export_old(dest, cfg):
+    blob = subprocess.run(['git', '-C', str(ROOT), 'archive', cfg['oldTag'], 'firmware', cfg['oldStock']],
+                          check=True, capture_output=True).stdout
     with tarfile.open(fileobj=io.BytesIO(blob)) as t:
         t.extractall(dest, filter='data')
     return Path(dest)
@@ -851,21 +928,73 @@ def fw_dir(p):
     return p/'firmware' if (p/'firmware'/'link.ld').exists() else p
 
 
-def run(old_fw, new_fw, table, old, new):
-    u, rows, d, derived = derive(old_fw, old, new)
-    problems = []
+def pick_pair(text, new_fw):
+    """--pair FROM:TO, else the last pair whose table exists in the new tree."""
+    if text:
+        key = tuple(text.split(':'))
+        if key not in PAIRS:
+            raise SystemExit('--pair %s is not one of %s' % (text, ', '.join('%s:%s' % k for k in PAIRS)))
+        return key
+    have = [k for k, cfg in PAIRS.items() if (new_fw/cfg['table']).exists()]
+    if not have:
+        raise SystemExit('no pair table in %s/baseline: pass --pair' % new_fw)
+    return have[-1]
+
+
+def new_stock_path(cfg):
+    kind, rel = cfg['newStock']
+    if kind == 'repo':
+        return ROOT/rel
+    assert kind == 'inputs', cfg['newStock']
+    inputs = os.environ.get('TURBO_INPUTS')
+    if not inputs:
+        raise SystemExit('TURBO_INPUTS is not set: export TURBO_INPUTS or pass --stock-new (needed for %s)' % rel)
+    return Path(inputs)/rel
+
+
+def old_abi(old_fw, key):
+    """The ABI ranges on the pair's old base. The old tree's stock_abi_test lists them on the first base; for a later
+    pair they are walked through the frozen earlier tables in the old tree (never the table of the pair under test),
+    each one's old column equal to the previous result. None for the first pair (the listed ranges as they are)."""
+    keys = list(PAIRS)
+    if key == keys[0]:
+        return None
+    ranges, at = abi_listed(old_fw), keys[0][0]
+    for k in keys[:keys.index(key)]:
+        t = json.loads((old_fw/PAIRS[k]['table']).read_text())
+        assert (t['from'], t['to']) == k and k[0] == at, 'old tree table %s is not the pair %s:%s' % (
+            PAIRS[k]['table'], *k)
+        rs = {(int(r['old'], 16), r['bytes'], r['oldSHA256']): r for r in t['stockAbiRanges']}
+        assert sorted(rs) == sorted(ranges), 'old tree table %s: ABI old column is not the previous ranges' % (
+            PAIRS[k]['table'])
+        ranges, at = [(int(rs[x]['new'], 16), rs[x]['bytes'], rs[x]['newSHA256']) for x in ranges], k[1]
+    assert at == key[0], 'no table chain to %s in the old tree' % key[0]
+    return ranges
+
+
+def run(old_fw, new_fw, table_path, old, new, cfg, abi=None, derive_only=False):
+    u, rows, d, derived = derive(old_fw, old, new, abi, cfg['stringChanges'])
+    row_problems, problems = [], []
     for r in rows:
-        problems += ['%s %s %s: %s' % (r['kind'], r['name'], hex(r['old']), p) for p in r['problems']]
+        row_problems += ['%s %s %s: %s' % (r['kind'], r['name'], hex(r['old']), p) for p in r['problems']]
         if r['new'] is None and not r['problems']:
-            problems.append('%s %s %s: unresolved' % (r['kind'], r['name'], hex(r['old'])))
+            row_problems.append('%s %s %s: unresolved' % (r['kind'], r['name'], hex(r['old'])))
+        if r['kind'] == 'edit':
+            e = r['edit']
+            if old.raw[r['old'] - FLASH:r['old'] - FLASH + len(e['before']) // 2].hex() != e['before']:
+                problems.append('old edit %r before bytes do not match the old image' % r['name'])
+    if derive_only:
+        return u, rows, d, derived, row_problems, problems, [], [], 0, None
+    # the table of the pair under test is read only now, after the derivation
+    table = json.loads(table_path.read_text())
     tree_problems = compare_tree(u, rows, new_fw, new)
-    added = [r for r in table['linkld'] if r['symbol'] in ADDED_AFTER_TMG9]
+    added = [r for r in table['linkld'] if r['symbol'] in cfg['addedAfterOldTree']]
     table_extra = [x for r in added for x in pool_context_check(r, old, new)]
     link_text = (new_fw/'link.ld').read_text()
     for r in added:
         if '%s = %s;' % (r['symbol'], r['new']) not in link_text:
             table_extra.append('link.ld does not define %s = %s' % (r['symbol'], r['new']))
-    table_problems, table_checked = compare_table(rows, table, new)
+    table_problems, table_checked = compare_table(rows, table, new, cfg['addedAfterOldTree'])
     table_problems += table_extra
     for r in rows:
         if r['kind'] == 'abi' and r['new'] is not None and 'abi_new_sha' in r:
@@ -874,11 +1003,7 @@ def run(old_fw, new_fw, table, old, new):
             if got != r['abi_new_sha']:
                 table_problems.append('ABI range %s: new image hash %s != table %s' % (hex(r['new']), got,
                                                                                        r['abi_new_sha']))
-        if r['kind'] == 'edit':
-            e = r['edit']
-            if old.raw[r['old'] - FLASH:r['old'] - FLASH + len(e['before']) // 2].hex() != e['before']:
-                problems.append('old edit %r before bytes do not match the old image' % r['name'])
-    return u, rows, d, derived, problems, tree_problems, table_problems, table_checked
+    return u, rows, d, derived, row_problems, problems, tree_problems, table_problems, table_checked, table
 
 
 def report(rows):
@@ -893,129 +1018,262 @@ def report(rows):
     print('methods per row: ' + ', '.join('%s %d' % kv for kv in sorted(combos.items(), key=lambda kv: -kv[1])))
 
 
-def main():
+JSON_KIND = {'link': 'linkld', 'edit': 'edit', 'value': 'value', 'abi': 'abi-range'}
+
+
+def resolved(r):
+    return r['new'] is not None and not r['problems']
+
+
+def derive_only_json(key, rows):
+    module = next(r for r in rows if r['kind'] == 'module')
+    out = []
+    for r in rows:
+        if r['kind'] == 'module':
+            continue
+        row = {'kind': JSON_KIND[r['kind']], 'name': r['name'], 'old': hex(r['old']),
+               'new': hex(r['new']) if resolved(r) else None,
+               'methods': [k for k, v in r['methods'].items() if not v.startswith('none')]}
+        if not resolved(r):
+            row['reason'] = '; '.join(r['problems']) or 'unresolved'
+        out.append(row)
+    return {'pair': '%s:%s' % key, 'moduleVA': hex(module['new']) if resolved(module) else None, 'rows': out}
+
+
+def main(argv=None):
+    """Returns 0 on PASS; any other outcome raises SystemExit (1, or 3 for --derive-only with unresolved rows)."""
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('--old-tree', type=Path, help='fw/tmg9 export (repo root or its firmware/); default: git archive')
+    ap.add_argument('--pair', metavar='FROM:TO', help='default: the last pair whose table exists in the new tree')
+    ap.add_argument('--old-tree', type=Path, help="the pair's oldTag export (repo root or its firmware/); "
+                                                  'default: git archive')
     ap.add_argument('--new-tree', type=Path, default=FW)
-    ap.add_argument('--stock-old', type=Path)
-    ap.add_argument('--stock-new', type=Path, default=ROOT/NEW_STOCK_REL)
+    ap.add_argument('--stock-old', type=Path, help="default: the pair's oldStock in the old-tree export")
+    ap.add_argument('--stock-new', type=Path, help="default: the pair's newStock (repository or $TURBO_INPUTS)")
     ap.add_argument('--table', type=Path)
     ap.add_argument('--no-mutation', action='store_true', help='skip the mutation check')
-    args = ap.parse_args()
+    ap.add_argument('--derive-only', action='store_true',
+                    help='developer/acceptance flag, never used in gates: derive only, compare with no tree or table')
+    ap.add_argument('--json', type=Path, help='with --derive-only: write the derived rows to this JSON file')
+    args = ap.parse_args(argv)
+    if args.json and not args.derive_only:
+        raise SystemExit('--json needs --derive-only')
     tmp = Path(tempfile.mkdtemp(prefix='rebase-independent-'))
     try:
-        old_root = args.old_tree or export_tmg9(tmp/'tmg9')
-        old_fw = fw_dir(old_root)
-        stock_old = args.stock_old or (old_fw.parent/OLD_STOCK_REL)
-        new_fw = fw_dir(args.new_tree)
-        table_path = args.table or new_fw/TABLE_REL
-        table = json.loads(table_path.read_text())
-        old, new = Image(load_ap(stock_old), '1.0.5.5'), Image(load_ap(args.stock_new), '1.0.5.12')
-        fails = []
-        print('images: old %d bytes, new %d bytes; copy tables old %s new %s' % (
-            len(old.raw), len(new.raw), [tuple(map(hex, t)) for t in old.tables], [tuple(map(hex, t)) for t in new.tables]))
-        for dst in (0x100000, RAM_LO):
-            try:
-                so, sn = old.region(dst), new.region(dst)
-            except StopIteration:
-                fails.append('no copy table entry for dst %s' % hex(dst))
-        u, rows, d, derived, problems, tree_problems, table_problems, table_checked = run(
-            old_fw, new_fw, table, old, new)
-        report(rows)
-        fails += problems + tree_problems + table_problems
-        # NOT_STOCK tokens: none may have a literal in either stock image (region bounds are checked by the table)
-        for t, n in sorted(not_stock_seen(old_fw, old).items()):
-            v = int(t, 16)
-            if v in (FLASH, RAM_LO):
-                ok = v == FLASH or old.region(RAM_LO)[2] == v
-            else:
-                ok = not old.word_sites(v) and not new.word_sites(v)
-            print('not stock: %s x%d  %s%s' % (t, n, NOT_STOCK[t], '' if ok else '  <- HAS A STOCK LITERAL'))
-            if not ok:
-                fails.append('NOT_STOCK token %s has a stock literal' % t)
-        # coverage
-        universe = (len(u['link']) + len(u['edits']) + len(u['abi']) + 1 + len(u['sites']))
-        code_refs = len(u['link']) + len(u['edits']) + 1
-        print('coverage: old tree universe %d addresses (%d link.ld + %d edits + module = %d code references; '
-              '%d ABI ranges; %d literal values at %d sites), rows checked %d, table rows compared %d' % (
-                  universe, len(u['link']), len(u['edits']), code_refs, len(u['abi']), len(u['sites']),
-                  sum(sum(c.values()) for c in u['sites'].values()), len(rows), table_checked))
-        if len(rows) != universe:
-            fails.append('coverage: %d rows for %d universe addresses' % (len(rows), universe))
-        if table_checked != universe:
-            fails.append('coverage: table compared on %d of %d addresses' % (table_checked, universe))
-        # known bad
-        byname = {r['name']: r for r in rows if r['kind'] == 'link'}
-        for name, (bad, good) in KNOWN_BAD.items():
-            r = byname.get(name)
-            at = r['old'] & ~1
-            fwd, back = [], []
-            for before, after in SIG_WINDOWS:
-                data, keep, _, _ = masked_window(old, at + before, at + after)
-                p = (bad & ~1) + before - FLASH
-                n = sum(1 for k in range(len(data)) if (new.raw[p + k] ^ data[k]) & keep[k])
-                (fwd if after >= 16 else back).append('%d..%d:%d' % (before, after, n))
-            fwd_ok = all(not x.endswith(':0') for x in fwd)
-            votes = d.callers(at)
-            ok = r['new'] == good and fwd_ok and votes.get(bad & ~1, 0) == 0 and votes.get(good & ~1, 0) > 0
-            print('known bad: %s old %s; matcher value %s: masked mismatches in the windows over the address %s, '
-                  'over the code before it %s; caller votes %s; derived %s (expected %s) -> %s' % (
-                      name, hex(r['old']), hex(bad), ' '.join(fwd), ' '.join(back),
-                      {hex(k): v for k, v in votes.items()}, hex(r['new'] or 0), hex(good),
-                      'REJECTED/FOUND' if ok else 'FAIL'))
-            if not ok:
-                fails.append('known bad %s not rejected' % name)
-        # copy region and the strcmp veneer
-        for name in COPY_CALLEES:
-            r = byname[name]
-            ok = r['new'] == r['old'] and 'copy' in r['methods'] and not old.has(r['old'])
-            print('copy region: %s %s -> %s (%s)' % (name, hex(r['old']), hex(r['new'] or 0), r['methods'].get('copy')))
-            if not ok:
-                fails.append('copy-region callee %s moved or unchecked' % name)
-        vr = byname[STRCMP_VENEER]
-        for img, va in ((old, vr['old']), (new, vr['new'] or 0)):
-            r_ = literal_ref(img, va & ~1)
-            h1 = img.h(va & ~1)
-            tgt = img.w(r_[0]) if r_ else None
-            ok = (h1 & 0xff7f) == 0xf85f and (img.h((va & ~1) + 2) >> 12) == 15 and tgt == byname['strcmp']['old']
-            print('strcmp veneer on %s at %s: ldr.w pc,[pc] -> %s %s' % (img.name, hex(va), hex(tgt or 0),
-                                                                       'OK' if ok else 'FAIL'))
-            if not ok:
-                fails.append('strcmp veneer on %s does not reach strcmp' % img.name)
-        # resume_X (link.ld) is the trampoline edit X + 4 (+ Thumb bit): two independently derived rows must agree
-        edits = {r['name'].removeprefix('Entry trampoline '): r for r in rows if r['kind'] == 'edit'}
-        n_resume = 0
-        for name, r in byname.items():
-            if name.startswith('resume_') and name[7:] in edits:
-                e = edits[name[7:]]
-                n_resume += 1
-                if r['old'] != e['old'] + 5 or r['new'] != (e['new'] or 0) + 5:
-                    fails.append('%s %s is not trampoline edit %s + 5' % (name, hex(r['new'] or 0), hex(e['new'] or 0)))
-        print('resume symbols: %d, each the derived trampoline edit + 5' % n_resume)
-        # mutation check
-        if not args.no_mutation:
-            fails += mutation(old_fw, new_fw, table, old, new, rows)
-        print()
-        agree = sum(1 for r in rows if r['new'] is not None and not r['problems'])
-        print('result: %d rows, %d agree, %d fail; %d tree problems, %d table problems' % (
-            len(rows), agree, len(rows) - agree, len(tree_problems), len(table_problems)))
-        for f in fails:
-            print('FAIL ' + f)
-        if fails:
-            return 1
-        print('PASS rebase independent: %d addresses re-derived, tree and table agree' % len(rows))
-        return 0
+        code = check(args, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    if code:
+        raise SystemExit(code)
+    return 0
 
 
-def mutation(old_fw, new_fw, table, old, new, rows):
+def check(args, tmp):
+    derive_only = args.derive_only
+    new_fw = fw_dir(args.new_tree)
+    key = pick_pair(args.pair, new_fw)
+    cfg = PAIRS[key]
+    old_root = args.old_tree or export_old(tmp/'old', cfg)
+    old_fw = fw_dir(old_root)
+    stock_old = args.stock_old or (old_fw.parent/cfg['oldStock'])
+    stock_new = args.stock_new or new_stock_path(cfg)
+    table_path = args.table or new_fw/cfg['table']
+    if not derive_only and not table_path.is_file():
+        # an existence check only: the table itself is still read only after the derivation
+        raise SystemExit('table not found: %s (use --derive-only for a pair whose table is not written yet)'
+                         % table_path)
+    old, new =Image(load_ap(stock_old, cfg['oldAP']), key[0]), Image(load_ap(stock_new, cfg['newAP']), key[1])
+    fails, soft = [], []
+
+    def need(ok, msg, *involved):
+        """A failed check; in --derive-only, one whose rows exist and are unresolved is already listed with them.
+        A row that is missing from the old tree (None) is never softened: that is an error."""
+        if ok:
+            return
+        if derive_only and involved and all(r is not None for r in involved) and \
+                any(not resolved(r) for r in involved):
+            soft.append(msg)
+        else:
+            fails.append(msg)
+
+    print('pair %s:%s (old tree %s)%s' % (key[0], key[1], 'given' if args.old_tree else cfg['oldTag'],
+                                          ' -- derive-only' if derive_only else ''))
+    print('images: old %d bytes, new %d bytes; copy tables old %s new %s' % (
+        len(old.raw), len(new.raw), [tuple(map(hex, t)) for t in old.tables], [tuple(map(hex, t)) for t in new.tables]))
+    for dst in (0x100000, RAM_LO):
+        try:
+            so, sn = old.region(dst), new.region(dst)
+        except StopIteration:
+            fails.append('no copy table entry for dst %s' % hex(dst))
+    abi = old_abi(old_fw, key)
+    u, rows, d, derived, row_problems, problems, tree_problems, table_problems, table_checked, table = run(
+        old_fw, new_fw, table_path, old, new, cfg, abi, derive_only)
+    report(rows)
+    fails += problems + tree_problems + table_problems
+    if not derive_only:
+        fails += row_problems
+    for v in cfg['stringChanges']:
+        if not any(r['kind'] == 'value' and r['old'] == v for r in rows):
+            fails.append('stringChanges %s is not a value of the old tree' % hex(v))
+    # NOT_STOCK tokens: none may have a literal in either stock image (region bounds are checked by the table)
+    for t, n in sorted(not_stock_seen(old_fw, old).items()):
+        v = int(t, 16)
+        if v in (FLASH, RAM_LO):
+            ok = v == FLASH or old.region(RAM_LO)[2] == v
+        else:
+            ok = not old.word_sites(v) and not new.word_sites(v)
+        print('not stock: %s x%d  %s%s' % (t, n, NOT_STOCK[t], '' if ok else '  <- HAS A STOCK LITERAL'))
+        if not ok:
+            fails.append('NOT_STOCK token %s has a stock literal' % t)
+    # coverage
+    universe = (len(u['link']) + len(u['edits']) + len(u['abi']) + 1 + len(u['sites']))
+    code_refs = len(u['link']) + len(u['edits']) + 1
+    print('coverage: old tree universe %d addresses (%d link.ld + %d edits + module = %d code references; '
+          '%d ABI ranges; %d literal values at %d sites), rows checked %d, table rows compared %s' % (
+              universe, len(u['link']), len(u['edits']), code_refs, len(u['abi']), len(u['sites']),
+              sum(sum(c.values()) for c in u['sites'].values()), len(rows),
+              'none (derive-only)' if derive_only else table_checked))
+    if len(rows) != universe:
+        fails.append('coverage: %d rows for %d universe addresses' % (len(rows), universe))
+    if not derive_only and table_checked != universe:
+        fails.append('coverage: table compared on %d of %d addresses' % (table_checked, universe))
+    # known bad: always fatal, also in --derive-only
+    byname = {r['name']: r for r in rows if r['kind'] == 'link'}
+    for name, kb in cfg['knownBad'].items():
+        bad, good = kb['bad'], kb['good']
+        r = byname.get(name)
+        if r is None:
+            print('known bad: %s is not a link.ld symbol of the old tree -> FAIL' % name)
+            fails.append('known bad %s not in the old tree' % name)
+            continue
+        at = r['old'] & ~1
+        fwd, back = [], []
+        for before, after in SIG_WINDOWS:
+            data, keep, _, _ = masked_window(old, at + before, at + after)
+            p = (bad & ~1) + before - FLASH
+            n = sum(1 for k in range(len(data)) if (new.raw[p + k] ^ data[k]) & keep[k])
+            (fwd if after >= 16 else back).append('%d..%d:%d' % (before, after, n))
+        fwd_ok = all(not x.endswith(':0') for x in fwd) if kb['windowsDiffer'] else True
+        votes = d.callers(at)
+        no_bad = fwd_ok and votes.get(bad & ~1, 0) == 0
+        # Case 1, any entry: the row resolved to the good value, with a caller vote for it.
+        found = no_bad and resolved(r) and r['new'] == good and votes.get(good & ~1, 0) > 0
+        # Case 2, split=True entries only: the row is unresolved and its one problem is the sig/call disagreement,
+        # the callers' winner is the good value (Thumb bit stripped) with at least 3/4 of all caller votes.
+        split, why_not = False, ''
+        if not found and kb.get('split') is True:
+            sig_ans = d.sig(at)[0]
+            top, n = votes.most_common(1)[0] if votes else (None, 0)
+            total = sum(votes.values())
+            if not no_bad:
+                why_not = 'the bad value has caller votes' if fwd_ok else 'a forward window matches the bad value'
+            elif r['new'] is not None:
+                why_not = 'the row resolved to %s, not the good value' % hex(r['new'])
+            elif sig_ans is None or top is None or \
+                    r['problems'] != ['sig %s and call %s disagree' % (hex(sig_ans), hex(top))]:
+                why_not = 'its one problem is not "sig and call disagree": %s' % '; '.join(r['problems'])
+            elif top != good & ~1 or n * 4 < total * 3:
+                # 3/4 of the votes for the good value also makes it the callers' winning address
+                why_not = 'vote count: the good value %s has %d of %d caller votes, under three quarters (the ' \
+                          "callers' winning address is %s)" % (hex(good & ~1), votes.get(good & ~1, 0), total, hex(top))
+            elif (good & 1) != (r['old'] & 1):
+                why_not = 'the good value does not keep the old Thumb bit'
+            else:
+                split = True
+        ok = found or split
+        case = ('REJECTED/FOUND (resolved to the good value)' if found else
+                'REJECTED, SPLIT AND UNRESOLVED (bad value has no caller vote; callers pick the good value, the '
+                'signature another address; the row stays unresolved for a reviewed decision)' if split else
+                'FAIL' + (' (split case not met: %s)' % why_not if why_not else ''))
+        print('known bad: %s old %s; bad value %s: masked mismatches in the windows over the address %s%s, '
+              'over the code before it %s; caller votes %s; derived %s (expected %s)%s -> %s' % (
+                  name, hex(r['old']), hex(bad), ' '.join(fwd),
+                  '' if kb['windowsDiffer'] else ' (not asserted)', ' '.join(back),
+                  {hex(k): v for k, v in votes.items()},
+                  hex(r['new']) if r['new'] is not None else 'none (%s)' % '; '.join(r['problems']), hex(good),
+                  ' [split=True]' if kb.get('split') is True else '', case))
+        if not ok:
+            fails.append('known bad %s not rejected' % name)
+    # copy region and the strcmp veneer
+    for name in COPY_CALLEES:
+        r = byname.get(name)
+        if r is None:
+            fails.append('copy-region callee %s is not in the old tree' % name)
+            continue
+        ok = r['new'] == r['old'] and 'copy' in r['methods'] and not old.has(r['old'])
+        print('copy region: %s %s -> %s (%s)' % (name, hex(r['old']), hex(r['new'] or 0), r['methods'].get('copy')))
+        need(ok, 'copy-region callee %s moved or unchecked' % name, r)
+    vr = byname.get(STRCMP_VENEER)
+    for img, va in ((old, vr and vr['old']), (new, vr and vr['new'])):
+        if va is None:
+            need(False, 'strcmp veneer on %s not derived' % img.name, vr)
+            continue
+        r_ = literal_ref(img, va & ~1)
+        h1 = img.h(va & ~1)
+        tgt = img.w(r_[0]) if r_ else None
+        ok = (h1 & 0xff7f) == 0xf85f and (img.h((va & ~1) + 2) >> 12) == 15 and tgt == byname['strcmp']['old']
+        print('strcmp veneer on %s at %s: ldr.w pc,[pc] -> %s %s' % (img.name, hex(va), hex(tgt or 0),
+                                                                   'OK' if ok else 'FAIL'))
+        need(ok, 'strcmp veneer on %s does not reach strcmp' % img.name, vr)
+    # resume_X (link.ld) is the trampoline edit X + 4 (+ Thumb bit): two independently derived rows must agree
+    edits = {r['name'].removeprefix('Entry trampoline '): r for r in rows if r['kind'] == 'edit'}
+    n_resume = 0
+    for name, r in byname.items():
+        if name.startswith('resume_') and name[7:] in edits:
+            e = edits[name[7:]]
+            n_resume += 1
+            need(r['old'] == e['old'] + 5 and r['new'] == (e['new'] or 0) + 5,
+                 '%s %s is not trampoline edit %s + 5' % (name, hex(r['new'] or 0), hex(e['new'] or 0)), r, e)
+    print('resume symbols: %d, each the derived trampoline edit + 5' % n_resume)
+    if derive_only:
+        return derive_only_result(key, rows, fails, soft, args.json)
+    # mutation check
+    if not args.no_mutation:
+        fails += mutation(old_fw, new_fw, table, old, new, rows, cfg['addedAfterOldTree'])
+    print()
+    agree = sum(1 for r in rows if resolved(r))
+    print('result: %d rows, %d agree, %d fail; %d tree problems, %d table problems' % (
+        len(rows), agree, len(rows) - agree, len(tree_problems), len(table_problems)))
+    for f in fails:
+        print('FAIL ' + f)
+    if fails:
+        return 1
+    print('PASS rebase independent: %d addresses re-derived, tree and table agree' % len(rows))
+    return 0
+
+
+def derive_only_result(key, rows, fails, soft, json_path):
+    print()
+    open_ = [r for r in rows if not resolved(r)]
+    print('derive-only: pair %s:%s, %d rows (moduleVA included), %d resolved, %d unresolved; no tree or table compared'
+          % (key[0], key[1], len(rows), len(rows) - len(open_), len(open_)))
+    for r in open_:
+        print('unresolved: %s %s %s: %s' % (r['kind'], r['name'], hex(r['old']), '; '.join(r['problems']) or
+                                             'unresolved'))
+    for s in soft:
+        print('follows from an unresolved row: ' + s)
+    if json_path:
+        json_path.write_text(json.dumps(derive_only_json(key, rows), indent=1) + '\n')
+        print('derive-only: rows written to %s' % json_path)
+    if soft and not open_:
+        fails.append('%d softened check(s) but no unresolved row to explain them' % len(soft))
+    for f in fails:
+        print('FAIL ' + f)
+    if fails:
+        return 1
+    if open_:
+        print('derive-only UNRESOLVED: known-bad rows pass; %d rows unresolved (exit 3)' % len(open_))
+        return 3
+    print('derive-only PASS: %d rows resolved, known-bad rows pass' % len(rows))
+    return 0
+
+
+def mutation(old_fw, new_fw, table, old, new, rows, added=frozenset()):
     """Swap one link.ld address and one table address for a neighbour's, in temp copies; both must fail."""
     out = []
     link = [r for r in rows if r['kind'] == 'link' and r['new'] is not None and r['new'] != r['old']]
     a, b = link[0], link[1]
     base_tree = set(compare_tree(None, rows, new_fw, new))
-    base_table = set(compare_table(rows, table)[0])
+    base_table = set(compare_table(rows, table, added=added)[0])
     with tempfile.TemporaryDirectory(prefix='rebase-mutation-') as t:
         tree = Path(t)/'firmware'
         shutil.copytree(new_fw, tree, ignore=shutil.ignore_patterns('__pycache__'))
@@ -1044,7 +1302,7 @@ def mutation(old_fw, new_fw, table, old, new, rows):
         mt = json.loads(json.dumps(table))
         row = next(x for x in mt['linkld'] if x['symbol'] == a['name'])
         row['new'] = hex(b['new'])
-        tb = [x for x in compare_table(rows, mt)[0] if x not in base_table and a['name'] in x]
+        tb = [x for x in compare_table(rows, mt, added=added)[0] if x not in base_table and a['name'] in x]
         print('mutation: table %s new set to %s -> %d new table problem(s) %s%s' % (
             a['name'], hex(b['new']), len(tb), 'DETECTED' if tb else 'MISSED', (': ' + tb[0]) if tb else ''))
         if not tb:
@@ -1053,7 +1311,7 @@ def mutation(old_fw, new_fw, table, old, new, rows):
         mt = json.loads(json.dumps(table))
         row = next(x for x in mt['edits'] if x['role'] == e['name'])
         row['newAddress'] = hex(e['new'] + 2)
-        tb = [x for x in compare_table(rows, mt)[0] if x not in base_table and e['name'] in x]
+        tb = [x for x in compare_table(rows, mt, added=added)[0] if x not in base_table and e['name'] in x]
         print('mutation: table edit %r newAddress +2 -> %d new table problem(s) %s%s' % (
             e['name'], len(tb), 'DETECTED' if tb else 'MISSED', (': ' + tb[0]) if tb else ''))
         if not tb:

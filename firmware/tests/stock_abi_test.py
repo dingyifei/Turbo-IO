@@ -1,10 +1,10 @@
 """Offline byte pins for the existing carousel RAM ABI and raw input call path, on the tree's stock base."""
 from pathlib import Path
-import argparse,hashlib,json,zipfile
+import argparse,hashlib,importlib.util,json,struct,zipfile
 FW=Path(__file__).resolve().parents[1]
-# The 11 ranges as pinned on stock 1.0.5.5 (TMG3..TMG9). On another base each range is the rebase table's partner
-# (baseline/rebase-1.0.5.5-to-1.0.5.12.json stockAbiRanges: equal bytes except moved branch targets, derived and
-# checked by tools/rebase_derive.py), with that base's hash.
+# The 11 ranges as pinned on stock 1.0.5.5 (TMG3..TMG9). On another base each range is mapped through the rebase
+# table chain (tools/rebase_apply.py TABLES: 1.0.5.5 to 1.0.5.12, then 1.0.5.12 to 1.0.6.11 once that file exists),
+# each table's stockAbiRanges partner (equal bytes except moved branch targets), with that base's hash.
 RANGES=[
  (0x10669be6,36,'1112e6219badce0aad1978cc1809d4dcad97603f85465818616cc6a8bb49112d'),
  (0x1071e648,16,'f3cc17451ec4e8ed124d7d08c8c1d4534bc5e83da7843347bf82f6ae658d2af6'),
@@ -19,21 +19,87 @@ RANGES=[
  (0x10566aa4,112,'53bb9c1c48fff0408f3107a3029b2909c8fcd7e9b50872e82b3d83532dffafc4'),
 ]
 KEYS=('offset','address','before','kind','target','pad')
+# A range a table marks "changed" (format 2 verdict) must be listed here with the table's newSHA256: {(to, new): (newSHA256, reason)}.
+REVIEWED_ABI_CHANGES={}
+# An edit whose before changed other than in BL/B.W immediates must be listed with exactly this new before:
+# {(to, role): newBefore}. Typed from the bytes of the 1.0.6.11 AP
+# (sha256 9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260) at the readiness addresses.
+REVIEWED_BEFORE_CHANGES={
+ ('1.0.6.11','Menu replacement frame_start'):'1e2380b5',   # clamp to 6 replaced by usat 0..7; b.w covers two instructions
+ ('1.0.6.11','Menu replacement label_index'):'90b581f3',   # clamp to 6 replaced by usat 0..7; full replacement
+ ('1.0.6.11','284-byte menu allocation'):'4ff4867050f07cfc',   # mov.w r0,#0x10c + bl, 8 bytes (pad 2)
+ ('1.0.6.11','Carousel item count 7 to 13'):'0821',   # stock count 8
+ ('1.0.6.11','File callback registration'):'00242048214b84610360',   # the two ldr literal offsets moved by 4 bytes
+}
+# A format-2 raw edit keeps newAfter == oldAfter (the patched bytes stay the TMG3 ones) unless listed here with exactly
+# this new after: {(to, role): (newAfter, reason)}. Ships empty; filling it is an owner decision in a reviewed commit.
+REVIEWED_AFTER_CHANGES={}
+FORMATS=('turboio-rebase-1','turboio-rebase-2')
+VERDICTS=('shift','changed')
+def load(path,name):
+ spec=importlib.util.spec_from_file_location(name,path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
+def branch_free(raw):
+ """Thumb instruction units of `raw`, with the immediate of every BL/B.W masked out (the T4 type bits stay)."""
+ out,i=[],0
+ while i<len(raw):
+  h=struct.unpack_from('<H',raw,i)[0]
+  if h>>11 in (0x1d,0x1e,0x1f) and i+4<=len(raw):
+   g=struct.unpack_from('<H',raw,i+2)[0]
+   out.append(('branch',g&0xd000) if h>>11==0x1e and g&0xd000 in (0xd000,0x9000) else ('w',raw[i:i+4]));i+=4
+  else:out.append(('h',raw[i:i+2]));i+=2
+ return out
 def expected(spec):
- """(ranges, the audited TMG3 patch set) on the tree's stock base."""
- table=json.loads((FW/'baseline/rebase-1.0.5.5-to-1.0.5.12.json').read_text())
+ """(ranges, the audited TMG3 patch set) on the tree's stock base, walked through the table chain from 1.0.5.5."""
+ chain=load(FW/'tools/rebase_apply.py','stock_abi_rebase').table_chain(FW)
  original=json.loads((FW/'baseline/tmg3-build-inputs.json').read_text())
  base=spec['stockBase']
- assert [(int(r['old'],16),r['bytes'],r['oldSHA256']) for r in table['stockAbiRanges']]==RANGES,'rebase table ranges are not these 11'
- if base==table['from']:
-  return RANGES,original['edits']
- assert base==table['to'],'stock base %r has no rebase column'%base
- ranges=[(int(r['new'],16),r['bytes'],r['newSHA256']) for r in table['stockAbiRanges']]
- rows={r['role']:r for r in table['edits']}
- edits=[]
- for e in original['edits']:
-  r=rows[e['role']];assert (r['oldOffset'],r['oldAddress'],r['oldBefore'])==(e['offset'],e['address'],e['before'])
-  edits.append({**e,'offset':r['newOffset'],'address':r['newAddress'],'before':r['newBefore']})
+ assert chain and chain[0]['from']=='1.0.5.5','the table chain does not start at 1.0.5.5'
+ assert [(int(r['old'],16),r['bytes'],r['oldSHA256']) for r in chain[0]['stockAbiRanges']]==RANGES,'rebase table ranges are not these 11'
+ ranges,edits,at=RANGES,original['edits'],'1.0.5.5'
+ for t in chain:
+  if at==base:break
+  assert t['from']==at,'table chain gap at %s'%at
+  assert t.get('format') in FORMATS,'%s to %s: unknown table format %r'%(t['from'],t['to'],t.get('format'))
+  two=t['format']=='turboio-rebase-2'
+  if two:
+   for r in t['stockAbiRanges']+t['edits']:assert r.get('verdict') in VERDICTS,'%s to %s: row verdict %r is not shift or changed'%(t['from'],t['to'],r.get('verdict'))
+  for (to,role) in REVIEWED_AFTER_CHANGES:
+   assert to!=t['to'] or two,'reviewed after for a format-1 table: %r'%role
+  # Ranges: the old column must be the previous result; a changed range must be reviewed with its new hash.
+  assert [(int(r['old'],16),r['bytes'],r['oldSHA256']) for r in t['stockAbiRanges']]==ranges,'%s to %s ranges are not the previous ones'%(t['from'],t['to'])
+  for r in t['stockAbiRanges']:
+   if two and r['verdict']=='changed':
+    listed=REVIEWED_ABI_CHANGES.get((t['to'],r['new']))
+    assert listed and listed[0]==r['newSHA256'],'unreviewed changed ABI range %s on %s'%(r['new'],t['to'])
+  ranges=[(int(r['new'],16),r['bytes'],r['newSHA256']) for r in t['stockAbiRanges']]
+  rows={r['role']:r for r in t['edits']};assert len(rows)==len(edits)==25,'%s to %s edits'%(t['from'],t['to'])
+  for (to,role),value in REVIEWED_BEFORE_CHANGES.items():
+   assert to!=t['to'] or role in rows,'reviewed before for unknown role %r'%role
+  for (to,role) in REVIEWED_AFTER_CHANGES:
+   assert to!=t['to'] or (role in rows and rows[role].get('oldAfter') is not None),'reviewed after for unknown raw role %r'%role
+  mapped=[]
+  for e in edits:
+   r=rows[e['role']];assert (r['oldOffset'],r['oldAddress'],r['oldBefore'])==(e['offset'],e['address'],e['before']),e['role']
+   if 'oldPad' in r:assert r['oldPad']==e['pad'],e['role']
+   if two and e['kind']=='raw':
+    # Both after columns are required: the old one ties to the previous after (TMG3 at the start), the new one must
+    # equal it unless reviewed.
+    assert 'oldAfter' in r and 'newAfter' in r,'%s: format-2 raw edit without oldAfter/newAfter'%e['role']
+    assert r['oldAfter']==e['after'],'%s: oldAfter is not the previous after'%e['role']
+    listed=REVIEWED_AFTER_CHANGES.get((t['to'],e['role']))
+    if listed is not None:assert r['newAfter']==listed[0],'%s: newAfter %s is not the reviewed %s'%(e['role'],r['newAfter'],listed[0])
+    else:assert r['newAfter']==r['oldAfter'],'%s: unreviewed after change %s -> %s'%(e['role'],r['oldAfter'],r['newAfter'])
+   else:assert 'oldAfter' not in r and 'newAfter' not in r,'%s: after columns on a %s row of a %s table'%(e['role'],e['kind'],t['format'])
+   listed=REVIEWED_BEFORE_CHANGES.get((t['to'],e['role']))
+   if listed is not None:assert r['newBefore']==listed,'%s: newBefore %s is not the reviewed %s'%(e['role'],r['newBefore'],listed)
+   else:assert branch_free(bytes.fromhex(r['oldBefore']))==branch_free(bytes.fromhex(r['newBefore'])),'unreviewed before change: '+e['role']
+   n={**e,'offset':r['newOffset'],'address':r['newAddress'],'before':r['newBefore']}
+   if two:assert r.get('newPad')==((len(r['newBefore'])//2-4)//2 if e['kind']!='raw' else 0),'%s: newPad %r does not fit newBefore'%(e['role'],r.get('newPad'))
+   if 'newPad' in r:n['pad']=r['newPad']
+   if two and e['kind']=='raw':n['after']=r['newAfter']
+   mapped.append(n)
+  edits,at=mapped,t['to']
+ assert at==base,'stock base %r has no rebase column'%base
  return ranges,edits
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--stock',type=Path,required=True);args=parser.parse_args()
@@ -43,5 +109,6 @@ def main():
  for address,n,sha in ranges:assert hashlib.sha256(raw[address-0x10190000:address-0x10190000+n]).hexdigest()==sha,hex(address)
  assert len(spec['edits'])==25 and [{k:e.get(k) for k in KEYS} for e in spec['edits']]==[{k:e.get(k) for k in KEYS} for e in original]
  assert [e for e in spec['edits'] if e['kind']=='raw']==[e for e in original if e['kind']=='raw']
+ for e in original:at=int(e['offset'],16);assert raw[at:at+len(e['before'])//2].hex()==e['before'],'stock bytes at '+e['role']
  print('PASS stock ABI (%s): 11 exact ranges, synchronous raw listener route and 25 unchanged patch sites/raw bytes'%spec['stockBase'])
 if __name__=='__main__':main()

@@ -13,11 +13,26 @@ HERE = Path(__file__).resolve().parent
 FLASH = 0x10190000
 AP_CAP = 9_600_000          # the patched AP must stay below this (audit)
 PARTITION_END = 0x10b7fff8  # link.ld: __module_end < AP partition limit
-# The stock bases this tree can be built on: the two columns of baseline/rebase-1.0.5.5-to-1.0.5.12.json.
-# Everything version-specific (archive name, audit baseline, -DTD_STOCK_* define, the SW_VER/BUILD_VER every core
-# must report) is derived from the base string; the hashes are pinned in build-inputs.json.
-STOCK_BASES = ('1.0.5.5', '1.0.5.12')
+# The stock bases this tree can be built on: the endpoints of the rebase tables in baseline/ (tools/rebase_apply.py
+# TABLES). Everything version-specific (archive name, audit baseline, -DTD_STOCK_* define, the SW_VER/BUILD_VER every
+# core must report) is derived from the base string; the hashes are pinned in build-inputs.json.
+STOCK_BASES = ('1.0.5.5', '1.0.5.12', '1.0.6.11')
 CORES = {'nuttx_ap.bin': 'ap', 'nuttx_apc1.bin': 'apc1', 'nuttx_bth.bin': 'bth'}
+# The package shape of each base: its exact payload names (OtaFileInfo.json rows; the archive adds OtaFileInfo.json),
+# whether the stock ZIP is the official download or a canonical ZIP of pinned members (tools/stock_zip.py), where
+# that stock ZIP lives, and whether a build on it may ever become a phone release (False: emulator only).
+_PAYLOADS_105 = tuple(sorted(('bt_controller.bin', 'cb_fw_venus.bin', 'fac_test_img.bin', 'images.bin', 'lotties.bin',
+    'nuttx_ap.bin', 'nuttx_apc1.bin', 'nuttx_audio.bin', 'nuttx_bth.bin', 'ota_installer_progress.bin',
+    'pil_algo_up_demo_nand.dll', 'pil_algo_vad_demo.dll', 'pil_algo_wakeup_dll_nand.dll', 'rives.bin', 'smf.json')))
+STOCK_SHAPES = {
+    '1.0.5.5': {'payloads': _PAYLOADS_105, 'container': 'official', 'phoneRelease': True,
+                'stockZIPPath': ('repo', 'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip')},
+    '1.0.5.12': {'payloads': _PAYLOADS_105, 'container': 'official', 'phoneRelease': True,
+                 'stockZIPPath': ('repo', 'firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip')},
+    '1.0.6.11': {'payloads': tuple(sorted(set(_PAYLOADS_105) - {'rives.bin'} | {'amap_rtos_sdk', 'nuttx_ota.bin'})),
+                 'container': 'canonical-members', 'phoneRelease': False,
+                 'stockZIPPath': ('inputs', 'tmg12-emu/stock/Strix-OS-1.0.6.11-members-canonical.zip')}}
+EMU_NOTICE = 'EMULATOR ONLY - NOT FOR DEVICE'
 
 
 def sha(data, algorithm='sha256'):
@@ -80,15 +95,57 @@ def stock_versions(base):
 
 
 def stock_defines(base):
-    """-DTD_STOCK_1055 / -DTD_STOCK_10512: exactly one is 1, named from the base string."""
+    """-DTD_STOCK_1055 / -DTD_STOCK_10512 / -DTD_STOCK_10611: exactly one is 1, named from the base string."""
     return ['-DTD_STOCK_10412=0'] + ['-DTD_STOCK_%s=%d' % (b.replace('.', ''), b == base) for b in STOCK_BASES]
 
 
-def archive_name(root=None, base=None):
+def package_shape(base):
+    assert base in STOCK_BASES, 'package shape: unknown stock base %r' % (base,)
+    shape = STOCK_SHAPES[base]; payloads = list(shape['payloads'])
+    return {'base': base, 'payloads': payloads, 'manifestRows': len(payloads), 'archiveEntries': len(payloads)+1,
+            'unchangedPayloads': len(payloads)-1, 'container': shape['container'], 'phoneRelease': shape['phoneRelease']}
+
+
+def stock_zip_path(base, inputs=None):
+    """The stock ZIP of a base: a repository file, or a file under $TURBO_INPUTS (or --inputs). Existence is the
+    caller's to check (it fails on the read). There is no home-directory fallback here."""
+    import os
+    assert base in STOCK_BASES, 'unknown stock base %r' % (base,)
+    kind, rel = STOCK_SHAPES[base]['stockZIPPath']
+    if kind == 'repo':
+        return HERE.parent/rel
+    root = inputs or os.environ.get('TURBO_INPUTS')
+    assert root, 'TURBO_INPUTS is not set: pass --inputs or export TURBO_INPUTS'
+    return Path(root)/rel
+
+
+def emu_only(spec):
+    """build-inputs.json emuOnly (default false). A base that can never be a phone release must be emuOnly."""
+    value = spec.get('emuOnly', False)
+    assert isinstance(value, bool), 'emuOnly: must be true or false, not %r' % (value,)
+    base = stock_base(spec)
+    assert value or STOCK_SHAPES[base]['phoneRelease'], 'emuOnly: stock %s has no phone release; the tree must set emuOnly true' % base
+    return value
+
+
+_spec_emu_only = emu_only
+
+
+def archive_name(root=None, base=None, emu_only=None):
+    """The candidate name, or the EMU name for an emulator-only build. With no base, base and emuOnly come from
+    build-inputs.json; with a base and no emu_only, emu-only follows the base (a base with no phone release)."""
     if base is None:
-        base = stock_base(json.loads(((root or HERE)/'build-inputs.json').read_text()))
-    assert base in STOCK_BASES
-    return 'StrixOS-' + base + '-TurboIO-' + release_label(root) + '-CANDIDATE-NOT-APPROVED.zip'
+        spec = json.loads(((root or HERE)/'build-inputs.json').read_text())
+        base, emu = stock_base(spec), _spec_emu_only(spec)
+        assert emu_only is None or emu_only is emu, 'emuOnly: build-inputs.json says %s' % str(emu).lower()
+    else:
+        assert base in STOCK_BASES
+        phone = STOCK_SHAPES[base]['phoneRelease']
+        emu = (not phone) if emu_only is None else emu_only
+        assert isinstance(emu, bool), 'emuOnly: must be true or false, not %r' % (emu,)
+        assert emu or phone, 'emuOnly: stock %s has no phone release; only the EMU name is allowed' % base
+    tail = '-EMU-ONLY-NOT-FOR-DEVICE.zip' if emu else '-CANDIDATE-NOT-APPROVED.zip'
+    return 'StrixOS-' + base + '-TurboIO-' + release_label(root) + tail
 
 
 def core_identity(files, base):
@@ -111,10 +168,21 @@ def core_identity(files, base):
     return {'swVer': want['SW_VER'], 'buildVer': want['BUILD_VER'], 'revInfo': revs.pop()}
 
 
-def check_stock_members(files, spec):
-    """The 15 stock payloads, each pinned by SHA-256 (stockMembers)."""
+def check_stock_members(files, spec, base=None):
+    """The stock payloads of the base, each pinned by SHA-256 (stockMembers). For a canonical-members container the
+    manifest (OtaFileInfo.json) is pinned too (stockManifestSHA256). With no base at all, only an official base's
+    payload list is accepted, so the manifest rule can never be skipped by leaving the base out."""
+    base = spec.get('stockBase') if base is None else base
     members = {n: sha(b) for n, b in files.items() if n != 'OtaFileInfo.json'}
+    if base is None:
+        assert any(s['container'] == 'official' and sorted(members) == list(s['payloads']) for s in STOCK_SHAPES.values()), \
+            'package shape: no stock base given and the members are not an official base\'s payload list'
+    else:
+        assert sorted(members) == list(package_shape(base)['payloads']), 'package shape: members are not the %s payloads' % base
     assert members == spec['stockMembers'], 'pin mismatch: stockMembers'
+    if base is not None and STOCK_SHAPES[base]['container'] == 'canonical-members':
+        assert spec.get('stockManifestSHA256'), 'pin mismatch: stockManifestSHA256 is required for a canonical-members stock'
+        assert sha(files['OtaFileInfo.json']) == spec['stockManifestSHA256'], 'pin mismatch: stockManifestSHA256'
 
 
 def module_room(stock_ap_bytes, ap_bytes, module_va, module_bytes):
@@ -139,19 +207,26 @@ def animation_asset():
     return asset
 
 
-def safe_zip(path, expected):
+def safe_zip(path, expected, base):
     assert sha(path.read_bytes()) == expected, 'Wrong input archive'
+    shape = package_shape(base)
+    want = set(shape['payloads']) | {'OtaFileInfo.json'}
     with zipfile.ZipFile(path) as z:
         names = z.namelist()
-        assert len(names) == len(set(names)) == 16
-        assert all(n == Path(n).name and not n.startswith('.') for n in names)
+        assert len(names) == len(set(names)) == shape['archiveEntries'], \
+            'package shape: %d entries (%d distinct), %s has %d' % (len(names), len(set(names)), base, shape['archiveEntries'])
+        assert all(n == Path(n).name and '/' not in n and not n.startswith('.') for n in names), \
+            'package shape: entry names must be flat: ' + ', '.join(sorted(n for n in names if '/' in n or n.startswith('.') or n != Path(n).name))
+        assert set(names) == want, 'package shape: entries differ from %s: extra %s, missing %s' % (
+            base, sorted(set(names) - want), sorted(want - set(names)))
         assert sum(i.file_size for i in z.infolist()) < 24_000_000
         assert all((i.external_attr >> 16) & 0o170000 != 0o120000 for i in z.infolist())
         assert z.testzip() is None
         files = {n: z.read(n) for n in names}
     rows = json.loads(files['OtaFileInfo.json'])
-    assert isinstance(rows, list) and len(rows) == 15
-    assert len({r['Name'] for r in rows}) == 15
+    assert isinstance(rows, list) and len(rows) == shape['manifestRows'], 'package shape: manifest rows, %s has %d' % (base, shape['manifestRows'])
+    assert len({r['Name'] for r in rows}) == shape['manifestRows'], 'package shape: duplicate manifest rows'
+    assert {r['Name'] for r in rows} == set(shape['payloads']), 'package shape: manifest rows differ from the %s payloads' % base
     assert set(files) == {r['Name'] for r in rows} | {'OtaFileInfo.json'}
     for r in rows:
         b = files[r['Name']]
@@ -161,9 +236,16 @@ def safe_zip(path, expected):
 
 def audit(stock_path, candidate_path, spec):
     stock_base_name = stock_base(spec)
-    stock, before = safe_zip(stock_path, spec['stockZIP'])
-    check_stock_members(stock, spec)
-    files, after = safe_zip(candidate_path, spec['archive']['sha256'])
+    emu = emu_only(spec)
+    shape = package_shape(stock_base_name)
+    # An emulator-only build carries its notice in the file name; a normal build never carries the EMU name.
+    if emu:
+        assert candidate_path.name.endswith('-EMU-ONLY-NOT-FOR-DEVICE.zip'), 'emuOnly: the candidate must be named *-EMU-ONLY-NOT-FOR-DEVICE.zip'
+    else:
+        assert '-EMU-ONLY-' not in candidate_path.name, 'emuOnly: an EMU-named ZIP for a tree that is not emuOnly'
+    stock, before = safe_zip(stock_path, spec['stockZIP'], stock_base_name)
+    check_stock_members(stock, spec, stock_base_name)
+    files, after = safe_zip(candidate_path, spec['archive']['sha256'], stock_base_name)
     ap = files['nuttx_ap.bin']
     base = stock['nuttx_ap.bin']
     assert sha(base) == spec['stockAP'], 'pin mismatch: stockAP'
@@ -179,7 +261,7 @@ def audit(stock_path, candidate_path, spec):
             assert old == new and stock[old['Name']] == files[new['Name']]
             assert sha(files[new['Name']]) == spec['stockMembers'][new['Name']]
             unchanged += 1
-    assert unchanged == 14
+    assert unchanged == shape['unchangedPayloads']
     # Never mix cores: the stock and the candidate both carry one stock build in AP, APC1 and BTH.
     cores = core_identity(stock, stock_base_name)
     assert core_identity(files, stock_base_name) == cores
@@ -202,10 +284,11 @@ def audit(stock_path, candidate_path, spec):
     room = module_room(len(base), len(ap), int(spec['moduleVA'], 16), spec['moduleBytes'])
     assert room['moduleHeadroom'] > 0 and room['partitionHeadroom'] > 0, 'module does not fit'
     return {'passed':True, 'baseline':stock_base_name,'stockCores':cores,'customChangedPayloads':['nuttx_ap.bin'],
-        'unchangedNewStockPayloads':unchanged,'manifestPayloads':15,'archiveEntries':16,**room,
+        'unchangedNewStockPayloads':unchanged,'manifestPayloads':shape['manifestRows'],'archiveEntries':shape['archiveEntries'],**room,
         'APBytes':len(ap),'APSHA256':sha(ap),'APMD5':sha(ap,'md5'),
         'archiveSHA256':sha(candidate_path.read_bytes()),'archiveMD5':sha(candidate_path.read_bytes(),'md5'),
-        'whitelistedPatches':len(spec['edits']),'startupDescriptorsPreserved':7,'deviceIO':False}
+        'whitelistedPatches':len(spec['edits']),'startupDescriptorsPreserved':7,'deviceIO':False,
+        'emuOnly':emu,'packagePayloads':shape['payloads'],**({'notForDevice':EMU_NOTICE} if emu else {})}
 
 
 def build_input_identity(spec, versions, flags, asset_sha):
@@ -255,13 +338,22 @@ def load_spec(repin=False):
     return spec
 
 
+def write_archive(path, files):
+    """The one archive writer (also used by tools/stock_zip.py): sorted names, fixed date, deflate 9, mode 0600."""
+    with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+        for name,data in sorted(files.items()):
+            info = zipfile.ZipInfo(name,(2026,10,27,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
+            info.external_attr=0o100600<<16;z.writestr(info,data,compresslevel=9)
+
+
 def build(stock_path, llvm, out, repin=False, compile_only=False):
     spec = load_spec(repin)
+    emu = emu_only(spec)
     base_name = stock_base(spec)
     # The immutable stock baseline is required in every mode.
-    stock, rows = safe_zip(stock_path, spec['stockZIP'])
+    stock, rows = safe_zip(stock_path, spec['stockZIP'], base_name)
     assert sha(stock['nuttx_ap.bin']) == spec['stockAP'], 'pin mismatch: stockAP'
-    check_stock_members(stock, spec)
+    check_stock_members(stock, spec, base_name)
     core_identity(stock, base_name)
     # Every stock address in the tree (link.ld, edits, value sites) must be on this base; a mixed tree fails here.
     assert rebase_state() == base_name, 'tree addresses are not on stock ' + base_name
@@ -361,11 +453,8 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
     for row in rows:
         if row['Name'] == 'nuttx_ap.bin': row.update(Size=len(ap),Md5=sha(ap,'md5'))
     stock['OtaFileInfo.json'] = (json.dumps(rows,indent=2)+'\n').encode()
-    archive = out/archive_name(base=base_name)
-    with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
-        for name,data in sorted(stock.items()):
-            info = zipfile.ZipInfo(name,(2026,10,27,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
-            info.external_attr=0o100600<<16;z.writestr(info,data,compresslevel=9)
+    archive = out/archive_name(base=base_name, emu_only=emu)
+    write_archive(archive, stock)
     content = archive.read_bytes()
     for key,value in [('bytes',len(content)),('sha256',sha(content)),('md5',sha(content,'md5'))]:
         pin(spec['archive'],key,value,repin)
@@ -376,12 +465,32 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
     return result
 
 
+def show(what, base=None, inputs=None):
+    """One line for scripts (--show): the tree's base, a base's stock ZIP path, the archive name, or emuOnly."""
+    spec = json.loads((HERE/'build-inputs.json').read_text())
+    if what == 'base': return stock_base(spec)
+    if what == 'emu-only': return 'true' if emu_only(spec) else 'false'
+    if what == 'stock-zip': return str(stock_zip_path(base or stock_base(spec), inputs))
+    if what == 'archive-name': return archive_name(base=base) if base else archive_name()
+    raise AssertionError('unknown --show ' + what)
+
+
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument('--stock',type=Path,required=True)
+    parser = argparse.ArgumentParser(); parser.add_argument('--stock',type=Path)
     parser.add_argument('--audit',type=Path);parser.add_argument('--llvm-bin',type=Path);parser.add_argument('--out',type=Path)
+    parser.add_argument('--show',choices=('base','stock-zip','archive-name','emu-only'))
+    parser.add_argument('--base',choices=STOCK_BASES);parser.add_argument('--inputs',type=Path)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--repin',action='store_true');mode.add_argument('--compile-only',action='store_true')
     args = parser.parse_args()
+    if args.show:
+        if any((args.stock,args.audit,args.llvm_bin,args.out,args.repin,args.compile_only)):
+            parser.error('--show takes only --base and --inputs')
+        if args.base and args.show not in ('stock-zip','archive-name'):
+            parser.error('--base applies only to --show stock-zip and --show archive-name')
+        print(show(args.show,args.base,args.inputs)); return
+    if args.base or args.inputs: parser.error('--base and --inputs apply only to --show')
+    if not args.stock: parser.error('--stock is required')
     spec = json.loads((HERE/'build-inputs.json').read_text())
     if args.audit: result = audit(args.stock,args.audit,spec)
     else:
