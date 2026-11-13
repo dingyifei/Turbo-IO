@@ -21,6 +21,9 @@ static NSDictionary *Query(uint16_t port,NSString *path){NSDictionary *r=Fetch(p
 #if defined(TIO_RELEASE_C16)
 static NSArray *Accepted(void){return @[@"01.00.05.0005",@"01.00.05.0012"];}
 static NSString *const WantName=@"0100050012";static const int WantCode=100050012;static NSString *const WantFile=@"Strix_OS_1.0.5.12.zip";
+#elif defined(TIO_RELEASE_C18)
+static NSArray *Accepted(void){return @[@"01.00.05.0012"];}
+static NSString *const WantName=@"0100050012";static const int WantCode=100050012;static NSString *const WantFile=@"Strix_OS_1.0.5.12.zip";
 #elif defined(TIO_RELEASE_C17)
 static NSArray *Accepted(void){return @[@"01.00.05.0012"];}
 static NSString *const WantName=@"0100050005";static const int WantCode=100050005;static NSString *const WantFile=@"Strix_OS_1.0.5.5.zip";

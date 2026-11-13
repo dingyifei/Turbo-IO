@@ -5,7 +5,7 @@
 static void V(NSMutableData *d,NSUInteger n){do{uint8_t b=n&127;n>>=7;if(n)b|=128;[d appendBytes:&b length:1];}while(n);}
 static NSData *F(NSUInteger type,id json,NSData *binary){NSMutableData *d=[NSMutableData new];V(d,8);V(d,1);V(d,16);V(d,type);if(json){NSData *j=[NSJSONSerialization dataWithJSONObject:json options:0 error:nil];V(d,26);V(d,j.length);[d appendData:j];}if(binary){V(d,34);V(d,binary.length);[d appendData:binary];}return d;}
 // The release's type-5 target, written out by hand so a wrong generated value fails.
-#if defined(TIO_RELEASE_C16)
+#if defined(TIO_RELEASE_C16) || defined(TIO_RELEASE_C18)
 static NSString *const Target=@"Strix OS 1.0.5.12";
 #else
 static NSString *const Target=@"Strix OS 1.0.5.5";

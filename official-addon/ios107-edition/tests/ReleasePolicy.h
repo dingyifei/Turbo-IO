@@ -5,6 +5,10 @@
 static inline NSArray *TRPAccepted(void){return @[@"Strix OS 1.0.5.5",@"Strix OS 1.0.5.12"];}
 static NSString *const TRPTarget=@"Strix OS 1.0.5.12";
 static NSString *const TRPFolder=@"Strix_OS_1.0.5.12";
+#elif defined(TIO_RELEASE_C18)
+static inline NSArray *TRPAccepted(void){return @[@"Strix OS 1.0.5.12"];}
+static NSString *const TRPTarget=@"Strix OS 1.0.5.12";
+static NSString *const TRPFolder=@"Strix_OS_1.0.5.12";
 #elif defined(TIO_RELEASE_C17)
 static inline NSArray *TRPAccepted(void){return @[@"Strix OS 1.0.5.12"];}
 static NSString *const TRPTarget=@"Strix OS 1.0.5.5";
