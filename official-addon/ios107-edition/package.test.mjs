@@ -724,25 +724,26 @@ test('wrappers: --host 1011-full packages the full 1.0.11 build with firmware an
  assert.match(wrapper,/full_1011_guard\(\) \{\n  local symbols name\n  download_only_guard "\$1"/);
 });
 
-// Release configurations (releases.json, firmware/tools/phone_pins.py): default = C14/C15 (ZIP9), c16 (ZIP10), c17 (ZIP9 rollback).
+// Release configurations (releases.json, firmware/tools/phone_pins.py): default = C14/C15 (ZIP9), c16 (ZIP10), c17 (ZIP9 rollback), c18 (ZIP11).
 test('releases: pins per release, the addon release marker and the full-host-only --release',async()=>{
  const m=await import('./package.mjs');
- const d=m.releasePins(),c16=m.releasePins('c16'),c17=m.releasePins('c17');
+ const d=m.releasePins(),c16=m.releasePins('c16'),c17=m.releasePins('c17'),c18=m.releasePins('c18');
  assert.equal(d.release,'default');assert.equal(d.name,'TMG9');assert.equal(d.zipSHA256,'def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd');
  assert.equal(c16.name,'TMG10');assert.equal(c16.zipSHA256,'4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c');assert.equal(c16.zipBytes,8846364);
  assert.deepEqual(c16.acceptOsVersions,['Strix OS 1.0.5.5','Strix OS 1.0.5.12']);assert.equal(c16.otaVersion,'Strix OS 1.0.5.12');assert.equal(c16.folder,'Strix_OS_1.0.5.12');
  assert.deepEqual(c16.acceptQueryCodes,['01.00.05.0005','01.00.05.0012']);assert.equal(c16.feedVersionName,'0100050012');assert.equal(c16.feedVersionCode,100050012);
  assert.equal(c17.name,'TMG9');assert.equal(c17.zipSHA256,d.zipSHA256);assert.deepEqual(c17.acceptOsVersions,['Strix OS 1.0.5.12']);assert.equal(c17.otaVersion,'Strix OS 1.0.5.5');
+ assert.equal(c18.name,'TMG11');assert.equal(c18.zipSHA256,'edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1');assert.equal(c18.zipBytes,8847234);assert.deepEqual(c18.acceptOsVersions,['Strix OS 1.0.5.12']);assert.equal(c18.otaVersion,'Strix OS 1.0.5.12');assert.deepEqual(c18.acceptQueryCodes,['01.00.05.0012']);
  for(const bad of ['c99','C16','default ','../c16','',null,1])assert.throws(()=>m.releasePins(bad),/unknown_release/);
  const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+'Strix OS 1.0.5.5; target Strix OS 1.0.5.12\0y');
  assert.ok(m.validateReleaseAddon(addon(c16),c16));assert.ok(m.validateReleaseAddon(addon(d),d));
  assert.throws(()=>m.validateReleaseAddon(addon(d),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(addon(c17),c16),/addon_release_mismatch/);
  assert.throws(()=>m.validateReleaseAddon(addon(c16),c17),/addon_release_mismatch/);
- assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['default','c16','c17']);
+ assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['default','c16','c17','c18']);
  assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),Buffer.from('ota release=c17; ')]),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
  assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG10',Buffer.alloc(8846364),c16),/navs3_firmware_identity_mismatch/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};
  assert.throws(()=>m.validateOptions({...base,release:'c16'}),/release_requires_full_1011_host/);
  assert.throws(()=>m.validateOptions({...base,host:'ios1011-download',firmware:undefined,release:'c16'}),/release_requires_full_1011_host/);
- m.validateOptions({...base,host:'ios1011',release:'c16'});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:'c18'}),/unknown_release/);
+ m.validateOptions({...base,host:'ios1011',release:'c16'});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:'c99'}),/unknown_release/);
 });

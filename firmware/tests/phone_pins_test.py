@@ -1,7 +1,7 @@
 """The phone pin generator (tools/phone_pins.py): version strings, release validation, the stock-base and tree checks,
-and --check catching a changed or stale output. Usage: phone_pins_test.py ZIP ZIP (ZIP9 and ZIP10, any order)."""
+and --check catching a changed or stale output. Usage: phone_pins_test.py ZIP [ZIP ...] (release ZIPs in any order; a release ZIP not given is read from $TURBO_INPUTS at its releases.json path)."""
 from pathlib import Path
-import copy,hashlib,importlib.util,json,shutil,sys,tempfile
+import copy,hashlib,importlib.util,json,os,shutil,sys,tempfile
 FW=Path(__file__).resolve().parents[1]
 ED=FW.parent/'official-addon'/'ios107-edition'
 def load(path,name):
@@ -12,12 +12,18 @@ def refused(call,why):
     raise SystemExit('accepted: '+why)
 def main():
     pp=load(FW/'tools/phone_pins.py','phone_pins_under_test')
-    zips={hashlib.sha256(Path(p).read_bytes()).hexdigest():Path(p) for p in sys.argv[1:3]}
+    zips={hashlib.sha256(Path(p).read_bytes()).hexdigest():Path(p) for p in sys.argv[1:]}
     releases=pp.load_releases(ED/'releases.json')
     by_sha={s['zip']['sha256']:n for n,s in releases.items()}
+    for spec in releases.values():
+        if spec['zip']['sha256'] not in zips and os.environ.get('TURBO_INPUTS'):
+            p=Path(os.environ['TURBO_INPUTS'])/spec['zip']['input']
+            if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest()==spec['zip']['sha256']:zips[spec['zip']['sha256']]=p
+    def zip_of(spec):return zips[spec['zip']['sha256']]
     zip9=zips['def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd']
     zip10=zips['4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c']
-    assert set(by_sha.values())<=set(releases) and set(releases)=={'default','c16','c17'}
+    zip11=zips['edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1']
+    assert set(by_sha.values())<=set(releases) and set(releases)=={'default','c16','c17','c18'}
     # Version strings, written out by hand.
     assert pp.query_code('1.0.5.12')=='01.00.05.0012' and pp.query_code('1.0.5.5')=='01.00.05.0005' and pp.query_code('1.0.4.12')=='01.00.04.0012'
     assert pp.feed_version_name('1.0.5.12')=='0100050012' and pp.feed_version_name('1.0.5.5')=='0100050005'
@@ -27,9 +33,10 @@ def main():
     # Each release: its own ZIP passes and yields the policy below; any other ZIP or base is refused.
     want={'default':('TMG9','Strix OS 1.0.5.5','Strix_OS_1.0.5.5',['01.00.04.0012','01.00.05.0005']),
           'c16':('TMG10','Strix OS 1.0.5.12','Strix_OS_1.0.5.12',['01.00.05.0005','01.00.05.0012']),
-          'c17':('TMG9','Strix OS 1.0.5.5','Strix_OS_1.0.5.5',['01.00.05.0012'])}
+          'c17':('TMG9','Strix OS 1.0.5.5','Strix_OS_1.0.5.5',['01.00.05.0012']),
+          'c18':('TMG11','Strix OS 1.0.5.12','Strix_OS_1.0.5.12',['01.00.05.0012'])}
     for name,spec in releases.items():
-        own=zip10 if spec['firmware']=='TMG10' else zip9;other=zip9 if own==zip10 else zip10
+        own=zip_of(spec);other=zip9 if own!=zip9 else zip10
         pins,members,policy=pp.release_pins(name,spec,own,build)
         assert (pins['name'],policy['otaVersion'],policy['folder'],policy['acceptQueryCodes'])==want[name],name
         assert len(members)==16 and members['nuttx_ap.bin']==[pins['apBytes'],pins['apSHA256']]
@@ -54,19 +61,19 @@ def main():
     bad_releases(lambda d:d['releases'].pop('default'),'no default release')
     bad_releases(lambda d:d['releases'].update(C18=d['releases']['c16']),'bad release name')
     # Rendering: one block per release, the guard against two defines, the default JSON unchanged in form.
-    computed={n:pp.release_pins(n,s,zip10 if s['firmware']=='TMG10' else zip9,build) for n,s in releases.items()}
+    computed={n:pp.release_pins(n,s,zip_of(s),build) for n,s in releases.items()}
     out=pp.render(releases,computed)
     header=out['FirmwarePins.h'].decode()
-    assert header.count('#define TIO_FW_ZIP_SHA256 ')==3 and '#error "more than one TIO_RELEASE_<NAME> defined"' in header
-    assert header.index('#if defined(TIO_RELEASE_C16)')<header.index('#elif defined(TIO_RELEASE_C17)')<header.index('#else')
+    assert header.count('#define TIO_FW_ZIP_SHA256 ')==4 and '#error "more than one TIO_RELEASE_<NAME> defined"' in header
+    assert header.index('#if defined(TIO_RELEASE_C16)')<header.index('#elif defined(TIO_RELEASE_C17)')<header.index('#elif defined(TIO_RELEASE_C18)')<header.index('#else')
     assert json.loads(out['firmware-pins.json'])==pp.pins_for(zip9,'TMG9')
-    assert set(out)=={'FirmwarePins.h','firmware-pins.json','firmware-pins-c16.json','firmware-pins-c17.json'}
+    assert set(out)=={'FirmwarePins.h','firmware-pins.json','firmware-pins-c16.json','firmware-pins-c17.json','firmware-pins-c18.json'}
     # --check: the committed files match; a changed byte or a stale release file is caught.
     with tempfile.TemporaryDirectory(prefix='phone-pins-') as tmp:
         tmp=Path(tmp);inputs=tmp/'inputs'
         for name,spec in releases.items():
             target=inputs/spec['zip']['input'];target.parent.mkdir(parents=True,exist_ok=True)
-            if not target.exists():shutil.copyfile(zip10 if spec['firmware']=='TMG10' else zip9,target)
+            if not target.exists():shutil.copyfile(zip_of(spec),target)
         assert pp.main(['--inputs',str(inputs),'--check',str(ED)])==0
         work=tmp/'out';assert pp.main(['--inputs',str(inputs),'--write',str(work)])==0
         for name in out:assert (work/name).read_bytes()==(ED/name).read_bytes(),name

@@ -1,0 +1,24 @@
+{
+  "name": "TMG11",
+  "zipBytes": 8847234,
+  "zipSHA256": "edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1",
+  "apBytes": 7474312,
+  "apSHA256": "611b6bad89b2eda0e8501121a8af64c102576b3450b29931ad165c8f9a07bea5",
+  "apMD5": "4f49638d26755f635b9da85e7dea3062",
+  "manifestBytes": 2700,
+  "manifestSHA256": "71b476202288bb14e1106a88509ba6caf5c5247e417d329012945ae3671054ab",
+  "payloadBytes": 17106929,
+  "payloadSlices": 342,
+  "release": "c18",
+  "stockBase": "1.0.5.12",
+  "otaVersion": "Strix OS 1.0.5.12",
+  "folder": "Strix_OS_1.0.5.12",
+  "feedVersionName": "0100050012",
+  "feedVersionCode": 100050012,
+  "acceptOsVersions": [
+    "Strix OS 1.0.5.12"
+  ],
+  "acceptQueryCodes": [
+    "01.00.05.0012"
+  ]
+}

@@ -13,7 +13,7 @@ FOUNDATION_EXPORT NSDictionary * _Nullable TIOCheckExperimentalOTADirectory(NSUR
 // than this build's release (for example RayNeo's own download of the same version, which uses the same folder
 // name), the error says so: RayNeo may reuse those files instead of downloading the release. Never modifies them.
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOCheckOfficialOTADirectory(NSURL *directory, NSError **error);
-// This build's release configuration (default, c16, c17) and its official folder name (Strix_OS_<base>).
+// This build's release configuration (default, c16, c17, c18) and its official folder name (Strix_OS_<base>).
 FOUNDATION_EXPORT NSString *TIOOTARelease(void);
 FOUNDATION_EXPORT NSString *TIOOTAReleaseFolder(void);
 NS_ASSUME_NONNULL_END

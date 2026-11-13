@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins*.json; --check runs in the gate. 'default' is the build with no TIO_RELEASE (C14 on 1.0.7, C15 on 1.0.11). C16 and C17 are 1.0.11 full-host builds selected with turbo-package.sh --release. The accepted current versions of C16 and C17 are the owner-approved pin widenings of 2026-11-08 (plan decision 9).",
+  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins*.json; --check runs in the gate. 'default' is the build with no TIO_RELEASE (C14 on 1.0.7, C15 on 1.0.11). C16, C17 and C18 are 1.0.11 full-host builds selected with turbo-package.sh --release. The accepted current versions of C16 and C17 are the owner-approved pin widenings of 2026-11-08 (plan decision 9). C18 accepts only 1.0.5.12, the version TMG10 reports; the owner asked for the C18/TMG11 release on 2026-11-12.",
   "releases": {
     "default": {
       "builds": "C14 (host 107), C15 (host 1011-full)",
@@ -35,6 +35,18 @@
         "input": "tmg9/StrixOS-1.0.5.5-TurboIO-TMG9-CANDIDATE-NOT-APPROVED.zip",
         "bytes": 8819595,
         "sha256": "def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd"
+      },
+      "acceptCurrent": ["1.0.5.12"]
+    },
+    "c18": {
+      "builds": "C18: flashes TMG11 (TMG10 plus a read-only Sensors screen) and adds the Sensor log hub row",
+      "hosts": ["1011-full"],
+      "firmware": "TMG11",
+      "stockBase": "1.0.5.12",
+      "zip": {
+        "input": "tmg11/StrixOS-1.0.5.12-TurboIO-TMG11-CANDIDATE-NOT-APPROVED.zip",
+        "bytes": 8847234,
+        "sha256": "edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1"
       },
       "acceptCurrent": ["1.0.5.12"]
     }

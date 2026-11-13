@@ -9,7 +9,7 @@
 #include <dirent.h>
 #include <errno.h>
 
-// Which release this build is (default, c16, c17): turbo-package.sh and package.mjs look for this exact string.
+// Which release this build is (default, c16, c17, c18): turbo-package.sh and package.mjs look for this exact string.
 __attribute__((used)) const char TIOOTAReleaseMarker[]=TIO_FW_RELEASE_MARKER;
 NSString *TIOOTARelease(void){return TIO_FW_RELEASE;}
 NSString *TIOOTAReleaseFolder(void){return TIO_FW_OTA_FOLDER;}

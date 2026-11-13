@@ -5,6 +5,7 @@ umask 077
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 ED=$REPO/official-addon/ios107-edition
 TURBO_INPUTS=${TURBO_INPUTS:-"$HOME/projects/personal/turboio-inputs"}
+export TURBO_INPUTS   # phone_pins_test.py reads release ZIPs that test.py does not pass
 preview=0
 only_build=0
 skip_tests=0
