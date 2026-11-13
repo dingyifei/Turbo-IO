@@ -2,6 +2,29 @@
 
 This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg9`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). The restructure kept ZIP8 byte-identical with a one-off `identityCarryOver` for `build.py`; the first TMG9 repin (`tmg9(1)`) removed it, and `build.py` is hashed live again. The TMG8 sections below keep their text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`). Since TMG10 the tree is built on stock 1.0.5.12 (`stockBase` in `build-inputs.json`); the TMG9 and older sections describe 1.0.5.5 addresses and offsets.
 
+## TMG11: TMG10 plus a read-only Sensors screen (phone build C18)
+
+TMG11 (`RELEASE`) keeps TMG10's stock base (1.0.5.12), its 25 patch sites and its 13 tiles. The only changes are:
+
+- **Sensors screen** (`display-runtime-v1/native_display_page.c`, `tmg11(1)`). It is a second mode of the Display Test page, and the first knob press on that page opens it. On its 100 ms tick it shows:
+  - the IMU family byte, new symbol `tio_imu_family`, AP 0x1985ac50 (1.0.5.5: 0x197f2d08; the rebase row is checked against both images by `tests/rebase_independent_test.py`): 0 unknown, 1 none, 2 ST, 3 TDK;
+  - light current and peak;
+  - the fold state, `nav_folded(nav_input(nav_monitors()))`;
+  - the knob delta and press count.
+
+  It reads only. It never calls `start_report_imu`/`start_report_mag`, registers no handler, and writes no PMU, sensor-config, settings or flash state.
+- **Knob forwarding** (`music-runtime-v1/menu10.c`). While a page is open, wheel deltas and presses go to `tdp_native_knob` for that page. They are still not passed to stock, and every other path is unchanged.
+- **Pins.** Module 161,276 B. ZIP11 `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1`, 8,847,234 B, published to `$TURBO_INPUTS/tmg11/`. The emulator-only candidate built before the `RELEASE` change has the same bytes; only the archive name differs.
+- **C18** is the 1.0.11 full host with `--release c18`. It bundles ZIP11 and accepts only `Strix OS 1.0.5.12`. This is the first same-version (1.0.5.12 to 1.0.5.12) flash; the glasses may refuse it, and then nothing is written. The rollback is C16 + ZIP10.
+- **Device checks (owner):**
+  - the menu and every tile behave as on TMG10;
+  - Display Test opens as before, and one press shows "Sensors (read only)";
+  - the IMU line reads ST or TDK;
+  - covering the light sensor moves the light value;
+  - folding changes the fold line;
+  - turning and pressing the knob change its counts;
+  - leaving the page restores normal menu stepping.
+
 ## TMG10 candidate: TMG9 rebased onto stock Strix OS 1.0.5.12
 
 **CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance. The phone side is C16 (flashes ZIP10) with C17 (rolls back to ZIP9), both 1.0.11 full-host builds; see "Phone builds C16 and C17" below. Neither is packaged, signed or installed.**
