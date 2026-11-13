@@ -8,19 +8,25 @@ TMG11 (`RELEASE`) keeps TMG10's stock base (1.0.5.12), its 25 patch sites and it
 
 - **Sensors screen** (`display-runtime-v1/native_display_page.c`, `tmg11(1)`). It is a second mode of the Display Test page, and the first knob press on that page opens it. On its 100 ms tick it shows:
   - the IMU family byte, new symbol `tio_imu_family`, AP 0x1985ac50 (1.0.5.5: 0x197f2d08; the rebase row is checked against both images by `tests/rebase_independent_test.py`): 0 unknown, 1 none, 2 ST, 3 TDK;
-  - light current and peak;
+  - a line labelled "Light", which is really the LVGL UI memory in use and its peak, in bytes (`native_light`, display unit + 0x1bc/+0x1c0, against a 16 MiB budget). It is not the ambient light sensor. On the owner's glasses it settles at about 8.79 MB. Reading the W1161 would need its driver started (`SNIOC_START`), which this read-only screen does not do;
   - the fold state, `nav_folded(nav_input(nav_monitors()))`;
   - the knob delta and press count.
 
   It reads only. It never calls `start_report_imu`/`start_report_mag`, registers no handler, and writes no PMU, sensor-config, settings or flash state.
 - **Knob forwarding** (`music-runtime-v1/menu10.c`). While a page is open, wheel deltas and presses go to `tdp_native_knob` for that page. They are still not passed to stock, and every other path is unchanged.
 - **Pins.** Module 161,276 B. ZIP11 `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1`, 8,847,234 B, published to `$TURBO_INPUTS/tmg11/`. The emulator-only candidate built before the `RELEASE` change has the same bytes; only the archive name differs.
+- **Owner device check, 2026-11-12 (TMG11 flashed):**
+  - IMU: ST.
+  - Fold: "open" when the glasses are unfolded; the Hall sensor is on the right hinge.
+  - Knob: counter-clockwise is negative, about 1,200 counts per full turn.
+  - "Light": shows UI memory (about 8.79 MB), not light.
+  - The Sensor log on C18 named the parts: ST IMU on the "LSM6DSO32" driver (WHO_AM_I 0x6b), MMC5603NJ magnetometer (ID 0x10), W1161 light sensor (ID 0xe6, I2C0), Mixo OTS knob (ID 0xB1, I2C0).
 - **C18** is the 1.0.11 full host with `--release c18`. It bundles ZIP11 and accepts only `Strix OS 1.0.5.12`. This is the first same-version (1.0.5.12 to 1.0.5.12) flash; the glasses may refuse it, and then nothing is written. The rollback is C16 + ZIP10.
 - **Device checks (owner):**
   - the menu and every tile behave as on TMG10;
   - Display Test opens as before, and one press shows "Sensors (read only)";
   - the IMU line reads ST or TDK;
-  - covering the light sensor moves the light value;
+  - the "Light" line reads UI memory, not light (see above);
   - folding changes the fold line;
   - turning and pressing the knob change its counts;
   - leaving the page restores normal menu stepping.
