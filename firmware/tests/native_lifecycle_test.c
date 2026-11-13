@@ -40,9 +40,13 @@ static unsigned tn_slot_open(void *p){(void)p;return 1;}
 static void *ptr(void *p,unsigned off){(void)p;(void)off;return words;}
 static void *m8_page_open(void *p,uint32_t sid,void **out){(void)p;(void)sid;(void)out;return words;}
 static void native_report_activity(void){}
+static unsigned knob_presses,knob_wheels;static void *knob_page;
+static void m8_page_knob(void *page,int32_t delta,bool press){knob_page=page;if(press)knob_presses++;else if(delta)knob_wheels++;}
 #include "menu_lifecycle.inc"
 int main(void){
  calibrated=true;m8_hook_hide(words);assert(!calibrated&&canceled==1);calibrated=true;m8_hook_destroy(words);assert(!calibrated&&canceled==2);
  for(unsigned id=0;id<13;id++){*word(words,0x88)=id;calibrated=true;unsigned before=canceled;assert(m8_hook_event(words,NULL));assert(!calibrated&&canceled==before+1);}
- puts("PASS native menu lifecycle: hide/destroy and every activation cancel before rapid leave-return can stitch a measurement");
+ /* TMG11: with a page open the press is still swallowed (the hook returns true) and goes to that page. */
+ storage.page=words;*word(words,0x88)=0;calibrated=true;assert(m8_hook_event(words,NULL));assert(knob_presses==1&&knob_wheels==0&&knob_page==words);storage.page=NULL;
+ puts("PASS native menu lifecycle: hide/destroy and every activation cancel before rapid leave-return can stitch a measurement; an open page gets the press");
 }
