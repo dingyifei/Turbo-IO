@@ -46,6 +46,7 @@ static bool tap_service_visible(void *a){(void)a;return false;}static void tap_s
 static bool tf_slot_visible(void *a){(void)a;return false;}static void tf_slot_wheel(void *a,int d){(void)a;(void)d;}
 static bool tm_slot_visible(void *a){(void)a;return false;}static void tm_slot_wheel(void *a,int d){(void)a;(void)d;}
 static bool tn_slot_visible(void *a){(void)a;return false;}
+static void *KNOB_PAGE;static int KNOB_DELTA;static void m8_page_knob(void *page,int32_t delta,bool press){KNOB_PAGE=page;if(!press)KNOB_DELTA+=delta;}
 static bool eligible(void *a){(void)a;return ELIGIBLE;}
 static unsigned fm_tile_count(void){return (unsigned)COUNT;}
 static uint32_t stream_tick(void){return NOW;}
@@ -182,6 +183,8 @@ int main(void){
   reset(rows,13,1,1);NOW=5000;CHECK(fm_view_update(&VIEW,12,0,0,NOW));CHECK(VIEW.page_motion&&VIEW.page_offset==-10);   /* 1 -> 12, two items backward */
  }
  if(FAILS){fprintf(stderr,"%d check(s) failed\n",FAILS);return 1;}
- puts("PASS tmg9 wheel hook: one item per D (300..600) through app[0x88] + native_snap, 13 items in 13 D, wrap at both ends, remote step = D, ctrl.idx/view.selected/label/frame agree for carousel and 2/3 rows, the stock wheel never sees a delta");
+ /* TMG11: with a page open the wheel goes to that page and never to the stock wheel. */
+ reset(3,13,0,1);T.page=A;{int before=STOCK_CALLS;wheel_hook(A,250);assert(KNOB_PAGE==A&&KNOB_DELTA==250&&STOCK_CALLS==before);}T.page=NULL;
+ puts("PASS tmg9 wheel hook: one item per D (300..600) through app[0x88] + native_snap, 13 items in 13 D, wrap at both ends, remote step = D, ctrl.idx/view.selected/label/frame agree for carousel and 2/3 rows, the stock wheel never sees a delta, and an open page gets the wheel");
  return 0;
 }
