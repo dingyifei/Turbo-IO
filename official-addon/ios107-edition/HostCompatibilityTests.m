@@ -67,5 +67,19 @@ int main(void){@autoreleasepool{
     assert(!TIOHostFullImageMatches((const void *)&image,fullMarked));
     // Every inspected full host still matches through the full-image check, with or without a marker.
     for(NSArray *pair in pairs){NSDictionary *info=@{@"CFBundleShortVersionString":pair[0],@"CFBundleVersion":pair[1]};assert([TIOHostFullExpectedUUID(info) isEqual:TIOHostExpectedUUID(info)]);}
+    // 1.0.21/1 (C19): download-only only. Exact UUID; the full-profile marker never selects a full profile on it.
+    {
+        NSDictionary *n=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.21",@"CFBundleVersion":@"1"};
+        assert([TIOHostDownloadOnlyUUID(n) isEqual:@"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"]);assert(!TIOHostExpectedUUID(n));
+        for(NSArray *pair in @[@[@"1.0.21",@"259"],@[@"1.0.21",@"2"],@[@"1.0.20",@"1"],@[@"1.0.22",@"1"],@[@"1.0.21",@""]])assert(!TIOHostDownloadOnlyUUID(@{@"CFBundleShortVersionString":pair[0],@"CFBundleVersion":pair[1]}));
+        [[[NSUUID alloc]initWithUUIDString:@"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"] getUUIDBytes:image.c.uuid];
+        assert([TIOHostProfileFor((const void *)&image,n) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches((const void *)&image,n));
+        for(id marker in @[@"ios1011",@"ios1021",@"ios1021-download",@"ios1011-download"]){
+            NSMutableDictionary *m=[n mutableCopy];m[@"TIOHostProfile"]=marker;
+            assert([TIOHostProfileFor((const void *)&image,m) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches((const void *)&image,m));assert(!TIOHostFullExpectedUUID(m));
+        }
+        // The 1.0.11 image still does not match as 1.0.21 and vice versa.
+        image.c.uuid[15]^=1;assert(!TIOHostProfileFor((const void *)&image,n));image.c.uuid[15]^=1;
+    }
     puts("PASS host version/build/UUID guards; 1.0.11/259 download-only profile exact; full profile only on the exact marker");
 }}
