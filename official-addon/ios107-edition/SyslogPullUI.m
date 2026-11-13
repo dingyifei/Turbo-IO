@@ -84,7 +84,7 @@ static void Start(void){
 - (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)refresh{[self.tableView reloadData];}
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)v{return 2;}
-- (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return s==0?2:MAX((NSInteger)Lines.count,1);}
+- (NSInteger)tableView:(UITableView *)v numberOfRowsInSection:(NSInteger)s{return s==0?2:1;}
 - (NSString *)tableView:(UITableView *)v titleForHeaderInSection:(NSInteger)s{return s==1?TIOText(@"common.ui.sensorLog.lines"):nil;}
 - (NSString *)tableView:(UITableView *)v titleForFooterInSection:(NSInteger)s{return s==0?TIOText(@"common.ui.sensorLog.footer"):nil;}
 - (UITableViewCell *)tableView:(UITableView *)v cellForRowAtIndexPath:(NSIndexPath *)p{
@@ -93,7 +93,14 @@ static void Start(void){
   if(p.row==0){c.textLabel.text=TIOText(@"common.ui.sensorLog.status");c.detailTextLabel.text=Detail?:TIOText(@"common.ui.sensorLog.state.idle");}
   else{c.textLabel.text=TIOText(@"common.ui.sensorLog.request");c.detailTextLabel.text=Ready()?TIOText(@"common.ui.sensorLog.ready"):TIOText(@"common.ui.sensorLog.notready");}
   return c;}
- c.textLabel.font=TIODesignMonospacedDigitFont(TIODesignTextStyleFootnote);c.textLabel.text=Lines.count?Lines[p.row]:(Decoded?TIOText(@"common.ui.sensorLog.nomatch"):@"-");return c;
+ // One plain, selectable text block (long log lines wrap; select or long-press to copy), not one row per line.
+ c.selectionStyle=UITableViewCellSelectionStyleNone;c.accessibilityIdentifier=@"sensor-log-lines";
+ UITextView *t=[UITextView new];t.translatesAutoresizingMaskIntoConstraints=NO;t.editable=NO;t.selectable=YES;t.scrollEnabled=NO;t.backgroundColor=UIColor.clearColor;
+ t.font=TIODesignMonospacedDigitFont(TIODesignTextStyleFootnote);t.adjustsFontForContentSizeCategory=YES;t.textColor=TIODesignColor(TIODesignColorLabel);t.textContainerInset=UIEdgeInsetsZero;t.textContainer.lineFragmentPadding=0;
+ t.text=Lines.count?[Lines componentsJoinedByString:@"\n"]:(Decoded?TIOText(@"common.ui.sensorLog.nomatch"):@"-");
+ [c.contentView addSubview:t];UILayoutGuide *m=c.contentView.layoutMarginsGuide;
+ [NSLayoutConstraint activateConstraints:@[[t.leadingAnchor constraintEqualToAnchor:m.leadingAnchor],[t.trailingAnchor constraintEqualToAnchor:m.trailingAnchor],[t.topAnchor constraintEqualToAnchor:m.topAnchor],[t.bottomAnchor constraintEqualToAnchor:m.bottomAnchor]]];
+ return c;
 }
 - (void)tableView:(UITableView *)v didSelectRowAtIndexPath:(NSIndexPath *)p{[v deselectRowAtIndexPath:p animated:YES];if(p.section!=0||p.row!=1)return;
  TIOConfirm(self,TIOText(@"common.ui.sensorLog.confirm.title"),TIOText(@"common.ui.sensorLog.confirm.message"),TIOText(@"common.ui.sensorLog.confirm.action"),NO,^{Start();});}
