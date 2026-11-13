@@ -1,16 +1,27 @@
-"""Derive firmware/baseline/rebase-1.0.5.5-to-1.0.5.12.json from the decomp's static rebase study.
+"""Derive a rebase table for firmware/baseline/ (tools/rebase_apply.py TABLES). Two modes, mutually exclusive.
 
-Offline and read-only on every input. Never connects to a device. Usage (paths are examples):
+Offline and read-only on every input. Never connects to a device. Both modes refuse an --out or --report path inside
+the repository (resolved, symlinks followed): a table file in firmware/baseline/ activates itself, so committing one is
+a deliberate copy by a person, in its own reviewed commit. main(argv) is callable in-process.
+
+Legacy mode (--lookup): the 1.0.5.5 to 1.0.5.12 table from the decomp's static rebase study. Usage (paths are examples):
 
   python3 -I firmware/tools/rebase_derive.py \
     --lookup  "$TURBO_INPUTS/decomp/dirty/wf-2/delta1012/tools/tmg-lookup.json" \
     --matches "$TURBO_INPUTS/decomp/dirty/wf-2/delta1012/ap/matches.json" \
     --study   "$TURBO_INPUTS/decomp/dirty/wf-2/delta1012/review-w1/TMG-REBASE.corrected.md" \
-    --out firmware/baseline/rebase-1.0.5.5-to-1.0.5.12.json
+    --tree "$A"/tmg9/firmware --inputs-root "$TURBO_INPUTS" --out "$A"/legacy.json
 
-The tree read must be on stock 1.0.5.5 with the TMG9 pins: the TMG9 tree. Since the tree moved to 1.0.5.12, run it
-on an export of the tag (`git archive fw/tmg9 firmware | tar -x -C DIR`, then `--tree DIR/firmware`); the output is
-byte-identical to the committed table (checked when the table was committed). The decomp lookup supplies the proposed 1.0.5.12 address of every code reference
+Propose mode (--propose): a turboio-rebase-2 table from a readiness TSV of proposed addresses (see the end of this
+docstring). Usage:
+
+  python3 -I firmware/tools/rebase_derive.py --propose TSV --old-tree firmware --stock-old ZIP --stock-new ZIP \
+    --from 1.0.5.12 --to 1.0.6.11 --out "$A"/table.json --report "$A"/report.json [--inputs-root DIR]
+
+The tree read in legacy mode must be on stock 1.0.5.5 with the TMG9 pins: the TMG9 tree. Since the tree moved to
+1.0.5.12, run it on an export of the tag (`git archive fw/tmg9 firmware | tar -x -C "$A"/tmg9`, then
+`--tree "$A"/tmg9/firmware`); the output is byte-identical to the committed table minus its hand-added
+tio_imu_family row. The decomp lookup supplies the proposed 1.0.5.12 address of every code reference
 (matcher pair + offset, checked by window compare, masked signature search and call edges; see the study,
 section 2). This script takes those values, applies the study's one manual correction (tgr_intercept), and
 re-checks every value it writes against the two stock images by its own means (below). It refuses to write
@@ -27,23 +38,58 @@ Checks done here (each row records which ones it passed):
   field     a RAM address is base+offset: the same field offsets are read and written from the old base
             literal in the old image and from the new base literal at the matcher-partner sites in the new one;
   string    a .data string has the same bytes at the new address of the data copy.
+The .data copy (file offset = VA - delta, and its length) is read from each image's copy descriptor at +0x674
+(rebase_apply.data_copy).
+
+Propose mode. The TSV (columns kind, name, addr_1012, final_verdict, new_address_1611, source) must hold exactly one row
+per item of the old tree: its link.ld symbols, its 25 edits by role, and the old table's 15 values and 11 stock ABI
+ranges (their column of --from); anything else is fatal. The old table is the TABLES entry ending at --from, loaded by
+path from the old tree. Both stock ZIPs go through build.safe_zip, check_stock_members and core_identity (the new one
+against stock_zip.pinned(--to)), and the old tree must be wholly on --from. Every method below is computed from the two
+stock images and from rows already accepted in this run; none reads the proposal, which is only compared with each
+method's single answer. Any method that gives another answer rejects the row. Counting methods (the only names that
+go in a row's `checks`):
+  sig       masked_pattern(OLD image, old address, 24 bytes; an ABI range: its whole length) has exactly one even
+            hit in the new image;
+  call      old BL/B.W sites that target the old address (address order; up to 48 tried, up to 12 paired), each
+            paired to the new image by its own masked 16-byte window (starting at the site) found exactly once there;
+            the new branch target is a vote (at least one vote, and 75 % of the votes name one address);
+  edge      the T4 branches in the equal masked prefix of the 64-byte window at (old address, proposal) whose old
+            target is a row already accepted in this run: each lands on that row's new address, at least one;
+  lit       old PC-relative loads (LDR literal, 16- or 32-bit) of a word equal to the old value, tried and paired
+            the same way; the word the paired new load reads is a vote (75 % rule);
+  field     native_light: [Rn,#value-R] at old sites whose Rn holds the accepted display unit R, paired the same way;
+            the base word loaded at the new sites, plus the offset, is a vote (at least two paired sites);
+  str       the NUL-terminated old string (or exactly its reviewed change) occurs once in the new data copy;
+  copy      copy-region callees: identical bytes at the same runtime address (copy descriptor +0x408) in both images.
+Never counting (proof only): the proposal, a signature built from the new image, the masked window at the proposal on
+its own, a 4-byte prologue match, any `before` read from the new image, a string that merely differs.
+A row is "shift" when its kind's primary method agrees (sig for code, copy for copy-region callees, lit with two
+paired votes for RAM, field for native_light, str with identical bytes plus lit for data) and none disagrees;
+"changed" when the primary does not hold and two other counting methods agree (data: str with a reviewed change plus
+lit); a row listed in REVIEWED_SITES needs its listed address, one agreeing method and none disagreeing; anything else
+is rejected with every failed rule. An edit's new `before` must be the old one with each BL/B.W re-encoded to its
+target's accepted row, or the pinned REVIEWED_BEFORE_CHANGES value. Exit 0 with no rejections, 3 otherwise (both
+files are written; the table's `rejected` is filled in, so rebase_apply refuses to load it).
 """
 import argparse
 import bisect
+import collections
+import csv
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import re
 import struct
+import sys
 import zipfile
 
 FW = Path(__file__).resolve().parents[1]
 ROOT = FW.parent
 FLASH = 0x10190000
 DATA_RUNTIME = 0x18000000
-DATA_FILE = 0x401bc  # file offset of the .data copy source (copy descriptor +0x674); same in both images
-DATA_BYTES = {'1.0.5.5': 0x221260, '1.0.5.12': 0x2391c0}  # its length (study section 5)
 OLD_BASE, NEW_BASE = '1.0.5.5', '1.0.5.12'
 STOCK = {OLD_BASE: ROOT/'firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip',
          NEW_BASE: ROOT/'firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip'}
@@ -335,15 +381,61 @@ def described(path, inputs_root):
     raise SystemExit('input outside the repository and $TURBO_INPUTS: pass --inputs-root')
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--lookup', type=Path, required=True)
-    parser.add_argument('--matches', type=Path, required=True)
-    parser.add_argument('--study', type=Path, required=True)
-    parser.add_argument('--tree', type=Path, default=FW, help='a firmware tree on stock 1.0.5.5 (TMG9)')
-    parser.add_argument('--inputs-root', type=Path, default=os.environ.get('TURBO_INPUTS'))
-    parser.add_argument('--out', type=Path, required=True)
-    args = parser.parse_args()
+def load_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def rebase_apply():
+    """tools/rebase_apply.py beside this file (data_copy, data_file_delta, TABLES, load_table, problems)."""
+    return load_module(FW/'tools'/'rebase_apply.py', 'rebase_derive_apply')
+
+
+def refuse_inside(paths, trees=()):
+    """Refuse an output inside the repository, inside a tree read, or inside that tree's checkout (resolved, symlinks
+    followed): a table file in firmware/baseline/ would activate itself (rebase_apply TABLES)."""
+    roots = [ROOT.resolve()]
+    for t in trees:
+        t = Path(t).resolve()
+        roots += [t] + ([t.parent] if (t.parent/'.git').exists() else [])
+    def inside(r, root):
+        # By spelling and by file identity: on a case-insensitive volume a differently cased spelling of the repository
+        # resolves to a different string but to the same directory (same st_dev and st_ino).
+        if r == root or root in r.parents:
+            return True
+        if not root.exists():
+            return False
+        return any(a.exists() and os.path.samefile(a, root) for a in (r,) + tuple(r.parents))
+    for p in paths:
+        r = Path(p).resolve()
+        for root in roots:
+            if inside(r, root):
+                raise SystemExit('refused: %s lies inside the repository or a tree read (%s); write it elsewhere and '
+                                 'copy a table into firmware/baseline/ by hand, in its own reviewed commit' % (p, root))
+
+
+def same_file(a, b):
+    """True when two paths name one file: equal once resolved (compared case-insensitively, which can only refuse more),
+    or both existing with the same st_dev and st_ino."""
+    a, b = Path(a), Path(b)
+    if str(a.resolve()).casefold() == str(b.resolve()).casefold():
+        return True
+    return a.exists() and b.exists() and os.path.samefile(a, b)
+
+
+def refuse_overwrite(outputs, inputs):
+    """Refuse (exit 1, before any work) an output that names an input file of the run, or two outputs naming one file."""
+    outputs = [(n, p) for n, p in outputs if p is not None]
+    for i, (n, p) in enumerate(outputs):
+        for m, q in outputs[i + 1:] + [(m, q) for m, q in inputs if q is not None]:
+            if same_file(p, q):
+                raise SystemExit('refused: %s %s is the same file as %s %s; it would be overwritten' % (n, p, m, q))
+
+
+def legacy(args):
+    rebase = rebase_apply()
     lookup = json.loads(args.lookup.read_text())
     matcher = Matcher(json.loads(args.matches.read_text()))
     raw_old, files_old, old = stock_info(STOCK[OLD_BASE])
@@ -492,8 +584,8 @@ def main():
         r = src[token]
         require(r['n_hits'] == 1, token + ': string not unique')
         o, nv = H(token), H(r['new_hits'][0])
-        so = old[DATA_FILE + o - DATA_RUNTIME:].split(b'\0', 1)[0]
-        sn = new[DATA_FILE + nv - DATA_RUNTIME:].split(b'\0', 1)[0]
+        so = old[o - rebase.data_file_delta(old):].split(b'\0', 1)[0]
+        sn = new[nv - rebase.data_file_delta(new):].split(b'\0', 1)[0]
         require(so == sn and so.decode('latin-1').startswith(r['old_string']), token + ': string bytes')
         v, n = top(r)
         require(H(v) == nv, token + ': votes disagree with the string search')
@@ -528,9 +620,9 @@ def main():
         word = struct.pack('<I', H(t))
         bound = t in ('0x10190000', '0x18000000')
         # An aligned word outside the .data copy source (initialised data, not code literals).
-        aligned = lambda image, data: any(i % 4 == 0 and not DATA_FILE <= i < DATA_FILE + data
+        aligned = lambda image, copy: any(i % 4 == 0 and not copy[0] - FLASH <= i < copy[1] - FLASH
                                           for i in (m.start() for m in re.finditer(re.escape(word), image)))
-        require(bound or not (aligned(old, DATA_BYTES[OLD_BASE]) or aligned(new, DATA_BYTES[NEW_BASE])),
+        require(bound or not (aligned(old, rebase.data_copy(old)) or aligned(new, rebase.data_copy(new))),
                 t + ': listed as not stock but is an aligned code literal in a stock image')
     news = {x['new'].lower() for x in values}
     olds = {x['old'].lower() for x in values}
@@ -607,5 +699,666 @@ def main():
     print(json.dumps(counts))
 
 
+# ---- propose mode (turboio-rebase-2) ---------------------------------------------------------------------------
+# Reviewed exceptions, keyed by the new base (`to`). Literals, each checked against the images on every run; never
+# filled in from a run. REVIEWED_SITES {(to, TSV kind, TSV name): (address, reason)} ships empty; F2 fills it only in
+# a reviewed commit.
+REVIEWED_BEFORE_CHANGES = {  # {(to, role): new before}; typed from the 1.0.6.11 AP (sha256 9bbf7be3...) at the readiness addresses
+    ('1.0.6.11', 'Menu replacement frame_start'): '1e2380b5',  # clamp to 6 replaced by usat 0..7; the b.w covers two whole instructions
+    ('1.0.6.11', 'Menu replacement label_index'): '90b581f3',  # clamp to 6 replaced by usat 0..7; full replacement, never returns
+    ('1.0.6.11', '284-byte menu allocation'): '4ff4867050f07cfc',  # mov.w r0,#0x10c + bl, 8 bytes (pad 2)
+    ('1.0.6.11', 'Carousel item count 7 to 13'): '0821',  # stock count 8; the after value is an owner decision (later phase)
+    ('1.0.6.11', 'File callback registration'): '00242048214b84610360',  # the two ldr literal offsets moved by 4 bytes
+}
+REVIEWED_STRING_CHANGES = {('1.0.6.11', 'coexist_string_APP_INFO]_[Service.h:58'): (':58]', ':62]', 'line number moved in stock')}
+REVIEWED_SITES = {}
+FIELD_BASES = {'native_light_current': 'display_unit', 'native_light_peak': 'display_unit'}  # field method: value -> RAM base value
+COUNTING = ('sig', 'copy', 'call', 'edge', 'lit', 'field', 'str')
+SIG_BYTES, SITE_BYTES, EDGE_BYTES, WINDOW_BYTES, COPY_BYTES = 24, 16, 64, 32, 32
+MAX_VOTES, MAX_TRIES = 12, 48  # paired votes per method, old sites tried per method
+COPY_DESCRIPTOR = 0x408  # <3I src, end, dst> of the copy to 0x100000 (memcpy, memset, strcmp, strlen)
+TSV_COLUMNS = ('kind', 'name', 'addr_1012', 'final_verdict', 'new_address_1611', 'source')
+MODULE_DERIVATION = 'FLASH 0x10190000 + stock AP bytes - 8 (the module is appended before the 8-byte trailer)'
+
+
+def find_all(data, needle, start=0, end=None):
+    """Every offset of needle in data[start:end], overlapping occurrences included."""
+    end = len(data) if end is None else end
+    out, at = [], data.find(needle, start, end)
+    while at >= 0:
+        out.append(at)
+        at = data.find(needle, at + 1, end)
+    return out
+
+
+def masked_hits(image, source, address, length):
+    """Every even VA of `image` where masked_pattern(source, address, length) matches, overlapping hits included.
+    Anchored on the pattern's longest unmasked run for speed; each candidate is confirmed by the pattern itself."""
+    pattern = masked_pattern(source, address, length)
+    runs, start, run = [], 0, b''
+    for i, size, branch, hw in instructions(source, address, length):
+        if i + size > length:
+            break
+        if branch:
+            runs, run = runs + ([(start, run)] if run else []), b''
+        else:
+            start, run = (start if run else i), run + source[address - FLASH + i: address - FLASH + i + size]
+    runs += [(start, run)] if run else []
+    if not runs or max(len(r) for _, r in runs) < 4:
+        return [m.start() + FLASH for m in re.finditer(b'(?=' + pattern.pattern + b')', image, re.S) if m.start() % 2 == 0]
+    off, anchor = max(runs, key=lambda r: len(r[1]))
+    return [at - off + FLASH for at in find_all(image, anchor)
+            if at >= off and (at - off) % 2 == 0 and pattern.match(image, at - off)]
+
+
+def masked_prefix(old, oa, new, na, length):
+    """Bytes from the start, in whole instructions, over which the masked window at (oa, na) is equal."""
+    done = 0
+    for i, size, branch, hw in instructions(old, oa, length):
+        if i + size > length or not masked_window(old, oa + i, new, na + i, size)[0]:
+            break
+        done = i + size
+    return done
+
+
+def masked_differences(old, oa, new, na, length):
+    """Offsets of the instructions that differ once T4 branch displacements are masked."""
+    return [i for i, size, branch, hw in instructions(old, oa, length)
+            if i + size <= length and not masked_window(old, oa + i, new, na + i, size)[0]]
+
+
+def branch_index(image):
+    """{even target VA: [site VA, ...]} of every halfword pair that decodes as a T4 BL/B.W, in address order."""
+    index = {}
+    for m in re.finditer(rb'(?=.[\xf0-\xf7].[\x90-\x9f\xb0-\xbf\xd0-\xdf\xf0-\xff])', image, re.S):
+        i = m.start()
+        if i % 2 == 0:
+            h1, h2 = struct.unpack_from('<HH', image, i)
+            assert t4(h1, h2)
+            index.setdefault(t4_target(FLASH + i, h1, h2), []).append(FLASH + i)
+    return index
+
+
+def load_literal(image, site):
+    """(size, Rt, literal VA, word) of the PC-relative LDR (16-bit T1 or LDR.W literal) at site, else None."""
+    at = site - FLASH
+    if not 0 <= at <= len(image) - 4:
+        return None
+    h, h2 = struct.unpack_from('<HH', image, at)
+    base = (site + 4) & ~3
+    if (h & 0xf800) == 0x4800:
+        size, rt, lit = 2, (h >> 8) & 7, base + (h & 0xff) * 4
+    elif h in (0xf8df, 0xf85f):
+        size, rt, lit = 4, h2 >> 12, base + (h2 & 0xfff) if h & 0x80 else base - (h2 & 0xfff)
+    else:
+        return None
+    if not FLASH <= lit <= FLASH + len(image) - 4:
+        return None
+    return size, rt, lit, struct.unpack_from('<I', image, lit - FLASH)[0]
+
+
+def literal_index(image):
+    """{literal VA: [site VA, ...]} of every PC-relative LDR in the image, in address order."""
+    index = {}
+    for pattern in (rb'(?=.[\x48-\x4f])', rb'(?=[\xdf\x5f]\xf8)'):
+        for m in re.finditer(pattern, image, re.S):
+            got = load_literal(image, FLASH + m.start()) if m.start() % 2 == 0 else None
+            if got:
+                index.setdefault(got[2], []).append(FLASH + m.start())
+    return {k: sorted(v) for k, v in index.items()}
+
+
+def field_base(image, site):
+    """The literal word that Rn of the ldr/str [Rn,#imm] at site was loaded from (field_sites' backward search)."""
+    i = site - FLASH
+    h1 = struct.unpack_from('<H', image, i)[0]
+    if (h1 & 0xfff0) in (0xf8d0, 0xf8c0):
+        rn = h1 & 0xf
+    elif (h1 & 0xf000) == 0x6000:
+        rn = (h1 >> 3) & 7
+    else:
+        return None
+    for j in range(i - 2, max(0, i - 48), -2):
+        g = struct.unpack_from('<H', image, j)[0]
+        literal = None
+        if (g & 0xf800) == 0x4800 and ((g >> 8) & 7) == rn:
+            literal = ((j + 4) & ~3) + (g & 0xff) * 4
+        elif j >= 2 and struct.unpack_from('<H', image, j - 2)[0] == 0xf8df and (g >> 12) == rn:
+            literal = ((j - 2 + 4) & ~3) + (g & 0xfff)
+        if literal is not None:
+            return struct.unpack_from('<I', image, literal)[0] if literal + 4 <= len(image) else None
+    return None
+
+
+def tally(votes, minimum=1):
+    """(answer, n, m): the one value that at least 75 % of the m votes name (n of them), or None."""
+    if len(votes) < minimum:
+        return None, 0, len(votes)
+    top, n = collections.Counter(votes).most_common(1)[0]
+    return (top if 4 * n >= 3 * len(votes) else None), n, len(votes)
+
+
+def copy_bytes(image, address):
+    """COPY_BYTES of the copy-region code at runtime `address` (copy descriptor +0x408), else None."""
+    src, end, dst = struct.unpack_from('<3I', image, COPY_DESCRIPTOR)
+    assert dst == 0x100000 and FLASH <= src < end <= FLASH + len(image), 'copy descriptor +0x408 is out of range'
+    off = (address & ~1) - dst
+    return image[src - FLASH + off: src - FLASH + off + COPY_BYTES] if 0 <= off and off + COPY_BYTES <= end - src else None
+
+
+def stock_record(base, raw, files, build, rebase, pin=None):
+    """bases[base] of a format-2 table: pins, cores, module VA and the .data copy, read from the stock ZIP itself."""
+    kind, rel = build.STOCK_SHAPES[base]['stockZIPPath']
+    ap = files['nuttx_ap.bin']
+    src, end, dst, delta = rebase.data_copy(ap)
+    out = {'stockZIPFile': rel if kind == 'repo' else '$TURBO_INPUTS/' + rel, 'stockZIPKind': build.STOCK_SHAPES[base]['container'],
+           'stockZIP': sha(raw), 'stockZIPBytes': len(raw), 'stockAP': sha(ap), 'stockAPBytes': len(ap),
+           'stockMembers': {n: sha(b) for n, b in sorted(files.items()) if n != 'OtaFileInfo.json'}}
+    if out['stockZIPKind'] == 'canonical-members':
+        out['stockManifestSHA256'] = sha(files['OtaFileInfo.json'])
+    out.update(cores={n: version_block(files[n]) for n in ('nuttx_ap.bin', 'nuttx_apc1.bin', 'nuttx_bth.bin')},
+               moduleVA=hex(FLASH + len(ap) - 8), dataFileDelta=hex(delta),
+               dataCopy={'descriptor': hex(0x674), 'src': hex(src), 'end': hex(end), 'dst': hex(dst)})
+    if pin is not None:
+        assert (out['stockZIP'], out['stockZIPBytes']) == (pin['container']['sha256'], pin['container']['bytes']), base + ': container pin'
+        assert out['stockMembers'] == {n: h for n, h in pin['members'].items() if n != 'OtaFileInfo.json'}, base + ': member pins'
+        assert out.get('stockManifestSHA256') == pin['members']['OtaFileInfo.json'], base + ': manifest pin'
+    return out
+
+
+def propose(args):
+    """--propose: verify each TSV proposal by this tool's own methods (docstring) and write --out and --report."""
+    rebase, build = rebase_apply(), load_module(FW/'build.py', 'rebase_derive_build')
+    stock_zip = load_module(FW/'tools'/'stock_zip.py', 'rebase_derive_stock_zip')
+    frm, to, tree = args.frm, args.to, args.old_tree.resolve()
+    try:
+        prev = next((t for t in rebase.TABLES if t[1] == frm), None)
+        entry = next((t for t in rebase.TABLES if (t[0], t[1]) == (frm, to)), None)
+        assert prev and entry and entry[3] == 'turboio-rebase-2', 'TABLES has no format-2 table %s to %s after a table ending at %s' % (frm, to, frm)
+        spec = json.loads((tree/'build-inputs.json').read_text())
+        assert spec.get('stockBase') == frm, 'the old tree is on stock %r, not --from %s' % (spec.get('stockBase'), frm)
+        old_table = rebase.load_table(tree/'baseline'/prev[2])
+        col = rebase.column(old_table, frm)
+        files_old, _ = build.safe_zip(args.stock_old, spec['stockZIP'], frm)
+        build.check_stock_members(files_old, spec, frm)
+        build.core_identity(files_old, frm)
+        pin = stock_zip.pinned(to)
+        files_new, _ = build.safe_zip(args.stock_new, pin['container']['sha256'], to)
+        build.check_stock_members(files_new, {'stockMembers': {n: h for n, h in pin['members'].items() if n != 'OtaFileInfo.json'},
+                                              'stockManifestSHA256': pin['members']['OtaFileInfo.json']}, to)
+        build.core_identity(files_new, to)
+        old, new = files_old['nuttx_ap.bin'], files_new['nuttx_ap.bin']
+        bases = {frm: stock_record(frm, args.stock_old.read_bytes(), files_old, build, rebase),
+                 to: stock_record(to, args.stock_new.read_bytes(), files_new, build, rebase, pin)}
+        known = old_table['bases'][frm]
+        assert all(bases[frm][k] == known[k] for k in known), '%s: the stock ZIP is not the old table\'s (%s)' % (
+            frm, ', '.join(k for k in known if bases[frm][k] != known[k]))
+        assert bases[frm]['stockAP'] == spec['stockAP'] and bases[frm]['moduleVA'] == spec['moduleVA'] == old_table['moduleVA'][col], 'old AP and module VA'
+        left = rebase.problems(tree, old_table, frm)
+        assert not left, 'the old tree is not wholly on %s: %s' % (frm, '; '.join(left[:5]))
+        for t in old_table['notStock']:
+            word = struct.pack('<I', H(t))
+            for image in (old, new):
+                src, end, _, _ = rebase.data_copy(image)
+                assert t in ('0x10190000', '0x18000000') or not [i for i in find_all(image, word) if i % 4 == 0 and not src - FLASH <= i < end - FLASH], \
+                    t + ': listed as not stock but is an aligned word outside the data copy of a stock image'
+        # ---- universe: the old tree's link.ld symbols and edits, the old table's values and ABI ranges ----
+        items, keyed = [], {}
+
+        def item(key, **it):
+            assert key not in keyed, 'duplicate item %r' % (key,)
+            it['key'] = key
+            items.append(it)
+            keyed[key] = it
+
+        linkld = {r['symbol']: r for r in old_table['linkld']}
+        for sym, v in tree_values(tree).items():
+            assert H(linkld[sym][col]) == v, sym
+            item(('linkld', sym), family='linkld', old=v, text=linkld[sym][col],   # a RAM symbol (tio_imu_family) is checked as RAM
+                 type='copy' if (v & ~1) in COPY_REGION else 'ram' if DATA_RUNTIME <= v < 0x1a000000 else 'code')
+        for e in spec['edits']:
+            oa, before = H(e['address']), bytes.fromhex(e['before'])
+            assert old[oa - FLASH: oa - FLASH + len(before)] == before and H(e['offset']) == oa - FLASH, e['role'] + ': old before'
+            assert e['pad'] == ((len(before) - 4) // 2 if e['kind'] in ('bw', 'bl') else 0), e['role'] + ': old pad'
+            item(('edit', e['role']), family='edit', type='edit', old=oa, text=e['address'], edit=e)
+        for v in old_table['values']:
+            sites = scan_sites(tree, v[col])
+            assert sites == rebase.sites(v), v['name'] + ': sites in the old tree are not the old table\'s'
+            item(('value', v['name']), family='value', type=v['kind'], old=H(v[col]), text=v[col], value=v, sites=sites)
+        for r in old_table['stockAbiRanges']:
+            oa = H(r[col])
+            assert sha(old[oa - FLASH: oa - FLASH + r['bytes']]) == r[col + 'SHA256'], r[col] + ': old range hash'
+            item(('abi-range', oa), family='abi-range', type='abi', old=oa, text=r[col], bytes=r['bytes'], range=r)
+        # ---- the TSV: exactly one row per item ----
+        with open(args.propose, newline='') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            tsv = list(reader)
+        assert set(TSV_COLUMNS) <= set(reader.fieldnames or ()), 'TSV columns: need ' + ', '.join(TSV_COLUMNS)
+        rows, errors = [], []
+        for n, r in enumerate(tsv):
+            line, kind, name = n + 2, r['kind'], r['name']
+            try:
+                at = int(r['addr_1012'], 16)
+            except (TypeError, ValueError):
+                errors.append('line %d: addr_1012 %r' % (line, r['addr_1012']))
+                continue
+            family = 'value' if kind in ('value-code', 'value-data', 'value-ram') else kind
+            it = keyed.get((family, at if family == 'abi-range' else name))
+            if it is None or family not in ('linkld', 'edit', 'value', 'abi-range'):
+                errors.append('line %d: %s %r is not an item of the old tree' % (line, kind, name))
+            elif any(x['it'] is it for x in rows):
+                errors.append('line %d: a second row for %s %r' % (line, kind, name))
+            elif family == 'value' and kind != 'value-' + it['type']:
+                errors.append('line %d: %s %r is a %s value in the old table' % (line, kind, name, it['type']))
+            elif at != it['old']:
+                errors.append('line %d: %s %r addr_1012 %s is not the tree value %s' % (line, kind, name, r['addr_1012'], it['text']))
+            else:
+                text = (r['new_address_1611'] or '').strip()
+                rows.append({'it': it, 'kind': kind, 'name': name, 'line': line, 'text': text,
+                             'proposal': int(text, 16) if re.fullmatch(r'0x[0-9a-fA-F]{1,8}', text) else None,
+                             'info': {'verdict': r['final_verdict'], 'source': r['source'], 'row': line}})
+        errors += ['no TSV row for %s %r' % (k[0], k[1] if k[0] != 'abi-range' else hex(k[1])) for k in keyed if not any(x['it']['key'] == k for x in rows)]
+        assert not errors and len(rows) == len(items), 'the TSV does not cover the old tree one row per item:\n  ' + '\n  '.join(errors)
+    except AssertionError as error:
+        raise SystemExit('rebase table NOT written (%s to %s): %s' % (frm, to, error))
+    # ---- methods that do not depend on accepted rows: computed once per row ----
+    branches, loads, paired = branch_index(old), literal_index(old), {}
+    data_new = rebase.data_copy(new)
+
+    def pair(site):
+        """The one even VA where the masked 16-byte window at an old site occurs in the new image, else None."""
+        if site not in paired:
+            hits = masked_hits(new, old, site, SITE_BYTES) if site - FLASH + SITE_BYTES + 2 <= len(old) else []
+            paired[site] = hits[0] if len(hits) == 1 else None
+        return paired[site]
+
+    def votes(sites, vote):
+        got, tried = [], 0
+        for site in sites:
+            if len(got) == MAX_VOTES or tried == MAX_TRIES:
+                break
+            tried += 1
+            p = pair(site)
+            v = None if p is None else vote(site, p)
+            if v is not None:
+                got.append(v)
+        return {'sites': len(sites), 'tried': tried, 'votes': got}
+
+    def call_vote(site, p):
+        o2, (h1, h2) = struct.unpack_from('<HH', old, site - FLASH)[1], struct.unpack_from('<HH', new, p - FLASH)
+        return t4_target(p, h1, h2) if t4(h1, h2) and (h2 & 0x4000) == (o2 & 0x4000) else None
+
+    def lit_vote(site, p):
+        a, b = load_literal(old, site), load_literal(new, p)
+        return b[3] if a and b and a[:2] == b[:2] else None
+
+    field_cache = {}
+
+    def static(row):
+        it, p, s = row['it'], row['proposal'], {}
+        oa, typ = it['old'], it['type']
+        if typ in ('code', 'edit', 'abi'):
+            n = it['bytes'] if typ == 'abi' else SIG_BYTES
+            # The old pattern must also be unique in the old image: an identical twin there could be the one hit in the
+            # new image, and sig would then name the twin's new address (stricter than spec 2h, which checks the new image only).
+            s['sig'] = {'hits': masked_hits(new, old, oa & ~1, n), 'oldHits': masked_hits(old, old, oa & ~1, n)}
+        if typ in ('code', 'edit', 'abi', 'copy'):
+            s['call'] = votes(branches.get(oa & ~1, []), call_vote)
+        s['lit'] = votes(sorted({site for at in find_all(old, struct.pack('<I', oa)) for site in loads.get(FLASH + at, [])}), lit_vote)
+        if typ == 'copy':
+            a, b = copy_bytes(old, oa), copy_bytes(new, oa)
+            s['copy'] = {'answer': oa if a is not None and a == b else None,
+                         'note': '%d bytes at %s %s in both images' % (COPY_BYTES, hex(oa & ~1), 'identical' if a is not None and a == b else 'not identical')}
+        if typ == 'data':
+            so = old[rebase.data_offset(old, oa):].split(b'\0', 1)[0]
+            change = REVIEWED_STRING_CHANGES.get((to, it['key'][1]))
+            found = {}
+            for mode, text in (('identical', so),) + ((('reviewed', so.replace(change[0].encode(), change[1].encode())),)
+                                                      if change and so.count(change[0].encode()) == 1 else ()):
+                hits = find_all(new, text + b'\0', data_new[0] - FLASH, data_new[1] - FLASH)
+                found[mode] = (hits, text)
+            unique = [(mode, hits[0], text) for mode, (hits, text) in found.items() if len(hits) == 1]
+            s['str'] = {'answer': unique[0][1] + data_new[3] if len(unique) == 1 else None, 'mode': unique[0][0] if len(unique) == 1 else None,
+                        'old': so, 'new': unique[0][2] if len(unique) == 1 else None,
+                        'note': '; '.join('the %s string %r occurs %d times in the new data copy' % ('old' if mode == 'identical' else 'reviewed change of the old',
+                                          text.decode('latin-1'), len(hits)) for mode, (hits, text) in found.items())
+                                + ('' if change else '; no reviewed string change listed')}
+        if typ == 'ram' and it['key'][1] in FIELD_BASES:
+            base = keyed[('value', FIELD_BASES[it['key'][1]])]
+            off = oa - base['old']
+            assert 0 < off < 0x1000, it['key'][1] + ': not a field of ' + base['key'][1]
+            if base['old'] not in field_cache:
+                field_cache[base['old']] = field_sites(old, base['old'], {x['old'] - base['old'] for x in items if x['key'][1] in FIELD_BASES})
+            sites = [a for a, k, o in field_cache[base['old']] if o == off]
+            s['field'] = dict(votes(sites, lambda site, q: field_base(new, q)), base=base['key'], offset=off)
+        if typ in ('code', 'edit', 'abi') and p is not None and FLASH <= (p & ~1) and (p & ~1) - FLASH + max(EDGE_BYTES, it.get('bytes', 0)) + 2 <= len(new):
+            s['window'] = masked_prefix(old, oa & ~1, new, p & ~1, WINDOW_BYTES)
+            s['prologue'] = old[(oa & ~1) - FLASH:(oa & ~1) - FLASH + 4] == new[(p & ~1) - FLASH:(p & ~1) - FLASH + 4]
+            s['new-sig'] = len(masked_hits(new, new, p & ~1, SIG_BYTES))
+        row['static'] = it['static'] = s
+
+    try:
+        for row in rows:
+            static(row)
+    except AssertionError as error:
+        raise SystemExit('rebase table NOT written (%s to %s): %s' % (frm, to, error))
+
+    # ---- evaluation against a set of accepted rows ----
+    def code_map(acc):
+        """{even old VA: {even new VA: [keys]}} of the accepted code rows (link.ld, code values, edits, ABI ranges)."""
+        out = {}
+        for k, v in acc.items():
+            if keyed[k]['type'] in ('code', 'copy', 'edit', 'abi'):
+                out.setdefault(keyed[k]['old'] & ~1, {}).setdefault(v & ~1, []).append(k)
+        return out
+
+    def mapped(cm, target, skip):
+        news = cm.get(target & ~1) if target & ~1 != skip else None
+        return next(iter(news)) if news and len(news) == 1 else None
+
+    def judge(answer, want, detail):
+        detail['state'] = 'none' if answer is None else 'agree' if answer == want else 'disagree'
+        if answer is not None:
+            detail['answer'] = hex(answer)
+        return detail
+
+    def counted(v, want, minimum=1):
+        a, n, m = tally(v['votes'], minimum)
+        return judge(a, want, {'votes': '%d of %d paired votes for %s' % (n, m, hex(a) if a is not None else 'no single address'),
+                               'paired': m, 'sites': v['sites'], 'tried': v['tried']})
+
+    def before(row, p, cm):
+        """The new before of an edit by rule 1 (BL/B.W re-encoded) or 2 (REVIEWED_BEFORE_CHANGES); reasons otherwise."""
+        it, e = row['it'], row['it']['edit']
+        oa, ob, reasons, proof = it['old'], bytes.fromhex(e['before']), [], {}
+        inside = lambda image, a, n: [(i, t4_target(a + i, *hw), hw[1] & 0x4000) for i, size, br, hw in instructions(image, a, n) if br and i + size <= n]
+        olds = [(i, t, link, mapped(cm, t, oa & ~1)) for i, t, link in inside(old, oa, len(ob))]
+        missing = [hex(t) for i, t, link, m in olds if m is None]
+        expect = bytearray(ob)
+        for i, t, link, m in olds:
+            if m is not None:
+                expect[i:i + 4] = t4_encode(p + i, m, link)
+        actual, nb = new[p - FLASH: p - FLASH + len(ob)], None
+        listed = REVIEWED_BEFORE_CHANGES.get((to, e['role']))
+        if not missing and bytes(expect) == actual:
+            nb, proof['before'] = actual, 'rule 1: the old before%s' % (' with %d BL/B.W re-encoded' % len(olds) if olds else '')
+        elif listed is not None:
+            rb = bytes.fromhex(listed)
+            got, news = new[p - FLASH: p - FLASH + len(rb)], inside(new, p, len(rb))
+            ok = len(news) == len(olds) and all(m is not None and nt & ~1 == m & ~1 and nl == link for (i, t, link, m), (j, nt, nl) in zip(olds, news))
+            if got == rb and ok:
+                nb, proof['before'] = got, 'rule 2: reviewed before change %s (%d bytes)' % (listed, len(rb))
+            else:
+                reasons.append('before: the new image holds %s at the proposal, not the reviewed before change %s%s' % (
+                    got.hex(), listed, '' if ok else ' with its BL/B.W re-encoded to accepted rows'))
+        else:
+            reasons.append('before: the new image holds %s at the proposal, not the old before %s%s, and no reviewed before change is listed' % (
+                actual.hex(), ob.hex(), ' with its BL/B.W re-encoded (targets %s are not accepted rows)' % ', '.join(missing) if missing
+                else ' with its BL/B.W re-encoded' if olds else ''))
+        if nb is None:
+            return reasons, proof, None
+        split = any(i + size > len(nb) for i, size, br, hw in instructions(new, p, len(nb)))
+        trampoline = e['role'].startswith('Entry trampoline ')
+        if trampoline and split:
+            reasons.append('before: the trampoline edit splits an instruction in the new image')
+        elif not trampoline:
+            proof['splitsInstruction'] = split
+        if trampoline and nb != ob:
+            proof['trampolinePrologueChanged'] = '%s -> %s (trampolines.S needs a hand edit)' % (ob.hex(), nb.hex())
+        out = {'newBefore': nb.hex(), 'newPad': (len(nb) - 4) // 2 if e['kind'] in ('bw', 'bl') else 0}
+        if e['kind'] == 'raw':
+            after = bytes.fromhex(e['after'])
+            if len(ob) == len(nb) == len(after) == 2 and ob[1] == nb[1] == after[1] and (ob[1] & 0xe0) == 0x20:
+                out.update(oldAfter=e['after'], newAfter=e['after'])
+            else:
+                reasons.append('raw after: before %s, new before %s and after %s do not differ in the immediate byte alone' % (ob.hex(), nb.hex(), after.hex()))
+        return reasons, proof, out
+
+    def evaluate(row, acc, cm):
+        """{'status', 'verdict', 'checks', 'proof', 'reasons', 'blame' (accepted keys an edge or field contradicts), ...}"""
+        it, p, s = row['it'], row['proposal'], row['static']
+        typ, oa, name = it['type'], it['old'], it['key'][1]
+        proof, reasons, blame, m = {'proposal': row['info']}, [], set(), {}
+        out = {'status': 'rejected', 'verdict': None, 'checks': [], 'proof': proof, 'reasons': reasons, 'blame': blame}
+        if p is None:
+            reasons.append('proposal: %r is not an address' % row['text'])
+            return out
+        if typ in ('code', 'edit', 'abi'):
+            if 'window' not in s:
+                reasons.append('proposal: %s is outside the new AP image' % hex(p))
+                return out
+            if typ == 'code' and p & 1 != oa & 1:
+                reasons.append('thumb: %s does not keep the Thumb bit of %s' % (hex(p), it['text']))
+            if typ != 'code' and p & 1:
+                reasons.append('thumb: a patch site or range start must be even, not %s' % hex(p))
+            hits, old_hits = s['sig']['hits'], s['sig']['oldHits']
+            unique_old = old_hits == [oa & ~1]
+            detail = {'hits': len(hits), 'at': [hex(h) for h in hits[:6]]}
+            if not unique_old:
+                detail['note'] = 'old pattern not unique (%d hits in the old image: %s)' % (len(old_hits), ', '.join(hex(h) for h in old_hits[:6]))
+            m['sig'] = judge(hits[0] if len(hits) == 1 and unique_old else None, p & ~1, detail)
+            length = max(EDGE_BYTES, it.get('bytes', 0))
+            equal, pairs = masked_window(old, oa & ~1, new, p & ~1, length) if (oa & ~1) - FLASH + length + 2 <= len(old) else (False, [])
+            good, bad = [], []
+            for t_old, t_new in pairs:
+                news = cm.get(t_old & ~1) if t_old & ~1 != oa & ~1 else None
+                if news:
+                    (good if list(news) == [t_new & ~1] else bad).append('%s->%s' % (hex(t_old), hex(t_new)))
+                    if list(news) != [t_new & ~1]:
+                        blame.update(k for ks in news.values() for k in ks)
+            m['edge'] = {'state': 'disagree' if bad else 'agree' if good else 'none', 'good': good, 'bad': bad,
+                         'branches': len(pairs), 'window': '%d bytes%s' % (length, ', equal' if equal else '')}
+            proof.update({'window': '%d of %d masked bytes equal at the proposal' % (s['window'], WINDOW_BYTES),
+                          'prologue': s['prologue'], 'new-sig': '%d hits of the 24-byte pattern built from the new image' % s['new-sig']})
+        if 'call' in s:
+            m['call'] = counted(s['call'], p & ~1)
+        m['lit'] = counted(s['lit'], p)
+        if 'copy' in s:
+            m['copy'] = judge(s['copy']['answer'], p, {'note': s['copy']['note']})
+        if 'str' in s:
+            m['str'] = judge(s['str']['answer'], p, {'mode': s['str']['mode'], 'note': s['str']['note']})
+            at = p - data_new[3]
+            if data_new[0] - FLASH <= at < data_new[1] - FLASH:
+                proof['stringAtProposal'] = new[at:].split(b'\0', 1)[0].decode('latin-1')
+        if 'field' in s:
+            f = s['field']
+            base = acc.get(f['base'])
+            a, n, k = tally(f['votes'], 2)
+            detail = {'votes': '%d of %d paired sites load base %s' % (n, k, hex(a) if a is not None else 'none'), 'paired': k,
+                      'sites': f['sites'], 'tried': f['tried'], 'offset': hex(f['offset']), 'base': f['base'][1]}
+            if base is None:
+                m['field'] = dict(detail, state='none', note='the base row %s is not accepted' % f['base'][1])
+            elif a is not None and a != base:
+                m['field'] = dict(detail, state='disagree', note='the sites load %s, the accepted base is %s' % (hex(a), hex(base)))
+                blame.add(f['base'])
+            else:
+                m['field'] = judge(None if a is None else a + f['offset'], p, detail)
+        agree = [k for k in COUNTING if k in m and m[k]['state'] == 'agree']
+        disagree = [k for k in COUNTING if k in m and m[k]['state'] == 'disagree']
+        primary = {'code': 'sig', 'edit': 'sig', 'abi': 'sig', 'copy': 'copy', 'data': 'str'}.get(typ) or ('field' if name in FIELD_BASES else 'lit')
+        if typ == 'data':
+            shift = 'str' in agree and m['str']['mode'] == 'identical' and 'lit' in agree
+            changed = 'str' in agree and m['str']['mode'] == 'reviewed' and 'lit' in agree
+            primary_text = 'str with identical bytes plus lit'
+        else:
+            shift = primary in agree and (typ != 'ram' or m[primary]['paired'] >= 2)
+            changed = not shift and len([k for k in agree if k != primary]) >= 2
+            primary_text = primary + (' with two paired votes' if typ == 'ram' else '')
+        verdict = None
+        # Disagreements and the primary/changed rules are reported independently, so a rejected row names every rule that failed.
+        reasons += ['%s disagrees: %s' % (k, json.dumps({x: y for x, y in m[k].items() if x != 'state'})) for k in disagree]
+        if shift or changed:
+            verdict = None if disagree else 'shift' if shift else 'changed'
+        else:
+            listed = REVIEWED_SITES.get((to, row['kind'], row['name']))
+            if listed is not None and listed[0] == p and agree and not disagree:
+                verdict, agree = 'changed', agree + ['reviewed-site']
+                proof['reviewedSite'] = listed[1]
+            else:
+                reasons.append('primary method %s does not hold: %s' % (primary_text, json.dumps(
+                    {k: {x: y for x, y in m[k].items() if x not in ('good', 'bad')} for k in (('str', 'lit') if typ == 'data' else (primary,)) if k in m})))
+                reasons.append('changed needs two other counting methods to agree; agreeing: %s' % (', '.join(k for k in agree if k != primary) or 'none'))
+                if listed is not None:
+                    reasons.append('reviewed site %s does not apply (needs the listed address, one agreeing method and no disagreeing one)' % hex(listed[0]))
+        proof.update({k: v for k, v in m.items()})
+        if typ == 'abi':   # an ABI range is "changed" exactly when its masked bytes differ (stock_abi_test then needs a review)
+            proof['differences'] = ['+%d' % d for d in masked_differences(old, oa, new, p & ~1, it['bytes'])]
+            if verdict and 'reviewed-site' not in agree:
+                verdict = 'changed' if proof['differences'] else 'shift'
+        if typ == 'edit':
+            more, extra, fields = before(row, p, cm)
+            reasons += more
+            proof.update(extra)
+            out['edit'] = fields
+        if verdict and not reasons:
+            out.update(status='accepted', verdict=verdict, checks=agree)
+        return out
+
+    # ---- fixpoint: rows accepted in one pass vouch (edge, field, before) in the next; contradictions are barred ----
+    barred = {}
+    while True:
+        acc = {}
+        while True:
+            cm = code_map(acc)
+            add = {r['it']['key']: r['proposal'] for r in rows if r['it']['key'] not in acc and r['it']['key'] not in barred
+                   and evaluate(r, acc, cm)['status'] == 'accepted'}
+            if not add:
+                break
+            acc.update(add)
+        cm, bad = code_map(acc), {}
+        for r in rows:
+            k = r['it']['key']
+            if k in acc:
+                res = evaluate(r, acc, cm)
+                if res['status'] != 'accepted':
+                    bad[k] = 'no longer holds once every accepted row is known: ' + '; '.join(res['reasons'])
+                    bad.update({b: 'contradicted by %s %r' % (r['kind'], r['name']) for b in res['blame'] if b in acc and b not in bad})
+        for even, news in cm.items():
+            if len(news) > 1:
+                bad.update({k: 'accepted rows at old %s name different new addresses: %s' % (hex(even), ', '.join(hex(n) for n in news))
+                            for ks in news.values() for k in ks if k not in bad})
+        olds = {keyed[k]['old']: k for k in acc if keyed[k]['family'] == 'value'}
+        for k, v in acc.items():
+            if keyed[k]['family'] == 'value' and v in olds and olds[v] != k:
+                bad.setdefault(k, 'new value %s equals the old value of %s: rewriting would be ambiguous' % (hex(v), olds[v][1]))
+        if not bad:
+            break
+        barred.update(bad)
+    # ---- outputs ----
+    cm, results, report_rows, rejected, prologues = code_map(acc), {}, [], [], []
+    for r in rows:
+        k, res = r['it']['key'], evaluate(r, acc, cm)
+        if k in barred:
+            res.update(status='rejected', verdict=None, checks=[])
+            res['reasons'].insert(0, 'barred: ' + barred[k])
+        assert (res['status'] == 'accepted') == (k in acc), k
+        results[k] = res
+        reason = '; '.join(res['reasons']) or None
+        if 'trampolinePrologueChanged' in res['proof']:
+            prologues.append({'role': r['name'], 'change': res['proof']['trampolinePrologueChanged']})
+        accepted = res['status'] == 'accepted'
+        report_rows.append({'kind': r['kind'], 'name': r['name'], 'old': r['it']['text'], 'proposal': hex(r['proposal']) if r['proposal'] is not None else r['text'],
+                            'status': res['status'], 'verdict': res['verdict'], 'new': hex(r['proposal']) if accepted else None,
+                            'checks': res['checks'], 'proof': res['proof'], 'reason': None if accepted else reason})
+        if not accepted:
+            rejected.append({'kind': r['kind'], 'name': r['name'], 'old': r['it']['text'], 'proposal': report_rows[-1]['proposal'], 'reason': reason})
+    table_rows = {'linkld': [], 'edit': [], 'value': [], 'abi-range': []}
+    for it in items:
+        if it['key'] not in acc:
+            continue
+        p, res = acc[it['key']], results[it['key']]
+        tail = {'verdict': res['verdict'], 'checks': res['checks'], 'proof': res['proof']}
+        oa = it['old']
+        if it['family'] == 'linkld':
+            row = {'symbol': it['key'][1], 'old': it['text'], 'new': hex(p), 'delta': (p & ~1) - (oa & ~1)}
+        elif it['family'] == 'edit':
+            e, x = it['edit'], res['edit']
+            row = {'role': e['role'], 'kind': e['kind'], 'oldAddress': e['address'], 'newAddress': hex(p), 'oldOffset': e['offset'],
+                   'newOffset': hex(p - FLASH), 'delta': (p & ~1) - (oa & ~1), 'oldBefore': e['before'], 'newBefore': x['newBefore'],
+                   'oldPad': e['pad'], 'newPad': x['newPad'], **{k: x[k] for k in ('oldAfter', 'newAfter') if k in x}}
+        elif it['family'] == 'value':
+            row = {'name': it['key'][1], 'kind': it['type'], 'old': it['text'], 'new': hex(p), 'sites': it['sites']}
+            if it['type'] == 'data':
+                row.update(oldString=it['static']['str']['old'].decode(), newString=it['static']['str']['new'].decode())
+        else:
+            row = {'old': it['text'], 'new': hex(p), 'bytes': it['bytes'], 'oldSHA256': it['range'][col + 'SHA256'],
+                   'newSHA256': sha(new[p - FLASH: p - FLASH + it['bytes']])}
+        table_rows[it['family']].append(dict(row, **tail))
+    module = bases[to]['moduleVA']
+    described_inputs = [(role, Path(path)) for role, path in (
+        ('readiness proposals (TSV; compared with, never used to derive)', args.propose),
+        ('old table %s to %s' % (prev[0], prev[1]), tree/'baseline'/prev[2]),
+        ('stock ZIP %s' % frm, args.stock_old), ('stock ZIP %s' % to, args.stock_new))]
+    table = {
+        'format': 'turboio-rebase-2', 'from': frm, 'to': to,
+        'note': 'Generated by firmware/tools/rebase_derive.py --propose; do not edit by hand. Applied by firmware/tools/rebase_apply.py.',
+        'thumbConvention': THUMB_CONVENTION,
+        'provenance': {'generator': 'firmware/tools/rebase_derive.py --propose',
+                       'inputs': [{'role': role, 'path': described(p, args.inputs_root), 'sha256': sha(p.read_bytes())} for role, p in described_inputs],
+                       'tree': 'firmware tree on stock %s (%s)' % (frm, described(tree, args.inputs_root)),
+                       'stock': {b: bases[b]['stockZIPFile'] for b in (frm, to)},
+                       'reviewed': {'beforeChanges': {r: v for (t, r), v in REVIEWED_BEFORE_CHANGES.items() if t == to},
+                                    'stringChanges': {n: list(v) for (t, n), v in REVIEWED_STRING_CHANGES.items() if t == to},
+                                    'sites': {'%s %s' % (k, n): [hex(v[0]), v[1]] for (t, k, n), v in REVIEWED_SITES.items() if t == to}}},
+        'bases': bases,
+        'moduleVA': {'old': old_table['moduleVA'][col], 'new': module, 'derivation': MODULE_DERIVATION},
+        'linkld': table_rows['linkld'], 'edits': table_rows['edit'], 'values': table_rows['value'],
+        'stockAbiRanges': table_rows['abi-range'],
+        'notStock': old_table['notStock'], 'scanExempt': old_table['scanExempt'],
+        'rejected': rejected,
+    }
+    counts = {'rows': len(rows), 'accepted': len(acc), 'rejected': len(rejected),
+              'byFamily': {f: {'accepted': sum(1 for r in report_rows if r['status'] == 'accepted' and (r['kind'].split('-')[0] if f == 'value' else r['kind']) == f),
+                               'rejected': sum(1 for r in report_rows if r['status'] == 'rejected' and (r['kind'].split('-')[0] if f == 'value' else r['kind']) == f)}
+                           for f in ('linkld', 'edit', 'value', 'abi-range')},
+              'byVerdict': dict(collections.Counter(r['verdict'] for r in report_rows if r['verdict']))}
+    report = {'pair': '%s:%s' % (frm, to), 'tsv': {'path': described(args.propose, args.inputs_root), 'sha256': sha(Path(args.propose).read_bytes())},
+              'moduleVA': module, 'counts': counts, 'trampolinePrologueChanges': prologues, 'rows': report_rows}
+    args.out.write_text(json.dumps(table, indent=1) + '\n')
+    args.report.write_text(json.dumps(report, indent=1) + '\n')
+    print(json.dumps(dict(counts, moduleVA=module)))
+    if rejected:
+        raise SystemExit(3)
+    return 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Derive a rebase table (no device I/O). Legacy mode: --lookup; '
+                                     'propose mode: --propose (see the module docstring).')
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--lookup', type=Path, help='legacy: decomp lookup (proposed 1.0.5.12 addresses)')
+    mode.add_argument('--propose', type=Path, metavar='TSV', help='propose: readiness TSV of proposed addresses')
+    parser.add_argument('--matches', type=Path, help='legacy: decomp matcher pairs')
+    parser.add_argument('--study', type=Path, help='legacy: decomp study, corrected copy')
+    parser.add_argument('--tree', type=Path, help='legacy: a firmware tree on stock 1.0.5.5 (TMG9); default this tree')
+    parser.add_argument('--old-tree', type=Path, help='propose: the firmware tree on stock --from')
+    parser.add_argument('--stock-old', type=Path, help='propose: stock ZIP of --from')
+    parser.add_argument('--stock-new', type=Path, help='propose: stock ZIP of --to')
+    parser.add_argument('--from', dest='frm', help='propose: old stock base')
+    parser.add_argument('--to', help='propose: new stock base')
+    parser.add_argument('--report', type=Path, help='propose: per-row report (JSON)')
+    parser.add_argument('--inputs-root', type=Path, default=os.environ.get('TURBO_INPUTS'))
+    parser.add_argument('--out', type=Path, required=True)
+    args = parser.parse_args(argv)
+    if args.lookup:
+        given = [n for n in ('old_tree', 'stock_old', 'stock_new', 'frm', 'to', 'report') if getattr(args, n) is not None]
+        if given or not (args.matches and args.study):
+            parser.error('legacy mode (--lookup) needs --matches and --study and takes none of the propose options')
+        args.tree = args.tree or FW
+        refuse_inside([args.out], [args.tree])
+        refuse_overwrite([('--out', args.out)], [('--lookup', args.lookup), ('--matches', args.matches), ('--study', args.study)])
+        return legacy(args)
+    missing = [n for n in ('old_tree', 'stock_old', 'stock_new', 'frm', 'to', 'report') if getattr(args, n) is None]
+    if missing or args.matches or args.study or args.tree:
+        parser.error('propose mode needs --old-tree, --stock-old, --stock-new, --from, --to, --out and --report, '
+                     'and takes none of --matches, --study, --tree')
+    if args.out.resolve() == args.report.resolve():
+        parser.error('--out and --report must be different files')
+    refuse_inside([args.out, args.report], [args.old_tree])
+    refuse_overwrite([('--out', args.out), ('--report', args.report)],
+                     [('--propose', args.propose), ('--stock-old', args.stock_old), ('--stock-new', args.stock_new)])
+    return propose(args)
+
+
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
