@@ -7,7 +7,10 @@ versions). For each release this reads the ZIP, checks its manifest, its pinned 
 is byte-for-byte the member of the stock ZIP of its base, and that AP, APC1 and BTH all report that base (build.py's
 core_identity). The release whose firmware is the tree's label (../RELEASE) must also be the ZIP in
 ../build-inputs.json, on the same stock base. An emulator-only build is never a phone release: a base whose
-phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP name are all refused.
+phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP name are all refused, in every mode
+(--resolve included) before the ZIP is read and before anything is written. Every mode, --resolve included, also
+refuses a ZIP whose own package shape or cores (AP, APC1, BTH) are not on its stock base, so an older emulator-only
+ZIP listed under a phone base is refused even when no name, label or tree record marks it.
 
 Output (--write DIR / --check DIR):
   FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME> (no define = default)
@@ -166,12 +169,45 @@ def load_releases(path):
     return data['releases']
 
 
-def resolve(spec, inputs):
-    """The release ZIP under $TURBO_INPUTS, refused unless its size and SHA-256 are the pinned ones."""
+def refuse_emulator_only(name, spec, build=None, tree_spec=None, tree_label=None):
+    """An emulator-only build never becomes a phone release: not on a base that has none, not under an EMU name, and
+    not under an emuOnly tree's label or ZIP. Every mode runs this itself, before it reads the release ZIP."""
+    build = build or load_build()
+    tree_spec = tree_spec if tree_spec is not None else json.loads((FW/'build-inputs.json').read_text())
+    tree_label = tree_label or release_label()
+    if not build.package_shape(spec['stockBase'])['phoneRelease']:
+        raise ValueError(name + ': stock ' + spec['stockBase'] + ' has no phone release (emulator only)')
+    if '-EMU-ONLY-' in spec['zip']['input']:
+        raise ValueError(name + ': an -EMU-ONLY- ZIP cannot be a phone release')
+    if build.emu_only(tree_spec):
+        if spec['firmware'] == tree_label:
+            raise ValueError(name + ': ' + tree_label + ' is the label of an emuOnly tree')
+        if spec['zip']['sha256'] == tree_spec['archive']['sha256']:
+            raise ValueError(name + ': this is the ZIP of an emuOnly tree')
+
+
+def refuse_other_base(name, raw, base, build):
+    """The ZIP's own bytes must be a build on its stock base: the base's package shape, and AP, APC1 and BTH each
+    reporting that base (build.core_identity). This catches an emulator-only ZIP that no longer matches any name,
+    label or tree record, such as an older candidate. It needs no stock ZIP."""
+    try:
+        manifest_data, payloads = read_archive(raw, base)
+        build.core_identity(payloads, base)
+    except (ValueError, AssertionError, KeyError, zipfile.BadZipFile) as error:
+        raise ValueError(name + ': the ZIP is not a build on stock ' + base + ': ' + str(error)) from error
+    return manifest_data, payloads
+
+
+def resolve(spec, inputs, name='release', build=None, tree_spec=None, tree_label=None):
+    """The release ZIP under $TURBO_INPUTS, refused if it is an emulator-only build, unless its size and SHA-256 are
+    the pinned ones, or unless its own shape and cores are on its stock base."""
+    build = build or load_build()
+    refuse_emulator_only(name, spec, build, tree_spec, tree_label)
     path = Path(inputs)/spec['zip']['input']
     raw = path.read_bytes()
     if len(raw) != spec['zip']['bytes'] or sha256(raw) != spec['zip']['sha256']:
         raise ValueError('release ZIP does not match its pin: ' + spec['zip']['input'])
+    refuse_other_base(name, raw, spec['stockBase'], build)
     return path
 
 
@@ -181,21 +217,11 @@ def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=Non
     build = build or load_build()
     tree_spec = tree_spec if tree_spec is not None else json.loads((FW/'build-inputs.json').read_text())
     tree_label = tree_label or release_label()
-    # An emulator-only build never becomes a phone release: not on a base that has none, not under an emuOnly tree's
-    # label or ZIP, and not under an EMU name.
-    if not build.package_shape(base)['phoneRelease']:
-        raise ValueError(name + ': stock ' + base + ' has no phone release (emulator only)')
-    if '-EMU-ONLY-' in spec['zip']['input']:
-        raise ValueError(name + ': an -EMU-ONLY- ZIP cannot be a phone release')
-    if build.emu_only(tree_spec):
-        if spec['firmware'] == tree_label:
-            raise ValueError(name + ': ' + tree_label + ' is the label of an emuOnly tree')
-        if spec['zip']['sha256'] == tree_spec['archive']['sha256']:
-            raise ValueError(name + ': this is the ZIP of an emuOnly tree')
+    refuse_emulator_only(name, spec, build, tree_spec, tree_label)
     raw = Path(archive).read_bytes()
     if len(raw) != spec['zip']['bytes'] or sha256(raw) != spec['zip']['sha256']:
         raise ValueError(name + ': ZIP does not match releases.json')
-    manifest_data, payloads = read_archive(raw, base)
+    manifest_data, payloads = refuse_other_base(name, raw, base, build)
     _stock_manifest, stock_payloads = read_archive(stock_zip(base).read_bytes(), base)
     if set(stock_payloads) != set(payloads):
         raise ValueError(name + ': member names differ from stock ' + base)
@@ -296,7 +322,7 @@ def render(releases, computed):
 
 def compute_all(releases, inputs):
     build = load_build()
-    return {name: release_pins(name, spec, resolve(spec, inputs), build) for name, spec in releases.items()}
+    return {name: release_pins(name, spec, resolve(spec, inputs, name, build), build) for name, spec in releases.items()}
 
 
 def main(argv=None):
@@ -327,7 +353,7 @@ def main(argv=None):
         if args.resolve is not None:
             if args.inputs is None or args.resolve not in releases:
                 raise ValueError('--resolve needs --inputs and a known release')
-            print(resolve(releases[args.resolve], args.inputs))
+            print(resolve(releases[args.resolve], args.inputs, args.resolve))
             return 0
         if args.verify is not None:
             if args.zip is None or args.verify not in releases:

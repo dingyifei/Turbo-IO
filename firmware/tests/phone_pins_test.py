@@ -16,6 +16,76 @@ def refused_with(call,why,text):
         if text in str(error):return
         raise SystemExit('refused for the wrong reason: '+why+': '+str(error))
     raise SystemExit('accepted: '+why)
+# Each planted emulator-only condition, refused by every mode of a throwaway copy of the tool (emuOnly tree, label in
+# its own RELEASE, releases.json and the release ZIP copied under its own inputs). --resolve must refuse it on its own,
+# with no path printed; --write must leave no output folder. tool is the phone_pins.py under test, zips maps SHA-256
+# to release ZIP.
+EMU_PLANTS={
+    'a release carrying the emuOnly tree label':('label',"label of an emuOnly tree"),
+    'a release that is the emuOnly tree build record':('record',"ZIP of an emuOnly tree"),
+    'a release ZIP with the -EMU-ONLY- name':('name',"an -EMU-ONLY- ZIP cannot be a phone release"),
+    'a release on a stock base with no phone release':('base',"has no phone release"),
+    # An older emulator-only ZIP after the tree is repinned: plain name, another label, not the tree record, listed
+    # under a phone base. Only its own bytes give it away: the 1.0.6.11 package shape, or 1.0.6.11 cores in the
+    # 1.0.5.12 shape (stand-ins built from the stock 1.0.6.11 ZIP).
+    'an older emulator-only ZIP with the 1.0.6.11 shape':('shape',"the ZIP is not a build on stock 1.0.5.12"),
+    'an older emulator-only ZIP with 1.0.6.11 cores':('cores',"the ZIP is not a build on stock 1.0.5.12"),
+}
+def emu_stand_in(plant,c18_zip):
+    """The bytes of an emulator-only stand-in: the stock 1.0.6.11 ZIP itself, or the c18 ZIP with AP, APC1 and BTH
+    replaced by the stock 1.0.6.11 cores and its manifest rows rewritten to match."""
+    if not os.environ.get('TURBO_INPUTS'):raise SystemExit('TURBO_INPUTS is not set: the emulator-only plants need the stock 1.0.6.11 ZIP')
+    stock=load(FW/'build.py','phone_pins_test_build').stock_zip_path('1.0.6.11').read_bytes()
+    if plant=='shape':return stock
+    cores=('nuttx_ap.bin','nuttx_apc1.bin','nuttx_bth.bin');out=io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(stock)) as emu,zipfile.ZipFile(c18_zip) as src,zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as dst:
+        rows=json.loads(src.read('OtaFileInfo.json'))
+        for r in rows:
+            if r['Name'] in cores:data=emu.read(r['Name']);r['Size']=len(data);r['Md5']=hashlib.md5(data).hexdigest()
+        dst.writestr('OtaFileInfo.json',json.dumps(rows))
+        for n in src.namelist():
+            if n!='OtaFileInfo.json':dst.writestr(n,emu.read(n) if n in cores else src.read(n))
+    return out.getvalue()
+def emu_planted(tool,why,releases_file,zips,plant=None):
+    with tempfile.TemporaryDirectory(prefix='phone-pins-plant-') as tmp:
+        tmp=Path(tmp);fw=tmp/'fw';(fw/'tools').mkdir(parents=True)
+        shutil.copy(tool,fw/'tools/phone_pins.py');shutil.copy(FW/'build.py',fw)
+        tree=json.loads((FW/'build-inputs.json').read_text());tree['emuOnly']=True
+        (fw/'RELEASE').write_text('TMG99\n')
+        data=json.loads(Path(releases_file).read_text());spec=data['releases']['c18']
+        if plant=='label':spec['firmware']='TMG99'
+        if plant=='record':tree['archive']={**tree['archive'],'sha256':spec['zip']['sha256'],'bytes':spec['zip']['bytes']}
+        if plant=='name':spec['zip']['input']='tmg99/StrixOS-1.0.5.12-TurboIO-TMG99-EMU-ONLY-NOT-FOR-DEVICE.zip'
+        if plant=='base':spec['stockBase']='1.0.6.11'
+        if plant in ('shape','cores'):
+            raw=emu_stand_in(plant,zips[spec['zip']['sha256']])
+            spec['firmware']='TMG98';spec['zip']={'input':'tmg98/StrixOS-1.0.5.12-TurboIO-TMG98-CANDIDATE-NOT-APPROVED.zip',
+                'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+            assert spec['zip']['sha256']!=tree['archive']['sha256']
+            (tmp/'inputs'/'tmg98').mkdir(parents=True);(tmp/'inputs'/spec['zip']['input']).write_bytes(raw)
+        data['releases']={'c18':spec,**data['releases']}  # c18 first, so --write and --check reach it before any stock ZIP
+        (fw/'build-inputs.json').write_text(json.dumps(tree));(tmp/'releases.json').write_text(json.dumps(data))
+        inputs=tmp/'inputs';target=inputs/spec['zip']['input']
+        for other in data['releases'].values():
+            t=inputs/other['zip']['input']
+            if not t.exists():t.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(zips[other['zip']['sha256']],t)
+        copy_pp=load(fw/'tools/phone_pins.py','phone_pins_plant_'+(plant or 'none'))
+        def run(*argv):
+            out,err=io.StringIO(),io.StringIO()
+            with contextlib.redirect_stdout(out),contextlib.redirect_stderr(err):code=copy_pp.main(['--releases',str(tmp/'releases.json'),*argv])
+            return code,out.getvalue(),err.getvalue()
+        code,out,err=run('--resolve','c18','--inputs',str(inputs))
+        if plant is None:
+            if (code,out)!=(0,str(target)+'\n'):raise SystemExit('refused without a plant: '+err)
+            return
+        text=EMU_PLANTS[why][1]
+        if code==0 or out or text not in err:raise SystemExit('--resolve accepted '+why+': exit %d, %r %r'%(code,out,err))
+        code,out,err=run('--verify','c18','--zip',str(target),'--dir',str(ED))
+        if code==0 or text not in err:raise SystemExit('--verify accepted '+why+': '+err)
+        for mode in ('--write','--check'):
+            dest=tmp/('out'+mode)
+            code,out,err=run('--inputs',str(inputs),mode,str(dest))
+            if code==0 or text not in err or dest.exists():raise SystemExit(mode+' accepted '+why+': '+err)
 def main():
     pp=load(FW/'tools/phone_pins.py','phone_pins_under_test')
     zips={hashlib.sha256(Path(p).read_bytes()).hexdigest():Path(p) for p in sys.argv[1:]}
@@ -84,6 +154,9 @@ def main():
         copy_pp=load(tmp/'tools/phone_pins.py','phone_pins_emu_copy');err=io.StringIO()
         with contextlib.redirect_stderr(err):code=copy_pp.main(['--tree-release','--releases',str(tmp/'missing.json')])
         assert code==1 and '--tree-release: emuOnly tree has no phone release' in err.getvalue(),err.getvalue()
+    # Every mode refuses each emulator-only condition on its own, --resolve included; the unplanted copy resolves c18.
+    emu_planted(FW/'tools/phone_pins.py',None,ED/'releases.json',zips)
+    for why,(plant,_text) in EMU_PLANTS.items():emu_planted(FW/'tools/phone_pins.py',why,ED/'releases.json',zips,plant)
     # releases.json validation.
     data=json.loads((ED/'releases.json').read_text())
     def bad_releases(mutate,why):
@@ -122,5 +195,5 @@ def main():
         # A release ZIP whose bytes differ from its pin is refused before anything is read from it.
         z=inputs/releases['c16']['zip']['input'];raw=bytearray(z.read_bytes());raw[100]^=1;z.write_bytes(raw)
         assert pp.main(['--inputs',str(inputs),'--check',str(ED)])==1 and pp.main(['--inputs',str(inputs),'--resolve','c16'])==1
-    print('PASS phone pins: version strings, per-release ZIP/base/tree checks, emulator-only refusals, releases.json validation, one block per release, --check catches changed and stale outputs')
+    print('PASS phone pins: version strings, per-release ZIP/base/tree checks, emulator-only refusals in every mode, releases.json validation, one block per release, --check catches changed and stale outputs')
 if __name__=='__main__':main()
