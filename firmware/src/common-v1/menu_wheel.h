@@ -5,7 +5,7 @@
  * The hook owns the stepping. It adds the raw counts of a gesture into a signed remainder and moves exactly one item per D counts (D is the
  * live detent, knob_detent.h: 300..600 in steps of 50, 400 by default). Nothing is scaled into the stock carousel any more: the stock step
  * (position += delta/600, round at .5) is never fed a wheel delta, so D alone decides how far the knob goes, in every layout and at either end.
- * The step goes through the same path as remote_native.c: write the selected index (app+0x88), invalidate the shown frame (app+0x90), call
+ * The step goes through the same path as remote_native.c: write the selected index (TIO_STOCK_MENU_SELECTED), invalidate the shown frame (TIO_STOCK_MENU_FRAME), call
  * stock native_snap. A step past either end is the wrap (last <-> first), the same step as any other: the target is the index plus the steps,
  * modulo the item count.
  *

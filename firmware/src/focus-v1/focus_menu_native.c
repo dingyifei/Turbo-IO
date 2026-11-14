@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: +0x60/+0x88, 7 rows
+#error not ported to 1.0.6.11 yet: 7 stock rows assumed; stock has 8 rows and dots (F4)
 #endif
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
@@ -40,24 +40,24 @@ _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slo
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool detail(void *app){TNNavSlot *s=slot(app);return tc_native_visible(app)||tap_service_visible(app)||(s&&(tn_slot_visible(s)||tm_slot_visible(s->music)||tf_slot_visible(s->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page));}
-bool fm_menu_plain(void *app){void *parent=ptr(app,4);return app&&parent&&!native_has_flag(parent,1)&&!detail(app)&&focus_screen_on();}
+bool fm_menu_plain(void *app){void *parent=ptr(app,TIO_STOCK_MENU_ROOT);return app&&parent&&!native_has_flag(parent,1)&&!detail(app)&&focus_screen_on();}
 static void hide_legacy(void *app){
  M8NativeTail *t=(M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES);TNNavSlot *s=slot(app);TMMusicSlot *music=s?s->music:NULL;TFSlot *focus=s?s->focus:NULL;
  TCSlot *camera=s?s->camera:NULL;
- void *old[]={camera?camera->row:NULL,camera?camera->icon:NULL,ptr(app,8),t->row,t->icon,s?s->row:NULL,s?s->icon:NULL,music?music->row:NULL,music?music->icon:NULL,focus?focus->row:NULL,focus?focus->icon:NULL,s&&s->apps?((TAPMenu *)s->apps)->row:NULL,s&&s->apps?((TAPMenu *)s->apps)->icon:NULL};
- for(unsigned i=0;i<7;i++){void *row=ptr(app,0xc+4*i);if(row)m8_native_api.hidden(row,true);}
+ void *old[]={camera?camera->row:NULL,camera?camera->icon:NULL,ptr(app,TIO_STOCK_MENU_LOTTIE),t->row,t->icon,s?s->row:NULL,s?s->icon:NULL,music?music->row:NULL,music?music->icon:NULL,focus?focus->row:NULL,focus?focus->icon:NULL,s&&s->apps?((TAPMenu *)s->apps)->row:NULL,s&&s->apps?((TAPMenu *)s->apps)->icon:NULL};
+ for(unsigned i=0;i<7;i++){void *row=ptr(app,TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i);if(row)m8_native_api.hidden(row,true);}
  for(unsigned i=0;i<sizeof old/sizeof *old;i++)if(old[i])m8_native_api.hidden(old[i],true);
 }
 static void deleted(void *e){FMControl *c=stream_event_user(e);if(c){TNNavSlot *s=slot(c->app);if(s&&s->quad==c)s->quad=NULL;c->app=NULL;c->view.root=NULL;c->closing=true;}}
 static bool attach_deleted(void *root,void *owner){return stream_add_event(root,deleted,0x24,owner)!=NULL;}
 static bool dispose(FMControl *c){if(!c->view.api.idle(c->view.api.ctx)||!fm_view_close(&c->view))return false;stream_timer_delete(c->timer);stream_free(c);return true;}
-static void tick(void *t){FMControl *c=ptr(t,12);if(!c)return;
+static void tick(void *t){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c)return;
  if(c->closing||!c->app){(void)dispose(c);return;}
  fm_sync(c->app);stream_timer_period(c->timer,c->enabled&&!detail(c->app)&&focus_screen_on()?(c->view.moving?16:100):1000);
 }
 /* At most one menu controller, including deferred retirees. A new native menu
  * cannot accumulate another frame buffer before the previous one is safe. */
-static bool room(void){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return true;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+8);if(cb==tick){FMControl *c=ptr(t,12);return c&&c->timer==t&&c->closing&&!c->app&&dispose(c);}}return false;}
+static bool room(void){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return true;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB);if(cb==tick){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);return c&&c->timer==t&&c->closing&&!c->app&&dispose(c);}}return false;}
 /* Live tile state (read only). One snapshot of what the services already keep, then the text for the focused tile (carousel line) and the
  * mask of tiles with a running state (grid dots). Runs on the 1 Hz refresh and whenever the focus moves, never per frame. */
 static bool phone_linked(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
@@ -77,27 +77,27 @@ static bool live_sync(FMControl *c,void *app,int index,uint32_t now){
 }
 void fm_relayout(unsigned rows){
  if(rows<1||rows>3)return;   /* 1 carousel, 2 or 3 grid rows */void *t=NULL;
- for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;if(*(void (**)(void *))((uint8_t *)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->desired_rows=rows;return;}}
+ for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;if(*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB)==tick){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(c&&c->timer==t&&!c->closing)c->desired_rows=rows;return;}}
  /* No active launcher: the persisted value is loaded when it next opens. */
 }
 extern void m8_refresh_tile_label(void *,int);
 void fm_language_changed(void){
  void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;
-  if(*(void(**)(void*))((uint8_t*)t+8)==tick){FMControl *c=ptr(t,12);if(c&&c->timer==t&&!c->closing)c->relabel=true;return;}}
+  if(*(void(**)(void*))((uint8_t*)t+TIO_STOCK_TIMER_CB)==tick){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(c&&c->timer==t&&!c->closing)c->relabel=true;return;}}
 }
-void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;bool inside=detail(app);void *dots=ptr(app,0x60);
+void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;bool inside=detail(app);void *dots=ptr(app,TIO_STOCK_MENU_DOTS_PARENT);
  if(dots)m8_native_api.hidden(dots,inside||(c&&c->view.root&&!c->closing));
  if(c&&c->view.root&&!c->closing)hide_legacy(app);
- void *visible_parent=ptr(app,4);TNWidgets widgets=tn_lvgl_widgets();
+ void *visible_parent=ptr(app,TIO_STOCK_MENU_ROOT);TNWidgets widgets=tn_lvgl_widgets();
  bool safe=visible_parent&&!native_has_flag(visible_parent,1)&&!inside&&focus_screen_on()&&widgets.idle(widgets.ctx);
  if(safe){(void)fm_tiles_apply(app);if(c&&!c->closing&&c->view.root){TTVisible active;fm_tile_snapshot(&active);if(!fm_view_tiles(&c->view,&active))return;if(c->view.selected<0)c->selection=-1;}}
  if(!c||c->closing||!c->view.root)return;
  if(c->relabel){c->relabel=false;c->selection=-1;fm_view_suspend(&c->view);for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);}
- void *parent=ptr(app,4);bool show=c->enabled&&parent&&!native_has_flag(parent,1)&&!inside;
+ void *parent=ptr(app,TIO_STOCK_MENU_ROOT);bool show=c->enabled&&parent&&!native_has_flag(parent,1)&&!inside;
  if(!show){c->view.api.visible(c->view.api.ctx,c->view.root,false);c->selection=-1;fm_view_suspend(&c->view);return;}
  if(!focus_screen_on())return; /* Never repaint or wake a sleeping panel. */
  if(c->view.rows!=c->desired_rows){if(!fm_view_rows(&c->view,c->desired_rows))return;c->selection=-1;}
- int index=(int)*(uint32_t *)((uint8_t *)app+0x88);if(index<0||index>=(int)fm_tile_count())return;uint32_t now=stream_tick();
+ int index=(int)*(uint32_t *)((uint8_t *)app+TIO_STOCK_MENU_SELECTED);if(index<0||index>=(int)fm_tile_count())return;uint32_t now=stream_tick();
  if(index==c->selection&&(uint32_t)(now-c->refreshed)<1000){(void)fm_view_step(&c->view,now);return;}
  void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*battery=mon?fm_battery_monitor(mon):NULL;
  int64_t local=sys?fm_local_time(sys):0;int level=battery?fm_battery_level(battery):-1;
@@ -106,7 +106,7 @@ void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMContr
 }
 void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad;
  if(!c){TNWidgets api=tn_lvgl_widgets();if(!api.idle(NULL)||!room())return;c=stream_memalign(64,sizeof *c);if(!c)return;memset(c,0,sizeof *c);c->app=app;c->selection=-1;
-  if(!fm_view_open(&c->view,&api,ptr(app,4),attach_deleted,c)){stream_free(c);return;}
+  if(!fm_view_open(&c->view,&api,ptr(app,TIO_STOCK_MENU_ROOT),attach_deleted,c)){stream_free(c);return;}
   c->desired_rows=fm_menu_rows();TTVisible active;fm_tile_snapshot(&active);(void)fm_view_tiles(&c->view,&active);
   for(unsigned i=0;i<FM_CELLS;i++)menu_text_align(c->view.labels[i],2,0);
   menu_text_align(c->view.line,2,0);menu_text_align(c->view.battery,3,0);menu_text_align(c->view.name,2,0); /* battery right-aligned to the core edge, focused name centred in band B */

@@ -7,7 +7,8 @@ typedef struct {void *camera,*apps,*focus,*music;} Slot;
 typedef struct {void *row,*label,*icon,*dot,*page,*navigation;uint32_t last_session;} M8NativeTail;
 static Slot nav;
 static M8NativeTail storage;
-static uint32_t words[128];
+/* the stock menu object plus the 32-byte module tail */
+static uint32_t words[(TIO_STOCK_MENU_BYTES+32u)/sizeof(uint32_t)];
 static bool calibrated;
 static unsigned canceled;
 void tgr_knob_cancel(void *app,uint32_t now){assert(app==words&&now==100);calibrated=false;canceled++;}
@@ -21,8 +22,10 @@ static M8NativeTail *tail(void *p){(void)p;return &storage;}
 #define NOOP(name) static void name(void *p){(void)p;}
 NOOP(tc_slot_hidden) NOOP(tap_service_hidden) NOOP(fm_hide) NOOP(native_unregister_wheel) NOOP(retire) NOOP(tf_slot_hidden) NOOP(tm_slot_hidden) NOOP(tn_slot_hidden) NOOP(stock_hide) NOOP(tc_slot_destroy) NOOP(fm_destroy) NOOP(tap_menu_destroy) NOOP(tf_slot_destroy) NOOP(tm_slot_destroy) NOOP(td_slot_destroy) NOOP(tn_slot_destroy) NOOP(fm_tiles_forget) NOOP(stock_destroy) NOOP(native_snap)
 static unsigned native_event_code(void *p){(void)p;return 0xe;}
-static unsigned native_event_key(void *p){(void)p;return 0x3a;}
-static bool stock_event(void *p,void *e){(void)p;(void)e;return true;}
+static unsigned native_event_key(void *p){(void)p;return TIO_STOCK_KEY_CONFIRM;}
+/* which route the press took: stock (stock_event) or one module tile (its open function) */
+static unsigned stock_events,opened,opens;
+static bool stock_event(void *p,void *e){(void)p;(void)e;stock_events++;return true;}
 static bool tc_native_visible(void *p){(void)p;return false;}
 static bool tap_service_visible(void *p){(void)p;return false;}
 static bool tm_slot_visible(void *p){(void)p;return false;}
@@ -32,21 +35,25 @@ static bool eligible(void *p){(void)p;return true;}
 static unsigned fm_tile_count(void){return 13;}
 static unsigned fm_tile_id(unsigned id){return id;}
 static void trace(unsigned op,unsigned result){(void)op;(void)result;}
-static unsigned tc_slot_open(void *p){(void)p;return 1;}
-static unsigned tap_service_open(void *p){(void)p;return 1;}
-static unsigned tf_slot_open(void *p){(void)p;return 1;}
-static unsigned tm_slot_open(void *p){(void)p;return 1;}
-static unsigned tn_slot_open(void *p){(void)p;return 1;}
+static unsigned tc_slot_open(void *p){(void)p;opened=TIO_TILE_CAMERA;opens++;return 1;}
+static unsigned tap_service_open(void *p){(void)p;opened=TIO_TILE_APPS;opens++;return 1;}
+static unsigned tf_slot_open(void *p){(void)p;opened=TIO_TILE_FOCUS;opens++;return 1;}
+static unsigned tm_slot_open(void *p){(void)p;opened=TIO_TILE_MUSIC;opens++;return 1;}
+static unsigned tn_slot_open(void *p){(void)p;opened=TIO_TILE_NAVIGATION;opens++;return 1;}
 static void *ptr(void *p,unsigned off){(void)p;(void)off;return words;}
-static void *m8_page_open(void *p,uint32_t sid,void **out){(void)p;(void)sid;(void)out;return words;}
+static void *m8_page_open(void *p,uint32_t sid,void **out){(void)p;(void)sid;(void)out;opened=TIO_TILE_DISPLAY;opens++;return words;}
 static void native_report_activity(void){}
 static unsigned knob_presses,knob_wheels;static void *knob_page;
 static void m8_page_knob(void *page,int32_t delta,bool press){knob_page=page;if(press)knob_presses++;else if(delta)knob_wheels++;}
 #include "menu_lifecycle.inc"
 int main(void){
  calibrated=true;m8_hook_hide(words);assert(!calibrated&&canceled==1);calibrated=true;m8_hook_destroy(words);assert(!calibrated&&canceled==2);
- for(unsigned id=0;id<13;id++){*word(words,0x88)=id;calibrated=true;unsigned before=canceled;assert(m8_hook_event(words,NULL));assert(!calibrated&&canceled==before+1);}
+ /* The launch target comes from the selected index: the label index holds a different item each time, so a hook
+    that read it instead would route at least one press to the wrong tile or to stock. */
+ for(unsigned id=0;id<13;id++){*word(words,TIO_STOCK_MENU_SELECTED)=id;*word(words,TIO_STOCK_MENU_LABEL_INDEX)=(id+6u)%13u;calibrated=true;unsigned before=canceled,stock_before=stock_events,opens_before=opens;opened=UINT32_MAX;assert(m8_hook_event(words,NULL));assert(!calibrated&&canceled==before+1);
+  if(id<TIO_STOCK_ITEMS)assert(stock_events==stock_before+1&&opens==opens_before&&opened==UINT32_MAX);
+  else assert(stock_events==stock_before&&opens==opens_before+1&&opened==id);}
  /* TMG11: with a page open the press is still swallowed (the hook returns true) and goes to that page. */
- storage.page=words;*word(words,0x88)=0;calibrated=true;assert(m8_hook_event(words,NULL));assert(knob_presses==1&&knob_wheels==0&&knob_page==words);storage.page=NULL;
+ storage.page=words;*word(words,TIO_STOCK_MENU_SELECTED)=0;calibrated=true;assert(m8_hook_event(words,NULL));assert(knob_presses==1&&knob_wheels==0&&knob_page==words);storage.page=NULL;
  puts("PASS native menu lifecycle: hide/destroy and every activation cancel before rapid leave-return can stitch a measurement; an open page gets the press");
 }

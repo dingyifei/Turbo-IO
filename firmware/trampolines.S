@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: carousel count (raw after 0d21 over stock count 8) and the file callback struct +0x20 slot are not decided
+#error not ported to 1.0.6.11 yet: carousel count after (0d21) must follow the 8 stock + 6 module tile model (F4)
 #endif
 .syntax unified
 .cpu cortex-m33
@@ -112,7 +112,7 @@ stream_register_shim:
  movs r4,#0
  ldr r0,=0x196dfaf4
  ldr r3,=tio_hook_file
- str r3,[r0,#0x18]
+ str r3,[r0,#TIO_STOCK_FILE_CB_RECEIVE]
  ldr r3,=0x105a7d39
  str r3,[r0]
  bx lr

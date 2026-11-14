@@ -7,7 +7,8 @@
 #include <string.h>
 typedef struct {void *quad,*music,*focus,*camera;} TNNavSlot;
 static TNNavSlot nav;
-static uint8_t app[256];
+/* the stock menu object plus the 32-byte module tail */
+static uint8_t app[TIO_STOCK_MENU_BYTES+32u];
 static int root;
 static uint32_t now=1000;
 static TTVisible active,desired;
@@ -30,13 +31,13 @@ static const struct {void(*hidden)(void *,bool);} m8_native_api={hidden};
 static TNWidgets widgets={NULL,idle,create,create,label,place,buffer,text,visible,destroy,NULL,NULL};
 static TNNavSlot *slot(void *p){assert(p==app);return &nav;}
 static bool detail(void *p){assert(p==app);return false;}
-static void *ptr(void *p,unsigned off){assert(p==app);return off==4?&root:NULL;}
+static void *ptr(void *p,unsigned off){assert(p==app);return off==TIO_STOCK_MENU_ROOT?&root:NULL;}
 static void hide_legacy(void *p){assert(p==app);}
 static TNWidgets tn_lvgl_widgets(void){return widgets;}
 static bool native_has_flag(void *p,uint32_t flags){(void)p;(void)flags;return false;}
 static bool focus_screen_on(void){return true;}
 static bool fm_tiles_busy(void){return false;}
-static bool fm_tiles_apply(void *p){assert(p==app);if(!pending)return false;active=desired;pending=false;*(uint32_t *)(app+0xa0)=active.count;return true;}
+static bool fm_tiles_apply(void *p){assert(p==app);if(!pending)return false;active=desired;pending=false;*(uint32_t *)(app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=active.count;   /* remote_native.c still writes +0xa0 (the frame on 1.0.6.11) until F4 (G.2) */return true;}
 static void fm_tile_snapshot(TTVisible *out){*out=active;}
 static unsigned fm_tile_count(void){return active.count;}
 static void m8_refresh_tile_label(void *p,int id){(void)p;(void)id;}
@@ -61,7 +62,7 @@ unsigned tio_lang(void){return lang_now;}
 static FMControl control;
 int main(void){
  nav.music=&music_slot;nav.camera=&camera_slot;
- TTConfig c;tt_default(&c);assert(tt_compact(&c,&active));assert(fm_view_open(&control.view,&widgets,&root,attach,&control));control.app=app;control.enabled=true;control.desired_rows=3;control.selection=-1;nav.quad=&control;*(uint32_t *)(app+0x88)=7;
+ TTConfig c;tt_default(&c);assert(tt_compact(&c,&active));assert(fm_view_open(&control.view,&widgets,&root,attach,&control));control.app=app;control.enabled=true;control.desired_rows=3;control.selection=-1;nav.quad=&control;*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)=7;
  fm_sync(app);assert(control.selection==7&&control.view.selected==7&&!strcmp(texts[(uintptr_t)control.view.labels[7]],tio_text(TT_GRID_DISPLAY,0)));
  assert(tt_unrank(719,0xf80,&c)&&tt_compact(&c,&desired));pending=true;now++;fm_sync(app);
  assert(active.count==8&&control.view.selected==7&&control.selection==7);assert(!strcmp(texts[(uintptr_t)control.view.labels[7]],tio_text(TT_TILE_CAMERA,0)));assert(!shown[(uintptr_t)control.view.labels[8]]);
@@ -73,7 +74,7 @@ int main(void){
   tt_default(&c);assert(tt_compact(&c,&desired));pending=true;now+=1000;control.desired_rows=FM_CAROUSEL;fm_sync(app);assert(active.count==13);
   unsigned rank[13];for(unsigned r=0;r<13;r++)rank[active.ids[r]]=r;
   const uintptr_t line=(uintptr_t)control.view.line;
-  #define GO(tile) do{*(uint32_t *)(app+0x88)=rank[tile];now+=1100;fm_sync(app);(void)fm_view_step(&control.view,now+400);assert(control.view.selected==(int)rank[tile]);}while(0)
+  #define GO(tile) do{*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)=rank[tile];now+=1100;fm_sync(app);(void)fm_view_step(&control.view,now+400);assert(control.view.selected==(int)rank[tile]);}while(0)
   #define LINE(want) do{if(*(want)){assert(shown[line]&&!strcmp(texts[line],want));}else assert(!shown[line]||!*texts[line]);}while(0)
   /* the board's "something running": navigation 1.2 km, music playing, pomodoro 18:42 */
   link_up=true;fixture=(TSLive){.pomodoro=true,.pomodoro_ms=18*60000+42000,.music_playing=true,.music_age_ms=1000,.music_title=song,.nav_active=true,.nav_remaining_m=1200};
