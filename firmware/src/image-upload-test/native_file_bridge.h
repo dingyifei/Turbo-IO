@@ -20,26 +20,28 @@ typedef struct {
  const uint8_t *data;
  uint32_t bytes,reserved;
  void *context;
- uint8_t mode,padding[3];
+ /* Always NULL in module messages: stock's queue then copies `bytes` bytes on
+  * post and its consumer frees the copy after the handler. */
+ void (*release)(void *);
 } TIONativeMessage;
 /* In firmware compiles (stock_layout.h is force-included there) the message
- * must match stock's queued message on the 32-bit target. The mode byte and
- * its padding sit on stock's release-function word; F4 makes them one word. */
+ * must match stock's queued message on the 32-bit target. */
 #if defined(TIO_STOCK_LAYOUT_H) && UINTPTR_MAX==0xffffffffu
 _Static_assert(offsetof(TIONativeMessage,id)==TIO_STOCK_MESSAGE_ID,"message id offset is stock's");
 _Static_assert(offsetof(TIONativeMessage,data)==TIO_STOCK_MESSAGE_DATA,"message data offset is stock's");
 _Static_assert(offsetof(TIONativeMessage,bytes)==TIO_STOCK_MESSAGE_LENGTH,"message length offset is stock's");
-_Static_assert(offsetof(TIONativeMessage,mode)==TIO_STOCK_MESSAGE_RELEASE,"message mode sits on stock's release word");
+_Static_assert(offsetof(TIONativeMessage,release)==TIO_STOCK_MESSAGE_RELEASE,"message release word is stock's");
 _Static_assert(sizeof(TIONativeMessage)==24,"message is 24 bytes");
 #endif
 enum { TIO_NATIVE_MESSAGE_ID=0x54494d47 };
 typedef int (*TIOCopyEnqueue)(unsigned module,const TIONativeMessage *);
-/* enqueue MUST implement the pinned native mode=0 deep-copy contract.
+/* Release word 0: the queue copies on post and its consumer frees after the
+ * handler. enqueue MUST implement that deep-copy contract.
  * No UI access, heap ownership transfer, 8KB stack array or global state here.
  * The SDK/peer's existing pairing/authentication is not established here. */
 TIOImageResult tio_native_file_receive(const TIONativeFile *,TIOCopyEnqueue);
-/* UI dispatcher reads the message synchronously; caller/native processor owns
- * and frees the mode=0 copy afterwards. Returns false for unrelated messages.
+/* UI dispatcher reads the message synchronously; the queue consumer owns and
+ * frees the copy (release word 0) afterwards. Returns false for unrelated messages.
  * A malformed own message is consumed, never passed to native ID dispatch. */
 bool tio_native_message_is_ours(const TIONativeMessage *);
 TIOImageResult tio_native_message_copy(const TIONativeMessage *,TIOImageJob *);

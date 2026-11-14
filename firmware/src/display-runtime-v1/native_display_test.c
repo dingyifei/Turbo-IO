@@ -88,7 +88,7 @@ void native_text_color(void *p,uint32_t c,uint32_t style){assert(p&&c==0xffffff&
 void native_align(void *p,int align,int x,int y){assert(p);(void)align;(void)x;(void)y;}
 int tdp_rnlink_send(unsigned bus,const uint8_t *p,unsigned n,void *cb){assert(!cb);assert(tdp_carrier_decode(bus,p,n,&latest));sends++;return 0;}
 static uint8_t queue_data[TDP_NATIVE_PACKET_MAX];static TIONativeMessage queued;static unsigned queue_calls;
-static int enqueue(unsigned module,const TIONativeMessage *m){assert(module==1&&m->mode==0&&m->bytes<=512);memcpy(queue_data,m->data,m->bytes);queued=*m;queued.data=queue_data;queue_calls++;return 0;}
+static int enqueue(unsigned module,const TIONativeMessage *m){assert(module==1&&m->release==NULL&&m->bytes<=512);memcpy(queue_data,m->data,m->bytes);queued=*m;queued.data=queue_data;queue_calls++;return 0;}
 static TDPResult deliver(TDPNativePage *page,uint8_t *data,size_t len){
  TIONativeFile file={.data=data,.declared=(uint32_t)len,.complete=1,.received=(uint32_t)len};
  strcpy(file.filename,"turbo-display.tdp");assert(tdp_native_file_receive(&file,enqueue)==TIO_OK);

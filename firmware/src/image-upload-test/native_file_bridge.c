@@ -6,7 +6,11 @@ _Static_assert(offsetof(TIONativeFile,uuid)==0x108,"file UUID ABI");
 _Static_assert(offsetof(TIONativeFile,complete)==0x149,"completion ABI");
 _Static_assert(offsetof(TIONativeFile,received)==0x14c,"received bytes ABI");
 _Static_assert(sizeof(TIONativeMessage)==24,"message size ABI");
-_Static_assert(offsetof(TIONativeMessage,mode)==0x14,"copy mode ABI");
+#ifdef TIO_STOCK_LAYOUT_H
+_Static_assert(offsetof(TIONativeMessage,release)==TIO_STOCK_MESSAGE_RELEASE,"release word ABI");
+#else
+_Static_assert(offsetof(TIONativeMessage,release)==0x14,"release word ABI");
+#endif
 #endif
 static uint32_t word(const uint8_t *p){
  return p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);
@@ -27,7 +31,7 @@ TIOImageResult tio_native_file_receive(const TIONativeFile *f,TIOCopyEnqueue enq
  if(f->complete!=1||f->declared!=TIO_WIRE||f->received!=TIO_WIRE)return TIO_BAD_SIZE;
  TIOImageResult r=validate(f->data,f->received);if(r!=TIO_OK)return r;
  if(!enqueue)return TIO_UI_FAILED;
- TIONativeMessage m={.id=TIO_NATIVE_MESSAGE_ID,.data=f->data,.bytes=TIO_WIRE,.mode=0};
+ TIONativeMessage m={.id=TIO_NATIVE_MESSAGE_ID,.data=f->data,.bytes=TIO_WIRE,.release=NULL};
  /* module=1 is native Launcher. return 0 means copied into the native queue,
   * not displayed. The queue's release_message_data owns its allocation. */
  return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;
@@ -37,7 +41,7 @@ bool tio_native_message_is_ours(const TIONativeMessage *m){
 }
 TIOImageResult tio_native_message_copy(const TIONativeMessage *m,TIOImageJob *out){
  if(!tio_native_message_is_ours(m))return TIO_FOREIGN;
- if(m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2])return TIO_BAD_HEADER;
+ if(m->release||m->reserved||m->context)return TIO_BAD_HEADER;
  static const char name[]="turbo-photo.timg";
  return tio_image_copy(name,sizeof name-1,m->data,m->bytes,out);
 }

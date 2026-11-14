@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
-#endif
 #include "../common-v1/tio_text.h"
 /* Pinned 1.0.5.5 AP bindings, Launcher UI executor only. No driver or BTH patch. */
 #include "camera_native.h"
@@ -36,11 +33,11 @@ extern uint32_t nav_always_on(const char *);
 extern void nav_release_always_on(const char *,uint32_t),native_label_text(void *,const char *),dc_text_mode(void *,int);
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
-static TNNavSlot *navslot(void *app){return app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
+static TNNavSlot *navslot(void *app){M8NativeTail *t=m8_tail(app);return t?t->navigation:NULL;}
 static TCSlot *slot(void *app){TNNavSlot *n=navslot(app);return n?n->camera:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;const char *s=nav_top_app();return s&&!strcmp(s,"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&ce_extension_idle();}
-static bool other(void *app){TNNavSlot *n=navslot(app);return !n||tap_service_visible(app)||tn_slot_visible(n)||tm_slot_visible(n->music)||tf_slot_visible(n->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
+static bool other(void *app){TNNavSlot *n=navslot(app);return !n||tap_service_visible(app)||tn_slot_visible(n)||tm_slot_visible(n->music)||tf_slot_visible(n->focus)||m8_tail_busy(app);}
 static bool owns(TCControl *c){return c&&c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home()&&!other(c->app);}
 static void emit(const TCPacket *q){uint8_t raw[TC_RAW_MAX],wire[TC_WIRE_MAX];size_t n=tc_packet(raw,sizeof raw,q,true);if(n){n=tc_wrap(wire,sizeof wire,raw,n,true);if(n)(void)tdp_rnlink_send(15,wire,(unsigned)n,NULL);}}
 static void event(TCControl *c,unsigned op,unsigned value){if(!c||!c->sid||c->event==UINT32_MAX)return;TCPacket q={.op=op,.sid=c->sid,.seq=++c->event,.a=value,.b=stream_tick()};emit(&q);}
@@ -94,17 +91,17 @@ void tc_native_wheel(void *app,int delta){TCSlot *s=slot(app);TCControl *c=s?s->
  native_report_activity();if(!focus_screen_on()){nav_screen_on(true);return;}event(c,TC_ZOOM,step>0?1:0);
 }
 bool tc_native_event(void *e){void *app=ptr(manager(),TIO_STOCK_MANAGER_MENU);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;
- if(!tc_native_visible(app)||!owns(c)||native_event_code(e)!=14)return false;
- unsigned key=native_event_key(e);uint32_t now=stream_tick();if(key!=TIO_STOCK_KEY_CONFIRM&&key!=0x3b)return false;
+ if(!tc_native_visible(app)||!owns(c)||native_event_code(e)!=TIO_STOCK_EVENT_KEY)return false;
+ unsigned key=native_event_key(e);uint32_t now=stream_tick();if(key!=TIO_STOCK_KEY_CONFIRM&&key!=TIO_STOCK_KEY_BACK)return false;
  nav_stop_event(e);native_report_activity();if(!focus_screen_on()){nav_screen_on(true);return true;}
  tio_hint_input(&c->th,now);
- if(key==0x3b){if(c->backed&&(uint32_t)(now-c->back)<700)return true;c->backed=true;c->back=now;TNNavSlot *n=navslot(app);if(n)n->back_until=now+700;
+ if(key==TIO_STOCK_KEY_BACK){if(c->backed&&(uint32_t)(now-c->back)<700)return true;c->backed=true;c->back=now;TNNavSlot *n=navslot(app);if(n)n->back_until=now+700;
   if(c->phase==TC_COUNTDOWN){event(c,TC_CANCEL,0);c->phase=TC_LIVE;render_status(c);}else{event(c,TC_EXIT,0);close_page(c);fm_sync(app);}return true;}
  if(c->backed&&(uint32_t)(now-c->back)<700)return true;
  if(wr_input_press(&c->input,now)&&c->sid&&(c->phase==TC_LIVE||c->phase==TC_SAVED)){event(c,TC_SHUTTER,0);c->phase=TC_CAPTURING;render_status(c);}return true;
 }
 void tc_native_message(const TIONativeMessage *m){
- if(!m||m->id!=1||!m->data||m->bytes>TC_WIRE_MAX||!paired())return;
+ if(!m||m->id!=TIO_STOCK_MESSAGE_RNLINK||!m->data||m->bytes>TC_WIRE_MAX||!paired())return;
  uint8_t raw[TC_RAW_MAX];size_t n=tc_unwrap(m->data,m->bytes,raw,sizeof raw,false);TCPacket q;if(!n||!tc_decode(raw,n,&q,false)||(q.length&&q.op!=TC_CHUNK))return;
  TCPacket a={.op=q.op,.sid=q.sid,.seq=q.seq,.a=q.a};void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);
  if(q.op==TC_HELLO){a.a=TC_WIDTH;a.b=TC_HEIGHT;a.c=stream_tick();emit(&a);return;}

@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
-#endif
 #include "../common-v1/business_idle.h"
 /* Compile in the named TCE1 full-tree derivative, not the old canonical menu9.
  * One UI-thread singleton, bounded heap, no writable globals, no OTA actions.
@@ -40,10 +37,10 @@ TAPMenu *tap_menu_create(void *app){TAPMenu *m=stream_memalign(8,sizeof *m);if(m
 void tap_menu_destroy(TAPMenu *m){if(m){tap_service_destroy(m->app);stream_free(m);}}
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
-static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
+static TNNavSlot *slot(void *a){M8NativeTail *t=m8_tail(a);return t?t->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){const char *name=nav_top_app();if(!name||strcmp(name,"com.rayneo.liteos.launcher"))return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
-static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==app&&!tf_slot_visible(s->focus)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
+static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==app&&!tf_slot_visible(s->focus)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!m8_tail_busy(app);}
 static bool owns(TAPControl *c){return c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home();}
 static TAPControl *control(bool create){
  void *t=NULL;for(unsigned i=0;i<512;i++){
@@ -96,9 +93,9 @@ static void input(TAPControl *c,unsigned key){
  }else if(e.type!=TAP_NO_EVENT)activity(c);
 }
 void tap_service_wheel(void *app,int delta){TAPControl *c=control(false);if(!c||!tap_service_visible(app)||!owns(c)||c->runner->closing)return;int step=wr_input_wheel(&c->input,delta,stream_tick());if(step)input(c,step>0?TAP_NEXT:TAP_PREVIOUS);}
-bool tap_service_event(void *e){TAPControl *c=control(false);if(!c||!c->runner->view.root||c->runner->closing||!owns(c)||native_event_code(e)!=0xe)return false;
+bool tap_service_event(void *e){TAPControl *c=control(false);if(!c||!c->runner->view.root||c->runner->closing||!owns(c)||native_event_code(e)!=TIO_STOCK_EVENT_KEY)return false;
  unsigned key=native_event_key(e);uint32_t now=stream_tick();
- if(key==0x3b){TNNavSlot *s=slot(c->app);if(s)s->back_until=now+700;input(c,TAP_LONG_PRESS);}
+ if(key==TIO_STOCK_KEY_BACK){TNNavSlot *s=slot(c->app);if(s)s->back_until=now+700;input(c,TAP_LONG_PRESS);}
  else if(key==TIO_STOCK_KEY_CONFIRM){if(!focus_screen_on())activity(c);else if(wr_input_press(&c->input,now)){activity(c);input(c,TAP_PRESS);}}
  else return false;nav_stop_event(e);return true;
 }
@@ -112,11 +109,11 @@ static void tick(void *t){TAPControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c||c->ma
 TIOImageResult tap_service_file(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  static const char name[]="turbo-app.tax";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;
  TAPCommand c;if(f->complete!=1||f->received!=f->declared||!tap_command_decode(f->data,f->received,&c))return TIO_BAD_SIZE;
- if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TAP_MESSAGE_ID,.data=f->data,.bytes=f->received};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
+ if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TAP_MESSAGE_ID,.data=f->data,.bytes=f->received,.release=NULL};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool tap_service_ours(const TIONativeMessage *m){return m&&m->id==TAP_MESSAGE_ID;}
 void tap_service_message(const TIONativeMessage *m){
- TAPCommand cmd;if(!tap_service_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!paired()||!tap_command_decode(m->data,m->bytes,&cmd))return;
+ TAPCommand cmd;if(!tap_service_ours(m)||m->release||m->reserved||m->context||!paired()||!tap_command_decode(m->data,m->bytes,&cmd))return;
  TAPControl *c=control(true);if(!c)return;
  // Never launch/write over another business page, or mutate a visible shelf.
  // Stop/query remain usable without waking the panel or requiring home state.

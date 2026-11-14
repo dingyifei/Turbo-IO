@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
-#endif
 #include "../common-v1/tio_text.h"
 #include "../common-v1/business_idle.h"
 #include "../app-runtime-v1/app_service.h"
@@ -45,7 +42,7 @@ extern void nav_stop_event(void *),native_text_color(void *,uint32_t,uint32_t),m
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
 static bool same(const char *a,const char *b){if(!a)return false;for(unsigned i=0;i<96;i++){if(a[i]!=b[i])return false;if(!b[i])return true;}return false;}
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
-static TNNavSlot *navslot(void *app){return app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
+static TNNavSlot *navslot(void *app){M8NativeTail *t=m8_tail(app);return t?t->navigation:NULL;}
 static TMMusicSlot *slot_of(void *app){TNNavSlot *n=navslot(app);return n?n->music:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;return same(nav_top_app(),"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&tio_business_idle();}
@@ -96,7 +93,7 @@ static bool render(Control *c,uint32_t now){unsigned lang=tio_lang();if(!c->root
  c->front=1-c->front;c->last_frame=now;return true;
 }
 static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
- if(c->root)return wake(c);TNNavSlot *n=navslot(c->app);if(!n||tap_service_visible(c->app)||tf_slot_visible(n->focus)||tn_slot_visible(n)||((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page)return false;
+ if(c->root)return wake(c);TNNavSlot *n=navslot(c->app);if(!n||tap_service_visible(c->app)||tf_slot_visible(n->focus)||tn_slot_visible(n)||m8_tail_busy(c->app))return false;
  /* setState synchronously hides the previous launcher/menu view. At this
   * point we own no music widgets yet: that hide is not a user music exit.
   * Keep the just-accepted OPEN state through this one focus transition;
@@ -135,13 +132,13 @@ bool tm_slot_visible(TMMusicSlot *s){Control *c=s?s->control:NULL;return c&&c->r
 void tm_slot_live(TMMusicSlot *s,uint32_t now,TSLive *out){Control *c=s?s->control:NULL;if(!c||!out)return;out->music_playing=c->music.playing;out->music_age_ms=(uint32_t)(now-c->music.last_contact);out->music_title=c->music.title;}
 bool tm_slot_open(TMMusicSlot *s){Control *c=control(s);if(!c)return false;c->waiting=!c->music.active;if(!enter(c))return false;request(c,TM_RESUME);return true;}
 void tm_slot_wheel(TMMusicSlot *s,int delta){Control *c=s?s->control:NULL;if(!c||!c->root||c->closing)return;tio_hint_input(&c->hint,stream_tick());int step=tm_input_wheel(&c->input,delta,stream_tick());if(step)request(c,step>0?TM_NEXT:TM_PREV);}
-bool tm_handle_event(void *e){void *vm=stream_event_user(e);TMMusicSlot *s=slot_of(ptr(vm,TIO_STOCK_MANAGER_MENU));Control *c=s?s->control:NULL;if(!c||!c->root||!owns(c)||native_event_code(e)!=0xe)return false;unsigned key=native_event_key(e);
- if(key==0x3b)close_view(c,true);else if(key==TIO_STOCK_KEY_CONFIRM){tio_hint_input(&c->hint,stream_tick());if(tm_input_press(&c->input,stream_tick())){if(!c->music.awake){(void)wake(c);request(c,TM_RESUME);}else request(c,c->music.playing?TM_PAUSE:TM_PLAY);}}else return false;nav_stop_event(e);return true;}
-TIOImageResult tm_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){static const char name[]="turbo-music.tmu";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;TMPacket p;if(f->complete!=1||f->received!=f->declared||!tm_decode(f->data,f->received,&p))return TIO_BAD_SIZE;if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TM_MESSAGE,.data=f->data,.bytes=f->received};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;}
+bool tm_handle_event(void *e){void *vm=stream_event_user(e);TMMusicSlot *s=slot_of(ptr(vm,TIO_STOCK_MANAGER_MENU));Control *c=s?s->control:NULL;if(!c||!c->root||!owns(c)||native_event_code(e)!=TIO_STOCK_EVENT_KEY)return false;unsigned key=native_event_key(e);
+ if(key==TIO_STOCK_KEY_BACK)close_view(c,true);else if(key==TIO_STOCK_KEY_CONFIRM){tio_hint_input(&c->hint,stream_tick());if(tm_input_press(&c->input,stream_tick())){if(!c->music.awake){(void)wake(c);request(c,TM_RESUME);}else request(c,c->music.playing?TM_PAUSE:TM_PLAY);}}else return false;nav_stop_event(e);return true;}
+TIOImageResult tm_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){static const char name[]="turbo-music.tmu";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;TMPacket p;if(f->complete!=1||f->received!=f->declared||!tm_decode(f->data,f->received,&p))return TIO_BAD_SIZE;if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TM_MESSAGE,.data=f->data,.bytes=f->received,.release=NULL};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;}
 bool tm_message_is_ours(const TIONativeMessage *m){return m&&m->id==TM_MESSAGE;}
-void tm_message_dispatch(const TIONativeMessage *m){TMPacket q;if(!tm_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!paired()||!tm_decode(m->data,m->bytes,&q))return;
+void tm_message_dispatch(const TIONativeMessage *m){TMPacket q;if(!tm_message_is_ours(m)||m->release||m->reserved||m->context||!paired()||!tm_decode(m->data,m->bytes,&q))return;
  void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);if(!app&&home())app=nav_ensure_menu(vm);Control *c=control(slot_of(app));if(!c){emit(NULL,TM_ACK,TM_BUSY,q.sid,q.generation,q.sequence);return;}
- enum TMResult r=TM_OK;if(q.op==TM_OPEN&&(!home()||c->closing||tn_slot_visible(navslot(app))||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page))r=TM_BUSY;
+ enum TMResult r=TM_OK;if(q.op==TM_OPEN&&(!home()||c->closing||tn_slot_visible(navslot(app))||m8_tail_busy(app)))r=TM_BUSY;
  bool duplicate=q.sid==c->music.sid&&q.sequence==c->music.sequence&&q.crc==c->music.last_crc;
  if(r==TM_OK){r=tm_receive(&c->music,&q,stream_tick());if(r==TM_OK&&!duplicate){if(q.op==TM_OPEN){c->waiting=false;if(!enter(c)){close_view(c,false);r=TM_BUSY;}}else if(q.op==TM_CLOSE)close_view(c,false);}}
  emit(c,TM_ACK,r,q.sid,q.generation,q.sequence);

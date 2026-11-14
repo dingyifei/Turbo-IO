@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
-#endif
 #include "../common-v1/tio_text.h"
 #include "../common-v1/business_idle.h"
 #include "../camera-v1/camera_native.h"
@@ -45,7 +42,7 @@ static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NUL
 static uint32_t word(void *p,unsigned off){return p?*(uint32_t *)((uint8_t *)p+off):0;}
 static bool same(const char *a,const char *b){if(!a)return false;for(unsigned i=0;i<96;i++){if(a[i]!=b[i])return false;if(!b[i])return true;}return false;}
 static void *manager(void){void *launcher=tio_launcher_global;return ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER);}
-static TNNavSlot *slot_of(void *app){return app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
+static TNNavSlot *slot_of(void *app){M8NativeTail *t=m8_tail(app);return t?t->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool safe_home(void){
  if(!same(nav_top_app(),"com.rayneo.liteos.launcher"))return false;
@@ -57,7 +54,7 @@ static bool available(void *ctx){Control *c=ctx;
  if(tap_service_visible(c->app))return false;
  if(c->slot&&(tm_slot_visible(c->slot->music)||tf_slot_visible(c->slot->focus)))return false;
 #endif
- return !c->retired&&paired()&&safe_home()&&c->slot&&!((M8NativeTail *)((uint8_t *)c->app+TIO_STOCK_MENU_BYTES))->page&&(!c->view||c->view->open);}
+ return !c->retired&&paired()&&safe_home()&&c->slot&&!m8_tail_busy(c->app)&&(!c->view||c->view->open);}
 static void deleted(void *e){Control *c=stream_event_user(e);if(!c||!c->view)return;
  c->view->root=c->view->icon=c->view->map=NULL;c->view->open=false;c->view->retiring=true;
  (void)tn_native_power(&c->power,TN_POWER_RELEASE,false);c->waiting=false;
@@ -166,7 +163,7 @@ static bool envelope(const uint8_t *p,size_t n){return p&&n>=32&&n<=TN_PACKET_MA
 TIOImageResult tn_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  static const char name[]="turbo-navigation.tnv";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;
  if(f->complete!=1||f->declared!=f->received||!envelope(f->data,f->received))return TIO_BAD_SIZE;
- if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TN_MESSAGE_ID,.data=f->data,.bytes=f->received,.mode=0};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
+ if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TN_MESSAGE_ID,.data=f->data,.bytes=f->received,.release=NULL};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool tn_message_is_ours(const TIONativeMessage *m){return m&&m->id==TN_MESSAGE_ID;}
 /* A map message goes to the open page, or, with the page closed and the route kept, into the kept copy (data only, no drawing). */
@@ -175,7 +172,7 @@ static bool map_apply(Control *c,unsigned op,const uint8_t *body,size_t n){
  return tn_view_map(c->view,op,body,n,stream_tick());
 }
 void tn_message_dispatch(const TIONativeMessage *m){
- if(!tn_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!envelope(m->data,m->bytes)||!paired())return;
+ if(!tn_message_is_ours(m)||m->release||m->reserved||m->context||!envelope(m->data,m->bytes)||!paired())return;
  void *vm=manager();if(!vm)return;void *app=ptr(vm,TIO_STOCK_MANAGER_MENU);
  if(!app&&safe_home())app=nav_ensure_menu(vm);
  Control *c=control(slot_of(app));if(!c){emit((TNReply){.result=TN_BUSY,.sid=u32(m->data+8),.sequence=u32(m->data+12)});return;}
@@ -203,9 +200,9 @@ void m8_hook_vm_event(void *event){
  if(tc_native_event(event)||tap_service_event(event)||tf_handle_event(event)||tm_handle_event(event))return;
 #endif
  void *vm=stream_event_user(event),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);TNNavSlot *s=slot_of(app);Control *c=s?s->control:NULL;
- if(c&&c->view&&owns(c)&&native_event_code(event)==0xe){
+ if(c&&c->view&&owns(c)&&native_event_code(event)==TIO_STOCK_EVENT_KEY){
   unsigned key=native_event_key(event);
-  if(key==0x3b){close_page(c);nav_stop_event(event);return;}
+  if(key==TIO_STOCK_KEY_BACK){close_page(c);nav_stop_event(event);return;}
   if(key==TIO_STOCK_KEY_CONFIRM){TNUI u=api(c);if(c->runtime.active)(void)tn_button_wake(&c->runtime,&u,stream_tick());
    else if(c->waiting){c->waiting_since=stream_tick();(void)power(c,TN_POWER_WAKE_HOLD);}nav_stop_event(event);return;}
  }
