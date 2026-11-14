@@ -1,6 +1,7 @@
 """Host the production native display page (src/display-runtime-v1/native_display_test.c), Sensors screen included.
 
-It compiles native_display_test.c with the production page, file receiver, display runtime, carrier and client,
+It compiles native_display_test.c, which includes the production page (native_display_page.c) so that the Sensors
+case can format the all-maximum text with the real code, with the file receiver, display runtime, carrier and client,
 render_idle.c and diagnostics.c, with TDP_NATIVE_HOST_TEST, the tree's base flags (tests/host_layout.py), -Werror,
 ASan and UBSan, once with the Sensors page's Light line on (TIO_SENSORS_LIGHT=1, the default) and once off (0). The
 test stubs the Sensors providers (td_stock_light, td_light_bucket, the IMU byte and the hinge state); native_light.c
@@ -12,7 +13,7 @@ from pathlib import Path
 import argparse, importlib.util, subprocess, tempfile
 FW = Path(__file__).resolve().parents[1]
 D = FW/'src'/'display-runtime-v1'
-SOURCES = (D/'native_display_test.c', D/'native_display_page.c', D/'native_display_file.c', D/'display_runtime.c',
+SOURCES = (D/'native_display_test.c', D/'native_display_file.c', D/'display_runtime.c',   # the test includes the page
            D/'display_carrier.c', D/'display_client.c', FW/'src'/'image-upload-test'/'render_idle.c',
            FW/'src'/'diagnostics-v1'/'diagnostics.c')
 

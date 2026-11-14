@@ -97,13 +97,25 @@ int m8_impl_frame_start(int index){return tio_frame_start(index);}
 int m8_impl_frame_index(int frame){return tio_frame_index(frame);}
 /* The seven replacement hooks (frame_start, frame_index, label_frame, label_index, indicator, frame, render_slide) have
  * no stock body to fall back to: on an unarmed menu the five that touch the object return at once and read or write
- * no stock field. */
+ * no stock field. Stock's own frame function is what sets the carousel's lottie frame, its label and its dots, so on an
+ * unarmed menu those three stop updating: the wheel still moves the selection, but the carousel does not animate. */
 void m8_hook_render_slide(void *app){
  if(!tail(app))return;
  float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);
  (void)m8_hook_frame(app,tio_slide_frame(value,fm_tile_count()));
 }
+/* The launcher's current menu: launcher -> manager -> menu. NULL when any link is missing. */
+static void *manager_menu(void){
+ void *launcher=tio_launcher_global;
+ void *manager=launcher?ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER):NULL;
+ return manager?ptr(manager,TIO_STOCK_MANAGER_MENU):NULL;
+}
+/* Stock asks for the id of the manager's menu's selected item, and passes only the index. The hook finds that menu the
+ * same way. When it finds a menu and that menu is unarmed, stock's own lookup answers, with no tile map applied. When
+ * the chain names no menu, the module answers as it always has, so an armed menu never depends on the chain. */
 const char *m8_hook_app_id(int index){
+ void *menu=manager_menu();
+ if(menu&&!tail(menu))return stock_app_id(index);
  if(index<0)return "";index=(int)fm_tile_id((unsigned)index);
  static const char *const ids[]={"TurboDisplay","TurboNavigation","TurboMusic","TurboFocus","TurboApps","TurboCamera"};
  if(index>=TIO_STOCK_ITEMS&&index<TIO_MENU_ITEMS)return ids[index-TIO_STOCK_ITEMS];
@@ -279,15 +291,19 @@ bool m8_hook_frame(void *app,int frame){
  * (b) the constructor's -1 label index is where stock_layout.h says;
  * (c) the motion count holds the module's item count, so the carousel count edit ran and the motion state is where
  *     stock_layout.h says.
- * All three: arm the tail and create the module slots. Only (a) failed: the layout inside the object is proven but
- * the bytes after it are not the module's, so write nothing past the object and give stock's motion its own item
- * count back. (b) or (c) failed: write nothing at all. An unarmed menu is left to stock (the hooks below). */
+ * All three: arm the tail and create the module slots. Any check failed: the menu stays unarmed. If (c) passed, the
+ * count it read proves where the motion count is, so give stock's motion its own item count back, whatever (a) and (b)
+ * say, and write nothing else. If (c) failed, write nothing at all.
+ * An unarmed menu is not plain stock: the stock-backed hooks below call stock, but the seven replacement hooks have no
+ * stock body, so the carousel's lottie, label and dots do not update (see the note above m8_hook_render_slide). */
 void *m8_hook_ctor(void *app){
   stock_ctor(app);
   unsigned failed=(m8_tail_fill_intact(app)?0u:1u)|(*word(app,TIO_STOCK_MENU_LABEL_INDEX)==UINT32_MAX?0u:2u)|
     (*word(app,TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)==TIO_MENU_ITEMS?0u:4u);
-  if(failed==1u){*word(app,TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=TIO_STOCK_MENU_TILES;trace(141,failed);return app;}
-  if(failed){trace(141,failed);return app;}
+  if(failed){
+    if(!(failed&4u))*word(app,TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=TIO_STOCK_MENU_TILES;
+    trace(141,failed);return app;
+  }
   m8_tail_arm(app);M8NativeTail *t=tail(app);
   t->navigation=tn_slot_create(app);
   if(slot(app)){slot(app)->music=tm_slot_create(app);slot(app)->focus=tf_slot_create(app);slot(app)->apps=tap_menu_create(app);slot(app)->camera=tc_slot_create(app);}
@@ -391,9 +407,7 @@ void m8_hook_message(void *handler,const TIONativeMessage *message){
 #else
   if(!tio_native_message_is_ours(message)){stock_message(handler,message);return;}
 #endif
-  void *launcher=tio_launcher_global;
-  void *manager=launcher?ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER):NULL;
-  void *app=manager?ptr(manager,TIO_STOCK_MANAGER_MENU):NULL;M8NativeTail *t=tail(app);   /* NULL for no menu or an unarmed one: no page */
+  M8NativeTail *t=tail(manager_menu());   /* NULL for no menu or an unarmed one: no page */
 #if TIO_DISPLAY_RUNTIME
   trace(21,(unsigned)tdp_native_dispatch(t?t->page:NULL,message));
 #else

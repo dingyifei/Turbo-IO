@@ -17,7 +17,9 @@ extern void stream_timer_period(void *,uint32_t);
  * use and its peak (td_stock_light), the light bucket stock last cached (td_light_bucket, unless TIO_SENSORS_LIGHT is
  * 0), the hinge Hall state and the knob counters forwarded by menu10. It never writes the PMU, a sensor, a setting or
  * flash, and starts, stops or registers no sensor, report or handler. */
-#define TDP_SENSORS_TEXT 160 /* worst case 137 bytes with the NUL (native_display_test.c builds it) */
+/* Worst case 137 bytes with the NUL (118 with the Light line off): every piece at its largest value, the IMU byte being
+ * a uint8_t (at most 3 digits). native_display_test.c formats that text with this code and checks no other is longer. */
+#define TDP_SENSORS_TEXT 160
 extern volatile uint8_t tio_imu_family;
 extern int td_gettid(void);
 extern void *nav_monitors(void),*nav_input(void *);

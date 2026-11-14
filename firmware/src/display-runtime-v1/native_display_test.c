@@ -1,4 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
+/* The production page is compiled into this file, so the Sensors case can set the page's knob counters to their largest
+ * values (a real press count of 4294967295 would take 4 billion presses) and then format the text with the real code. */
+#include "native_display_page.c"
 #include "native_display_page.h"
 #include "native_display_file.h"
 #include "display_carrier.h"
@@ -90,7 +93,8 @@ void native_label_text(void *p,const char *s){assert(p&&s&&strlen(s)<160);strcpy
 volatile uint8_t tio_imu_family=2;
 static int sensor_tid=41,light_bucket=-1;static bool heap_valid=true,folded;static uint32_t heap_used=8790000,heap_peak=8800000;static unsigned light_reads;
 int td_gettid(void){return sensor_tid;}
-void *nav_monitors(void){return (void *)16;}
+static bool no_monitors;
+void *nav_monitors(void){return no_monitors?NULL:(void *)16;}
 void *nav_input(void *m){assert(m==(void *)16);return (void *)32;}
 bool nav_folded(void *i){assert(i==(void *)32);return folded;}
 void td_stock_light(void *c,TDDiagnostics *d){TDLightOwner *o=c;assert(o&&o->owner_tid==sensor_tid);
@@ -191,10 +195,25 @@ int main(void){
  assert(!strstr(label_text,"Light")&&!light_reads);
 #endif
  heap_valid=false;now+=100;pulse();assert(strstr(label_text,"\nUI heap n/a\n"));
+ /* The worst case: every piece at its largest value, formatted by the real sensors_text. The IMU byte is a uint8_t, so
+  * its number has at most 3 digits; the heap values and the press count are uint32_t (10 digits); the knob delta is an
+  * int32_t (11 characters with the sign); "unknown", "closed" and the 12-character light buckets are the longest words. */
  heap_valid=true;heap_used=heap_peak=4294967295u;tio_imu_family=255;folded=true;light_bucket=6;
- tdp_native_knob(page,-2147483647-1,true);for(int i=0;i<9;i++)tdp_native_knob(page,0,true);
- /* press is 10 here (2 digits); 4294967295 would add 8 bytes: the bound is the measured length plus 8, plus the NUL. */
- size_t longest=strlen(label_text)+8+1;assert(longest<=160);
+ page->knob_delta=-2147483647-1;page->knob_press=4294967295u;tdp_native_knob(page,0,false);
+#if TIO_SENSORS_LIGHT
+ assert(!strcmp(label_text,"Sensors (read only)\nIMU unknown (255)\nUI heap 4294967295 max 4294967295\nLight 1000-4000 lx\nFold closed\nKnob -2147483648 press 4294967295"));
+#else
+ assert(!strcmp(label_text,"Sensors (read only)\nIMU unknown (255)\nUI heap 4294967295 max 4294967295\nFold closed\nKnob -2147483648 press 4294967295"));
+#endif
+ size_t longest=strlen(label_text)+1;assert(longest<TDP_SENSORS_TEXT);
+ /* No other combination is longer: every IMU byte, light bucket (and out-of-range ones), fold state, heap state and
+  * extreme knob value, each through the real code. */
+ {static const int32_t deltas[]={-2147483647-1,2147483647,0};static const uint32_t presses[]={0,4294967295u};size_t most=0;
+  for(unsigned imu=0;imu<256;imu++)for(int b=-1;b<=9;b++)for(int f=0;f<3;f++)for(unsigned v=0;v<2;v++)for(unsigned k=0;k<6;k++){
+   tio_imu_family=(uint8_t)imu;light_bucket=b;no_monitors=f==2;folded=f==1;heap_valid=v;
+   page->knob_delta=deltas[k%3];page->knob_press=presses[k/3];tdp_native_knob(page,0,false);
+   size_t len=strlen(label_text)+1;if(len>most)most=len;}
+  assert(most==longest);no_monitors=false;heap_valid=true;}
  tdp_native_retire(page);for(int i=0;i<3&&timer;i++){now+=100;pulse();}assert(!timer&&!owner&&allocs==frees);
- printf("PASS native adapter mocks: 7 allocation/setup failures, SID/PB reply, 139-chunk atomic frame, 512-byte gate, physical/parent/timeout/protocol close; page=%zu bytes; allocations=%u frees=%u; NO real LVGL/radio; Sensors text worst case %zu of 160 bytes, Light line %s\n",allocation_size,allocs,frees,longest,TIO_SENSORS_LIGHT?"on":"off");
+ printf("PASS native adapter mocks: 7 allocation/setup failures, SID/PB reply, 139-chunk atomic frame, 512-byte gate, physical/parent/timeout/protocol close; page=%zu bytes; allocations=%u frees=%u; NO real LVGL/radio; Sensors text worst case %zu of %d bytes with the NUL, Light line %s\n",allocation_size,allocs,frees,longest,TDP_SENSORS_TEXT,TIO_SENSORS_LIGHT?"on":"off");
 }

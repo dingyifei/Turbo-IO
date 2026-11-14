@@ -4,7 +4,8 @@
  * with the tree's base flags and MENU_TAIL_COUNT_EDIT, the immediate of the carousel count edit in build-inputs.json.
  * port_stock_new mallocs exactly the size it is asked for, so AddressSanitizer catches any access past the module's
  * allocation. The model constructor writes exactly TIO_STOCK_MENU_BYTES bytes (label index -1, motion count
- * max(N,1) as stock's motion init does), and variants of it overrun, move the label index or keep another count.
+ * max(N,1) as stock's motion init does), and variants of it overrun, move the label index or keep another count, alone or
+ * in any combination.
  * Host only: no device, no stock bytes. */
 #include "common-v1/tio_text.h"
 #include "music-runtime-v1/menu_tiles.h"
@@ -24,6 +25,7 @@
 #include "display-runtime-v1/native_display_file.h"
 #endif
 #include <assert.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,7 +48,8 @@ static unsigned trace_event,trace_result,traces;
 static int wheel_delta;
 static size_t requested;
 static uint8_t *app;
-static unsigned ctor_mode;               /* 0 in bounds, 1 overrun by 4 bytes, 2 label index moved, 3 motion count 13 */
+enum { FAIL_FILL=1u, FAIL_LABEL=2u, FAIL_COUNT=4u };   /* the constructor check's failure bits (m8_hook_ctor) */
+static unsigned ctor_mode;               /* 0 in bounds, or FAIL_* bits: overrun by 4 bytes, label index moved, motion count 13 */
 static uint8_t after_ctor[0x200];        /* the allocation as stock_ctor left it */
 static unsigned destroy_probe;           /* 1: stock_destroy checks the menu reads as unarmed from inside it */
 static unsigned page_seen;               /* 1 when tdp_native_dispatch got a NULL page */
@@ -61,10 +64,10 @@ static void put_ptr(unsigned off,void *v){memcpy(app+off,&v,sizeof v);}
 void *port_stock_new(size_t n){requested=n;return malloc(n);}
 void *stock_ctor(void *p){
   stock_calls[S_CTOR]++;assert(p==app);
-  unsigned bytes=TIO_STOCK_MENU_BYTES+(ctor_mode==1?4u:0u);
+  unsigned bytes=TIO_STOCK_MENU_BYTES+(ctor_mode&FAIL_FILL?4u:0u);
   memset(p,0x11,bytes);
-  *word_at(TIO_STOCK_MENU_LABEL_INDEX)=ctor_mode==2?0u:UINT32_MAX;
-  unsigned n=ctor_mode==3?13u:(unsigned)MENU_TAIL_COUNT_EDIT;*word_at(TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=n?n:1u;
+  *word_at(TIO_STOCK_MENU_LABEL_INDEX)=ctor_mode&FAIL_LABEL?0u:UINT32_MAX;
+  unsigned n=ctor_mode&FAIL_COUNT?13u:(unsigned)MENU_TAIL_COUNT_EDIT;*word_at(TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=n?n:1u;
   assert(requested<=sizeof after_ctor);memcpy(after_ctor,p,requested);
   return p;
 }
@@ -86,7 +89,11 @@ void stock_names(void *p){assert(p==app);stock_calls[S_NAMES]++;}
 void stock_dots(void *p){assert(p==app);stock_calls[S_DOTS]++;}
 void stock_delete_dots(void *p){assert(p==app);stock_calls[S_DELETE_DOTS]++;}
 void stock_lottie(void *p){assert(p==app);stock_calls[S_LOTTIE]++;}
-const char *stock_app_id(int i){stock_calls[S_APP_ID]++;assert(i>=0&&i<(int)TIO_STOCK_MENU_TILES);return "stock";}
+/* Stock's lookup bounds the index itself and answers for any int; each index here gets its own answer, so a test can
+ * tell which index stock was asked about. */
+static const char stock_ids[TIO_MENU_ITEMS+2][3];static int stock_id_asked;
+static const char *stock_id(int i){return i>=0&&i<TIO_MENU_ITEMS+2?stock_ids[i]:"stock";}
+const char *stock_app_id(int i){stock_calls[S_APP_ID]++;stock_id_asked=i;return stock_id(i);}
 void stock_refresh_label(void *p,int i){assert(p==app&&i>=0&&i<(int)TIO_STOCK_MENU_TILES);stock_calls[S_REFRESH_LABEL]++;}
 void stock_message(void *h,const TIONativeMessage *m){(void)h;(void)m;stock_calls[S_MESSAGE]++;}
 extern int m8_impl_frame_start(int),m8_impl_frame_index(int);
@@ -179,7 +186,8 @@ void fm_sync(void *p){(void)p;module_calls++;}
 void fm_destroy(void *p){(void)p;module_calls++;}
 unsigned fm_menu_rows(void){return 1;}
 unsigned fm_tile_count(void){return TIO_MENU_ITEMS;}
-unsigned fm_tile_id(unsigned rank){return rank;}
+static bool remapped;   /* a non-default active tile map: rank r shows tile TIO_MENU_LAST-r */
+unsigned fm_tile_id(unsigned rank){return remapped&&rank<TIO_MENU_ITEMS?TIO_MENU_LAST-rank:rank;}
 unsigned fm_tile_rank(unsigned id){return id<TIO_MENU_ITEMS?id:255u;}
 static unsigned forgets;
 void fm_tiles_forget(void *p){assert(p==app);forgets++;}
@@ -225,11 +233,19 @@ static void construct(unsigned mode){
   for(uint32_t off=TIO_STOCK_MENU_BYTES;off+4u<=TIO_TAIL_END;off+=4u)assert(*word_at(off)==TIO_TAIL_FILL);
   assert(m8_hook_ctor(app)==app&&stock_calls[S_CTOR]==1&&traces==1);
 }
-static void dispose(void){if(made_slot){free(made_slot);made_slot=NULL;}free(app);app=NULL;}
+static void dispose(void){
+  if(made_slot){free(made_slot);made_slot=NULL;}free(app);app=NULL;
+  void *none=NULL;memcpy(manager_bytes+TIO_STOCK_MANAGER_MENU,&none,sizeof none);   /* the manager holds no freed menu */
+}
+/* Point the launcher chain at the manager, and the manager at menu. */
+static void manager_holds(void *menu){
+  void *v=manager_bytes;memcpy(launcher_bytes+TIO_STOCK_LAUNCHER_MANAGER,&v,sizeof v);memcpy(manager_bytes+TIO_STOCK_MANAGER_MENU,&menu,sizeof menu);
+}
 /* Case 6: on an unarmed menu every stock-backed hook calls its stub exactly once (and nothing of the module), and every
  * replacement hook leaves the whole allocation byte-identical and calls no LVGL, lottie or menu_* function. */
 static void unarmed_hooks(bool destroyed){
   assert(!m8_tail(app));
+  manager_holds(app);   /* the menu stock's app id caller and the message hook find */
   uint8_t before[0x200];
   #define SAME(call) do{memcpy(before,app,requested);unsigned u=ui_calls,s=stock_total(),mc=module_calls;call;\
     assert(!memcmp(before,app,requested)&&ui_calls==u&&stock_total()==s&&module_calls==mc);}while(0)
@@ -249,9 +265,16 @@ static void unarmed_hooks(bool destroyed){
   SAME(m8_hook_refresh_label(app,TIO_STOCK_MENU_TILES));SAME(m8_hook_refresh_label(app,TIO_MENU_LAST));SAME(m8_hook_refresh_label(app,-1));
   ONCE(S_HIDE,m8_hook_hide(app));
   ONCE(S_WHEEL,m8_hook_wheel(app,-37));assert(wheel_delta==-37);   /* the unscaled delta */
-  for(int i=0;i<(int)TIO_STOCK_MENU_TILES;i++)ONCE(S_APP_ID,(void)m8_hook_app_id(i));
+  /* app id: stock's own answer for every index, with no tile map applied, even while a non-default map is active.
+   * A negative index goes to stock too: stock's lookup bounds it and gives its default id, never the module's "". */
+  static const int negative[]={-1,-2,INT_MIN};
+  for(int r=0;r<2;r++){remapped=r;
+    for(int i=0;i<(int)TIO_MENU_ITEMS;i++)ONCE(S_APP_ID,assert(m8_hook_app_id(i)==stock_id(i)&&stock_id_asked==i));
+    for(unsigned n=0;n<sizeof negative/sizeof *negative;n++){int i=negative[n];stock_id_asked=0;
+      ONCE(S_APP_ID,assert(m8_hook_app_id(i)==stock_id(i)&&stock_id_asked==i));}
+  }
+  remapped=false;
   /* message: dispatched as today; the module's page lookup finds no armed menu */
-  {void *v=manager_bytes;memcpy(launcher_bytes+TIO_STOCK_LAUNCHER_MANAGER,&v,sizeof v);memcpy(manager_bytes+TIO_STOCK_MANAGER_MENU,&app,sizeof app);}
   TIONativeMessage m;memset(&m,0,sizeof m);
   display_ours=false;ONCE(S_MESSAGE,m8_hook_message(NULL,&m));
   display_ours=true;page_seen=0;SAME(m8_hook_message(NULL,&m));assert(page_seen==1);display_ours=false;
@@ -275,26 +298,44 @@ int main(void){
   {static int lottie;put_ptr(TIO_STOCK_MENU_LOTTIE,&lottie);*word_at(TIO_STOCK_MENU_FRAME)=0;unsigned u=ui_calls;
    assert(m8_hook_frame(app,100)&&*word_at(TIO_STOCK_MENU_FRAME)==100&&ui_calls>u);
    m8_hook_label_frame(app,100);assert(*word_at(TIO_STOCK_MENU_LABEL_INDEX)==3);}
+  /* app id on the armed menu the manager holds: the module's ids past stock's tiles, through the active tile map */
+  manager_holds(app);reset_counts();
+  for(int i=0;i<(int)TIO_STOCK_ITEMS;i++)assert(m8_hook_app_id(i)==stock_id(i)&&stock_id_asked==i);
+  assert(!strcmp(m8_hook_app_id(TIO_TILE_DISPLAY),"TurboDisplay")&&!strcmp(m8_hook_app_id(TIO_TILE_CAMERA),"TurboCamera"));
+  remapped=true;assert(!strcmp(m8_hook_app_id(0),"TurboCamera")&&m8_hook_app_id(TIO_MENU_LAST)==stock_id(0));remapped=false;
+  assert(stock_calls[S_APP_ID]==TIO_STOCK_ITEMS+1);
+  /* the same armed menu, but the chain names no menu: the module still answers, map and all, as it did before the
+   * unarmed check existed (an armed menu must not depend on the chain) */
+  manager_holds(NULL);reset_counts();
+  for(int i=0;i<(int)TIO_STOCK_ITEMS;i++)assert(m8_hook_app_id(i)==stock_id(i)&&stock_id_asked==i);
+  assert(!strcmp(m8_hook_app_id(TIO_TILE_DISPLAY),"TurboDisplay")&&!strcmp(m8_hook_app_id(TIO_TILE_CAMERA),"TurboCamera"));
+  remapped=true;assert(!strcmp(m8_hook_app_id(0),"TurboCamera")&&m8_hook_app_id(TIO_MENU_LAST)==stock_id(0));remapped=false;
+  assert(stock_calls[S_APP_ID]==TIO_STOCK_ITEMS+1);
+  manager_holds(app);
   /* 5. destroy tears the module down, clears the canary, and a hook reached from inside stock_destroy sees an unarmed menu */
   reset_counts();destroy_probe=1;m8_hook_destroy(app);destroy_probe=0;
   assert(stock_calls[S_DESTROY]==1&&forgets==1&&!made_slot&&module_calls>0&&!m8_tail(app)&&m8_tail_at(app)->canary==0);
   unarmed_hooks(true);dispose();
 
-  /* 2. a constructor that writes 4 bytes past the stock object: not armed; the only write is the motion count, reset to stock's own */
-  construct(1);assert(!m8_tail(app)&&!made_slot&&trace_event==141&&trace_result==1);
-  {uint32_t want=TIO_STOCK_MENU_TILES;memcpy(after_ctor+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT,&want,4);assert(!memcmp(after_ctor,app,requested));}
-  unarmed_hooks(false);dispose();
-
-  /* 3. label index not -1, and separately motion count 13: not armed, and nothing written at all */
-  construct(2);assert(!m8_tail(app)&&!made_slot&&trace_event==141&&trace_result==2&&!memcmp(after_ctor,app,requested));unarmed_hooks(false);dispose();
-  construct(3);assert(!m8_tail(app)&&!made_slot&&trace_event==141&&trace_result==4&&!memcmp(after_ctor,app,requested));unarmed_hooks(false);dispose();
+  /* 2, 3. every failing combination of the three checks (an overrun past the stock object, a moved label index, a motion
+   *    count of 13): not armed, trace 141 with the failed bits, and the one write is stock's own motion count, made only
+   *    when the motion-count check passed (its count proves where the count is), whatever the other two checks say. */
+  for(unsigned mode=1;mode<8;mode++){
+    construct(mode);assert(!m8_tail(app)&&!made_slot&&trace_event==141&&trace_result==mode);
+    uint32_t count;memcpy(&count,app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT,4);
+    assert(count==(mode&FAIL_COUNT?13u:(uint32_t)TIO_STOCK_MENU_TILES));
+    if(!(mode&FAIL_COUNT)){uint32_t want=TIO_STOCK_MENU_TILES;memcpy(after_ctor+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT,&want,4);}
+    assert(!memcmp(after_ctor,app,requested));
+    unarmed_hooks(false);assert(!m8_tail(app));dispose();
+  }
 
   /* 4. canary smashed after arming: unarmed from then on (the slots it made stay allocated: a leak, never a write) */
   construct(0);assert(m8_tail(app));m8_tail_at(app)->canary^=1u;assert(!m8_tail(app));unarmed_hooks(false);dispose();
 
   printf("PASS menu tail: host model tail %zu bytes at 0x%zx (the 32-bit target's 36 bytes at 0x10c, allocation 0x130, are menu9.h's compile-time assert), "
-         "count edit movs r1,#%d equals the module's %d items; armed after an in-bounds constructor; refused for an overrun, a moved label index, "
-         "a wrong motion count, a smashed canary and after destroy; stock-backed hooks call their stub once and replacement hooks touch nothing on an unarmed menu\n",
+         "count edit movs r1,#%d equals the module's %d items; armed after an in-bounds constructor; refused for all 7 combinations of an overrun, "
+         "a moved label index and a wrong motion count (stock's count restored only when the count check passed), a smashed canary and after destroy; "
+         "stock-backed hooks call their stub once, replacement hooks touch nothing and the app id is stock's for every index on an unarmed menu\n",
          sizeof(M8NativeTail),(size_t)TIO_TAIL_OFFSET,MENU_TAIL_COUNT_EDIT,(int)TIO_MENU_ITEMS);
   return 0;
 }

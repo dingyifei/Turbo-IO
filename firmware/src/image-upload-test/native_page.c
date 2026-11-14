@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: unbuilt source that still holds 1.0.5.12 (or older) stock layout
+#endif
 /* 1.0.4.12 ONLY. Lab candidate binding, not a portable LVGL ABI.
  * Immutable source bytes live until both native draw queues are empty. Parent
  * deletion only detaches objects; the timer keeps buffers until idle. */

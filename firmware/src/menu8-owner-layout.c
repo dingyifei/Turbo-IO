@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: unbuilt source that still holds 1.0.5.12 (or older) stock layout
+#endif
 /* Proposed 32-bit owner tail; layout checks only, NOT patched into firmware.
  * Preconditions: every allocation is expanded before any tail access; original
  * constructor is called first; cleanup precedes original parent destruction.

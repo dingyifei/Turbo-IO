@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: unbuilt source that still holds 1.0.5.12 (or older) stock layout
+#endif
 /* Experimental target glue; requires expanded allocation and generated
  * original-function trampolines. Never load into an unpatched stock object.
  * All UI calls follow the stock AppListView input/UI execution context.

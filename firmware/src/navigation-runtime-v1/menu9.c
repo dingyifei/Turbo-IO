@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: unbuilt source that still holds 1.0.5.12 (or older) stock layout
+#endif
 /* 1.0.4.12 ONLY. Experimental native eight-index carousel, not a proven OTA.
  * This replaces the virtual eighth overlay. Native wheel spring, direction,
  * snap, hide/show and seven stock launch targets are retained. All functions
