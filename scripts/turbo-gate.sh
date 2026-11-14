@@ -281,6 +281,18 @@ fw_tree_zip() {
 fw_rebase_stage() {
   python3 -I "$REPO/firmware/tools/rebase_apply.py" --check --stock "$STOCK"
 }
+# The stock layout checks: stock_layout.h proven against the stock AP, no raw stock offset in the tree, and the host
+# drivers that run on the tree's base. They need no tree ZIP, so they run before the build in both modes.
+fw_layout_stage() {
+  local name
+  rm -rf "$GATE/fw-layout"
+  mkdir -p "$GATE/fw-layout"
+  python3 -I "$REPO/firmware/tests/stock_layout_test.py" --stock "$STOCK"
+  python3 -I "$REPO/firmware/tools/check_layout.py" "$REPO/firmware"
+  for name in render_idle native_ui native_status native tmg9_wheel; do
+    python3 -I "$REPO/firmware/tests/${name}_host_test.py" --out "$GATE/fw-layout/$name"
+  done
+}
 fw_build_stage() {
   local built
   if [[ -n $tree_zip_arg ]]; then
@@ -324,6 +336,7 @@ fw_reproduce_stage() {
 }
 if [[ $firmware_only == 1 ]]; then
   stage fw-rebase fw_rebase_stage
+  stage fw-layout fw_layout_stage
   stage fw-build fw_build_stage
   stage fw-audit fw_audit_stage
   stage fw-tests fw_tests_stage
@@ -344,6 +357,7 @@ stage private private_stage
 stage build build_stage
 stage symbols symbols_stage
 stage pins pins_stage
+stage fw-layout fw_layout_stage
 if [[ $only_build == 1 ]]; then
   for name in test releases package-test host1011 source-audit preview; do report skip "$name" '--only-build'; done
 else
