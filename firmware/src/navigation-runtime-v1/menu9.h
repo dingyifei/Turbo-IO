@@ -9,9 +9,9 @@ typedef TDPNativePage M8Page;
 #else
 typedef TIONativePage M8Page;
 #endif
-/* Never append an element to the stock seven-element arrays. The eighth row,
- * label, dot and icon have explicit storage in the enlarged owner's tail.
- * Native selectedIndex at +0x88 is genuinely 0..7 in this profile. */
+/* On 1.0.6.11 stock's row, label and dot arrays have TIO_STOCK_MENU_TILES
+ * entries; whether the tail still needs its own row, label, icon and dot is
+ * F4's decision (G.2, menu10.c). */
 typedef struct {
   void *row, *label, *icon, *dot;
   M8Page *page;
@@ -19,7 +19,7 @@ typedef struct {
   void *navigation;
 } M8NativeTail;
 #if UINTPTR_MAX == 0xffffffff
-_Static_assert(sizeof(M8NativeTail)==32,"Expanded owner remains 252 bytes");
+_Static_assert(sizeof(M8NativeTail)==32,"the module tail is 32 bytes, placed after TIO_STOCK_MENU_BYTES");
 #endif
 int m8_hook_frame_start(int index);
 int m8_hook_frame_index(int frame);

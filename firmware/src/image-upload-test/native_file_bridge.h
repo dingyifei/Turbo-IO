@@ -22,6 +22,16 @@ typedef struct {
  void *context;
  uint8_t mode,padding[3];
 } TIONativeMessage;
+/* In firmware compiles (stock_layout.h is force-included there) the message
+ * must match stock's queued message on the 32-bit target. The mode byte and
+ * its padding sit on stock's release-function word; F4 makes them one word. */
+#if defined(TIO_STOCK_LAYOUT_H) && UINTPTR_MAX==0xffffffffu
+_Static_assert(offsetof(TIONativeMessage,id)==TIO_STOCK_MESSAGE_ID,"message id offset is stock's");
+_Static_assert(offsetof(TIONativeMessage,data)==TIO_STOCK_MESSAGE_DATA,"message data offset is stock's");
+_Static_assert(offsetof(TIONativeMessage,bytes)==TIO_STOCK_MESSAGE_LENGTH,"message length offset is stock's");
+_Static_assert(offsetof(TIONativeMessage,mode)==TIO_STOCK_MESSAGE_RELEASE,"message mode sits on stock's release word");
+_Static_assert(sizeof(TIONativeMessage)==24,"message is 24 bytes");
+#endif
 enum { TIO_NATIVE_MESSAGE_ID=0x54494d47 };
 typedef int (*TIOCopyEnqueue)(unsigned module,const TIONativeMessage *);
 /* enqueue MUST implement the pinned native mode=0 deep-copy contract.
