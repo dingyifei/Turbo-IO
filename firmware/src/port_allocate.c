@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: allocation size
+#endif
 #include <stddef.h>
 #include "menu8-native-carousel.h"
 extern void *port_stock_new(size_t);

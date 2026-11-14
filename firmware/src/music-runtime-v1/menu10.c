@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: menu fields, tail and tile count
+#endif
 #include "../common-v1/tio_text.h"
 #include "menu_tiles.h"
 #include "../common-v1/menu_wheel.h"
@@ -353,7 +356,7 @@ void m8_hook_message(void *handler,const TIONativeMessage *message){
 #else
   if(!tio_native_message_is_ours(message)){stock_message(handler,message);return;}
 #endif
-  void *launcher=*(void **)(uintptr_t)0x19989694;
+  void *launcher=*(void **)(uintptr_t)0x199595d4;
   void *manager=launcher?ptr(launcher,0x3c):NULL;
   void *app=manager?ptr(manager,0x10):NULL;
 #if TIO_DISPLAY_RUNTIME

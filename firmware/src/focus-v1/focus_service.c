@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: menu tail and launcher +0x3c
+#endif
 #include "../common-v1/business_idle.h"
 #include "../app-runtime-v1/app_service.h"
 /* One bounded service owns time. Page/launcher destruction does NOT own time.
@@ -31,7 +34,7 @@ extern void native_log(unsigned,unsigned,unsigned,unsigned,const char *,...);
 extern const M8RenderAPI m8_native_api;
 static void tick(void *);
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
-static void *manager(void){return ptr(*(void **)(uintptr_t)0x19989694,0x3c);}
+static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,0x3c);}
 static TNNavSlot *navslot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){static const char name[]="com.rayneo.liteos.launcher";const char *s=nav_top_app();if(!s)return false;for(unsigned i=0;i<sizeof name;i++)if(s[i]!=name[i])return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}

@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: +0x88/+0x90/+0xa0
+#endif
 /* STRIX 1.0.5.5 TMG4. Executed by LauncherThreadMsgHandler on the UI thread.
  * No button-driver simulation: that path blocks and includes reset/pair events.
  * Current native input interceptors retain ownership of global input policy.

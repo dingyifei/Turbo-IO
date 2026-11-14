@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: +0x60/+0x88, 7 rows
+#endif
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
 /* UI-thread-only launcher decoration. Allocation failure retains native menu.

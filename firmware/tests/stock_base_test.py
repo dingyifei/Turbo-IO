@@ -105,6 +105,12 @@ def main():
     # emuOnly: a 1.0.6.11 tree must say so; the tree's own value is read as written.
     refused(lambda:build.emu_only({'stockBase':'1.0.6.11'}),'1.0.6.11 tree that is not emuOnly','emuOnly:')
     assert build.emu_only({'stockBase':'1.0.6.11','emuOnly':True}) is True and build.emu_only(spec) is spec.get('emuOnly',False)
+    # stockZIPProvenance: on the real tree, present exactly when the base's stock container is canonical-members, and
+    # then exactly stock_zip.py's pinned provenance record for that base (no extra keys). rebase_apply --write keeps it.
+    canonical=build.package_shape(base)['container']=='canonical-members'
+    assert ('stockZIPProvenance' in spec)==canonical,'build-inputs.json stockZIPProvenance %s on a %s base'%(
+        'present' if 'stockZIPProvenance' in spec else 'missing',build.package_shape(base)['container'])
+    if canonical:assert spec['stockZIPProvenance']==sz.pinned(base)['provenance'],'build-inputs.json stockZIPProvenance is not the pinned record'
     # Stock ZIP paths: the repository files for 1.0.5.x, $TURBO_INPUTS (or --inputs) for 1.0.6.11, no fallback.
     for b,path in STOCK.items():assert Path(build.stock_zip_path(b)).resolve()==path.resolve(),b
     with tempfile.TemporaryDirectory(prefix='stock-base-inputs-') as tmp:

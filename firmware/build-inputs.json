@@ -1,8 +1,8 @@
 {
   "edits": [
     {
-      "offset": "0x4f6ed8",
-      "address": "0x10686ed8",
+      "offset": "0x515200",
+      "address": "0x106a5200",
       "before": "90b583b0",
       "after": "11f2c7bc",
       "role": "Entry trampoline show",
@@ -11,8 +11,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6f0c",
-      "address": "0x10686f0c",
+      "offset": "0x515234",
+      "address": "0x106a5234",
       "before": "b0b582b0",
       "after": "11f2d2bc",
       "role": "Entry trampoline hide",
@@ -21,8 +21,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f5f94",
-      "address": "0x10685f94",
+      "offset": "0x5142c0",
+      "address": "0x106a42c0",
       "before": "f0b50446",
       "after": "12f2c6bc",
       "role": "Entry trampoline destroy",
@@ -31,8 +31,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6c46",
-      "address": "0x10686c46",
+      "offset": "0x514f72",
+      "address": "0x106a4f72",
       "before": "2de9f041",
       "after": "11f2c0be",
       "role": "Entry trampoline wheel",
@@ -41,8 +41,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6fd8",
-      "address": "0x10686fd8",
+      "offset": "0x515300",
+      "address": "0x106a5300",
       "before": "b0b582b0",
       "after": "11f296bd",
       "role": "Entry trampoline event",
@@ -51,8 +51,8 @@
       "pad": 0
     },
     {
-      "offset": "0x405aac",
-      "address": "0x10595aac",
+      "offset": "0x42b510",
+      "address": "0x105bb510",
       "before": "b0b50c46",
       "after": "03f351b9",
       "role": "Entry trampoline message",
@@ -61,8 +61,8 @@
       "pad": 0
     },
     {
-      "offset": "0x5b9ea8",
-      "address": "0x10749ea8",
+      "offset": "0x6448d8",
+      "address": "0x107d48d8",
       "before": "f0b5c3b0",
       "after": "43f142bd",
       "role": "Entry trampoline dc_text",
@@ -71,8 +71,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6794",
-      "address": "0x10686794",
+      "offset": "0x514ac0",
+      "address": "0x106a4ac0",
       "before": "2de9f04f",
       "after": "11f225ba",
       "role": "Entry trampoline names",
@@ -81,8 +81,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6260",
-      "address": "0x10686260",
+      "offset": "0x51458c",
+      "address": "0x106a458c",
       "before": "2de9f047",
       "after": "11f290bf",
       "role": "Entry trampoline dots",
@@ -91,8 +91,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f623e",
-      "address": "0x1068623e",
+      "offset": "0x51456a",
+      "address": "0x106a456a",
       "before": "98b50446",
       "after": "11f281bf",
       "role": "Entry trampoline delete_dots",
@@ -101,8 +101,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6600",
-      "address": "0x10686600",
+      "offset": "0x51492c",
+      "address": "0x106a492c",
       "before": "b0b584b0",
       "after": "11f242be",
       "role": "Entry trampoline lottie",
@@ -111,8 +111,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f61e0",
-      "address": "0x106861e0",
+      "offset": "0x51450c",
+      "address": "0x106a450c",
       "before": "80b500af",
       "after": "11f2e3bc",
       "role": "Entry trampoline app_id",
@@ -121,8 +121,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f65c2",
-      "address": "0x106865c2",
+      "offset": "0x5148ee",
+      "address": "0x106a48ee",
       "before": "2de9f041",
       "after": "11f2b1bd",
       "role": "Entry trampoline refresh_label",
@@ -131,8 +131,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f5324",
-      "address": "0x10685324",
+      "offset": "0x51364c",
+      "address": "0x106a364c",
       "before": "f0b585b0",
       "after": "19f220b8",
       "role": "Entry trampoline vm_event",
@@ -141,9 +141,9 @@
       "pad": 0
     },
     {
-      "offset": "0x4f5de2",
-      "address": "0x10685de2",
-      "before": "0628a8bf",
+      "offset": "0x514116",
+      "address": "0x106a4116",
+      "before": "1e2380b5",
       "after": "1df2d3b8",
       "role": "Menu replacement frame_start",
       "kind": "bw",
@@ -151,8 +151,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f5df8",
-      "address": "0x10685df8",
+      "offset": "0x514126",
+      "address": "0x106a4126",
       "before": "1e22a0f10f03",
       "after": "1df2ccb800bf",
       "role": "Menu replacement frame_index",
@@ -161,8 +161,8 @@
       "pad": 1
     },
     {
-      "offset": "0x4f69c4",
-      "address": "0x106869c4",
+      "offset": "0x514cf0",
+      "address": "0x106a4cf0",
       "before": "2de9f04f",
       "after": "11f2f0bd",
       "role": "Menu replacement label_frame",
@@ -171,9 +171,9 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6d18",
-      "address": "0x10686d18",
-      "before": "0629a8bf",
+      "offset": "0x515044",
+      "address": "0x106a5044",
+      "before": "90b581f3",
       "after": "11f2dcbc",
       "role": "Menu replacement label_index",
       "kind": "bw",
@@ -181,8 +181,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f63ec",
-      "address": "0x106863ec",
+      "offset": "0x514718",
+      "address": "0x106a4718",
       "before": "2de9f04f",
       "after": "12f27eb9",
       "role": "Menu replacement indicator",
@@ -191,8 +191,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f66e0",
-      "address": "0x106866e0",
+      "offset": "0x514a0c",
+      "address": "0x106a4a0c",
       "before": "b0b50446",
       "after": "11f26bb9",
       "role": "Menu replacement frame",
@@ -201,8 +201,8 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6716",
-      "address": "0x10686716",
+      "offset": "0x514a42",
+      "address": "0x106a4a42",
       "before": "80b5b3ee0e7a",
       "after": "11f211b900bf",
       "role": "Menu replacement render_slide",
@@ -211,19 +211,19 @@
       "pad": 1
     },
     {
-      "offset": "0x4f3278",
-      "address": "0x10683278",
-      "before": "fc204ef043fe",
+      "offset": "0x51139c",
+      "address": "0x106a139c",
+      "before": "4ff4867050f07cfc",
       "after": "1ff23efe00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
-      "pad": 1
+      "pad": 2
     },
     {
-      "offset": "0x4f32a2",
-      "address": "0x106832a2",
-      "before": "02f04bff",
+      "offset": "0x5113c8",
+      "address": "0x106a13c8",
+      "before": "03f04ef8",
       "after": "15f2b7fa",
       "role": "Initialize tail after new stock constructor",
       "kind": "bl",
@@ -231,9 +231,9 @@
       "pad": 0
     },
     {
-      "offset": "0x4f6184",
-      "address": "0x10686184",
-      "before": "0721",
+      "offset": "0x5144b0",
+      "address": "0x106a44b0",
+      "before": "0821",
       "after": "0d21",
       "role": "Carousel item count 7 to 13",
       "kind": "raw",
@@ -241,9 +241,9 @@
       "pad": 0
     },
     {
-      "offset": "0x3f3be6",
-      "address": "0x10583be6",
-      "before": "00241f48204b84610360",
+      "offset": "0x418482",
+      "address": "0x105a8482",
+      "before": "00242048214b84610360",
       "after": "1ff3c3f900bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
@@ -251,33 +251,43 @@
       "pad": 3
     }
   ],
-  "moduleBytes": 161276,
-  "moduleVA": "0x10889684",
-  "moduleSHA256": "30e6c30a8c3f729f12d062bd3826e0bd073aa448b65afc28bfdb13eac706bc21",
-  "stockAP": "af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae",
-  "stockBase": "1.0.5.12",
+  "moduleBytes": null,
+  "moduleVA": "0x10929204",
+  "moduleSHA256": null,
+  "stockAP": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
+  "stockBase": "1.0.6.11",
   "stockMembers": {
-    "bt_controller.bin": "0060cc360b04577e8f5ce8f5d54fabde6103a6fef5a1a052260097920165a0c6",
+    "amap_rtos_sdk": "a14c47776864b5786bf61e4c37e159259c8d7c9b94ad6664e4526eadc445574a",
+    "bt_controller.bin": "dd935af210755d94c43995c62d9ec03e469157cd14965b1642c83d2f1daa440b",
     "cb_fw_venus.bin": "8799f12071bdac082218e3601c24ab0989275fc2f7db74e37b8314a225c2cf7d",
     "fac_test_img.bin": "18eb0901c3e0daeae48dd5f015252b6931ea7368f0160c2c985c4e74296d17eb",
-    "images.bin": "219ba2f7935850a059ac7e6a1ffa181056ce70891501db28238940dfbdc44cc5",
-    "lotties.bin": "ad66d83a3394034f825a12769aad292fc03e59fa865fe06bc43536b918a0b32b",
-    "nuttx_ap.bin": "af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae",
-    "nuttx_apc1.bin": "abee438702d29936a01e60b863f3f3ecdea73097d60c09bcded1a61606098e08",
+    "images.bin": "404ae1d33592db7592467b24bc29c1c783260fb7cf53f4be22838097f38fa501",
+    "lotties.bin": "a8b5fa78e57775a025d90aa94d41245495a555c7ca4399b226b515bc03997162",
+    "nuttx_ap.bin": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
+    "nuttx_apc1.bin": "c24794d051df5803152fac770051374aff4bd34f6d41ef8ab39853e7b4d05ba9",
     "nuttx_audio.bin": "549a72c032595e3829da7d63b7e1fd13cceda1a55dfefa7a7cad02db5a9b42ab",
-    "nuttx_bth.bin": "a7c4618ac992170d71fe0951ef6febfa46f13409c0bfc73c06ba74b0a00033f0",
+    "nuttx_bth.bin": "1fd910ea03124cd26d010c3ea3ef6a1b68dc61bd6283dcd07d2ad744d28759ec",
+    "nuttx_ota.bin": "016cdd0ba9424512c9669d229b7c81d94eebdb24e15ba3c1c7b461ca32f2bc1a",
     "ota_installer_progress.bin": "6fd65d296a667e1a7d94ec129adfd26458a4008ef403b331f855192c36eb3e3f",
     "pil_algo_up_demo_nand.dll": "e266726fe055ac6ec6f785a9440e8da7421402f2b4d3d7889039ad9b94e119c2",
-    "pil_algo_vad_demo.dll": "5391fd024f1dfd38d031aeff5b1f4e91b13ca6d51f30e67763cd9fdf9db521a8",
+    "pil_algo_vad_demo.dll": "0153a5a8e6b69ca0b9dd4cc742d45a758351d8209e604f38dbfe046c31f29f01",
     "pil_algo_wakeup_dll_nand.dll": "d1594cb8658b228e52c2606d02f1eab696d35a11ed42ddcb725e76a745f5550f",
-    "rives.bin": "836bc019f7152890b94cafafe2edaa024f317526318349f7833319e41158b104",
-    "smf.json": "2713dc3a302a65c101fa981500cd8b217766c526b6045bf02db5e9e6763d076d"
+    "smf.json": "43998e7acf06c8f9bc39635655d79120b7061a46f7b23f791f8699536f81836d"
   },
-  "APBytes": 7474312,
+  "stockManifestSHA256": "c5c09444e28bde6d13c9916aca17dd78b19e676854be4991b260e134d55f91a9",
+  "emuOnly": true,
+  "stockZIPProvenance": {
+    "ownerRezip": {
+      "name": "Strix_OS_1.0.6.11-rezipped-20261112-224028.zip",
+      "sha256": "ecfd6ec3bd580f22a69c20f9be976b5429911eedea5b79cd1fcef6e402d1c0ea",
+      "bytes": 18315227
+    }
+  },
+  "APBytes": null,
   "archive": {
-    "bytes": 8847234,
-    "sha256": "edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1",
-    "md5": "5b14d0dcd637157af2813c1f3554c912"
+    "bytes": null,
+    "sha256": null,
+    "md5": null
   },
   "sources": [
     {
@@ -477,8 +487,8 @@
       "sha256": "5c4737328a9e69166efd177724e48bcb4161d882ee961b5b68c8858151e26de4"
     }
   ],
-  "stockZIP": "b7bfd3cc73528e3e9995ad227dc877c8334d43dc8051436e2d2ccff2ca0b4133",
-  "APSHA256": "611b6bad89b2eda0e8501121a8af64c102576b3450b29931ad165c8f9a07bea5",
+  "stockZIP": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",
+  "APSHA256": null,
   "toolchain": {
     "clang": "Homebrew clang version 23.1.5",
     "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"

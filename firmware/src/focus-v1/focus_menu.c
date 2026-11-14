@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: fm_view_tiles assumes 7 stock tiles (ids 0..6, 13 ids; stock count is 8)
+#endif
 #include "../common-v1/tio_text.h"
 #include "../common-v1/tio_ui.h"
 /* TMG7 LensMenu layout (docs/design-system/screens/LensMenu.dc.html, halved), same index math as TMG4:

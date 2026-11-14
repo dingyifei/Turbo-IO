@@ -20,7 +20,14 @@ RANGES=[
 ]
 KEYS=('offset','address','before','kind','target','pad')
 # A range a table marks "changed" (format 2 verdict) must be listed here with the table's newSHA256: {(to, new): (newSHA256, reason)}.
-REVIEWED_ABI_CHANGES={}
+# Each hash is the sha256 of the new range's bytes in the 1.0.6.11 AP (main() re-hashes every range from the stock ZIP).
+# The 18-byte range at new 0x106a4fd6 has the same bytes as before, so its verdict is shift and it is not listed.
+REVIEWED_ABI_CHANGES={
+ ('1.0.6.11','0x106a44aa'):('755509019f74cc45d6b956024ed6e79ffd0e69085e23441ad69593edf84dc845','menu ctor: count movs r1,#7 became #8, and the strd/str/strb fields moved by +0x10'),
+ ('1.0.6.11','0x106a50e0'):('dfe8def906c2a6575bdf8549503c5baafadef808cf58b63c41fa539def28e64b','native_snap: fields 0xab/0xac/0x90/0x88 moved by +0x10'),
+ ('1.0.6.11','0x106a4450'):('23a5c4565dd9c124e612bf70b677aa32e26d8e3bbf2141bc0be98e5fde25913d','field 0x88 became 0x98, and adds r0,#0xa0 became #0xb0'),
+ ('1.0.6.11','0x105a4bc4'):('1767276c38151d69283d70e4a1fbe87a5a30e3dc6cf1cdf49851d0ff5369d150','the pool word at +108 is the code pointer of the 24-byte range at old 0x1058_280c (new 0x105a_6eb0): 0x1058_280d became 0x105a_6eb1'),
+}
 # An edit whose before changed other than in BL/B.W immediates must be listed with exactly this new before:
 # {(to, role): newBefore}. Typed from the bytes of the 1.0.6.11 AP
 # (sha256 9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260) at the readiness addresses.
@@ -55,6 +62,16 @@ def expected(spec):
  base=spec['stockBase']
  assert chain and chain[0]['from']=='1.0.5.5','the table chain does not start at 1.0.5.5'
  assert [(int(r['old'],16),r['bytes'],r['oldSHA256']) for r in chain[0]['stockAbiRanges']]==RANGES,'rebase table ranges are not these 11'
+ # Every review must be in use: for each format-2 table, the reviewed keys for its `to` are exactly its changed
+ # ranges, and no review names a base that no format-2 table in the chain leads to.
+ two_to=set()
+ for t in chain:
+  if t.get('format')!='turboio-rebase-2':continue
+  two_to.add(t['to'])
+  reviewed={k for k in REVIEWED_ABI_CHANGES if k[0]==t['to']}
+  changed={(t['to'],r['new']) for r in t['stockAbiRanges'] if r.get('verdict')=='changed'}
+  assert reviewed==changed,'%s to %s: reviewed ABI changes %s are not the changed ranges %s'%(t['from'],t['to'],sorted(reviewed),sorted(changed))
+ assert all(k[0] in two_to for k in REVIEWED_ABI_CHANGES),'reviewed ABI changes for a base with no format-2 table: %s'%sorted(k for k in REVIEWED_ABI_CHANGES if k[0] not in two_to)
  ranges,edits,at=RANGES,original['edits'],'1.0.5.5'
  for t in chain:
   if at==base:break
@@ -110,5 +127,6 @@ def main():
  assert len(spec['edits'])==25 and [{k:e.get(k) for k in KEYS} for e in spec['edits']]==[{k:e.get(k) for k in KEYS} for e in original]
  assert [e for e in spec['edits'] if e['kind']=='raw']==[e for e in original if e['kind']=='raw']
  for e in original:at=int(e['offset'],16);assert raw[at:at+len(e['before'])//2].hex()==e['before'],'stock bytes at '+e['role']
- print('PASS stock ABI (%s): 11 exact ranges, synchronous raw listener route and 25 unchanged patch sites/raw bytes'%spec['stockBase'])
+ print('PASS stock ABI (%s): 11 exact ranges (%d reviewed changes on this base), synchronous raw listener route and 25 unchanged patch sites/raw bytes'%(
+  spec['stockBase'],sum(1 for k in REVIEWED_ABI_CHANGES if k[0]==spec['stockBase'])))
 if __name__=='__main__':main()

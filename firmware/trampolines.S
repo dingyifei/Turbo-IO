@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: carousel count (raw after 0d21 over stock count 8) and the file callback struct +0x20 slot are not decided
+#endif
 .syntax unified
 .cpu cortex-m33
 .thumb
@@ -107,10 +110,10 @@ b.w resume_vm_event
 .thumb_func
 stream_register_shim:
  movs r4,#0
- ldr r0,=0x196c6988
+ ldr r0,=0x196dfaf4
  ldr r3,=tio_hook_file
  str r3,[r0,#0x18]
- ldr r3,=0x10583605
+ ldr r3,=0x105a7d39
  str r3,[r0]
  bx lr
 .ltorg

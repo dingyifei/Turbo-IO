@@ -69,7 +69,7 @@ cmp r3, #0
 CEL_106d3396:
 beq CEL_106d336e
 CEL_106d3398:
-ldr r1, =0x1805244d
+ldr r1, =0x18052630
 CEL_106d339a:
 bl ce_ext_10941968
 CEL_106d339e:
@@ -79,7 +79,7 @@ beq CEL_106d336e
 CEL_106d33a2:
 mov r0, r4
 CEL_106d33a4:
-ldr r1, =0x18052659
+ldr r1, =0x18052a44
 CEL_106d33a6:
 bl ce_ext_10941968
 CEL_106d33aa:
@@ -99,7 +99,7 @@ beq CEL_106d3384
 CEL_106d33ba:
 movs r2, #0x10
 CEL_106d33bc:
-ldr r1, =0x18177536
+ldr r1, =0x18187b3e
 CEL_106d33be:
 adds r0, r7, #4
 CEL_106d33c0:
@@ -125,7 +125,7 @@ ldr r4, [r4, #0x14]
 CEL_106d33da:
 cbnz r4, CEL_106d33f2
 CEL_106d33dc:
-ldr r3, =0x1804338b
+ldr r3, =0x18042b4a
 CEL_106d33de:
 mov r2, r4
 CEL_106d33e0:
