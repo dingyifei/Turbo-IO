@@ -289,8 +289,20 @@ fw_layout_stage() {
   mkdir -p "$GATE/fw-layout"
   python3 -I "$REPO/firmware/tests/stock_layout_test.py" --stock "$STOCK"
   python3 -I "$REPO/firmware/tools/check_layout.py" "$REPO/firmware"
-  for name in render_idle native_ui native_status native tmg9_wheel; do
+  for name in render_idle native_ui native_status native tmg9_wheel menu_tail; do
     python3 -I "$REPO/firmware/tests/${name}_host_test.py" --out "$GATE/fw-layout/$name"
+  done
+  python3 -I "$REPO/firmware/tests/rebase_independent_test.py"
+  python3 -I "$REPO/firmware/tests/stock_abi_test.py" --stock "$STOCK"
+  python3 -I "$REPO/firmware/tests/stock_base_test.py"
+  python3 -I "$REPO/firmware/tools/check_kept.py" "$REPO/firmware/baseline/kept" "$REPO/firmware"
+  python3 -I "$REPO/firmware/tools/check_cjk.py" "$REPO/firmware"
+  python3 -I "$REPO/firmware/tests/remote_app_name_test.py" --stock "$STOCK"
+  # The tile model in both shapes: 13 items without a base define (the 1.0.5.12 pair), 14 items on 1.0.6.11.
+  for name in '' -DTD_STOCK_10611=1; do
+    xcrun clang -std=c11 -O1 -g -Wall -Wextra -fsanitize=address,undefined $name -I "$REPO/firmware/src" \
+      "$REPO/firmware/tests/tile_model_test.c" "$REPO/firmware/src/menu-grid-v2/tile_config.c" -o "$GATE/fw-layout/tile-model"
+    "$GATE/fw-layout/tile-model"
   done
 }
 fw_build_stage() {
