@@ -1,15 +1,25 @@
 #include "focus-v1/focus_menu.h"
 #include "focus-v1/tile_state.h"
 #include "common-v1/tio_text.h"
+#include "navigation-runtime-v1/menu9.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-typedef struct {void *quad,*music,*focus,*camera;} TNNavSlot;
+/* Stand-ins for the module slots: hide_legacy reads only their row and icon. */
+typedef struct {void *row,*label,*icon,*dot;} SlotObjects;
+typedef SlotObjects TMMusicSlot;typedef SlotObjects TFSlot;typedef SlotObjects TCSlot;typedef SlotObjects TAPMenu;
+typedef struct {void *quad;TMMusicSlot *music;TFSlot *focus;TCSlot *camera;void *row,*icon;TAPMenu *apps;} TNNavSlot;
 static TNNavSlot nav;
-/* the stock menu object plus the 32-byte module tail */
-static uint8_t app[TIO_STOCK_MENU_BYTES+32u];
+/* the stock menu object plus the module tail, as port_allocate_menu allocates it */
+_Alignas(16) static uint8_t app[TIO_TAIL_END];
 static int root;
+/* hide_legacy (sliced from focus_menu_native.c) reaches the module objects through tail() and slot(); stock's rows, lottie and dots
+ * parent through ptr(). Every object it may hide is a distinct address here, and m8_native_api.hidden counts the hides. */
+static M8NativeTail tail_storage;static bool unarmed;
+static M8NativeTail *tail(void *p){assert(p==app);return unarmed?NULL:&tail_storage;}
+static int rows[TIO_STOCK_MENU_TILES+1],lottie,dots_parent,module_objects[12];
+static unsigned row_hides[TIO_STOCK_MENU_TILES+1],module_hides[12],lottie_hides,hidden_calls;static bool dots_hidden;
 static uint32_t now=1000;
 static TTVisible active,desired;
 static bool pending;
@@ -26,24 +36,35 @@ static void text(void *p,void *o,const char *s){(void)p;texts[(uintptr_t)o]=s;}
 static void visible(void *p,void *o,bool b){(void)p;shown[(uintptr_t)o]=b;}
 static void destroy(void *p,void *o){(void)p;(void)o;}
 static bool attach(void *p,void *owner){return p&&owner;}
-static void hidden(void *p,bool b){(void)p;(void)b;}
+static void hidden(void *p,bool b){hidden_calls++;
+ for(unsigned i=0;i<=TIO_STOCK_MENU_TILES;i++)if(p==&rows[i]&&b)row_hides[i]++;
+ for(unsigned i=0;i<12;i++)if(p==&module_objects[i]&&b)module_hides[i]++;
+ if(p==&lottie&&b)lottie_hides++;if(p==&dots_parent)dots_hidden=b;}
 static const struct {void(*hidden)(void *,bool);} m8_native_api={hidden};
 static TNWidgets widgets={NULL,idle,create,create,label,place,buffer,text,visible,destroy,NULL,NULL};
-static TNNavSlot *slot(void *p){assert(p==app);return &nav;}
-static bool detail(void *p){assert(p==app);return false;}
-static void *ptr(void *p,unsigned off){assert(p==app);return off==TIO_STOCK_MENU_ROOT?&root:NULL;}
-static void hide_legacy(void *p){assert(p==app);}
+/* slot(), detail() and fm_menu_plain() are the production bodies (sliced); they see the services through these. */
+static bool camera_up,apps_up,nav_up,music_up,focus_up;
+static bool tc_native_visible(void *p){assert(p==app);return camera_up;}
+static bool tap_service_visible(void *p){assert(p==app);return apps_up;}
+static bool tn_slot_visible(TNNavSlot *s){assert(s==&nav);return nav_up;}
+static bool tm_slot_visible(TMMusicSlot *s){(void)s;return music_up;}
+static bool tf_slot_visible(TFSlot *s){(void)s;return focus_up;}
+static void *ptr(void *p,unsigned off){assert(p==app);
+ if(off==TIO_STOCK_MENU_ROOT)return &root;if(off==TIO_STOCK_MENU_LOTTIE)return &lottie;if(off==TIO_STOCK_MENU_DOTS_PARENT)return &dots_parent;
+ for(unsigned i=0;i<=TIO_STOCK_MENU_TILES;i++)if(off==TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i)return &rows[i];   /* one past stock's rows too: never hidden */
+ return NULL;}
 static TNWidgets tn_lvgl_widgets(void){return widgets;}
 static bool native_has_flag(void *p,uint32_t flags){(void)p;(void)flags;return false;}
 static bool focus_screen_on(void){return true;}
 static bool fm_tiles_busy(void){return false;}
-static bool fm_tiles_apply(void *p){assert(p==app);if(!pending)return false;active=desired;pending=false;*(uint32_t *)(app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=active.count;   /* remote_native.c still writes +0xa0 (the frame on 1.0.6.11) until F4 (G.2) */return true;}
+static unsigned applies;
+static bool fm_tiles_apply(void *p){assert(p==app);applies++;if(!pending)return false;active=desired;pending=false;*(uint32_t *)(app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=active.count;return true;}
 static void fm_tile_snapshot(TTVisible *out){*out=active;}
 static unsigned fm_tile_count(void){return active.count;}
 static void m8_refresh_tile_label(void *p,int id){(void)p;(void)id;}
 static uint32_t stream_tick(void){return now;}
 /* TMG8 live tile state: the services are stubbed with one fixture; the phone link goes through the same nav_* calls as the production code. */
-static bool link_up;static unsigned lang_now;static TSLive fixture;static int monitor,music_slot,camera_slot;
+static bool link_up;static unsigned lang_now;static TSLive fixture;static int monitor;static TMMusicSlot music_slot;static TCSlot camera_slot;static TFSlot focus_slot;static TAPMenu apps_menu;
 static void *nav_monitors(void){return &monitor;}
 static void *nav_link(void *m){return m;}
 static bool nav_bonded(void *l){(void)l;return link_up;}
@@ -61,18 +82,35 @@ unsigned tio_lang(void){return lang_now;}
 #include "focus_native_sync.inc"
 static FMControl control;
 int main(void){
- nav.music=&music_slot;nav.camera=&camera_slot;
- TTConfig c;tt_default(&c);assert(tt_compact(&c,&active));assert(fm_view_open(&control.view,&widgets,&root,attach,&control));control.app=app;control.enabled=true;control.desired_rows=3;control.selection=-1;nav.quad=&control;*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)=7;
- fm_sync(app);assert(control.selection==7&&control.view.selected==7&&!strcmp(texts[(uintptr_t)control.view.labels[7]],tio_text(TT_GRID_DISPLAY,0)));
- assert(tt_unrank(719,0xf80,&c)&&tt_compact(&c,&desired));pending=true;now++;fm_sync(app);
- assert(active.count==8&&control.view.selected==7&&control.selection==7);assert(!strcmp(texts[(uintptr_t)control.view.labels[7]],tio_text(TT_TILE_CAMERA,0)));assert(!shown[(uintptr_t)control.view.labels[8]]);
- control.desired_rows=FM_CAROUSEL;now+=1000;fm_sync(app);assert(control.view.rows==FM_CAROUSEL&&control.view.selected==7&&control.selection==7&&!shown[(uintptr_t)control.view.page]);   /* a stored layout 1 reaches the view */
+ nav.music=&music_slot;nav.camera=&camera_slot;nav.focus=&focus_slot;nav.apps=&apps_menu;
+ void **objects[12]={&camera_slot.row,&camera_slot.icon,&tail_storage.row,&tail_storage.icon,&nav.row,&nav.icon,&music_slot.row,&music_slot.icon,&focus_slot.row,&focus_slot.icon,&apps_menu.row,&apps_menu.icon};
+ for(unsigned i=0;i<12;i++)*objects[i]=&module_objects[i];
+ tail_storage.navigation=&nav;
+ /* An unarmed menu counts as busy, so it is never plain: the remote's knob grants and accepts nothing for it. */
+ unarmed=true;assert(!slot(app)&&detail(app)&&!fm_menu_plain(app));unarmed=false;
+ /* Armed with nothing open: plain. Any open module page, service or tail page makes it busy. */
+ assert(slot(app)==&nav&&!detail(app)&&fm_menu_plain(app));
+ {bool *open[]={&camera_up,&apps_up,&nav_up,&music_up,&focus_up};
+  for(unsigned i=0;i<sizeof open/sizeof *open;i++){*open[i]=true;assert(detail(app)&&!fm_menu_plain(app));*open[i]=false;}
+  static _Alignas(16) uint8_t page[64];tail_storage.page=(M8Page *)page;   /* detail() only tests the pointer */assert(detail(app)&&!fm_menu_plain(app));tail_storage.page=NULL;assert(fm_menu_plain(app));}
+ /* An unarmed menu: fm_sync does nothing at all (no hide, no tile apply, no view change). */
+ {TTConfig d;tt_default(&d);assert(tt_compact(&d,&active));unarmed=true;pending=true;fm_sync(app);assert(hidden_calls==0&&applies==0&&pending);unarmed=false;pending=false;}
+ TTConfig c;tt_default(&c);assert(tt_compact(&c,&active));assert(fm_view_open(&control.view,&widgets,&root,attach,&control));control.app=app;control.enabled=true;control.desired_rows=3;control.selection=-1;nav.quad=&control;*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)=TIO_TILE_DISPLAY;
+ fm_sync(app);assert(control.selection==TIO_TILE_DISPLAY&&control.view.selected==TIO_TILE_DISPLAY&&!strcmp(texts[(uintptr_t)control.view.labels[TIO_TILE_DISPLAY]],tio_text(TT_GRID_DISPLAY,0)));
+ assert(!strcmp(texts[(uintptr_t)control.view.labels[4]],tio_text(TT_GRID_NAVIGATION,0)));   /* stock Navigation at id 4 on 1.0.6.11 */
+ /* The module view is up: hide_legacy hid each of stock's TIO_STOCK_MENU_TILES rows once (and no row past them), the lottie and every module
+  * row and icon; fm_sync hid the stock dots parent. */
+ for(unsigned i=0;i<TIO_STOCK_MENU_TILES;i++)assert(row_hides[i]==1);assert(row_hides[TIO_STOCK_MENU_TILES]==0&&lottie_hides==1&&dots_hidden);
+ for(unsigned i=0;i<12;i++)assert(module_hides[i]==1);
+ assert(tt_unrank(719,TT_HIDEABLE,&c)&&tt_compact(&c,&desired));pending=true;now++;fm_sync(app);
+ assert(active.count==TT_MIN_VISIBLE&&control.view.selected==TIO_TILE_DISPLAY&&control.selection==TIO_TILE_DISPLAY);assert(!strcmp(texts[(uintptr_t)control.view.labels[TIO_TILE_DISPLAY]],tio_text(TT_TILE_CAMERA,0)));assert(!shown[(uintptr_t)control.view.labels[TIO_TILE_DISPLAY]]);
+ control.desired_rows=FM_CAROUSEL;now+=1000;fm_sync(app);assert(control.view.rows==FM_CAROUSEL&&control.view.selected==TIO_TILE_DISPLAY&&control.selection==TIO_TILE_DISPLAY&&!shown[(uintptr_t)control.view.page]);   /* a stored layout 1 reaches the view */
  control.desired_rows=2;now+=1000;fm_sync(app);assert(control.view.rows==2&&shown[(uintptr_t)control.view.page]);
 
  /* TMG8 live tile state through the production fm_sync, with stubbed services: carousel status line for the focused tile, grid state dots. */
  {static const char song[]="Blinding Lights";
-  tt_default(&c);assert(tt_compact(&c,&desired));pending=true;now+=1000;control.desired_rows=FM_CAROUSEL;fm_sync(app);assert(active.count==13);
-  unsigned rank[13];for(unsigned r=0;r<13;r++)rank[active.ids[r]]=r;
+  tt_default(&c);assert(tt_compact(&c,&desired));pending=true;now+=1000;control.desired_rows=FM_CAROUSEL;fm_sync(app);assert(active.count==TT_ITEMS);
+  unsigned rank[TT_ITEMS];for(unsigned r=0;r<TT_ITEMS;r++)rank[active.ids[r]]=r;
   const uintptr_t line=(uintptr_t)control.view.line;
   #define GO(tile) do{*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)=rank[tile];now+=1100;fm_sync(app);(void)fm_view_step(&control.view,now+400);assert(control.view.selected==(int)rank[tile]);}while(0)
   #define LINE(want) do{if(*(want)){assert(shown[line]&&!strcmp(texts[line],want));}else assert(!shown[line]||!*texts[line]);}while(0)
@@ -91,10 +129,10 @@ int main(void){
   link_up=false;fixture=(TSLive){.pomodoro=true,.pomodoro_ms=18*60000+42000};
   GO(TIO_TILE_NAVIGATION);LINE("Phone not connected");GO(TIO_TILE_MUSIC);LINE("Phone not connected");GO(TIO_TILE_FOCUS);LINE("18:42 left");GO(TIO_TILE_CAMERA);LINE("");GO(TIO_TILE_APPS);LINE("");
   /* the grid: a dot on the tiles with a running state, none for "Phone not connected" and none for stock apps */
-  #define DOTS() ({unsigned m=0;for(unsigned i=0;i<9;i++)if(shown[(uintptr_t)control.view.dots[i]]){unsigned at=(unsigned)control.view.selected/6*6+i;assert(at<13);m|=1u<<active.ids[at];}m;})
+  #define DOTS() ({unsigned m=0;for(unsigned i=0;i<9;i++)if(shown[(uintptr_t)control.view.dots[i]]){unsigned at=(unsigned)control.view.selected/6*6+i;assert(at<TT_ITEMS);m|=1u<<active.ids[at];}m;})
   control.desired_rows=2;link_up=true;fixture=(TSLive){.pomodoro=true,.pomodoro_ms=60000,.music_playing=true,.music_age_ms=1000,.music_title=song,.nav_active=true,.nav_remaining_m=300,.camera=true};
   GO(TIO_TILE_FOCUS);assert(control.view.rows==2&&control.view.live_mask==((1u<<TIO_TILE_NAVIGATION)|(1u<<TIO_TILE_MUSIC)|(1u<<TIO_TILE_FOCUS)|(1u<<TIO_TILE_CAMERA)));
-  GO(TIO_TILE_NAVIGATION);assert(DOTS()==((1u<<TIO_TILE_NAVIGATION)|(1u<<TIO_TILE_MUSIC)|(1u<<TIO_TILE_FOCUS)));   /* page 2 of 2: navigation, music, pomodoro; camera is on the next page */
+  GO(TIO_TILE_NAVIGATION);assert(DOTS()==((1u<<TIO_TILE_NAVIGATION)|(1u<<TIO_TILE_MUSIC)|(1u<<TIO_TILE_FOCUS)));   /* page 2 of 3: navigation, music, pomodoro; camera is on the next page */
   GO(TIO_TILE_CAMERA);assert(DOTS()==((1u<<TIO_TILE_CAMERA)));
   link_up=false;fixture.camera=false;fixture.nav_active=false;GO(TIO_TILE_NAVIGATION);assert(control.view.live_mask==(1u<<TIO_TILE_FOCUS));assert(DOTS()==(1u<<TIO_TILE_FOCUS));
   fixture=(TSLive){0};link_up=true;GO(TIO_TILE_NAVIGATION);assert(control.view.live_mask==0&&DOTS()==0);

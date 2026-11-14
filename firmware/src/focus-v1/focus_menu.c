@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: fm_view_tiles assumes 7 stock tiles (ids 0..6, 13 ids; stock count is 8)
-#endif
 #include "../common-v1/tio_text.h"
 #include "../common-v1/tio_ui.h"
 /* TMG7 LensMenu layout (docs/design-system/screens/LensMenu.dc.html, halved), same index math as TMG4:
@@ -23,9 +20,19 @@
 #include "focus_menu_icons.h"
 #include <string.h>
 TIO_PAGES_CHECK;
+/* Labels and artwork by tile id. The 14-item model (stock 1.0.6.11) has stock Navigation at id 4 and every icon;
+ * the 13-item model (no base: host tests and the phone pair) keeps the TMG11 labels and skips the map icon (row 4). */
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+static const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_NAVIGATION,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+static const uint8_t art[]={0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+#else
 static const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+static const uint8_t art[]={0,1,2,3,5,6,7,8,9,10,11,12,13};
+#endif
 _Static_assert(sizeof names/sizeof *names==FM_ITEMS,"labels match stock item count");
-_Static_assert(sizeof fm_icon4==14976,"artwork budget");
+_Static_assert(sizeof art==FM_ITEMS,"one icon per tile id");
+_Static_assert(sizeof fm_icon4==16128,"artwork budget: 14 icons");
+unsigned fm_icon_row(unsigned id){return id<FM_ITEMS?art[id]:0u;}
 #define FM_LEVEL(c) ((unsigned)((c)>>8&255u))  /* canvas gray level = green channel */
 enum { FM_CELL_W=144, FM_LABEL_H=TIO_FONT_MIN+TIO_TEXT_PAD, FM_ICON2=32, FM_ICON3=28, FM_PITCH2=58, FM_PITCH3=36, FM_CARET_GAP=6, FM_LABEL_GAP=3,
  FM_DOT_ACTIVE=12, FM_DOT=4, FM_DOT_GAP=6, FM_PAGER_W=36, FM_PAGER_H=4 };
@@ -60,7 +67,7 @@ static void sample(FMView *v,uint32_t now){
 }
 static void icon(uint8_t *out,unsigned index,unsigned weight,unsigned fade,unsigned canvas){
  memset(out,0,FM_ICON*FM_ICON);unsigned size=canvas-2+2*weight/256,pad=(canvas-size)/2,gain=(FM_LEVEL(TIO_LENS_MID)+(255-FM_LEVEL(TIO_LENS_MID))*weight/256)*fade/256;
- const unsigned char *packed=fm_icon4[index];
+ const unsigned char *packed=fm_icon4[fm_icon_row(index)];
  for(unsigned y=0;y<size;y++)for(unsigned x=0;x<size;x++){
   unsigned pos=(y*48/size)*48+x*48/size;unsigned g=(packed[pos/2]>>(pos%2?0:4))&15;
   out[(y+pad)*canvas+x+pad]=(uint8_t)(g*17*gain/255);
@@ -110,7 +117,7 @@ static void car_sample(FMView *v,uint32_t now){
 /* Bilinear scale of the 48x48 4 bpp art to size x size (size <= 80) at brightness `gain` (255 = the art's own lens-full). */
 static void car_icon(uint8_t *out,unsigned index,unsigned size,unsigned gain){
  if(size>FM_CAR_MAX)size=FM_CAR_MAX;if(!size)return;
- const unsigned char *packed=fm_icon4[index];uint8_t x0[FM_CAR_MAX],wx[FM_CAR_MAX];
+ const unsigned char *packed=fm_icon4[fm_icon_row(index)];uint8_t x0[FM_CAR_MAX],wx[FM_CAR_MAX];
  for(unsigned x=0;x<size;x++){int c=(int)((2*x+1)*6144/size)-128;if(c<0)c=0;if(c>47*256)c=47*256;x0[x]=(uint8_t)(c>>8);wx[x]=(uint8_t)(c&255);}
  for(unsigned y=0;y<size;y++){
   int c=(int)((2*y+1)*6144/size)-128;if(c<0)c=0;if(c>47*256)c=47*256;unsigned y0=(unsigned)c>>8,y1=y0<47?y0+1:47,wy=(unsigned)c&255;
@@ -205,10 +212,10 @@ bool fm_view_open(FMView *v,const TNWidgets *api,void *parent,bool (*attach)(voi
 failed:api->destroy(api->ctx,v->root);v->root=NULL;return false;
 }
 bool fm_view_tiles(FMView *v,const TTVisible *tiles){
- if(!v||!v->root||!tiles||tiles->count<8||tiles->count>13||!v->api.idle(v->api.ctx))return false;
- unsigned seen=0;for(unsigned i=0;i<tiles->count;i++){unsigned id=tiles->ids[i];if(id>=13||(seen&(1u<<id))||tiles->rank[id]!=i||(i<7&&id!=i))return false;seen|=1u<<id;}if(!(seen&(1u<<12)))return false;
- for(unsigned id=0;id<13;id++)if(!(seen&(1u<<id))&&tiles->rank[id]!=255)return false;
- if(v->tiles.count!=tiles->count||memcmp(v->tiles.ids,tiles->ids,13)){v->tiles=*tiles;fm_view_suspend(v);}return true;
+ if(!v||!v->root||!tiles||tiles->count<TT_MIN_VISIBLE||tiles->count>TT_ITEMS||!v->api.idle(v->api.ctx))return false;
+ unsigned seen=0;for(unsigned i=0;i<tiles->count;i++){unsigned id=tiles->ids[i];if(id>=TT_ITEMS||(seen&(1u<<id))||tiles->rank[id]!=i||(i<TT_STOCK&&id!=i))return false;seen|=1u<<id;}if(!(seen&(1u<<TT_CAMERA)))return false;
+ for(unsigned id=0;id<TT_ITEMS;id++)if(!(seen&(1u<<id))&&tiles->rank[id]!=255)return false;
+ if(v->tiles.count!=tiles->count||memcmp(v->tiles.ids,tiles->ids,sizeof v->tiles.ids)){v->tiles=*tiles;fm_view_suspend(v);}return true;
 }
 bool fm_view_rows(FMView *v,unsigned rows){   /* 1 carousel, 2 or 3 grid rows */
  if(!v||!v->root||rows<1||rows>3||!v->api.idle(v->api.ctx))return false;

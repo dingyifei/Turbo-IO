@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Encode the 48x48 PNG masters into src/focus-v1/focus_menu_icons.h (4 bpp, 13 x 1152 B).
+"""Encode the 48x48 PNG masters into src/focus-v1/focus_menu_icons.h (4 bpp, 14 x 1152 B).
 
 Pixel format (focus_menu.c icon()):
   pos = row*48 + col; nibble = (packed[pos/2] >> (pos%2 ? 0 : 4)) & 15
   i.e. an even pixel is the HIGH nibble, an odd pixel the LOW nibble; stride 24 B per row, 1152 B per icon.
   nibble = level/17 (integer division) from the master's green channel; the lens is green-only.
-Icon order is the menu index: the NN- prefix of the master file name, in the order of focus_menu.c names[].
+Icon order is the row of fm_icon4: the NN- prefix of the master file name. focus_menu.c maps a tile id to its row
+(fm_icon_row): the 14-item model (stock 1.0.6.11) draws rows 0..13 in order, the 13-item model rows 0..3 and 5..13.
 Masters are the 48x48 rasterisations of assets/menu-icons/svg/NN-name.svg made with
   rsvg-convert -w 48 -h 48 -b black NN-name.svg -o png/NN-name.png
 (see assets/menu-icons/README.md). That step is documented, not part of this tool or its test.
@@ -20,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 DEFAULT_MASTERS = os.path.join(ROOT, "assets", "menu-icons", "png")
 DEFAULT_HEADER = os.path.join(ROOT, "src", "focus-v1", "focus_menu_icons.h")
-NAMES = ["recorder", "live-captions", "live-assist", "todo", "teleprompter", "lifelog",
+NAMES = ["recorder", "live-captions", "live-assist", "todo", "map", "teleprompter", "lifelog",
          "do-not-disturb", "display-test", "navigation", "music", "pomodoro", "my-apps", "camera"]
 N, W = len(NAMES), 48
 ICON_BYTES = W * W // 2  # 1152

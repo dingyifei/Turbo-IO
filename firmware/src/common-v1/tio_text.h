@@ -66,6 +66,7 @@ enum TIOTextKey {
  TT_STATE_KM_TO_GO,
  TT_STATE_M_TO_GO,
  TT_STATE_PHONE_OFF,
+ TT_GRID_NAVIGATION,
  TT_COUNT
 };
 const char *tio_text(unsigned key,unsigned lang);

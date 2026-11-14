@@ -1,7 +1,7 @@
 #include "tio_text.h"
 static const char *const en[TT_COUNT]={
  [TT_TILE_DISPLAY]="Turbo Display",
- [TT_TILE_NAVIGATION]="Navigation",
+ [TT_TILE_NAVIGATION]="Turbo Nav",
  [TT_TILE_MUSIC]="Music",
  [TT_TILE_FOCUS]="Pomodoro",
  [TT_TILE_APPS]="My Apps",
@@ -13,6 +13,7 @@ static const char *const en[TT_COUNT]={
  [TT_GRID_4]="Teleprompter",
  [TT_GRID_5]="Lifelog",
  [TT_GRID_6]="Do Not Disturb",
+ [TT_GRID_NAVIGATION]="Navigation",
  [TT_GRID_DISPLAY]="Display Test",
  [TT_SHELF_TITLE]="My Apps - import ZIP on phone",
  [TT_SHELF_EMPTY]="Empty - install on phone",
@@ -67,7 +68,7 @@ static const char *const en[TT_COUNT]={
 };
 static const char *const zh[TT_COUNT]={
  [TT_TILE_DISPLAY]="Turbo Display",
- [TT_TILE_NAVIGATION]="导航",
+ [TT_TILE_NAVIGATION]="Turbo 导航",
  [TT_TILE_MUSIC]="音乐",
  [TT_TILE_FOCUS]="番茄时钟",
  [TT_TILE_APPS]="我的应用",
@@ -79,6 +80,7 @@ static const char *const zh[TT_COUNT]={
  [TT_GRID_4]="提词器",
  [TT_GRID_5]="全天智记",
  [TT_GRID_6]="勿扰模式",
+ [TT_GRID_NAVIGATION]="导航",
  [TT_GRID_DISPLAY]="显示测试",
  [TT_SHELF_TITLE]="我的应用 · 从手机导入 ZIP",
  [TT_SHELF_EMPTY]="空槽 · 请从手机安装",

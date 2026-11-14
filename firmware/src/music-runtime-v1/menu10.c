@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: carousel behaviour: 8 stock + 6 module tiles, clamps and cross-fade (F4)
-#endif
 #include "../common-v1/tio_text.h"
 #include "menu_tiles.h"
 #include "../common-v1/menu_wheel.h"
@@ -9,8 +6,8 @@
 #include "../menu-grid-v2/menu_config.h"
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
-/* STRIX 1.0.5.5 TMG4. Native carousel has 8..13 visible canonical tiles.
- * The runtime map retains all seven stock targets and mandatory Camera.
+/* STRIX 1.0.5.5 TMG4. Native carousel has 9..14 visible canonical tiles.
+ * The runtime map retains all eight stock targets and mandatory Camera.
  * Native wheel spring, direction, snap and hide/show are retained. All functions
  * run on the existing Launcher/LVGL executor. No new timers or global RAM.
  */
@@ -58,8 +55,9 @@ extern void menu_text_font(void *,void *,uint32_t),menu_text_align(void *,int,ui
 extern uint32_t stream_tick(void);
 extern int stream_queue_send(unsigned,const TIONativeMessage *);
 
-static M8NativeTail *tail(void *app){return (M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES);}
-static TNNavSlot *slot(void *app){return tail(app)->navigation;}
+/* The one way to the module's tail: NULL unless the constructor's check armed this menu (menu9.h). Every caller checks it. */
+static M8NativeTail *tail(void *app){return m8_tail(app);}
+static TNNavSlot *slot(void *app){M8NativeTail *t=tail(app);return t?t->navigation:NULL;}
 static TMMusicSlot *music(void *app){return slot(app)?slot(app)->music:NULL;}
 static TFSlot *focus(void *app){return slot(app)?slot(app)->focus:NULL;}
 static TCSlot *camera_slot(void *app){return slot(app)?slot(app)->camera:NULL;}
@@ -69,6 +67,9 @@ static uint32_t *word(void *app,unsigned off){return (uint32_t *)((uint8_t *)app
 static bool byte(void *app,unsigned off){return *((uint8_t *)app+off)!=0;}
 static int clamp(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static void trace(unsigned e,unsigned r){native_log(1,0,0,0,"[TurboMenu8] event=%u result=%u",e,r);}
+_Static_assert(TIO_STOCK_ITEMS==TIO_STOCK_MENU_TILES,"the module's stock tiles are stock's menu tiles");
+_Static_assert(TIO_STOCK_LAST_FRAME==TIO_STOCK_MENU_FIRST_FRAME+TIO_STOCK_MENU_FRAMES_PER_TILE*(TIO_STOCK_MENU_TILES-1),
+               "the cross-fade starts at stock's own rest frame for its last tile");
 static bool eligible(void *app){
   void *root=ptr(app,TIO_STOCK_MENU_ROOT);
   return root && ptr(app,TIO_STOCK_MENU_LOTTIE) && byte(app,TIO_STOCK_MENU_ACTIVE) && !byte(app,TIO_MENU_EXTERNAL_ACTION_OFFSET) &&
@@ -76,7 +77,7 @@ static bool eligible(void *app){
 }
 static void hidden(void *obj,bool hide){if(obj)m8_native_api.hidden(obj,hide);}
 static void retire(void *app){
-  M8NativeTail *t=tail(app);
+  M8NativeTail *t=tail(app);if(!t)return;
   if(t->page)m8_page_retire(t->page);
   t->page=NULL;
 }
@@ -94,7 +95,11 @@ static void *block(void *parent,int w,int h,int x,int y){
  * knowledge beyond ordinary AAPCS (snap keeps a frame in r2 across this call). */
 int m8_impl_frame_start(int index){return tio_frame_start(index);}
 int m8_impl_frame_index(int frame){return tio_frame_index(frame);}
+/* The seven replacement hooks (frame_start, frame_index, label_frame, label_index, indicator, frame, render_slide) have
+ * no stock body to fall back to: on an unarmed menu the five that touch the object return at once and read or write
+ * no stock field. */
 void m8_hook_render_slide(void *app){
+ if(!tail(app))return;
  float value=*(float *)((uint8_t *)app+TIO_MENU_SCROLL_POSITION_OFFSET);
  (void)m8_hook_frame(app,tio_slide_frame(value,fm_tile_count()));
 }
@@ -104,11 +109,11 @@ const char *m8_hook_app_id(int index){
  if(index>=TIO_STOCK_ITEMS&&index<TIO_MENU_ITEMS)return ids[index-TIO_STOCK_ITEMS];
  return index>=0&&index<TIO_STOCK_ITEMS?stock_app_id(index):"";
 }
-void m8_hook_names(void *app){unsigned lang=tio_lang();
+void m8_hook_names(void *app){unsigned lang=tio_lang();if(!tail(app)){stock_names(app);return;}
   {TCSlot *e=camera_slot(app);if(e&&!e->row&&ptr(app,TIO_STOCK_MENU_ROOT)){e->row=tio_lv_obj_create_ex(ptr(app,TIO_STOCK_MENU_ROOT),0);if(e->row){clean_style(e->row);tio_lv_obj_set_size(e->row,260,26);native_align(e->row,5,0,-60);hidden(e->row,true);e->label=native_label_create(e->row);if(e->label){clean_style(e->label);native_label_text(e->label,tio_text(TT_TILE_CAMERA,lang));void *f=menu_font(20,0);if(f)menu_text_font(e->label,f,0);native_text_color(e->label,0x00ff00,0);menu_text_align(e->label,2,0);tio_lv_obj_set_size(e->label,260,26);native_align(e->label,9,0,0);}}}}
   TAPMenu *a=apps(app);if(a&&!a->row&&ptr(app,TIO_STOCK_MENU_ROOT)){a->row=tio_lv_obj_create_ex(ptr(app,TIO_STOCK_MENU_ROOT),0);if(a->row){clean_style(a->row);tio_lv_obj_set_size(a->row,260,26);native_align(a->row,5,0,-60);hidden(a->row,true);a->label=native_label_create(a->row);if(a->label){clean_style(a->label);native_label_text(a->label,tio_text(TT_TILE_APPS,lang));void *f=menu_font(20,0);if(f)menu_text_font(a->label,f,0);native_text_color(a->label,0x00ff00,0);menu_text_align(a->label,2,0);tio_lv_obj_set_size(a->label,260,26);native_align(a->label,9,0,0);}}}
   stock_names(app);M8NativeTail *t=tail(app);
-  if(t->row || !ptr(app,TIO_STOCK_MENU_ROOT))return;
+  if(!t || t->row || !ptr(app,TIO_STOCK_MENU_ROOT))return;
   void *row=tio_lv_obj_create_ex(ptr(app,TIO_STOCK_MENU_ROOT),0);if(!row){t->errors|=1;return;}
   clean_style(row);tio_lv_obj_set_size(row,260,26);native_align(row,5,0,-60);
   hidden(row,true);
@@ -144,17 +149,22 @@ void m8_refresh_tile_label(void *app,int index){unsigned lang=tio_lang();
   if(index==TIO_TILE_FOCUS){if(focus(app)&&focus(app)->label)native_label_text(focus(app)->label,tio_text(TT_TILE_FOCUS,lang));return;}
   if(index==TIO_TILE_MUSIC){if(music(app)&&music(app)->label)native_label_text(music(app)->label,tio_text(TT_TILE_MUSIC,lang));return;}
   if(index==TIO_TILE_NAVIGATION){if(slot(app)&&slot(app)->label)native_label_text(slot(app)->label,tio_text(TT_TILE_NAVIGATION,lang));return;}
-  if(index==TIO_TILE_DISPLAY){if(tail(app)->label)native_label_text(tail(app)->label,tio_text(TT_TILE_DISPLAY,lang));return;}
-  if(index>=0 && index<7)stock_refresh_label(app,index);
+  if(index==TIO_TILE_DISPLAY){M8NativeTail *t=tail(app);if(t&&t->label)native_label_text(t->label,tio_text(TT_TILE_DISPLAY,lang));return;}
+  if(index>=0 && index<TIO_STOCK_ITEMS)stock_refresh_label(app,index);
 }
-void m8_hook_refresh_label(void *app,int rank){if(rank>=0)m8_refresh_tile_label(app,(int)fm_tile_id((unsigned)rank));}
+void m8_hook_refresh_label(void *app,int rank){
+  if(rank<0)return;
+  if(!tail(app)){if(rank<(int)TIO_STOCK_MENU_TILES)stock_refresh_label(app,rank);return;}
+  m8_refresh_tile_label(app,(int)fm_tile_id((unsigned)rank));
+}
 void m8_hook_delete_dots(void *app){
-  /* Stock deletes the common parent, including our eighth child. */
+  /* Stock deletes the common parent, including the module's dots. */
+  M8NativeTail *t=tail(app);if(!t){stock_delete_dots(app);return;}
   if(camera_slot(app))camera_slot(app)->dot=NULL;
-  tail(app)->dot=NULL;if(slot(app))slot(app)->dot=NULL;if(music(app))music(app)->dot=NULL;if(focus(app))focus(app)->dot=NULL;if(apps(app))apps(app)->dot=NULL;stock_delete_dots(app);
+  t->dot=NULL;if(slot(app))slot(app)->dot=NULL;if(music(app))music(app)->dot=NULL;if(focus(app))focus(app)->dot=NULL;if(apps(app))apps(app)->dot=NULL;stock_delete_dots(app);
 }
 void m8_hook_dots(void *app){
- stock_dots(app);M8NativeTail *t=tail(app);void *parent=ptr(app,TIO_STOCK_MENU_DOTS_PARENT);if(!parent)return;
+ stock_dots(app);M8NativeTail *t=tail(app);if(!t)return;void *parent=ptr(app,TIO_STOCK_MENU_DOTS_PARENT);if(!parent)return;
  TNNavSlot *n=slot(app);TMMusicSlot *m=music(app);TFSlot *f=focus(app);TAPMenu *a=apps(app);TCSlot *c=camera_slot(app);
  void **dots[]={&t->dot,n?&n->dot:NULL,m?&m->dot:NULL,f?&f->dot:NULL,a?&a->dot:NULL,c?&c->dot:NULL};
  for(unsigned k=0;k<6;k++)if(dots[k]&&!*dots[k]){
@@ -163,10 +173,11 @@ void m8_hook_dots(void *app){
  }
 }
 void m8_hook_lottie(void *app){
+  if(!tail(app)){stock_lottie(app);return;}
   {TCSlot *e=camera_slot(app);if(e&&!e->icon&&ptr(app,TIO_STOCK_MENU_ROOT)){e->icon=tio_lv_obj_create_ex(ptr(app,TIO_STOCK_MENU_ROOT),0);if(e->icon){clean_style(e->icon);tio_lv_obj_set_size(e->icon,65,65);native_align(e->icon,2,0,52);hidden(e->icon,true);const int lines[][4]={{48,3,8,18},{48,3,8,50},{3,35,8,18},{3,35,53,18},{25,3,20,10},{3,10,20,10},{3,10,43,10},{20,3,23,27},{20,3,23,42},{3,18,23,27},{3,18,40,27}};for(unsigned i=0;i<sizeof lines/sizeof *lines;i++)if(!block(e->icon,lines[i][0],lines[i][1],lines[i][2],lines[i][3])){tio_lv_obj_delete(e->icon);e->icon=NULL;break;}}}}
   TAPMenu *a=apps(app);if(a&&!a->icon&&ptr(app,TIO_STOCK_MENU_ROOT)){a->icon=tio_lv_obj_create_ex(ptr(app,TIO_STOCK_MENU_ROOT),0);if(a->icon){clean_style(a->icon);tio_lv_obj_set_size(a->icon,65,65);native_align(a->icon,2,0,52);hidden(a->icon,true);for(unsigned i=0;i<4;i++)if(!block(a->icon,18,18,10+25*(i%2),10+25*(i/2))){tio_lv_obj_delete(a->icon);a->icon=NULL;break;}}}
   stock_lottie(app);M8NativeTail *t=tail(app);
-  if(t->icon || !ptr(app,TIO_STOCK_MENU_ROOT))return;
+  if(!t || t->icon || !ptr(app,TIO_STOCK_MENU_ROOT))return;
   void *icon=tio_lv_obj_create_ex(ptr(app,TIO_STOCK_MENU_ROOT),0);if(!icon){t->errors|=4;return;}
   clean_style(icon);tio_lv_obj_set_size(icon,65,65);native_align(icon,2,0,52);
   hidden(icon,true);
@@ -214,11 +225,13 @@ static void *turbo_dot(void *app,unsigned i){
  return i<TIO_STOCK_ITEMS?ptr(app,TIO_STOCK_MENU_DOTS+sizeof(uint32_t)*i):NULL;
 }
 static void *turbo_icon(void *app,unsigned k){
- void *icons[]={tail(app)->icon,slot(app)?slot(app)->icon:NULL,music(app)?music(app)->icon:NULL,
+ M8NativeTail *t=tail(app);
+ void *icons[]={t?t->icon:NULL,slot(app)?slot(app)->icon:NULL,music(app)?music(app)->icon:NULL,
    focus(app)?focus(app)->icon:NULL,apps(app)?apps(app)->icon:NULL,camera_slot(app)?camera_slot(app)->icon:NULL};
  return k<6?icons[k]:NULL;
 }
 void m8_hook_label_frame(void *app,int frame){
+  if(!tail(app))return;
   frame=clamp(frame,0,30*(int)fm_tile_count()-1);
   for(unsigned i=0;i<TIO_MENU_ITEMS;i++){
     void *row=turbo_row(app,i);
@@ -231,9 +244,9 @@ void m8_hook_label_frame(void *app,int frame){
   }
   *word(app,TIO_STOCK_MENU_LABEL_INDEX)=(uint32_t)m8_hook_frame_index(frame);fm_sync(app);
 }
-void m8_hook_label_index(void *app,int index){m8_hook_label_frame(app,m8_hook_frame_start(index));}
+void m8_hook_label_index(void *app,int index){if(!tail(app))return;m8_hook_label_frame(app,m8_hook_frame_start(index));}
 void m8_hook_indicator(void *app,int frame,int previous){
-  (void)previous;if(!ptr(app,TIO_STOCK_MENU_DOTS_PARENT))return;
+  (void)previous;if(!tail(app)||!ptr(app,TIO_STOCK_MENU_DOTS_PARENT))return;
   frame=clamp(frame,15,30*(int)fm_tile_count()-15);
   for(unsigned i=0;i<TIO_MENU_ITEMS;i++){
     void *dot=turbo_dot(app,i);if(!dot)continue;hidden(dot,i>=fm_tile_count());if(i>=fm_tile_count())continue;
@@ -244,32 +257,48 @@ void m8_hook_indicator(void *app,int frame,int previous){
   }
 }
 bool m8_hook_frame(void *app,int frame){
+  if(!tail(app))return false;
   void *lottie=ptr(app,TIO_STOCK_MENU_LOTTIE);if(!lottie || frame<0 || frame>30*(int)fm_tile_count()-1)return false;
   int previous=(int)*word(app,TIO_STOCK_MENU_FRAME);
   if(previous==frame)return false;
   *word(app,TIO_STOCK_MENU_FRAME)=(uint32_t)frame;
-  /* Native resource contains only seven icons. Never feed it an eighth frame
+  /* Native resource contains only eight icons. Never feed it a ninth frame
    * segment: cross-fade its final stable frame with our LVGL glyph. */
-  int mix=clamp(frame-195,0,30);
-  menu_lottie_frame(lottie,frame<=195?frame:195);
+  int mix=clamp(frame-TIO_STOCK_LAST_FRAME,0,30);
+  menu_lottie_frame(lottie,frame<=TIO_STOCK_LAST_FRAME?frame:TIO_STOCK_LAST_FRAME);
   menu_opa(lottie,(uint8_t)(255*(30-mix)/30),0);
   for(unsigned k=0;k<6;k++){
-    void *icon=turbo_icon(app,k);unsigned rank=fm_tile_rank(k+7);int part=rank==255?0:tio_tile_mix(frame,rank-7);
-    int weight=rank==255?0:rank+1==fm_tile_count()?part:tio_tile_weight(frame,rank-7);
+    void *icon=turbo_icon(app,k);unsigned rank=fm_tile_rank(k+TIO_TILE_DISPLAY);int part=rank==255?0:tio_tile_mix(frame,rank-TIO_STOCK_ITEMS);
+    int weight=rank==255?0:rank+1==fm_tile_count()?part:tio_tile_weight(frame,rank-TIO_STOCK_ITEMS);
     if(icon){hidden(icon,weight==0);menu_opa(icon,(uint8_t)(255*weight/30),0);menu_translate(icon,55*(30-part)/30,0);}
   }
   m8_hook_indicator(app,frame,previous);fm_sync(app);return true;
 }
+/* Size check and arming, right after the real constructor on the block port_allocate_menu pre-filled:
+ * (a) every word past the stock object still holds the fill, so the constructor wrote nothing there;
+ * (b) the constructor's -1 label index is where stock_layout.h says;
+ * (c) the motion count holds the module's item count, so the carousel count edit ran and the motion state is where
+ *     stock_layout.h says.
+ * All three: arm the tail and create the module slots. Only (a) failed: the layout inside the object is proven but
+ * the bytes after it are not the module's, so write nothing past the object and give stock's motion its own item
+ * count back. (b) or (c) failed: write nothing at all. An unarmed menu is left to stock (the hooks below). */
 void *m8_hook_ctor(void *app){
-  stock_ctor(app);M8NativeTail *t=tail(app);
-  for(unsigned i=0;i<sizeof *t;i++)((volatile uint8_t *)t)[i]=0;
+  stock_ctor(app);
+  unsigned failed=(m8_tail_fill_intact(app)?0u:1u)|(*word(app,TIO_STOCK_MENU_LABEL_INDEX)==UINT32_MAX?0u:2u)|
+    (*word(app,TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)==TIO_MENU_ITEMS?0u:4u);
+  if(failed==1u){*word(app,TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=TIO_STOCK_MENU_TILES;trace(141,failed);return app;}
+  if(failed){trace(141,failed);return app;}
+  m8_tail_arm(app);M8NativeTail *t=tail(app);
   t->navigation=tn_slot_create(app);
   if(slot(app)){slot(app)->music=tm_slot_create(app);slot(app)->focus=tf_slot_create(app);slot(app)->apps=tap_menu_create(app);slot(app)->camera=tc_slot_create(app);}
+  trace(140,0);
   return app;
 }
-void m8_hook_show(void *app){retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);m8_hook_label_index(app,(int)*word(app,TIO_STOCK_MENU_SELECTED));fm_show(app);}
-void m8_hook_hide(void *app){tgr_knob_cancel(app,stream_tick());tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
-void m8_hook_destroy(void *app){tgr_knob_cancel(app,stream_tick());tc_slot_destroy(camera_slot(app));if(slot(app))slot(app)->camera=NULL;fm_destroy(app);
+void m8_hook_show(void *app){if(!tail(app)){stock_show(app);return;}retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);m8_hook_label_index(app,(int)*word(app,TIO_STOCK_MENU_SELECTED));fm_show(app);}
+void m8_hook_hide(void *app){tgr_knob_cancel(app,stream_tick());if(!tail(app)){stock_hide(app);return;}tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
+void m8_hook_destroy(void *app){tgr_knob_cancel(app,stream_tick());M8NativeTail *t=tail(app);
+  if(t){   /* armed: tear the module down, then disarm, so a hook stock_destroy reaches sees an unarmed menu */
+  tc_slot_destroy(camera_slot(app));if(slot(app))slot(app)->camera=NULL;fm_destroy(app);
   native_unregister_wheel(app);retire(app);
   tap_menu_destroy(apps(app));if(slot(app))slot(app)->apps=NULL;
 
@@ -277,38 +306,44 @@ void m8_hook_destroy(void *app){tgr_knob_cancel(app,stream_tick());tc_slot_destr
 
   tm_slot_destroy(music(app));if(slot(app))slot(app)->music=NULL;
   td_slot_destroy(slot(app));
-  tn_slot_destroy(slot(app));tail(app)->navigation=NULL;
+  tn_slot_destroy(slot(app));t->navigation=NULL;
   /* Only the stock parent destructor owns row/icon/dot. Do not double-delete. */
-  tail(app)->row=tail(app)->label=tail(app)->icon=tail(app)->dot=NULL;
+  t->row=t->label=t->icon=t->dot=NULL;
+  t->canary=0;
+  }
   fm_tiles_forget(app);stock_destroy(app);
 }
 void m8_hook_wheel(void *app,int delta){
   tgr_knob_observe(app,delta,stream_tick());
+  M8NativeTail *t=tail(app);int target=FM_STEP_NO_CONTROL;   /* an unarmed menu: stock steps it */
+  if(t){
   if(tc_native_visible(app)){tc_native_wheel(app,delta);return;}
   if(tap_service_visible(app)){tap_service_wheel(app,delta);return;}
   if(tf_slot_visible(focus(app))){tf_slot_wheel(focus(app),delta);return;}
   if(tm_slot_visible(music(app))){tm_slot_wheel(music(app),delta);return;}
-  if(tail(app)->page){m8_page_knob(tail(app)->page,delta,false);return;} /* only the open Display Test page sees it; no other page changes */
+  if(t->page){m8_page_knob(t->page,delta,false);return;} /* only the open Display Test page sees it; no other page changes */
   if(tn_slot_visible(slot(app)))return;
   /* Hook-owned stepping (menu_wheel.h): one item per D raw counts, D the live detent, in every layout, and a step past either end is the wrap.
    * Stock never sees the delta (no 2x, no rounding): eligible() is the same gate stock_wheel applies first, so a delta it would drop is dropped here
    * before it can build a remainder. Same path as remote_native.c: stock native_snap re-seats the carousel from the selected index (TIO_STOCK_MENU_SELECTED), so that
    * is what must change, and TIO_STOCK_MENU_FRAME (the shown frame) is invalidated so the snap reruns the frame and label hooks itself. */
   if(!eligible(app))return;
-  int target=fm_wheel_step(app,(int)*word(app,TIO_STOCK_MENU_SELECTED),(int)fm_tile_count(),delta,stream_tick());
+  target=fm_wheel_step(app,(int)*word(app,TIO_STOCK_MENU_SELECTED),(int)fm_tile_count(),delta,stream_tick());
   if(target>=0){*word(app,TIO_STOCK_MENU_SELECTED)=(uint32_t)target;*word(app,TIO_STOCK_MENU_FRAME)=UINT32_MAX;native_snap(app);return;}
+  }
   if(target==FM_STEP_NO_CONTROL)stock_wheel(app,delta); /* no controller to step with (no nav slot, closing, or fm_show made none: allocation failed, renderer busy, no room): the stock menu keeps its own rate, 600 counts per item */
 }
 bool m8_hook_event(void *app,void *event){
-  if(native_event_code(event)!=0xe || native_event_key(event)!=TIO_STOCK_KEY_CONFIRM)return stock_event(app,event);
+  M8NativeTail *t=tail(app);
+  if(!t || native_event_code(event)!=TIO_STOCK_EVENT_KEY || native_event_key(event)!=TIO_STOCK_KEY_CONFIRM)return stock_event(app,event);
   tgr_knob_cancel(app,stream_tick());
   if(tc_native_visible(app))return true;
   if(tf_back_blocked(slot(app),stream_tick()))return true;
   if(tap_service_visible(app))return true;
-  if(tail(app)->page){m8_page_knob(tail(app)->page,0,true);return true;} /* swallowed as before; the open page also counts it */
+  if(t->page){m8_page_knob(t->page,0,true);return true;} /* swallowed as before; the open page also counts it */
   if(tm_slot_visible(music(app)))return true;
-  /* Preserve native seven-item eligibility and keyboard behavior exactly. */
-  if(*word(app,TIO_STOCK_MENU_SELECTED)<7)return stock_event(app,event);
+  /* Preserve native eight-item eligibility and keyboard behavior exactly. */
+  if(*word(app,TIO_STOCK_MENU_SELECTED)<TIO_STOCK_MENU_TILES)return stock_event(app,event);
   if(!eligible(app))return false;
   native_snap(app); /* Same stock snap BEFORE deciding which item to launch. */
   unsigned index=*word(app,TIO_STOCK_MENU_SELECTED);
@@ -321,13 +356,13 @@ bool m8_hook_event(void *app,void *event){
   if(index==TIO_TILE_MUSIC){trace(50,tm_slot_open(music(app)));return true;}
   if(index==TIO_TILE_NAVIGATION){trace(40,tn_slot_open(slot(app)));return true;}
   if(index!=TIO_TILE_DISPLAY){trace(39,index);return true;}
-  M8NativeTail *t=tail(app);uint32_t sid=stream_tick();
+  uint32_t sid=stream_tick();
   if(sid<=t->last_session)sid=t->last_session+1u;
   if(!sid){trace(38,0);return true;}
   t->last_session=sid;
   bool ok=m8_page_open(ptr(app,TIO_STOCK_MENU_ROOT),sid,&t->page)!=NULL;
   native_report_activity();trace(31,ok);
-  return true; /* Failure NEVER launches item 6 (Do Not Disturb). */
+  return true; /* Failure NEVER launches item 7 (Do Not Disturb). */
 }
 void tio_hook_file(const TIONativeFile *file){
   TIOImageResult apps=tap_service_file(file,stream_queue_send);if(apps!=TIO_FOREIGN)return;
@@ -345,7 +380,7 @@ void tio_hook_file(const TIONativeFile *file){
 extern void tgr_native_message(const TIONativeMessage *);
 void m8_hook_message(void *handler,const TIONativeMessage *message){
   tc_native_message(message);
-  tgr_native_message(message); /* borrowed bytes; stock handler still disposes */
+  tgr_native_message(message); /* borrowed bytes; the queue consumer frees them after this hook returns */
   if(tap_service_ours(message)){tap_service_message(message);return;}
   if(tf_message_is_ours(message)){tf_message_dispatch(message);return;}
   if(td_message_is_ours(message)){td_message_dispatch(message);return;}
@@ -358,10 +393,10 @@ void m8_hook_message(void *handler,const TIONativeMessage *message){
 #endif
   void *launcher=tio_launcher_global;
   void *manager=launcher?ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER):NULL;
-  void *app=manager?ptr(manager,TIO_STOCK_MANAGER_MENU):NULL;
+  void *app=manager?ptr(manager,TIO_STOCK_MANAGER_MENU):NULL;M8NativeTail *t=tail(app);   /* NULL for no menu or an unarmed one: no page */
 #if TIO_DISPLAY_RUNTIME
-  trace(21,(unsigned)tdp_native_dispatch(app?tail(app)->page:NULL,message));
+  trace(21,(unsigned)tdp_native_dispatch(t?t->page:NULL,message));
 #else
-  trace(21,(unsigned)tio_native_page_message(app?tail(app)->page:NULL,message));
+  trace(21,(unsigned)tio_native_page_message(t?t->page:NULL,message));
 #endif
 }

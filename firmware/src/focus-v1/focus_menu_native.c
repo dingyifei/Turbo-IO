@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: 7 stock rows assumed; stock has 8 rows and dots (F4)
-#endif
 #include "../camera-v1/camera_native.h"
 #include "../app-runtime-v1/app_service.h"
 /* UI-thread-only launcher decoration. Allocation failure retains native menu.
@@ -38,14 +35,20 @@ _Static_assert(offsetof(FMControl,view)==0,"the 64 byte aligned canvas banks sta
 _Static_assert(offsetof(TNNavSlot,quad)==44,"never overlap existing slot fields");
 _Static_assert(sizeof(TNNavSlot)==68,"quad extends only separately allocated slot");
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
-static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
-static bool detail(void *app){TNNavSlot *s=slot(app);return tc_native_visible(app)||tap_service_visible(app)||(s&&(tn_slot_visible(s)||tm_slot_visible(s->music)||tf_slot_visible(s->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page));}
+/* The one way to the module's tail, as in menu10.c: NULL unless the menu is armed (menu9.h). An unarmed menu has no slot,
+ * counts as busy, and the module view does nothing for it. */
+static M8NativeTail *tail(void *app){return m8_tail(app);}
+static TNNavSlot *slot(void *a){M8NativeTail *t=tail(a);return t?t->navigation:NULL;}
+static bool detail(void *app){M8NativeTail *t=tail(app);if(!t)return true;TNNavSlot *s=slot(app);return tc_native_visible(app)||tap_service_visible(app)||(s&&(tn_slot_visible(s)||tm_slot_visible(s->music)||tf_slot_visible(s->focus)||t->page));}
 bool fm_menu_plain(void *app){void *parent=ptr(app,TIO_STOCK_MENU_ROOT);return app&&parent&&!native_has_flag(parent,1)&&!detail(app)&&focus_screen_on();}
+/* Hides stock's TIO_STOCK_MENU_TILES rows, the lottie and the module's own rows and icons while the module view is up;
+ * fm_sync hides the stock dots parent. */
+_Static_assert(TIO_STOCK_ITEMS==TIO_STOCK_MENU_TILES,"one stock row per stock tile");
 static void hide_legacy(void *app){
- M8NativeTail *t=(M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES);TNNavSlot *s=slot(app);TMMusicSlot *music=s?s->music:NULL;TFSlot *focus=s?s->focus:NULL;
+ M8NativeTail *t=tail(app);if(!t)return;TNNavSlot *s=slot(app);TMMusicSlot *music=s?s->music:NULL;TFSlot *focus=s?s->focus:NULL;
  TCSlot *camera=s?s->camera:NULL;
  void *old[]={camera?camera->row:NULL,camera?camera->icon:NULL,ptr(app,TIO_STOCK_MENU_LOTTIE),t->row,t->icon,s?s->row:NULL,s?s->icon:NULL,music?music->row:NULL,music?music->icon:NULL,focus?focus->row:NULL,focus?focus->icon:NULL,s&&s->apps?((TAPMenu *)s->apps)->row:NULL,s&&s->apps?((TAPMenu *)s->apps)->icon:NULL};
- for(unsigned i=0;i<7;i++){void *row=ptr(app,TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i);if(row)m8_native_api.hidden(row,true);}
+ for(unsigned i=0;i<TIO_STOCK_MENU_TILES;i++){void *row=ptr(app,TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i);if(row)m8_native_api.hidden(row,true);}
  for(unsigned i=0;i<sizeof old/sizeof *old;i++)if(old[i])m8_native_api.hidden(old[i],true);
 }
 static void deleted(void *e){FMControl *c=stream_event_user(e);if(c){TNNavSlot *s=slot(c->app);if(s&&s->quad==c)s->quad=NULL;c->app=NULL;c->view.root=NULL;c->closing=true;}}
@@ -85,7 +88,8 @@ void fm_language_changed(void){
  void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return;
   if(*(void(**)(void*))((uint8_t*)t+TIO_STOCK_TIMER_CB)==tick){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(c&&c->timer==t&&!c->closing)c->relabel=true;return;}}
 }
-void fm_sync(void *app){if(fm_tiles_busy())return;TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;bool inside=detail(app);void *dots=ptr(app,TIO_STOCK_MENU_DOTS_PARENT);
+void fm_sync(void *app){if(!tail(app)||fm_tiles_busy())return;   /* an unarmed menu is stock's alone */
+ TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;bool inside=detail(app);void *dots=ptr(app,TIO_STOCK_MENU_DOTS_PARENT);
  if(dots)m8_native_api.hidden(dots,inside||(c&&c->view.root&&!c->closing));
  if(c&&c->view.root&&!c->closing)hide_legacy(app);
  void *visible_parent=ptr(app,TIO_STOCK_MENU_ROOT);TNWidgets widgets=tn_lvgl_widgets();

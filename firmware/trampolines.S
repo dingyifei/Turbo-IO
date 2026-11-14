@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: carousel count after (0d21) must follow the 8 stock + 6 module tile model (F4)
-#endif
 .syntax unified
 .cpu cortex-m33
 .thumb

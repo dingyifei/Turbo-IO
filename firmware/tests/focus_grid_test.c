@@ -20,7 +20,13 @@ static bool attach(void *obj,void *owner){return obj&&owner;}
 static unsigned g_lang;
 unsigned tio_lang(void){return g_lang;}
 static FMView view;
+/* The two label forms of focus_menu.c: 8 stock tiles (stock Navigation at id 4) with the 1.0.6.11 base, the TMG11 7 without. */
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+static const unsigned menu_names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_NAVIGATION,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+#else
 static const unsigned menu_names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+#endif
+_Static_assert(sizeof menu_names/sizeof *menu_names==TT_ITEMS,"one label per tile id");
 typedef struct {int x,y;unsigned weights[9];bool moving,page;} Motion;
 static void wrap_motion(FMView *v){
  const unsigned offsets[]={0,15,16,32,119,120,159,160,176};Motion expected[9];
@@ -53,7 +59,7 @@ static void Geometry(Fake *f,FMView *v,unsigned rows,unsigned selected,unsigned 
 }
 
 /* ---- TMG8 carousel (LensMenuCarousel.dc.html) ---------------------------------------------------------------------------- */
-static unsigned art_level(unsigned id,unsigned x,unsigned y){unsigned pos=y*48+x;return ((fm_icon4[id][pos/2]>>(pos%2?0:4))&15)*17;}
+static unsigned art_level(unsigned id,unsigned x,unsigned y){unsigned pos=y*48+x;return ((fm_icon4[fm_icon_row(id)][pos/2]>>(pos%2?0:4))&15)*17;}
 static unsigned art_sum(unsigned id){unsigned t=0;for(unsigned y=0;y<48;y++)for(unsigned x=0;x<48;x++)t+=art_level(id,x,y);return t;}
 enum { FM_CAR_LEVEL_MID=0x77, FM_CAR_LEVEL_TRACK=0x38 };
 typedef struct {int cx,cy;unsigned size,peak,sum;const uint8_t *buf;uintptr_t obj;} Slot;
@@ -104,7 +110,7 @@ static void car_geometry(Fake *f,FMView *v,bool route,unsigned selected){
 static void carousel(Fake *f,FMView *v){
  TTConfig config;TTVisible tiles;uint32_t clock=100000;
  for(unsigned rank=0;rank<720;rank+=239)for(unsigned hide=0;hide<32;hide+=7){
-  assert(tt_unrank(rank,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,FM_CAROUSEL)&&fm_view_tiles(v,&tiles));
+  assert(tt_unrank(rank,hide<<TT_STOCK,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,FM_CAROUSEL)&&fm_view_tiles(v,&tiles));
   assert(v->rows==FM_CAROUSEL);fm_view_reduce_motion(v,false);
   for(unsigned route=0;route<2;route++){
    assert(fm_view_route(v,route,clock));
@@ -185,9 +191,9 @@ static void state_dots(Fake *f,FMView *v){
  {unsigned lit=0;for(unsigned y=0;y<FM_STATE_H;y++)for(unsigned x=0;x<FM_STATE_W;x++){uint8_t p=v->state_px[y*FM_STATE_W+x];assert(p==0||p==0x77);if(p){lit++;assert(x<FM_STATE_DOT);}}assert(lit==21);
   assert(v->state_px[0]==0&&v->state_px[4]==0&&v->state_px[4*8]==0&&v->state_px[4*8+4]==0&&v->state_px[2*8+2]==0x77);}
  for(unsigned rows=2;rows<=3;rows++)for(unsigned rank=0;rank<720;rank+=239)for(unsigned hide=0;hide<32;hide+=9){
-  assert(tt_unrank(rank,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,rows)&&fm_view_tiles(v,&tiles));
+  assert(tt_unrank(rank,hide<<TT_STOCK,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(v,rows)&&fm_view_tiles(v,&tiles));
   for(unsigned pattern=0;pattern<4;pattern++){
-   unsigned mask=pattern==0?0:pattern==1?(1u<<TIO_TILE_FOCUS):pattern==2?((1u<<TIO_TILE_MUSIC)|(1u<<TIO_TILE_NAVIGATION)|(1u<<TIO_TILE_FOCUS)):0x1fffu;
+   unsigned mask=pattern==0?0:pattern==1?(1u<<TIO_TILE_FOCUS):pattern==2?((1u<<TIO_TILE_MUSIC)|(1u<<TIO_TILE_NAVIGATION)|(1u<<TIO_TILE_FOCUS)):TT_ALL;
    assert(fm_view_active(v,mask));
    for(unsigned sel=0;sel<tiles.count;sel+=2){
     settle(v,(int)sel,&clock);const unsigned per=rows*3,size=rows==3?28:32;
@@ -210,12 +216,12 @@ static void state_dots(Fake *f,FMView *v){
   }
  }
  /* Exact board position for the 2-row grid: centres 92/270/448, first row top 58. */
- assert(tt_unrank(0,0,&config)&&tt_compact(&config,&tiles));assert(fm_view_tiles(v,&tiles)&&fm_view_rows(v,2)&&fm_view_active(v,0x1fffu));settle(v,0,&clock);
+ assert(tt_unrank(0,0,&config)&&tt_compact(&config,&tiles));assert(fm_view_tiles(v,&tiles)&&fm_view_rows(v,2)&&fm_view_active(v,TT_ALL));settle(v,0,&clock);
  for(unsigned cell=0;cell<6;cell++){const uintptr_t d=(uintptr_t)v->dots[cell];int cx=92+178*(int)(cell%3),cy=(cell<3?58:116)+16;assert(f->x[d]==cx+17);assert(f->y[d]==(cell<3?TIO_MENU_T1:cy-20));}
  /* Redraw only on a change. */
- settle(v,0,&clock);assert(fm_view_active(v,0x1fffu)&&!v->dirty);assert(fm_view_active(v,0)&&v->dirty);clock+=100;assert(fm_view_step(v,clock));assert(!v->dirty);
+ settle(v,0,&clock);assert(fm_view_active(v,TT_ALL)&&!v->dirty);assert(fm_view_active(v,0)&&v->dirty);clock+=100;assert(fm_view_step(v,clock));assert(!v->dirty);
  for(unsigned cell=0;cell<9;cell++)assert(!f->visible[(uintptr_t)v->dots[cell]]);
- assert(fm_view_active(v,(1u<<13)|(1u<<TIO_TILE_FOCUS))&&v->live_mask==(1u<<TIO_TILE_FOCUS));   /* only the 13 tile bits count */
+ assert(fm_view_active(v,(1u<<TT_ITEMS)|(1u<<TIO_TILE_FOCUS))&&v->live_mask==(1u<<TIO_TILE_FOCUS));   /* only the tile bits count */
  /* A status line in the grid is recorded but does not redraw anything. */
  settle(v,1,&clock);assert(fm_view_line(v,"18:42 left")&&!v->dirty);assert(!f->visible[(uintptr_t)v->line]);assert(fm_view_line(v,""));
  /* The carousel draws no dots: it has the status line. */
@@ -284,16 +290,20 @@ static void nav_title_view(Fake *f,FMView *v){
 }
 int main(void){
  Fake f={.idle=true};TNWidgets api={&f,idle,create,create,label,place,buffer,text,visible,destroy,NULL,NULL};
- assert(FM_ITEMS==13&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==36);   /* root, 8 widgets (caret, clock, battery, name, page dots, status line, title arrow and text), and per cell an icon, a name and a state dot */
- assert(fm_view_update(&view,8,1704067200,75,0));assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,0)));
+ assert(FM_ITEMS==TT_ITEMS&&fm_view_open(&view,&api,&f,attach,&f));assert(f.made==36);   /* root, 8 widgets (caret, clock, battery, name, page dots, status line, title arrow and text), and per cell an icon, a name and a state dot */
+ assert(fm_view_update(&view,8,1704067200,75,0));assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(menu_names[8],0)));
  for(unsigned j=0;j<9;j++)assert(f.texts[(uintptr_t)view.labels[j]]&&f.visible[(uintptr_t)view.icons[j]]&&!f.visible[(uintptr_t)view.labels[j]]);   /* three rows: icons only, names live in band B */
  const char *before=f.texts[(uintptr_t)view.labels[8]];unsigned calls=f.text_calls;g_lang=1;
  assert(fm_view_update(&view,8,1704067200,75,1));assert(f.text_calls==calls+2);   /* time and battery */assert(f.texts[(uintptr_t)view.labels[8]]==before);
- calls=f.text_calls;fm_view_suspend(&view);assert(fm_view_update(&view,8,1704067200,75,2));assert(f.text_calls==calls+12);   /* nine names, the focused name, time, battery */assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(TT_TILE_NAVIGATION,1)));
- for(int i=0;i<13;i++){assert(fm_view_update(&view,i,1704067200,75,(unsigned)(1000+i*200)));assert(!strcmp(f.texts[(uintptr_t)view.status],"00:00")&&!strcmp(f.texts[(uintptr_t)view.battery],"75%"));}
+ calls=f.text_calls;fm_view_suspend(&view);assert(fm_view_update(&view,8,1704067200,75,2));assert(f.text_calls==calls+12);   /* nine names, the focused name, time, battery */assert(!strcmp(f.texts[(uintptr_t)view.labels[8]],tio_text(menu_names[8],1)));
+ for(int i=0;i<TT_ITEMS;i++){assert(fm_view_update(&view,i,1704067200,75,(unsigned)(1000+i*200)));assert(!strcmp(f.texts[(uintptr_t)view.status],"00:00")&&!strcmp(f.texts[(uintptr_t)view.battery],"75%"));}
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+ const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_NAVIGATION,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+#else
  const unsigned names[]={TT_GRID_0,TT_GRID_1,TT_GRID_2,TT_GRID_3,TT_GRID_4,TT_GRID_5,TT_GRID_6,TT_GRID_DISPLAY,TT_TILE_NAVIGATION,TT_TILE_MUSIC,TT_TILE_FOCUS,TT_TILE_APPS,TT_TILE_CAMERA};
+#endif
  for(unsigned rows=2;rows<=3;rows++)for(unsigned rank=0;rank<720;rank+=119)for(unsigned hide=0;hide<32;hide++){
-  TTConfig config;TTVisible tiles;assert(tt_unrank(rank,hide<<7,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(&view,rows)&&fm_view_tiles(&view,&tiles));
+  TTConfig config;TTVisible tiles;assert(tt_unrank(rank,hide<<TT_STOCK,&config)&&tt_compact(&config,&tiles));assert(fm_view_rows(&view,rows)&&fm_view_tiles(&view,&tiles));
   for(unsigned selected=0;selected<tiles.count;selected++){
    assert(fm_view_update(&view,(int)selected,1704067200,75,10000+selected*200));unsigned per=rows*3;
    (void)fm_view_step(&view,10000+selected*200+200);   /* settle the move */
@@ -303,7 +313,7 @@ int main(void){
   assert(!fm_view_update(&view,tiles.count,0,0,20000));
  }
  TTConfig defaults;TTVisible defaults_map;tt_default(&defaults);tt_compact(&defaults,&defaults_map);assert(fm_view_tiles(&view,&defaults_map));
- assert(!fm_view_update(&view,-1,0,0,5000)&&!fm_view_update(&view,13,0,0,5000));
+ assert(!fm_view_update(&view,-1,0,0,5000)&&!fm_view_update(&view,TT_ITEMS,0,0,5000));
  wrap_motion(&view);
  carousel(&f,&view);
  state_dots(&f,&view);

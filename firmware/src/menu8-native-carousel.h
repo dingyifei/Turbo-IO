@@ -9,9 +9,8 @@ typedef TDPNativePage M8Page;
 #else
 typedef TIONativePage M8Page;
 #endif
-/* On 1.0.6.11 stock's row, label and dot arrays have TIO_STOCK_MENU_TILES
- * entries; whether the tail still needs its own row, label, icon and dot is
- * F4's decision (G.2, menu10.c). */
+/* This header and its tail layout belong only to the unbuilt menu8-native-carousel.c (the 1.0.4.12 experiment). No
+ * built file includes it: the module's tail is defined once, in navigation-runtime-v1/menu9.h. */
 typedef struct {
   void *row, *label, *icon, *dot;
   M8Page *page;

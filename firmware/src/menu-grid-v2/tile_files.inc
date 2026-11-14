@@ -1,5 +1,5 @@
 /* Fixed private A/B paths, cap+1 reads and checked durability; no repair read. */
-static const char *const tt_paths[]={"/mnt/nand_data/turbo_tiles_v1_0.cfg","/mnt/nand_data/turbo_tiles_v1_1.cfg"};
+static const char *const tt_paths[]={"/mnt/nand_data/turbo_tiles_v2_0.cfg","/mnt/nand_data/turbo_tiles_v2_1.cfg"};
 static int tt_file_read(void *ctx,unsigned bank,uint8_t *p,size_t cap){
  (void)ctx;if(bank>1||cap!=33)return -1;void *f=tap_fs_fopen(tt_paths[bank],"rb");if(!f)return *tap_fs_errno()==2?0:-1;
  size_t used=0;bool ok=true;while(used<cap){size_t n=tap_fs_fread(p+used,1,cap-used,f);if(n>cap-used||tap_fs_ferror(f)){ok=false;break;}used+=n;if(tap_fs_feof(f))break;if(!n){ok=false;break;}}

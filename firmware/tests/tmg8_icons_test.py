@@ -29,12 +29,12 @@ check(regen == committed, "focus_menu_icons.h differs from the regeneration of a
       "(run: python3 -I tools/encode_icons.py)")
 check(regen.encode("ascii") == open(HEADER, "rb").read(), "header bytes differ from the regeneration")
 
-# 2. Budget: 13 x 1152 B, the same _Static_assert focus_menu.c carries.
+# 2. Budget: 14 x 1152 B, the same _Static_assert focus_menu.c carries.
 packed = E.parse_header(committed)
-check(len(packed) == 13 and all(len(p) == 1152 for p in packed), "header is not 13 x 1152 B")
-check(sum(map(len, packed)) == 14976, "artwork budget is not 14976 B")
+check(len(packed) == 14 and all(len(p) == 1152 for p in packed), "header is not 14 x 1152 B")
+check(sum(map(len, packed)) == 16128, "artwork budget is not 16128 B")
 src = open(os.path.join(ROOT, "src", "focus-v1", "focus_menu.c")).read()
-check("_Static_assert(sizeof fm_icon4==14976" in src, "focus_menu.c artwork budget assert changed")
+check("_Static_assert(sizeof fm_icon4==16128" in src, "focus_menu.c artwork budget assert changed")
 
 # 3. Format: even pixel is the high nibble, odd the low nibble; level = nibble*17 round-trips the masters.
 for i, name in enumerate(E.NAMES):
@@ -49,8 +49,8 @@ for i, name in enumerate(E.NAMES):
 svgs = sorted(os.listdir(os.path.join(ART, "svg")))
 pngs = sorted(os.listdir(os.path.join(ART, "png")))
 want = ["%02d-%s" % (i, n) for i, n in enumerate(E.NAMES)]
-check([s[:-4] for s in svgs] == want and all(s.endswith(".svg") for s in svgs), "svg set is not the 13 menu icons")
-check([p[:-4] for p in pngs] == want and all(p.endswith(".png") for p in pngs), "png set is not the 13 menu icons")
+check([s[:-4] for s in svgs] == want and all(s.endswith(".svg") for s in svgs), "svg set is not the 14 menu icons")
+check([p[:-4] for p in pngs] == want and all(p.endswith(".png") for p in pngs), "png set is not the 14 menu icons")
 for s in svgs:
     check('viewBox="0 0 48 48"' in open(os.path.join(ART, "svg", s)).read(), s + ": viewBox is not 0 0 48 48")
 readme = open(os.path.join(ART, "README.md")).read()
@@ -65,4 +65,4 @@ check(E.encode(bad) != packed[0], "encoder ignores a changed pixel")
 if failures:
     print("\n".join("FAIL: " + f for f in failures))
     sys.exit(1)
-print("PASS: tmg8 icons (13 x 1152 B, regeneration from the PNG masters is byte-identical)")
+print("PASS: tmg8 icons (14 x 1152 B, regeneration from the PNG masters is byte-identical)")

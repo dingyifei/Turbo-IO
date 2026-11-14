@@ -14,6 +14,7 @@
  * visible slots, ranked by distance from the focus, and the grid cell storage is a union with the carousel storage. */
 enum { FM_ITEMS=TIO_MENU_ITEMS, FM_CELLS=9, FM_ICON=32, FM_CARET_W=24, FM_CARET_H=3, FM_CAROUSEL=1, FM_SLOTS=6, FM_LINE_MAX=96,
  FM_STATE_DOT=5, FM_STATE_W=8, FM_STATE_H=5 };   /* grid state dot: 5 px disc in an 8x5 canvas (rows stay 8 byte wide) */
+unsigned fm_icon_row(unsigned id);   /* the row of fm_icon4 that draws tile id `id` in this model */
 /* Carousel canvas capacity per slot rank (side length in px, nearest to the focus first) and the byte offset of each slot in one
  * bank. Slot k is the k-th nearest item to the (fractional) focus: 80 px at the centre, at most 64 for the second, then 48, 42, 36, 36.
  * Offsets are 64 byte aligned like every other retained canvas. */

@@ -92,9 +92,9 @@ def catalyst_test(name,files,argv=(),extra=()):
     run(name,[out/name,*argv],env={**os.environ,'CFFIXED_USER_HOME':str(home)})
     groups.append(name);print(name+': PASS')
 # Firmware tests live outside the edition manifest's discovery tree.
-def ctest(name,files,inc):
+def ctest(name,files,inc,flags=()):
     run(name+'-build',['xcrun','clang','-std=c11','-O1','-g','-Wall','-Wextra',
-        '-fsanitize=address,undefined','-I',inc,*files,'-o',out/name])
+        '-fsanitize=address,undefined',*flags,'-I',inc,*files,'-o',out/name])
     run(name,[out/name])
     if 'PASS' not in (out/(name+'.log')).read_text():
         raise RuntimeError(name+' did not report PASS')
@@ -124,6 +124,13 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-lang-store',[FW/'tests/lang_store_test.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')
     ctest('tmg4-text',[FW/'tests/tio_text_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
     ctest('tmg4-grid',[FW/'tests/focus_grid_test.c',FW/'src/focus-v1/focus_menu.c',FW/'src/common-v1/tio_text.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
+    ctest('tmg12-tile-model',[FW/'tests/tile_model_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
+    ctest('tmg12-tile-model-10611',[FW/'tests/tile_model_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src',['-DTD_STOCK_10611=1'])
+    ctest('tmg12-tile-config-10611',[FW/'tests/tile_config_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src',['-DTD_STOCK_10611=1'])
+    ctest('tmg12-menu-tiles-10611',[FW/'tests/menu_tiles_test.c'],FW/'src',['-DTD_STOCK_10611=1'])
+    ctest('tmg12-grid-10611',[FW/'tests/focus_grid_test.c',FW/'src/focus-v1/focus_menu.c',FW/'src/common-v1/tio_text.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src',['-DTD_STOCK_10611=1'])
+    ctest('tmg12-timer-wrap-10611',[FW/'tests/timer_wrap_test.c',FW/'src/menu-grid-v2/tile_config.c',FW/'src/menu-grid-v2/menu_config.c'],FW/'src',['-DTD_STOCK_10611=1'])
+    run('tmg12-menu-tail',['python3','-I',FW/'tests/menu_tail_host_test.py','--out',out/'menu-tail-host'])
     ctest('tmg5-music',[FW/'src/music-runtime-v1/music_test.c',FW/'src/music-runtime-v1/music.c'],FW/'src/music-runtime-v1')
     ctest('tmg5-noncardinal',[FW/'tests/noncardinal_smoothing_test.c'],FW/'src')
     ctest('tmg5-smoothing',[FW/'tests/smoothing_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')

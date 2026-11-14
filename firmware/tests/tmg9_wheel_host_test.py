@@ -4,7 +4,9 @@ TIO_MENU_SCROLL_POSITION_OFFSET, never the selected index TIO_STOCK_MENU_SELECTE
 FAIL the same checks, and it checks the source for the scaled-delta path directly.
 
 The model takes its stock layout from stock_layout.h through the tree's base flags (tests/host_layout.py). The module tile files
-(focus_menu.c, tio_text.c, tile_config.c) hold no stock layout; they are compiled to objects without a base define and linked."""
+(focus_menu.c, tio_text.c, tile_config.c) are compiled with the same flags, so the model and the objects share one tile model (14 items on
+1.0.6.11) and never mix 13- and 14-item objects. UBSan stays recoverable here, because the two old bodies must reach their FAIL lines; instead
+the real body's run must print no UBSan "runtime error"."""
 from pathlib import Path
 import argparse,importlib.util,subprocess,tempfile
 FW=Path(__file__).resolve().parents[1]
@@ -20,12 +22,12 @@ MODULE=('src/focus-v1/focus_menu.c','src/common-v1/tio_text.c','src/menu-grid-v2
 def host_layout():
     spec=importlib.util.spec_from_file_location('tmg9_wheel_host_layout',FW/'tests'/'host_layout.py')
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
-def module_objects(out):
-    """The module tile files, compiled once without a base define (their guards stay inactive, as before)."""
+def module_objects(out,base):
+    """The module tile files, compiled once with the tree's base flags, like the model."""
     objects=[]
     for path in MODULE:
         obj=out/(Path(path).stem+'.o')
-        subprocess.run([*CC,'-I',str(out),'-I',str(FW/'src'),'-c',str(FW/path),'-o',str(obj)],check=True)
+        subprocess.run([*CC,*base,'-I',str(out),'-I',str(FW/'src'),'-c',str(FW/path),'-o',str(obj)],check=True)
         objects.append(obj)
     return objects
 def build(out,name,body,base,objects):
@@ -53,10 +55,11 @@ def main():
         assert 'int64_t d=delta*2' not in wheel_h.replace(' ','') and 'delta*2' not in wheel_h.replace(' ',''),'no scaling of the delta in menu_wheel.h'
         native=code((FW/'src/focus-v1/focus_menu_native.c').read_text())
         assert 'tio_menu_wheel_step(&c->step,index,count,delta,now,tio_knob_detent())' in native.replace('\n',''),'fm_wheel_step must pass the live D'
-        base=host_layout().flags();objects=module_objects(out)
+        base=host_layout().flags();objects=module_objects(out,base)
         real=build(out,'wheel_hook_test',body+'\n',base,objects)
         print(real.stdout+real.stderr,end='')
         assert real.returncode==0,'the real m8_hook_wheel body failed the stock model'
+        assert 'runtime error' not in real.stderr,'the real m8_hook_wheel body run printed a UBSan report'
         # The harness must catch the old bodies: otherwise it proves nothing.
         assert OLD in body
         old=build(out,'wheel_hook_tmg8_test',body.replace(OLD,TMG8)+'\n',base,objects)
