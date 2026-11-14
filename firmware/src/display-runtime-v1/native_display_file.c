@@ -14,7 +14,7 @@ TIOImageResult tdp_native_file_receive(const TIONativeFile *file,TIOCopyEnqueue 
  if(!envelope(file->data,file->received))return TIO_BAD_HEADER;
  if(!enqueue)return TIO_UI_FAILED;
  TIONativeMessage m={.id=TDP_NATIVE_MESSAGE_ID,.data=file->data,.bytes=file->received,.mode=0};
- return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;
+ return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool tdp_native_message_is_ours(const TIONativeMessage *m){return m&&m->id==TDP_NATIVE_MESSAGE_ID;}
 TDPResult tdp_native_dispatch(TDPNativePage *page,const TIONativeMessage *m){

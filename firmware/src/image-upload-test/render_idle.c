@@ -4,23 +4,23 @@ static bool ram(uint32_t p,uint32_t extent){
 }
 bool tio_render_graph_idle(TIOReadWord read,TIONextDisplay next){
  uint32_t unit=0;unsigned count=0;
- if(!read||!next||!read(0x1850ce1c+0x124,&unit)||!unit)return false;
+ if(!read||!next||!read(0x1850ce1c+TIO_STOCK_LVGL_DRAW_UNITS,&unit)||!unit)return false;
  while(unit){
   uint32_t dispatch=0,active=0,n=0;
-  if(++count>8||!ram(unit,32)||!read(unit+12,&dispatch)||
+  if(++count>8||!ram(unit,TIO_STOCK_DRAW_UNIT_BYTES)||!read(unit+TIO_STOCK_DRAW_UNIT_DISPATCH,&dispatch)||
      (dispatch!=0x10462225&&dispatch!=0x105700ef)||
-     !read(unit+24,&active)||active||!read(unit,&n))return false;
+     !read(unit+TIO_STOCK_DRAW_UNIT_TASK,&active)||active||!read(unit+TIO_STOCK_DRAW_UNIT_NEXT,&n))return false;
   unit=n;
  }
  uint32_t display=next(0);count=0;
  if(!display)return false;
  while(display){
   uint32_t layer=0;unsigned layers=0;
-  if(++count>4||!ram(display,0x2a4)||!read(display+0x2a0,&layer))return false;
+  if(++count>4||!ram(display,TIO_STOCK_DISPLAY_LAYERS+sizeof(uint32_t))||!read(display+TIO_STOCK_DISPLAY_LAYERS,&layer))return false;
   while(layer){
    uint32_t tasks=0,n=0;
-   if(++layers>32||!ram(layer,0x44)||!read(layer+0x38,&tasks)||tasks||
-      !read(layer+0x40,&n))return false;
+   if(++layers>32||!ram(layer,TIO_STOCK_LAYER_NEXT+sizeof(uint32_t))||!read(layer+TIO_STOCK_LAYER_TASKS,&tasks)||tasks||
+      !read(layer+TIO_STOCK_LAYER_NEXT,&n))return false;
    layer=n;
   }
   display=next(display);

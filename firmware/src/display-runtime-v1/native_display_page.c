@@ -179,7 +179,7 @@ static void tick(void *timer){
  extern void *tdp_test_timer_user(void *);
  TDPNativePage *p=tdp_test_timer_user(timer);
 #else
- TDPNativePage *p=*(TDPNativePage **)((uint8_t *)timer+12);
+ TDPNativePage *p=*(TDPNativePage **)((uint8_t *)timer+TIO_STOCK_TIMER_USER);
 #endif
  if(!p)return;TDPUI callbacks=ui(p);uint32_t now=stream_tick();
  if(p->retired||!p->runtime.open||(int32_t)(now-p->runtime.deadline)>=0){
@@ -214,7 +214,7 @@ TDPNativePage *tdp_native_open(void *parent,uint32_t sid,TDPNativePage **owner){
   extern bool tdp_test_timer_callback(void *,void (*)(void *));
   if(tdp_test_timer_callback(t,tick))return NULL;
 #else
-  if(*(void (**)(void *))((uint8_t *)t+8)==tick)return NULL;
+  if(*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB)==tick)return NULL;
 #endif
  }
  if(!idle(NULL)||stream_stride(512,6)!=512||tio_lv_obj_get_width(parent)<540||tio_lv_obj_get_height(parent)<180)return NULL;

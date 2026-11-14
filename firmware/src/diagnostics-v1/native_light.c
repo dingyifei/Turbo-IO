@@ -1,13 +1,15 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: LVGL pool capacity has one witness (F4)
+#endif
 /* TDG1 offline candidate provider; requires verified UI-owner binding.
  * This first provider never calls mallinfo/lv_mem_monitor/logger_log, walks
  * blocks, takes locks, allocates, reads arbitrary memory, or writes NAND. */
 #include "native_light.h"
 #include "stock_abi.h"
-#if !(defined(TD_STOCK_1055) && TD_STOCK_1055) && !(defined(TD_STOCK_10512) && TD_STOCK_10512)
-#error not ported to 1.0.6.11 yet: display unit +0x1bc/+0x1c0 not re-verified (hash-pinned profiles: 1.0.5.5, 1.0.5.12)
-#endif
-/* current/peak are display unit + 0x1bc / + 0x1c0 on both bases (rebase table: the same stock ldr/str sites use
- * those offsets from the base literal); tools/rebase_apply.py writes the base's addresses. */
+/* current/peak are the LVGL global plus TIO_STOCK_LVGL_MEM_USED / TIO_STOCK_LVGL_MEM_PEAK. tests/stock_layout_test.py
+ * proves both offsets from two stock functions each and checks that the rebase table's native_light_current and
+ * native_light_peak values equal the LVGL global (table value display_unit) plus them; tools/rebase_apply.py writes
+ * the addresses. The pool capacity below has one witness only, which is why the guard above stays (F4). */
 extern int td_gettid(void); /* Native gettid, hash-pinned by candidate builder. */
 void td_stock_light(void *context,TDDiagnostics *d){
  TDLightOwner *owner=context;

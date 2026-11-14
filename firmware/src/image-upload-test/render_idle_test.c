@@ -6,18 +6,19 @@ static bool cycle_unit,cycle_layer,cycle_display,fail_read;
 static bool read(uint32_t p,uint32_t *v){
  if(fail_read)return false;
  switch(p){
- /* The unit list head render_idle.c reads: display unit + 0x124 (rebase table value display_unit). Until tmg10(6)
-  * the key was the 1.0.4.12 display unit + 0x124, never moved to 1.0.5.5, so this test failed on TMG9 as well. */
- case 0x1850ce1c+0x124:*v=0x19000000;return true;
- case 0x19000000:*v=0x19000100;return true;
- case 0x1900000c:*v=gpu_dispatch;return true;
- case 0x19000018:*v=gpu;return true;
- case 0x19000100:*v=cycle_unit?0x19000000:0;return true;
- case 0x1900010c:*v=0x105700ef;return true;
- case 0x19000118:*v=sw;return true;
- case 0x191002a0:*v=0x19200000;return true;
- case 0x19200038:*v=task;return true;
- case 0x19200040:*v=cycle_layer?0x19200000:0;return true;
+ /* The unit list head render_idle.c reads: the LVGL global (rebase table value display_unit) plus
+  * TIO_STOCK_LVGL_DRAW_UNITS. The other keys are fake draw units, a display and a layer at not-stock bases plus the
+  * stock_layout.h field names render_idle.c reads. */
+ case 0x1850ce1c+TIO_STOCK_LVGL_DRAW_UNITS:*v=0x19000000;return true;
+ case 0x19000000+TIO_STOCK_DRAW_UNIT_NEXT:*v=0x19000100;return true;
+ case 0x19000000+TIO_STOCK_DRAW_UNIT_DISPATCH:*v=gpu_dispatch;return true;
+ case 0x19000000+TIO_STOCK_DRAW_UNIT_TASK:*v=gpu;return true;
+ case 0x19000100+TIO_STOCK_DRAW_UNIT_NEXT:*v=cycle_unit?0x19000000:0;return true;
+ case 0x19000100+TIO_STOCK_DRAW_UNIT_DISPATCH:*v=0x105700ef;return true;
+ case 0x19000100+TIO_STOCK_DRAW_UNIT_TASK:*v=sw;return true;
+ case 0x19100000+TIO_STOCK_DISPLAY_LAYERS:*v=0x19200000;return true;
+ case 0x19200000+TIO_STOCK_LAYER_TASKS:*v=task;return true;
+ case 0x19200000+TIO_STOCK_LAYER_NEXT:*v=cycle_layer?0x19200000:0;return true;
  default:return false;
  }
 }
