@@ -4,7 +4,7 @@
       "offset": "0x515200",
       "address": "0x106a5200",
       "before": "90b583b0",
-      "after": "11f2c7bc",
+      "after": "93f20cbc",
       "role": "Entry trampoline show",
       "kind": "bw",
       "target": "m8_hook_show",
@@ -14,7 +14,7 @@
       "offset": "0x515234",
       "address": "0x106a5234",
       "before": "b0b582b0",
-      "after": "11f2d2bc",
+      "after": "93f235bc",
       "role": "Entry trampoline hide",
       "kind": "bw",
       "target": "m8_hook_hide",
@@ -24,7 +24,7 @@
       "offset": "0x5142c0",
       "address": "0x106a42c0",
       "before": "f0b50446",
-      "after": "12f2c6bc",
+      "after": "94f23fbc",
       "role": "Entry trampoline destroy",
       "kind": "bw",
       "target": "m8_hook_destroy",
@@ -34,7 +34,7 @@
       "offset": "0x514f72",
       "address": "0x106a4f72",
       "before": "2de9f041",
-      "after": "11f2c0be",
+      "after": "93f271be",
       "role": "Entry trampoline wheel",
       "kind": "bw",
       "target": "m8_hook_wheel",
@@ -44,7 +44,7 @@
       "offset": "0x515300",
       "address": "0x106a5300",
       "before": "b0b582b0",
-      "after": "11f296bd",
+      "after": "93f272bd",
       "role": "Entry trampoline event",
       "kind": "bw",
       "target": "m8_hook_event",
@@ -54,7 +54,7 @@
       "offset": "0x42b510",
       "address": "0x105bb510",
       "before": "b0b50c46",
-      "after": "03f351b9",
+      "after": "7df3bdbd",
       "role": "Entry trampoline message",
       "kind": "bw",
       "target": "m8_hook_message",
@@ -64,7 +64,7 @@
       "offset": "0x6448d8",
       "address": "0x107d48d8",
       "before": "f0b5c3b0",
-      "after": "43f142bd",
+      "after": "58f108be",
       "role": "Entry trampoline dc_text",
       "kind": "bw",
       "target": "m8_hook_dc_text",
@@ -74,7 +74,7 @@
       "offset": "0x514ac0",
       "address": "0x106a4ac0",
       "before": "2de9f04f",
-      "after": "11f225ba",
+      "after": "92f2cabf",
       "role": "Entry trampoline names",
       "kind": "bw",
       "target": "m8_hook_names",
@@ -84,7 +84,7 @@
       "offset": "0x51458c",
       "address": "0x106a458c",
       "before": "2de9f047",
-      "after": "11f290bf",
+      "after": "93f2c7bd",
       "role": "Entry trampoline dots",
       "kind": "bw",
       "target": "m8_hook_dots",
@@ -94,7 +94,7 @@
       "offset": "0x51456a",
       "address": "0x106a456a",
       "before": "98b50446",
-      "after": "11f281bf",
+      "after": "93f2acbd",
       "role": "Entry trampoline delete_dots",
       "kind": "bw",
       "target": "m8_hook_delete_dots",
@@ -104,7 +104,7 @@
       "offset": "0x51492c",
       "address": "0x106a492c",
       "before": "b0b584b0",
-      "after": "11f242be",
+      "after": "93f28ebc",
       "role": "Entry trampoline lottie",
       "kind": "bw",
       "target": "m8_hook_lottie",
@@ -114,7 +114,7 @@
       "offset": "0x51450c",
       "address": "0x106a450c",
       "before": "80b500af",
-      "after": "11f2e3bc",
+      "after": "93f287ba",
       "role": "Entry trampoline app_id",
       "kind": "bw",
       "target": "m8_hook_app_id",
@@ -124,7 +124,7 @@
       "offset": "0x5148ee",
       "address": "0x106a48ee",
       "before": "2de9f041",
-      "after": "11f2b1bd",
+      "after": "93f2cbbb",
       "role": "Entry trampoline refresh_label",
       "kind": "bw",
       "target": "m8_hook_refresh_label",
@@ -134,7 +134,7 @@
       "offset": "0x51364c",
       "address": "0x106a364c",
       "before": "f0b585b0",
-      "after": "19f220b8",
+      "after": "9bf252b8",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x514116",
       "address": "0x106a4116",
       "before": "1e2380b5",
-      "after": "1df2d3b8",
+      "after": "9ff24db9",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x514126",
       "address": "0x106a4126",
       "before": "1e22a0f10f03",
-      "after": "1df2ccb800bf",
+      "after": "9ff249b900bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -164,7 +164,7 @@
       "offset": "0x514cf0",
       "address": "0x106a4cf0",
       "before": "2de9f04f",
-      "after": "11f2f0bd",
+      "after": "93f270bc",
       "role": "Menu replacement label_frame",
       "kind": "bw",
       "target": "m8_hook_label_frame",
@@ -174,7 +174,7 @@
       "offset": "0x515044",
       "address": "0x106a5044",
       "before": "90b581f3",
-      "after": "11f2dcbc",
+      "after": "93f28dbb",
       "role": "Menu replacement label_index",
       "kind": "bw",
       "target": "m8_hook_label_index",
@@ -184,7 +184,7 @@
       "offset": "0x514718",
       "address": "0x106a4718",
       "before": "2de9f04f",
-      "after": "12f27eb9",
+      "after": "94f23ab8",
       "role": "Menu replacement indicator",
       "kind": "bw",
       "target": "m8_hook_indicator",
@@ -194,7 +194,7 @@
       "offset": "0x514a0c",
       "address": "0x106a4a0c",
       "before": "b0b50446",
-      "after": "11f26bb9",
+      "after": "92f2f1be",
       "role": "Menu replacement frame",
       "kind": "bw",
       "target": "m8_hook_frame",
@@ -204,7 +204,7 @@
       "offset": "0x514a42",
       "address": "0x106a4a42",
       "before": "80b5b3ee0e7a",
-      "after": "11f211b900bf",
+      "after": "92f289be00bf",
       "role": "Menu replacement render_slide",
       "kind": "bw",
       "target": "m8_hook_render_slide",
@@ -214,7 +214,7 @@
       "offset": "0x51139c",
       "address": "0x106a139c",
       "before": "4ff4867050f07cfc",
-      "after": "1ff23efe00bf",
+      "after": "a1f2b2ff00bf00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -224,7 +224,7 @@
       "offset": "0x5113c8",
       "address": "0x106a13c8",
       "before": "03f04ef8",
-      "after": "15f2b7fa",
+      "after": "97f2a4fa",
       "role": "Initialize tail after new stock constructor",
       "kind": "bl",
       "target": "m8_hook_ctor",
@@ -244,16 +244,16 @@
       "offset": "0x418482",
       "address": "0x105a8482",
       "before": "00242048214b84610360",
-      "after": "1ff3c3f900bf00bf00bf",
+      "after": "9af389ff00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": null,
+  "moduleBytes": 164860,
   "moduleVA": "0x10929204",
-  "moduleSHA256": null,
+  "moduleSHA256": "986c0bf4e7afe48df60d50f1a291fb23e74ccc510e8c5959b6bf33e795b74d11",
   "stockAP": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
   "stockBase": "1.0.6.11",
   "stockMembers": {
@@ -283,11 +283,11 @@
       "bytes": 18315227
     }
   },
-  "APBytes": null,
+  "APBytes": 8132104,
   "archive": {
-    "bytes": null,
-    "sha256": null,
-    "md5": null
+    "bytes": 9549068,
+    "sha256": "eacb5dcabc513570978edc31a47d3304b2bc361036d5b171e15bd4c3c281e9b5",
+    "md5": "b916bd244a8fafb4907629886866920e"
   },
   "sources": [
     {
@@ -308,7 +308,7 @@
     },
     {
       "source": "app-runtime-v1/app_files_native.c",
-      "sha256": "24601ecd0b97915829a0be68d6f4268235a4760f6145558ac5ef72d146ac433a"
+      "sha256": "4ecbe1b931bc5a13908db05d3a8f6ac45bae9075d215395f5838c8478b58b25a"
     },
     {
       "source": "app-runtime-v1/app_lvgl.c",
@@ -320,7 +320,7 @@
     },
     {
       "source": "app-runtime-v1/app_service.c",
-      "sha256": "6b1b1db889a20ecdd6edbfb92b15e3451195e302ff88b5de59add9cb4f7dacfe"
+      "sha256": "abd89f019d4e70c1a5018f4cb629af7f8ec87634a98603606645b464beed9b61"
     },
     {
       "source": "app-runtime-v1/app_shelf.c",
@@ -360,11 +360,11 @@
     },
     {
       "source": "diagnostics-v1/diagnostics_service.c",
-      "sha256": "f08a2f4c4cc044d55984d58daf9cb8c885d1d482cfa14bda5d67d209ed268fec"
+      "sha256": "dc6f8d0d83bfedb4a990952626035efa2a76f5731fe50a0b411ac6df50a00266"
     },
     {
       "source": "diagnostics-v1/native_light.c",
-      "sha256": "d34e13f7369905eb47406a7bf0740cb2666b7930a71ca7140e2d66fc1a03dd63"
+      "sha256": "b562c71128d17b1bbcd3599a932e92ada30e560020409072f6b7870fe687ab45"
     },
     {
       "source": "display-runtime-v1/display_carrier.c",
@@ -376,11 +376,11 @@
     },
     {
       "source": "display-runtime-v1/native_display_file.c",
-      "sha256": "ecc8dbb5b265abb4ff065929dd58e2a820575a6c64696d016776e9a8d023d018"
+      "sha256": "a3bc40513710cc2a9decb4487895334ff386cddbaeabee1e6767916d837e9043"
     },
     {
       "source": "display-runtime-v1/native_display_page.c",
-      "sha256": "fac5aab3a8ea1324c243a6282e10cee816971a00e3f9208cf5e1c245b895f66e"
+      "sha256": "9a1e79f0dbc46ca89d90579835025fe327029c3bd195f35dcec86445dd81a236"
     },
     {
       "source": "focus-v1/focus.c",
@@ -388,15 +388,15 @@
     },
     {
       "source": "focus-v1/focus_menu.c",
-      "sha256": "b89caae32b1dd9ce15da4e602ffa4716171e630a1671fc3a400aa0e192c1ef57"
+      "sha256": "c4a62c2a44a54ef2ddc151a08a818af2e00935b425db7f11a5e8fddb29895fa9"
     },
     {
       "source": "focus-v1/focus_menu_native.c",
-      "sha256": "72bc54e9f5ca707aba6e926d29f624b17619f3d60c71ac13bc52daa9d7f9e020"
+      "sha256": "78ca95afd1f8f16fa8ebc8835672a3c0d6cb8a4558bac789585892d7e3174892"
     },
     {
       "source": "focus-v1/focus_service.c",
-      "sha256": "4063668f90afcb54fc0a2bf2e7093cb70d310470493d122d390c9f1b61215a15"
+      "sha256": "677eee8adb9fe26dd80a1b8f72032788bd59980a03c6878def8971a4c4430e3a"
     },
     {
       "source": "focus-v1/focus_view.c",
@@ -408,11 +408,11 @@
     },
     {
       "source": "global-remote-v1/remote_native.c",
-      "sha256": "7860077ce1d66650f09bf8b35b01d626d74017bc29bc7812c41d591b3a06c7e5"
+      "sha256": "7635a106946b98f610e33515e45b4aecf42b6522a1e76c42c7021b5a54fe0349"
     },
     {
       "source": "image-upload-test/render_idle.c",
-      "sha256": "8617ef885b4b67f66f257ef7cc1b70b9924730aa6da92e57cf2df66d705d8f52"
+      "sha256": "4e58435575086fcfeeadab26e21043221923a908a35fccc5a2a323ef391bc50b"
     },
     {
       "source": "menu8-native-lvgl.c",
@@ -424,7 +424,7 @@
     },
     {
       "source": "music-runtime-v1/menu10.c",
-      "sha256": "81331f345001041099843dbd55c6c649360b81321c4e78b9ef34f4d0a9c5b06c"
+      "sha256": "fc1dfe491129eaa71fbac784414abb96852f985fbdc362d5dbccd0a27066d273"
     },
     {
       "source": "music-runtime-v1/music.c",
@@ -432,7 +432,7 @@
     },
     {
       "source": "music-runtime-v1/music_service.c",
-      "sha256": "0d2e53d0bd1875fc0c1622c1748e3e9403ce43540bb1c34357eb37f54c58a05f"
+      "sha256": "cd4197de42d5bbe350e15192a5ab95bc2a1dc5aff3e1d7a5722a72885c6846c3"
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
@@ -444,7 +444,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_service.c",
-      "sha256": "595f79a6fe06e0d63102aae0fba5a109177317f3206a4ac264f1459a2cd859a9"
+      "sha256": "678225042317d1b1244b4fab727b158a72dba674183694c97ca641e6ff900ea3"
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
@@ -460,11 +460,11 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "ba3050d4e5e2d1fed07f2d59ebe4e87a08899cdc036a46c52326bd2b2e04f08a"
+      "sha256": "b65cea73e448182346e2301a22d3b4e675198568b7fbb5ff0d8d2930186df7d0"
     },
     {
       "source": "common-v1/business_idle.c",
-      "sha256": "f4b49b4e3b53483201c8438c014a55c19d90c46924d07a94f938b4ab7396f98b"
+      "sha256": "01352b93cacbd346aa5f615d3c74509cc67706e87de2391463cb597bcbf9d270"
     },
     {
       "source": "global-remote-v1/lang_flag.c",
@@ -472,11 +472,11 @@
     },
     {
       "source": "common-v1/tio_text.c",
-      "sha256": "092e9475349bd38414d6e5d5f0b88a76a8f02aac2f13cbdb3a4e37cb51e39a84"
+      "sha256": "50d68d8b598b441939ff74777608d5453a09e9a983454c568d63f9a1571feff1"
     },
     {
       "source": "menu-grid-v2/tile_config.c",
-      "sha256": "56f9fa677b35c25e9c90c0d5dcbdbbfbd866f1382fca2be99cb2f8b06bf3ae77"
+      "sha256": "efda7fd838e706635b4b6fe1737f09ee3db0b37d1b854178aaa16cc295b7f490"
     },
     {
       "source": "global-remote-v1/lang_store.c",
@@ -488,7 +488,7 @@
     }
   ],
   "stockZIP": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",
-  "APSHA256": null,
+  "APSHA256": "275758f1fc4772f558a2a6224563a97d3b1c3a56c62520bd5d95037eeaec3918",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.5",
     "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"
@@ -496,11 +496,11 @@
   "extras": [
     {
       "path": "src/port_allocate.c",
-      "sha256": "e4389cfcaf644b45581fe97f706315035bb902287fdd996a7fe49489a163d67b"
+      "sha256": "75d54671b112e015569a17b469545dcf4ca56a68534655f8ced5339e9aecf1c3"
     },
     {
       "path": "trampolines.S",
-      "sha256": "86c4323f8599e9d98a68985e426716486c9d7d86a9b51a8f6513e88447142240"
+      "sha256": "dc52b8f1ddf7e7f51600998dcb72f5a9aaa4242310b1b673d5b5f3cc095e8d8f"
     },
     {
       "path": "src/app-runtime-v1/app_abi.S",
@@ -508,7 +508,7 @@
     },
     {
       "path": "src/common-v1/coexist.S",
-      "sha256": "8d10d7717887ced8867543f68f3d55105edc5d96ec9546c32f60ea8a9638c0a0"
+      "sha256": "4c2eee8e6e50f39dda1f74f0ababab981b47aab9c9d2435bf30a27990db98ab1"
     }
   ]
 }
