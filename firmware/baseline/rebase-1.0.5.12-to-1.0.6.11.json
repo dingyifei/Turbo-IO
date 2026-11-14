@@ -212,7 +212,13 @@
     "valueToLinkld": {
      "launcher_global": "tio_launcher_global"
     },
-    "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites"
+    "addLinkld": {
+     "tio_light_latest": {
+      "old": "0x1062c3d5",
+      "new": "0x1061bea9"
+     }
+    },
+    "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter (addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row)"
    }
   }
  },
@@ -14343,6 +14349,97 @@
      "sites": 0,
      "tried": 0,
      "state": "none"
+    },
+    "lit": {
+     "votes": "0 of 0 paired votes for no single address",
+     "paired": 0,
+     "sites": 0,
+     "tried": 0,
+     "state": "none"
+    }
+   }
+  },
+  {
+   "symbol": "tio_light_latest",
+   "old": "0x1062c3d5",
+   "new": "0x1061bea9",
+   "delta": -66860,
+   "verdict": "shift",
+   "checks": [
+    "sig",
+    "call",
+    "body",
+    "align"
+   ],
+   "proof": {
+    "proposal": {
+     "verdict": "ADDED",
+     "source": "reviewed:addLinkld",
+     "row": 0
+    },
+    "window": "30 of 32 masked bytes equal at the proposal",
+    "prologue": true,
+    "new-sig": "1 hits of the 24-byte pattern built from the new image",
+    "sig": {
+     "hits": 1,
+     "at": [
+      "0x1061bea8"
+     ],
+     "state": "agree",
+     "answer": "0x1061bea8"
+    },
+    "edge": {
+     "state": "none",
+     "good": [],
+     "bad": [],
+     "branches": 2,
+     "window": "64 bytes"
+    },
+    "body": {
+     "tier": "T1",
+     "length": 50,
+     "oldHits": "1: 0x1062c3d4",
+     "newHits": "1: 0x1061bea8",
+     "evidence": "T1 50 bytes, old 1 new 1",
+     "state": "agree",
+     "answer": "0x1061bea8"
+    },
+    "align": {
+     "anchors": "0x1062c368->0x1061be3c (fixed), 0x1062c40c->0x1061bee0 (fixed)",
+     "block": 63,
+     "before": 40,
+     "after": 22,
+     "occurrences": "1 old, 1 new",
+     "evidence": "equal block of 63 tokens (40 before x, 22 after), once in each span; anchors 0x1062c368->0x1061be3c (fixed), 0x1062c40c->0x1061bee0 (fixed)",
+     "state": "agree",
+     "answer": "0x1061bea8"
+    },
+    "start": {
+     "how": "no accepted row in [x-0x40, x-2]",
+     "state": "none"
+    },
+    "entry": {
+     "anchors": "0x1062c368->0x1061be3c (fixed), 0x1062c40c->0x1061bee0 (fixed)",
+     "how": "x is inside an equal block",
+     "state": "none"
+    },
+    "veneer": {
+     "how": "not a veneer",
+     "state": "none"
+    },
+    "edge2": {
+     "state": "none",
+     "walked": "64 of 64 bytes",
+     "good": [],
+     "bad": []
+    },
+    "call": {
+     "votes": "1 of 1 paired votes for 0x1061bea8",
+     "paired": 1,
+     "sites": 1,
+     "tried": 1,
+     "state": "agree",
+     "answer": "0x1061bea8"
     },
     "lit": {
      "votes": "0 of 0 paired votes for no single address",

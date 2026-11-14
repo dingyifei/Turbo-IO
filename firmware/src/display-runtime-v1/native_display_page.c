@@ -13,9 +13,11 @@ extern const uint8_t ta_asset[TA_BYTES*TA_FRAMES];
 extern void native_log(unsigned,unsigned,unsigned,unsigned,const char *,...);
 extern void stream_timer_period(void *,uint32_t);
 #endif
-/* Read-only Sensors screen: 1.0.5.12 AP byte tio_imu_family (link.ld; 0 unknown, 1 none, 2 ST, 3 TDK), the stock light
- * current/peak (td_stock_light), the hinge Hall state and the knob counters forwarded by menu10. It never writes the
- * PMU, a sensor, a setting or flash, and starts no sensor report or handler. */
+/* Read-only Sensors screen: the AP byte tio_imu_family (link.ld; 0 unknown, 1 none, 2 ST, 3 TDK), the LVGL UI memory in
+ * use and its peak (td_stock_light), the light bucket stock last cached (td_light_bucket, unless TIO_SENSORS_LIGHT is
+ * 0), the hinge Hall state and the knob counters forwarded by menu10. It never writes the PMU, a sensor, a setting or
+ * flash, and starts, stops or registers no sensor, report or handler. */
+#define TDP_SENSORS_TEXT 160 /* worst case 137 bytes with the NUL (native_display_test.c builds it) */
 extern volatile uint8_t tio_imu_family;
 extern int td_gettid(void);
 extern void *nav_monitors(void),*nav_input(void *);
@@ -34,7 +36,7 @@ struct TDPNativePage {
  bool sensor_mode;
  int32_t knob_delta;uint32_t knob_press;
  TDDiagnostics light;
- char shown[120];
+ char shown[TDP_SENSORS_TEXT];
 };
 extern const M8RenderAPI m8_native_api;
 extern void *stream_memalign(size_t,size_t);
@@ -122,13 +124,19 @@ static char *text_add(char *s,const char *t){while(*t)*s++=*t++;return s;}
 static char *signed_number(char *s,int32_t n){if(n<0){*s++='-';return number(s,0u-(uint32_t)n);}*s++='+';return number(s,(uint32_t)n);}
 static void sensors_text(TDPNativePage *p){
  if(!p->label)return;
- char text[120];char *s=text_add(text,"Sensors (read only)\nIMU ");
+ char text[TDP_SENSORS_TEXT];char *s=text_add(text,"Sensors (read only)\nIMU ");
  uint32_t imu=tio_imu_family;
  s=text_add(s,imu==2?"ST":imu==3?"TDK":imu==1?"none":"unknown");*s++=' ';*s++='(';s=number(s,imu);*s++=')';
- s=text_add(s,"\nLight ");
+ s=text_add(s,"\nUI heap ");
  TDDiagnostics *d=&p->light;TDLightOwner owner={td_gettid()};td_init(d,0);td_stock_light(&owner,d);
- if(d->valid&(1u<<TD_LV_USED)){s=number(s,d->values[TD_LV_USED]);s=text_add(s," pk ");s=number(s,d->values[TD_LV_PEAK]);}
+ if(d->valid&(1u<<TD_LV_USED)){s=number(s,d->values[TD_LV_USED]);s=text_add(s," max ");s=number(s,d->values[TD_LV_PEAK]);}
  else s=text_add(s,"n/a");
+#if TIO_SENSORS_LIGHT
+ static const char *const buckets[TD_LIGHT_BUCKETS]={"0-1 lx","1-3 lx","3-10 lx","10-300 lx","300-600 lx","600-1000 lx",
+  "1000-4000 lx","4000-5000 lx","5000+ lx"};
+ int bucket=td_light_bucket();
+ s=text_add(s,"\nLight ");s=text_add(s,bucket>=0&&bucket<TD_LIGHT_BUCKETS?buckets[bucket]:"n/a");
+#endif
  s=text_add(s,"\nFold ");
  void *m=nav_monitors(),*i=m?nav_input(m):NULL;
  s=text_add(s,i?(nav_folded(i)?"closed":"open"):"n/a");

@@ -19,7 +19,11 @@
    "sha256=7d8f21ba17e235e6a56a5fb8961c599eef362b9cd84e0a93febd68f32ce812f3,len=58": 1,
    "sha256=e099881be7ff5627f7c281d39b14d825127b8d255a76e5e335b662d63461e466,len=22": 1,
    "sha256=869cca4f246a922d068ba0e00b718721b821a9fc483ddc651a962cec1d8124c8,len=68": 1,
-   "sha256=c1fc46e00c1649e0da76414146e6b1ef45ec861201ea715b1b3cdba7cd4169ac,len=36": 1
+   "sha256=c1fc46e00c1649e0da76414146e6b1ef45ec861201ea715b1b3cdba7cd4169ac,len=36": 1,
+   "sha256=34baf45a6de62cf4341c20635ad8f935677fd7683ec8a01f78158e96574b956e,len=71": 1,
+   "sha256=f5d7fc00ae15d2a6ef9143bda8690a34487586833cf50f2bcc3e6d1c9bd53599,len=19": 1,
+   "sha256=9dda0735e0a99d4f15d547a39586883f175ce81c0a865b0afe04d04f94e80143,len=17": 1,
+   "sha256=2c918cb20026712a3927905ffdcd9b4cb7b76682d224f3791aa11e752d0d2b15,len=69": 1
   }
  },
  "moduleMessageIds": [
@@ -1959,6 +1963,119 @@
     }
    ],
    "why": "the launcher dispatcher subtracts this id so that it selects branch-table case 0, which hands the message data and length to the phone-link receiver"
+  },
+  {
+   "constant": "TIO_STOCK_LIGHT_SAMPLE_BYTES",
+   "n": 1,
+   "where": "str:sha256=34baf45a6de62cf4341c20635ad8f935677fd7683ec8a01f78158e96574b956e,len=71#0",
+   "at": -38,
+   "function": {
+    "where": "str:sha256=34baf45a6de62cf4341c20635ad8f935677fd7683ec8a01f78158e96574b956e,len=71#0",
+    "at": -58
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 2
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": -36,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 0,
+      "rn": 7
+     },
+     "field": 24
+    },
+    {
+     "at": -24,
+     "shape": "bl",
+     "target": "link:tio_light_latest"
+    }
+   ],
+   "why": "the display monitor clears a buffer of this size and passes it to the latest-light getter"
+  },
+  {
+   "constant": "TIO_STOCK_LIGHT_SAMPLE_BYTES",
+   "n": 2,
+   "where": "str:sha256=f5d7fc00ae15d2a6ef9143bda8690a34487586833cf50f2bcc3e6d1c9bd53599,len=19#0",
+   "at": 74,
+   "function": {
+    "where": "str:sha256=f5d7fc00ae15d2a6ef9143bda8690a34487586833cf50f2bcc3e6d1c9bd53599,len=19#0",
+    "at": -16
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 2
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 78,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 0,
+      "rn": 4
+     },
+     "field": 32
+    }
+   ],
+   "why": "the light manager start clears its cached sample, the copy the getter returns, with this size"
+  },
+  {
+   "constant": "TIO_STOCK_LIGHT_SAMPLE_LUX",
+   "n": 1,
+   "where": "call:call:str:sha256=9dda0735e0a99d4f15d547a39586883f175ce81c0a865b0afe04d04f94e80143,len=17#0@0x14@0x2c",
+   "at": 138,
+   "function": {
+    "where": "call:call:str:sha256=9dda0735e0a99d4f15d547a39586883f175ce81c0a865b0afe04d04f94e80143,len=17#0@0x14@0x2c",
+    "at": 0
+   },
+   "shape": "vstr-s",
+   "regs": {
+    "sd": 15,
+    "rn": 4
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 6,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 4,
+      "rm": 1
+     }
+    }
+   ],
+   "why": "the light conversion stores the computed lux float at this offset of the caller's sample"
+  },
+  {
+   "constant": "TIO_STOCK_LIGHT_SAMPLE_LUX",
+   "n": 2,
+   "where": "str:sha256=2c918cb20026712a3927905ffdcd9b4cb7b76682d224f3791aa11e752d0d2b15,len=69#0",
+   "at": 34,
+   "function": {
+    "where": "str:sha256=2c918cb20026712a3927905ffdcd9b4cb7b76682d224f3791aa11e752d0d2b15,len=69#0",
+    "at": -96
+   },
+   "shape": "vldr-s",
+   "regs": {
+    "sd": 16,
+    "rn": 7
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": -40,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 1,
+      "rm": 7
+     }
+    }
+   ],
+   "why": "the display brightness callback reads a sample into its buffer and loads the lux float from this offset"
   }
  ]
 }

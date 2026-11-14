@@ -100,6 +100,12 @@
 /* LVGL global: peak memory in use. */
 #define TIO_STOCK_LVGL_MEM_PEAK 0x1c0u
 
+/* Light sensor sample: the light manager's cached copy that the latest-light getter (link.ld tio_light_latest) returns. */
+/* Light sample: size of the sample the getter copies out. */
+#define TIO_STOCK_LIGHT_SAMPLE_BYTES 0x10u
+/* Light sample: the lux value (a float). */
+#define TIO_STOCK_LIGHT_SAMPLE_LUX 0x8u
+
 /* Message queue, queued message and file callback table. */
 /* Message queue: the highest module id a send accepts (ids start at 1). */
 #define TIO_STOCK_QUEUE_MODULE_MAX 20u

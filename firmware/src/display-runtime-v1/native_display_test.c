@@ -83,7 +83,21 @@ void native_report_activity(void){}
 int32_t tio_lv_obj_get_width(void *p){assert(p==(void *)1);return 540;}
 int32_t tio_lv_obj_get_height(void *p){assert(p==(void *)1);return 280;}
 void tio_lv_obj_set_size(void *p,int32_t w,int32_t h){assert(p);((Obj *)p)->w=w;((Obj *)p)->h=h;}
-void native_label_text(void *p,const char *s){assert(p&&s&&strlen(s)<120);}
+static char label_text[200];
+void native_label_text(void *p,const char *s){assert(p&&s&&strlen(s)<160);strcpy(label_text,s);}
+/* Sensors screen providers (F5): stubs with values the cases set. */
+#include "../diagnostics-v1/native_light.h"
+volatile uint8_t tio_imu_family=2;
+static int sensor_tid=41,light_bucket=-1;static bool heap_valid=true,folded;static uint32_t heap_used=8790000,heap_peak=8800000;static unsigned light_reads;
+int td_gettid(void){return sensor_tid;}
+void *nav_monitors(void){return (void *)16;}
+void *nav_input(void *m){assert(m==(void *)16);return (void *)32;}
+bool nav_folded(void *i){assert(i==(void *)32);return folded;}
+void td_stock_light(void *c,TDDiagnostics *d){TDLightOwner *o=c;assert(o&&o->owner_tid==sensor_tid);
+ td_metric(d,TD_LV_USED,heap_used,heap_valid);td_metric(d,TD_LV_PEAK,heap_peak,heap_valid);}
+#if TIO_SENSORS_LIGHT
+int td_light_bucket(void){light_reads++;return light_bucket;}
+#endif
 void native_text_color(void *p,uint32_t c,uint32_t style){assert(p&&c==0xffffff&&!style);}
 void native_align(void *p,int align,int x,int y){assert(p);(void)align;(void)x;(void)y;}
 int tdp_rnlink_send(unsigned bus,const uint8_t *p,unsigned n,void *cb){assert(!cb);assert(tdp_carrier_decode(bus,p,n,&latest));sends++;return 0;}
@@ -158,5 +172,29 @@ int main(void){
  creates=0;page=tdp_native_open((void *)1,34567,&owner);assert(page);sent=sends;
  tdp_native_retire(page);pulse();assert(timer&&sends==sent);
  now+=100;pulse();assert(!timer&&sends==sent+1&&latest.result==TDP_CLOSED&&latest.sid==34567&&allocs==frees);
- printf("PASS native adapter mocks: 7 allocation/setup failures, SID/PB reply, 139-chunk atomic frame, 512-byte gate, physical/parent/timeout/protocol close; page=%zu bytes; allocations=%u frees=%u; NO real LVGL/radio\n",allocation_size,allocs,frees);
+ // Sensors screen (F5): the first press opens it; UI heap and Light lines; the longest text fits.
+ creates=0;page=tdp_native_open((void *)1,40001,&owner);assert(page);
+ tdp_native_knob(page,0,true);
+#if TIO_SENSORS_LIGHT
+ assert(!strcmp(label_text,"Sensors (read only)\nIMU ST (2)\nUI heap 8790000 max 8800000\nLight n/a\nFold open\nKnob +0 press 0"));
+ static const char *const want[9]={"0-1 lx","1-3 lx","3-10 lx","10-300 lx","300-600 lx","600-1000 lx","1000-4000 lx","4000-5000 lx","5000+ lx"};
+ /* each bucket compares the whole page text, so a label that only contains the expected one fails */
+ char expect[200];
+ for(int b=0;b<9;b++){light_bucket=b;now+=100;pulse();
+  snprintf(expect,sizeof expect,"Sensors (read only)\nIMU ST (2)\nUI heap 8790000 max 8800000\nLight %s\nFold open\nKnob +0 press 0",want[b]);
+  assert(!strcmp(label_text,expect));}
+ light_bucket=9;now+=100;pulse();assert(!strcmp(label_text,"Sensors (read only)\nIMU ST (2)\nUI heap 8790000 max 8800000\nLight n/a\nFold open\nKnob +0 press 0"));
+ light_bucket=-1;now+=100;pulse();assert(!strcmp(label_text,"Sensors (read only)\nIMU ST (2)\nUI heap 8790000 max 8800000\nLight n/a\nFold open\nKnob +0 press 0"));
+ assert(light_reads>=12);
+#else
+ assert(!strcmp(label_text,"Sensors (read only)\nIMU ST (2)\nUI heap 8790000 max 8800000\nFold open\nKnob +0 press 0"));
+ assert(!strstr(label_text,"Light")&&!light_reads);
+#endif
+ heap_valid=false;now+=100;pulse();assert(strstr(label_text,"\nUI heap n/a\n"));
+ heap_valid=true;heap_used=heap_peak=4294967295u;tio_imu_family=255;folded=true;light_bucket=6;
+ tdp_native_knob(page,-2147483647-1,true);for(int i=0;i<9;i++)tdp_native_knob(page,0,true);
+ /* press is 10 here (2 digits); 4294967295 would add 8 bytes: the bound is the measured length plus 8, plus the NUL. */
+ size_t longest=strlen(label_text)+8+1;assert(longest<=160);
+ tdp_native_retire(page);for(int i=0;i<3&&timer;i++){now+=100;pulse();}assert(!timer&&!owner&&allocs==frees);
+ printf("PASS native adapter mocks: 7 allocation/setup failures, SID/PB reply, 139-chunk atomic frame, 512-byte gate, physical/parent/timeout/protocol close; page=%zu bytes; allocations=%u frees=%u; NO real LVGL/radio; Sensors text worst case %zu of 160 bytes, Light line %s\n",allocation_size,allocs,frees,longest,TIO_SENSORS_LIGHT?"on":"off");
 }

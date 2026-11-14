@@ -137,6 +137,8 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-prediction',[FW/'tests/pose_prediction_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')
     run('tmg4-native-ui',['python3','-I',FW/'tests/native_ui_host_test.py','--out',out/'tmg4-native-ui-host'])
     run('tmg4-native-status',['python3','-I',FW/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
+    run('tmg12-native-light',['python3','-I',FW/'tests/native_light_host_test.py','--stock',tree_stock,'--out',out/'tmg12-native-light'])   # bucket edges read from the stock image
+    run('tmg12-native-display',['python3','-I',FW/'tests/native_display_host_test.py','--out',out/'tmg12-native-display'])
     run('tmg4-native',['python3','-I',FW/'tests/native_host_test.py','--out',out/'tmg4-native-host'])
     run('tmg4-stock-abi',['python3','-I',FW/'tests/stock_abi_test.py','--stock',tree_stock])
     run('tmg12-stock-layout',['python3','-I',FW/'tests/stock_layout_test.py','--stock',tree_stock])

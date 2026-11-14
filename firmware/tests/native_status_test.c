@@ -42,7 +42,7 @@ int td_gettid(void){return tid;}
 uint32_t stream_tick(void){return now_ms;}
 const char *nav_top_app(void){return home?"com.rayneo.liteos.launcher":other_app?other_app:"com.rayneo.liteos.prompter";}
 void *nav_ensure_menu(void *p){assert(p==vm);ensures++;set_app(app);return app;}
-void td_stock_light(void *p,TDDiagnostics *d){TDLightOwner *owner=p;assert(owner&&owner->owner_tid==tid);probes++;now_ms+=probe_delay;td_metric(d,TD_LV_TOTAL,16777216,true);td_metric(d,TD_LV_USED,1024,true);td_metric(d,TD_LV_PEAK,2048,true);}
+void td_stock_light(void *p,TDDiagnostics *d){TDLightOwner *owner=p;assert(owner&&owner->owner_tid==tid);probes++;now_ms+=probe_delay;td_metric(d,TD_LV_TOTAL,0,false);td_metric(d,TD_LV_USED,1024,true);td_metric(d,TD_LV_PEAK,2048,true);}
 int tap_fs_statfs(const char *path,void *out){assert(!strcmp(path,"/mnt/nand_data"));statfs_calls++;uint32_t *s=out;s[2]=131072;s[4]=100;s[6]=80;s[8]=70;if(bad_nand)s[9]=1;return 0;}
 bool tgr_runtime_allowed(void){return runtime_allowed;}
 unsigned tgr_knob_command(void *p,const TDCommand *q,uint32_t now){assert(p==app);return q->op==TDQ_KNOB_START?tk_start(&knob,q->session,q->sequence,q->lease_ms,now,true):tk_stop(&knob,q->session,q->sequence,now,true);}

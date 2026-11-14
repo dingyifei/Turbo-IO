@@ -292,6 +292,8 @@ fw_layout_stage() {
   for name in render_idle native_ui native_status native tmg9_wheel menu_tail; do
     python3 -I "$REPO/firmware/tests/${name}_host_test.py" --out "$GATE/fw-layout/$name"
   done
+  python3 -I "$REPO/firmware/tests/native_light_host_test.py" --stock "$STOCK" --out "$GATE/fw-layout/native_light"
+  python3 -I "$REPO/firmware/tests/native_display_host_test.py" --out "$GATE/fw-layout/native_display"
   python3 -I "$REPO/firmware/tests/rebase_independent_test.py"
   python3 -I "$REPO/firmware/tests/stock_abi_test.py" --stock "$STOCK"
   python3 -I "$REPO/firmware/tests/stock_base_test.py"

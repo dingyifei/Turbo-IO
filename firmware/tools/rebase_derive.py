@@ -785,8 +785,10 @@ REVIEWED_UNIVERSE_CHANGES = {
                         'ce_head_mode', 'ce_stock_head_notify_resume', 'ce_stock_head_start_resume',
                         'ce_stock_head_stop_resume', 'ce_stock_sys_destroy_resume'),
         'valueToLinkld': {'launcher_global': 'tio_launcher_global'},
+        'addLinkld': {'tio_light_latest': {'old': '0x1062c3d5', 'new': '0x1061bea9'}},
         'reason': 'referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher '
-                  'global is named once, in link.ld, instead of at eleven source sites',
+                  'global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter '
+                  '(addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row)',
     },
 }
 FIELD_BASES = {'native_light_current': 'display_unit', 'native_light_peak': 'display_unit'}  # field method: value -> RAM base value
@@ -1616,6 +1618,15 @@ def propose(args):
             oa = H(r[col])
             assert sha(old[oa - FLASH: oa - FLASH + r['bytes']]) == r[col + 'SHA256'], r[col] + ': old range hash'
             item(('abi-range', oa), family='abi-range', type='abi', old=oa, text=r[col], bytes=r['bytes'], range=r)
+        # ---- reviewed additions (REVIEWED_UNIVERSE_CHANGES addLinkld): new-tree symbols with an old address ----
+        added = REVIEWED_UNIVERSE_CHANGES.get(to, {}).get('addLinkld', {})
+        for sym, e in added.items():
+            assert sym not in linkld, sym + ': addLinkld names a symbol the old tree already defines'
+            v, nv = H(e['old']), H(e['new'])
+            assert v & 1 and nv & 1, sym + ': addLinkld needs Thumb code addresses'
+            assert FLASH <= (v & ~1) and (v & ~1) + 2 <= FLASH + len(old), sym + ': addLinkld old address is outside the old AP image'
+            assert FLASH <= (nv & ~1) and (nv & ~1) + 2 <= FLASH + len(new), sym + ': addLinkld new address is outside the new AP image'
+            item(('linkld', sym), family='linkld', old=v, text=e['old'], type='code', added=e)
         # ---- the TSV: exactly one row per item ----
         with open(args.propose, newline='') as f:
             reader = csv.DictReader(f, delimiter='\t')
@@ -1644,7 +1655,13 @@ def propose(args):
                 rows.append({'it': it, 'kind': kind, 'name': name, 'line': line, 'text': text,
                              'proposal': int(text, 16) if re.fullmatch(r'0x[0-9a-fA-F]{1,8}', text) else None,
                              'info': {'verdict': r['final_verdict'], 'source': r['source'], 'row': line}})
-        errors += ['no TSV row for %s %r' % (k[0], k[1] if k[0] != 'abi-range' else hex(k[1])) for k in keyed if not any(x['it']['key'] == k for x in rows)]
+        errors += ['no TSV row for %s %r' % (k[0], k[1] if k[0] != 'abi-range' else hex(k[1])) for k in keyed
+                   if not keyed[k].get('added') and not any(x['it']['key'] == k for x in rows)]
+        errors += ['line %d: %s %r is a reviewed addition and takes no TSV row' % (x['line'], x['kind'], x['name']) for x in rows if x['it'].get('added')]
+        for k, it in keyed.items():
+            if it.get('added'):
+                rows.append({'it': it, 'kind': 'linkld', 'name': k[1], 'line': 0, 'text': it['added']['new'], 'proposal': H(it['added']['new']),
+                             'info': {'verdict': 'ADDED', 'source': 'reviewed:addLinkld', 'row': 0}})
         assert not errors and len(rows) == len(items), 'the TSV does not cover the old tree one row per item:\n  ' + '\n  '.join(errors)
     except AssertionError as error:
         raise SystemExit('rebase table NOT written (%s to %s): %s' % (frm, to, error))
@@ -2021,6 +2038,12 @@ def propose(args):
                     ''.join('; %s does not locate (%s)' % (k, v) for k, v in proof.get('pairRule', {}).get('notLocating', {}).items()))))
         if failed:
             reasons.append('reviewed site %s %s does not apply: %s' % (row['kind'], row['name'], '; '.join(failed)))
+        if it.get('added') and not ('call' in m and m['call']['state'] == 'agree' and m['call']['paired'] >= 1):
+            # A reviewed addition (addLinkld) has no old-tree row to vouch that its old address is a function start, so
+            # its old address must be an old BL/B.W target and at least one paired old caller must name the proposal.
+            reasons.append('reviewed addition %s needs at least one paired call vote for the proposal (the old address must '
+                           'be an old BL/B.W target): %s' % (name, json.dumps({x: y for x, y in m.get('call', {'state': 'none'}).items()
+                                                                               if x not in ('good', 'bad')})))
         proof.update({k: v for k, v in m.items()})
         if typ == 'abi':   # an ABI range is "changed" exactly when its masked bytes differ (stock_abi_test then needs a review),
             # whichever way its address was accepted, a reviewed entry included
@@ -2088,7 +2111,8 @@ def propose(args):
     universe = REVIEWED_UNIVERSE_CHANGES.get(to, {'pruneLinkld': (), 'valueToLinkld': {}})
     prune, to_link = set(universe['pruneLinkld']), dict(universe['valueToLinkld'])
     if not rejected:
-        missing = sorted(prune - {k[1] for k in acc if k[0] == 'linkld'}) + sorted(set(to_link) - {k[1] for k in acc if k[0] == 'value'})
+        missing = sorted(prune - {k[1] for k in acc if k[0] == 'linkld'}) + sorted(set(to_link) - {k[1] for k in acc if k[0] == 'value'}) \
+            + sorted(set(universe.get('addLinkld', {})) - {k[1] for k in acc if k[0] == 'linkld'})
         if missing:
             raise SystemExit('rebase table NOT written: REVIEWED_UNIVERSE_CHANGES names rows that are not accepted rows: ' + ', '.join(missing))
     converted = []
@@ -2142,6 +2166,7 @@ def propose(args):
                                               for (t, k, n), v in REVIEWED_SITES.items() if t == to},
                                     **({'universe': {'pruneLinkld': list(universe['pruneLinkld']),
                                                      'valueToLinkld': dict(universe['valueToLinkld']),
+                                                     'addLinkld': {k: dict(v) for k, v in universe.get('addLinkld', {}).items()},
                                                      'reason': universe['reason']}} if to in REVIEWED_UNIVERSE_CHANGES else {})}},
         'bases': bases,
         'moduleVA': {'old': old_table['moduleVA'][col], 'new': module, 'derivation': MODULE_DERIVATION},

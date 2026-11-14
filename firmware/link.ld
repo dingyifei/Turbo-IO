@@ -122,6 +122,7 @@ nav_input = 0x105b7f9d;
 nav_bonded = 0x105a83b1;
 nav_folded = 0x105a4e05;
 tio_imu_family = 0x1983b17c;
+tio_light_latest = 0x1061bea9;
 tio_launcher_global = 0x199595d4;
 nav_business_idle = 0x105a2f35;
 nav_connection = 0x1050e94d;

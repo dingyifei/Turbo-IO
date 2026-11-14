@@ -161,7 +161,9 @@ NOT_STOCK = {
 # independently of build.py's STOCK_SHAPES and of the tables' `bases`. oldStock is a path inside the oldTag export;
 # newStock is ('repo', path) or ('inputs', path under $TURBO_INPUTS). addedAfterOldTree: link symbols added after the
 # old tree (RAM data, not code), verified by pool_context_check instead of by the old-tree universe. stringChanges:
-# old .data address -> the one reviewed substring change its string may have. knownBad: values known to be wrong
+# old .data address -> the one reviewed substring change its string may have. addedCode: link.ld code symbols added
+# after the old tree -> their old-base value (Thumb bit included), reviewed on the old image; each one joins the old
+# universe as a link row before the derivation, so every method re-derives it like any other code symbol. knownBad: values known to be wrong
 # upstream; `good` only cross-checks the derivation and is never used to derive anything. windowsDiffer=None asserts
 # nothing about the masked windows at the bad value (native_label_create has an identical-code twin). A known-bad entry
 # passes when the bad value has no caller vote and the row resolves to `good`. split=True allows one more case, for a
@@ -190,6 +192,7 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
     newStock=('inputs', 'tmg12-emu/stock/Strix-OS-1.0.6.11-members-canonical.zip'),
     oldAP='af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae', newAP='9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260',
     addedAfterOldTree=set(), stringChanges={0x1804_338b: (':58]', ':62]')},
+    addedCode={'tio_light_latest': 0x1062_c3d5},   # F5: stock's latest-light getter
     newTreeChanges=dict(pruneLink={'dots_getrandom', 'dots_stock_notify', 'ce_utc_time', 'ce_focus_manager',
                                    'ce_focus_enabled', 'ce_head_mode', 'ce_stock_head_notify_resume',
                                    'ce_stock_head_start_resume', 'ce_stock_head_stop_resume',
@@ -879,11 +882,14 @@ def not_stock_seen(fw, img):
 
 # ---------------------------------------------------------------- derivation
 
-def derive(old_fw, old, new, abi=None, string_changes=None, disabled=frozenset()):
+def derive(old_fw, old, new, abi=None, string_changes=None, disabled=frozenset(), added_code=None):
     """Rows: one per universe address, each with the derived new value and the evidence. `disabled`: names from
     TEST_METHODS that are not applied (acceptance only)."""
     d = Deriver(old, new)
     u = read_tree(old_fw, old, abi)
+    for name, value in (added_code or {}).items():
+        assert name not in u['link'] and value & 1 and old.has(value & ~1), 'addedCode %s' % name
+        u['link'][name] = value
     string_changes = string_changes or {}
     rows = []
 
@@ -1454,8 +1460,26 @@ def old_abi(old_fw, key):
     return ranges
 
 
+def added_entry(added_code, rows, d, old):
+    """addedCode symbols have no old-tree row behind them, so each one's old value must be shown to be a function start:
+    an old BL/B.W target with at least one paired caller (T1 or T2) naming the derived value. Runs after every pass that
+    can resolve a row, so nothing clears the problem it adds."""
+    for name, value in added_code.items():
+        found = [r for r in rows if r['kind'] == 'link' and r['name'] == name]
+        assert len(found) == 1, 'addedCode %s: %d link rows' % (name, len(found))
+        r, at = found[0], value & ~1
+        calls = d.callers(at) + d.t2_callers(at)[0]
+        if not old.branch_sites().get(at):
+            r['problems'].append('addedCode: the old value is not the target of any old BL/B.W')
+        elif r['new'] is None or not calls.get(r['new'] & ~1):
+            r['problems'].append('addedCode: no paired caller names the derived value (%s)' % (
+                ', '.join('%s: %d' % (hex(k), n) for k, n in calls.items()) or 'no paired caller'))
+        else:
+            r['methods']['entry'] = 'old BL/B.W target; %d paired caller vote(s) name %s' % (calls[r['new'] & ~1], hex(r['new'] & ~1))
+
+
 def run(old_fw, new_fw, table_path, old, new, cfg, abi=None, derive_only=False, disabled=frozenset()):
-    u, rows, d, derived = derive(old_fw, old, new, abi, cfg['stringChanges'], disabled)
+    u, rows, d, derived = derive(old_fw, old, new, abi, cfg['stringChanges'], disabled, cfg.get('addedCode'))
     # the known-bad check runs before the reviewed splits, so that its split case stays load-bearing, and again after
     # them, when it must find the good value on every row a reviewed split resolved
     kb_lines, kb_fails = known_bad(cfg, rows, d, old, new)
@@ -1466,6 +1490,7 @@ def run(old_fw, new_fw, table_path, old, new, cfg, abi=None, derive_only=False, 
         lines, fails = known_bad(cfg, rows, d, old, new, applied)
         kb_lines += lines
         kb_fails += fails
+    added_entry(cfg.get('addedCode') or {}, rows, d, old)
     row_problems, problems = [], []
     for r in rows:
         row_problems += ['%s %s %s: %s' % (r['kind'], r['name'], hex(r['old']), p) for p in r['problems']]
