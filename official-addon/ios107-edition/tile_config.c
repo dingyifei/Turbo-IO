@@ -1,3 +1,6 @@
+#if defined(TD_STOCK_10611) && TD_STOCK_10611
+#error not ported to 1.0.6.11 yet: 7 stock tiles (ids 0..6, module ids 7..12; stock count is 8)
+#endif
 #include "tile_config.h"
 #include <string.h>
 static uint32_t get32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
