@@ -35,7 +35,7 @@ Rules (C files and headers unless noted):
   asm       in .S files, a memory operand [rN,#imm] whose immediate is not one TIO_STOCK_* name, and a bare [rN],
             for any base register other than sp and pc.
   queue     any literal in the first argument of a call to stream_queue_send, or to a parameter of the enclosing
-            function declared with type TIOCopyEnqueue.
+            function declared with type TIOCopyEnqueue (called as q(, (*q)( or (q)().
 
 Scope: the built set (build-inputs.json sources and extras and the .c files they include), the C test models
 (tests/*.c and the two test files under src/ that test.py runs), and the headers (every .h under src/ and include/,
@@ -82,24 +82,10 @@ RECEIVERS = (
 )
 # Guarded deferrals: the files whose hits are deferred, valid while the guard file keeps its guard. Each file's hits
 # are pinned exactly (rule, text, count), so a new or changed raw offset in a deferred file is refused, and so is a
-# removed one (the pin is then stale and must be updated in the same change).
-_R = 'src/global-remote-v1/remote_native.c'
-DEFERRALS = (
-    ('G1', {_R: (('cast', '(uint8_t*)t+8', 2), ('cast', '(uint8_t*)t+12', 3), ('cast', '(uint8_t *)app+0x88', 2),
-                 ('cast', '(uint8_t *)app+0xa0', 1), ('cast', '(uint8_t *)app+0x90', 1),
-                 ('wordcast', '(Control**)((uint8_t*)t+12)', 3),
-                 ('wordcast', '(uint32_t *)((uint8_t *)app+0x88)', 2),
-                 ('wordcast', '(uint32_t *)((uint8_t *)app+0xa0)', 1),
-                 ('wordcast', '(uint32_t *)((uint8_t *)app+0x90)', 1),
-                 ('wordcast', '(int16_t*)(driver+6)', 1)),
-            'src/menu-grid-v2/menu_config.c': ()},
-     _R,
-     'the phone test tile_roundtrip.py compiles this file by exact text with no base define; F4 moves it with the '
-     'tile protocol'),
-    ('G2', {'tests/native_remote_test.c': (('wordcast', '(uint32_t *)(app+0xa0)', 3),
-                                           ('wordcast', '(uint32_t *)(app+0x88)', 3))},
-     _R, 'included by tests/tile_roundtrip_bridge.c in that phone test'),
-)
+# removed one (the pin is then stale and must be updated in the same change). Entries are
+# (tag, {file: ((rule, text, count), ...)}, guard file, reason). None is in use since F4 (G1 and G2 expired with the
+# remote's guard); the self-test plants a temporary one to keep the machinery checked.
+DEFERRALS = ()
 GUARD_LINE_1 = '#if defined(TD_STOCK_10611) && TD_STOCK_10611'
 GUARD_LINE_2 = '#error not ported to 1.0.6.11 yet: '
 GUARD_LINE_3 = '#endif'
@@ -623,7 +609,8 @@ def scan_c(rel, raw, helper_map, abs_ok, windows):
     for name, params, start, body_open, body_close in functions(t):
         for pm in re.finditer(r'\bTIOCopyEnqueue\s+(' + IDENT + r')', params):
             q = pm.group(1)
-            for m in re.finditer(r'(?<![\w.>])(?:' + re.escape(q) + r'|\(\s*\*\s*' + re.escape(q) + r'\s*\))\s*\(',
+            # q(, (*q)( and (q)(
+            for m in re.finditer(r'(?<![\w.>])(?:' + re.escape(q) + r'|\(\s*\*?\s*' + re.escape(q) + r'\s*\))\s*\(',
                                  t[:body_close]):
                 if m.start() <= body_open:
                     continue
@@ -1142,6 +1129,17 @@ def self_test(fw, table):
             if extra or errors != base_errors:
                 fail('accepted form %r was reported: %s %s' % (text.strip(), extra, errors))
 
+        # Rule queue: a TIOCopyEnqueue parameter called through redundant parentheses, (q)(...), is caught (R19).
+        into_function(c, 'src/focus-v1/focus_service.c', None, 'TIONativeMessage m={0};(q)(1,&m);',
+                      r'\bTIOCopyEnqueue\s+q\b')
+        errors, left, _ = check(c.fw, table)
+        c.restore()
+        new = counter(h.key() for h in left)
+        extra = {k: n - base.get(k, 0) for k, n in new.items() if n > base.get(k, 0)}
+        if extra != {('src/focus-v1/focus_service.c', 'queue', '(q)(1,&m)'): 1} or errors != base_errors:
+            fail('planted queue (q)(1,&m) in src/focus-v1/focus_service.c: expected exactly that one new hit, got %s %s'
+                 % (extra, errors))
+
         def refused(label, change, needle):
             if any(needle in e for e in base_errors):
                 fail('%s: the unchanged copy already reports %r' % (label, needle))
@@ -1157,13 +1155,54 @@ def self_test(fw, table):
         refused('second copy of an exempt text',
                 append(store, 'static char *tio_dup(void *p){return (char *)p+20;}'),
                 'exemption E4: %s cast (char *)p+20 matches 2 hits, pinned 1' % store)
-        refused('new raw offset in a deferred file',
-                append('src/menu-grid-v2/menu_config.c', 'static void *tio_g(void *t){return (uint8_t *)t+0x98;}'),
-                'deferral G1: src/menu-grid-v2/menu_config.c has 1 hits of cast (uint8_t *)t+0x98, pinned 0')
+        # Guarded deferrals: none is in use, so plant one in the copy, the way drift() swaps RAM_WINDOW. The guard file
+        # (remote_native.c) gets the three-line guard back and two raw offsets; G1 pins them and an empty menu_config.c,
+        # G2 pins two raw offsets planted in the remote test model under the same guard.
+        remote = 'src/global-remote-v1/remote_native.c'
         rtest = 'tests/native_remote_test.c'
-        refused('one deferred hit named',
-                lambda: c.write(rtest, c.read(rtest).replace('(uint32_t *)(app+0xa0)', '(uint32_t *)(app+TIO_A)', 1)),
-                'deferral G2: %s has 2 hits of wordcast (uint32_t *)(app+0xa0), pinned 3' % rtest)
+        planted_deferrals = (
+            ('G1', {remote: (('cast', '(uint8_t *)t+0x98', 2),), 'src/menu-grid-v2/menu_config.c': ()}, remote,
+             'self-test plant'),
+            ('G2', {rtest: (('wordcast', '(uint32_t *)(app+0xa0)', 2),)}, remote, 'self-test plant'),
+        )
+
+        def plant_deferred():
+            c.write(remote, '\n'.join((GUARD_LINE_1, GUARD_LINE_2 + 'self-test plant', GUARD_LINE_3)) + '\n' +
+                    c.read(remote) + '\nstatic void *tio_d1(void *t){return (uint8_t *)t+0x98;}\n'
+                    'static void *tio_d2(void *t){return (uint8_t *)t+0x98;}\n')
+            c.write(rtest, c.read(rtest) + '\nstatic uint32_t *tio_d3(uint8_t *app){return (uint32_t *)(app+0xa0);}\n'
+                    'static uint32_t *tio_d4(uint8_t *app){return (uint32_t *)(app+0xa0);}\n')
+
+        def with_deferrals(fn):
+            global DEFERRALS
+            saved, DEFERRALS = DEFERRALS, planted_deferrals
+            try:
+                return fn()
+            finally:
+                DEFERRALS = saved
+
+        def deferred_refused(label, change, needle):
+            """With the planted deferral in place the copy checks exactly as the unchanged one (every planted hit is
+            deferred and pinned); `change` on top of it must then give an error containing `needle`."""
+            if any(needle in e for e in base_errors):
+                fail('%s: the unchanged copy already reports %r' % (label, needle))
+            plant_deferred()
+            errors, left, counts = with_deferrals(lambda: check(c.fw, table))
+            if errors != base_errors or counter(h.key() for h in left) != base or counts['deferrals'] != 2:
+                c.restore()
+                fail('%s: the planted deferral is not in clean use (%s; %d hits left)' % (label, errors, len(left)))
+            change()
+            errors, left, _ = with_deferrals(lambda: check(c.fw, table))
+            c.restore()
+            if not any(needle in e for e in errors):
+                fail('%s was not refused (wanted an error containing %r; got %s)' % (label, needle, errors))
+
+        deferred_refused('new raw offset in a deferred file',
+                         append('src/menu-grid-v2/menu_config.c', 'static void *tio_g(void *t){return (uint8_t *)t+0x98;}'),
+                         'deferral G1: src/menu-grid-v2/menu_config.c has 1 hits of cast (uint8_t *)t+0x98, pinned 0')
+        deferred_refused('one deferred hit named',
+                         lambda: c.write(rtest, c.read(rtest).replace('(uint32_t *)(app+0xa0)', '(uint32_t *)(app+TIO_A)', 1)),
+                         'deferral G2: %s has 1 hits of wordcast (uint32_t *)(app+0xa0), pinned 2' % rtest)
 
         def drift():
             global RAM_WINDOW
@@ -1183,16 +1222,16 @@ def self_test(fw, table):
             c.write(idle, raw[:fn[3]] + body + raw[fn[4] + 1:])
         refused('stale receiver row', rename_unit,
                 'receiver row %s tio_render_graph_idle unit: identifier not declared' % idle)
-        remote = 'src/global-remote-v1/remote_native.c'
-        refused('unguarded deferral',
-                lambda: c.write(remote, '\n'.join(c.read(remote).split('\n')[3:])),
-                'deferral G1: %s no longer starts with' % remote)
+        deferred_refused('unguarded deferral',
+                         lambda: c.write(remote, '\n'.join(c.read(remote).split('\n')[3:])),
+                         'deferral G1: %s no longer starts with' % remote)
         refused('new unreferenced symbol',
                 lambda: c.write('link.ld', c.read('link.ld') +
                                 '\ntio_plant_unreferenced = 0x%x;\n' % rebase_apply.FLASH),
                 'link.ld symbol tio_plant_unreferenced is referenced by no built file')
-    print('LAYOUT_SELF_TEST_OK: %d rules each caught in a planted copy, the sizeof stride form accepted; stale '
-          'exemption, stale receiver row, unguarded deferral and new unreferenced symbol refused' % len(caught))
+    print('LAYOUT_SELF_TEST_OK: %d rules each caught in a planted copy, the sizeof stride form accepted, the parenthesised '
+          'queue callee caught; stale exemption, stale receiver row, unguarded deferral and new unreferenced symbol refused'
+          % len(caught))
     return 0
 
 

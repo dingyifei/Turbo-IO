@@ -1,6 +1,3 @@
-#if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: +0x88/+0x90/+0xa0
-#endif
 /* STRIX 1.0.5.5 TMG4. Executed by LauncherThreadMsgHandler on the UI thread.
  * No button-driver simulation: that path blocks and includes reset/pair events.
  * Current native input interceptors retain ownership of global input policy.
@@ -16,6 +13,8 @@ extern void fm_language_changed(void),fm_sync(void *);
 #include "../menu-grid-v2/tile_files.inc"
 #include "lang_files.inc"
 #include "../image-upload-test/native_file_bridge.h"
+#include "../navigation-runtime-v1/menu9.h"
+#include <stddef.h>
 #include <string.h>
 extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_next(void *),*stream_timer_create(void (*)(void *),uint32_t,void *);
 extern uint32_t stream_tick(void),tap_random(void);
@@ -33,25 +32,35 @@ extern unsigned tgr_group_send(void *,uint32_t);
 extern void tgr_raw_wheel(const void *),tgr_sim_wheel(int);
 typedef struct {uint32_t magic;void *timer;TGRGate gate;TMLState menu;TLGLanguageState language;TTState tiles;TTVisible active;void *menu_app;bool settings_loaded,pending,applying;TKState knob;unsigned synthetic_depth;} Control;
 static void tick(void *);
-static bool allowed(void){
+/* The top page's package name when the remote may act at all (no OTA running, bonded, phone connected, not folded),
+ * else NULL. Both gates below start here, so neither admits anything while one of these conditions fails. */
+static const char *gate_top(void){
  void *m=nav_monitors(),*i=m?nav_input(m):NULL,*l=m?nav_link(m):NULL;
  void *sys=m?fm_system(m):NULL;
- if(!i||!l||!sys||tgr_ota_status(sys)!=0||!nav_bonded(l)||!nav_connection(0x80)||nav_folded(i))return false;
- const char *top=nav_top_app();if(!top)return false;
+ if(!i||!l||!sys||tgr_ota_status(sys)!=0||!nav_bonded(l)||!nav_connection(0x80)||nav_folded(i))return NULL;
+ return nav_top_app();
+}
+static bool listed(const char *top){
  /* Positive list. OTA, payment, factory/MMI and unknown native apps excluded.
   * Custom music/read/navigation/focus/app views share the launcher package. */
  static const char *const names[]={"com.rayneo.liteos.launcher","com.rayneo.liteos.recorder","com.rayneo.liteos.prompter","com.rayneo.liteos.aiSubtitle","com.rayneo.liteos.conversationAssist","com.rayneo.liteos.assistant","com.rayneo.liteos.todo","com.rayneo.liteos.notification"};
  for(unsigned j=0;j<sizeof names/sizeof *names;j++)if(!strcmp(top,names[j]))return true;
  return false;
 }
+/* The settings, diagnostics and knob-lease gate: the listed apps only. */
+static bool allowed(void){const char *top=gate_top();return top&&listed(top);}
+/* The remote's knob and crown input gate: the listed apps and stock Navigation (owner decision of 2026-11-14, input
+ * only). The name is the one stock's launcher app table gives its Navigation entry; tests/remote_app_name_test.py reads
+ * that entry from the stock image and compares it with the one string literal in this function. */
+static bool input_allowed(void){const char *top=gate_top();return top&&(listed(top)||!strcmp(top,"com.rayneo.liteos.navigation"));}
 static Control *control(void){
- void *t=NULL;for(unsigned j=0;j<512;j++){t=stream_timer_next(t);if(!t)break;if(*(void(**)(void*))((uint8_t*)t+8)==tick){Control *c=*(Control**)((uint8_t*)t+12);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}if(j==511)return NULL;}
+ void *t=NULL;for(unsigned j=0;j<512;j++){t=stream_timer_next(t);if(!t)break;if(*(void(**)(void*))((uint8_t*)t+TIO_STOCK_TIMER_CB)==tick){Control *c=*(Control**)((uint8_t*)t+TIO_STOCK_TIMER_USER);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}if(j==511)return NULL;}
  Control *c=stream_memalign(8,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=0x54475231;c->timer=stream_timer_create(tick,1000,c);if(!c->timer){stream_free(c);return NULL;}c->menu.stored=(TMLStored){.rows=3,.bank=1,.readable=true};tt_default(&c->tiles.stored.config);c->tiles.stored.bank=1;c->tiles.stored.readable=true;tt_compact(&c->tiles.stored.config,&c->active);return c;
 }
 /* Read-only scan used by label renderers: never create a controller here. */
 static Control *find(void){
  void *t=NULL;for(unsigned j=0;j<512;j++){t=stream_timer_next(t);if(!t)return NULL;
-  if(*(void(**)(void*))((uint8_t*)t+8)==tick){Control *c=*(Control**)((uint8_t*)t+12);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}}
+  if(*(void(**)(void*))((uint8_t*)t+TIO_STOCK_TIMER_CB)==tick){Control *c=*(Control**)((uint8_t*)t+TIO_STOCK_TIMER_USER);return c&&c->magic==0x54475231&&c->timer==t?c:NULL;}}
  return NULL;
 }
 /* The live knob detent D (knob_detent.h): the D of the stored menu record. Once the menu has loaded the settings that record is in the control state;
@@ -68,19 +77,22 @@ unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
  c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);if(tlg_state_load(&c->language,&tls_io))fm_language_changed();c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
  }return c?c->menu.stored.rows:3;} /* 1 carousel, 2 or 3 grid rows; tml_load only returns those */
 void fm_tile_snapshot(TTVisible *out){Control *c=find();if(c){*out=c->active;return;}TTConfig defaults;tt_default(&defaults);(void)tt_compact(&defaults,out);}
-unsigned fm_tile_count(void){Control *c=find();return c?c->active.count:13;}
-unsigned fm_tile_id(unsigned rank){Control *c=find();if(c)return rank<c->active.count?c->active.ids[rank]:255;return rank<13?rank:255;}
-unsigned fm_tile_rank(unsigned id){Control *c=find();if(c)return id<13?c->active.rank[id]:255;return id<13?id:255;}
+unsigned fm_tile_count(void){Control *c=find();return c?c->active.count:TT_ITEMS;}
+unsigned fm_tile_id(unsigned rank){Control *c=find();if(c)return rank<c->active.count?c->active.ids[rank]:255;return rank<TT_ITEMS?rank:255;}
+unsigned fm_tile_rank(unsigned id){Control *c=find();if(c)return id<TT_ITEMS?c->active.rank[id]:255;return id<TT_ITEMS?id:255;}
 bool fm_tiles_busy(void){Control *c=find();return c&&c->applying;}
 extern void native_snap(void *);
+/* Writes stock's selected index, motion count and shown frame, so only to a menu whose constructor check armed the
+ * module's tail (menu9.h m8_tail): an unarmed menu stays stock's and this writes nothing. */
 bool fm_tiles_apply(void *app){
+ if(!m8_tail(app))return false;
  Control *c=find();if(!c||!app||!c->settings_loaded||c->applying||(!c->pending&&c->menu_app==app))return false;
  TTVisible next;if(!tt_compact(&c->tiles.stored.config,&next))return false;
- unsigned selected=*(uint32_t *)((uint8_t *)app+0x88);unsigned id=selected<c->active.count?c->active.ids[selected]:12;
+ unsigned selected=*(uint32_t *)((uint8_t *)app+TIO_STOCK_MENU_SELECTED);unsigned id=selected<c->active.count?c->active.ids[selected]:TT_CAMERA;
  c->applying=true;native_snap(app); /* old map/count: stop old motion first */
- unsigned rank=id<13?next.rank[id]:255;if(rank==255)rank=next.rank[12];
+ unsigned rank=id<TT_ITEMS?next.rank[id]:255;if(rank==255)rank=next.rank[TT_CAMERA];
  c->active=next;c->menu_app=app;c->pending=false;
- *(uint32_t *)((uint8_t *)app+0xa0)=next.count;*(uint32_t *)((uint8_t *)app+0x88)=rank;*(uint32_t *)((uint8_t *)app+0x90)=UINT32_MAX;
+ *(uint32_t *)((uint8_t *)app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=next.count;*(uint32_t *)((uint8_t *)app+TIO_STOCK_MENU_SELECTED)=rank;*(uint32_t *)((uint8_t *)app+TIO_STOCK_MENU_FRAME)=UINT32_MAX;
  native_snap(app);c->applying=false;return true;
 }
 void fm_tiles_forget(void *app){Control *c=find();if(c&&c->menu_app==app){tk_cancel(&c->knob,stream_tick());c->menu_app=NULL;c->pending=true;TTConfig defaults;tt_default(&defaults);tt_compact(&defaults,&c->active);}}
@@ -105,32 +117,35 @@ void tgr_runtime_snapshot(TDSample *s){
  tk_poll(&c->knob,stream_tick(),allowed()&&c->menu_app&&fm_menu_plain(c->menu_app));
  if(c->knob.window){s->extension_valid|=TD_EXT_CALIBRATION;s->calibration_state=c->knob.state;s->calibration_window=c->knob.window;s->calibration_elapsed=c->knob.elapsed;s->calibration_samples=c->knob.samples;s->calibration_net=c->knob.net;s->calibration_absolute=c->knob.absolute;s->calibration_sequence=c->knob.sequence;}
 }
-static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+12);if(c){bool ok=allowed();tk_poll(&c->knob,stream_tick(),ok&&c->menu_app&&fm_menu_plain(c->menu_app));if(!ok||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
+static void tick(void *t){Control *c=*(Control**)((uint8_t*)t+TIO_STOCK_TIMER_USER);if(c){bool ok=allowed();tk_poll(&c->knob,stream_tick(),ok&&c->menu_app&&fm_menu_plain(c->menu_app));if(!input_allowed()||(uint32_t)(stream_tick()-c->gate.seen)>15000)memset(&c->gate,0,sizeof c->gate);if(!ok||(uint32_t)(stream_tick()-c->menu.issued)>120000)c->menu.token=0;if(!ok||(uint32_t)(stream_tick()-c->tiles.issued)>120000)c->tiles.token=0;}}
 static void *device(unsigned type){void *p=NULL;for(unsigned j=0;j<16;j++){p=tgr_indev_next(p);if(!p)return NULL;if(tgr_indev_type(p)==type)return p;}return NULL;}
 /* Raw counts for one remote step. In the launcher the menu hook (m8_hook_wheel) steps one item per D raw counts itself, and so do the TIO pages
  * (wheel_input.h, music_input.h), D being the live detent (tio_knob_detent), so the launcher gets D: exactly one item or one page step, whatever D
- * is. Every other allowed app is stock and reads the raw listener at the stock rate of 600 counts per item (TK_DETENT_LEGACY, what TMG7 injected),
- * so a remote step still moves it one item. */
+ * is. In stock apps the simulated encoder step moves one item; the raw counts feed the input service's accumulator (threshold 900, path not
+ * decoded); 600 (TK_DETENT_LEGACY) is kept from TMG11. */
 static unsigned inject_counts(void){const char *top=nav_top_app();return top&&!strcmp(top,"com.rayneo.liteos.launcher")?tio_knob_detent():TK_DETENT_LEGACY;}
 static unsigned inject(unsigned op){
- if(!allowed())return TGR_BLOCKED;
+ if(!input_allowed())return TGR_BLOCKED;
  Control *c=find();if(c)tk_cancel(&c->knob,stream_tick());
  if(!focus_screen_on()){native_report_activity();nav_screen_on(true);return TGR_WAKE_ONLY;}
  if(op==TGR_PREVIOUS||op==TGR_NEXT){
   void *d=device(4);if(!d)return TGR_UNAVAILABLE;uint8_t *driver=tgr_indev_driver(d);if(!driver)return TGR_UNAVAILABLE;
-  if(*(int16_t*)(driver+6))return TGR_BUSY; /* Never overwrite a pending step. */
+  if(*(int16_t*)(driver+TIO_STOCK_ENCODER_STEP))return TGR_BUSY; /* Never overwrite a pending step. */
   int step=op==TGR_NEXT?1:-1;
   /* Mirror hardware: raw listener first, then LVGL detent. Native raw input
-   * struct is {int32 x,y; uint64 time_us}, seen in rayneo_wheel_read. */
+   * struct is {int32 x,y; uint64 time_us}, seen in rayneo_wheel_read. Stock steps
+   * by driver[TIO_STOCK_ENCODER_REVERSE] ? sign(x) : -sign(x), so this x gives back step. */
   const int counts=(int)inject_counts();
-  struct {int32_t x,y;uint64_t time;} raw={driver[9]?step*counts:-step*counts,0,(uint64_t)stream_tick()*1000};
+  struct raw_sample {int32_t x,y;uint64_t time;} raw={driver[TIO_STOCK_ENCODER_REVERSE]?step*counts:-step*counts,0,(uint64_t)stream_tick()*1000};
+  _Static_assert(offsetof(struct raw_sample,time)==8&&sizeof raw==16,"raw wheel sample {int32 x,y; uint64 time_us}");
   native_report_activity();if(c)c->synthetic_depth++;tgr_raw_wheel(&raw);tgr_sim_wheel(step);if(c)c->synthetic_depth--;return TGR_OK;
  }
  void *d=device(2),*group=d?tgr_indev_group(d):NULL;if(!group)return TGR_UNAVAILABLE;
- uint32_t key=op==TGR_PRESS?0x3a:0x3b;
+ uint32_t key=op==TGR_PRESS?TIO_STOCK_KEY_CONFIRM:TIO_STOCK_KEY_BACK;
  /* ABI copied from native rayneo_indev_keypad_proc, not a guessed LVGL type. */
- struct {void *current,*original;uint32_t code;void *user,*parameter,*previous;uint32_t flags;} event={0};
- _Static_assert(sizeof event==28,"32-bit pinned event ABI");event.code=14;event.parameter=&key;
+ struct key_event {void *current,*original;uint32_t code;void *user,*parameter,*previous;uint32_t flags;} event={0};
+ _Static_assert(sizeof event==28&&offsetof(struct key_event,code)==TIO_STOCK_EVENT_CODE&&offsetof(struct key_event,parameter)==TIO_STOCK_EVENT_PARAM,"32-bit pinned event ABI");
+ event.code=TIO_STOCK_EVENT_KEY;event.parameter=&key;
  native_report_activity();if(!tgr_intercept(&event)){
   /* Interception can change pages/groups. Re-resolve instead of using stale. */
   d=device(2);group=d?tgr_indev_group(d):NULL;if(!group)return TGR_UNAVAILABLE;
@@ -140,7 +155,7 @@ static unsigned inject(unsigned op){
 void tgr_native_message(const TIONativeMessage *m){
  /* Preserve original handler + original payload disposal for EVERY message.
   * This function never takes ownership and never changes the message bytes. */
- if(!m||m->id!=1||m->bytes!=74||!m->data)return;
+ if(!m||m->id!=TIO_STOCK_MESSAGE_RNLINK||m->bytes!=74||!m->data)return;
  uint8_t raw[32];TMLCommand layout;
  if(tml_uncarrier(m->data,m->bytes,raw,false)){
   if(!tml_decode(raw,sizeof raw,&layout))return;
@@ -169,7 +184,7 @@ void tgr_native_message(const TIONativeMessage *m){
  }
  TGRCommand q;if(!tgr_uncarrier(m->data,m->bytes,raw,false)||!tgr_decode(raw,sizeof raw,&q))return;
  Control *c=control();if(!c)return;uint32_t now=stream_tick();
- unsigned r=tgr_accept(&c->gate,&q,now,q.op==TGR_HELLO?tap_random():0,allowed());
+ unsigned r=tgr_accept(&c->gate,&q,now,q.op==TGR_HELLO?tap_random():0,input_allowed());
  if(r==TGR_OK&&q.op>=TGR_PREVIOUS&&q.op<=TGR_BACK)r=inject(q.op);
  uint8_t out[74];tgr_reply(raw,&c->gate,&q,r,stream_tick());tgr_carrier(out,raw,true);(void)tdp_rnlink_send(15,out,sizeof out,NULL);
 }

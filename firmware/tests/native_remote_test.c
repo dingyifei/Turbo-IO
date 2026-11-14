@@ -1,6 +1,8 @@
 /* Executes production controller/file/apply bodies. The runner adapts only
- * the 32-bit LVGL timer field accesses and event-size assert for a 64-bit host.
- * ARM compilation and pinned stock ABI tests separately enforce target layout. */
+ * the 32-bit LVGL timer field accesses and the event layout assert for a 64-bit host.
+ * ARM compilation and pinned stock ABI tests separately enforce target layout.
+ * The menu object is TIO_TAIL_END bytes (stock object plus the module's tail at the
+ * host's TIO_TAIL_OFFSET), armed with m8_tail_arm as the constructor check would. */
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,8 +17,16 @@ static HostTimer timer,decoy;
 static unsigned allocations,frees,reads,writes,snaps,nexts;
 static bool fail_alloc,fail_timer,cycle,blocked,render_idle=true,awake=true,detail_open;
 static uint32_t now_ms;
-static uint8_t app[256],reply_wire[74],encoder[16];
-static unsigned raw_callbacks,simulated_steps;
+_Alignas(16) static uint8_t app[TIO_TAIL_END],keypad[16];
+static uint8_t reply_wire[74];
+_Alignas(16) static uint8_t encoder[16];
+static unsigned raw_callbacks,simulated_steps,intercepts,group_sends;
+static int last_sim;
+static bool keypad_present,intercept_key=true;
+static uint32_t intercepted_code,intercepted_key,sent_key;
+/* The event as remote_native.c declares it (same members in the same order), read on the host with host offsets; the
+ * target offsets are the ARM compile-time assert in inject(). */
+typedef struct {void *current,*original;uint32_t code;void *user,*parameter,*previous;uint32_t flags;} HostEvent;
 static unsigned snap_count[4],snap_selected[4];
 typedef struct {uint8_t bytes[40];int len;size_t pos;bool writing;} File;
 static File files[3][2];static int file_error,io_fail;static size_t chunk;
@@ -43,19 +53,21 @@ static const char *top_app="com.rayneo.liteos.launcher";
 const char *nav_top_app(void){return top_app;}
 void nav_screen_on(bool b){(void)b;}
 void native_report_activity(void){}
-void *tgr_indev_next(void *p){return p?NULL:encoder;}
+void *tgr_indev_next(void *p){if(!p)return encoder;if(p==encoder&&keypad_present)return keypad;return NULL;}
 void *tgr_indev_group(void *p){return p;}
 void *tgr_indev_driver(void *p){return p;}
-unsigned tgr_indev_type(void *p){assert(p==encoder);return 4;}
-bool tgr_intercept(void *p){(void)p;return true;}
-unsigned tgr_group_send(void *p,uint32_t key){(void)p;(void)key;return 0;}
+unsigned tgr_indev_type(void *p){assert(p==encoder||p==keypad);return p==encoder?4:2;}
+bool tgr_intercept(void *p){const HostEvent *e=p;intercepts++;intercepted_code=e->code;intercepted_key=*(const uint32_t *)e->parameter;return intercept_key;}
+unsigned tgr_group_send(void *p,uint32_t key){assert(p==keypad);group_sends++;sent_key=key;return 0;}
+/* The knob state a raw step must find: a lease the remote step itself cancelled, or none ever started (the blocks after the lease cases). */
+static unsigned expected_knob=TK_CANCELED;
 static int32_t last_raw;
-void tgr_raw_wheel(const void *p){int32_t delta;memcpy(&delta,p,sizeof delta);last_raw=delta;raw_callbacks++;assert(find()->knob.state==TK_CANCELED&&find()->synthetic_depth);tgr_knob_observe(app,delta,now_ms);}
-void tgr_sim_wheel(int delta){assert(delta==1||delta==-1);simulated_steps++;}
+void tgr_raw_wheel(const void *p){int32_t delta;memcpy(&delta,p,sizeof delta);last_raw=delta;raw_callbacks++;assert(find()->knob.state==expected_knob&&find()->synthetic_depth);tgr_knob_observe(app,delta,now_ms);}
+void tgr_sim_wheel(int delta){assert(delta==1||delta==-1);simulated_steps++;last_sim=delta;}
 void fm_language_changed(void){}
 void fm_relayout(unsigned rows){assert(rows>=1&&rows<=3);}
 void fm_sync(void *p){if(!fm_tiles_busy()&&render_idle&&awake&&!detail_open)(void)fm_tiles_apply(p);}
-void native_snap(void *p){assert(p==app);if(snaps<4){snap_count[snaps]=*(uint32_t *)(app+0xa0);snap_selected[snaps]=*(uint32_t *)(app+0x88);}snaps++;fm_sync(p);}
+void native_snap(void *p){assert(p==app);if(snaps<4){snap_count[snaps]=*(uint32_t *)(app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT);snap_selected[snaps]=*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED);}snaps++;fm_sync(p);}
 int tdp_rnlink_send(unsigned business,const uint8_t *p,unsigned n,void *ctx){assert(business==15&&n==74&&!ctx);memcpy(reply_wire,p,n);return 0;}
 void *tap_fs_fopen(const char *path,const char *mode){
  if(io_fail==FAIL_OPEN){file_error=5;return NULL;}unsigned family=strstr(path,"turbo_tiles_")?1:strstr(path,"turbo_lang_")?2:0;size_t n=strlen(path);unsigned bank=(unsigned)(path[n-5]-'0');assert(bank<2);File *f=&files[family][bank];f->writing=mode[0]=='w';f->pos=0;
@@ -70,17 +82,25 @@ int tap_fs_fileno(void *p){(void)p;return io_fail==FAIL_FILENO?-1:5;}
 int tap_fs_fsync(int fd){assert(fd==5);return io_fail==FAIL_SYNC?-1:0;}
 int tap_fs_fclose(void *p){(void)p;return io_fail==FAIL_CLOSE?-1:0;}
 int *tap_fs_errno(void){return &file_error;}
-static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+0xa0)=13;for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=raw_callbacks=simulated_steps=0;memset(encoder,0,sizeof encoder);fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
+static void reset(void){if(timer.user)free(timer.user);timer=(HostTimer){0};memset(app,0,sizeof app);*(uint32_t *)(app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=TT_ITEMS;m8_tail_arm(app);for(unsigned a=0;a<3;a++)for(unsigned b=0;b<2;b++)files[a][b]=(File){.len=-1};allocations=frees=reads=writes=snaps=nexts=raw_callbacks=simulated_steps=intercepts=group_sends=0;last_sim=0;memset(encoder,0,sizeof encoder);keypad_present=false;intercept_key=true;intercepted_code=intercepted_key=sent_key=0;fail_alloc=fail_timer=cycle=blocked=detail_open=false;render_idle=awake=true;io_fail=0;chunk=0;now_ms=100;}
 static TTReply request(TTCommand q){uint8_t raw[32],wire[74];tt_encode(raw,&q);tt_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TTReply r;assert(tt_uncarrier(reply_wire,74,raw,true)&&tt_reply_decode(raw,32,&r));return r;}
 static bool layout_request(TMLCommand q,uint8_t reply[32]){uint8_t raw[32],wire[74];tml_encode(raw,&q);tml_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);return tml_uncarrier(reply_wire,74,reply,true);}
+static unsigned remote_request(TGRCommand q){uint8_t raw[32],wire[74];tgr_encode(raw,&q);tgr_carrier(wire,raw,false);TIONativeMessage m={.id=TIO_STOCK_MESSAGE_RNLINK,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);assert(tgr_uncarrier(reply_wire,74,raw,true)&&!memcmp(raw,"TGA1",4));return raw[5];}
 static TLGReply language_request(TLGCommand q){uint8_t raw[32],wire[74];tlg_encode(raw,&q);tlg_carrier(wire,raw,false);TIONativeMessage m={.id=1,.bytes=74,.data=wire};memset(reply_wire,0,74);tgr_native_message(&m);TLGReply r;assert(tlg_uncarrier(reply_wire,74,raw,true)&&tlg_reply_decode(raw,32,&r));return r;}
 int main(void){
- reset();tgr_knob_cancel(app,now_ms);assert(allocations==0&&reads==0);TTVisible map;fm_tile_snapshot(&map);assert(map.count==13&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
+ reset();tgr_knob_cancel(app,now_ms);assert(allocations==0&&reads==0);TTVisible map;fm_tile_snapshot(&map);assert(map.count==TT_ITEMS&&reads==0&&allocations==0);assert(control()&&reads==0&&allocations==1);timer.callback(&timer);assert(reads==0);TTReply r=request((TTCommand){.op=TT_QUERY,.request=1,.client=2});assert(r.result==TT_UNAVAILABLE&&reads==0&&writes==0);
  TLGReply lr=language_request((TLGCommand){10,TLG_SET,TLG_ZH});assert(lr.result==TLG_UNAVAILABLE&&lr.source==0&&reads==0&&writes==0&&tio_lang()==TLG_EN);
- assert(fm_menu_rows()==3&&reads==6);unsigned before=reads;assert(fm_menu_rows()==3&&reads==before);*(uint32_t *)(app+0x88)=12;assert(fm_tiles_apply(app)&&snaps==2&&snap_count[0]==13&&snap_count[1]==13);assert(!fm_tiles_apply(app));
+ assert(fm_menu_rows()==3&&reads==6);unsigned before=reads;assert(fm_menu_rows()==3&&reads==before);*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)=TT_CAMERA;assert(fm_tiles_apply(app)&&snaps==2&&snap_count[0]==TT_ITEMS&&snap_count[1]==TT_ITEMS);assert(!fm_tiles_apply(app));
  r=request((TTCommand){.op=TT_QUERY,.request=2,.client=2});assert(r.result==TT_OK&&r.token==77&&reads==before+2);snaps=0;detail_open=true;
- r=request((TTCommand){.op=TT_SET,.request=3,.client=2,.token=r.token,.generation=r.generation,.rank=719,.hide=0xf80});assert(r.result==TT_OK&&writes==1&&fm_tile_count()==13&&snaps==0);detail_open=false;render_idle=false;fm_sync(app);assert(fm_tile_count()==13);render_idle=true;awake=false;fm_sync(app);assert(fm_tile_count()==13);awake=true;fm_sync(app);assert(fm_tile_count()==8&&fm_tile_id(7)==12&&fm_tile_rank(12)==7&&*(uint32_t *)(app+0xa0)==8&&*(uint32_t *)(app+0x88)==7&&snaps==2&&snap_count[0]==13&&snap_count[1]==8);
- fm_tiles_forget(app);assert(fm_tile_count()==13);assert(fm_tiles_apply(app)&&fm_tile_count()==8);before=reads;fm_tile_snapshot(&map);assert(reads==before&&map.count==8);
+ r=request((TTCommand){.op=TT_SET,.request=3,.client=2,.token=r.token,.generation=r.generation,.rank=719,.hide=TT_HIDEABLE});assert(r.result==TT_OK&&writes==1&&fm_tile_count()==TT_ITEMS&&snaps==0);detail_open=false;render_idle=false;fm_sync(app);assert(fm_tile_count()==TT_ITEMS);render_idle=true;awake=false;fm_sync(app);assert(fm_tile_count()==TT_ITEMS);awake=true;fm_sync(app);
+ /* Every module tile but the camera hidden: 8 stock tiles and the camera, which lands at rank TT_STOCK. The count, selected index and shown frame
+  * stores land in stock's fields (R20). */
+ assert(fm_tile_count()==TT_MIN_VISIBLE&&fm_tile_id(TT_STOCK)==TT_CAMERA&&fm_tile_rank(TT_CAMERA)==TT_STOCK&&*(uint32_t *)(app+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)==TT_MIN_VISIBLE&&*(uint32_t *)(app+TIO_STOCK_MENU_SELECTED)==TT_STOCK&&*(uint32_t *)(app+TIO_STOCK_MENU_FRAME)==UINT32_MAX&&snaps==2&&snap_count[0]==TT_ITEMS&&snap_count[1]==TT_MIN_VISIBLE);
+ fm_tiles_forget(app);assert(fm_tile_count()==TT_ITEMS);assert(fm_tiles_apply(app)&&fm_tile_count()==TT_MIN_VISIBLE);before=reads;fm_tile_snapshot(&map);assert(reads==before&&map.count==TT_MIN_VISIBLE);
+ /* An unarmed menu (failed constructor check, smashed canary, destroy started) is stock's: no apply, not one byte written, no snap. */
+ {static uint8_t held[sizeof app];fm_tiles_forget(app);m8_tail_at(app)->canary=0;memcpy(held,app,sizeof app);unsigned held_snaps=snaps;
+  assert(!fm_tiles_apply(app)&&!memcmp(held,app,sizeof app)&&snaps==held_snaps&&fm_tile_count()==TT_ITEMS);fm_sync(app);assert(!memcmp(held,app,sizeof app)&&snaps==held_snaps);
+  m8_tail_arm(app);assert(fm_tiles_apply(app)&&fm_tile_count()==TT_MIN_VISIBLE);}
  blocked=true;before=reads;r=request((TTCommand){.op=TT_QUERY,.request=4,.client=2});assert(r.result==TT_BLOCKED&&reads==before);blocked=false;
  // Existing file adapter handles progress and every durability failure.
  before=reads;unsigned allocated=allocations;TDCommand lifecycle={TDQ_KNOB_START,100,1,30000};
@@ -91,10 +111,12 @@ int main(void){
  TDCommand kq={TDQ_KNOB_START,101,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,1200,now_ms);assert(find()->knob.net==1200&&find()->knob.samples==1);
  assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==1&&simulated_steps==1&&find()->knob.state==TK_CANCELED&&find()->knob.net==1200&&find()->synthetic_depth==0);
  /* One remote step is D counts in the launcher (400 until the phone changes it; the hook and the pages step once per D) and the stock 600 in every other allowed app, either direction. */
- {const char *const apps[]={"com.rayneo.liteos.launcher","com.rayneo.liteos.recorder","com.rayneo.liteos.prompter","com.rayneo.liteos.aiSubtitle","com.rayneo.liteos.conversationAssist","com.rayneo.liteos.assistant","com.rayneo.liteos.todo","com.rayneo.liteos.notification"};
+ {const char *const apps[]={"com.rayneo.liteos.launcher","com.rayneo.liteos.recorder","com.rayneo.liteos.prompter","com.rayneo.liteos.aiSubtitle","com.rayneo.liteos.conversationAssist","com.rayneo.liteos.assistant","com.rayneo.liteos.todo","com.rayneo.liteos.notification","com.rayneo.liteos.navigation"};
   for(unsigned a=0;a<sizeof apps/sizeof *apps;a++){top_app=apps[a];const int want=a==0?(int)tio_knob_detent():600;
    unsigned seen=raw_callbacks;assert(inject(TGR_PREVIOUS)==TGR_OK&&raw_callbacks==seen+1);const int32_t back=last_raw;
    assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+2&&last_raw==-back&&(last_raw==want||last_raw==-want));}   /* equal magnitude, opposite direction */
+  /* Do Not Disturb (and every other app off both lists) gets no input. */
+  top_app="com.rayneo.liteos.focusmode";{unsigned seen=raw_callbacks,steps=simulated_steps;assert(inject(TGR_NEXT)==TGR_BLOCKED&&inject(TGR_PRESS)==TGR_BLOCKED&&raw_callbacks==seen&&simulated_steps==steps&&intercepts==0);}
   top_app="com.rayneo.liteos.launcher";}
  assert(tio_knob_detent()==400); /* the default: nothing stored */
  kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
@@ -150,6 +172,39 @@ int main(void){
   /* A record that cannot be read (I/O error) falls back to 400, never to garbage, and reads again once the error is gone. */
   io_fail=FAIL_READ;tgr_runtime_snapshot(&st);assert(st.detent==400&&tio_knob_detent()==400&&!find());io_fail=0;tgr_runtime_snapshot(&st);assert(st.detent==600);
  }
- reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==13);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
- reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling");return 0;
+ /* Stock Navigation: the input gate admits the remote's knob and crown, while the settings, diagnostics and knob-lease gate stays shut there
+  * (owner decision O2 (a)). An OTA in progress shuts both, inside stock Navigation too. */
+ expected_knob=TK_ABSENT;
+ {reset();top_app="com.rayneo.liteos.navigation";assert(!tgr_runtime_allowed());
+  assert(remote_request((TGRCommand){.op=TGR_HELLO,.request=1,.client=5})==TGR_OK&&find());
+  unsigned seen=raw_callbacks;assert(remote_request((TGRCommand){.op=TGR_NEXT,.request=2,.session=77,.sequence=1,.tick=now_ms,.client=5})==TGR_OK&&raw_callbacks==seen+1&&(last_raw==600||last_raw==-600)&&last_sim==1);
+  assert(request((TTCommand){.op=TT_QUERY,.request=3,.client=2}).result==TT_BLOCKED);
+  uint8_t rep[32];assert(layout_request((TMLCommand){.op=TML_QUERY,.request=4,.client=9},rep)&&rep[7]==TML_BLOCKED);
+  TDCommand lease={TDQ_KNOB_START,200,1,30000};assert(tgr_knob_command(app,&lease,now_ms)==TK_BLOCKED);
+  blocked=true;seen=raw_callbacks;assert(!tgr_runtime_allowed()&&inject(TGR_NEXT)==TGR_BLOCKED&&raw_callbacks==seen);
+  assert(remote_request((TGRCommand){.op=TGR_HELLO,.request=5,.client=5})==TGR_BLOCKED);blocked=false;
+  /* The timer tick keeps the remote session inside stock Navigation and drops it when the top app is off both lists. */
+  assert(remote_request((TGRCommand){.op=TGR_HELLO,.request=6,.client=5})==TGR_OK&&find()->gate.session);timer.callback(&timer);assert(find()->gate.session);
+  top_app="com.rayneo.liteos.focusmode";timer.callback(&timer);assert(!find()->gate.session);
+  top_app="com.rayneo.liteos.launcher";}
+ /* Both encoder directions: stock steps by driver[TIO_STOCK_ENCODER_REVERSE] ? sign(x) : -sign(x), and that gives back the remote's step. */
+ {reset();assert(control());for(unsigned rev=0;rev<2;rev++){encoder[TIO_STOCK_ENCODER_REVERSE]=(uint8_t)rev;
+   for(int want=-1;want<=1;want+=2){unsigned seen=raw_callbacks;assert(inject(want>0?TGR_NEXT:TGR_PREVIOUS)==TGR_OK&&raw_callbacks==seen+1&&last_raw!=0);
+    const int stock=rev?(last_raw>0)-(last_raw<0):(last_raw<0)-(last_raw>0);assert(stock==want&&last_sim==want);}}
+  encoder[TIO_STOCK_ENCODER_REVERSE]=0;
+  /* A pending simulated step is never overwritten. */
+  {int16_t pending=1;memcpy(encoder+TIO_STOCK_ENCODER_STEP,&pending,sizeof pending);unsigned seen=raw_callbacks,steps=simulated_steps;
+   assert(inject(TGR_NEXT)==TGR_BUSY&&inject(TGR_PREVIOUS)==TGR_BUSY&&raw_callbacks==seen&&simulated_steps==steps);pending=0;memcpy(encoder+TIO_STOCK_ENCODER_STEP,&pending,sizeof pending);
+   assert(inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+1);}
+ }
+ /* The crown: a keypad device (type 2) gets the key event with the confirm and back keys, and an event nobody intercepts goes to the keypad's group. */
+ {reset();assert(control());assert(inject(TGR_PRESS)==TGR_UNAVAILABLE&&intercepts==0);keypad_present=true;
+  assert(inject(TGR_PRESS)==TGR_OK&&intercepts==1&&intercepted_code==TIO_STOCK_EVENT_KEY&&intercepted_key==TIO_STOCK_KEY_CONFIRM&&group_sends==0);
+  assert(inject(TGR_BACK)==TGR_OK&&intercepts==2&&intercepted_code==TIO_STOCK_EVENT_KEY&&intercepted_key==TIO_STOCK_KEY_BACK&&group_sends==0);
+  intercept_key=false;assert(inject(TGR_PRESS)==TGR_OK&&intercepts==3&&group_sends==1&&sent_key==TIO_STOCK_KEY_CONFIRM);
+  assert(inject(TGR_BACK)==TGR_OK&&intercepts==4&&group_sends==2&&sent_key==TIO_STOCK_KEY_BACK);
+  top_app="com.rayneo.liteos.navigation";assert(inject(TGR_BACK)==TGR_OK&&intercepts==5&&group_sends==3&&sent_key==TIO_STOCK_KEY_BACK);top_app="com.rayneo.liteos.launcher";}
+ expected_knob=TK_CANCELED;
+ reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==TT_ITEMS);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
+ reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling; 14 items (8 stock + 6 module), stock Navigation input allowed and Do Not Disturb refused, both encoder directions, busy encoder, keypad confirm/back, no write to an unarmed menu");return 0;
 }
