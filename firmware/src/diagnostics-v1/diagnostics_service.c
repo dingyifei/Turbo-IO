@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: menu tail and launcher +0x3c
+#error not ported to 1.0.6.11 yet: message hook and statfs layout (F4)
 #endif
 #include "diagnostics_service.h"
 #include "command.h"
@@ -21,7 +21,7 @@ extern int nav_connection(unsigned),td_gettid(void),tdp_rnlink_send(unsigned,con
 extern void *nav_ensure_menu(void *);
 extern const char *nav_top_app(void);
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
-static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,0x3c);}
+static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,TIO_STOCK_LAUNCHER_MANAGER);}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool launcher(void){const char *s=nav_top_app();const char *n="com.rayneo.liteos.launcher";if(!s)return false;for(unsigned i=0;i<32;i++){if(s[i]!=n[i])return false;if(!n[i])return true;}return false;}
 static void emit(const TDSample *sample){
@@ -38,14 +38,14 @@ static void enrich(TDSample *s,const Control *c){
 }
 static void discard(Control *c){if(!c)return;if(c->slot)c->slot->diagnostics=NULL;if(c->timer)stream_timer_delete(c->timer);stream_free(c);}
 static void tick(void *timer){
- Control *c=*(Control **)((uint8_t *)timer+12);if(!c)return;if(td_gettid()!=c->owner.owner_tid)return;
+ Control *c=*(Control **)((uint8_t *)timer+TIO_STOCK_TIMER_USER);if(!c)return;if(td_gettid()!=c->owner.owner_tid)return;
  uint32_t now=stream_tick();if(!paired()||!launcher()||!nav_business_idle()||!td_active(&c->d,now)){discard(c);return;}
  TDSample s;if(td_sample(&c->d,now,true,td_stock_light,clock_ms,&c->owner,&s)){enrich(&s,c);emit(&s);}if(!c->d.enabled)discard(c);
 }
 void td_slot_destroy(TNNavSlot *slot){if(slot&&slot->diagnostics)discard(slot->diagnostics);}
 TIOImageResult td_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  static const char name[]="turbo-diagnostics.tdg";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;TDCommand q;if(f->complete!=1||f->received!=f->declared||!td_command_decode(f->data,f->received,&q))return TIO_BAD_SIZE;
- if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TD_MESSAGE,.data=f->data,.bytes=f->received};return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;
+ if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TD_MESSAGE,.data=f->data,.bytes=f->received};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool td_message_is_ours(const TIONativeMessage *m){return m&&m->id==TD_MESSAGE;}
 static void reply_query(void *app,Control *c,TDCommand q,bool gate){
@@ -62,7 +62,7 @@ static void reply_query(void *app,Control *c,TDCommand q,bool gate){
 }
 void td_message_dispatch(const TIONativeMessage *m){
  TDCommand q;if(!td_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!td_command_decode(m->data,m->bytes,&q)||!paired())return;
- bool home=launcher();void *vm=home?manager():NULL,*app=ptr(vm,0x10);TNNavSlot *s=app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;Control *c=s?s->diagnostics:NULL;
+ bool home=launcher();void *vm=home?manager():NULL,*app=ptr(vm,TIO_STOCK_MANAGER_MENU);TNNavSlot *s=app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;Control *c=s?s->diagnostics:NULL;
  if(q.op>=TDQ_STATUS){int tid=td_gettid();bool gate=tgr_runtime_allowed()&&tid>=0&&(!c||c->owner.owner_tid==tid)&&(q.op==TDQ_STATUS||(home&&nav_business_idle()));reply_query(app,c,q,gate);return;}
  if(!home||!vm)return;if(!app&&q.op==TDQ_START&&nav_business_idle())app=nav_ensure_menu(vm);
  s=app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;if(!s)return;c=s->diagnostics;

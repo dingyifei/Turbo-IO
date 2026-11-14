@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: menu tail and launcher +0x3c
+#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
 #endif
 #include "../common-v1/tio_text.h"
 /* Pinned 1.0.5.5 AP bindings, Launcher UI executor only. No driver or BTH patch. */
@@ -35,13 +35,13 @@ extern unsigned native_event_code(void *),native_event_key(void *);
 extern uint32_t nav_always_on(const char *);
 extern void nav_release_always_on(const char *,uint32_t),native_label_text(void *,const char *),dc_text_mode(void *,int);
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
-static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,0x3c);}
+static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *navslot(void *app){return app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static TCSlot *slot(void *app){TNNavSlot *n=navslot(app);return n?n->camera:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;const char *s=nav_top_app();return s&&!strcmp(s,"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&ce_extension_idle();}
 static bool other(void *app){TNNavSlot *n=navslot(app);return !n||tap_service_visible(app)||tn_slot_visible(n)||tm_slot_visible(n->music)||tf_slot_visible(n->focus)||((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
-static bool owns(TCControl *c){return c&&c->app&&ptr(manager(),0x10)==c->app&&home()&&!other(c->app);}
+static bool owns(TCControl *c){return c&&c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home()&&!other(c->app);}
 static void emit(const TCPacket *q){uint8_t raw[TC_RAW_MAX],wire[TC_WIRE_MAX];size_t n=tc_packet(raw,sizeof raw,q,true);if(n){n=tc_wrap(wire,sizeof wire,raw,n,true);if(n)(void)tdp_rnlink_send(15,wire,(unsigned)n,NULL);}}
 static void event(TCControl *c,unsigned op,unsigned value){if(!c||!c->sid||c->event==UINT32_MAX)return;TCPacket q={.op=op,.sid=c->sid,.seq=++c->event,.a=value,.b=stream_tick()};emit(&q);}
 static void release_hold(TCControl *c){if(c->hold){nav_release_always_on("turbo_camera_v1",c->hold);c->hold=0;}}
@@ -60,7 +60,7 @@ static void render_status(TCControl *c){unsigned lang=tio_lang();if(!c->root)ret
  p=text;p=num(p,c->zoom/100);*p++='.';*p++=(char)('0'+c->zoom/10%10);*p++='x';*p=0;native_label_text(c->title,text);
  native_label_text(c->hint,c->sid?tio_text(TT_CAM_HINT,lang):tio_text(TT_CAM_SETUP,lang));hint_sync(c);
 }
-static void tick(void *t){TCControl *c=ptr(t,12);if(!c)return;uint32_t now=stream_tick();
+static void tick(void *t){TCControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c)return;uint32_t now=stream_tick();
  if(c->root&&!c->closing&&(!owns(c)||(c->sid&&(!paired()||(uint32_t)(now-c->seen)>15000))))close_page(c);
  if(c->frame)tc_expire(c->frame,now);
  if(c->root&&!c->closing)hint_sync(c);
@@ -74,13 +74,13 @@ bool tc_native_visible(void *app){TCSlot *s=slot(app);TCControl *c=s?s->control:
 /* Tile state: the phone camera session is open. Read only. */
 void tc_slot_live(TCSlot *s,TSLive *out){TCControl *c=s?s->control:NULL;if(c&&out)out->camera=c->sid&&!c->closing;}
 bool tc_slot_open(TCSlot *s){
- if(!s||!s->app||!home()||other(s->app)||ptr(manager(),0x10)!=s->app||!tn_lvgl_widgets().idle(NULL))return false;
+ if(!s||!s->app||!home()||other(s->app)||ptr(manager(),TIO_STOCK_MANAGER_MENU)!=s->app||!tn_lvgl_widgets().idle(NULL))return false;
  TCControl *c=s->control;if(c&&c->root&&!c->closing)return true;
  if(c&&c->closing&&!dispose(c))return false;
  if(!c){c=stream_memalign(8,sizeof *c);if(!c)return false;memset(c,0,sizeof *c);c->slot=s;c->app=s->app;c->zoom=100;c->timer=stream_timer_create(tick,100,c);if(!c->timer){stream_free(c);return false;}s->control=c;}
  c->transitioning=true;nav_set_state(manager(),1);c->transitioning=false;if(!owns(c))return false;
  c->frame=stream_memalign(64,sizeof *c->frame);if(!c->frame)return false;memset(c->frame,0,sizeof *c->frame);
- TNWidgets w=tn_lvgl_widgets();c->root=w.root(NULL,ptr(c->app,4));if(!c->root){stream_free(c->frame);c->frame=NULL;return false;}
+ TNWidgets w=tn_lvgl_widgets();c->root=w.root(NULL,ptr(c->app,TIO_STOCK_MENU_ROOT));if(!c->root){stream_free(c->frame);c->frame=NULL;return false;}
  if(!stream_add_event(c->root,deleted,0x24,c)){close_page(c);(void)dispose(c);return false;}
  c->canvas=w.canvas(NULL,c->root);c->title=w.label(NULL,c->root,26);c->state=w.label(NULL,c->root,24);c->hint=w.label(NULL,c->root,16);
  if(!c->canvas||!c->title||!c->state||!c->hint){close_page(c);(void)dispose(c);return false;}
@@ -93,9 +93,9 @@ void tc_native_wheel(void *app,int delta){TCSlot *s=slot(app);TCControl *c=s?s->
  if(!tc_native_visible(app)||!owns(c)||!c->sid||c->phase!=TC_LIVE)return;tio_hint_input(&c->th,stream_tick());int step=wr_input_wheel(&c->input,delta,stream_tick());if(!step)return;
  native_report_activity();if(!focus_screen_on()){nav_screen_on(true);return;}event(c,TC_ZOOM,step>0?1:0);
 }
-bool tc_native_event(void *e){void *app=ptr(manager(),0x10);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;
+bool tc_native_event(void *e){void *app=ptr(manager(),TIO_STOCK_MANAGER_MENU);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;
  if(!tc_native_visible(app)||!owns(c)||native_event_code(e)!=14)return false;
- unsigned key=native_event_key(e);uint32_t now=stream_tick();if(key!=0x3a&&key!=0x3b)return false;
+ unsigned key=native_event_key(e);uint32_t now=stream_tick();if(key!=TIO_STOCK_KEY_CONFIRM&&key!=0x3b)return false;
  nav_stop_event(e);native_report_activity();if(!focus_screen_on()){nav_screen_on(true);return true;}
  tio_hint_input(&c->th,now);
  if(key==0x3b){if(c->backed&&(uint32_t)(now-c->back)<700)return true;c->backed=true;c->back=now;TNNavSlot *n=navslot(app);if(n)n->back_until=now+700;
@@ -106,7 +106,7 @@ bool tc_native_event(void *e){void *app=ptr(manager(),0x10);TCSlot *s=slot(app);
 void tc_native_message(const TIONativeMessage *m){
  if(!m||m->id!=1||!m->data||m->bytes>TC_WIRE_MAX||!paired())return;
  uint8_t raw[TC_RAW_MAX];size_t n=tc_unwrap(m->data,m->bytes,raw,sizeof raw,false);TCPacket q;if(!n||!tc_decode(raw,n,&q,false)||(q.length&&q.op!=TC_CHUNK))return;
- TCPacket a={.op=q.op,.sid=q.sid,.seq=q.seq,.a=q.a};void *vm=manager(),*app=ptr(vm,0x10);
+ TCPacket a={.op=q.op,.sid=q.sid,.seq=q.seq,.a=q.a};void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);
  if(q.op==TC_HELLO){a.a=TC_WIDTH;a.b=TC_HEIGHT;a.c=stream_tick();emit(&a);return;}
  if(!q.sid){a.result=TC_SESSION;emit(&a);return;}
  if(!app&&q.op==TC_OPEN&&home())app=nav_ensure_menu(vm);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;uint32_t now=stream_tick();

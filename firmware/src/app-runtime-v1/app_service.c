@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: menu tail and launcher +0x3c
+#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
 #endif
 #include "../common-v1/business_idle.h"
 /* Compile in the named TCE1 full-tree derivative, not the old canonical menu9.
@@ -39,16 +39,16 @@ static void tick(void *);
 TAPMenu *tap_menu_create(void *app){TAPMenu *m=stream_memalign(8,sizeof *m);if(m){memset(m,0,sizeof *m);m->app=app;}return m;}
 void tap_menu_destroy(TAPMenu *m){if(m){tap_service_destroy(m->app);stream_free(m);}}
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
-static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,0x3c);}
+static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *slot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){const char *name=nav_top_app();if(!name||strcmp(name,"com.rayneo.liteos.launcher"))return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
-static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),0x10)==app&&!tf_slot_visible(s->focus)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
-static bool owns(TAPControl *c){return c->app&&ptr(manager(),0x10)==c->app&&home();}
+static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==app&&!tf_slot_visible(s->focus)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->page;}
+static bool owns(TAPControl *c){return c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home();}
 static TAPControl *control(bool create){
  void *t=NULL;for(unsigned i=0;i<512;i++){
   t=stream_timer_next(t);if(!t)break;
-  if(*(void (**)(void *))((uint8_t *)t+8)==tick){TAPControl *c=ptr(t,12);return c&&c->magic==TAP_SERVICE_MAGIC&&c->timer==t?c:NULL;}
+  if(*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB)==tick){TAPControl *c=ptr(t,TIO_STOCK_TIMER_USER);return c&&c->magic==TAP_SERVICE_MAGIC&&c->timer==t?c:NULL;}
   if(i==511)return NULL;
  }
  if(!create)return NULL;
@@ -65,7 +65,7 @@ static bool close_view(TAPControl *c){release(c);c->shelf=false;bool done=tap_ru
 static void activity(TAPControl *c){c->activity=stream_tick();native_report_activity();if(!c->token)c->token=nav_always_on("turbo_apps_v1");nav_screen_on(true);}
 static bool attach(TAPControl *c,void *app){
  if(!c||!available(app)||c->runner->closing||c->runner->view.retiring||c->runner->view.root)return false;
- c->app=app;c->runner->parent=ptr(app,4);if(!c->runner->parent)return false;
+ c->app=app;c->runner->parent=ptr(app,TIO_STOCK_MENU_ROOT);if(!c->runner->parent)return false;
  c->transitioning=true;nav_set_state(manager(),1);c->transitioning=false;
  if(!owns(c)){c->app=NULL;c->runner->parent=NULL;return false;}memset(&c->input,0,sizeof c->input);return true;
 }
@@ -99,10 +99,10 @@ void tap_service_wheel(void *app,int delta){TAPControl *c=control(false);if(!c||
 bool tap_service_event(void *e){TAPControl *c=control(false);if(!c||!c->runner->view.root||c->runner->closing||!owns(c)||native_event_code(e)!=0xe)return false;
  unsigned key=native_event_key(e);uint32_t now=stream_tick();
  if(key==0x3b){TNNavSlot *s=slot(c->app);if(s)s->back_until=now+700;input(c,TAP_LONG_PRESS);}
- else if(key==0x3a){if(!focus_screen_on())activity(c);else if(wr_input_press(&c->input,now)){activity(c);input(c,TAP_PRESS);}}
+ else if(key==TIO_STOCK_KEY_CONFIRM){if(!focus_screen_on())activity(c);else if(wr_input_press(&c->input,now)){activity(c);input(c,TAP_PRESS);}}
  else return false;nav_stop_event(e);return true;
 }
-static void tick(void *t){TAPControl *c=ptr(t,12);if(!c||c->magic!=TAP_SERVICE_MAGIC)return;
+static void tick(void *t){TAPControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c||c->magic!=TAP_SERVICE_MAGIC)return;
  if(c->runner->view.root&&!owns(c))(void)close_view(c);
  if(c->runner->view.retiring||c->runner->closing){if(tap_runner_poll(c->runner)){release(c);c->app=NULL;c->runner->parent=NULL;c->shelf=false;}}
  if(c->token&&(uint32_t)(stream_tick()-c->activity)>=30000)release(c);
@@ -112,7 +112,7 @@ static void tick(void *t){TAPControl *c=ptr(t,12);if(!c||c->magic!=TAP_SERVICE_M
 TIOImageResult tap_service_file(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  static const char name[]="turbo-app.tax";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;
  TAPCommand c;if(f->complete!=1||f->received!=f->declared||!tap_command_decode(f->data,f->received,&c))return TIO_BAD_SIZE;
- if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TAP_MESSAGE_ID,.data=f->data,.bytes=f->received};return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;
+ if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TAP_MESSAGE_ID,.data=f->data,.bytes=f->received};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool tap_service_ours(const TIONativeMessage *m){return m&&m->id==TAP_MESSAGE_ID;}
 void tap_service_message(const TIONativeMessage *m){
@@ -121,9 +121,9 @@ void tap_service_message(const TIONativeMessage *m){
  // Never launch/write over another business page, or mutate a visible shelf.
  // Stop/query remain usable without waking the panel or requiring home state.
  bool permit=cmd.op==TAP_STOP||home();
- if(cmd.op==TAP_INSTALL||cmd.op==TAP_REMOVE){void *app=ptr(manager(),0x10);permit=permit&&(!slot(app)||available(app))&&!c->runner->view.root&&!c->runner->view.retiring&&!c->runner->closing;}
+ if(cmd.op==TAP_INSTALL||cmd.op==TAP_REMOVE){void *app=ptr(manager(),TIO_STOCK_MANAGER_MENU);permit=permit&&(!slot(app)||available(app))&&!c->runner->view.root&&!c->runner->view.retiring&&!c->runner->closing;}
  if(cmd.op==TAP_LAUNCH&&cmd.session==c->session.nonce&&cmd.request>c->session.last_request&&!c->session.needs_query){
-  void *vm=manager(),*app=ptr(vm,0x10);if(!app&&home())app=nav_ensure_menu(vm);
+  void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);if(!app&&home())app=nav_ensure_menu(vm);
   // Reject stale slot identity before doing a native focus transition.
   bool target=cmd.slot<4&&tap_store_scan(c->store)==TAP_STORE_OK;
   if(target){TAPSlot *s=&c->store->slots[cmd.slot];target=s->present&&!s->tombstone&&s->version==cmd.version&&!strcmp(s->id,cmd.id);}

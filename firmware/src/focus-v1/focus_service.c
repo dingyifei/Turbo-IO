@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: menu tail and launcher +0x3c
+#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
 #endif
 #include "../common-v1/business_idle.h"
 #include "../app-runtime-v1/app_service.h"
@@ -34,22 +34,22 @@ extern void native_log(unsigned,unsigned,unsigned,unsigned,const char *,...);
 extern const M8RenderAPI m8_native_api;
 static void tick(void *);
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
-static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,0x3c);}
+static void *manager(void){return ptr(*(void **)(uintptr_t)0x199595d4,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *navslot(void *a){return a?((M8NativeTail *)((uint8_t *)a+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool home(void){static const char name[]="com.rayneo.liteos.launcher";const char *s=nav_top_app();if(!s)return false;for(unsigned i=0;i<sizeof name;i++)if(s[i]!=name[i])return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
-static bool owns(TFControl *c){return c->app&&ptr(manager(),0x10)==c->app&&home();}
-static TFControl *control(bool create){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)break;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+8);if(cb==tick){TFControl *c=ptr(t,12);return c&&c->magic==TF_MAGIC&&c->timer==t?c:NULL;}if(i==511)return NULL;}
+static bool owns(TFControl *c){return c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home();}
+static TFControl *control(bool create){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)break;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB);if(cb==tick){TFControl *c=ptr(t,TIO_STOCK_TIMER_USER);return c&&c->magic==TF_MAGIC&&c->timer==t?c:NULL;}if(i==511)return NULL;}
  if(!create)return NULL;TFControl *c=stream_memalign(64,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=TF_MAGIC;tf_init(&c->state,stream_tick());c->screen=focus_screen_on();c->timer=stream_timer_create(tick,250,c);if(!c->timer){stream_free(c);return NULL;}return c;
 }
 static void release(TFControl *c){if(c->token){nav_release_always_on("turbo_focus_v1",c->token);c->token=0;}}
 static void hide(TFControl *c){if(!c)return;c->closing=true;release(c);}
 static void deleted(void *e){TFControl *c=stream_event_user(e);if(!c||!c->view)return;c->view->root=NULL;c->view->open=false;c->closing=true;release(c);}
 static void *root(void *surface,void *parent){void *o=m8_native_api.create_root(parent);if(!o)return NULL;m8_native_api.hidden(o,true);if(!m8_native_api.configure_root(o,surface)){m8_native_api.delete_root(o);return NULL;}return o;}
-static bool available(TFSlot *s){if(!s||!home()||ptr(manager(),0x10)!=s->app)return false;TNNavSlot *n=navslot(s->app);return n&&!tap_service_visible(s->app)&&!tn_slot_visible(n)&&!tm_slot_visible(n->music)&&!((M8NativeTail *)((uint8_t *)s->app+TIO_STOCK_MENU_BYTES))->page;}
+static bool available(TFSlot *s){if(!s||!home()||ptr(manager(),TIO_STOCK_MANAGER_MENU)!=s->app)return false;TNNavSlot *n=navslot(s->app);return n&&!tap_service_visible(s->app)&&!tn_slot_visible(n)&&!tm_slot_visible(n->music)&&!((M8NativeTail *)((uint8_t *)s->app+TIO_STOCK_MENU_BYTES))->page;}
 static bool enter(TFControl *c,TFSlot *s,uint32_t now){if(!c||c->closing||!available(s))return false;TNWidgets api=tn_lvgl_widgets();if(!api.idle(NULL))return false;
  if(c->view&&c->app!=s->app)return false;c->slot=s;c->app=s->app;c->transitioning=true;nav_set_state(manager(),1);c->transitioning=false;if(!owns(c))return false;
- api.ctx=ptr(s->app,4);api.root=root;
+ api.ctx=ptr(s->app,TIO_STOCK_MENU_ROOT);api.root=root;
  if(!c->view){c->view=stream_memalign(64,sizeof *c->view);if(!c->view)return false;memset(c->view,0,sizeof *c->view);if(!tf_view_open(c->view,&api,api.ctx,api.ctx)){stream_free(c->view);c->view=NULL;return false;}if(!stream_add_event(c->view->root,deleted,0x24,c)){hide(c);return false;}}
  tf_peek(&c->state,now);c->shown=now;c->compact=false;tf_view_enter(c->view,now);
  /* Strictly bounded peek lease. Never modify global screen timeout. */
@@ -57,13 +57,13 @@ static bool enter(TFControl *c,TFSlot *s,uint32_t now){if(!c||c->closing||!avail
  return tf_view_draw(c->view,&c->state,false,now);
 }
 static void emit(TFControl *c,unsigned result,const TFCommand *cmd){uint8_t raw[64],out[256];tf_reply(raw,sizeof raw,&c->state,result,cmd);static const char p[]="{\"cmd\":\"turbo_focus_v1\",\"payload\":{\"data\":\"",s[]="\"}}",hex[]="0123456789abcdef";unsigned len=sizeof p-1+128+sizeof s-1,at=0;out[at++]=8;out[at++]=1;out[at++]=16;out[at++]=6;out[at++]=26;out[at++]=(uint8_t)((len&127)|128);out[at++]=(uint8_t)(len>>7);memcpy(out+at,p,sizeof p-1);at+=sizeof p-1;for(unsigned i=0;i<64;i++){out[at++]=hex[raw[i]>>4];out[at++]=hex[raw[i]&15];}memcpy(out+at,s,sizeof s-1);at+=sizeof s-1;(void)tdp_rnlink_send(15,out,at,NULL);}
-static bool auto_enter(TFControl *c,uint32_t now,bool explicit){if(!home())return false;void *vm=manager(),*app=ptr(vm,0x10);if(!vm)return false;
+static bool auto_enter(TFControl *c,uint32_t now,bool explicit){if(!home())return false;void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);if(!vm)return false;
  /* Head-up must not steal an open menu. An explicit phone request or a due
   * reminder may briefly replace the idle menu, never another business/page. */
- if(!explicit&&!c->view&&*(uint32_t *)((uint8_t *)vm+0x1c)!=0)return false;
+ if(!explicit&&!c->view&&*(uint32_t *)((uint8_t *)vm+TIO_STOCK_MANAGER_STATE)!=0)return false;
  if(!app)app=nav_ensure_menu(vm);TNNavSlot *n=navslot(app);return n&&enter(c,n->focus,now);
 }
-static void tick(void *t){TFControl *c=ptr(t,12);if(!c||c->magic!=TF_MAGIC)return;uint32_t now=stream_tick();tf_tick(&c->state,now);bool screen=focus_screen_on();
+static void tick(void *t){TFControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c||c->magic!=TF_MAGIC)return;uint32_t now=stream_tick();tf_tick(&c->state,now);bool screen=focus_screen_on();
  if(c->view&&!owns(c))hide(c);
  if(c->closing&&tn_lvgl_widgets().idle(NULL)&&(!c->view||tf_view_close(c->view))){if(c->view){stream_free(c->view);c->view=NULL;}c->closing=false;c->slot=NULL;c->app=NULL;}
  if(!c->closing){
@@ -92,10 +92,10 @@ void tf_slot_wheel(TFSlot *s,int delta){TFControl *c=control(false);if(!c||c->sl
  if(c->state.status==TF_RUNNING||c->state.status==TF_PAUSED)return;unsigned secs=c->state.duration_s;c->state.duration_s=step>0?(secs<1500?1500:secs<2700?2700:900):(secs>1500?1500:secs>900?900:2700);c->state.remaining_ms=c->state.duration_s*1000;c->state.dirty=true;}
 bool tf_handle_event(void *e){TFControl *c=control(false);if(!c||!c->view||c->closing||!owns(c)||native_event_code(e)!=0xe)return false;unsigned key=native_event_key(e);uint32_t now=stream_tick();
  if(key==0x3b){TNNavSlot *n=navslot(c->app);if(n)n->back_until=now+700;c->backed=true;c->last_back=now;if(tf_local(&c->state,TF_STOP,now,0,0))emit(c,TF_OK,NULL);hide(c);}
- else if(key==0x3a){if(c->backed&&(uint32_t)(now-c->last_back)<700){nav_stop_event(e);return true;}if(!focus_screen_on()||!c->state.peek){(void)enter(c,c->slot,now);}else if(wr_input_press(&c->input,now)){unsigned op=c->state.status==TF_RUNNING?TF_PAUSE:c->state.status==TF_PAUSED?TF_RESUME:TF_START;unsigned phase=0,seconds=c->state.duration_s;if(c->state.status==TF_DONE){phase=c->state.phase?0:(c->state.completed%4==0?2:1);seconds=phase==2?900:phase==1?300:1500;}tf_local(&c->state,op,now,seconds,phase);c->shown=now;(void)enter(c,c->slot,now);emit(c,TF_OK,NULL);}}
+ else if(key==TIO_STOCK_KEY_CONFIRM){if(c->backed&&(uint32_t)(now-c->last_back)<700){nav_stop_event(e);return true;}if(!focus_screen_on()||!c->state.peek){(void)enter(c,c->slot,now);}else if(wr_input_press(&c->input,now)){unsigned op=c->state.status==TF_RUNNING?TF_PAUSE:c->state.status==TF_PAUSED?TF_RESUME:TF_START;unsigned phase=0,seconds=c->state.duration_s;if(c->state.status==TF_DONE){phase=c->state.phase?0:(c->state.completed%4==0?2:1);seconds=phase==2?900:phase==1?300:1500;}tf_local(&c->state,op,now,seconds,phase);c->shown=now;(void)enter(c,c->slot,now);emit(c,TF_OK,NULL);}}
  else return false;nav_stop_event(e);return true;
 }
-TIOImageResult tf_file_receive(const TIONativeFile *f,TIOCopyEnqueue q){static const char name[]="turbo-focus.tfp";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;TFCommand c;if(f->complete!=1||f->received!=f->declared||!tf_decode(f->data,f->received,&c))return TIO_BAD_SIZE;if(!q)return TIO_UI_FAILED;TIONativeMessage m={.id=TF_MESSAGE,.data=f->data,.bytes=f->received};return q(1,&m)==0?TIO_OK:TIO_BUSY;}
+TIOImageResult tf_file_receive(const TIONativeFile *f,TIOCopyEnqueue q){static const char name[]="turbo-focus.tfp";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;TFCommand c;if(f->complete!=1||f->received!=f->declared||!tf_decode(f->data,f->received,&c))return TIO_BAD_SIZE;if(!q)return TIO_UI_FAILED;TIONativeMessage m={.id=TF_MESSAGE,.data=f->data,.bytes=f->received};return q(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;}
 bool tf_message_is_ours(const TIONativeMessage *m){return m&&m->id==TF_MESSAGE;}
 void tf_message_dispatch(const TIONativeMessage *m){TFCommand cmd;if(!tf_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!paired()||!tf_decode(m->data,m->bytes,&cmd))return;TFControl *c=control(true);if(!c)return;uint32_t now=stream_tick();
  bool duplicate=c->state.have_command&&c->state.command_sid==cmd.sid&&c->state.command_seq==cmd.seq&&c->state.command_crc==cmd.crc;

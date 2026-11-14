@@ -1,5 +1,5 @@
 #if defined(TD_STOCK_10611) && TD_STOCK_10611
-#error not ported to 1.0.6.11 yet: menu tail and launcher +0x3c
+#error not ported to 1.0.6.11 yet: module tile ids and message hook (F4)
 #endif
 #include "../common-v1/tio_text.h"
 #include "../common-v1/business_idle.h"
@@ -44,14 +44,14 @@ static int64_t local_time(void){void *m=nav_monitors(),*s=m?fm_system(m):NULL;re
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
 static uint32_t word(void *p,unsigned off){return p?*(uint32_t *)((uint8_t *)p+off):0;}
 static bool same(const char *a,const char *b){if(!a)return false;for(unsigned i=0;i<96;i++){if(a[i]!=b[i])return false;if(!b[i])return true;}return false;}
-static void *manager(void){void *launcher=*(void **)(uintptr_t)0x199595d4;return ptr(launcher,0x3c);}
+static void *manager(void){void *launcher=*(void **)(uintptr_t)0x199595d4;return ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *slot_of(void *app){return app?((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation:NULL;}
 static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
 static bool safe_home(void){
  if(!same(nav_top_app(),"com.rayneo.liteos.launcher"))return false;
  void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();
 }
-static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),0x10)==c->app&&word(manager(),0x1c)==1&&same(nav_top_app(),"com.rayneo.liteos.launcher");}
+static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&word(manager(),TIO_STOCK_MANAGER_STATE)==1&&same(nav_top_app(),"com.rayneo.liteos.launcher");}
 static bool available(void *ctx){Control *c=ctx;
 #if TIO_MUSIC_RUNTIME
  if(tap_service_visible(c->app))return false;
@@ -66,13 +66,13 @@ static void deleted(void *e){Control *c=stream_event_user(e);if(!c||!c->view)ret
 }
 static bool enter(void *ctx,const TNScene *s){
  Control *c=ctx;if(!c->slot||!safe_home())return false;
- void *vm=manager();if(!vm||ptr(vm,0x10)!=c->app)return false;
+ void *vm=manager();if(!vm||ptr(vm,TIO_STOCK_MANAGER_MENU)!=c->app)return false;
  /* Use native focus/visibility transition, never just unhide a hidden root. */
  nav_set_state(vm,1);if(!owns(c))return false;
  if(c->view){if(!c->view->open)return false;c->waiting=false;return tn_view_update(c->view,s,false);}
  TNWidgets a=tn_lvgl_widgets();if(!a.idle(a.ctx))return false;
  TNView *v=stream_memalign(64,sizeof *v);if(!v)return false;memset(v,0,sizeof *v);
- if(!tn_view_open(v,&a,ptr(c->app,4),s)){stream_free(v);return false;}
+ if(!tn_view_open(v,&a,ptr(c->app,TIO_STOCK_MENU_ROOT),s)){stream_free(v);return false;}
  c->view=v;c->waiting=false;
  if(!stream_add_event(v->root,deleted,0x24,c)){(void)tn_view_close(v);c->view=NULL;stream_free(v);return false;}
  return true;
@@ -125,7 +125,7 @@ static bool resume(Control *c){
  return ok;
 }
 static void tick(void *timer){
- Control *c=*(Control **)((uint8_t *)timer+12);if(!c)return;TNUI u=api(c);uint32_t now=stream_tick();
+ Control *c=*(Control **)((uint8_t *)timer+TIO_STOCK_TIMER_USER);if(!c)return;TNUI u=api(c);uint32_t now=stream_tick();
  if((c->runtime.active||c->waiting)&&(uint32_t)(now-c->last_check)>=1000){c->last_check=now;
   if(c->runtime.hidden){if(!paired())tn_disconnect(&c->runtime,&u);}   /* a background route has no page to own; it ends with its phone link */
   else if(!owns(c)||!safe_home())close_page(c);
@@ -166,7 +166,7 @@ static bool envelope(const uint8_t *p,size_t n){return p&&n>=32&&n<=TN_PACKET_MA
 TIOImageResult tn_file_receive(const TIONativeFile *f,TIOCopyEnqueue enqueue){
  static const char name[]="turbo-navigation.tnv";if(!f||memcmp(f->filename,name,sizeof name))return TIO_FOREIGN;
  if(f->complete!=1||f->declared!=f->received||!envelope(f->data,f->received))return TIO_BAD_SIZE;
- if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TN_MESSAGE_ID,.data=f->data,.bytes=f->received,.mode=0};return enqueue(1,&m)==0?TIO_OK:TIO_BUSY;
+ if(!enqueue)return TIO_UI_FAILED;TIONativeMessage m={.id=TN_MESSAGE_ID,.data=f->data,.bytes=f->received,.mode=0};return enqueue(TIO_STOCK_QUEUE_LAUNCHER,&m)==0?TIO_OK:TIO_BUSY;
 }
 bool tn_message_is_ours(const TIONativeMessage *m){return m&&m->id==TN_MESSAGE_ID;}
 /* A map message goes to the open page, or, with the page closed and the route kept, into the kept copy (data only, no drawing). */
@@ -176,7 +176,7 @@ static bool map_apply(Control *c,unsigned op,const uint8_t *body,size_t n){
 }
 void tn_message_dispatch(const TIONativeMessage *m){
  if(!tn_message_is_ours(m)||m->mode||m->reserved||m->context||m->padding[0]||m->padding[1]||m->padding[2]||!envelope(m->data,m->bytes)||!paired())return;
- void *vm=manager();if(!vm)return;void *app=ptr(vm,0x10);
+ void *vm=manager();if(!vm)return;void *app=ptr(vm,TIO_STOCK_MANAGER_MENU);
  if(!app&&safe_home())app=nav_ensure_menu(vm);
  Control *c=control(slot_of(app));if(!c){emit((TNReply){.result=TN_BUSY,.sid=u32(m->data+8),.sequence=u32(m->data+12)});return;}
  flush(c);if(c->pending)return;
@@ -202,11 +202,11 @@ void m8_hook_vm_event(void *event){
 #if TIO_MUSIC_RUNTIME
  if(tc_native_event(event)||tap_service_event(event)||tf_handle_event(event)||tm_handle_event(event))return;
 #endif
- void *vm=stream_event_user(event),*app=ptr(vm,0x10);TNNavSlot *s=slot_of(app);Control *c=s?s->control:NULL;
+ void *vm=stream_event_user(event),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);TNNavSlot *s=slot_of(app);Control *c=s?s->control:NULL;
  if(c&&c->view&&owns(c)&&native_event_code(event)==0xe){
   unsigned key=native_event_key(event);
   if(key==0x3b){close_page(c);nav_stop_event(event);return;}
-  if(key==0x3a){TNUI u=api(c);if(c->runtime.active)(void)tn_button_wake(&c->runtime,&u,stream_tick());
+  if(key==TIO_STOCK_KEY_CONFIRM){TNUI u=api(c);if(c->runtime.active)(void)tn_button_wake(&c->runtime,&u,stream_tick());
    else if(c->waiting){c->waiting_since=stream_tick();(void)power(c,TN_POWER_WAKE_HOLD);}nav_stop_event(event);return;}
  }
  stock_vm_event(event);

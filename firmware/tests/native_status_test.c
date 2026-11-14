@@ -6,7 +6,7 @@
 #include <string.h>
 #include "../src/diagnostics-v1/diagnostics_service.h"
 #include "../src/diagnostics-v1/knob_calibration.h"
-static void *host_manager(void),*host_ptr(void *,unsigned),*host_timer_user(void *);
+static void *host_launcher(void),*host_ptr(void *,unsigned),*host_timer_user(void *);
 static TNNavSlot *host_slot(void *);
 #define TMG4_INPUT_SHA_BYTES {0x44}
 #include "diagnostics_service_host.inc"
@@ -14,16 +14,19 @@ typedef struct {void (*callback)(void *);void *user;} HostTimer;
 static HostTimer timer;
 static TNNavSlot slot;
 static uint8_t vm[32],app[8];
+_Static_assert(TIO_STOCK_MANAGER_MENU+sizeof(void *)<=sizeof vm,"");
+/* The launcher object (named launcher_object: the dispatcher has a launcher() function): its view manager pointer (vm) sits at TIO_STOCK_LAUNCHER_MANAGER. */
+static uint8_t launcher_object[TIO_STOCK_LAUNCHER_MANAGER+sizeof(void *)];
 static unsigned allocations,frees,probes,statfs_calls,ensures,emits,enqueues;
 static bool connected=true,home=true,idle=true,runtime_allowed=true,fail_heap,fail_timer,bad_nand;
 static int tid=7;static uint32_t now_ms=100,probe_delay;
 static TKState knob;
 static TDSample last;
-static void *host_manager(void){return vm;}
+static void *host_launcher(void){return launcher_object;}
 static void *host_ptr(void *p,unsigned offset){void *out=NULL;if(p)memcpy(&out,(uint8_t *)p+offset,sizeof out);return out;}
 static TNNavSlot *host_slot(void *p){assert(p==app);return &slot;}
 static void *host_timer_user(void *p){return ((HostTimer *)p)->user;}
-static void set_app(void *p){memcpy(vm+0x10,&p,sizeof p);}
+static void set_app(void *p){memcpy(vm+TIO_STOCK_MANAGER_MENU,&p,sizeof p);}
 void *stream_memalign(size_t align,size_t n){assert(align==8&&n<=4096);allocations++;return fail_heap?NULL:malloc(n);}
 void stream_free(void *p){frees++;free(p);}
 void *stream_timer_create(void (*cb)(void *),uint32_t ms,void *user){assert(ms==1000);if(fail_timer)return NULL;assert(!timer.user);timer=(HostTimer){cb,user};return &timer;}
@@ -46,7 +49,7 @@ static unsigned nibble(uint8_t c){assert((c>='0'&&c<='9')||(c>='a'&&c<='f'));ret
 int tdp_rnlink_send(unsigned business,const uint8_t *p,unsigned n,void *ctx){assert(business==15&&n==571&&!ctx&&!memcmp(p,(uint8_t[]){8,1,16,6,26,0xb4,4},7));uint8_t raw[256];for(unsigned i=0;i<256;i++)raw[i]=(uint8_t)(16*nibble(p[56+2*i])+nibble(p[57+2*i]));assert(td_decode(raw,sizeof raw,&last));emits++;return 0;}
 static int enqueue(unsigned channel,const TIONativeMessage *m){assert(channel==1&&m->id==TD_MESSAGE&&m->bytes==24);enqueues++;return 0;}
 static void send(TDCommand q){uint8_t raw[24];assert(td_command_encode(q,raw,24));TIONativeMessage m={.id=TD_MESSAGE,.data=raw,.bytes=24};td_message_dispatch(&m);}
-static void reset(void){if(slot.diagnostics)td_slot_destroy(&slot);timer=(HostTimer){0};slot=(TNNavSlot){0};memset(vm,0,sizeof vm);knob=(TKState){0};allocations=frees=probes=statfs_calls=ensures=emits=enqueues=0;connected=home=idle=runtime_allowed=true;fail_heap=fail_timer=bad_nand=false;tid=7;now_ms=100;probe_delay=0;}
+static void reset(void){if(slot.diagnostics)td_slot_destroy(&slot);timer=(HostTimer){0};slot=(TNNavSlot){0};memset(vm,0,sizeof vm);{void *v=vm;memset(launcher_object,0,sizeof launcher_object);memcpy(launcher_object+TIO_STOCK_LAUNCHER_MANAGER,&v,sizeof v);}knob=(TKState){0};allocations=frees=probes=statfs_calls=ensures=emits=enqueues=0;connected=home=idle=runtime_allowed=true;fail_heap=fail_timer=bad_nand=false;tid=7;now_ms=100;probe_delay=0;}
 int main(void){
  reset();home=false;send((TDCommand){TDQ_STATUS,91,1,0});assert(last.calibration_result==TK_OK&&probes==1&&statfs_calls==1&&ensures==0);
 
