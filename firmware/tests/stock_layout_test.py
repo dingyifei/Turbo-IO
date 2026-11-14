@@ -53,7 +53,7 @@ SAME_FUNCTION_EXCEPTION = ('TIO_STOCK_MESSAGE_ID_MAX', 'same-function: bound and
 # Decision R3: the one derived constant, with its parts. Any other derived header macro is refused.
 DERIVED_CONSTANT = ('TIO_MENU_SCROLL_POSITION_OFFSET', ('TIO_STOCK_MENU_MOTION', 'TIO_STOCK_MOTION_POSITION'))
 # The number of context entries over all records, so that a dropped context is noticed.
-CONTEXT_ENTRIES = 51
+CONTEXT_ENTRIES = 64
 # A +1 witness is an unsigned compare whose bound is inclusive: the next flag reader is bls (in range) or bhi (out
 # of range), with only flag-preserving register moves between. bcc/bcs would make the bound exclusive.
 PLUS_ONE_SHAPES = ('cmp-imm8', 'cmp.w-imm')
@@ -473,6 +473,9 @@ def load_module(path, name):
     return module
 
 
+RAM_WINDOW = load_module(FW/'tools'/'check_layout.py', 'stock_layout_lint').RAM_WINDOW
+
+
 def active_table(spec):
     """The one rebase table in baseline/ whose `to` is the tree's stock base."""
     found = []
@@ -729,6 +732,10 @@ class World:
         return self.loads_cache[value]
 
     def lit_value(self, row):
+        # Phase F4: a link.ld symbol in the lint's RAM window (the launcher global) is a literal locator too. The window
+        # is check_layout.RAM_WINDOW, so this test, the lint and rebase_apply share one RAM window (ruling R18).
+        if row not in self.values and row in self.link and RAM_WINDOW[0] <= self.link[row] < RAM_WINDOW[1]:
+            return self.link[row]
         if row not in self.values:
             raise Fail('lit:%s: no such value row in the active table' % row)
         return self.values[row]

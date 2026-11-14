@@ -356,7 +356,7 @@ void m8_hook_message(void *handler,const TIONativeMessage *message){
 #else
   if(!tio_native_message_is_ours(message)){stock_message(handler,message);return;}
 #endif
-  void *launcher=*(void **)(uintptr_t)0x199595d4;
+  void *launcher=tio_launcher_global;
   void *manager=launcher?ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER):NULL;
   void *app=manager?ptr(manager,TIO_STOCK_MANAGER_MENU):NULL;
 #if TIO_DISPLAY_RUNTIME

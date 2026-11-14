@@ -40,7 +40,7 @@ REVIEWED_BEFORE_CHANGES={
 }
 # A format-2 raw edit keeps newAfter == oldAfter (the patched bytes stay the TMG3 ones) unless listed here with exactly
 # this new after: {(to, role): (newAfter, reason)}. Ships empty; filling it is an owner decision in a reviewed commit.
-REVIEWED_AFTER_CHANGES={}
+REVIEWED_AFTER_CHANGES={('1.0.6.11','Carousel item count 7 to 13'):('0e21','8 stock + 6 module tiles (F4)')}
 FORMATS=('turboio-rebase-1','turboio-rebase-2')
 VERDICTS=('shift','changed')
 def load(path,name):

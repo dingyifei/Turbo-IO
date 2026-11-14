@@ -251,7 +251,7 @@ def main():
     assert rebase.tree_state(FW)==base
     with tempfile.TemporaryDirectory(prefix='stock-base-') as tmp:
         tree=Path(tmp)/'firmware';shutil.copytree(FW,tree,ignore=shutil.ignore_patterns('build','__pycache__'))
-        col=rebase.column(table,base);v=next(x for x in table['values'] if x['name']=='launcher_global')
+        col=rebase.column(table,base);v=next(x for x in table['values'] if x['name']=='display_unit')
         path=tree/sorted(rebase.sites(v))[0];path.write_text(path.read_text().replace(v[col],v[rebase.other(col)],1))
         refused(lambda:rebase.tree_state(tree,table),'mixed tree')
         assert any('stale' in p for p in rebase.problems(tree,table,base))

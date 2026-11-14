@@ -22,7 +22,7 @@ def main():
         source=strip_guard((FW/'src/diagnostics-v1/diagnostics_service.c').read_text())
         replacements={
             'return p?*(void **)((uint8_t *)p+off):NULL;':'return host_ptr(p,off);',
-            '*(void **)(uintptr_t)0x199595d4':'host_launcher()',
+            'tio_launcher_global':'host_launcher()',
             '((M8NativeTail *)((uint8_t *)app+TIO_STOCK_MENU_BYTES))->navigation':'host_slot(app)',
             '*(Control **)((uint8_t *)timer+TIO_STOCK_TIMER_USER)':'((Control *)host_timer_user(timer))',
         }

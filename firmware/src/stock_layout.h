@@ -67,10 +67,16 @@
 #define TIO_STOCK_EVENT_CODE 0x8u
 /* LVGL event: the parameter pointer. */
 #define TIO_STOCK_EVENT_PARAM 0x10u
+/* LVGL event: the key event code. */
+#define TIO_STOCK_EVENT_KEY 0xeu
 /* Key id: the confirm key that key events carry. */
 #define TIO_STOCK_KEY_CONFIRM 0x3au
+/* Key id: the back key that key events carry. */
+#define TIO_STOCK_KEY_BACK 0x3bu
 /* Encoder input driver: the step count (16 bits, signed). */
 #define TIO_STOCK_ENCODER_STEP 0x6u
+/* Encoder input driver: nonzero when the wheel direction is reversed (a byte). */
+#define TIO_STOCK_ENCODER_REVERSE 0x9u
 
 /* LVGL global, draw units, display and layers. */
 /* LVGL global: the head of the draw-unit list. */
@@ -101,6 +107,8 @@
 #define TIO_STOCK_QUEUE_LAUNCHER 1u
 /* Launcher message handler: number of message ids its dispatcher handles (1 to this value). */
 #define TIO_STOCK_MESSAGE_ID_MAX 51u
+/* Launcher message handler: the id of a raw phone-link payload message. */
+#define TIO_STOCK_MESSAGE_RNLINK 1u
 /* Queued message: the message id. */
 #define TIO_STOCK_MESSAGE_ID 0x0u
 /* Queued message: the data pointer. */

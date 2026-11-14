@@ -747,9 +747,11 @@ REVIEWED_BEFORE_CHANGES = {  # {(to, role): new before}; typed from the 1.0.6.11
     ('1.0.6.11', 'Menu replacement frame_start'): '1e2380b5',  # clamp to 6 replaced by usat 0..7; the b.w covers two whole instructions
     ('1.0.6.11', 'Menu replacement label_index'): '90b581f3',  # clamp to 6 replaced by usat 0..7; full replacement, never returns
     ('1.0.6.11', '284-byte menu allocation'): '4ff4867050f07cfc',  # mov.w r0,#0x10c + bl, 8 bytes (pad 2)
-    ('1.0.6.11', 'Carousel item count 7 to 13'): '0821',  # stock count 8; the after value is an owner decision (later phase)
+    ('1.0.6.11', 'Carousel item count 7 to 13'): '0821',  # stock count 8; phase F4 sets the after value (REVIEWED_AFTER_CHANGES)
     ('1.0.6.11', 'File callback registration'): '00242048214b84610360',  # the two ldr literal offsets moved by 4 bytes
 }
+# {(to, role): new after} of a raw edit, decided in phase F4: the carousel count follows the 8 stock + 6 module tile model.
+REVIEWED_AFTER_CHANGES = {('1.0.6.11', 'Carousel item count 7 to 13'): '0e21'}  # movs r1,#14
 REVIEWED_STRING_CHANGES = {('1.0.6.11', 'coexist_string_APP_INFO]_[Service.h:58'): (':58]', ':62]', 'line number moved in stock')}
 # {(to, TSV kind, TSV name): {'old', 'new', 'bytes': (n, sha256 of new[new&~1 : +n]), 'votes': (method, exact report
 # string), 'reason'}}, one entry per line. An entry applies only when the row's old value and proposal are `old` and
@@ -771,6 +773,21 @@ REVIEWED_SITES = {
     ('1.0.6.11', 'linkld', 'dots_stock_notify'): {'old': 0x10584425, 'new': 0x105a8ced, 'bytes': (248, 'd941bbe769f8e34b59da51d2afd17413771f944ba22c50cf13d29f9cd92f9094'), 'votes': ('call', '1 of 1 paired votes for 0x105a8cec'), 'reason': 'its one caller pairs and names it; its bounded body (228 bytes old, 248 new) has no T2 hit in the new image and no pool word or anchor row within 0x40 below names it, so besides that caller only the positional align places it'},
     ('1.0.6.11', 'linkld', 'nav_ensure_menu'): {'old': 0x10683241, 'new': 0x106a1365, 'bytes': (132, '1020fb1e2ba5a386a1bc954fa537781146be77e37b57a4ea8ff9f76b1192263e'), 'votes': ('call', '1 of 1 paired votes for 0x106a1364'), 'reason': 'one of its two callers pairs and names it (the other does not pair); its bounded body (130 bytes old, 132 new) has no T2 hit in the new image and no pool word or anchor row within 0x40 below names it, so besides that caller only the positional align and edge2 place it'},
     ('1.0.6.11', 'abi-range', '0x10686caa'): {'old': 0x10686caa, 'new': 0x106a4fd6, 'bytes': (18, '77ae3ae8ee8475e1f9525e348b6f8304daa4e0e81d6ca9b5366c1cea1ff908e5'), 'votes': ('align', 'equal block of 79 tokens (36 before x, 35 after), once in each span; anchors 0x10686c4a->0x106a4f76 (linkld resume_wheel), 0x10686db8->0x106a50e0 (linkld native_snap)'), 'reason': 'an 18-byte function with six old twins and no paired caller or pool word (its two pointer loads do not pair); body leaves one twin not ruled out, so only the positional align, edge and edge2 place it'},
+}
+# Reviewed departures of the NEW tree from the old tree's universe, keyed by `to` (decided in phase F4). Every row is still
+# derived and checked from the old tree exactly as before, so no other row's evidence and no REVIEWED_SITES entry
+# changes; only the table written differs. pruneLinkld: link.ld rows left out of the table (the new tree no longer
+# defines them). valueToLinkld: a value row written as a link.ld row of the given symbol, with the same old and new
+# address and evidence, and no value row (the new tree names the address once, in link.ld).
+REVIEWED_UNIVERSE_CHANGES = {
+    '1.0.6.11': {
+        'pruneLinkld': ('dots_getrandom', 'dots_stock_notify', 'ce_utc_time', 'ce_focus_manager', 'ce_focus_enabled',
+                        'ce_head_mode', 'ce_stock_head_notify_resume', 'ce_stock_head_start_resume',
+                        'ce_stock_head_stop_resume', 'ce_stock_sys_destroy_resume'),
+        'valueToLinkld': {'launcher_global': 'tio_launcher_global'},
+        'reason': 'referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher '
+                  'global is named once, in link.ld, instead of at eleven source sites',
+    },
 }
 FIELD_BASES = {'native_light_current': 'display_unit', 'native_light_peak': 'display_unit'}  # field method: value -> RAM base value
 NEW_COUNTING = ('body', 'align', 'start', 'edge2', 'entry', 'veneer')
@@ -1849,7 +1866,12 @@ def propose(args):
         if e['kind'] == 'raw':
             after = bytes.fromhex(e['after'])
             if len(ob) == len(nb) == len(after) == 2 and ob[1] == nb[1] == after[1] and (ob[1] & 0xe0) == 0x20:
-                out.update(oldAfter=e['after'], newAfter=e['after'])
+                na = REVIEWED_AFTER_CHANGES.get((to, e['role']), e['after'])
+                ok = len(bytes.fromhex(na)) == 2 and bytes.fromhex(na)[1] == after[1]
+                if ok:
+                    out.update(oldAfter=e['after'], newAfter=na)
+                else:
+                    reasons.append('raw after: reviewed new after %s does not keep the instruction' % na)
             else:
                 reasons.append('raw after: before %s, new before %s and after %s do not differ in the immediate byte alone' % (ob.hex(), nb.hex(), after.hex()))
         return reasons, proof, out
@@ -2063,12 +2085,26 @@ def propose(args):
         if not accepted:
             rejected.append({'kind': r['kind'], 'name': r['name'], 'old': r['it']['text'], 'proposal': report_rows[-1]['proposal'], 'reason': reason})
     table_rows = {'linkld': [], 'edit': [], 'value': [], 'abi-range': []}
+    universe = REVIEWED_UNIVERSE_CHANGES.get(to, {'pruneLinkld': (), 'valueToLinkld': {}})
+    prune, to_link = set(universe['pruneLinkld']), dict(universe['valueToLinkld'])
+    if not rejected:
+        missing = sorted(prune - {k[1] for k in acc if k[0] == 'linkld'}) + sorted(set(to_link) - {k[1] for k in acc if k[0] == 'value'})
+        if missing:
+            raise SystemExit('rebase table NOT written: REVIEWED_UNIVERSE_CHANGES names rows that are not accepted rows: ' + ', '.join(missing))
+    converted = []
     for it in items:
         if it['key'] not in acc:
             continue
         p, res = acc[it['key']], results[it['key']]
         tail = {'verdict': res['verdict'], 'checks': res['checks'], 'proof': res['proof']}
         oa = it['old']
+        if it['family'] == 'linkld' and it['key'][1] in prune:
+            continue
+        if it['family'] == 'value' and it['key'][1] in to_link:
+            assert it['type'] == 'ram', it['key'][1] + ': only a RAM value becomes a link.ld row'
+            converted.append(dict({'symbol': to_link[it['key'][1]], 'old': it['text'], 'new': hex(p), 'delta': p - oa,
+                                   'fromValue': it['key'][1]}, **tail))
+            continue
         if it['family'] == 'linkld':
             row = {'symbol': it['key'][1], 'old': it['text'], 'new': hex(p), 'delta': (p & ~1) - (oa & ~1)}
         elif it['family'] == 'edit':
@@ -2084,6 +2120,7 @@ def propose(args):
             row = {'old': it['text'], 'new': hex(p), 'bytes': it['bytes'], 'oldSHA256': it['range'][col + 'SHA256'],
                    'newSHA256': sha(new[p - FLASH: p - FLASH + it['bytes']])}
         table_rows[it['family']].append(dict(row, **tail))
+    table_rows['linkld'] += converted
     module = bases[to]['moduleVA']
     described_inputs = [(role, Path(path)) for role, path in (
         ('readiness proposals (TSV; compared with, never used to derive)', args.propose),
@@ -2098,10 +2135,14 @@ def propose(args):
                        'tree': 'firmware tree on stock %s (%s)' % (frm, described(tree, args.inputs_root)),
                        'stock': {b: bases[b]['stockZIPFile'] for b in (frm, to)},
                        'reviewed': {'beforeChanges': {r: v for (t, r), v in REVIEWED_BEFORE_CHANGES.items() if t == to},
+                                    'afterChanges': {r: v for (t, r), v in REVIEWED_AFTER_CHANGES.items() if t == to},
                                     'stringChanges': {n: list(v) for (t, n), v in REVIEWED_STRING_CHANGES.items() if t == to},
                                     'sites': {'%s %s' % (k, n): {'old': hex(v['old']), 'new': hex(v['new']), 'bytes': list(v['bytes']),
                                                                  'votes': list(v['votes']), 'reason': v['reason']}
-                                              for (t, k, n), v in REVIEWED_SITES.items() if t == to}}},
+                                              for (t, k, n), v in REVIEWED_SITES.items() if t == to},
+                                    **({'universe': {'pruneLinkld': list(universe['pruneLinkld']),
+                                                     'valueToLinkld': dict(universe['valueToLinkld']),
+                                                     'reason': universe['reason']}} if to in REVIEWED_UNIVERSE_CHANGES else {})}},
         'bases': bases,
         'moduleVA': {'old': old_table['moduleVA'][col], 'new': module, 'derivation': MODULE_DERIVATION},
         'linkld': table_rows['linkld'], 'edits': table_rows['edit'], 'values': table_rows['value'],

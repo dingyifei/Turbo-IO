@@ -104,10 +104,7 @@ GUARD_LINE_1 = '#if defined(TD_STOCK_10611) && TD_STOCK_10611'
 GUARD_LINE_2 = '#error not ported to 1.0.6.11 yet: '
 GUARD_LINE_3 = '#endif'
 # link.ld symbols referenced by no built file, header or edit target. The F4 prune changes this list in its commit.
-UNREFERENCED = ('dots_getrandom', 'dots_stock_notify',
-                'ce_utc_time', 'ce_focus_manager', 'ce_focus_enabled', 'ce_head_mode',
-                'ce_stock_head_notify_resume', 'ce_stock_head_start_resume', 'ce_stock_head_stop_resume',
-                'ce_stock_sys_destroy_resume')
+UNREFERENCED = ()
 RULES = ('cast', 'helper', 'wordcast', 'index', 'abs', 'addr', 'asm', 'queue')
 # The stock windows of rule abs. The flash window comes from rebase_apply (FLASH and the table's AP sizes). The RAM
 # start is rebase_apply.DATA_RUNTIME. The RAM end and the copy region are written in rebase_apply only inside

@@ -189,7 +189,12 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
     oldStock='firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip',
     newStock=('inputs', 'tmg12-emu/stock/Strix-OS-1.0.6.11-members-canonical.zip'),
     oldAP='af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae', newAP='9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260',
-    addedAfterOldTree=set(), stringChanges={0x1804_338b: (':58]', ':62]')},   # '_': not a value token for rebase_apply
+    addedAfterOldTree=set(), stringChanges={0x1804_338b: (':58]', ':62]')},
+    newTreeChanges=dict(pruneLink={'dots_getrandom', 'dots_stock_notify', 'ce_utc_time', 'ce_focus_manager',
+                                   'ce_focus_enabled', 'ce_head_mode', 'ce_stock_head_notify_resume',
+                                   'ce_stock_head_start_resume', 'ce_stock_head_stop_resume',
+                                   'ce_stock_sys_destroy_resume'},
+                        valueToLink={0x1998_9694: 'tio_launcher_global'}),   # '_': not a value token for rebase_apply
     knownBad={'nav_top_app': dict(bad=0x106f4b25, good=0x106f4b59, windowsDiffer=None, split=True),
               'ce_ext_106d3310': dict(bad=0x106f4b25, good=0x106f4b59, windowsDiffer=None, split=True),
               'native_label_create': dict(bad=0x104e7234, good=0x104e587d, windowsDiffer=None)},
@@ -1199,13 +1204,30 @@ def prefix(rows, d, old, new, disabled):
 
 # ---------------------------------------------------------------- comparisons
 
+NEW_TREE = {'pruneLink': set(), 'valueToLink': {}}   # set from the pair's newTreeChanges in check()
+
+
 def compare_tree(old_u, rows, new_fw, new_img):
     """Problems: the new tree against the derived values."""
     out = []
     nu = read_tree(new_fw, new_img)
+    prune, to_link = NEW_TREE['pruneLink'], NEW_TREE['valueToLink']
     by = {(r['kind'], r['name'], r['old']): r for r in rows}
     for r in rows:
         if r['new'] is None:
+            continue
+        if r['kind'] == 'link' and r['name'] in prune:
+            if r['name'] in nu['link']:
+                out.append('link.ld %s is pruned (newTreeChanges) but still defined' % r['name'])
+            continue
+        if r['kind'] == 'value' and r['old'] in to_link:
+            sym = to_link[r['old']]
+            if nu['link'].get(sym) != r['new']:
+                out.append('link.ld %s = %s, derived %s (value %s turned into a link.ld symbol)' % (
+                    sym, hex(nu['link'].get(sym) or 0), hex(r['new']), hex(r['old'])))
+            for v in (r['new'], r['old']):
+                if v in nu['sites']:
+                    out.append('value %s is a link.ld symbol now, but the tree still writes it: %s' % (hex(v), dict(nu['sites'][v])))
             continue
         if r['kind'] == 'link':
             got = nu['link'].get(r['name'])
@@ -1277,6 +1299,8 @@ def compare_table(rows, table, new_img=None, added=frozenset()):
     out = []
     checked = 0
     mine = {(r['kind'], r['name'] if r['kind'] in ('link', 'edit') else r['old']) for r in rows}
+    prune, to_link = NEW_TREE['pruneLink'], NEW_TREE['valueToLink']
+    mine |= {('link', s) for v, s in to_link.items() if ('value', v) in mine}
     for key in ([('link', r['symbol']) for r in table['linkld']] + [('edit', r['role']) for r in table['edits']] +
                 [('abi', int(r['old'], 16)) for r in table['stockAbiRanges']] +
                 [('value', int(v['old'], 16)) for v in table['values']]):
@@ -1290,6 +1314,19 @@ def compare_table(rows, table, new_img=None, added=frozenset()):
     ta = {(int(r['old'], 16), r['bytes']): r for r in table['stockAbiRanges']}
     for r in rows:
         if r['new'] is None:
+            continue
+        if r['kind'] == 'link' and r['name'] in prune:
+            checked += 1
+            if r['name'] in tl:
+                out.append('table has a link.ld row for pruned %s' % r['name'])
+            continue
+        if r['kind'] == 'value' and r['old'] in to_link:
+            checked += 1
+            t = tl.get(to_link[r['old']])
+            if r['old'] in tv:
+                out.append('table still has a value row for %s, now link.ld %s' % (hex(r['old']), to_link[r['old']]))
+            if not t or int(t['old'], 16) != r['old'] or int(t['new'], 16) != r['new']:
+                out.append('table link %s is not %s -> %s' % (to_link[r['old']], hex(r['old']), hex(r['new'])))
             continue
         if r['kind'] == 'link':
             t = tl.get(r['name'])
@@ -1684,6 +1721,8 @@ def check(args, tmp):
         except StopIteration:
             fails.append('no copy table entry for dst %s' % hex(dst))
     abi = old_abi(old_fw, key)
+    NEW_TREE.update(pruneLink=set(cfg.get('newTreeChanges', {}).get('pruneLink', ())),
+                    valueToLink=dict(cfg.get('newTreeChanges', {}).get('valueToLink', {})))
     u, rows, d, derived, row_problems, problems, tree_problems, table_problems, table_checked, table, (
         kb_lines, kb_fails) = run(old_fw, new_fw, table_path, old, new, cfg, abi, derive_only, disabled)
     report(rows)
@@ -1797,7 +1836,7 @@ def derive_only_result(key, rows, fails, soft, json_path):
 def mutation(old_fw, new_fw, table, old, new, rows, added=frozenset()):
     """Swap one link.ld address and one table address for a neighbour's, in temp copies; both must fail."""
     out = []
-    link = [r for r in rows if r['kind'] == 'link' and r['new'] is not None and r['new'] != r['old']]
+    link = [r for r in rows if r['kind'] == 'link' and r['new'] is not None and r['new'] != r['old'] and r['name'] not in NEW_TREE['pruneLink']]
     a, b = link[0], link[1]
     base_tree = set(compare_tree(None, rows, new_fw, new))
     base_table = set(compare_table(rows, table, added=added)[0])
@@ -1816,7 +1855,7 @@ def mutation(old_fw, new_fw, table, old, new, rows, added=frozenset()):
         if not tp:
             out.append('mutation of link.ld not detected')
         p.write_text(text)
-        v = max((r for r in rows if r['kind'] == 'value' and r['new'] is not None and RAM_LO <= r['old'] < RAM_HI),
+        v = max((r for r in rows if r['kind'] == 'value' and r['new'] is not None and RAM_LO <= r['old'] < RAM_HI and r['old'] not in NEW_TREE['valueToLink']),
                 key=lambda r: sum(r['sites'].values()))
         f = sorted(v['sites'])[0]
         q = tree/f
