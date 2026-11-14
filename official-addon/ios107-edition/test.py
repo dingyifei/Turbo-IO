@@ -132,11 +132,14 @@ if only is None or 'tmg4-host' in only:
     run('tmg4-native-status',['python3','-I',FW/'tests/native_status_host_test.py','--out',out/'tmg4-native-status-host'])
     run('tmg4-native',['python3','-I',FW/'tests/native_host_test.py','--out',out/'tmg4-native-host'])
     run('tmg4-stock-abi',['python3','-I',FW/'tests/stock_abi_test.py','--stock',tree_stock])
+    run('tmg12-stock-layout',['python3','-I',FW/'tests/stock_layout_test.py','--stock',tree_stock])
+    run('tmg12-layout-lint',['python3','-I',FW/'tools/check_layout.py',FW])
+    ctest('tmg12-native-file',[FW/'src/image-upload-test/native_file_bridge_test.c',FW/'src/image-upload-test/native_file_bridge.c',FW/'src/image-upload-test/image_test.c'],FW/'src/image-upload-test')
     run('tmg4-kept',['python3','-I',FW/'tools/check_kept.py',FW/'baseline/kept',FW])
     run('tmg4-cjk',['python3','-I',FW/'tools/check_cjk.py',FW])
     run('tmg10-stock-base',['python3','-I',FW/'tests/stock_base_test.py'])   # labels from stockBase, mixed cores refused, tree on one base
     run('tmg10-rebase-independent',['python3','-I',FW/'tests/rebase_independent_test.py'])   # every rebased address re-derived without the table (exports fw/tmg9)
-    ctest('tmg10-render-idle',[FW/'src/image-upload-test/render_idle_test.c',FW/'src/image-upload-test/render_idle.c'],FW/'src/image-upload-test')
+    run('tmg10-render-idle',['python3','-I',FW/'tests/render_idle_host_test.py','--out',out/'tmg10-render-idle'])
     groups.append('tmg4-host');print('tmg4-host: PASS')
 else:skip('tmg4-host','not selected by --only')
 # TMG9 bug 1: the REAL m8_hook_wheel (sliced from menu10.c) against a stock model transcribed from the disassembly; the TMG8 body must fail it.
