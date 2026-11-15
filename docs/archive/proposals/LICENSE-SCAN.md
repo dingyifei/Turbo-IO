@@ -1,5 +1,7 @@
 # License scan and recommendations
 
+> Archived in cleanup(6). Several folders this scan inventories (core-probe, third-party, tar2-airplay, rayneo-session, rayneo-session-runtime, rayneo-archive, harmony-sdk, skills/turbo-io) were removed from the tree in cleanup(1) to cleanup(6); they are in git history.
+
 Scan date: 2026-10-29. Source: `main` at 659fd67, read-only. This document recommends; it changes no license and moves no file. It is an engineering inventory, not legal advice. Items marked "to-be-verified upstream" come from the author's general knowledge of the upstream projects, not from files in this repository, and must be checked against the pinned upstream versions before anyone relies on them.
 
 ## 1. Summary

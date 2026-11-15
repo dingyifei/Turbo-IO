@@ -1,6 +1,6 @@
 # 用 Claude Code / Codex 接入 Turbo IO
 
-**当前 iOS 路线：** iOS 1.0.7（230）使用 [ios107 专用目录](../official-addon/ios107-edition/README.md)；自行准备合法的 1.0.7 未加密输入，按[专用刷机教程](../official-addon/ios107-edition/OTA.md)核对当前固定组合、单次授权与刷后收尾。历史 1.0.6 NAVS3 资料可用 `git show 27ad86e:official-addon/navs3-edition/README.md` 查看，旧门禁不能移用。**高德（AMap）导航已从当前 ios107 构建移除**；[历史导航文档](history/NAVIGATION.md)不是当前功能或安装指引。不得通过改版本白名单假装兼容。
+**当前 iOS 路线：** iOS 1.0.7（230）使用 [ios107 专用目录](../official-addon/ios107-edition/README.md)；自行准备合法的 1.0.7 未加密输入，按[专用刷机教程](../official-addon/ios107-edition/OTA.md)核对当前固定组合、单次授权与刷后收尾。历史 1.0.6 NAVS3 资料可用 `git show 27ad86e:official-addon/navs3-edition/README.md` 查看，旧门禁不能移用。**高德（AMap）导航已从当前 ios107 构建移除**；[历史导航文档](archive/history/NAVIGATION.md)不是当前功能或安装指引。不得通过改版本白名单假装兼容。
 
 目标是把重复的环境检查、构建、合并和排错交给编程助手，让开发者主要完成账号、签名、设备确认和实测。**不是承诺一条提示词就能跨过所有安装限制，也不是成品 App 安装服务。** 仅限非商业学习研究。
 
@@ -66,4 +66,3 @@ iOS保留Bundle ID也不等于拥有原厂推送/钥匙串授权。具体处理�
 
 助手应给出：源码目录/版本、可重现命令、产物或预览地址、测试结果、用户配置项、尚未验收项和清理自己启动进程的方法。停在证书、兼容输入或物理确认上时应精确说明，不说“全部搞定”。有能力继续的本机步骤可以继续做，但不替用户确认镜片、签名或登录。
 
-已有技能安装方式见 [AGENT_SKILL.md](AGENT_SKILL.md)。旧版技能曾只覆盖iOS；更新前先比较自己的改动，再按新分平台流程使用。

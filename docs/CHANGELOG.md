@@ -1,5 +1,7 @@
 # 更新记录
 
+> **已冻结（2026-11-15，cleanup(6)）：** 本文件不再更新。cleanup(1)–(6) 删除了其中提到的 Android、鸿蒙、V1、Apple Watch、TVP2/TAR2、Strix OS 1.0.4.12 研究树与大部分截图；指向这些已删除文件的链接与图片已改为纯文本或移除，原文件保留在 git 历史中（例如 `git show 5b6c63d:<路径>`）。
+
 2026-09-22 至 2026-10-23 的更新说明与历史验收记录，从[项目首页](../README.md)移出，正文保持原样，只修正了链接，并把“上方”这类指向首页内容的说法改成了链接。之后的固件版本见 [`firmware/`](../firmware/README.md) 和 `fw/tmgN` 标签。
 
 <a id="updates"></a>
@@ -76,9 +78,9 @@
 
 ### 2026-10-19 · 矢量小地图：从选择起终点，到眼镜原生绘制
 
-![Turbo IO NAVS3 矢量导航与 TMG2 两排三排菜单横版设计效果图](screenshots/navs3-tmg2-hero-20261019.png)
 
-*imagegen 生成的设计示意，非实机截图；地图与地名为说明性展示，不代表实际路线或显示精度。实验预发布，锁屏导航问题仍待解决。[图片生成说明](screenshots/navs3-tmg2-hero-20261019.md)。*
+
+*imagegen 生成的设计示意，非实机截图；地图与地名为说明性展示，不代表实际路线或显示精度。实验预发布，锁屏导航问题仍待解决。图片生成说明。*
 
 **选择起点与目的地，直接开始模拟导航或真实导航。** 手机用高德规划与定位，获取经授权的 OSM 周边道路并完成坐标转换，眼镜用有界矢量场景绘制道路、路线、车标、路名与比例尺，不再连续传整屏截图。时间栏稳定显示，不再与“导航常亮”轮换。
 
@@ -97,7 +99,7 @@
 
 ### 2026-10-14 · 新版本适配预发布：底层再迁移，体验再延续
 
-![Turbo IO TMIG1 新版本适配预发布：iPhone 17 Pro Max 实测，保留情境英语](screenshots/tmig1-prerelease-hero-20261014.png)
+
 
 *imagegen 横版宣传设计，不是实机截图。版本号为本轮固定适配对象，不表示未来版本自动兼容。*
 
@@ -131,7 +133,7 @@
 
 ### 2026-09-29 · Apple Watch 遥控：表冠、手势与屏幕操作
 
-![Turbo IO Apple Watch 遥控：表冠、手势与屏幕操作，实验源码公开](screenshots/apple-watch-update-wide-20260929.png)
+
 
 *imagegen 生成的横版概念图，不是实机截图；示意界面不代表已完成全局输入验收。*
 
@@ -145,7 +147,7 @@
 
 ### 2026-09-27 · Android 1.0.5 完整插件与实验 OTA
 
-![Turbo IO Android 1.0.5 更新：六类功能、配套实验固件与刷后释放保护说明](screenshots/android-release-update-wide-20260927.png)
+
 
 **[下载完整 APK / TAP1-TEST-01 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · 完整安装与刷机教程 · 公开范围与源码构建**
 
@@ -155,7 +157,7 @@
 
 ### 2026-09-26 · BIG STEP：从内置功能，走向开发者生态
 
-![Turbo IO Big Step：从功能到生态，仪表盘 SDK、原生小应用 SDK 与 20 个灵感模板](screenshots/developer-ecosystem-big-step-20260926.png)
+
 
 *AI 生成的开发者生态效果示意，不是镜片实拍；图中数据与界面为示例，音乐模板不播放音频。开放的是开发接口与有界组件能力，不是无限系统权限。配套 TAP1 实验固件于 09-27 单独发布，见顶部下载入口。*
 
@@ -191,7 +193,6 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 <details>
 <summary>查看应用广场界面</summary>
 
-<img src="screenshots/app-gallery-20260926.png" width="320" alt="应用广场：我的应用、应用广场、开发指南，模拟器中的真实代码界面" />
 
 隔离模拟器运行截图，不是镜片实拍，也不代表已连接上游 MCP。
 </details>
@@ -209,17 +210,16 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 基于 Strix OS 1.0.4.12，仅 AP 内容变化，其他 13 个固件负载不变；AP **9,558,216 字节**，低于 9,600,000 字节限制。2026-09-25 用户实刷并确认此版正常；仍是试验用品，不代表全场景稳定、不会变砖或可保证救砖。配套宿主为雷鸟 AI **iOS 1.0.5（201）**，不可与旧包/门禁混用。
 
-![Turbo IO 中秋焕新：全新 UI、四项菜单与微信读书、网易云音乐、原生番茄时钟](screenshots/midautumn-update-wide-20260925.png)
 
-[完整更新长海报](screenshots/midautumn-update-20260925.png)。界面效果示意，不是镜片实拍；微信读书公开版正文需自行合法导入。
+
+完整更新长海报。界面效果示意，不是镜片实拍；微信读书公开版正文需自行合法导入。
 
 <details>
 <summary>查看首页、番茄时钟与音乐单独效果图</summary>
 
-<img src="screenshots/focus-home-ui-20260925.png" width="300" alt="Turbo IO 新首页模拟器界面" />
 
-![番茄时钟设计效果](screenshots/focus-design-20260925.png)
-![网易云音乐界面设计效果](screenshots/music-design-20260925.png)
+
+
 
 首页为模拟环境界面；番茄与音乐为设计效果，不作为实机像素一致性或完整验收证据。
 </details>
@@ -238,9 +238,9 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 **新增第十一项“微信读书”研究菜单：四本封面书架、原生文本窗口与手动/自动滚动。** 已公开原创 AP / 手机模块、构建与协议说明，以及 [TWR1 实刷实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1)。源码重建 AP 与实刷版本一致，仅 AP 改变，其他13个负载不变。**旧 TWR1 的长按返回问题在 09-25 FOCUS-04 中加入修复，旧 Release 不变。非开发者请勿刷，不保证回滚或救砖。**
 
-手机模块公开书架/统计、封面处理、TXT/EPUB 导入及阅读传输，**不含网页正文适配、Cookie、Key 或私用 IPA，也尚未接入主仓库默认构建及 TWR1 OTA 打包入口**；没有自己的匹配手机集成时先别刷。这不是“下载源码就能直接读取所有微信读书正文”的声明。书架/统计参考 [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading)，网页阅读可自行研究 AGPL 项目 [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin)。[架构思路与许可范围](history/WEREAD_RESEARCH.md)
+手机模块公开书架/统计、封面处理、TXT/EPUB 导入及阅读传输，**不含网页正文适配、Cookie、Key 或私用 IPA，也尚未接入主仓库默认构建及 TWR1 OTA 打包入口**；没有自己的匹配手机集成时先别刷。这不是“下载源码就能直接读取所有微信读书正文”的声明。书架/统计参考 [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading)，网页阅读可自行研究 AGPL 项目 [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin)。[架构思路与许可范围](archive/history/WEREAD_RESEARCH.md)
 
-![微信读书界面效果示意：菜单入口、同步提示、四本书架与阅读页](screenshots/weread-ui-concept.jpg)
+
 
 上述集成限制针对历史 TWR1；09-25 新增的 FOCUS-04 可选集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）已提供匹配的构建与 TFP1 打包入口。网页正文适配仍未公开，本机 TXT/EPUB 导入范围不变。
 
@@ -281,7 +281,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 - **眼镜端原生绘制**：内置转向图标、文字与路线示意图。手机只发导航数据，单次完整快照最多 **328 B**，减少旧传图方案的带宽负担；这不是无延迟保证。
 - **高德提供路线，眼镜呈现指引**：手机支持步行、骑行、驾车的规划/导航入口；路线示意图不是高德完整地图底图，也不是路口实景。
 - **显示与退出管理**：实现了停止/实体返回收尾、无有效更新约60秒息屏、按键唤醒及可选常亮；各分支仍需扩大验收，不承诺绝不熄屏。
-- **后台导航已修复立即退出问题**：配套 iPhone Air 版收到用户正常反馈；真实导航按授权使用后台定位，模拟后台仅短时测试。见[后台行为与限制](history/NAVIGATION_BACKGROUND.md)。
+- **后台导航已修复立即退出问题**：配套 iPhone Air 版收到用户正常反馈；真实导航按授权使用后台定位，模拟后台仅短时测试。见[后台行为与限制](archive/history/NAVIGATION_BACKGROUND.md)。
 
 这里的“应用级别”指**集成在固件 application 内、拥有独立菜单和交互的原生应用页面**，不再借用旧测试界面；并不是已经开放 Android 式 APK 安装、任意第三方 App 加载或整个系统 UI 替换。
 
@@ -398,7 +398,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 - **Android 源码新增公开**：兼容官方 Android 1.0.4（195），**非 Root 设备已由用户实机验证可用**。模型/搜索/录音导出和路线文字已有研究机用户确认。模拟导航支持暂停、1/2/4/8倍速，自动测试通过，新增模拟镜片效果待验收。仍只提供源码，需自行编译签名，不是预打包成品。
 - **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。兼容性与预览
-- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · Android 导航
+- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](archive/history/NAVIGATION_BACKGROUND.md) · [iOS 导航](archive/history/NAVIGATION.md) · Android 导航
 
 </details>
 

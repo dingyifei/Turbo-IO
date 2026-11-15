@@ -18,10 +18,6 @@ An unofficial RayNeo iO smart glasses SDK for developers, with a sample iOS clie
 
 以下为项目实际运行截图：手机使用无账号、无密钥的隔离模拟器页面；Web 使用明确标注的样式演示数据。不是眼镜像素截图，也不表示截图时已经连接眼镜。
 
-<p>
-  <img src="screenshots/app-home.png" width="290" alt="Turbo IO 雷鸟 iO 非官方客户端，iOS 模拟器设备首页" />
-  <img src="screenshots/app-tools.png" width="290" alt="Turbo IO 雷鸟 iO 工具箱，显示观察与 Agent 工具入口" />
-</p>
 
 ## Web 显示预览与观察台
 
@@ -42,9 +38,9 @@ node display-observer/server.mjs --no-proxy
 
 打开 `http://127.0.0.1:8790/`，选择“首页样式 / 对话样式 / 菜单样式 / 通知样式”。实时跟随才需要手机的临时观察接口与 USB 转发。
 
-![雷鸟 iO Web 对话预览：绿色镜片模板，演示文字，非实时画面](../../screenshots/web-chat.png)
 
-![RayNeo iO Web 菜单预览：每页一个应用图标，当前为录音](../../screenshots/web-menu.png)
+
+
 
 ## 可以做什么
 
@@ -79,7 +75,7 @@ node display-observer/server.mjs --no-proxy
 
 ### 当前边界
 
-- **日常 SDK/App 不能通过普通协议任意替换眼镜固件内置 UI，也不是刷机/自定义桌面工具。** 除自定义通知外，研究中已验证有限 A2UI 仪表盘文字/布局卡片；鸿蒙当前验证到短文字卡。独立的[自定义 AP 应用路线](../../history/TURBO_DISPLAY_NAVIGATION.md)已实现传图与原生导航，但不等于 HTML/Canvas 运行时或通用第三方 App 安装。
+- **日常 SDK/App 不能通过普通协议任意替换眼镜固件内置 UI，也不是刷机/自定义桌面工具。** 除自定义通知外，研究中已验证有限 A2UI 仪表盘文字/布局卡片；鸿蒙当前验证到短文字卡。独立的[自定义 AP 应用路线](../history/TURBO_DISPLAY_NAVIGATION.md)已实现传图与原生导航，但不等于 HTML/Canvas 运行时或通用第三方 App 安装。
 - 原厂固件上的对话、待办、提词器、天气等主要通过已有模板下发内容；这不否定自定义固件中的新增绘制页面，但也不代表原厂所有模板均可任意修改。Web 预览样式也不会变成镜片固件 UI。
 - **独立客户端不能与官方 App 同时抢连同一副眼镜。** V2 官方扩展在宿主中沿用连接，不要为了新增导航反复解绑。
 - 不能保证完整离线录音、任意长度的无损补传、长期后台永不掉线、强退后可靠推送或所有固件都兼容。
@@ -99,7 +95,7 @@ DISABLE_TELEMETRY=1 npx --yes skills@1.5.24 add Turbo1123/Turbo-IO --skill turbo
 
 在安装器中确认目标后，新开助手会话，让它执行：**“使用 turbo-io 技能，帮我以非商业学习用途安装并启动 Turbo IO，先跑不需要眼镜的 Web 预览。”** Claude Code 可输入 `/turbo-io`，Codex 可在技能选择器中选中或显式提及技能。
 
-技能会检查环境、获取源码、启动预览，再按需指导 iOS 编译、服务配置与 Codex bridge。**一行安装的是技能，不是已签名 iPhone App**：真机仍需自己的 Xcode 签名、配对和服务 Key。支持 Claude Code 使用技能，不等于已经实现眼镜的 Claude Code 后端适配。[完整说明与手动安装](../../AGENT_SKILL.md)。
+技能会检查环境、获取源码、启动预览，再按需指导 iOS 编译、服务配置与 Codex bridge。**一行安装的是技能，不是已签名 iPhone App**：真机仍需自己的 Xcode 签名、配对和服务 Key。支持 Claude Code 使用技能，不等于已经实现眼镜的 Claude Code 后端适配。完整说明与手动安装。
 
 ### 连接前必读：先解绑，再忽略蓝牙设备
 
@@ -161,7 +157,7 @@ node scripts/start.mjs --device
 
 眼镜端应用路线则只修改 AP：Turbo Display 接收像素，TNV1 接收导航数据并在眼镜侧绘制，ANIM60 在 AP 内置帧并本地定时绘制，以不同方式扩展显示能力；未修改其余13个固件负载，但官方完整OTA仍可能写入未变化的负载。
 
-完整解释及踩坑：[实现思路](ARCHITECTURE.md) · [Turbo Display 与原生导航](../../history/TURBO_DISPLAY_NAVIGATION.md)。它说明证据如何建立、为什么不能把发包成功当镜片显示成功，以及为何当前不急于把通信底层全部重写。
+完整解释及踩坑：[实现思路](ARCHITECTURE.md) · [Turbo Display 与原生导航](../history/TURBO_DISPLAY_NAVIGATION.md)。它说明证据如何建立、为什么不能把发包成功当镜片显示成功，以及为何当前不急于把通信底层全部重写。
 
 ## 测试
 
