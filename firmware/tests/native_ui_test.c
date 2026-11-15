@@ -26,7 +26,10 @@ static bool pending;
 static unsigned made;
 static const char *texts[64];
 static bool shown[64];
-static bool idle(void *p){(void)p;return true;}
+static bool busy;   /* the renderer refuses every draw while set */
+/* fm_show tests: the timer period, and the period when fm_sync first asks the renderer (0 until then). */
+static bool showing;static uint32_t period,seen;
+static bool idle(void *p){(void)p;if(showing&&!seen)seen=period;return !busy;}
 static void *create(void *p,void *parent){(void)p;(void)parent;return (void *)(uintptr_t)++made;}
 static void *label(void *p,void *parent,unsigned font){assert(font==16||font==18||font==24);return create(p,parent);   /* TMG7 menu: names 16, status 18, focused name 24 */}
 static void place(void *p,void *o,int x,int y,int w,int h){(void)p;(void)o;assert(x>=0&&y>=0&&x+w<=540&&y+h<=220);}
@@ -77,7 +80,18 @@ static void *fm_system(void *p){return p;}
 static void *fm_battery_monitor(void *p){return p;}
 static int64_t fm_local_time(void *p){(void)p;return 0;}
 static int fm_battery_level(void *p){(void)p;return -1;}
-static void stream_timer_period(void *p,uint32_t ms){(void)p;assert(ms==16);}
+/* fm_sync only ever speeds the timer up to 16 ms; fm_show puts it back to the active rate. */
+static int timer_token;
+static void stream_timer_period(void *p,uint32_t ms){assert(ms==16||(showing&&ms==100));if(p==&timer_token)period=ms;}
+/* fm_show creates a controller only when it has none; the cases below always give it one, so these are never reached. */
+static bool room(void){abort();}
+static void *stream_memalign(size_t a,size_t n){(void)a;(void)n;abort();}
+static void stream_free(void *p){(void)p;abort();}
+static void *stream_timer_create(void (*f)(void *),uint32_t ms,void *u){(void)f;(void)ms;(void)u;abort();}
+static unsigned fm_menu_rows(void){abort();}
+static void menu_text_align(void *o,int a,uint32_t st){(void)o;(void)a;(void)st;abort();}
+static bool attach_deleted(void *root,void *owner){(void)root;(void)owner;abort();}
+static void tick(void *t){(void)t;abort();}
 unsigned tio_lang(void){return lang_now;}
 #include "focus_native_sync.inc"
 static FMControl control;
@@ -158,5 +172,16 @@ int main(void){
   /* a renderer that is busy leaves everything as it was and retries */
   fixture.pomodoro=true;fixture.pomodoro_ms=5000;control.desired_rows=FM_CAROUSEL;GO(TIO_TILE_FOCUS);
  }
+ /* Show after hide with a busy renderer: while hidden the controller's timer ran at 1000 ms. fm_show puts it back to the
+  * active rate before its first draw, so when that draw is refused the retry comes 100 ms later, not up to a second. */
+ control.timer=&timer_token;control.enabled=false;control.selection=-1;period=1000;control.view.moving=false;
+ busy=true;showing=true;seen=0;fm_show(app);showing=false;
+ assert(control.enabled&&control.selection==-1&&period==100&&seen==100);   /* the draw was refused; the retry runs at the active rate, set before the draw */
+ busy=false;now+=100;fm_sync(app);assert(control.selection>=0);   /* the next tick's fm_sync draws */
+ /* The same with the view still moving when it was hidden: fm_show picks the moving rate, 16 ms, as tick() does. */
+ control.enabled=false;control.selection=-1;period=1000;control.view.moving=true;
+ busy=true;showing=true;seen=0;fm_show(app);showing=false;
+ assert(control.enabled&&control.selection==-1&&period==16&&seen==16);
+ busy=false;control.view.moving=false;
  puts("PASS native fm_sync: unchanged selected rank immediately redraws changed canonical tiles before dispatch");
 }

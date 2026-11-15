@@ -117,7 +117,10 @@ void fm_show(void *app){TNNavSlot *s=slot(app);if(!s)return;FMControl *c=s->quad
   c->timer=stream_timer_create(tick,100,c);if(!c->timer){fm_view_close(&c->view);stream_free(c);return;}
   s->quad=c;
  }
- c->enabled=true;fm_sync(app);
+ /* Back to tick()'s active rate: while hidden the timer ran at 1000 ms, so a refused first draw would otherwise
+  * wait for that slow tick before its retry. This does not repeat tick()'s page-open and screen-off test; in those
+  * cases fm_sync draws nothing and the next tick() sets 1000 ms again. */
+ c->enabled=true;stream_timer_period(c->timer,c->view.moving?16:100);fm_sync(app);
 }
 void fm_hide(void *app){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;if(c){c->enabled=false;c->selection=-1;fm_view_suspend(&c->view);if(c->view.root)c->view.api.visible(c->view.api.ctx,c->view.root,false);}}
 void fm_destroy(void *app){TNNavSlot *s=slot(app);FMControl *c=s?s->quad:NULL;if(!c)return;s->quad=NULL;c->app=NULL;c->closing=true;c->enabled=false;(void)dispose(c);/* idle: remove our child now; busy: parent callback + deferred retirement */}

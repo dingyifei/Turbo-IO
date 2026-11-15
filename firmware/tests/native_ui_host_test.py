@@ -32,11 +32,12 @@ def main():
         focus=(FW/'src/focus-v1/focus_menu_native.c').read_text()
         control=next(line for line in focus.splitlines() if line.startswith('typedef struct {FMView view;'))
         sync=focus[focus.index('void fm_sync(void *app)'):focus.index('\nvoid fm_show(void *app)')]
+        show=focus[focus.index('void fm_show(void *app)'):focus.index('\nvoid fm_hide(void *app)')]   # the real show path: back to the active timer rate
         live=focus[focus.index('static bool phone_linked(void)'):focus.index('\nvoid fm_relayout(unsigned rows)')]   # TMG8 live tile state: the production gatherers over stubbed services
         legacy=focus[focus.index('static void hide_legacy(void *app)'):focus.index('\nstatic void deleted(')]   # the real stock-row hiding fm_sync calls
         plain=focus[focus.index('static TNNavSlot *slot(void *a)'):focus.index('\n/* Hides stock')]   # the real slot(), detail() and fm_menu_plain(): an unarmed menu is busy, never plain
         assert plain.count('static bool detail(')==1 and plain.count('bool fm_menu_plain(')==1,'focus_menu_native.c: slot(), detail() and fm_menu_plain() must precede hide_legacy'
-        (out/'focus_native_sync.inc').write_text('#include "common-v1/menu_wheel.h"\n#include "focus-v1/tile_state.h"\n'+control+'\n'+plain+'\n'+legacy+'\n'+live+'\n'+sync+'\n')
+        (out/'focus_native_sync.inc').write_text('#include "common-v1/menu_wheel.h"\n#include "focus-v1/tile_state.h"\n'+control+'\n'+plain+'\n'+legacy+'\n'+live+'\n'+sync+'\n'+show+'\n')
         menu=(FW/'src/music-runtime-v1/menu10.c').read_text()
         for name,text in (('focus_menu_native.c',focus),('menu10.c',menu)):
             assert text.count(TAIL)==1 and text.count('M8NativeTail *tail(')==1,name+': tail() must be exactly '+TAIL
