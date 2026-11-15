@@ -34,6 +34,10 @@ This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It co
   - Agent commits end with a `Co-Authored-By:` trailer.
 - Agent docs and commit messages are in English. The README and many user docs are in Chinese; keep them in Chinese.
 
+## Porting to a new RayNeo release
+
+Follow [docs/porting-flow.md](docs/porting-flow.md): present the whole plan to the owner once, before any work, then run the steps there. Careful review goes only where a mistake can brick the glasses or lock the phone out.
+
 ## Layout
 
 | Path | Contents |

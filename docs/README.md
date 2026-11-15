@@ -14,6 +14,7 @@ Status column:
 | [AI setup](AI_SETUP.md) | Current | Pick a platform and have an assistant walk you through setup |
 | [Agent skill](AGENT_SKILL.md) | Current | Installing the setup skill ([skill source](../skills/turbo-io/SKILL.md)) |
 | [Developer ecosystem](DEVELOPER_ECOSYSTEM.md) | Current | Dashboard and mini-app SDKs: your server, your glasses apps |
+| [Porting flow](porting-flow.md) | Current | How Turbo-IO moves to a new RayNeo firmware or app release |
 | [TVP2 / TAR2](TVP2_TAR2.md) | Current | Clear screen casting: install and acceptance |
 | [Clench tooling](../tools/clench/README.md) | Current | Offline tooth-tap recording and analysis |
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
