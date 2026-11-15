@@ -106,7 +106,8 @@ void tc_native_message(const TIONativeMessage *m){
  TCPacket a={.op=q.op,.sid=q.sid,.seq=q.seq,.a=q.a};void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);
  if(q.op==TC_HELLO){a.a=TC_WIDTH;a.b=TC_HEIGHT;a.c=stream_tick();emit(&a);return;}
  if(!q.sid){a.result=TC_SESSION;emit(&a);return;}
- if(!app&&q.op==TC_OPEN&&home())app=nav_ensure_menu(vm);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;uint32_t now=stream_tick();
+ /* Stock's menu-ensure reads through its argument at once: with no manager there is no menu, and the open is refused. */
+ if(!app&&vm&&q.op==TC_OPEN&&home())app=nav_ensure_menu(vm);TCSlot *s=slot(app);TCControl *c=s?s->control:NULL;uint32_t now=stream_tick();
  if(q.op==TC_OPEN){
   /* OPEN is bound to the fresh HELLO clock. A queued, delayed OPEN must not
    * resurrect the view after the phone stopped or entered the background. */
