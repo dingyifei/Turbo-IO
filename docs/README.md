@@ -4,7 +4,7 @@ New here? Start with the [project README](../README.md). Agents should read [AGE
 
 Status column:
 - **Current**: describes the build as it is today.
-- **V1**: covers the standalone V1 client, not the ios107 addon.
+- **V1**: covers the standalone V1 client, whose code was removed in cleanup(2).
 - **Historical**: kept as a record of an older release or a removed feature.
 
 ## Guides
@@ -26,15 +26,15 @@ Status column:
 
 [Design system](design-system/README.md) is the UI spec for the phone and the lens. It is backed by the [shared rules and tokens](design-system/SPEC.md) and one README per component under [`design-system/components/`](design-system/components/).
 
-## V1 standalone client
+## V1 standalone client (archived)
 
-Start with [the V1 overview](v1-sdk.md): what it can do, quick start and limits.
+The V1 client (apps, core-probe, codex-bridge, display-observer and its Swift packages except the four kept as clean-room reference) was removed from the tree in cleanup(2) and is in git history. Its docs are kept under [archive/v1/](archive/v1/) as a record; their commands no longer work. Start with [the V1 overview](archive/v1/v1-sdk.md).
 
 | Document | What it covers |
 |---|---|
-| [Architecture](ARCHITECTURE.md) | Protocol, audio and agent architecture |
-| [Configuration](CONFIGURATION.md) | Build, credentials and pairing |
-| [Validation](VALIDATION.md) | Build and test evidence, dated |
+| [Architecture](archive/v1/ARCHITECTURE.md) | Protocol, audio and agent architecture |
+| [Configuration](archive/v1/CONFIGURATION.md) | Build, credentials and pairing |
+| [Validation](archive/v1/VALIDATION.md) | Build and test evidence, dated |
 
 ## Proposals
 

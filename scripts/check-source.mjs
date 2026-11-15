@@ -21,13 +21,8 @@ const reviewedScreenshots = new Map([
   ['docs/screenshots/web-chat.png', '61d132ff1b925e158560b3c11aa27f6403be5d6d8a71c5e6fff547cbbc104423'],
   ['docs/screenshots/web-menu.png', '62d9a269e8119d99b30ae7a6592544f9279d53d552d9a8b08baa0d2eee4af3dd'],
 ]);
-// Exact upstream Opus generated weight tables. Still scan their text for credentials.
-const reviewedLargeSources = new Map([
-  ['core-probe/Vendor/opus-1.5.2/dnn/dred_rdovae_dec_data.c','639d15d2644043d4fec7442e9f46b51ab19f639420e7d57859609c6ecdb24abf'],
-  ['core-probe/Vendor/opus-1.5.2/dnn/dred_rdovae_enc_data.c','2831f195a9a2a6d937084bb49b65e6beabb270ac16a08c20721775fc6cac04b5'],
-  ['core-probe/Vendor/opus-1.5.2/dnn/fargan_data.c','a1939c859a41f4352ad427fa0fa3348306fdd6cfd64a9bf6493bae96b322d323'],
-  ['core-probe/Vendor/opus-1.5.2/dnn/nolace_data.c','5df145d3850d48a89eb27a8512970fde76a401ebf19055f2d7c29213aef7ef04'],
-]);
+// Hash-pinned large text files; still scanned for credentials.
+const reviewedLargeSources = new Map();
 
 // Previously published synthetic ANIM60 frames and their exact L8 build input.
 // Hash-pinned exceptions only: no blanket media or binary exclusion.
@@ -100,8 +95,6 @@ export function audit(root){
       if(digest!==reviewedScreenshots.get(relative))findings.push({file:relative,rule:'screenshot-needs-privacy-review'});
       return;
     }
-    const dependency=/^core-probe\/Frameworks\/(?:RayneoNet|CocoaAsyncSocket|OpenSSL|RayneoLog|SwiftProtobuf|CocoaLumberjack|SSZipArchive)\.framework\//.test(relative) || relative==='core-probe/Vendor/opus-ios/libopus.a';
-    if(dependency)return; // Explicit binary build dependencies; reviewed via the hash inventory.
     if(/\.(?:ipa|apk|hap|har|app|dex|jar|jks|keystore|a|o|dylib|so|p12|p7b|cer|pem|key|mobileprovision|wav|ogg|pcm|mp3|m4a|png|jpg|zip|log|jsonl)$/i.test(p)&&relative!=='official-addon/ios107-edition/i18n/strings.jsonl')findings.push({file:relative,rule:'non-source-artifact'});
     if(s.size>2*1024*1024 && (!reviewedLargeSources.has(relative)||createHash('sha256').update(fs.readFileSync(p)).digest('hex')!==reviewedLargeSources.get(relative))){findings.push({file:relative,rule:'oversize-review'});return;}
     const b=fs.readFileSync(p);if(b.includes(0)){findings.push({file:relative,rule:'binary-content'});return;}

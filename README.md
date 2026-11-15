@@ -55,12 +55,11 @@
 | --- | --- | --- |
 | **在 iPhone 使用插件** | 1.0.7（230）ios107 扩展源码，自行合并、签名、安装，**不提供合并 IPA**。眼镜端功能需要与手机构建配对的固件 | [ios107 构建](official-addon/ios107-edition/README.md) · [刷机与回退](official-addon/ios107-edition/OTA.md) · [固件源码](firmware/README.md) |
 | **开发自己的仪表盘 / 小应用** | 自托管 API、Python / MCP、20 个模板、Agent Skill；先在电脑生成卡片或 ZIP 并预览，再接入匹配手机和运行时 | [开发 SDK 教程](docs/DEVELOPER_ECOSYSTEM.md) · [模板](app-gallery/README.md) · [Skill](skills/turboio-developer/SKILL.md) |
-| **只看效果 / 离线学习** | Web UI、模板、SVG 预览与本机测试；不要求设备、服务 Key 或刷机，不等于真机验收 | [Web 预览](docs/v1-sdk.md#web-显示预览与观察台) · [模板离线入门](docs/DEVELOPER_ECOSYSTEM.md#1-十分钟离线入门) |
-| **研究独立连接（iOS V1）** | 独立 SDK 与示例客户端，研究配对、协议和自有 ASR；不是当前插件的完整替代品 | [V1 说明与快速开始](docs/v1-sdk.md) |
+| **只看效果 / 离线学习** | 模板、SVG 预览与本机测试；不要求设备、服务 Key 或刷机，不等于真机验收 | [模板离线入门](docs/DEVELOPER_ECOSYSTEM.md#1-十分钟离线入门) |
 
 **要不要刷固件？** 模型接入、TTS、部分字幕等手机侧扩展可沿用原厂显示能力；眼镜原生应用、图形仪表盘与小应用需要对应实验运行时。**安装手机插件 ≠ 安装眼镜固件。**
 
-**连接与安装：** iOS 扩展沿用宿主配对，不需要为插件反复解绑。只有切换到 V1 独立客户端时，才按对应流程解绑旧宿主、在原手机系统蓝牙忽略设备，不能让多个客户端争抢连接。
+**连接与安装：** iOS 扩展沿用宿主配对，不需要为插件反复解绑。
 
 ## iOS 原厂砸壳 IPA 下载
 
@@ -91,7 +90,7 @@
 源码：https://github.com/Turbo1123/Turbo-IO
 iOS 官方扩展原厂砸壳 IPA 版本索引：https://github.com/Turbo1123/Turbo-IO/tree/main/official-apps/ios
 该 IPA 未合并 Turbo IO，需校验 SHA-256、版本和 UUID，再自行合并、配置并签名；也可使用我自行准备的合法兼容副本。
-目标：[iOS 官方扩展 / iOS 独立 SDK / 仅 Web 预览]
+目标：iOS 官方扩展
 
 先读取 README、docs/AI_SETUP.md 和目标平台文档，检查电脑环境、现有项目改动及设备状态。
 没有源码时克隆到新的目录；使用仓库现成构建、测试和合并脚本，不要只给我操作教程。
@@ -99,13 +98,13 @@ iOS 对自行准备的副本核对版本、UUID 及未加密 thin arm64 要求�
 下载或输入不兼容时停止合并并说明缺什么，不修改校验、不绕过加密，也不索取第三方破解包。
 先完成能独立验证的构建或预览，再引导我使用自己的签名；安装、卸载、重启或改变绑定前确认目标和数据备份。
 Key由我在本机安全填写，不索取聊天明文、不复用维护者配置，不把私钥、安装包、录音和日志提交到GitHub。
-官方扩展沿用官方连接；切换到V1独立客户端才按文档解绑和忽略蓝牙。
+官方扩展沿用官方连接。
 完成后分别报告源码/编译/安装/登录/眼镜/模型的实际结果；未验收明确标注，不把构建成功当作全部可用。
 ```
 
 </details>
 
-- **iOS**：从上方原厂砸壳 IPA 或自行准备的合法兼容副本提取未加密 `Runner.app`；仍需校验、合并与个人签名，官方下载/商店安装不等于取得可合并输入。只用 V1/Web 不需要官方包。见 [iOS 扩展教程](official-addon/README.md)。
+- **iOS**：从上方原厂砸壳 IPA 或自行准备的合法兼容副本提取未加密 `Runner.app`；仍需校验、合并与个人签名，官方下载/商店安装不等于取得可合并输入。见 [iOS 扩展教程](official-addon/README.md)。
 
 已有 `turbo-io` 技能也可使用，见[技能安装与更新](docs/AGENT_SKILL.md)。
 
@@ -131,9 +130,8 @@ Key由我在本机安全填写，不索取聊天明文、不复用维护者配�
 | `firmware` | 当前眼镜固件源码（单一源码树，版本为 `fw/tmgN` 标签）；`firmware/baseline` 保存早期版本的少量构建输入 |
 | `firmware-research` | 原厂固件与研究笔记（1.0.4.12、1.0.5.5、TVP2），不参与当前构建 |
 | `dashboard-service` · `app-gallery` · `skills` | 仪表盘与小应用 SDK、20 个模板、Agent Skill |
-| `apps` · `core-probe` · `rayneo-*` · `codex-bridge` · `display-observer` | V1 独立客户端与 Swift 模块，见 [V1 说明](docs/v1-sdk.md) |
+| `rayneo-protocol` · `rayneo-display` · `rayneo-audio-container` · `rayneo-transport-ios` | V1 时期的 Swift 协议、显示、音频容器与传输包，作为净室参考保留；V1 客户端本身已删除，见 [V1 归档说明](docs/archive/v1/v1-sdk.md) |
 | `watch-remote` | Apple Watch 遥控实验 |
-| `third-party` | 第三方依赖，许可见 [第三方说明](THIRD_PARTY_NOTICES.md) |
 | `tools` · `scripts` | 离线分析工具；构建检查、打包与发布扫描脚本 |
 | `docs` | 文档，入口是 [文档索引](docs/README.md) |
 

@@ -383,7 +383,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 **默认原厂固件与自定义固件是两条路线：** 原厂固件下的有限卡片/通知模板不等于自由替换系统 UI；自定义 AP 路线已发展到 Turbo Display 和独立导航应用，但需要匹配固件与手机实现，不能直接套到四端。Claude Code、Hermes、WorkBuddy、OpenClaw 也不能仅凭下拉选项视作已接通。
 
-详细证据与使用限制：[iOS V1](v1-sdk.md#能力与边界) · [iOS V2](../official-addon/docs/VALIDATION.md) · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
+详细证据与使用限制：[iOS V1](archive/v1/v1-sdk.md#能力与边界) · [iOS V2](../official-addon/docs/VALIDATION.md) · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
 
 ## 版本与历史进展
 

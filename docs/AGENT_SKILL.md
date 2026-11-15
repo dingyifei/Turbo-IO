@@ -45,6 +45,6 @@ Claude Code 可以用这个技能帮助开发运行项目，但“眼镜语音�
 
 ## 更新和验证
 
-更新前检查上游变化并备份自己的技能修改，再重新运行安装命令。技能结构校验与隔离项目级安装不代表两个助手都已完成自动真机安装；硬件/云配置仍按 [配置文档](CONFIGURATION.md) 单独验收。
+更新前检查上游变化并备份自己的技能修改，再重新运行安装命令。技能结构校验与隔离项目级安装不代表两个助手都已完成自动真机安装；硬件/云配置仍按 [配置文档](archive/v1/CONFIGURATION.md) 单独验收。
 
 格式和安装方式参考：[Codex Skills](https://learn.chatgpt.com/docs/build-skills)、[Claude Code Skills](https://code.claude.com/docs/en/skills)、[Vercel Skills 安装器](https://github.com/vercel-labs/skills)。
