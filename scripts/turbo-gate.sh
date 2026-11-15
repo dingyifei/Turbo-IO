@@ -300,6 +300,7 @@ fw_layout_stage() {
   python3 -I "$REPO/firmware/tools/check_kept.py" "$REPO/firmware/baseline/kept" "$REPO/firmware"
   python3 -I "$REPO/firmware/tools/check_cjk.py" "$REPO/firmware"
   python3 -I "$REPO/firmware/tests/remote_app_name_test.py" --stock "$STOCK"
+  python3 -I "$REPO/firmware/tests/grid_label_stock_test.py" --stock "$STOCK"
   # The tile model in both shapes: 13 items without a base define (the 1.0.5.12 pair), 14 items on 1.0.6.11.
   for name in '' -DTD_STOCK_10611=1; do
     xcrun clang -std=c11 -O1 -g -Wall -Wextra -fsanitize=address,undefined $name -I "$REPO/firmware/src" \
