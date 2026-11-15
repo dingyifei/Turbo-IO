@@ -108,7 +108,6 @@ C18 cannot help. It accepts only glasses on 1.0.5.12.
 - That RayNeo 1.0.21's update check and install requests match what the gate expects.
 - That RayNeo 1.0.21 unpacks the ZIP flat into `ota/Strix_OS_1.0.6.11` instead of installing from the ZIP.
 - That RayNeo 1.0.21 downloads again when the folder already holds other files.
-- That the Install step still opens after the flash, so you can disarm (it needs the Check step to pass and the folder to still match TMG12).
 - A same-version or stock flash on 1.0.6.11.
 - The C20 phone features on RayNeo AI 1.0.21.
 
