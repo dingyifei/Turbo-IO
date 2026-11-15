@@ -27,7 +27,10 @@
    "sha256=a75c3f0b13374f936051c24b3258802a9ba4dea6d01ae24c81bc6c2f5acda2f6,len=7": 1,
    "sha256=d638ab769f639b024c5514610ef439edf73b586350d45e08c5e80973bfe13eec,len=19": 1,
    "sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19": 1,
-   "sha256=24926e315c4025ddca43ab8313ea7e654c583baaa05108fceb57e9f8728c4022,len=107": 1
+   "sha256=24926e315c4025ddca43ab8313ea7e654c583baaa05108fceb57e9f8728c4022,len=107": 1,
+   "sha256=fe7182aeac9fefbbe47fee3eac8e0d7869d7d5a799cd9f6a300003b8111a3379,len=67": 1,
+   "sha256=a59e3a02240fd0736a5589b2fe8bc7aae2d3f29a0a340bb492df89b183c748f1,len=59": 1,
+   "sha256=ad615f087a7c61001a88f946819fdfedbced7d4f5e3b84cf8270d93f1a5f4f95,len=78": 1
   }
  },
  "moduleMessageIds": [
@@ -2433,6 +2436,326 @@
     }
    ],
    "why": "The binary decoder init stores its name string, loaded just before, into the new decoder at this offset."
+  },
+  {
+   "constant": "TIO_STOCK_EVENT_DELETE",
+   "n": 1,
+   "where": "call:link:tio_lv_obj_delete@0x38",
+   "at": 22,
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 1
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 24,
+     "shape": "strb.w-imm12",
+     "regs": {
+      "rt": 3,
+      "rn": 0
+     },
+     "field": 51
+    },
+    {
+     "at": 28,
+     "shape": "bl"
+    },
+    {
+     "where": "call:call:link:tio_lv_obj_delete@0x38@0x1c",
+     "at": 24,
+     "shape": "adds-imm3",
+     "regs": {
+      "rd": 0,
+      "rn": 7
+     },
+     "field": 4
+    },
+    {
+     "where": "call:call:link:tio_lv_obj_delete@0x38@0x1c",
+     "at": 26,
+     "shape": "strh-imm5",
+     "regs": {
+      "rt": 1,
+      "rn": 7
+     },
+     "field": 12
+    }
+   ],
+   "why": "The object delete core marks the object as being deleted, then sends it this event code before freeing it; it calls itself for each child. The called routine builds the event on its stack and stores this code at the event's code offset."
+  },
+  {
+   "constant": "TIO_STOCK_EVENT_DELETE",
+   "n": 2,
+   "where": "str:sha256=fe7182aeac9fefbbe47fee3eac8e0d7869d7d5a799cd9f6a300003b8111a3379,len=67#0",
+   "at": 56,
+   "function": {
+    "where": "str:sha256=fe7182aeac9fefbbe47fee3eac8e0d7869d7d5a799cd9f6a300003b8111a3379,len=67#0",
+    "at": -24
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 2
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 58,
+     "shape": "ldr-lit",
+     "regs": {
+      "rt": 1
+     }
+    },
+    {
+     "at": 60,
+     "shape": "bl",
+     "target": "link:stream_add_event"
+    }
+   ],
+   "why": "A stock view registers its own clean-up callback for this event code through the event-add call, as the module's pages do."
+  },
+  {
+   "constant": "TIO_STOCK_OBJ_FLAG_HIDDEN",
+   "n": 1,
+   "where": "edit:m8_hook_hide",
+   "at": 12,
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 1
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 6,
+     "shape": "ldr-imm5",
+     "regs": {
+      "rt": 0,
+      "rn": 0
+     },
+     "field": 4
+    },
+    {
+     "at": 14,
+     "shape": "bl",
+     "target": "link:native_has_flag"
+    },
+    {
+     "at": 58,
+     "shape": "movs-imm8",
+     "regs": {
+      "rd": 1
+     },
+     "field": 1
+    },
+    {
+     "at": 62,
+     "shape": "bl",
+     "target": "link:tio_lv_obj_add_flag"
+    }
+   ],
+   "why": "The stock menu hide asks whether its root object has this flag, then sets the flag on that root."
+  },
+  {
+   "constant": "TIO_STOCK_OBJ_FLAG_HIDDEN",
+   "n": 2,
+   "where": "edit:m8_hook_show",
+   "at": 12,
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 1
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 6,
+     "shape": "ldr-imm5",
+     "regs": {
+      "rt": 0,
+      "rn": 0
+     },
+     "field": 4
+    },
+    {
+     "at": 14,
+     "shape": "bl",
+     "target": "link:tio_lv_obj_remove_flag"
+    }
+   ],
+   "why": "The stock menu show clears this flag on its root object."
+  },
+  {
+   "constant": "TIO_STOCK_MANAGER_MENU_OPEN",
+   "n": 1,
+   "where": "edit:m8_hook_vm_event",
+   "at": 140,
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 1
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 134,
+     "shape": "cmp-imm8",
+     "regs": {
+      "rn": 6
+     },
+     "field": 58
+    },
+    {
+     "at": 144,
+     "shape": "bl",
+     "target": "link:nav_set_state"
+    }
+   ],
+   "why": "The view manager event handler passes this state to the state setter when the confirm key arrives in state 0, which opens the carousel menu."
+  },
+  {
+   "constant": "TIO_STOCK_MANAGER_MENU_OPEN",
+   "n": 2,
+   "where": "call:lit:tio_launcher_global#1@0x7a",
+   "at": 72,
+   "shape": "cmp-imm8",
+   "regs": {
+    "rn": 3
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 70,
+     "shape": "ldr-imm5",
+     "regs": {
+      "rt": 3,
+      "rn": 4
+     },
+     "field": 28
+    },
+    {
+     "at": 76,
+     "shape": "ldr-imm5",
+     "regs": {
+      "rt": 0,
+      "rn": 4
+     },
+     "field": 16
+    },
+    {
+     "at": 80,
+     "shape": "bl",
+     "target": "edit:m8_hook_hide"
+    }
+   ],
+   "why": "A launcher routine compares the view manager state with this value and, when equal, hides the open carousel menu."
+  },
+  {
+   "constant": "TIO_STOCK_LINK_CONNECTED",
+   "n": 1,
+   "where": "link:tdp_rnlink_send",
+   "at": 48,
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 0
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 50,
+     "shape": "bl",
+     "target": "link:nav_connection"
+    }
+   ],
+   "why": "The phone-link send asks the connection query for this bit and refuses to send without it."
+  },
+  {
+   "constant": "TIO_STOCK_LINK_CONNECTED",
+   "n": 2,
+   "where": "str:sha256=a59e3a02240fd0736a5589b2fe8bc7aae2d3f29a0a340bb492df89b183c748f1,len=59#0",
+   "at": 10,
+   "function": {
+    "where": "str:sha256=a59e3a02240fd0736a5589b2fe8bc7aae2d3f29a0a340bb492df89b183c748f1,len=59#0",
+    "at": -48
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 0
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 12,
+     "shape": "bl",
+     "target": "link:nav_connection"
+    }
+   ],
+   "why": "A second phone-link send routine asks the connection query for the same bit before it sends."
+  },
+  {
+   "constant": "TIO_STOCK_RNLINK_BUSINESS",
+   "n": 1,
+   "where": "edit:stream_register_shim",
+   "at": 12,
+   "function": {
+    "where": "edit:stream_register_shim",
+    "at": -54
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 2
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 38,
+     "shape": "ldr-imm5",
+     "regs": {
+      "rt": 3,
+      "rn": 5
+     },
+     "field": 8
+    },
+    {
+     "at": 40,
+     "shape": "blx-reg",
+     "regs": {
+      "rm": 3
+     }
+    }
+   ],
+   "why": "Stock registers its phone payload receive callbacks on the phone link under this business id."
+  },
+  {
+   "constant": "TIO_STOCK_RNLINK_BUSINESS",
+   "n": 2,
+   "where": "str:sha256=ad615f087a7c61001a88f946819fdfedbced7d4f5e3b84cf8270d93f1a5f4f95,len=78#0",
+   "at": 20,
+   "function": {
+    "where": "str:sha256=ad615f087a7c61001a88f946819fdfedbced7d4f5e3b84cf8270d93f1a5f4f95,len=78#0",
+    "at": -66
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 0
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 12,
+     "shape": "ldr-imm5",
+     "regs": {
+      "rt": 6,
+      "rn": 0
+     },
+     "field": 16
+    },
+    {
+     "at": 22,
+     "shape": "blx-reg",
+     "regs": {
+      "rm": 6
+     }
+    }
+   ],
+   "why": "A stock routine sends on the phone link through the interface's send entry with this business id and no callback."
   }
  ]
 }

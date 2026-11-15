@@ -27,7 +27,7 @@ as written, so the bit is preserved; --check asserts it).
 
 `--check` fails on a mixed tree (some values on one base, some on the other), on any old-base literal left
 anywhere under src/, include/ and tests/, and on any hex token in a stock window (either base's AP flash, RAM
-0x18000000-0x1a000000, the copy region) that is not an address of the tree's base in the table and not listed in the
+0x18000000-0x1b600000, the copy region) that is not an address of the tree's base in the table and not listed in the
 table's notStock, so a stock address the table does not know cannot hide either. build.py runs the same check before
 every build.
 """
@@ -150,7 +150,7 @@ def sites(v):
 def leftovers(table, base, texts):
     """Every hex token in a stock window that is not an address of `base` and not listed as not-stock.
 
-    Windows: the AP flash of either base (FLASH .. FLASH + AP bytes), RAM 0x18000000-0x1a000000 and the copy region
+    Windows: the AP flash of either base (FLASH .. FLASH + AP bytes), RAM 0x18000000-0x1b600000 and the copy region
     0x100000-0x101000. Accounted for: the base's link.ld callees, value sites, edit addresses, module VA and stock
     ABI ranges. So a stock address the table does not know (a gap like the native_page.c comment that tmg10(5)
     found) fails the check whichever base it came from."""
@@ -166,7 +166,7 @@ def leftovers(table, base, texts):
             continue
         for m in HEX.finditer(text):
             v = int(m.group(1), 16)
-            if (FLASH <= v < top or 0x18000000 <= v < 0x1a000000 or 0x100000 <= v < 0x101000) and v not in known:
+            if (FLASH <= v < top or 0x18000000 <= v < 0x1b600000 or 0x100000 <= v < 0x101000) and v not in known:
                 out.append('%s: %s is in a stock window but is not a %s address in the table (stale or unknown)' % (path, m.group(0), base))
     return out
 

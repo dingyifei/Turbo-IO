@@ -19,14 +19,14 @@ extern void *nav_ensure_menu(void *);
 extern const char *nav_top_app(void);
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
-static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static bool launcher(void){const char *s=nav_top_app();const char *n="com.rayneo.liteos.launcher";if(!s)return false;for(unsigned i=0;i<32;i++){if(s[i]!=n[i])return false;if(!n[i])return true;}return false;}
 static void emit(const TDSample *sample){
  uint8_t raw[TD_WIRE_BYTES],out[640];if(!td_encode(sample,raw,sizeof raw))return;
  static const char prefix[]="{\"cmd\":\"turbo_diagnostics_v1\",\"payload\":{\"data\":\"",suffix[]="\"}}",hex[]="0123456789abcdef";
  enum{len=sizeof prefix-1+2*TD_WIRE_BYTES+sizeof suffix-1};_Static_assert(len==564&&len+7==571&&len+7<sizeof out,"bounded TMG4 reply");
  unsigned pos=0;out[pos++]=8;out[pos++]=1;out[pos++]=16;out[pos++]=6;out[pos++]=26;out[pos++]=(len&127)|128;out[pos++]=len>>7;
- memcpy(out+pos,prefix,sizeof prefix-1);pos+=sizeof prefix-1;for(unsigned i=0;i<TD_WIRE_BYTES;i++){out[pos++]=hex[raw[i]>>4];out[pos++]=hex[raw[i]&15];}memcpy(out+pos,suffix,sizeof suffix-1);pos+=sizeof suffix-1;(void)tdp_rnlink_send(15,out,pos,NULL);
+ memcpy(out+pos,prefix,sizeof prefix-1);pos+=sizeof prefix-1;for(unsigned i=0;i<TD_WIRE_BYTES;i++){out[pos++]=hex[raw[i]>>4];out[pos++]=hex[raw[i]&15];}memcpy(out+pos,suffix,sizeof suffix-1);pos+=sizeof suffix-1;(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,pos,NULL);
 }
 static uint32_t clock_ms(void *unused){(void)unused;return stream_tick();}
 static bool nand(uint64_t *total,uint64_t *available){uint32_t words[16]={0};return !tap_fs_statfs("/mnt/nand_data",words)&&td_nand_metrics(words,sizeof words,total,available);}

@@ -19,7 +19,7 @@ static void *root(void *c,void *parent){
  TAPLVGL *a=c;if(a->root||!parent)return NULL;
  void *o=m8_native_api.create_root(parent);if(!o)return NULL;
  dc_remove_style(o);m8_native_api.hidden(o,true);
- if(!m8_native_api.configure_root(o,parent)||!stream_add_event(o,deleted,0x24,a)){m8_native_api.delete_root(o);return NULL;}
+ if(!m8_native_api.configure_root(o,parent)||!stream_add_event(o,deleted,TIO_STOCK_EVENT_DELETE,a)){m8_native_api.delete_root(o);return NULL;}
  a->root=o;return o;
 }
 static void *text(void *c,void *parent,const char *s,unsigned size){

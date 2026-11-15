@@ -40,7 +40,7 @@ static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static M8NativeTail *tail(void *app){return m8_tail(app);}
 static TNNavSlot *slot(void *a){M8NativeTail *t=tail(a);return t?t->navigation:NULL;}
 static bool detail(void *app){M8NativeTail *t=tail(app);if(!t)return true;TNNavSlot *s=slot(app);return tc_native_visible(app)||tap_service_visible(app)||(s&&(tn_slot_visible(s)||tm_slot_visible(s->music)||tf_slot_visible(s->focus)||t->page));}
-bool fm_menu_plain(void *app){void *parent=ptr(app,TIO_STOCK_MENU_ROOT);return app&&parent&&!native_has_flag(parent,1)&&!detail(app)&&focus_screen_on();}
+bool fm_menu_plain(void *app){void *parent=ptr(app,TIO_STOCK_MENU_ROOT);return app&&parent&&!native_has_flag(parent,TIO_STOCK_OBJ_FLAG_HIDDEN)&&!detail(app)&&focus_screen_on();}
 /* Hides stock's TIO_STOCK_MENU_TILES rows, the lottie and the module's own rows and icons while the module view is up;
  * fm_sync hides the stock dots parent. */
 _Static_assert(TIO_STOCK_ITEMS==TIO_STOCK_MENU_TILES,"one stock row per stock tile");
@@ -52,7 +52,7 @@ static void hide_legacy(void *app){
  for(unsigned i=0;i<sizeof old/sizeof *old;i++)if(old[i])m8_native_api.hidden(old[i],true);
 }
 static void deleted(void *e){FMControl *c=stream_event_user(e);if(c){TNNavSlot *s=slot(c->app);if(s&&s->quad==c)s->quad=NULL;c->app=NULL;c->view.root=NULL;c->closing=true;}}
-static bool attach_deleted(void *root,void *owner){return stream_add_event(root,deleted,0x24,owner)!=NULL;}
+static bool attach_deleted(void *root,void *owner){return stream_add_event(root,deleted,TIO_STOCK_EVENT_DELETE,owner)!=NULL;}
 static bool dispose(FMControl *c){if(!c->view.api.idle(c->view.api.ctx)||!fm_view_close(&c->view))return false;stream_timer_delete(c->timer);stream_free(c);return true;}
 static void tick(void *t){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c)return;
  if(c->closing||!c->app){(void)dispose(c);return;}
@@ -63,7 +63,7 @@ static void tick(void *t){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);if(!c)return;
 static bool room(void){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)return true;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB);if(cb==tick){FMControl *c=ptr(t,TIO_STOCK_TIMER_USER);return c&&c->timer==t&&c->closing&&!c->app&&dispose(c);}}return false;}
 /* Live tile state (read only). One snapshot of what the services already keep, then the text for the focused tile (carousel line) and the
  * mask of tiles with a running state (grid dots). Runs on the 1 Hz refresh and whenever the focus moves, never per frame. */
-static bool phone_linked(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool phone_linked(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static void tile_live(void *app,uint32_t now,TSLive *live){
  memset(live,0,sizeof *live);live->phone=phone_linked();tf_live(now,live);
  TNNavSlot *s=slot(app);if(!s)return;
@@ -93,11 +93,11 @@ void fm_sync(void *app){if(!tail(app)||fm_tiles_busy())return;   /* an unarmed m
  if(dots)m8_native_api.hidden(dots,inside||(c&&c->view.root&&!c->closing));
  if(c&&c->view.root&&!c->closing)hide_legacy(app);
  void *visible_parent=ptr(app,TIO_STOCK_MENU_ROOT);TNWidgets widgets=tn_lvgl_widgets();
- bool safe=visible_parent&&!native_has_flag(visible_parent,1)&&!inside&&focus_screen_on()&&widgets.idle(widgets.ctx);
+ bool safe=visible_parent&&!native_has_flag(visible_parent,TIO_STOCK_OBJ_FLAG_HIDDEN)&&!inside&&focus_screen_on()&&widgets.idle(widgets.ctx);
  if(safe){(void)fm_tiles_apply(app);if(c&&!c->closing&&c->view.root){TTVisible active;fm_tile_snapshot(&active);if(!fm_view_tiles(&c->view,&active))return;if(c->view.selected<0)c->selection=-1;}}
  if(!c||c->closing||!c->view.root)return;
  if(c->relabel){c->relabel=false;c->selection=-1;fm_view_suspend(&c->view);for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);}
- void *parent=ptr(app,TIO_STOCK_MENU_ROOT);bool show=c->enabled&&parent&&!native_has_flag(parent,1)&&!inside;
+ void *parent=ptr(app,TIO_STOCK_MENU_ROOT);bool show=c->enabled&&parent&&!native_has_flag(parent,TIO_STOCK_OBJ_FLAG_HIDDEN)&&!inside;
  if(!show){c->view.api.visible(c->view.api.ctx,c->view.root,false);c->selection=-1;fm_view_suspend(&c->view);return;}
  if(!focus_screen_on())return; /* Never repaint or wake a sleeping panel. */
  if(c->view.rows!=c->desired_rows){if(!fm_view_rows(&c->view,c->desired_rows))return;c->selection=-1;}

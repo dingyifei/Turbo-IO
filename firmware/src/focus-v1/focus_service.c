@@ -33,7 +33,7 @@ static void tick(void *);
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *navslot(void *a){M8NativeTail *t=m8_tail(a);return t?t->navigation:NULL;}
-static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static bool home(void){static const char name[]="com.rayneo.liteos.launcher";const char *s=nav_top_app();if(!s)return false;for(unsigned i=0;i<sizeof name;i++)if(s[i]!=name[i])return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
 static bool owns(TFControl *c){return c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home();}
 static TFControl *control(bool create){void *t=NULL;for(unsigned i=0;i<512;i++){t=stream_timer_next(t);if(!t)break;void (*cb)(void *)=*(void (**)(void *))((uint8_t *)t+TIO_STOCK_TIMER_CB);if(cb==tick){TFControl *c=ptr(t,TIO_STOCK_TIMER_USER);return c&&c->magic==TF_MAGIC&&c->timer==t?c:NULL;}if(i==511)return NULL;}
@@ -45,15 +45,15 @@ static void deleted(void *e){TFControl *c=stream_event_user(e);if(!c||!c->view)r
 static void *root(void *surface,void *parent){void *o=m8_native_api.create_root(parent);if(!o)return NULL;m8_native_api.hidden(o,true);if(!m8_native_api.configure_root(o,surface)){m8_native_api.delete_root(o);return NULL;}return o;}
 static bool available(TFSlot *s){if(!s||!home()||ptr(manager(),TIO_STOCK_MANAGER_MENU)!=s->app)return false;TNNavSlot *n=navslot(s->app);return n&&!tap_service_visible(s->app)&&!tn_slot_visible(n)&&!tm_slot_visible(n->music)&&!m8_tail_busy(s->app);}
 static bool enter(TFControl *c,TFSlot *s,uint32_t now){if(!c||c->closing||!available(s))return false;TNWidgets api=tn_lvgl_widgets();if(!api.idle(NULL))return false;
- if(c->view&&c->app!=s->app)return false;c->slot=s;c->app=s->app;c->transitioning=true;nav_set_state(manager(),1);c->transitioning=false;if(!owns(c))return false;
+ if(c->view&&c->app!=s->app)return false;c->slot=s;c->app=s->app;c->transitioning=true;nav_set_state(manager(),TIO_STOCK_MANAGER_MENU_OPEN);c->transitioning=false;if(!owns(c))return false;
  api.ctx=ptr(s->app,TIO_STOCK_MENU_ROOT);api.root=root;
- if(!c->view){c->view=stream_memalign(64,sizeof *c->view);if(!c->view)return false;memset(c->view,0,sizeof *c->view);if(!tf_view_open(c->view,&api,api.ctx,api.ctx)){stream_free(c->view);c->view=NULL;return false;}if(!stream_add_event(c->view->root,deleted,0x24,c)){hide(c);return false;}}
+ if(!c->view){c->view=stream_memalign(64,sizeof *c->view);if(!c->view)return false;memset(c->view,0,sizeof *c->view);if(!tf_view_open(c->view,&api,api.ctx,api.ctx)){stream_free(c->view);c->view=NULL;return false;}if(!stream_add_event(c->view->root,deleted,TIO_STOCK_EVENT_DELETE,c)){hide(c);return false;}}
  tf_peek(&c->state,now);c->shown=now;c->compact=false;tf_view_enter(c->view,now);
  /* Strictly bounded peek lease. Never modify global screen timeout. */
  if(!c->token)c->token=nav_always_on("turbo_focus_v1");nav_screen_on(true);c->screen=true;
  return tf_view_draw(c->view,&c->state,false,now);
 }
-static void emit(TFControl *c,unsigned result,const TFCommand *cmd){uint8_t raw[64],out[256];tf_reply(raw,sizeof raw,&c->state,result,cmd);static const char p[]="{\"cmd\":\"turbo_focus_v1\",\"payload\":{\"data\":\"",s[]="\"}}",hex[]="0123456789abcdef";unsigned len=sizeof p-1+128+sizeof s-1,at=0;out[at++]=8;out[at++]=1;out[at++]=16;out[at++]=6;out[at++]=26;out[at++]=(uint8_t)((len&127)|128);out[at++]=(uint8_t)(len>>7);memcpy(out+at,p,sizeof p-1);at+=sizeof p-1;for(unsigned i=0;i<64;i++){out[at++]=hex[raw[i]>>4];out[at++]=hex[raw[i]&15];}memcpy(out+at,s,sizeof s-1);at+=sizeof s-1;(void)tdp_rnlink_send(15,out,at,NULL);}
+static void emit(TFControl *c,unsigned result,const TFCommand *cmd){uint8_t raw[64],out[256];tf_reply(raw,sizeof raw,&c->state,result,cmd);static const char p[]="{\"cmd\":\"turbo_focus_v1\",\"payload\":{\"data\":\"",s[]="\"}}",hex[]="0123456789abcdef";unsigned len=sizeof p-1+128+sizeof s-1,at=0;out[at++]=8;out[at++]=1;out[at++]=16;out[at++]=6;out[at++]=26;out[at++]=(uint8_t)((len&127)|128);out[at++]=(uint8_t)(len>>7);memcpy(out+at,p,sizeof p-1);at+=sizeof p-1;for(unsigned i=0;i<64;i++){out[at++]=hex[raw[i]>>4];out[at++]=hex[raw[i]&15];}memcpy(out+at,s,sizeof s-1);at+=sizeof s-1;(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,at,NULL);}
 static bool auto_enter(TFControl *c,uint32_t now,bool explicit){if(!home())return false;void *vm=manager(),*app=ptr(vm,TIO_STOCK_MANAGER_MENU);if(!vm)return false;
  /* Head-up must not steal an open menu. An explicit phone request or a due
   * reminder may briefly replace the idle menu, never another business/page. */

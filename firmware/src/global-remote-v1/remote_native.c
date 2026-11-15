@@ -37,7 +37,7 @@ static void tick(void *);
 static const char *gate_top(void){
  void *m=nav_monitors(),*i=m?nav_input(m):NULL,*l=m?nav_link(m):NULL;
  void *sys=m?fm_system(m):NULL;
- if(!i||!l||!sys||tgr_ota_status(sys)!=0||!nav_bonded(l)||!nav_connection(0x80)||nav_folded(i))return NULL;
+ if(!i||!l||!sys||tgr_ota_status(sys)!=0||!nav_bonded(l)||!nav_connection(TIO_STOCK_LINK_CONNECTED)||nav_folded(i))return NULL;
  return nav_top_app();
 }
 static bool listed(const char *top){
@@ -165,7 +165,7 @@ void tgr_native_message(const TIONativeMessage *m){
    * but never report success until flush/fsync/readback all passed. */
   fm_relayout(c->menu.stored.rows);
   uint8_t out[74];tml_reply(raw,&c->menu,&layout,r);tml_carrier(out,raw,true);
-  (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
+  (void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,sizeof out,NULL);return;
  }
  if(tt_uncarrier(m->data,m->bytes,raw,false)){
   TTCommand q;if(!tt_decode(raw,sizeof raw,&q))return;Control *c=control();if(!c)return;
@@ -173,18 +173,18 @@ void tgr_native_message(const TIONativeMessage *m){
   unsigned r=tt_accept(&c->tiles,&q,stream_tick(),q.op==TT_QUERY?tap_random():0,allowed(),&tt_io);
   if(c->tiles.stored.readable&&c->tiles.stored.generation!=generation)c->pending=true;
   if(c->menu_app)fm_sync(c->menu_app);
-  uint8_t out[74];tt_reply(raw,&c->tiles,&q,r);tt_carrier(out,raw,true);(void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
+  uint8_t out[74];tt_reply(raw,&c->tiles,&q,r);tt_carrier(out,raw,true);(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,sizeof out,NULL);return;
  }
  if(tlg_uncarrier(m->data,m->bytes,raw,false)){
   TLGCommand flag;if(!tlg_decode(raw,sizeof raw,&flag))return;
   Control *c=control();if(!c)return;TLGReply reply;
   if(tlg_state_accept(&c->language,&flag,allowed(),&tls_io,&reply))fm_language_changed();
   uint8_t out[74];tlg_reply_encode(raw,&reply);tlg_carrier(out,raw,true);
-  (void)tdp_rnlink_send(15,out,sizeof out,NULL);return;
+  (void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,sizeof out,NULL);return;
  }
  TGRCommand q;if(!tgr_uncarrier(m->data,m->bytes,raw,false)||!tgr_decode(raw,sizeof raw,&q))return;
  Control *c=control();if(!c)return;uint32_t now=stream_tick();
  unsigned r=tgr_accept(&c->gate,&q,now,q.op==TGR_HELLO?tap_random():0,input_allowed());
  if(r==TGR_OK&&q.op>=TGR_PREVIOUS&&q.op<=TGR_BACK)r=inject(q.op);
- uint8_t out[74];tgr_reply(raw,&c->gate,&q,r,stream_tick());tgr_carrier(out,raw,true);(void)tdp_rnlink_send(15,out,sizeof out,NULL);
+ uint8_t out[74];tgr_reply(raw,&c->gate,&q,r,stream_tick());tgr_carrier(out,raw,true);(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,sizeof out,NULL);
 }

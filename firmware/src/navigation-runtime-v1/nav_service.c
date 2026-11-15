@@ -43,7 +43,7 @@ static uint32_t word(void *p,unsigned off){return p?*(uint32_t *)((uint8_t *)p+o
 static bool same(const char *a,const char *b){if(!a)return false;for(unsigned i=0;i<96;i++){if(a[i]!=b[i])return false;if(!b[i])return true;}return false;}
 static void *manager(void){void *launcher=tio_launcher_global;return ptr(launcher,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *slot_of(void *app){M8NativeTail *t=m8_tail(app);return t?t->navigation:NULL;}
-static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static bool safe_home(void){
  if(!same(nav_top_app(),"com.rayneo.liteos.launcher"))return false;
  void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();
@@ -65,13 +65,13 @@ static bool enter(void *ctx,const TNScene *s){
  Control *c=ctx;if(!c->slot||!safe_home())return false;
  void *vm=manager();if(!vm||ptr(vm,TIO_STOCK_MANAGER_MENU)!=c->app)return false;
  /* Use native focus/visibility transition, never just unhide a hidden root. */
- nav_set_state(vm,1);if(!owns(c))return false;
+ nav_set_state(vm,TIO_STOCK_MANAGER_MENU_OPEN);if(!owns(c))return false;
  if(c->view){if(!c->view->open)return false;c->waiting=false;return tn_view_update(c->view,s,false);}
  TNWidgets a=tn_lvgl_widgets();if(!a.idle(a.ctx))return false;
  TNView *v=stream_memalign(64,sizeof *v);if(!v)return false;memset(v,0,sizeof *v);
  if(!tn_view_open(v,&a,ptr(c->app,TIO_STOCK_MENU_ROOT),s)){stream_free(v);return false;}
  c->view=v;c->waiting=false;
- if(!stream_add_event(v->root,deleted,0x24,c)){(void)tn_view_close(v);c->view=NULL;stream_free(v);return false;}
+ if(!stream_add_event(v->root,deleted,TIO_STOCK_EVENT_DELETE,c)){(void)tn_view_close(v);c->view=NULL;stream_free(v);return false;}
  return true;
 }
 static bool render(void *ctx,const TNScene *s,bool stale){Control *c=ctx;return owns(c)&&c->view&&tn_view_update(c->view,s,stale);}
@@ -85,7 +85,7 @@ static void emit_caps(TNReply reply,bool capabilities){
  enum{len=sizeof prefix-1+64+sizeof suffix-1};_Static_assert(len<128,"PB length width");
  const uint8_t head[]={8,1,16,6,26,len};memcpy(out,head,sizeof head);memcpy(out+sizeof head,prefix,sizeof prefix-1);
  unsigned pos=sizeof head+sizeof prefix-1;for(unsigned i=0;i<32;i++){out[pos++]=hex[raw[i]>>4];out[pos++]=hex[raw[i]&15];}
- memcpy(out+pos,suffix,sizeof suffix-1);(void)tdp_rnlink_send(15,out,pos+sizeof suffix-1,NULL);
+ memcpy(out+pos,suffix,sizeof suffix-1);(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,pos+sizeof suffix-1,NULL);
 }
 static void emit(TNReply reply){emit_caps(reply,false);}
 static void flush(Control *c){uint32_t now=stream_tick();if(!c->pending||(c->sent&&(uint32_t)(now-c->last_reply)<100))return;

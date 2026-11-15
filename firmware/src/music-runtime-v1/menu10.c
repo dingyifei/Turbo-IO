@@ -73,7 +73,7 @@ _Static_assert(TIO_STOCK_LAST_FRAME==TIO_STOCK_MENU_FIRST_FRAME+TIO_STOCK_MENU_F
 static bool eligible(void *app){
   void *root=ptr(app,TIO_STOCK_MENU_ROOT);
   return root && ptr(app,TIO_STOCK_MENU_LOTTIE) && byte(app,TIO_STOCK_MENU_ACTIVE) && !byte(app,TIO_MENU_EXTERNAL_ACTION_OFFSET) &&
-    !native_has_flag(root,1) && !native_wake_overlay();
+    !native_has_flag(root,TIO_STOCK_OBJ_FLAG_HIDDEN) && !native_wake_overlay();
 }
 static void hidden(void *obj,bool hide){if(obj)m8_native_api.hidden(obj,hide);}
 static void retire(void *app){

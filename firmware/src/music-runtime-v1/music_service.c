@@ -44,7 +44,7 @@ static bool same(const char *a,const char *b){if(!a)return false;for(unsigned i=
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *navslot(void *app){M8NativeTail *t=m8_tail(app);return t?t->navigation:NULL;}
 static TMMusicSlot *slot_of(void *app){TNNavSlot *n=navslot(app);return n?n->music:NULL;}
-static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;return same(nav_top_app(),"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&tio_business_idle();}
 static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home();}
 static void release(Control *c){if(c->token){nav_release_always_on("turbo_music_v1",c->token);c->token=0;}}
@@ -56,7 +56,7 @@ static void emit(Control *c,unsigned event,unsigned result,uint32_t sid,uint32_t
  put(raw+8,sid);put(raw+12,gen);put(raw+16,seq);put(raw+28,tm_crc(raw,28));
  static const char prefix[]="{\"cmd\":\"turbo_music_v1\",\"payload\":{\"data\":\"",suffix[]="\"}}",hex[]="0123456789abcdef";
  unsigned len=sizeof prefix-1+64+sizeof suffix-1,pos=0;out[pos++]=8;out[pos++]=1;out[pos++]=16;out[pos++]=6;out[pos++]=26;if(len>=128){out[pos++]=(len&127)|128;out[pos++]=len>>7;}else out[pos++]=len;
- memcpy(out+pos,prefix,sizeof prefix-1);pos+=sizeof prefix-1;for(unsigned i=0;i<32;i++){out[pos++]=hex[raw[i]>>4];out[pos++]=hex[raw[i]&15];}memcpy(out+pos,suffix,sizeof suffix-1);pos+=sizeof suffix-1;(void)tdp_rnlink_send(15,out,pos,NULL);
+ memcpy(out+pos,prefix,sizeof prefix-1);pos+=sizeof prefix-1;for(unsigned i=0;i<32;i++){out[pos++]=hex[raw[i]>>4];out[pos++]=hex[raw[i]&15];}memcpy(out+pos,suffix,sizeof suffix-1);pos+=sizeof suffix-1;(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,pos,NULL);
 }
 static void request(Control *c,unsigned event){if(!c)return;c->request_id++;if(!c->request_id)c->request_id=1;c->event=event;c->event_tries=0;c->last_event=0;}
 static void close_view(Control *c,bool notify){if(!c)return;release(c);c->music.active=c->music.awake=false;c->waiting=false;if(c->root)c->closing=true;if(notify)request(c,TM_VIEW_CLOSED);}
@@ -98,7 +98,7 @@ static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
   * point we own no music widgets yet: that hide is not a user music exit.
   * Keep the just-accepted OPEN state through this one focus transition;
   * all later hide/destroy/button events still retire the session normally. */
- c->focus_transition=true;nav_set_state(manager(),1);c->focus_transition=false;
+ c->focus_transition=true;nav_set_state(manager(),TIO_STOCK_MANAGER_MENU_OPEN);c->focus_transition=false;
  if(!owns(c)||c->closing||!paired()||!c->api.idle(NULL))return false;c->root=c->api.root(NULL,ptr(c->app,TIO_STOCK_MENU_ROOT));if(!c->root)return false;
  c->api.place(NULL,c->root,0,0,540,180);c->canvas=c->api.canvas(NULL,c->root);if(!c->canvas)goto fail;
  {TIORect a=tm_art_rect();c->api.place(NULL,c->canvas,a.x,a.y,a.w,a.h);}
@@ -109,7 +109,7 @@ static bool enter(Control *c){if(!owns(c)||!paired()||c->closing)return false;
    c->api.place(NULL,c->labels[i],rects[i].x,rects[i].y,rects[i].w,rects[i].h);if(c->api.clip_text)c->api.clip_text(NULL,c->labels[i]);
    if(c->api.color)c->api.color(NULL,c->labels[i],colors[i]);}}
  c->shown_ok=false;c->track_color=TIO_LENS_MID;tio_hint_init(&c->hint);tio_hint_enter(&c->hint,stream_tick());
- if(!stream_add_event(c->root,deleted,0x24,c))goto fail;
+ if(!stream_add_event(c->root,deleted,TIO_STOCK_EVENT_DELETE,c))goto fail;
  if(!render(c,stream_tick()))goto fail;c->api.visible(NULL,c->root,true);if(!wake(c))goto fail;return true;
  fail:c->api.destroy(NULL,c->root);c->root=NULL;release(c);return false;
 }

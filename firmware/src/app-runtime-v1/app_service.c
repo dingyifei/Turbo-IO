@@ -38,7 +38,7 @@ void tap_menu_destroy(TAPMenu *m){if(m){tap_service_destroy(m->app);stream_free(
 static void *ptr(void *p,unsigned o){return p?*(void **)((uint8_t *)p+o):NULL;}
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *slot(void *a){M8NativeTail *t=m8_tail(a);return t?t->navigation:NULL;}
-static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static bool home(void){const char *name=nav_top_app();if(!name||strcmp(name,"com.rayneo.liteos.launcher"))return false;void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();}
 static bool available(void *app){TNNavSlot *s=slot(app);return app&&s&&home()&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==app&&!tf_slot_visible(s->focus)&&!tm_slot_visible(s->music)&&!tn_slot_visible(s)&&!m8_tail_busy(app);}
 static bool owns(TAPControl *c){return c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home();}
@@ -63,7 +63,7 @@ static void activity(TAPControl *c){c->activity=stream_tick();native_report_acti
 static bool attach(TAPControl *c,void *app){
  if(!c||!available(app)||c->runner->closing||c->runner->view.retiring||c->runner->view.root)return false;
  c->app=app;c->runner->parent=ptr(app,TIO_STOCK_MENU_ROOT);if(!c->runner->parent)return false;
- c->transitioning=true;nav_set_state(manager(),1);c->transitioning=false;
+ c->transitioning=true;nav_set_state(manager(),TIO_STOCK_MANAGER_MENU_OPEN);c->transitioning=false;
  if(!owns(c)){c->app=NULL;c->runner->parent=NULL;return false;}memset(&c->input,0,sizeof c->input);return true;
 }
 bool tap_service_visible(void *app){TAPControl *c=control(false);return c&&c->app==app&&(c->runner->view.root||c->runner->view.retiring||c->runner->closing);}
@@ -77,7 +77,7 @@ static void emit(const uint8_t *data,unsigned n){
  static const char prefix[]="{\"cmd\":\"turbo_app_v1\",\"payload\":{\"data\":\"",suffix[]="\"}}",hex[]="0123456789abcdef";
  unsigned len=sizeof prefix-1+2*n+sizeof suffix-1,at=0;out[at++]=8;out[at++]=1;out[at++]=16;out[at++]=6;out[at++]=26;
  out[at++]=(uint8_t)((len&127)|128);out[at++]=(uint8_t)(len>>7);memcpy(out+at,prefix,sizeof prefix-1);at+=sizeof prefix-1;
- for(unsigned i=0;i<n;i++){out[at++]=hex[data[i]>>4];out[at++]=hex[data[i]&15];}memcpy(out+at,suffix,sizeof suffix-1);at+=sizeof suffix-1;(void)tdp_rnlink_send(15,out,at,NULL);
+ for(unsigned i=0;i<n;i++){out[at++]=hex[data[i]>>4];out[at++]=hex[data[i]&15];}memcpy(out+at,suffix,sizeof suffix-1);at+=sizeof suffix-1;(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,out,at,NULL);
 }
 static void w32(uint8_t *p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(8*i));}
 static void backend_event(TAPControl *c,TAPEvent e){

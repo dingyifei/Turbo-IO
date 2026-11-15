@@ -41,6 +41,20 @@ Rules (C files and headers unless noted):
             line; (b) a literal added to (either order) or indexing a byte-pointer local initialised from a byte-view
             cast, such as raw+0x2c or raw[0x21] after const uint8_t *raw=(const uint8_t*)d; (c) sizeof compared with a
             literal (sizeof(T)==76, 76==sizeof x).
+  event     a raw LVGL event code, key id or queued message id: (a) a literal compared (== or !=, either order) with a
+            call of native_event_code( or native_event_key(, or with an identifier that the enclosing function sets
+            from one of those calls; (b) a literal stored in the code field of an event (X.code=N, X->code=N); (c) a
+            literal compared with the id field of a TIONativeMessage parameter or local (m->id!=1).
+  stockview a literal index or a literal added (either order) to a byte-pointer local initialised from a call of a
+            link.ld (stock) function that returns a stock object, such as driver[9] or driver+6 after
+            uint8_t *driver=tgr_indev_driver(d). The stock allocators in STOCK_ALLOCATORS return module memory and are
+            left out.
+  stride    a literal stride or scale next to a stock name: an additive expression holding a TIO_STOCK_* name and a
+            literal multiplier or shift (TIO_STOCK_MENU_ROWS+4*i, TIO_STOCK_MENU_DOTS+(i<<2)), also inside a macro
+            body; write the stride as sizeof(uint32_t), as above.
+  stockarg  only in the built set: any literal in the argument of a stock call that STOCK_ARGS names (the LVGL delete
+            event code, the hidden flag, the menu-open manager state, the phone link's connected bit and business
+            id); stock_layout.h names each value.
 
 Scope: the built set (build-inputs.json sources and extras and the .c files they include), the C test models
 (tests/*.c and the two test files under src/ that test.py runs), and the headers (every .h under src/ and include/,
@@ -98,14 +112,29 @@ GUARD_LINE_2 = '#error not ported to 1.0.6.11 yet: '
 GUARD_LINE_3 = '#endif'
 # link.ld symbols referenced by no built file, header or edit target. The F4 prune changes this list in its commit.
 UNREFERENCED = ()
-RULES = ('cast', 'helper', 'wordcast', 'index', 'abs', 'addr', 'asm', 'queue', 'raw')
+RULES = ('cast', 'helper', 'wordcast', 'index', 'abs', 'addr', 'asm', 'queue', 'raw', 'event', 'stockview', 'stride',
+         'stockarg')
+# Rule stride: the header whose names are stock values.
+LAYOUT_HEADER = 'src/stock_layout.h'
+# Rule stockarg: (stock function, argument index, the stock_layout.h name the argument takes).
+STOCK_ARGS = (
+    ('stream_add_event', 2, 'TIO_STOCK_EVENT_DELETE'),
+    ('native_has_flag', 1, 'TIO_STOCK_OBJ_FLAG_HIDDEN'),
+    ('nav_set_state', 1, 'TIO_STOCK_MANAGER_MENU_OPEN'),
+    ('nav_connection', 0, 'TIO_STOCK_LINK_CONNECTED'),
+    ('tdp_rnlink_send', 0, 'TIO_STOCK_RNLINK_BUSINESS'),
+)
+# Rule event: the stock getters of an event's code and key.
+EVENT_GETTERS = ('native_event_code', 'native_event_key')
+# Rule stockview: link.ld functions that return module-owned memory, not a stock object.
+STOCK_ALLOCATORS = ('stream_memalign', 'port_stock_new')
 # Rule raw: the files it covers.
 RAW_FILES = ('src/image-upload-test/render_idle.c', 'src/menu8-native-lvgl.c', 'src/menu8-renderer.c')
 # The stock windows of rule abs. The flash window comes from rebase_apply (FLASH and the table's AP sizes). The RAM
 # start is rebase_apply.DATA_RUNTIME. The RAM end and the copy region are written in rebase_apply only inside
 # leftovers(), so they are repeated here, and check() runs leftovers() on both edges of every window: if the two
 # tools ever disagree, the lint fails.
-RAM_WINDOW = (rebase_apply.DATA_RUNTIME, 0x1a000000)
+RAM_WINDOW = (rebase_apply.DATA_RUNTIME, 0x1b600000)
 COPY_WINDOW = (0x100000, 0x101000)
 # Rule addr (a): the 0x1xxxxxxx region, where stock flash, stock RAM and the test models' fake bases all lie.
 # Larger literals (a Unix epoch, a timer wrap value, an LCG multiplier in the test models) are not addresses.
@@ -681,6 +710,165 @@ def scan_raw(rel, raw, t):
     return hits
 
 
+EQUALITY = r'(?:==|!=)'
+LIT_END = r'(?![\w.])'
+
+
+def scan_event(rel, raw, t):
+    """Rule event: raw event codes, key ids and queued message ids."""
+    hits = []
+
+    def add(a, b):
+        hits.append(Hit(rel, line_of(t, a), 'event', span_text(raw, t, a, b)))
+    # (a) a literal compared with a getter call, either order
+    for g in EVENT_GETTERS:
+        for m in call_sites(t, g):
+            args, close = split_args(t, m.end() - 1)
+            if args is None:
+                continue
+            after = re.compile(r'\s*' + EQUALITY + r'\s*' + NUM + LIT_END).match(t, close + 1)
+            if after:
+                add(m.start(), after.end())
+            lo = max(0, m.start() - 40)
+            before = re.search(r'(?<![\w.])' + NUM + r'\s*' + EQUALITY + r'\s*$', t[lo:m.start()])
+            if before:
+                add(lo + before.start(), close + 1)
+    for name, params, start, body_open, body_close in functions(t):
+        body = t[body_open:body_close]
+        # (a) ... or with an identifier the function sets from a getter call
+        getter = r'(?:' + '|'.join(EVENT_GETTERS) + r')'
+        set_from = set(re.findall(r'(?<![\w.>])(' + IDENT + r')\s*=(?!=)\s*(?:\([^()]*\)\s*)*' + getter + r'\s*\(', body))
+        # (c) the id field of a queued message
+        msgs = set(re.findall(r'\bTIONativeMessage\s*(?:const\s*)?\*?\s*(?:const\s+)?(' + IDENT + r')\b', params + body))
+        pats = []
+        for ident in sorted(set_from):
+            pats.append(r'(?<![\w.>])' + ident + r'\s*' + EQUALITY + r'\s*' + NUM + LIT_END)
+            pats.append(r'(?<![\w.])' + NUM + r'\s*' + EQUALITY + r'\s*' + ident + r'\b(?!\s*(?:->|\.|\[|\())')
+        for ident in sorted(msgs):
+            field = ident + r'\s*(?:->|\.)\s*id\b'
+            pats.append(r'(?<![\w.>])' + field + r'\s*' + EQUALITY + r'\s*' + NUM + LIT_END)
+            pats.append(r'(?<![\w.])' + NUM + r'\s*' + EQUALITY + r'\s*' + field)
+        for p in pats:
+            for m in re.finditer(p, body):
+                add(body_open + m.start(), body_open + m.end())
+        # (b) ... or in the value of a local whose address an event carries as its parameter (a key id),
+        # through its initializer or an assignment, ternary arms included
+        carried = set(re.findall(r'(?:(?:->|\.)\s*|[{,]\s*\.\s*)parameter\s*=(?!=)\s*&\s*(' + IDENT + r')\b', body))
+        for ident in sorted(carried):
+            for m in re.finditer(r'(?<![\w.>])' + ident + r'\s*=(?!=)', body):
+                i, depth = m.end(), 0
+                while i < len(body):
+                    ch = body[i]
+                    if ch in '([{':
+                        depth += 1
+                    elif ch in ')]}':
+                        if depth == 0:
+                            break
+                        depth -= 1
+                    elif depth == 0 and ch in ';,':
+                        break
+                    i += 1
+                if has_literal(body[m.end():i]):
+                    add(body_open + m.start(), body_open + len(body[:i].rstrip()))
+    # (b) a literal stored in an event's code field, through a member access or a designated initializer
+    for m in re.finditer(r'(?<![\w.>])' + IDENT + r'(?:\s*(?:->|\.)\s*' + IDENT + r')*\s*(?:->|\.)\s*code\s*=(?!=)\s*' +
+                         NUM + LIT_END, t):
+        add(m.start(), m.end())
+    for m in re.finditer(r'[{,]\s*(\.\s*code\s*=(?!=)\s*' + NUM + r')' + LIT_END, t):
+        add(m.start(1), m.end(1))
+    return hits
+
+
+def scan_stockview(rel, raw, t, stock_calls):
+    """Rule stockview: a literal index or addition on a byte view of an object a stock call returned."""
+    hits = []
+
+    def add(a, b):
+        hits.append(Hit(rel, line_of(t, a), 'stockview', span_text(raw, t, a, b)))
+    for name, params, start, body_open, body_close in functions(t):
+        body = t[body_open:body_close]
+        names = set()
+        for m in BYTE_DECL.finditer(body):
+            if not m.group(2):
+                continue
+            init = body[m.end():additive_end(body, m.end())]
+            core = init
+            while True:  # drop leading casts
+                g = re.match(r'\s*(\([^()]*\))', core)
+                if g and type_group(g.group(1)):
+                    core = core[g.end():]
+                else:
+                    break
+            call = re.match(r'\s*(' + IDENT + r')\s*\(', core)
+            if call and call.group(1) in stock_calls and call.group(1) not in STOCK_ALLOCATORS:
+                names.add(m.group(1))
+        for local in sorted(names):
+            for m in re.finditer(r'(?<![\w.>])' + local + r'\s*(\+(?![+=])|\[)\s*', body):
+                a = body_open + m.start()
+                if m.group(1) == '[':
+                    e = match_paren(t, body_open + m.end(1) - 1)
+                    if e > 0 and has_literal(t[body_open + m.end(1):e]):
+                        add(a, e + 1)
+                else:
+                    end = additive_end(t, body_open + m.end())
+                    if has_literal(t[body_open + m.end():end]):
+                        add(a, end)
+            for m in re.finditer(r'(?<![\w.])' + NUM + r'\s*\+\s*' + local + r'\b', body):
+                add(body_open + m.start(), body_open + m.end())
+    return hits
+
+
+def expression_start(t, i):
+    """Start of the operand expression that holds t[i]: back to a depth-0 delimiter or an unmatched opening bracket."""
+    depth = 0
+    while i > 0:
+        c = t[i - 1]
+        if c in ')]}':
+            depth += 1
+        elif c in '([{':
+            if depth == 0:
+                return i
+            depth -= 1
+        elif depth == 0 and c in DELIMS:
+            if c in '<>' and i > 1 and t[i - 2] == c:  # a shift is still arithmetic
+                i -= 2
+                continue
+            return i
+        i -= 1
+    return 0
+
+
+def scan_stride(rel, raw, t, names):
+    """Rule stride: a literal multiplier or shift in an additive expression that holds a stock_layout.h name."""
+    hits, seen = [], set()
+    scale = re.compile(r'(?<![\w.])' + NUM + r'\s*\*(?!=)|\*\s*' + NUM + LIT_END + r'|<<\s*' + NUM + LIT_END)
+    for m in re.finditer(r'\b(?:' + '|'.join(sorted(names)) + r')\b', t):
+        a, b = expression_start(t, m.start()), additive_end(t, m.end())
+        if (a, b) in seen:
+            continue
+        seen.add((a, b))
+        kw = re.compile(r'\s*(?:(?:return|case)\b)?\s*').match(t, a)
+        a = kw.end() if kw.end() <= m.start() else a
+        if scale.search(t[a:b]):
+            a2 = a
+            hits.append(Hit(rel, line_of(t, a2), 'stride', span_text(raw, t, a2, b)))
+    return hits
+
+
+def scan_stockarg(rel, raw, t):
+    """Rule stockarg (built set only): a literal in a STOCK_ARGS argument."""
+    hits = []
+    for name, k, _ in STOCK_ARGS:
+        for m in call_sites(t, name):
+            args, close = split_args(t, m.end() - 1)
+            if args is None or k >= len(args):
+                continue
+            a, b = args[k]
+            if not is_declaration_arg(t[a:b]) and has_literal(t[a:b]):
+                hits.append(Hit(rel, line_of(t, m.start()), 'stockarg', span_text(raw, t, m.start(), close + 1)))
+    return hits
+
+
 def scan_receivers(rel, raw, t, stale):
     """Rule addr (b) and (c) for render_idle.c; `stale` collects receiver rows whose identifier is not declared."""
     hits = []
@@ -887,6 +1075,14 @@ def check(fw, table):
     if FORCED_INCLUDE not in raws:
         errors.append('forced include %s does not exist' % FORCED_INCLUDE)
     errors += window_drift(table, spec['stockBase'], windows)
+    layout_names = set(re.findall(r'^\s*#\s*define\s+(TIO_\w+)\s+\S', raws.get(LAYOUT_HEADER, ''), re.M))
+    if not layout_names:
+        errors.append('%s defines no TIO_ name; rule stride would prove nothing' % LAYOUT_HEADER)
+        layout_names = {'TIO_STOCK_LAYOUT_NONE'}
+    link_syms = set(re.findall(r'^\s*(\w+)\s*=\s*0x[0-9a-fA-F]+\s*;', (fw / 'link.ld').read_text(), re.M))
+    for name in [s[0] for s in STOCK_ARGS] + list(EVENT_GETTERS) + list(STOCK_ALLOCATORS):
+        if name not in link_syms:
+            errors.append('rule table name %s is not a link.ld symbol (stale)' % name)
     header_helpers = {}
     for rel in headers:
         header_helpers[rel] = find_helpers(strip_parens(blank_c(raws[rel])))
@@ -910,6 +1106,11 @@ def check(fw, table):
         hits += h
         hits += scan_receivers(rel, raw, t, stale)
         hits += scan_raw(rel, raw, t)
+        hits += scan_event(rel, raw, t)
+        hits += scan_stockview(rel, raw, t, link_syms)
+        hits += scan_stride(rel, raw, t, layout_names)
+        if rel in built:
+            hits += scan_stockarg(rel, raw, t)
     for rel in (r[0] for r in RECEIVERS):
         if rel not in raws:
             stale.append('receiver row file %s is not in scope' % rel)
@@ -1118,6 +1319,18 @@ def self_test(fw, table):
             ('raw', m8, 'raw+0x2c',
              lambda: c.write(m8, c.read(m8) + '\nstatic uint32_t tio_plant_raw(const M8Decoder *d){const uint8_t '
                              '*raw=(const uint8_t*)d;return le32(raw+0x2c);}\n')),
+            ('event', 'src/app-runtime-v1/app_service.c', 'native_event_code(e)!=0xe',
+             lambda: c.write('src/app-runtime-v1/app_service.c', c.read('src/app-runtime-v1/app_service.c') +
+                             '\nstatic bool tio_plant_event(void *e){return native_event_code(e)!=0xe;}\n')),
+            ('stockview', 'src/global-remote-v1/remote_native.c', 'driver[9]',
+             lambda: c.write('src/global-remote-v1/remote_native.c', c.read('src/global-remote-v1/remote_native.c') +
+                             '\nstatic int tio_plant_view(void *d){uint8_t *driver=tgr_indev_driver(d);return driver[9];}\n')),
+            ('stride', 'src/music-runtime-v1/menu10.c', 'TIO_STOCK_MENU_ROWS+4*i',
+             lambda: c.write('src/music-runtime-v1/menu10.c', c.read('src/music-runtime-v1/menu10.c') +
+                             '\nstatic unsigned tio_plant_stride(unsigned i){return TIO_STOCK_MENU_ROWS+4*i;}\n')),
+            ('stockarg', 'src/app-runtime-v1/app_service.c', 'nav_connection(0x80)',
+             lambda: c.write('src/app-runtime-v1/app_service.c', c.read('src/app-runtime-v1/app_service.c') +
+                             '\nstatic int tio_plant_arg(void){return nav_connection(0x80);}\n')),
         ]
         caught = set()
         for rule, rel, text, plant in planted:
@@ -1183,6 +1396,21 @@ def self_test(fw, table):
             ('raw', m8r, 'sizeof(M8Decoder)==76', append(m8r, '_Static_assert(sizeof(M8Decoder)==76,"v21");')),
             ('raw', m8r, '76!=sizeof decoder.words', append(m8r, 'static int tio_v22(M8Decoder decoder){return '
                                                                '76!=sizeof decoder.words;}')),
+            ('event', app, '14==native_event_code(e)', append(app, 'static bool tio_v23(void *e){return 14==native_event_code(e);}')),
+            ('event', app, 'key==0x3b', append(app, 'static bool tio_v24(void *e){unsigned key=native_event_key(e);return '
+                                                    'key==0x3b;}')),
+            ('event', app, 'm->id!=1', append(app, 'static bool tio_v25(const TIONativeMessage *m){return m->id!=1;}')),
+            ('event', app, 'ev.code=14', append(app, 'static void tio_v26(void){struct {unsigned code;} ev;ev.code=14;(void)ev;}')),
+            ('event', app, '.code=14', append(app, 'static void tio_v27(void){struct {unsigned code;} ev={.code=14};(void)ev;}')),
+            # the TMG11 inject form: the key id picked in a ternary and carried as the event's parameter
+            ('event', app, 'key=op==1?0x3a:0x3b',
+             append(app, 'static void tio_v31(int op){uint32_t key=op==1?0x3a:0x3b;struct {void *parameter;} ev;'
+                         'ev.parameter=&key;(void)ev;}')),
+            ('stockview', app, 'driver+6', append(app, 'static void *tio_v28(void *d){uint8_t *driver=(uint8_t *)'
+                                                       'tgr_indev_driver(d);return driver+6;}')),
+            ('stride', app, 'TIO_STOCK_MENU_DOTS+((i)<<2)', append(app, '#define TIO_V29_DOT(i) (TIO_STOCK_MENU_DOTS+((i)<<2))')),
+            ('stockarg', app, 'stream_add_event(o,f,36,o)',
+             append(app, 'static void tio_v30(void *o,void (*f)(void *)){(void)stream_add_event(o,f,36,o);}')),
         ]
         for rule, rel, text, plant in variants:
             plant()
@@ -1196,6 +1424,14 @@ def self_test(fw, table):
         # The sizeof stride form, a table-value cast, a stock address on a #define line and a sizeof quotient pass.
         for rel, text in ((idle, '\n#define TIO_PLANT_OK3 \\\n 0x1b600000\n'),
                           (m8r, '\nstatic unsigned tio_plant_ok4(M8Decoder d){return sizeof d.words/sizeof d.words[0];}\n'),
+                          # stockarg covers the built set only; named arguments, allocator views and named strides pass
+                          ('tests/native_ui_test.c', '\nstatic int tio_plant_ok5(void){return nav_connection(0x80);}\n'),
+                          ('src/app-runtime-v1/app_service.c',
+                           '\nstatic int tio_plant_ok6(void){return nav_connection(TIO_STOCK_LINK_CONNECTED);}\n'),
+                          ('src/app-runtime-v1/app_service.c',
+                           '\nstatic int tio_plant_ok7(void){uint8_t *b=stream_memalign(64,8);return b?b[3]:0;}\n'),
+                          ('src/app-runtime-v1/app_service.c',
+                           '\nstatic unsigned tio_plant_ok8(unsigned i){return TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i;}\n'),
                           ('src/music-runtime-v1/menu10.c',
                            '\nstatic void *tio_plant_ok(void *app,unsigned i){return '
                            'ptr(app,TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i);}\n'),

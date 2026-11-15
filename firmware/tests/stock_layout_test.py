@@ -57,7 +57,7 @@ SAME_FUNCTION_EXCEPTION = ('TIO_STOCK_MESSAGE_ID_MAX', 'same-function: bound and
 # Decision R3: the one derived constant, with its parts. Any other derived header macro is refused.
 DERIVED_CONSTANT = ('TIO_MENU_SCROLL_POSITION_OFFSET', ('TIO_STOCK_MENU_MOTION', 'TIO_STOCK_MOTION_POSITION'))
 # The number of context entries over all records, so that a dropped context is noticed.
-CONTEXT_ENTRIES = 85
+CONTEXT_ENTRIES = 108
 # A +1 witness is an unsigned compare whose bound is inclusive: the next flag reader is bls (in range) or bhi (out
 # of range), with only flag-preserving register moves between. bcc/bcs would make the bound exclusive.
 PLUS_ONE_SHAPES = ('cmp-imm8', 'cmp.w-imm')

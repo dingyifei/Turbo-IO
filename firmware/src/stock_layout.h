@@ -77,6 +77,12 @@
 #define TIO_STOCK_ENCODER_STEP 0x6u
 /* Encoder input driver: nonzero when the wheel direction is reversed (a byte). */
 #define TIO_STOCK_ENCODER_REVERSE 0x9u
+/* LVGL event: the code sent to an object, and to each of its children, as it is deleted. */
+#define TIO_STOCK_EVENT_DELETE 0x24u
+/* LVGL object flag: hidden (the stock menu's hide sets it on its root, its show clears it). */
+#define TIO_STOCK_OBJ_FLAG_HIDDEN 1u
+/* View manager: the state value while the carousel menu is open. */
+#define TIO_STOCK_MANAGER_MENU_OPEN 1u
 
 /* LVGL global, draw units, display and layers. */
 /* LVGL global: the head of the draw-unit list. */
@@ -143,6 +149,12 @@
 #define TIO_STOCK_MESSAGE_RELEASE 0x14u
 /* File callback table: the receive callback. */
 #define TIO_STOCK_FILE_CB_RECEIVE 0x18u
+
+/* Phone link. */
+/* Phone link: the connection status bit that the stock send requires (the query returns nonzero when it is set). */
+#define TIO_STOCK_LINK_CONNECTED 0x80u
+/* Phone link: the business id that stock registers its payload receive callbacks on and sends its own payloads with. */
+#define TIO_STOCK_RNLINK_BUSINESS 15u
 
 #if TIO_STOCK_QUEUE_LAUNCHER < 1 || TIO_STOCK_QUEUE_LAUNCHER > TIO_STOCK_QUEUE_MODULE_MAX
 #error stock_layout.h: the launcher queue id is outside stock's module range

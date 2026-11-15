@@ -246,7 +246,7 @@ TDPNativePage *tdp_native_open(void *parent,uint32_t sid,TDPNativePage **owner){
   m8_native_api.hidden(p->root,true);
   if(!m8_native_api.configure_root(p->root,parent))goto fail;
   tio_lv_obj_set_size(p->root,540,180);native_align(p->root,9,0,0);
-  if(!stream_add_event(p->root,deleted,0x24,p))goto fail;
+  if(!stream_add_event(p->root,deleted,TIO_STOCK_EVENT_DELETE,p))goto fail;
   p->canvas=stream_canvas_create(p->root);p->label=native_label_create(p->root);
   if(!p->canvas||!p->label)goto fail;
   tio_lv_obj_set_size(p->canvas,512,128);native_align(p->canvas,5,0,0);

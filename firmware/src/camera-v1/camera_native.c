@@ -35,11 +35,11 @@ static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NUL
 static void *manager(void){return ptr(tio_launcher_global,TIO_STOCK_LAUNCHER_MANAGER);}
 static TNNavSlot *navslot(void *app){M8NativeTail *t=m8_tail(app);return t?t->navigation:NULL;}
 static TCSlot *slot(void *app){TNNavSlot *n=navslot(app);return n?n->camera:NULL;}
-static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(0x80)!=0;}
+static bool paired(void){void *m=nav_monitors(),*l=m?nav_link(m):NULL;return l&&nav_bonded(l)&&nav_connection(TIO_STOCK_LINK_CONNECTED)!=0;}
 static bool home(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;const char *s=nav_top_app();return s&&!strcmp(s,"com.rayneo.liteos.launcher")&&i&&!nav_folded(i)&&ce_extension_idle();}
 static bool other(void *app){TNNavSlot *n=navslot(app);return !n||tap_service_visible(app)||tn_slot_visible(n)||tm_slot_visible(n->music)||tf_slot_visible(n->focus)||m8_tail_busy(app);}
 static bool owns(TCControl *c){return c&&c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&home()&&!other(c->app);}
-static void emit(const TCPacket *q){uint8_t raw[TC_RAW_MAX],wire[TC_WIRE_MAX];size_t n=tc_packet(raw,sizeof raw,q,true);if(n){n=tc_wrap(wire,sizeof wire,raw,n,true);if(n)(void)tdp_rnlink_send(15,wire,(unsigned)n,NULL);}}
+static void emit(const TCPacket *q){uint8_t raw[TC_RAW_MAX],wire[TC_WIRE_MAX];size_t n=tc_packet(raw,sizeof raw,q,true);if(n){n=tc_wrap(wire,sizeof wire,raw,n,true);if(n)(void)tdp_rnlink_send(TIO_STOCK_RNLINK_BUSINESS,wire,(unsigned)n,NULL);}}
 static void event(TCControl *c,unsigned op,unsigned value){if(!c||!c->sid||c->event==UINT32_MAX)return;TCPacket q={.op=op,.sid=c->sid,.seq=++c->event,.a=value,.b=stream_tick()};emit(&q);}
 static void release_hold(TCControl *c){if(c->hold){nav_release_always_on("turbo_camera_v1",c->hold);c->hold=0;}}
 static void close_page(TCControl *c){if(!c)return;c->closing=true;c->sid=0;release_hold(c);if(c->root)tn_lvgl_widgets().visible(NULL,c->root,false);if(c->frame)tc_abort(c->frame);}
@@ -75,10 +75,10 @@ bool tc_slot_open(TCSlot *s){
  TCControl *c=s->control;if(c&&c->root&&!c->closing)return true;
  if(c&&c->closing&&!dispose(c))return false;
  if(!c){c=stream_memalign(8,sizeof *c);if(!c)return false;memset(c,0,sizeof *c);c->slot=s;c->app=s->app;c->zoom=100;c->timer=stream_timer_create(tick,100,c);if(!c->timer){stream_free(c);return false;}s->control=c;}
- c->transitioning=true;nav_set_state(manager(),1);c->transitioning=false;if(!owns(c))return false;
+ c->transitioning=true;nav_set_state(manager(),TIO_STOCK_MANAGER_MENU_OPEN);c->transitioning=false;if(!owns(c))return false;
  c->frame=stream_memalign(64,sizeof *c->frame);if(!c->frame)return false;memset(c->frame,0,sizeof *c->frame);
  TNWidgets w=tn_lvgl_widgets();c->root=w.root(NULL,ptr(c->app,TIO_STOCK_MENU_ROOT));if(!c->root){stream_free(c->frame);c->frame=NULL;return false;}
- if(!stream_add_event(c->root,deleted,0x24,c)){close_page(c);(void)dispose(c);return false;}
+ if(!stream_add_event(c->root,deleted,TIO_STOCK_EVENT_DELETE,c)){close_page(c);(void)dispose(c);return false;}
  c->canvas=w.canvas(NULL,c->root);c->title=w.label(NULL,c->root,26);c->state=w.label(NULL,c->root,24);c->hint=w.label(NULL,c->root,16);
  if(!c->canvas||!c->title||!c->state||!c->hint){close_page(c);(void)dispose(c);return false;}
  w.place(NULL,c->root,0,0,540,180);w.place(NULL,c->canvas,16,18,256,144);
