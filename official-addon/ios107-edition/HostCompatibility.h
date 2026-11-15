@@ -28,7 +28,13 @@ static inline NSString *TIOHostDownloadOnlyUUID(NSDictionary *info) {
     NSString *version=info[@"CFBundleShortVersionString"];
     NSString *build=[info[@"CFBundleVersion"] description];
     if([version isEqual:@"1.0.11"]&&[build isEqual:@"259"])return @"22724C97-2EF9-388D-8E6A-6E051855A555";
+    // 1.0.21/1: download-only only (C19). The full-profile marker never selects a full
+    // profile here (TIOHostFullExpectedUUID and TIOHostProfileFor check the version).
+    if([version isEqual:@"1.0.21"]&&[build isEqual:@"1"])return @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5";
     return nil;
+}
+static inline BOOL TIOHostIs1011(NSDictionary *info) {
+    return [info[@"CFBundleShortVersionString"] isEqual:@"1.0.11"]&&[[info[@"CFBundleVersion"] description] isEqual:@"259"];
 }
 static inline BOOL TIOHostImageUUIDIs(const struct mach_header *h,NSString *expected) {
     if(!expected||!h||h->magic!=MH_MAGIC_64||h->filetype!=MH_EXECUTE||h->ncmds>1024||h->sizeofcmds>1024*1024)return NO;
@@ -54,7 +60,7 @@ static inline BOOL TIOHost1011FullMarker(NSDictionary *info) {
 // Features gate on this (or TIOHostFullImageMatches), so the download-only build keeps them off.
 static inline NSString *TIOHostFullExpectedUUID(NSDictionary *info) {
     NSString *uuid=TIOHostExpectedUUID(info);if(uuid)return uuid;
-    return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHost1011FullMarker(info)?TIOHostDownloadOnlyUUID(info):nil;
+    return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHost1011FullMarker(info)&&TIOHostIs1011(info)?TIOHostDownloadOnlyUUID(info):nil;
 }
 static inline BOOL TIOHostFullImageMatches(const struct mach_header *h,NSDictionary *info) {
     return TIOHostImageUUIDIs(h,TIOHostFullExpectedUUID(info));
@@ -67,7 +73,7 @@ static inline BOOL TIOHostDownloadOnlyImageMatches(const struct mach_header *h,N
 // nil for anything else (older inspected hosts included).
 static inline NSString *TIOHostProfileFor(const struct mach_header *h,NSDictionary *info) {
     if(![info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"])return nil;
-    if(TIOHostDownloadOnlyImageMatches(h,info))return TIOHost1011FullMarker(info)?TIO_HOST_PROFILE_1011_FULL:@"ios1011-download";
+    if(TIOHostDownloadOnlyImageMatches(h,info))return TIOHost1011FullMarker(info)&&TIOHostIs1011(info)?TIO_HOST_PROFILE_1011_FULL:@"ios1011-download";
     if([info[@"CFBundleShortVersionString"] isEqual:@"1.0.7"]&&[[info[@"CFBundleVersion"] description] isEqual:@"230"]&&TIOHostImageMatches(h,info))return @"ios107";
     return nil;
 }

@@ -243,8 +243,16 @@ const info1011={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Ru
 const options1011={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios1011-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',host:'ios1011-download'};
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 test('host profile table: ios107 keeps the route patch and firmware; ios1011-download has neither',()=>{
- assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011','ios1011-download','ios107']);
+ assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011','ios1011-download','ios1021-download','ios107']);
  assert.equal(hostProfile(),HOST_PROFILES.ios107);for(const bad of ['ios1011-full','IOS1011','1011','__proto__'])assert.throws(()=>hostProfile(bad));
+ // C19: 1.0.21/1 is download-only with its own pins; no route patch, no firmware, no full row.
+ {const n=HOST_PROFILES['ios1021-download'];
+  assert.equal(n.version,'1.0.21');assert.equal(n.build,'1');assert.equal(n.routePatch,false);assert.equal(n.firmware,false);assert.equal(n.routeProfile,undefined);assert.equal(n.runtimeMarker,'ios1011-download');
+  assert.deepEqual(n.acceptedPairs,[['9a226b80d3e32b1ec496f45cd51d46bdf5251650225cec99824d9a897f1dd1f2','0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273']]);
+  assert.deepEqual(n.routes,[['/xrlauncherapi/v1/signApi/gray/upgrade',46796656],['/xrlauncherhwapi/v1/signApi/gray/upgrade',37435136]]);
+  const nat=fs.readFileSync(new URL('./HostCompatibility.h',import.meta.url),'utf8').match(/"1\.0\.21"\]&&\[build isEqual:@"1"\]\)return @"([0-9A-F-]{36})"/);
+  assert.ok(nat);assert.equal(nat[1].replaceAll('-','').toLowerCase(),n.uuid);
+  assert.equal(inspectedHost({CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Runner',CFBundleShortVersionString:'1.0.21',CFBundleVersion:'1'},n.uuid).downloadOnly,true);}
  const a=HOST_PROFILES.ios107,d=HOST_PROFILES['ios1011-download'];
  assert.equal(a.routePatch,true);assert.equal(a.firmware,true);assert.equal(a.stripStaleSignature,undefined);
  assert.equal(a.routeProfile,'ios107');assert.equal(a.routingMarker,'ios107-tmg2-loopback-flash-gated');assert.equal(a.packagingRevision,'APP107-OTA-PUBLIC-SOURCE-01');assert.equal(a.hostProfileMarker,undefined);
@@ -346,10 +354,10 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
 });
 test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('\nelif [[ $host == 1011-full ]]; then\n# C15'));
- assert.match(branch,/--host ios1011-download --app "\$TURBO_APP1011"/);
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 || $host == 1021 ]]; then\npkg_host'),wrapper.indexOf('\nelif [[ $host == 1011-full ]]; then\n# C15'));
+ assert.match(branch,/--host "\$pkg_host" --app "\$pkg_app"/);
  assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
- assert.match(branch,/hostProfile'\]=='ios1011-download'/);
+ assert.match(branch,/hostProfile'\] in \('ios1011-download','ios1021-download'\)/);
  assert.match(wrapper,/unset [^\n]*TURBO_APP1011/);
  assert.match(wrapper,/--firmware "\$TURBO_FIRMWARE" --product "\$TURBO_PRODUCT"/);
  const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
@@ -519,7 +527,7 @@ test('turbo-package.sh builds the addon fresh with the requested flags before si
  assert.equal([...wrapper.matchAll(/run_logged package node/g)].length,3);
  assert.ok(wrapper.includes("addon_sha=$(tail -n 1 \"$LOG_DIR/addon-check.log\")"));
  // The fresh build is not inside a host branch: it runs for 1.0.7 and 1.0.11 alike.
- assert.ok(build<wrapper.indexOf('if [[ $host == 1011 ]]; then\n  [[ -f "$TURBO_PROFILE"'));
+ assert.ok(build<wrapper.indexOf('elif [[ $host == 1011 ]]; then\n  [[ -f "$TURBO_PROFILE"'));
  assert.equal([...wrapper.matchAll(/build\.sh/g)].length,1);
  // Flag sets: the default is the gate's own build, --apple-ai keeps its earlier set, --wire-log only adds TIO_WIRE_LOG=1.
  const gateFlags=gate.match(/build_stage\(\) \{\n  cd "\$ED"\n  ([^\n]*)\\\n    ([^\n]*)\\\n    ([^\n]*) bash build\.sh embedded/);assert.ok(gateFlags);
@@ -611,7 +619,7 @@ test('download-only addon gate: guard symbols and marker are required',()=>{
  for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS)assert.ok(wrapper.includes(name),name);
  for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS.filter(n=>!['_TIOOTAFlashBlockCall','_TIOInstallGlassesChannelHook'].includes(n)))assert.ok(gate.includes(name),name);
  assert.ok(wrapper.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER)&&gate.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
- const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 ]]; then\n# G1/G2'),wrapper.indexOf('run_logged package node "$ED/package.mjs" --host ios1011-download'));
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 || $host == 1021 ]]; then\npkg_host'),wrapper.indexOf('run_logged package node "$ED/package.mjs" --host "$pkg_host"'));
  assert.match(branch,/run_logged download-only-guard download_only_guard "\$ADDON"/);
 });
 test('real addon build carries the download-only guard',t=>{
