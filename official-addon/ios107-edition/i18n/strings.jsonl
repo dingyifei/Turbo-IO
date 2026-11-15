@@ -680,6 +680,7 @@
 {"key":"ota.hub.ready","en":"Ready to check","zh":"可开始检查"}
 {"key":"ota.hub.unavailable","en":"Not in this build","zh":"此安装包未包含"}
 {"key":"ota.identity.fileSetMismatch","en":"File set does not match %@. It may be an old cache or incomplete directory; not sent.","zh":"文件集合与 %@ 不符，可能是旧缓存或残缺目录；未发送。"}
+{"key":"ota.identity.manifestRows","en":"The %@ manifest lists %lu payloads, not the %lu its member pins name; not sent.","zh":"%@ 清单列出 %lu 个分区文件，与成员校验值的 %lu 个不符；未发送。"}
 {"key":"ota.identity.notAuthorized","en":"%@ test flash is not authorized; start command not sent. First confirm %@ risk on the firmware page.","zh":"%@ 试刷尚未授权；开始指令未发送。请先在固件页完成 %@ 风险确认。"}
 {"key":"ota.identity.payloadMismatch","en":"%@ does not match the fixed %@ set or changed during reading; not sent.","zh":"%@ 与固定 %@ 不一致或读取期间改变；未发送。"}
 {"key":"ota.identity.sizeMismatch","en":"File size mismatch. Only the fixed %@ experimental ZIP is accepted; not saved or sent.","zh":"文件大小不符。只接受固定 %@ 实验 ZIP，未保存、未发送。"}
@@ -2472,13 +2473,14 @@
 {"key":"ota.arm.action","en":"Arm","zh":"启用"}
 {"key":"ota.disarm.action","en":"Disarm","zh":"停用"}
 {"key":"ota.arm.confirm.title","en":"Arm TMG flashing on this install?","zh":"在本机启用 TMG 刷写？"}
-{"key":"ota.arm.confirm.message","en":"This 1.0.11 build refuses every firmware transfer until you arm it. Arming does not start anything: an install still needs the usual checks (Auto Update on and then off, the verified ZIP, your authorization). The 1.0.11 update sequence has not yet been confirmed by a capture; record one before you flash. You can disarm at any time except during a transfer, and a different Turbo IO build starts disarmed.","zh":"这个 1.0.11 版本在启用前会拒绝所有固件传输。启用本身不会开始任何操作：安装仍需通过常规检查（自动更新先开后关、已验证的 ZIP、你的授权）。1.0.11 的更新流程尚未经抓包确认，刷写前请先录一次。除传输进行中外随时可以停用；换成另一个 Turbo IO 构建后默认未启用。"}
+{"key":"ota.arm.confirm.message","en":"This full build (1.0.11 or 1.0.21) refuses every firmware transfer until you arm it. Arming does not start anything: an install still needs the usual checks (Auto Update on and then off, the verified ZIP, your authorization). Record the update sequence with the wire log on this host before you flash, if it has not been confirmed there yet. You can disarm at any time except during a transfer, and a different Turbo IO build starts disarmed.","zh":"这个完整版（1.0.11 或 1.0.21）在启用前会拒绝所有固件传输。启用本身不会开始任何操作：安装仍需通过常规检查（自动更新先开后关、已验证的 ZIP、你的授权）。如果这个宿主上的更新流程还没确认过，刷写前请先用线路日志录一次。除传输进行中外随时可以停用；换成另一个 Turbo IO 构建后默认未启用。"}
 {"key":"ota.arm.confirm.action","en":"Arm flashing","zh":"启用刷写"}
 {"key":"ota.arm.failed","en":"Could not arm flashing","zh":"无法启用刷写"}
 {"key":"ota.disarm.failed","en":"Cannot disarm while a transfer is running","zh":"传输进行中，无法停用"}
 {"key":"ota.disarm.failedEnded","en":"The transfer has ended: restart the app, then disarm","zh":"传输已结束，请重启 App 后再停用"}
 {"key":"ota.hub.disarmed","en":"Flashing disarmed","zh":"刷写未启用"}
 {"key":"fwexport.host.full","en":"RayNeo AI 1.0.11 (259) · full","zh":"RayNeo AI 1.0.11 (259) · 完整版"}
+{"key":"fwexport.host.full1021","en":"RayNeo AI 1.0.21 (1) · full","zh":"RayNeo AI 1.0.21 (1) · 完整版"}
 {"key":"fwexport.guard.disarmed","en":"Flashing disarmed: OTA transfer refused","zh":"刷写未启用：拒绝 OTA 传输"}
 {"key":"fwexport.guard.disarmed.detail","en":"This install refuses every OTA transfer frame until you arm TMG flashing in the TMG wizard. Version, battery and the update check still pass.","zh":"在 TMG 向导中启用刷写之前，本次安装会拒绝所有 OTA 传输帧。版本、电量和更新检查仍会放行。"}
 {"key":"fwexport.guard.armed","en":"Flashing armed: the TMG wizard decides","zh":"刷写已启用：由 TMG 向导决定"}
@@ -2487,6 +2489,6 @@
 {"key":"hub.status.firmwareExport.armed","en":"Flashing armed","zh":"刷写已启用"}
 {"key":"hub.status.firmwareExport.disarmed","en":"Flashing disarmed","zh":"刷写未启用"}
 {"key":"本机 TMG 刷写尚未启用；先在向导中启用，未授权。","en":"TMG flashing is not armed on this install; arm it in the wizard first. Not authorized."}
-{"key":"只有完整版 1.0.11 宿主需要并允许启用 TMG 刷写；未启用。","en":"Only the full 1.0.11 host needs and allows arming TMG flashing; not armed."}
+{"key":"只有完整版 1.0.11 或 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。","en":"Only the full 1.0.11 or 1.0.21 host needs and allows arming TMG flashing; not armed."}
 {"key":"无法确认本次安装；未启用。","en":"Could not identify this install; not armed."}
 {"key":"无法保存启用状态；未启用。","en":"Could not save the arm state; not armed."}

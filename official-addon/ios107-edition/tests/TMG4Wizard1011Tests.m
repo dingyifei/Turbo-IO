@@ -1,9 +1,11 @@
-// Full 1.0.11 host (ios1011, C15), armed: the unchanged 1.0.7 wizard and gate, run like
+// Full 1.0.11 host (ios1011, C15) and, built with -DTIO_TEST_HOST_1021=1, the full 1.0.21 host
+// (ios1021, C20; tests/FullHostFixture.h), armed: the unchanged 1.0.7 wizard and gate, run like
 // tests/TMG4WizardTests.m on the real candidate files, plus the arm step around it.
 // Disarmed, the wizard cannot authorize; armed, authorization opens the same Mode 2
 // only gate (the forced page's Mode 4 is refused), disarm before the transfer revokes
 // the grant, and disarm is refused once the transfer has started. No device I/O.
 #import "TMG4WizardHost.h"
+#import "FullHostFixture.h"
 #import "OTAWizardModel.h"
 #import "OTAHost.h"
 #import "ExperimentalOTAFlash.h"
@@ -37,7 +39,7 @@ static void Observe(NSString *version){TIOOTAFlashObserveEvent(@{@"eventType":@"
 static BOOL Send(unsigned type,id json,NSData *binary){return !TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":@"fixture-peer",@"payload":Frame(type,json,binary)}});}
 static NSDictionary *Snapshot(void){return TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus(),@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"prefs":Prefs?:@{},@"packageOK":@YES,@"directoryOK":@YES});}
 static int Stage(void){return [TIOOTAFlashStatus()[@"stage"] intValue];}
-static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
+static NSString *const ArmKey=TFH_ARM_KEY;
 // Folder collision: the official folder holds other bytes of the same name (RayNeo's own download of the
 // target version, here the stock ZIP of the release's base, argv[2]/stock). Authorization is refused with the
 // folder message, nothing is modified, and putting the release back makes it pass again.
@@ -48,7 +50,7 @@ static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSErro
     NSString *want=[NSString stringWithFormat:TIOText(@"ota.directory.foreign"),[@"ota/" stringByAppendingString:TRPFolder],TIO_FW_NAME,@""];
     assert([e.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
     NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
-    NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==16&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
+    NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==TIO_FW_MEMBER_PINS.count&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
     for(NSString *name in before)assert([[NSData dataWithContentsOfFile:[directory stringByAppendingPathComponent:name]] isEqual:[NSData dataWithContentsOfFile:[stock stringByAppendingPathComponent:name]]]);
     // A partial download (a member missing, a member cut short, or an empty folder) is not called foreign:
     // it keeps the incomplete-download message, and it is refused just the same.
@@ -81,8 +83,8 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(argc==4);NSString *version=@(argv[3]);assert([TRPAccepted() containsObject:version]&&[TIO_FW_ACCEPTED_OS_VERSIONS isEqual:TRPAccepted()]&&[TIO_FW_OTA_FOLDER isEqual:TRPFolder]);
     Home=[@(argv[2]) stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TRPFolder]];NSFileManager *fm=NSFileManager.defaultManager;
     assert([fm createDirectoryAtPath:[directory stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil]);assert([fm copyItemAtPath:@(argv[1]) toPath:directory error:nil]);
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",@"TIOHostProfile":@"ios1011",@"TIOExperimentalOTAQueryRouting":TIO_OTA_1011_ROUTING_MARKER};
-    Image=FakeImage(@"22724C97-2EF9-388D-8E6A-6E051855A555");[TMG4ArmStore() removeAllObjects];
+    Host=TFHFullInfo();
+    Image=FakeImage(TFH_UUID);[TMG4ArmStore() removeAllObjects];
     Prefs=@{@"fixture_ota_firmware_auto_update":@NO};TIOOTARecordTransportHookReady();assert(TIOOTAFlashBuild()&&TIOOTAFlashProtected());
     // Disarmed: every other check passes, yet the wizard shows the arm step and cannot authorize.
     Observe(version);assert([TIOOTAFlashStatus()[@"recentTargetVersionRead"] boolValue]);
@@ -111,7 +113,7 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(Send(4,@{@"Mode":@2},nil)&&Stage()==2);
     // Mid-transfer: disarm is refused and the record stays; the transfer continues as on 1.0.7.
     assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed()&&Stage()==2);
-    NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==16);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
+    NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==TIO_FW_MEMBER_PINS.count);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
     // A started transfer no longer reads the arm record: with the record gone (a read failure, a
     // preferences glitch or a disarm that raced the guard) or replaced by junk, the 1.0.7 gate decides.
     NSDictionary *record=TMG4ArmStore()[ArmKey];assert(record);[TMG4ArmStore() removeObjectForKey:ArmKey];assert(!TIOOTAFlashArmed());
@@ -126,5 +128,5 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed()&&Stage()==3);
     for(NSNumber *mode in @[@1,@2,@4])assert(!Send(4,@{@"Mode":mode},nil));
     [fm removeItemAtPath:Home error:nil];[TMG4ArmStore() removeAllObjects];
-    printf("PASS full 1.0.11 wizard/gate from %s: disarmed cannot authorize; armed takes the 1.0.7 gate (Auto Update toggle, one authorization, Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 (also off main, run on main), is refused at stage 2 and 3 with the record kept; a started transfer ignores the arm record; deviceIO=false\n",version.UTF8String);
+    printf("PASS full " TFH_NAME " wizard/gate from %s: disarmed cannot authorize; armed takes the 1.0.7 gate (Auto Update toggle, one authorization, Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 (also off main, run on main), is refused at stage 2 and 3 with the record kept; a started transfer ignores the arm record; deviceIO=false\n",version.UTF8String);
 }return 0;}

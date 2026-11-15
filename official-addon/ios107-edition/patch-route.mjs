@@ -15,6 +15,10 @@ export const ROUTE_PROFILES=Object.freeze({
   ios107:Object.freeze({host:'1.0.7',build:230,inputs:Object.freeze([originalSHA,unsignedSHA]),offsets:Object.freeze(offsets),outputSHA:null}),
   ios1011:Object.freeze({host:'1.0.11',build:259,inputs:Object.freeze(['0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be']),offsets:Object.freeze([39886000,30868352]),
     outputSHA:'592d48d0e42869f11def2dde99a3a6960d4da7b83b99df47d228311dfc3b8ba6'}),
+  // Full 1.0.21/1 (C20): the stock App of the C19 download-only row (package.mjs ios1021-download),
+  // the same two stock strings at the 1.0.21 offsets, with the same Dart lengths and cached hashes.
+  ios1021:Object.freeze({host:'1.0.21',build:1,inputs:Object.freeze(['0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273']),offsets:Object.freeze([46796656,37435136]),
+    outputSHA:'cd8be91e82bdbc1c98b5dda4fa0d358b91a2187ea4571200760fac0c53cb7852'}),
 });
 export function routeProfile(name='ios107'){if(!Object.hasOwn(ROUTE_PROFILES,name))throw Error('Unknown route profile');return ROUTE_PROFILES[name];}
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');

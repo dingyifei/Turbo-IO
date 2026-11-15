@@ -838,9 +838,9 @@ static BOOL Signature(Class cls,NSString *name,NSUInteger argc,const char *retur
 #import "HostCompatibility.h"
 #import "OTAHost.h"
 static const struct mach_header *MainImage(void) {return TIOHostMainImage();}
-// Feature hooks: the inspected full hosts (1.0.7/230 and older) and the full 1.0.11/259
-// profile (packager marker TIOHostProfile=ios1011 on the pinned image). Never the
-// download-only build: a 1.0.11 image without that exact marker does not match.
+// Feature hooks: the inspected full hosts (1.0.7/230 and older) and the full 1.0.11/259 and
+// 1.0.21/1 profiles (packager marker TIOHostProfile=ios1011 or ios1021, each on its own pinned
+// image). Never the download-only builds: an image without its own exact marker does not match.
 static BOOL VersionMatches(void) {
     if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return NO;
     return TIOHostFullImageMatches(MainImage(),NSBundle.mainBundle.infoDictionary);
@@ -933,8 +933,8 @@ __attribute__((constructor)) static void Load(void) {
 #endif
 #endif
             [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d; stockTraffic=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOGlassesChannelStockTrafficSeen(),TIOOTADownloadOnlyGuardMarker];
-            // Full 1.0.11 host (C15): TMG flashing stays disarmed until armed in the wizard; say which.
-            if(TIOOTAArmRequired()){NSDictionary *arm=TIOOTAFlashArmStatus();[loadInfo appendFormat:@"armRequired=1; armed=%d; armedForTransfer=%d\n%@\n",[arm[@"armed"] boolValue],[arm[@"armedForTransfer"] boolValue],TIOOTAArmGuardMarker];}
+            // Full 1.0.11 (C15) or 1.0.21 (C20) host: TMG flashing stays disarmed until armed in the wizard; say which.
+            if(TIOOTAArmRequired()){NSDictionary *arm=TIOOTAFlashArmStatus();[loadInfo appendFormat:@"armRequired=1; armed=%d; armedForTransfer=%d\n%@\n",[arm[@"armed"] boolValue],[arm[@"armedForTransfer"] boolValue],TIOOTAArmGuardMarker];if([arm[@"armHost"] isEqual:@"ios1021"])[loadInfo appendFormat:@"%@\n",TIOOTAArm1021GuardMarker];}
             // The hook appends "stockTraffic=1; first stock call ..." to this file when a stock rayneonet call first passes it.
             // The image and the packager's marker should agree; say so when only one selects the download-only host.
             NSString *imageProfile=TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary),*markerProfile=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];

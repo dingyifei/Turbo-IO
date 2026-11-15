@@ -10,7 +10,8 @@ export const inspectedHosts = Object.freeze([
   // transfer guard alone); with it, as the full C15 host. The decrypted input carries
   // a stale Apple signature, which macho-embed strips for both builds.
   Object.freeze({version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555',profile:'ios1011-download',downloadOnly:true,staleSignature:true}),
-  // The 1.0.21 image (C19): download-only only; no full profile exists for it.
+  // The 1.0.21 image: download-only (C19) without the packager's TIOHostProfile=ios1021
+  // marker; with it, the full C20 host (package.mjs ios1021).
   Object.freeze({version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5',profile:'ios1021-download',downloadOnly:true,staleSignature:true}),
 ]);
 export function inspectedHost(info, uuid) {

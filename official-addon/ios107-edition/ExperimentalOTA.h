@@ -16,4 +16,7 @@ FOUNDATION_EXPORT NSDictionary * _Nullable TIOCheckOfficialOTADirectory(NSURL *d
 // This build's release configuration (default, c16, c17, c18) and its official folder name (Strix_OS_<base>).
 FOUNDATION_EXPORT NSString *TIOOTARelease(void);
 FOUNDATION_EXPORT NSString *TIOOTAReleaseFolder(void);
+// The number of members of this build's release ZIP, from the generated member pins (16 on a 1.0.5.12 base,
+// 17 on 1.0.6.11); the manifest has one row less. Folder scan, manifest check and status counts use it.
+FOUNDATION_EXPORT NSUInteger TIOExperimentalOTAMemberCount(void);
 NS_ASSUME_NONNULL_END

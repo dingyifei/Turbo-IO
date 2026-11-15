@@ -23,20 +23,43 @@ static inline BOOL TIOOTA1011HostMatches(NSDictionary *info) {
         [info[@"TIOHostProfile"] isEqual:@"ios1011"] &&
         [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1011_ROUTING_MARKER];
 }
-// "ios107", "ios1011" or nil.
+// 1.0.21/1 full profile (ios1021, C20): the same model as ios1011, with its own routing
+// marker and the packager's TIOHostProfile=ios1021. Same arm step, same transfer gate.
+#define TIO_OTA_1021_ROUTING_MARKER @"ios1021-tmg-loopback-flash-gated-arm-required"
+static inline BOOL TIOOTA1021HostMatches(NSDictionary *info) {
+    return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"] &&
+        [info[@"CFBundleShortVersionString"] isEqual:@"1.0.21"] &&
+        [info[@"CFBundleVersion"] isEqual:@"1"] &&
+        [info[@"TIOHostProfile"] isEqual:@"ios1021"] &&
+        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1021_ROUTING_MARKER];
+}
+// "ios107", "ios1011", "ios1021" or nil.
 static inline NSString *TIOOTAHostProfile(NSDictionary *info) {
     if(TIOOTA107HostMatches(info))return @"ios107";
     if(TIOOTA1011HostMatches(info))return @"ios1011";
+    if(TIOOTA1021HostMatches(info))return @"ios1021";
     return nil;
 }
 static inline BOOL TIOOTAHostMatches(NSDictionary *info) {return TIOOTAHostProfile(info)!=nil;}
+// The full hosts that need the arm step (ios1011, ios1021). The arm guard, the arm record
+// and the host checks of ExperimentalOTAFlash.m take one of these names.
+static inline BOOL TIOOTAArmHostName(id name) {
+    return [name isKindOfClass:NSString.class]&&([name isEqualToString:@"ios1011"]||[name isEqualToString:@"ios1021"]);
+}
+// The exact OTA host check for one named full host; NO for any other name.
+static inline BOOL TIOOTAArmHostMatches(NSString *name,NSDictionary *info) {
+    if([name isEqual:@"ios1011"])return TIOOTA1011HostMatches(info);
+    if([name isEqual:@"ios1021"])return TIOOTA1021HostMatches(info);
+    return NO;
+}
 
 // The two patched Dart string records of each host's App.framework/App: same
-// replacement strings and cached hashes on both hosts (the stock strings are the
+// replacement strings and cached hashes on every host (the stock strings are the
 // same), at each host's own offsets. patch-route.mjs ROUTE_PROFILES holds the same table.
 static inline NSArray<NSNumber *> *TIOOTARouteOffsets(NSString *profile) {
     if([profile isEqual:@"ios107"])return @[@41206352,@32115728];
     if([profile isEqual:@"ios1011"])return @[@39886000,@30868352];
+    if([profile isEqual:@"ios1021"])return @[@46796656,@37435136];
     return nil;
 }
 static inline BOOL TIOOTARouteFileMatches(NSString *file,NSString *profile) {

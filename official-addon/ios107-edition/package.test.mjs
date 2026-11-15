@@ -243,9 +243,16 @@ const info1011={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Ru
 const options1011={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios1011-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',host:'ios1011-download'};
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 test('host profile table: ios107 keeps the route patch and firmware; ios1011-download has neither',()=>{
- assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011','ios1011-download','ios1021-download','ios107']);
+ assert.deepEqual(Object.keys(HOST_PROFILES).sort(),['ios1011','ios1011-download','ios1021','ios1021-download','ios107']);
  assert.equal(hostProfile(),HOST_PROFILES.ios107);for(const bad of ['ios1011-full','IOS1011','1011','__proto__'])assert.throws(()=>hostProfile(bad));
- // C19: 1.0.21/1 is download-only with its own pins; no route patch, no firmware, no full row.
+ // C19: the download-only 1.0.21/1 row keeps its own pins; no route patch, no firmware. C20 left it exactly as
+ // C19 committed it (the snapshot below), and added the separate full row ios1021.
+ assert.deepEqual(JSON.parse(JSON.stringify(HOST_PROFILES['ios1021-download'])),{name:'ios1021-download',version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5',hostError:'requires_original_ios1021_1',
+  acceptedPairs:[['9a226b80d3e32b1ec496f45cd51d46bdf5251650225cec99824d9a897f1dd1f2','0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273']],
+  frameworks:{'RayneoNet.framework/RayneoNet':'d8befe5f3144d21e4725bc27791c55954a210ee11e5738c197dbb1c18350bfa3','Flutter.framework/Flutter':'4c16499adee04bf904f7795f98e983b9fb593fb93b607ca7941761c2949f0e9a'},
+  routes:[['/xrlauncherapi/v1/signApi/gray/upgrade',46796656],['/xrlauncherhwapi/v1/signApi/gray/upgrade',37435136]],
+  sourceIPASHA256:'7cecd8847944e118c24beba8d9ae7cb5d42387047e8570feb184dca7f60b8f4a',
+  routePatch:false,firmware:false,stripStaleSignature:true,runtimeMarker:'ios1011-download',packagingRevision:'APP1021-DOWNLOAD-ONLY-01'});
  {const n=HOST_PROFILES['ios1021-download'];
   assert.equal(n.version,'1.0.21');assert.equal(n.build,'1');assert.equal(n.routePatch,false);assert.equal(n.firmware,false);assert.equal(n.routeProfile,undefined);assert.equal(n.runtimeMarker,'ios1011-download');
   assert.deepEqual(n.acceptedPairs,[['9a226b80d3e32b1ec496f45cd51d46bdf5251650225cec99824d9a897f1dd1f2','0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273']]);
@@ -354,7 +361,7 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
 });
 test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 || $host == 1021 ]]; then\npkg_host'),wrapper.indexOf('\nelif [[ $host == 1011-full ]]; then\n# C15'));
+ const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 || $host == 1021 ]]; then\npkg_host'),wrapper.indexOf('\nelif [[ $host == 1011-full || $host == 1021-full ]]; then\n# The full hosts'));
  assert.match(branch,/--host "\$pkg_host" --app "\$pkg_app"/);
  assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
  assert.match(branch,/hostProfile'\] in \('ios1011-download','ios1021-download'\)/);
@@ -366,10 +373,11 @@ test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gat
 });
 // The full 1.0.11 export panel model is pure and tested (DownloadOnlySafetyTests); pin the UI's call so
 // the guard row's green still needs the installed hook and a stock call seen in this launch.
-test('full 1.0.11 host: the export panel passes the hook state and stock traffic to the guard row model',()=>{
+test('full 1.0.11 and 1.0.21 hosts: the export panel passes the hook state and stock traffic to the guard row model',()=>{
  const ui=fs.readFileSync(new URL('./FirmwareExportUI.m',import.meta.url),'utf8');
  const model=ui.slice(ui.indexOf('static NSDictionary *SafetyModel(void){'),ui.indexOf('NSString *TIOFirmwareExportHubStatus(void){'));
- const full=model.slice(model.indexOf('if([TIOHostProfile() isEqual:@"ios1011"]){'),model.indexOf('\n    }\n'));
+ const full=model.slice(model.indexOf('if(TIOOTAArmHostName(TIOHostProfile())){'),model.indexOf('\n    }\n'));
+ assert.ok(model.indexOf('if(TIOOTAArmHostName(TIOHostProfile())){')>0);
  assert.equal([...model.matchAll(/TIOFirmwareExportSafetyModelFull\(/g)].length,1);
  assert.match(full,/return TIOFirmwareExportSafetyModelFull\(TIOGlassesChannelHookInstalled\(\)&&\[TIOOTAGuardStatus\(\)\[@"transportHookReady"\] boolValue\]&&\[arm\[@"armRequired"\] boolValue\],\s*TIOGlassesChannelStockTrafficSeen\(\),\[arm\[@"armed"\] boolValue\],NSUserDefaults\.standardUserDefaults\.dictionaryRepresentation\);/);
  assert.match(fs.readFileSync(new URL('./DownloadOnlySafety.h',import.meta.url),'utf8'),/TIOFirmwareExportSafetyModelFull\(BOOL armGuardReady, BOOL stockTrafficSeen, BOOL armed, NSDictionary \*_Nullable preferences\);/);
@@ -689,15 +697,16 @@ test('real addon build carries the full 1.0.11 arm guard',t=>{
  const addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');if(!fs.existsSync(addon))return t.skip('build the embedded addon first');
  assert.ok(packaging.validateFull1011Addon(runFixtureCommand('/usr/bin/nm',['-g',addon],{encoding:'utf8',maxBuffer:64*1024*1024}),fs.readFileSync(addon)));
 });
-test('packager source: the ios1011 build patches its own offsets, writes both markers and checks the pinned output',()=>{
+test('packager source: each full host build (ios1011, ios1021) patches its own offsets, writes both of its markers and checks its pinned output',()=>{
  const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
- assert.match(s,/if\(host\.name==='ios1011'\)validateFull1011Addon\(symbols,fs\.readFileSync\(o\.addon\)\);/);
- assert.ok(s.indexOf('validateFull1011Addon(symbols,')<s.indexOf('fs.mkdirSync(destination'));
+ assert.match(s,/if\(host\.fullHost\)validateFullHostAddon\(host\.name,symbols,fs\.readFileSync\(o\.addon\)\);/);
+ assert.ok(s.indexOf('validateFullHostAddon(host.name,symbols,')<s.indexOf('fs.mkdirSync(destination'));
+ assert.deepEqual(Object.values(HOST_PROFILES).filter(h=>h.fullHost).map(h=>[h.name,h.fullHost]),[['ios1011','1011-full'],['ios1021','1021-full']]);
  assert.match(s,/patchOTARoute\(fs\.readFileSync\(image\),host\.routeProfile\)\.output/);
  assert.match(s,/if\(host\.hostProfileMarker\)run\('plutil',\['-insert','TIOHostProfile','-string',host\.hostProfileMarker,plist\]\);/);
  assert.match(s,/run\('plutil',\['-insert','TIOExperimentalOTAQueryRouting','-string',host\.routingMarker,plist\]\);/);
- assert.match(s,/plist\.TIOHostProfile!=='ios1011'\|\|plist\.TIOExperimentalOTAQueryRouting!==host\.routingMarker\|\|plist\.TIOExperimentalOTABuild!==release\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
- assert.match(s,/digest\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\)\)!==routeProfile\('ios1011'\)\.outputSHA/);
+ assert.match(s,/plist\.TIOHostProfile!==host\.hostProfileMarker\|\|plist\.TIOExperimentalOTAQueryRouting!==host\.routingMarker\|\|plist\.TIOExperimentalOTABuild!==release\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
+ assert.match(s,/if\(!routeProfile\(host\.routeProfile\)\.outputSHA\|\|digest\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\)\)!==routeProfile\(host\.routeProfile\)\.outputSHA\)throw Error\(tag\+'_route_output_mismatch'\)/);
  assert.match(s,/if\(host\.routePatch\)verifyRoute\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\),host\.routeProfile\);/);
 });
 test('real 1.0.11 input: route patch profile ios1011 gives the pinned output and nothing else',t=>{
@@ -713,18 +722,31 @@ test('real 1.0.11 input: route patch profile ios1011 gives the pinned output and
  assert.throws(()=>patch(a),/1\.0\.7\/230/);assert.throws(()=>patch(output,'ios1011'),/requires pinned 1\.0\.11\/259/);assert.throws(()=>patch(a,'ios1011-download'));
  let differing=0;for(let i=0;i<a.length;i++)if(a[i]!==output[i])differing++;assert.ok(differing>0&&differing<=report.changes.reduce((n,c)=>n+c.bytes,0));
 });
-test('wrappers: --host 1011-full packages the full 1.0.11 build with firmware and without product; --host 1011 unchanged',()=>{
+test('wrappers: --host 1011-full and 1021-full package the full builds with firmware and without product; --host 1011 and 1021 unchanged',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const branch=wrapper.slice(wrapper.indexOf('elif [[ $host == 1011-full ]]; then\n# C15'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
- assert.match(branch,/run_logged full-1011-guard full_1011_guard "\$ADDON"/);
- assert.match(branch,/--host ios1011 --app "\$TURBO_APP1011"/);assert.match(branch,/--firmware "\$firmware" \$\{release:\+--release "\$release"\}/);
- // The default release's ZIP is TURBO_FIRMWARE; --release cN takes its checked ZIP from releases.json and only on 1011-full.
- assert.match(wrapper,/firmware=\$\{TURBO_FIRMWARE:-\}\nif \[\[ -n \$release \]\]; then\n  \[\[ \$host == 1011-full \]\] \|\| \{ echo 'PACKAGE FAIL: --release needs --host 1011-full' >&2; exit 2; \}\n  firmware=\$\(python3 -I "\$REPO\/firmware\/tools\/phone_pins\.py" --resolve "\$release" --inputs "\$TURBO_INPUTS"\)/);
+ const branch=wrapper.slice(wrapper.indexOf('elif [[ $host == 1011-full || $host == 1021-full ]]; then\n# The full hosts'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
+ assert.match(branch,/full_profile=ios1011; full_app=\$TURBO_APP1011; full_guard=full_1011_guard; full_stage=full-1011-guard/);
+ assert.match(branch,/full_profile=ios1021; full_app=\$TURBO_APP1021; full_guard=full_1021_guard; full_stage=full-1021-guard/);
+ assert.match(branch,/run_logged "\$full_stage" "\$full_guard" "\$ADDON"/);
+ assert.match(branch,/--host "\$full_profile" --app "\$full_app"/);assert.match(branch,/--firmware "\$firmware" \$\{release:\+--release "\$release"\}/);
+ assert.match(branch,/routing=\{'ios1011':'ios1011-tmg-loopback-flash-gated-arm-required','ios1021':'ios1021-tmg-loopback-flash-gated-arm-required'\}\[profile\]/);
+ // The default release's ZIP is TURBO_FIRMWARE; --release cN takes its checked ZIP from releases.json, only on a full
+ // host, and only when releases.json lists that host for the release. 1021-full has no default release.
+ assert.match(wrapper,/firmware=\$\{TURBO_FIRMWARE:-\}\n/);
+ assert.match(wrapper,/if \[\[ \$host == 1021-full && -z \$release \]\]; then\n  echo 'PACKAGE FAIL: --host 1021-full needs --release cN \(a release built for 1021-full\)' >&2; exit 2\nfi/);
+ assert.match(wrapper,/  \[\[ \$host == 1011-full \|\| \$host == 1021-full \]\] \|\| \{ echo 'PACKAGE FAIL: --release needs --host 1011-full or 1021-full' >&2; exit 2; \}\n  release_built_for "\$release" "\$host" \|\| \{[^\n]*exit 2; \}\n  firmware=\$\(python3 -I "\$REPO\/firmware\/tools\/phone_pins\.py" --resolve "\$release" --inputs "\$TURBO_INPUTS"\)/);
+ assert.match(wrapper,/elif \[\[ \$host == 107 \|\| \$host == 1011-full \]\]; then\n  release_built_for default "\$host" \|\|/);
+ assert.match(wrapper,/sys\.argv\[3\] in r\["hosts"\]/);
+ assert.match(wrapper,/elif \[\[ \$host == 1021-full \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1021\)/);
+ assert.match(wrapper,/\[\[ \$host != 1021-full \]\] \|\| run_logged full-1021-guard full_1021_guard "\$ADDON"/);
+ assert.match(wrapper,/full_1021_guard\(\) \{\n  local symbols name\n  full_1011_guard "\$1"/);
+ for(const n of packaging.FULL_1021_ARM_SYMBOLS)assert.ok(wrapper.includes(n),n);assert.ok(wrapper.includes(packaging.FULL_1021_ARM_MARKER));
  assert.match(wrapper,/\[\[ -z \$release \]\] \|\| build_flags\+=\(TIO_RELEASE="\$release"\)/);
  assert.match(branch,/report\['release'\]==sys\.argv\[2\]/);
  assert.match(branch,/ipa\.read\('Payload\/Runner\.app\/TurboWeReadCandidate\.zip'\)/);assert.match(branch,/bundled ZIP in the signed IPA is not the release ZIP/);
- assert.doesNotMatch(branch,/--product|TURBO_APP107|ios1011-download/);
- assert.match(branch,/report\['hostProfile'\]=='ios1011' and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
+ assert.doesNotMatch(branch,/--product|TURBO_APP107|ios1011-download|ios1021-download/);
+ assert.match(branch,/report\['hostProfile'\]==profile and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
+ assert.match(branch,/info\.get\('TIOHostProfile'\)==profile/);assert.match(branch,/info\.get\('TIOExperimentalOTAQueryRouting'\)==routing/);
  assert.match(branch,/'UISupportedDevices' not in info/);
  assert.match(wrapper,/elif \[\[ \$host == 1011-full \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_FIRMWARE TURBO_APP1011\)/);
  assert.match(wrapper,/if \[\[ \$host == 1011 \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011\)/);
@@ -751,7 +773,76 @@ test('releases: pins per release, the addon release marker and the full-host-onl
  assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),Buffer.from('ota release=c17; ')]),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
  assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG10',Buffer.alloc(8846364),c16),/navs3_firmware_identity_mismatch/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};
- assert.throws(()=>m.validateOptions({...base,release:'c16'}),/release_requires_full_1011_host/);
- assert.throws(()=>m.validateOptions({...base,host:'ios1011-download',firmware:undefined,release:'c16'}),/release_requires_full_1011_host/);
+ assert.throws(()=>m.validateOptions({...base,release:'c16'}),/release_requires_full_host/);
+ assert.throws(()=>m.validateOptions({...base,host:'ios1011-download',firmware:undefined,release:'c16'}),/release_requires_full_host/);
+ assert.throws(()=>m.validateOptions({...base,host:'ios1021-download',firmware:undefined,release:'c16'}),/release_requires_full_host/);
  m.validateOptions({...base,host:'ios1011',release:'c16'});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:'c99'}),/unknown_release/);
+});
+
+// C20: the full 1.0.21/1 host (ios1021). The same pinned input as the download-only C19 row, the route patch at the
+// 1.0.21 offsets with a pinned output, its own markers, and only a release whose releases.json hosts list 1021-full.
+test('full 1.0.21 profile: the C19 pins, its own route profile and markers, and a release built for it',async()=>{
+ const f=HOST_PROFILES.ios1021,d=HOST_PROFILES['ios1021-download'];
+ for(const k of ['version','build','uuid','hostError','sourceIPASHA256'])assert.equal(f[k],d[k],k);
+ assert.deepEqual(f.acceptedPairs,d.acceptedPairs);assert.deepEqual(f.frameworks,d.frameworks);
+ assert.equal(f.routePatch,true);assert.equal(f.routeProfile,'ios1021');assert.equal(f.firmware,true);assert.equal(f.stripStaleSignature,true);assert.equal(f.noProduct,true);
+ assert.equal(f.hostProfileMarker,'ios1021');assert.equal(f.packagingRevision,'APP1021-OTA-FULL-01');assert.equal(f.fullHost,'1021-full');assert.equal(f.runtimeMarker,undefined);
+ const otaHost=fs.readFileSync(new URL('./OTAHost.h',import.meta.url),'utf8');
+ assert.equal(otaHost.match(/#define TIO_OTA_1021_ROUTING_MARKER @"([^"]+)"/)[1],f.routingMarker);
+ assert.notEqual(f.routingMarker,HOST_PROFILES.ios1011.routingMarker);
+ assert.match(fs.readFileSync(new URL('./HostCompatibility.h',import.meta.url),'utf8'),/#define TIO_HOST_PROFILE_1021_FULL @"ios1021"/);
+ const r=routeProfile('ios1021');
+ assert.deepEqual([...r.offsets],d.routes.map(([,o])=>o));assert.deepEqual([...r.inputs],[d.acceptedPairs[0][1]]);
+ assert.equal(r.outputSHA,'cd8be91e82bdbc1c98b5dda4fa0d358b91a2187ea4571200760fac0c53cb7852');assert.equal(r.host,'1.0.21');assert.equal(r.build,1);
+ // Releases: 1021-full takes only a release that lists it; the default and the 1.0.11 releases are refused.
+ const m=await import('./package.mjs');
+ assert.deepEqual(m.RELEASE_HOST_NAMES,{ios107:'107',ios1011:'1011-full',ios1021:'1021-full'});
+ assert.deepEqual(m.releaseHosts(),['107','1011-full']);for(const n of ['c16','c17','c18'])assert.deepEqual(m.releaseHosts(n),['1011-full'],n);
+ for(const bad of ['c99','__proto__','',' default'])assert.throws(()=>m.releaseHosts(bad),/unknown_release/);
+ const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-1021-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip',host:'ios1021'};
+ assert.throws(()=>m.validateOptions(base),/release_not_built_for_host/);
+ for(const n of ['c16','c17','c18'])assert.throws(()=>m.validateOptions({...base,release:n}),/release_not_built_for_host/,n);
+ assert.throws(()=>m.validateOptions({...base,release:'c99'}),/unknown_release/);
+ assert.throws(()=>m.validateOptions({...base,release:'c16',product:'iPhone17,1'}),/full_1011_host_takes_no_product/);
+ // Every release listing 1021-full is accepted on ios1021 and refused on ios1011 (none until the C20 entry lands).
+ const releases=JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases;
+ for(const [n,spec] of Object.entries(releases)){
+  if(spec.hosts.includes('1021-full')){m.validateOptions({...base,release:n});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:n}),/release_not_built_for_host/);}
+  else assert.throws(()=>m.validateOptions({...base,release:n==='default'?undefined:n}),/release_not_built_for_host/,n);
+ }
+ // The 1.0.11 host keeps its releases.
+ m.validateOptions({...base,host:'ios1011',release:undefined});for(const n of ['c16','c17','c18'])m.validateOptions({...base,host:'ios1011',release:n});
+});
+test('full 1.0.21 addon gate: the full 1.0.11 guards plus the 1.0.21 arm marker',()=>{
+ const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_1011_ARM_SYMBOLS,...packaging.FULL_1021_ARM_SYMBOLS];
+ const symbols=names.map(n=>'0000000000000000 T '+n).join('\n');
+ const addon=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_1011_ARM_MARKER+'\0'+packaging.FULL_1021_ARM_MARKER+'\0');
+ assert.ok(packaging.validateFull1021Addon(symbols,addon));assert.ok(packaging.validateFullHostAddon('ios1021',symbols,addon));assert.ok(packaging.validateFullHostAddon('ios1011',symbols,addon));
+ for(const n of names)assert.throws(()=>packaging.validateFull1021Addon(symbols.split('\n').filter(l=>!l.endsWith(' '+n)).join('\n'),addon),/guard_missing/,n);
+ // An addon from before C20 (the 1.0.11 guards only) is refused for 1.0.21 and still accepted for 1.0.11.
+ const pre=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_1011_ARM_MARKER+'\0');
+ assert.throws(()=>packaging.validateFull1021Addon(symbols,pre),/full_1021_arm_guard_missing:marker/);assert.ok(packaging.validateFull1011Addon(symbols,pre));
+ for(const h of ['ios107','ios1011-download','ios1021-download','IOS1021',''])assert.throws(()=>packaging.validateFullHostAddon(h,symbols,addon),/not_a_full_host/);
+ assert.ok(fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8').includes('TIOOTAArm1021GuardMarker=@"'+packaging.FULL_1021_ARM_MARKER+'"'));
+});
+test('real addon build carries the full 1.0.21 arm guard',t=>{
+ const addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');if(!fs.existsSync(addon))return t.skip('build the embedded addon first');
+ assert.ok(packaging.validateFull1021Addon(runFixtureCommand('/usr/bin/nm',['-g',addon],{encoding:'utf8',maxBuffer:64*1024*1024}),fs.readFileSync(addon)));
+});
+test('real 1.0.21 input: route patch profile ios1021 gives the pinned output; one byte off the pin is refused',t=>{
+ const p=process.env.IOS1021_TEST_APP;if(!p)return t.skip('set IOS1021_TEST_APP');
+ const r=fs.readFileSync(p+'/Runner'),a=fs.readFileSync(p+'/Frameworks/App.framework/App');
+ const frameworks={'RayneoNet.framework/RayneoNet':fs.readFileSync(p+'/Frameworks/RayneoNet.framework/RayneoNet'),'Flutter.framework/Flutter':fs.readFileSync(p+'/Frameworks/Flutter.framework/Flutter')};
+ const plist=JSON.parse(runFixtureCommand('plutil',['-convert','json','-o','-',p+'/Info.plist'],{encoding:'utf8'}));
+ validateHost(plist,r,a,'ios1021',frameworks);validateHost(plist,r,a,'ios1021-download',frameworks);
+ assert.throws(()=>validateHost({...plist,TIOHostProfile:'ios1021'},r,a,'ios1021',frameworks),/requires_original_ios1021_1/);
+ assert.throws(()=>validateHost(plist,r,a,'ios1011',frameworks),/requires_original_ios1011_259/);
+ const {output,report}=patch(a,'ios1021');
+ assert.equal(sha256(output),routeProfile('ios1021').outputSHA);assert.equal(report.profile,'ios1021');assert.equal(report.host,'1.0.21');assert.equal(report.build,1);
+ assert.deepEqual(report.changes.map(c=>c.offset),[46796656,37435136]);assert.equal(report.deviceIO,false);assert.equal(output.length,a.length);
+ assert.ok(verifyRoute(output,'ios1021'));assert.throws(()=>verifyRoute(output,'ios1011'));assert.throws(()=>verifyRoute(output));assert.throws(()=>verifyRoute(a,'ios1021'));
+ assert.throws(()=>patch(a,'ios1011'),/requires pinned 1\.0\.11\/259/);assert.throws(()=>patch(output,'ios1021'),/requires pinned 1\.0\.21\/1/);assert.throws(()=>patch(a,'ios1021-download'));
+ // One byte off the pinned input, anywhere (here far from both records, then inside one): refused before patching.
+ for(const at of [4096,46796656+3]){const near=Buffer.from(a);near[at]^=1;assert.throws(()=>patch(near,'ios1021'),/requires pinned 1\.0\.21\/1/,String(at));}
+ let differing=0;for(let i=0;i<a.length;i++)if(a[i]!==output[i])differing++;assert.ok(differing>0&&differing<=report.changes.reduce((n,c)=>n+c.bytes,0));
 });

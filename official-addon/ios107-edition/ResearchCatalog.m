@@ -88,11 +88,11 @@ static NSString *FirmwareCode(void) {
     return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : TIO_FW_NAME;
 }
 
-// The firmware export row exists only on the 1.0.11 hosts. On the download-only
+// The firmware export row exists only on the 1.0.11 and 1.0.21 hosts. On a download-only
 // host it and the language row are the whole hub, plus the wire log row when the
 // build has it (TIO_WIRE_LOG=1): the recorder is passive and only reads the channel.
-// The full 1.0.11 host ("ios1011") gets every row, with the export row moved under
-// Developer. Everything else is the full 1.0.7 hub without the export row.
+// The full 1.0.11 and 1.0.21 hosts ("ios1011", "ios1021") get every row, with the export row
+// moved under Developer. Everything else is the full 1.0.7 hub without the export row.
 static BOOL RowOnHost(NSString *key, BOOL downloadOnly, BOOL full1011) {
     BOOL exportRow = [key isEqualToString:@"firmwareExport"];
     if (full1011) return YES;
@@ -108,7 +108,7 @@ NSArray<NSDictionary *> *TIOHubCatalog(void) {return TIOHubCatalogForProfile(nil
 
 NSArray<NSDictionary *> *TIOHubCatalogForProfile(NSString *profile) {
     BOOL downloadOnly = [profile isEqualToString:@"ios1011-download"];
-    BOOL full1011 = [profile isEqualToString:@"ios1011"];
+    BOOL full1011 = [profile isEqualToString:@"ios1011"] || [profile isEqualToString:@"ios1021"];
     NSMutableArray<NSDictionary *> *catalog = [NSMutableArray arrayWithCapacity:sizeof(Rows)/sizeof(Rows[0])];
     for (NSUInteger index = 0; index < sizeof(Rows)/sizeof(Rows[0]); index++) {
         const TIOHubRowDefinition *row = &Rows[index];

@@ -96,8 +96,29 @@ export const HOST_PROFILES=Object.freeze({
     frameworks:Object.freeze({'RayneoNet.framework/RayneoNet':'20afa03444ef7a755002d4fb2e57bacc8e1a363844692e0cbd995b76bc0a2e83','Flutter.framework/Flutter':'a8ba610db6f1f93b251225d0767638001bacb930e681eaeb1d168f7c33851621'}),
     sourceIPASHA256:'e097f1f86cbb91b4d95e242b3c3de7c363d6abd38b7ece4408989c40d7cae19f',
     routePatch:true,routeProfile:'ios1011',firmware:true,stripStaleSignature:true,noProduct:true,hostProfileMarker:'ios1011',
-    routingMarker:'ios1011-tmg-loopback-flash-gated-arm-required',packagingRevision:'APP1011-OTA-FULL-01'}),
+    routingMarker:'ios1011-tmg-loopback-flash-gated-arm-required',packagingRevision:'APP1011-OTA-FULL-01',fullHost:'1011-full'}),
+  // Full 1.0.21 (C20): the pinned input of the download-only 1.0.21 row (same Runner, App, frameworks and source
+  // IPA), with the route patch at the 1.0.21 offsets (pinned output), the bundled TMG candidate of a release built
+  // for this host (releases.json hosts ["1021-full"]), its own host-profile marker and routing marker (OTAHost.h
+  // TIO_OTA_1021_ROUTING_MARKER). Same arm model as ios1011: TMG flashing stays disarmed until the owner arms it.
+  ios1021:Object.freeze({name:'ios1021',version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5',hostError:'requires_original_ios1021_1',
+    acceptedPairs:Object.freeze([
+      ['9a226b80d3e32b1ec496f45cd51d46bdf5251650225cec99824d9a897f1dd1f2','0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273'],
+    ]),
+    frameworks:Object.freeze({'RayneoNet.framework/RayneoNet':'d8befe5f3144d21e4725bc27791c55954a210ee11e5738c197dbb1c18350bfa3','Flutter.framework/Flutter':'4c16499adee04bf904f7795f98e983b9fb593fb93b607ca7941761c2949f0e9a'}),
+    sourceIPASHA256:'7cecd8847944e118c24beba8d9ae7cb5d42387047e8570feb184dca7f60b8f4a',
+    routePatch:true,routeProfile:'ios1021',firmware:true,stripStaleSignature:true,noProduct:true,hostProfileMarker:'ios1021',
+    routingMarker:'ios1021-tmg-loopback-flash-gated-arm-required',packagingRevision:'APP1021-OTA-FULL-01',fullHost:'1021-full'}),
 });
+// The packager host name (turbo-package.sh --host, releases.json hosts) of each profile that bundles a release.
+export const RELEASE_HOST_NAMES=Object.freeze({ios107:'107',ios1011:'1011-full',ios1021:'1021-full'});
+// The hosts a release is built for (releases.json). A release ZIP is bundled only for one of them: the default
+// release for 107 and 1011-full, each named release for exactly one full host.
+export function releaseHosts(name='default'){
+  const releases=JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases??{};
+  if(!Object.hasOwn(releases,name)||!Array.isArray(releases[name].hosts)||releases[name].hosts.some(h=>typeof h!=='string'))throw Error('unknown_release');
+  return releases[name].hosts;
+}
 export function hostProfile(name='ios107'){
   if(!Object.hasOwn(HOST_PROFILES,name))throw Error('unknown_host_profile');
   return HOST_PROFILES[name];
@@ -163,9 +184,27 @@ export function validateFull1011Addon(symbols,addon){
   if(!addon.includes(Buffer.from(FULL_1011_ARM_MARKER)))throw Error('full_1011_arm_guard_missing:marker');
   return true;
 }
+// C20 gate for the full 1.0.21 host: everything the full 1.0.11 host needs (the same disarm guard and arm step,
+// shared code), plus the addon's 1.0.21 arm marker (ExperimentalOTAFlash.m TIOOTAArm1021GuardMarker), so an addon
+// built before C20, which would never arm or flash on 1.0.21, is refused before signing.
+export const FULL_1021_ARM_MARKER='ota guard=IOS1021-FULL-DISARM-01; flag-independent; the IOS1011-FULL-DISARM-01 rules on the full 1.0.21 host; arm record otaFlashArmRecord.ios1021';
+export const FULL_1021_ARM_SYMBOLS=Object.freeze(['_TIOOTAArm1021GuardMarker','_TIOExperimentalOTAMemberCount']);
+export function validateFull1021Addon(symbols,addon){
+  validateFull1011Addon(symbols,addon);
+  const names=new Set(String(symbols).split('\n').map(l=>l.trim().split(/\s+/).pop()));
+  for(const name of FULL_1021_ARM_SYMBOLS)if(!names.has(name))throw Error('full_1021_arm_guard_missing:'+name);
+  if(!addon.includes(Buffer.from(FULL_1021_ARM_MARKER)))throw Error('full_1021_arm_guard_missing:marker');
+  return true;
+}
+// The full-host addon check for a profile: ios1011 or ios1021; any other profile has none.
+export function validateFullHostAddon(hostName,symbols,addon){
+  if(hostName==='ios1011')return validateFull1011Addon(symbols,addon);
+  if(hostName==='ios1021')return validateFull1021Addon(symbols,addon);
+  throw Error('not_a_full_host');
+}
 export function validateOptions(o) {
   const host=hostProfile(o.host??'ios107');
-  if(o.release!==undefined&&host.name!=='ios1011')throw Error('release_requires_full_1011_host');
+  if(o.release!==undefined&&!host.fullHost)throw Error('release_requires_full_host');
   for(const k of ['app','addon','profile','out'])if(typeof o[k]!=='string'||!path.isAbsolute(o[k]))throw Error('absolute_paths_required');
   if(!o.app.endsWith('.app')||o.out.endsWith('.app'))throw Error('use_app_input_and_new_output_directory');
   if(!/^[a-f0-9]{40}$/i.test(o.identity||'')||!/^[a-z0-9-]{8,80}$/i.test(o.device||''))throw Error('explicit_identity_and_device_required');
@@ -178,6 +217,8 @@ export function validateOptions(o) {
     return;
   }
   if(host.noProduct&&o.product!==undefined)throw Error('full_1011_host_takes_no_product');
+  // The release must be built for this host: the default release for 107 and 1011-full, a named release for its one host.
+  if(!releaseHosts(o.release??'default').includes(RELEASE_HOST_NAMES[host.name]))throw Error('release_not_built_for_host');
   const release=releasePins(o.release);
   if(o['experimental-ota']!==undefined&&o['experimental-ota']!==release.name)throw Error('only_exact_'+release.name.toLowerCase()+'_supported');
   if(o.bundle!=='com.rayneo.venus.pub'||typeof o.firmware!=='string'||!path.isAbsolute(o.firmware))throw Error('exact_host_and_firmware_resource_required');
@@ -238,6 +279,7 @@ function main(){
   if(process.argv.includes('--help'))console.log('Optional Apple AI: --apple-ai-dylib /absolute/TurboAppleAI.dylib (requires TIO_APPLE_AI=1 addon)');
   if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see official-addon/ios107-edition/local-translation/README.md)');
   if(process.argv.includes('--help'))console.log('Download-only 1.0.11/259: --host ios1011-download, no --firmware and no --product. App.framework stays stock; no OTA flashing.');
+  if(process.argv.includes('--help'))console.log('Full 1.0.21/1 (C20): --host ios1021 --release cN with --firmware, no --product: only a release whose releases.json hosts list 1021-full. Route patch at the 1.0.21 offsets; TMG flashing disarmed until armed on the phone; needs an addon built with that TIO_RELEASE.');
   if(process.argv.includes('--help'))console.log(`Full 1.0.11/259 (C15): --host ios1011 with --firmware, no --product. Route patch at the 1.0.11 offsets; TMG flashing disarmed until armed on the phone. --release c16|c17 (C16 flashes TMG10, C17 rolls back to TMG9) takes that release\'s ZIP and needs an addon built with TIO_RELEASE=cN.`);
   if(process.argv.includes('--help')){console.log(`node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-${pins.name}-CANDIDATE-NOT-APPROVED.zip [--product iPhone18,2]`);return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
@@ -256,7 +298,7 @@ function main(){
   const release=releasePins(o.release);
   if(host.firmware){validateResearchPair(symbols,release.name,firmware,release);validateReleaseAddon(fs.readFileSync(o.addon),release);}else if(firmware)throw Error('download_only_host_takes_no_firmware_or_product');
   if(!host.routePatch)validateDownloadOnlyAddon(symbols,fs.readFileSync(o.addon));
-  if(host.name==='ios1011')validateFull1011Addon(symbols,fs.readFileSync(o.addon));
+  if(host.fullHost)validateFullHostAddon(host.name,symbols,fs.readFileSync(o.addon));
   const info=JSON.parse(run('plutil',['-convert','json','-o','-',path.join(source,'Info.plist')],{encoding:'utf8'}));
   const sourceApp=fs.readFileSync(path.join(source,'Frameworks/App.framework/App'));
   validateHost(info,fs.readFileSync(path.join(source,'Runner')),sourceApp,host.name,Object.fromEntries(Object.keys(host.frameworks??{}).map(n=>[n,fs.readFileSync(path.join(source,'Frameworks',n))])));
@@ -301,11 +343,12 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   const locationUsage=locationUsageFor(symbols);
   if(locationUsage){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(!info.NSLocationWhenInUseUsageDescription)run('plutil',['-insert','NSLocationWhenInUseUsageDescription','-string',locationUsage,plist]);}
   if(o.product){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(Array.isArray(info.UISupportedDevices)&&!info.UISupportedDevices.includes(o.product))run('plutil',['-insert','UISupportedDevices.0','-string',o.product,plist]);}
-  if(host.name==='ios1011'){
-    // Full 1.0.11: both markers, the ZIP, the patched App and no device-model list.
+  if(host.fullHost){
+    // Full 1.0.11 or 1.0.21: both of this host's markers, the ZIP, the patched App (its pinned output) and no device-model list.
+    const tag=host.name==='ios1011'?'full_1011':'full_1021';
     const plist=JSON.parse(run('plutil',['-convert','json','-o','-',path.join(app,'Info.plist')],{encoding:'utf8'}));
-    if(plist.TIOHostProfile!=='ios1011'||plist.TIOExperimentalOTAQueryRouting!==host.routingMarker||plist.TIOExperimentalOTABuild!==release.name||plist.UISupportedDevices!==undefined||!fs.existsSync(path.join(app,CANDIDATE_RESOURCE)))throw Error('full_1011_bundle_mismatch');
-    if(digest(fs.readFileSync(path.join(app,'Frameworks/App.framework/App')))!==routeProfile('ios1011').outputSHA)throw Error('full_1011_route_output_mismatch');
+    if(plist.TIOHostProfile!==host.hostProfileMarker||plist.TIOExperimentalOTAQueryRouting!==host.routingMarker||plist.TIOExperimentalOTABuild!==release.name||plist.UISupportedDevices!==undefined||!fs.existsSync(path.join(app,CANDIDATE_RESOURCE)))throw Error(tag+'_bundle_mismatch');
+    if(!routeProfile(host.routeProfile).outputSHA||digest(fs.readFileSync(path.join(app,'Frameworks/App.framework/App')))!==routeProfile(host.routeProfile).outputSHA)throw Error(tag+'_route_output_mismatch');
   }
   if(!host.routePatch){
     const plist=JSON.parse(run('plutil',['-convert','json','-o','-',path.join(app,'Info.plist')],{encoding:'utf8'}));
@@ -328,7 +371,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   const names=run('/usr/bin/unzip',['-Z1',ipa],{encoding:'utf8',maxBuffer:256*1024*1024}).split('\n');if(names.some(n=>n.split('/').some(x=>x==='__MACOSX'||x.startsWith('._'))))throw Error('unexpected_archive_metadata');
   if(privateArchiveNames(names).length)throw Error('archive_contains_private_file');
   const preparation=JSON.parse(fs.readFileSync(path.join(app,'TurboIOPrivatePreparation.json'),'utf8'));
-  const report=host.name==='ios1011'?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,release:release.release,firmwareName:release.name,firmwareSHA256:release.zipSHA256,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,flashArmed:false,firmwareResourceOnly:false,firmwareBundled:true,routePatched:true,routePatchedSHA256:routeProfile('ios1011').outputSHA,postSigningRouteVerified:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:'Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching App.framework and re-signing it for the full 1.0.11 build.',captureBeforeArming:'The 1.0.11 OTA sequence is known only from a static read; confirm it with a wire log capture before arming TMG flashing.',ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:!host.routePatch?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:false,flashAuthorized:false,firmwareBundled:false,routePatched:false,appFrameworkStockBeforeSigning:true,appFrameworkStockExceptSignature:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:'Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching and re-signing it for this download-only build.',ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:'1.0.7 (230)',signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,firmwareResourceOnly:false,postSigningRouteVerified:true,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']};
+  const report=host.fullHost?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,release:release.release,firmwareName:release.name,firmwareSHA256:release.zipSHA256,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,flashArmed:false,firmwareResourceOnly:false,firmwareBundled:true,routePatched:true,routePatchedSHA256:routeProfile(host.routeProfile).outputSHA,postSigningRouteVerified:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:`Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching App.framework and re-signing it for the full ${host.version} build.`,captureBeforeArming:`The ${host.version} OTA sequence is known only from a static read; confirm it with a wire log capture before arming TMG flashing.`,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:!host.routePatch?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:false,flashAuthorized:false,firmwareBundled:false,routePatched:false,appFrameworkStockBeforeSigning:true,appFrameworkStockExceptSignature:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:'Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching and re-signing it for this download-only build.',ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:'1.0.7 (230)',signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,firmwareResourceOnly:false,postSigningRouteVerified:true,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']};
   fs.writeFileSync(path.join(destination,'report.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});console.log(JSON.stringify(report,null,2));
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){try{main();}catch(e){const known=/^[a-z_]+$/.test(e.message);console.error(known?e.message:'Local packaging failed. Check compatible source, profile and signing identity. No subprocess output or credentials are printed.');process.exitCode=1;}}

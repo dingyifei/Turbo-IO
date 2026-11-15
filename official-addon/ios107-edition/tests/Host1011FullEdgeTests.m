@@ -1,4 +1,5 @@
-// Edge cases for the full 1.0.11/259 host (profile ios1011, C15) that
+// Edge cases for the full 1.0.11/259 host (profile ios1011, C15) and, built with
+// -DTIO_TEST_HOST_1021=1, the full 1.0.21/1 host (ios1021, C20; tests/FullHostFixture.h) that
 // tests/Host1011FullGuardTests.m does not already cover: the profile marker's near
 // misses, raw-JSON size queries, frame and payload shapes, businessId types, and arm
 // record and store near misses. Runs the unchanged phone policy (ExperimentalOTAFlash.m,
@@ -12,6 +13,7 @@
 // when a fix makes it pass the run aborts with XPASS so the case moves into the normal
 // list. They are not hidden: the run prints every one.
 #import "TMG4WizardHost.h"
+#import "FullHostFixture.h"
 #import "HostCompatibility.h"
 #import "OTAHost.h"
 #import "ExperimentalOTAFlash.h"
@@ -98,8 +100,8 @@ static NSString *InstallID(void){
     for(uint32_t i=0;i<h->ncmds;i++){const struct load_command *c=(const void *)p;if(c->cmd==LC_UUID)return [[[NSUUID alloc]initWithUUIDBytes:((const struct uuid_command *)c)->uuid] UUIDString];p+=c->cmdsize;}
     assert(0&&"test binary has no LC_UUID");return nil;
 }
-static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
-static NSString *const PinnedUUID=@"22724C97-2EF9-388D-8E6A-6E051855A555";
+static NSString *const ArmKey=TFH_ARM_KEY;
+static NSString *const PinnedUUID=TFH_UUID;
 static NSDictionary *Full;
 static const struct mach_header *Pinned;
 static NSDictionary *With(NSDictionary *base,NSString *key,id value){NSMutableDictionary *m=[base mutableCopy];if(value)m[key]=value;else [m removeObjectForKey:key];return m;}
@@ -109,12 +111,9 @@ static NSString *Show(id v){
     return [[s stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"] stringByReplacingOccurrencesOfString:@"\0" withString:@"\\0"];
 }
 
-// --- Profile: "ios1011" only for the pinned image AND the exact NSString marker.
+// --- Profile: this host's profile ("ios1011" or "ios1021") only for the pinned image AND the exact NSString marker.
 static void ProfileCases(void){
-    unichar nul[]={'i','o','s','1','0','1','1',0};
-    NSArray *misses=@[@"IOS1011",@"Ios1011",@"ios1011 ",@" ios1011",@"ios1011\n",[NSString stringWithCharacters:nul length:8],
-        @"ios1O11",@"ｉｏｓ１０１１",@"ios1011​",@"ios1011-full",@"ios10110",@"ios101",@"",@"ios107",
-        NSNull.null,@1011,@YES,@[@"ios1011"],@{@"ios1011":@YES},[@"ios1011" dataUsingEncoding:NSUTF8StringEncoding],[NSURL URLWithString:@"ios1011"]];
+    NSArray *misses=TFHMarkerMisses();
     for(id marker in misses)for(NSNumber *routing in @[@YES,@NO]){
         Host=With(Full,@"TIOHostProfile",marker);if(!routing.boolValue)Host=With(Host,@"TIOExperimentalOTAQueryRouting",nil);Image=Pinned;
         NSString *n=[NSString stringWithFormat:@"marker %@ routing %@",Show(marker),routing];
@@ -124,7 +123,7 @@ static void ProfileCases(void){
         Check("profile",[n stringByAppendingString:@" arm not required"],TIOOTAArmRequired(),NO);
         Check("profile",[n stringByAppendingString:@" full features off"],TIOHostFullImageMatches(Image,Host),NO);
         // Download-only rule: only the empty version query passes, whatever record is stored.
-        TMG4ArmStore()[ArmKey]=@{@"v":@1,@"host":@"ios1011",@"install":InstallID(),@"armedAt":@1};
+        TMG4ArmStore()[ArmKey]=@{@"v":@1,@"host":TFH_PROFILE,@"install":InstallID(),@"armedAt":@1};
         Check("profile",[n stringByAppendingString:@" version query passes"],Allowed(Read1()),YES);
         Check("profile",[n stringByAppendingString:@" battery read refused"],Allowed(Frame(2,nil)),NO);
         Check("profile",[n stringByAppendingString:@" size query refused"],Allowed(Frame(3,@{@"OtaSize":@(TIO_FW_ZIP_BYTES)})),NO);
@@ -134,16 +133,16 @@ static void ProfileCases(void){
         [TMG4ArmStore() removeAllObjects];
     }
     // A mutable string with the same characters is the same marker.
-    Host=With(Full,@"TIOHostProfile",[NSMutableString stringWithString:@"ios1011"]);
-    Check("profile",@"NSMutableString ios1011 -> ios1011",[TIOHostProfileFor(Pinned,Host) isEqual:@"ios1011"],YES);
-    Check("profile",@"NSMutableString ios1011 arm required",TIOOTAArmRequired(),YES);
-    // Exact marker on anything but the pinned image: never the ios1011 profile, and still disarmed.
+    Host=With(Full,@"TIOHostProfile",[NSMutableString stringWithString:TFH_PROFILE]);
+    Check("profile",@"NSMutableString marker -> full profile",[TIOHostProfileFor(Pinned,Host) isEqual:TFH_PROFILE],YES);
+    Check("profile",@"NSMutableString marker arm required",TIOOTAArmRequired(),YES);
+    // Exact marker on anything but the pinned image (the other full host's image included): never the full profile, and still disarmed.
     struct {NSString *name;const struct mach_header *image;} images[]={
         {@"1.0.7 image",FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B")},{@"other image",FakeImage(@"00000000-0000-0000-0000-000000000001")},
-        {@"no image",NULL}};
+        {@"other full host's image",FakeImage([TFH_UUID isEqual:@"22724C97-2EF9-388D-8E6A-6E051855A555"]?@"74DA0780-DCF0-384F-9E84-1AC12F56CDF5":@"22724C97-2EF9-388D-8E6A-6E051855A555")},{@"no image",NULL}};
     for(size_t i=0;i<sizeof images/sizeof *images;i++){
         Host=Full;Image=images[i].image;NSString *n=images[i].name;
-        Check("profile",[n stringByAppendingString:@" not the ios1011 profile"],[TIOHostProfileFor(Image,Host) isEqual:@"ios1011"],NO);
+        Check("profile",[n stringByAppendingString:@" not the full profile"],[TIOHostProfileFor(Image,Host) isEqual:TFH_PROFILE],NO);
         Check("profile",[n stringByAppendingString:@" arm required"],TIOOTAArmRequired(),YES);
         Check("profile",[n stringByAppendingString:@" arm refused"],TIOOTAFlashArm(NULL),NO);
         [TMG4ArmStore() removeAllObjects];
@@ -151,17 +150,34 @@ static void ProfileCases(void){
         Check("profile",[n stringByAppendingString:@" read passes"],Allowed(Read1()),YES);
     }
     // Info near misses with the exact marker: the profile or the OTA host check fails, arm is refused, disarmed reads stay.
-    NSArray *infos=@[@[@"CFBundleVersion",@259],@[@"CFBundleVersion",@"259 "],@[@"CFBundleShortVersionString",@"1.0.11 "],
-        @[@"CFBundleShortVersionString",@"1.0.11.0"],@[@"CFBundleIdentifier",@"com.rayneo.venus"],@[@"TIOExperimentalOTAQueryRouting",[TIO_OTA_1011_ROUTING_MARKER uppercaseString]]];
+    // The other full host's version and build (with this host's markers) and its routing marker are near misses too.
+    NSArray *infos=@[@[@"CFBundleVersion",@(TFH_BUILD.integerValue)],@[@"CFBundleVersion",[TFH_BUILD stringByAppendingString:@" "]],@[@"CFBundleShortVersionString",[TFH_VERSION stringByAppendingString:@" "]],
+        @[@"CFBundleShortVersionString",[TFH_VERSION stringByAppendingString:@".0"]],@[@"CFBundleIdentifier",@"com.rayneo.venus"],@[@"TIOExperimentalOTAQueryRouting",[TFH_ROUTING uppercaseString]],
+        @[@"TIOExperimentalOTAQueryRouting",TFH_OTHER_ROUTING],@[@"CFBundleShortVersionString",[TFH_VERSION isEqual:@"1.0.11"]?@"1.0.21":@"1.0.11"],@[@"CFBundleVersion",[TFH_BUILD isEqual:@"259"]?@"1":@"259"]];
     for(NSArray *kv in infos){
         Host=With(Full,kv[0],kv[1]);Image=Pinned;NSString *n=[NSString stringWithFormat:@"%@=%@",kv[0],Show(kv[1])];
-        Check("profile",[n stringByAppendingString:@" not the ios1011 OTA host"],TIOOTA1011HostMatches(Host),NO);
+        Check("profile",[n stringByAppendingString:@" not the full OTA host"],TFH_HOST_MATCHES(Host),NO);
         Check("profile",[n stringByAppendingString:@" arm required"],TIOOTAArmRequired(),YES);
         Check("profile",[n stringByAppendingString:@" arm refused"],TIOOTAFlashArm(NULL),NO);
-        TMG4ArmStore()[ArmKey]=@{@"v":@1,@"host":@"ios1011",@"install":InstallID(),@"armedAt":@1};
+        TMG4ArmStore()[ArmKey]=@{@"v":@1,@"host":TFH_PROFILE,@"install":InstallID(),@"armedAt":@1};
         Check("profile",[n stringByAppendingString:@" valid record: not armed for transfer"],[TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue],NO);
         Check("profile",[n stringByAppendingString:@" Mode 2 refused"],Allowed(Start2()),NO);
         Check("profile",[n stringByAppendingString:@" read passes"],Allowed(Read1()),YES);
+        [TMG4ArmStore() removeAllObjects];
+    }
+    // The 1.0.7 OTA host (its version, build, routing marker and image) carrying this host's profile marker and a
+    // valid record for this host: the 1.0.7 host check passes, but the arm-for-transfer check is this full host's
+    // exact one, so the record never arms a transfer there, and arming is refused.
+    {
+        Host=With(With(With(Full,@"CFBundleShortVersionString",@"1.0.7"),@"CFBundleVersion",@"230"),@"TIOExperimentalOTAQueryRouting",@"ios107-tmg2-loopback-flash-gated");
+        Image=FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B");
+        assert(TIOOTA107HostMatches(Host)&&TIOHostFullImageMatches(Image,Host));
+        Check("profile",@"1.0.7 host with this profile marker: arm required",TIOOTAArmRequired(),YES);
+        Check("profile",@"1.0.7 host with this profile marker: arm refused",TIOOTAFlashArm(NULL),NO);
+        TMG4ArmStore()[ArmKey]=@{@"v":@1,@"host":TFH_PROFILE,@"install":InstallID(),@"armedAt":@1};
+        Check("profile",@"1.0.7 host with this profile marker, valid record: not armed for transfer",[TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue],NO);
+        Check("profile",@"1.0.7 host with this profile marker, valid record: Mode 2 refused",Allowed(Start2()),NO);
+        Check("profile",@"1.0.7 host with this profile marker, valid record: read passes",Allowed(Read1()),YES);
         [TMG4ArmStore() removeAllObjects];
     }
     Host=Full;Image=Pinned;
@@ -285,11 +301,11 @@ static void BusinessCases(void){
         Check("business",[NSString stringWithFormat:@"%@ Mode 2 passes (not business 9)",b],!TIOOTAFlashBlockCall(Call(b,start)),YES);
 }
 
-// --- Arm record: exactly {v:1, host:"ios1011", install:<addon LC_UUID>, armedAt:<number>} under the one key in the addon suite.
+// --- Arm record: exactly {v:1, host:<this host's profile>, install:<addon LC_UUID>, armedAt:<number>} under this host's one key in the addon suite.
 static void RecordCases(void){
     Host=Full;Image=Pinned;NSMutableDictionary *store=TMG4ArmStore();[store removeAllObjects];
     NSString *install=InstallID();
-    NSDictionary *good=@{@"v":@1,@"host":@"ios1011",@"install":install,@"armedAt":@1};
+    NSDictionary *good=@{@"v":@1,@"host":TFH_PROFILE,@"install":install,@"armedAt":@1};
     void(^armed)(NSString *,id,BOOL)=^(NSString *name,id record,BOOL expected){
         [store removeAllObjects];store[ArmKey]=record;
         Check("record",name,TIOOTAFlashArmed(),expected);
@@ -301,7 +317,7 @@ static void RecordCases(void){
     void(^field)(NSString *,id,BOOL)=^(NSString *key,id value,BOOL expected){armed([NSString stringWithFormat:@"%@=%@",key,Show(value)],With(good,key,value),expected);};
     armed(@"good record",good,YES);
     // Equal-content variants of the right types are the same record.
-    field(@"host",[NSMutableString stringWithString:@"ios1011"],YES);field(@"install",[NSMutableString stringWithString:install],YES);
+    field(@"host",[NSMutableString stringWithString:TFH_PROFILE],YES);field(@"install",[NSMutableString stringWithString:install],YES);
     field(@"v",[NSNumber numberWithLongLong:1],YES);field(@"armedAt",@0,YES);field(@"armedAt",@1762560000,YES);
     // v: only the integer 1.
     for(id v in @[@0,@2,@(-1),@"1",@" 1",NSNull.null,@[@1],@{@"v":@1},[@"1" dataUsingEncoding:NSUTF8StringEncoding]])field(@"v",v,NO);
@@ -309,9 +325,7 @@ static void RecordCases(void){
     Check("record",@"v=@1.0 (double) counts as v 1",({store[ArmKey]=With(good,@"v",@1.0);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO);
     Check("record",@"v=NSDecimalNumber 1 counts as v 1",({store[ArmKey]=With(good,@"v",[NSDecimalNumber decimalNumberWithString:@"1"]);BOOL a=TIOOTAFlashArmed();[store removeAllObjects];a;}),NO);
     // host: exact lower case, no padding.
-    unichar nul[]={'i','o','s','1','0','1','1',0};
-    for(id h in @[@"IOS1011",@"Ios1011",@"ios1011 ",@" ios1011",@"ios1011\n",[NSString stringWithCharacters:nul length:8],@"ios1011-download",@"ios107",@"",NSNull.null,@1011,@[@"ios1011"],
-            [@"ios1011" dataUsingEncoding:NSUTF8StringEncoding]])field(@"host",h,NO);
+    for(id h in TFHMarkerMisses())field(@"host",h,NO);
     // install: the addon's own LC_UUID string exactly.
     // One hex letter in lower case (the UUID string always has at least one A-F).
     NSRange letter=[install rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEF"]];assert(letter.location!=NSNotFound);
@@ -331,13 +345,13 @@ static void RecordCases(void){
     {NSMutableDictionary *m=[good mutableCopy];m[@"extra"]=NSNull.null;armed(@"extra key null",m,NO);}
     {NSMutableDictionary *m=[good mutableCopy];m[@1]=@1;armed(@"extra non-string key",m,NO);}
     {NSMutableDictionary *m=[good mutableCopy];[m removeObjectForKey:@"armedAt"];m[@"armedat"]=@1;armed(@"armedAt spelt armedat",m,NO);}
-    armed(@"record as key/value array",@[@"v",@1,@"host",@"ios1011",@"install",install,@"armedAt",@1],NO);
+    armed(@"record as key/value array",@[@"v",@1,@"host",TFH_PROFILE,@"install",install,@"armedAt",@1],NO);
     armed(@"record as JSON string",[[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:good options:0 error:nil] encoding:NSUTF8StringEncoding],NO);
     armed(@"record as JSON data",[NSJSONSerialization dataWithJSONObject:good options:0 error:nil],NO);
     armed(@"record as @YES",@YES,NO);armed(@"record as @1",@1,NO);
     // Wrong key or wrong store: never armed.
-    for(NSString *key in @[@"otaFlashArmRecord.IOS1011",@"otaFlashArmRecord.ios1011 ",@" otaFlashArmRecord.ios1011",@"otaFlashArmRecord",@"otaFlashArmRecord.ios107",
-            @"otaFlashArmRecord.ios1011-download",@"OTAFlashArmRecord.ios1011",@"otaFlashArmRecord.ios1011.v2",@"otaFlashArmRecord_ios1011",@"otaFlashArmed"]){
+    for(NSString *key in @[@"otaFlashArmRecord.IOS" TFH_D,@"otaFlashArmRecord.ios" TFH_D " ",@" otaFlashArmRecord.ios" TFH_D,@"otaFlashArmRecord",@"otaFlashArmRecord.ios107",
+            @"otaFlashArmRecord.ios" TFH_D "-download",@"OTAFlashArmRecord.ios" TFH_D,@"otaFlashArmRecord.ios" TFH_D ".v2",@"otaFlashArmRecord_ios" TFH_D,@"otaFlashArmed",TFH_OTHER_ARM_KEY]){
         [store removeAllObjects];store[key]=good;
         Check("record",[NSString stringWithFormat:@"good record under %@",key],TIOOTAFlashArmed(),NO);
         Check("record",[NSString stringWithFormat:@"good record under %@: Mode 2 refused",key],Allowed(Start2()),NO);
@@ -360,8 +374,8 @@ static void RecordCases(void){
         Check("record",[NSString stringWithFormat:@"disarm removes %@",[r isKindOfClass:NSDictionary.class]?@"a record":Show(r)],TIOOTAFlashDisarm()&&!store[ArmKey],YES);
     }
     // Disarm touches only the arm key.
-    store[@"otaFlashArmRecord.IOS1011"]=good;store[ArmKey]=good;
-    Check("record",@"disarm leaves other keys",TIOOTAFlashDisarm()&&!store[ArmKey]&&store[@"otaFlashArmRecord.IOS1011"],YES);
+    store[@"otaFlashArmRecord.IOS" TFH_D]=good;store[TFH_OTHER_ARM_KEY]=good;store[ArmKey]=good;
+    Check("record",@"disarm leaves other keys",TIOOTAFlashDisarm()&&!store[ArmKey]&&store[@"otaFlashArmRecord.IOS" TFH_D]&&store[TFH_OTHER_ARM_KEY],YES);
     [store removeAllObjects];
 }
 
@@ -369,16 +383,15 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(argc==1);
     Bits=[NSMutableString new];Areas=[NSMutableDictionary new];
     Home=[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
-    Full=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",
-        @"TIOHostProfile":@"ios1011",@"TIOExperimentalOTAQueryRouting":TIO_OTA_1011_ROUTING_MARKER};
+    Full=TFHFullInfo();
     Pinned=FakeImage(PinnedUUID);Host=Full;Image=Pinned;Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     [TMG4ArmStore() removeAllObjects];
-    assert([TIOHostProfileFor(Image,Host) isEqual:@"ios1011"]&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());
+    assert([TIOHostProfileFor(Image,Host) isEqual:TFH_PROFILE]&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());
     TIOOTARecordTransportHookReady();
     ProfileCases();FrameCases();BusinessCases();RecordCases();
     // Back on the clean full host: still disarmed, nothing stored.
     Host=Full;Image=Pinned;assert(!TMG4ArmStore().count&&!TIOOTAFlashArmed()&&!Allowed(Start2())&&Allowed(Read1()));
     NSMutableArray *counts=[NSMutableArray new];for(NSString *a in [Areas.allKeys sortedArrayUsingSelector:@selector(compare:)])[counts addObject:[NSString stringWithFormat:@"%@ %@",a,Areas[a]]];
-    NSLog(@"PASS: 1.0.11 full host edge cases: %lu checks (%@), %lu XFAIL listed above; flash build %s; sweep=%@",
+    NSLog(@"PASS: " TFH_NAME " full host edge cases: %lu checks (%@), %lu XFAIL listed above; flash build %s; sweep=%@",
         (unsigned long)Cases,[counts componentsJoinedByString:@", "],(unsigned long)XFails,TIOOTAFlashBuild()?"on":"off",Digest(Bits));
 }return 0;}

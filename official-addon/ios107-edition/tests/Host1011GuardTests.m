@@ -152,15 +152,28 @@ static void AutoUpdateAgrees(void){
         @{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@YES},@{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@"false"},@{@"other":@YES}];
     for(NSDictionary *p in cases)assert((TIOAutoUpdateReadingFor(p)==TIOAutoUpdateReadingOff)==TIOOTAAutoUpdateDisabled(p));
 }
+// Built with -DTIO_TEST_HOST_1021=1 the same test runs on the download-only 1.0.21/1 host (C19), whose
+// packager marker is also "ios1011-download"; test.py requires its sweep to equal the 1.0.11 one.
+#if TIO_TEST_HOST_1021
+#define TDH_NAME "1.0.21"
+#define TDH_VERSION @"1.0.21"
+#define TDH_BUILD @"1"
+#define TDH_UUID @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"
+#else
+#define TDH_NAME "1.0.11"
+#define TDH_VERSION @"1.0.11"
+#define TDH_BUILD @"259"
+#define TDH_UUID @"22724C97-2EF9-388D-8E6A-6E051855A555"
+#endif
 int main(int argc,char **argv){@autoreleasepool{
     assert(argc==1||argc==3);
     Home=[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
-    NSDictionary *d=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",@"TIOHostProfile":@"ios1011-download"};
-    Image=FakeImage(@"22724C97-2EF9-388D-8E6A-6E051855A555");
+    NSDictionary *d=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":TDH_VERSION,@"CFBundleVersion":TDH_BUILD,@"TIOHostProfile":@"ios1011-download"};
+    Image=FakeImage(TDH_UUID);
     NSData *runner=nil;
     if(argc==3){
         NSMutableDictionary *real=[[NSDictionary dictionaryWithContentsOfFile:@(argv[2])] mutableCopy];assert(real);
-        assert([real[@"CFBundleShortVersionString"] isEqual:@"1.0.11"]&&[real[@"CFBundleVersion"] isEqual:@"259"]);
+        assert([real[@"CFBundleShortVersionString"] isEqual:TDH_VERSION]&&[real[@"CFBundleVersion"] isEqual:TDH_BUILD]);
         runner=[NSData dataWithContentsOfFile:@(argv[1]) options:NSDataReadingMappedIfSafe error:nil];assert(runner.length>4096);
         const struct mach_header *h=runner.bytes;
         assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(TIOHostDownloadOnlyImageMatches(h,real));
@@ -229,6 +242,6 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"payload":Frame(4,@{@"Mode":@4},nil)}}));
 #endif
     Host=d;Image=pinned;assert(!Allowed(Frame(2,nil,nil),@"fixture-peer"));
-    NSLog(@"PASS: 1.0.11 download-only guard: %lu frame shapes, only the empty version query passes; type 4 Mode 1-4 refused; feed not started; authorization refused; flash build %s; sweep=%@%s",
-        (unsigned long)Checked,TIOOTAFlashBuild()?"on":"off",Digest(sweep),argc==3?"; real 1.0.11 Runner profile":"");
+    NSLog(@"PASS: " TDH_NAME " download-only guard: %lu frame shapes, only the empty version query passes; type 4 Mode 1-4 refused; feed not started; authorization refused; flash build %s; sweep=%@%s",
+        (unsigned long)Checked,TIOOTAFlashBuild()?"on":"off",Digest(sweep),argc==3?"; real " TDH_NAME " Runner profile":"");
 }return 0;}

@@ -148,7 +148,7 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
         else if([QueryPaths() containsObject:[[target componentsSeparatedByString:@"?"] firstObject]]){
             _queries++;id data=NSNull.null;
             NSString *kind=QueryKind(target);if([kind isEqual:@"firmware"])_firmwareQueries++;else if([kind isEqual:@"app"])_appQueries++;else _unknownQueries++;
-            if(_archive&&[kind isEqual:@"firmware"])data=@{@"taskName":[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",TIO_FW_NAME],@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":TIO_FW_FEED_VERSION_NAME,@"versionCode":@(TIO_FW_FEED_VERSION_CODE),@"upgradeType":@1,@"userScope":@0,@"updateDesc":@"PRIVATE EXPERIMENT: AP modified, other 14 payloads unchanged. Runtime unverified.",@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/%@.zip",_port,_token,TIO_FW_OTA_FOLDER]};
+            if(_archive&&[kind isEqual:@"firmware"])data=@{@"taskName":[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",TIO_FW_NAME],@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":TIO_FW_FEED_VERSION_NAME,@"versionCode":@(TIO_FW_FEED_VERSION_CODE),@"upgradeType":@1,@"userScope":@0,@"updateDesc":[NSString stringWithFormat:@"PRIVATE EXPERIMENT: AP modified, other %lu payloads unchanged. Runtime unverified.",(unsigned long)(TIOExperimentalOTAMemberCount()-2)],@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/%@.zip",_port,_token,TIO_FW_OTA_FOLDER]};
             response=@{@"error_code":@1000,@"error_msg":@"success",@"data":data};
         }else if(_archive&&[target isEqual:[NSString stringWithFormat:@"/p/%@/%@.zip",_token,TIO_FW_OTA_FOLDER]]){
             body=_archive;mime=@"application/zip";extra=@{@"Accept-Ranges":@"bytes"};
@@ -246,8 +246,8 @@ void TIOStartExperimentalOTAFeedIfMarked(void){
         LaunchID=NSUUID.UUID.UUIDString;
         NSBundle *bundle=NSBundle.mainBundle;
         if(!TIOOTAFlashBuild())return;
-        // ios107 or the full ios1011 host, each with its own routing marker, pinned image and route offsets.
-        // On ios1011 the feed runs while TMG flashing is disarmed: answering the stock update check is not a transfer.
+        // ios107 or a full host (ios1011, ios1021), each with its own routing marker, pinned image and route offsets.
+        // On a full host the feed runs while TMG flashing is disarmed: answering the stock update check is not a transfer.
         NSString *profile=TIOOTAHostProfile(bundle.infoDictionary);
         if(!profile||!TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)){BootstrapFailure=TIOText(@"1.0.7 实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
         NSString *file=[bundle.bundlePath stringByAppendingPathComponent:@"Frameworks/App.framework/App"];

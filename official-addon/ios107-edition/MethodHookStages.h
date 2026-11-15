@@ -44,6 +44,7 @@ static inline BOOL TIOMethodHookGuardStage(NSString *wireChannel,id call,id resu
 #if TIO_WIRE_LOG
     if(!otaBlocked&&teleprompter)TIOWireLogBridgeForwarded(result,call); // what the plugin actually receives, linked to the recorded original
 #endif
+    if(otaBlocked)TIOOTAFlashNoteRefused(call); // bookkeeping only (preparation-status.json flashGate.lastRefusedFrame)
     if(otaBlocked){if(result)((void(^)(id))result)(@{@"success":@NO,@"message":TIOMethodHookBlockedMessage});return YES;}
     allowed(call,result);
     return NO;

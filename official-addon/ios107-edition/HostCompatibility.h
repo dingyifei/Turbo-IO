@@ -21,6 +21,8 @@ static inline NSString *TIOHostExpectedUUID(NSDictionary *info) {
 // TIOHostProfile (both IPAs share the Runner UUID):
 //   "ios1011"  the full 1.0.11 build (C15): features on, TMG flashing disarmed until armed;
 //   anything else, missing included: "ios1011-download", the refusing download-only guard.
+// The 1.0.21/1 image works the same way with its own marker "ios1021" (the full C20 build);
+// its download-only build (C19) carries the marker "ios1011-download".
 // On the download-only profile the addon installs only the rayneonet channel hook,
 // which carries the OTA transfer guard. Exact version, build and UUID; no ranges.
 // (The name predates the full profile; it identifies the 1.0.11 image for both.)
@@ -28,13 +30,18 @@ static inline NSString *TIOHostDownloadOnlyUUID(NSDictionary *info) {
     NSString *version=info[@"CFBundleShortVersionString"];
     NSString *build=[info[@"CFBundleVersion"] description];
     if([version isEqual:@"1.0.11"]&&[build isEqual:@"259"])return @"22724C97-2EF9-388D-8E6A-6E051855A555";
-    // 1.0.21/1: download-only only (C19). The full-profile marker never selects a full
-    // profile here (TIOHostFullExpectedUUID and TIOHostProfileFor check the version).
+    // 1.0.21/1: download-only (C19) and, with its own marker "ios1021", the full C20 build.
+    // Each image takes only its own full-profile marker (TIOHostFullExpectedUUID and
+    // TIOHostProfileFor check the version): the 1.0.11 marker never selects a full profile
+    // on 1.0.21, nor the 1.0.21 marker on 1.0.11.
     if([version isEqual:@"1.0.21"]&&[build isEqual:@"1"])return @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5";
     return nil;
 }
 static inline BOOL TIOHostIs1011(NSDictionary *info) {
     return [info[@"CFBundleShortVersionString"] isEqual:@"1.0.11"]&&[[info[@"CFBundleVersion"] description] isEqual:@"259"];
+}
+static inline BOOL TIOHostIs1021(NSDictionary *info) {
+    return [info[@"CFBundleShortVersionString"] isEqual:@"1.0.21"]&&[[info[@"CFBundleVersion"] description] isEqual:@"1"];
 }
 static inline BOOL TIOHostImageUUIDIs(const struct mach_header *h,NSString *expected) {
     if(!expected||!h||h->magic!=MH_MAGIC_64||h->filetype!=MH_EXECUTE||h->ncmds>1024||h->sizeofcmds>1024*1024)return NO;
@@ -56,11 +63,24 @@ static inline BOOL TIOHostImageMatches(const struct mach_header *h,NSDictionary 
 static inline BOOL TIOHost1011FullMarker(NSDictionary *info) {
     return [info[@"TIOHostProfile"] isKindOfClass:NSString.class]&&[info[@"TIOHostProfile"] isEqualToString:TIO_HOST_PROFILE_1011_FULL];
 }
-// TIOHostExpectedUUID plus the 1.0.11 UUID, the latter only with the full-profile marker.
-// Features gate on this (or TIOHostFullImageMatches), so the download-only build keeps them off.
+// The packager's marker for the full 1.0.21 profile (C20). Only this exact string selects it.
+#define TIO_HOST_PROFILE_1021_FULL @"ios1021"
+static inline BOOL TIOHost1021FullMarker(NSDictionary *info) {
+    return [info[@"TIOHostProfile"] isKindOfClass:NSString.class]&&[info[@"TIOHostProfile"] isEqualToString:TIO_HOST_PROFILE_1021_FULL];
+}
+// The full profile the marker selects on this exact version and build: "ios1011" for the
+// 1.0.11 marker on 1.0.11/259, "ios1021" for the 1.0.21 marker on 1.0.21/1, else nil.
+// (The image UUID is checked by the callers.)
+static inline NSString *TIOHostFullMarkerProfile(NSDictionary *info) {
+    if(TIOHost1011FullMarker(info)&&TIOHostIs1011(info))return TIO_HOST_PROFILE_1011_FULL;
+    if(TIOHost1021FullMarker(info)&&TIOHostIs1021(info))return TIO_HOST_PROFILE_1021_FULL;
+    return nil;
+}
+// TIOHostExpectedUUID plus the 1.0.11 and 1.0.21 UUIDs, each only with its own full-profile marker.
+// Features gate on this (or TIOHostFullImageMatches), so the download-only builds keep them off.
 static inline NSString *TIOHostFullExpectedUUID(NSDictionary *info) {
     NSString *uuid=TIOHostExpectedUUID(info);if(uuid)return uuid;
-    return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHost1011FullMarker(info)&&TIOHostIs1011(info)?TIOHostDownloadOnlyUUID(info):nil;
+    return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHostFullMarkerProfile(info)?TIOHostDownloadOnlyUUID(info):nil;
 }
 static inline BOOL TIOHostFullImageMatches(const struct mach_header *h,NSDictionary *info) {
     return TIOHostImageUUIDIs(h,TIOHostFullExpectedUUID(info));
@@ -68,12 +88,13 @@ static inline BOOL TIOHostFullImageMatches(const struct mach_header *h,NSDiction
 static inline BOOL TIOHostDownloadOnlyImageMatches(const struct mach_header *h,NSDictionary *info) {
     return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHostImageUUIDIs(h,TIOHostDownloadOnlyUUID(info));
 }
-// "ios107" for the full 1.0.7/230 host; for the 1.0.11/259 image "ios1011" with the
-// full-profile marker and "ios1011-download" otherwise (missing or unknown marker);
+// "ios107" for the full 1.0.7/230 host; for the 1.0.11/259 image "ios1011" with its
+// full-profile marker, for the 1.0.21/1 image "ios1021" with its own, and
+// "ios1011-download" otherwise (missing, unknown or the other host's marker);
 // nil for anything else (older inspected hosts included).
 static inline NSString *TIOHostProfileFor(const struct mach_header *h,NSDictionary *info) {
     if(![info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"])return nil;
-    if(TIOHostDownloadOnlyImageMatches(h,info))return TIOHost1011FullMarker(info)&&TIOHostIs1011(info)?TIO_HOST_PROFILE_1011_FULL:@"ios1011-download";
+    if(TIOHostDownloadOnlyImageMatches(h,info))return TIOHostFullMarkerProfile(info)?:@"ios1011-download";
     if([info[@"CFBundleShortVersionString"] isEqual:@"1.0.7"]&&[[info[@"CFBundleVersion"] description] isEqual:@"230"]&&TIOHostImageMatches(h,info))return @"ios107";
     return nil;
 }

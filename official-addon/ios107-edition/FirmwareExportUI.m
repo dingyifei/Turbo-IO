@@ -2,6 +2,7 @@
 #import "FirmwareExportUI.h"
 #import "FirmwareExport.h"
 #import "HostCompatibility.h"
+#import "OTAHost.h"
 #import "DownloadOnlySafety.h"
 #import "GlassesChannelHook.h"
 #import "ExperimentalOTAGuard.h"
@@ -21,9 +22,9 @@ static NSURL *Home(void){return [NSURL fileURLWithPath:NSHomeDirectory() isDirec
 // flag-independent. Auto Update is read from RayNeo's preferences, never written.
 static BOOL Guarded(void){return TIOHostDownloadOnlyGuardActive();}
 static NSDictionary *SafetyModel(void){
-    // Full 1.0.11 host: the guard row shows the arm state; the arm guard runs in the same transport hook,
-    // and green needs a stock rayneonet call through it in this launch, as on the download-only host.
-    if([TIOHostProfile() isEqual:@"ios1011"]){
+    // Full 1.0.11 or 1.0.21 host: the guard row shows the arm state; the arm guard runs in the same transport
+    // hook, and green needs a stock rayneonet call through it in this launch, as on the download-only host.
+    if(TIOOTAArmHostName(TIOHostProfile())){
         NSDictionary *arm=TIOOTAFlashArmStatus();
         return TIOFirmwareExportSafetyModelFull(TIOGlassesChannelHookInstalled()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue]&&[arm[@"armRequired"] boolValue],
             TIOGlassesChannelStockTrafficSeen(),[arm[@"armed"] boolValue],NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
@@ -162,7 +163,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     if(ip.section==SectionStatus){
         if(ip.row==0){
             NSString *profile=TIOHostProfile();
-            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1011"]?TIOText(@"fwexport.host.full"):TIOText(@"fwexport.host.unknown"));
+            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1011"]?TIOText(@"fwexport.host.full"):[profile isEqual:@"ios1021"]?TIOText(@"fwexport.host.full1021"):TIOText(@"fwexport.host.unknown"));
             c.detailTextLabel.text=profile?:@"none";c.accessibilityIdentifier=@"fwexport-host";
         }else if(ip.row==2){
             // G3: read only. Red when on, amber when not recorded, green when explicitly off.

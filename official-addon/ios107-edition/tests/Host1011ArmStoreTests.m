@@ -1,4 +1,5 @@
-// Full 1.0.11 host (ios1011, C15): where the arm record is read from. Runs the unchanged
+// Full 1.0.11 host (ios1011, C15) and, built with -DTIO_TEST_HOST_1021=1, the full 1.0.21 host
+// (ios1021, C20; tests/FullHostFixture.h): where the arm record is read from. Runs the unchanged
 // phone policy (ExperimentalOTAFlash.m, adapted by test.py like tmg4-wizard-1011) with the
 // REAL CFPreferences calls, only the suite name swapped for a throwaway one, so the Mac's
 // preferences for the addon's own suite are never touched. The throwaway suite is removed
@@ -10,6 +11,7 @@
 // arm without the wizard. This test launches itself with that argument and requires the
 // child to stay disarmed, and does the same with an in-process argument domain.
 #import "TMG4WizardHost.h"
+#import "FullHostFixture.h"
 #import "OTAHost.h"
 #import "HostCompatibility.h"
 #import "ExperimentalOTAFlash.h"
@@ -33,7 +35,7 @@ const struct mach_header *TMG4MainImage(void){return Image;}
 NSString *TMG4ArmSuite(void){return Suite;}
 BOOL TDPPhonePauseForOTA(void){return YES;}
 NSDictionary *TIOExperimentalOTAFeedStatus(void){return @{};}
-static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
+static NSString *const ArmKey=TFH_ARM_KEY;
 static NSString *const NotArmed=@"本机 TMG 刷写尚未启用；先在向导中启用，未授权。";
 typedef struct {struct mach_header_64 h;struct uuid_command u;} FakeHeader;
 static const struct mach_header *FakeImage(NSString *uuid){
@@ -47,7 +49,7 @@ static NSString *InstallID(void){
     for(uint32_t i=0;i<h->ncmds;i++){const struct load_command *c=(const void *)p;if(c->cmd==LC_UUID)return [[[NSUUID alloc]initWithUUIDBytes:((const struct uuid_command *)c)->uuid] UUIDString];p+=c->cmdsize;}
     assert(0&&"test binary has no LC_UUID");return nil;
 }
-static NSDictionary *Good(void){return @{@"v":@1,@"host":@"ios1011",@"install":InstallID(),@"armedAt":@1};}
+static NSDictionary *Good(void){return @{@"v":@1,@"host":TFH_PROFILE,@"install":InstallID(),@"armedAt":@1};}
 // What -initWithSuiteName: sees for the key (the old reader): proves the argument domain carries the record.
 static id SuiteView(void){return [[[NSUserDefaults alloc]initWithSuiteName:Suite] objectForKey:ArmKey];}
 static id Persistent(void){return [NSUserDefaults.standardUserDefaults persistentDomainForName:Suite][ArmKey];}
@@ -64,9 +66,8 @@ static void Clean(void){
     [NSFileManager.defaultManager removeItemAtPath:plist error:nil];
 }
 int main(int argc,char **argv){@autoreleasepool{
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",
-        @"TIOHostProfile":@"ios1011",@"TIOExperimentalOTAQueryRouting":TIO_OTA_1011_ROUTING_MARKER};
-    Image=FakeImage(@"22724C97-2EF9-388D-8E6A-6E051855A555");Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
+    Host=TFHFullInfo();
+    Image=FakeImage(TFH_UUID);Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     Home=NSTemporaryDirectory();TIOOTARecordTransportHookReady();assert(TIOOTAFlashBuild()&&TIOOTAFlashProtected());
     if(argc==4&&!strcmp(argv[1],"child")){
         // Launched with -otaFlashArmRecord.ios1011 <XML dict>: the suite view has a valid record, the guard must not.
@@ -83,7 +84,7 @@ int main(int argc,char **argv){@autoreleasepool{
     NSRange open=[xml rangeOfString:@"<dict>"],close=[xml rangeOfString:@"</dict>" options:NSBackwardsSearch];
     NSString *dict=[xml substringWithRange:NSMakeRange(open.location,NSMaxRange(close)-open.location)];
     // <self> child -otaFlashArmRecord.ios1011 <dict>; the throwaway suite name travels in the environment.
-    char *spawnArgs[]={argv[0],"child","-otaFlashArmRecord.ios1011",(char *)dict.UTF8String,NULL};
+    char *spawnArgs[]={argv[0],"child",(char *)[@"-" stringByAppendingString:ArmKey].UTF8String,(char *)dict.UTF8String,NULL};
     setenv("TIO_ARMSTORE_SUITE",Suite.UTF8String,1);
     pid_t pid;int status=0;
     assert(posix_spawn(&pid,argv[0],NULL,NULL,spawnArgs,environ)==0);assert(waitpid(pid,&status,0)==pid);
@@ -104,5 +105,5 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(TIOOTAFlashArmed());assert(TIOOTAFlashDisarm()&&!TIOOTAFlashArmed());
     [NSUserDefaults.standardUserDefaults removeVolatileDomainForName:NSArgumentDomain];
     Clean();
-    printf("PASS: 1.0.11 arm record read from the suite's persistent domain only: launch argument, argument domain and registered default ignored; arm/disarm round trip through the real preferences on a throwaway suite\n");
+    printf("PASS: " TFH_NAME " arm record read from the suite's persistent domain only: launch argument, argument domain and registered default ignored; arm/disarm round trip through the real preferences on a throwaway suite\n");
 }return 0;}

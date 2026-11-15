@@ -223,7 +223,12 @@ BOOL TIOPhoneOTAReadAllowed(NSData *data){
     @synchronized(self){
         if(_stage||![device isKindOfClass:NSString.class]||!device.length||device.length>200||!isfinite(now)||now<0){Error(error,TIOText(@"当前不是可授权状态或没有有效设备；未开放。"));return NO;}
         NSDictionary *files=TIOCopyExperimentalOTAPayloads(directory,error);if(!files)return NO;
-        id manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:error];if(![manifest isKindOfClass:NSArray.class]||[manifest count]!=15)return NO;
+        // One manifest row per payload: every pinned member but the manifest itself (15 rows on a 1.0.5.x
+        // package, 16 on 1.0.6.11). The member pins come from the release ZIP (FirmwarePins.h).
+        // A mismatch fails closed with its own message, so a dry run on a new base shows why instead of stalling.
+        id manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
+        if(![manifest isKindOfClass:NSArray.class]||[manifest count]!=TIOExperimentalOTAMemberCount()-1){
+            Error(error,[NSString stringWithFormat:TIOText(@"ota.identity.manifestRows"),TIO_FW_NAME,(unsigned long)([manifest isKindOfClass:NSArray.class]?[manifest count]:0),(unsigned long)(TIOExperimentalOTAMemberCount()-1)]);return NO;}
         _files=files;_manifest=manifest;_device=[device copy];_deadline=now+900;_stage=1;_failure=nil;return YES;
     }
 }
@@ -398,20 +403,33 @@ BOOL TIOOTARawJSONNamesKeyOnce(NSData *data,NSString *key){
     NSUInteger after=NSMaxRange(first);
     return [json rangeOfData:quoted options:0 range:NSMakeRange(after,json.length-after)].location==NSNotFound;
 }
+// The full 1.0.21 host (ios1021, C20) runs the same disarm guard, arm step and transfer gate as the full
+// 1.0.11 host: every check above and below is shared, only the host name, its routing marker, its pinned
+// image and its arm record key differ. The packaging scripts require this marker for --host 1021-full.
+NSString *const TIOOTAArm1021GuardMarker=@"ota guard=IOS1021-FULL-DISARM-01; flag-independent; the IOS1011-FULL-DISARM-01 rules on the full 1.0.21 host; arm record otaFlashArmRecord.ios1021";
 BOOL TIOOTAArmRequired(void){
     if(TIOOTADownloadOnlyHost())return NO;
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
-    // Any one sign of the full 1.0.11 build asks for the arm step: refusing more is the safe side.
-    return [TIOHostProfileFor(TIOHostMainImage(),info) isEqual:@"ios1011"]||[info[@"TIOHostProfile"] isEqual:@"ios1011"]||
-        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1011_ROUTING_MARKER];
+    // Any one sign of a full build (1.0.11 or 1.0.21) asks for the arm step: refusing more is the safe side.
+    return TIOOTAArmHostName(TIOHostProfileFor(TIOHostMainImage(),info))||[info[@"TIOHostProfile"] isEqual:@"ios1011"]||[info[@"TIOHostProfile"] isEqual:@"ios1021"]||
+        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1011_ROUTING_MARKER]||[info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1021_ROUTING_MARKER];
+}
+// The full host this build is for, as the packager's TIOHostProfile marker names it: "ios1021" only for
+// that exact string, otherwise "ios1011" (the name before C20). It picks the arm record key, the record's
+// host field and the exact host check; a build whose marker, version, routing marker or image does not
+// fit that one host fails ArmTransferHost and stays disarmed.
+static NSString *ArmHost(void){
+    id marker=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];
+    return [marker isKindOfClass:NSString.class]&&[marker isEqualToString:@"ios1021"]?@"ios1021":@"ios1011";
 }
 // The arm record lives in the addon's own preferences suite, never in the host's.
 // It names the addon image it was made by: that image's LC_UUID. LC_UUID is a hash of
 // the dylib's contents, not an install identity. An addon dylib that differs by one byte
 // reads as disarmed, but a repackage with a byte-identical dylib stays armed, and a
 // C15 -> C13 -> C15 round trip keeps the record (C13 never reads or clears it).
-// Disarm before rolling back.
-static NSString *const ArmKey=@"otaFlashArmRecord.ios1011";
+// Disarm before rolling back. Each full host has its own key: otaFlashArmRecord.ios1011
+// or otaFlashArmRecord.ios1021.
+static NSString *ArmKey(void){return [@"otaFlashArmRecord." stringByAppendingString:ArmHost()];}
 static NSString *ArmSuite(void){return @"io.turboio.official-private-addon";}
 // Only the suite's own persistent domain (current user, any host). CFPreferencesCopyValue
 // looks in that one domain and nowhere else, so a launch argument (NSArgumentDomain,
@@ -419,10 +437,10 @@ static NSString *ArmSuite(void){return @"io.turboio.official-private-addon";}
 // preferences can never arm. -[NSUserDefaults initWithSuiteName:] searches the argument
 // domain too, so it is not used here.
 static id ArmRecord(void){
-    return CFBridgingRelease(CFPreferencesCopyValue((__bridge CFStringRef)ArmKey,(__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost));
+    return CFBridgingRelease(CFPreferencesCopyValue((__bridge CFStringRef)ArmKey(),(__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost));
 }
 static void ArmRecordWrite(id record){
-    CFPreferencesSetValue((__bridge CFStringRef)ArmKey,(__bridge CFPropertyListRef)record,(__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
+    CFPreferencesSetValue((__bridge CFStringRef)ArmKey(),(__bridge CFPropertyListRef)record,(__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
     CFPreferencesSynchronize((__bridge CFStringRef)ArmSuite(),kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
 }
 static NSString *ArmImageUUID(void){
@@ -450,22 +468,23 @@ static BOOL ArmRecordValid(id r){
     if(!install||![r isKindOfClass:NSDictionary.class]||[r count]!=4)return NO;
     // v: the integer 1, written as an integer (not @YES, @1.0 or a decimal number).
     id v=r[@"v"];if(!ArmPlainNumber(v)||CFNumberIsFloatType((__bridge CFNumberRef)v)||[v longLongValue]!=1)return NO;
-    return [r[@"host"] isEqual:@"ios1011"]&&[r[@"install"] isKindOfClass:NSString.class]&&[r[@"install"] isEqualToString:install]&&ArmPlainNumber(r[@"armedAt"]);
+    return [r[@"host"] isEqual:ArmHost()]&&[r[@"install"] isKindOfClass:NSString.class]&&[r[@"install"] isEqualToString:install]&&ArmPlainNumber(r[@"armedAt"]);
 }
 BOOL TIOOTAFlashArmed(void){return TIOOTAArmRequired()&&ArmRecordValid(ArmRecord());}
-// The flash build AND the full host's routing marker AND the pinned image: fixed for the process.
+// The flash build AND that full host's exact OTA host check (version, build, profile marker,
+// routing marker) AND its pinned image: fixed for the process.
 static BOOL ArmTransferHost(void){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
-    return TIOOTAFlashBuild()&&TIOOTA1011HostMatches(info)&&TIOHostFullImageMatches(TIOHostMainImage(),info);
+    return TIOOTAFlashBuild()&&TIOOTAArmHostMatches(ArmHost(),info)&&TIOHostFullImageMatches(TIOHostMainImage(),info);
 }
 // Armed AND ArmTransferHost.
 static BOOL ArmedForTransfer(void){return TIOOTAFlashArmed()&&ArmTransferHost();}
 BOOL TIOOTAFlashArm(NSError **error){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
-    if(!TIOOTAArmRequired()||!TIOOTA1011HostMatches(info)||!TIOHostFullImageMatches(TIOHostMainImage(),info)){Error(error,TIOText(@"只有完整版 1.0.11 宿主需要并允许启用 TMG 刷写；未启用。"));return NO;}
+    if(!TIOOTAArmRequired()||!TIOOTAArmHostMatches(ArmHost(),info)||!TIOHostFullImageMatches(TIOHostMainImage(),info)){Error(error,TIOText(@"只有完整版 1.0.11 或 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。"));return NO;}
     if(!TIOOTAFlashProtected()){Error(error,TIOText(@"没有试刷构建与发送保护；未开放。"));return NO;}
     NSString *install=ArmInstallID();if(!install){Error(error,TIOText(@"无法确认本次安装；未启用。"));return NO;}
-    ArmRecordWrite(@{@"v":@1,@"host":@"ios1011",@"install":install,@"armedAt":@(floor(NSDate.date.timeIntervalSince1970))});
+    ArmRecordWrite(@{@"v":@1,@"host":ArmHost(),@"install":install,@"armedAt":@(floor(NSDate.date.timeIntervalSince1970))});
     if(!TIOOTAFlashArmed()){Error(error,TIOText(@"无法保存启用状态；未启用。"));return NO;}
     return YES;
 }
@@ -484,6 +503,7 @@ BOOL TIOOTAFlashDisarm(void){
 NSDictionary *TIOOTAFlashArmStatus(void){
     BOOL required=TIOOTAArmRequired();id r=required?ArmRecord():nil;BOOL armed=required&&ArmRecordValid(r);
     NSMutableDictionary *s=[@{@"armRequired":@(required),@"armed":@(armed),@"armedForTransfer":@(required&&ArmedForTransfer())} mutableCopy];
+    if(required)s[@"armHost"]=ArmHost();
     if(armed)s[@"armedAt"]=r[@"armedAt"];
     return s;
 }
@@ -492,6 +512,31 @@ static void ObserveDisconnect(id method){
     if(![method isKindOfClass:NSString.class])return;
     if([[method lowercaseString] containsString:@"disconnect"]||[[method lowercaseString] containsString:@"unbind"]||[[method lowercaseString] containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedAt=0;}[Current() cancel];}
 }
+// The last refused business-9 frame, for a disarmed dry run on a new host (preparation-status.json,
+// flashGate.lastRefusedFrame): its type, the names of its JSON keys, the Mode (type 4), OtaSize (type 3)
+// and OtaVersion (type 5) values when present, the binary length, the gate stage and whether the host was
+// download-only. Bookkeeping after the verdict only: it never changes what is refused, and it never reads
+// the arm record. Glasses OTA frames carry no account data; other keys are kept by name only.
+static NSDictionary *LastRefused;static NSUInteger RefusedFrames;
+static void NoteRefused(id call){
+    if(!Business9Call(call))return;
+    NSDictionary *args=Get(call,@"arguments");id data=args[@"payload"];if(![data isKindOfClass:NSData.class])data=Get(data,@"data");
+    NSDictionary *f=[data isKindOfClass:NSData.class]?TIOOTAFrame(data):nil;
+    NSMutableDictionary *note=[@{@"type":f?f[@"type"]:@(-1),@"parsed":@(f!=nil),@"stage":@(GateStage()),@"downloadOnlyHost":@(TIOOTADownloadOnlyHost())} mutableCopy];
+    if(f){
+        id j=f[@"json"];note[@"binaryBytes"]=@([f[@"binary"] length]);
+        if([j isKindOfClass:NSDictionary.class]){
+            NSMutableArray *keys=[NSMutableArray new];
+            for(id k in j)if([k isKindOfClass:NSString.class]&&keys.count<8)[keys addObject:[k length]>32?[k substringToIndex:32]:k];
+            note[@"keys"]=[keys sortedArrayUsingSelector:@selector(compare:)];
+            for(NSString *k in @[@"Mode",@"OtaSize"]){NSUInteger n=0;if(Number(j[k],&n))note[k]=@(n);}
+            id v=j[@"OtaVersion"];if([v isKindOfClass:NSString.class])note[@"OtaVersion"]=[v length]>64?[v substringToIndex:64]:v;
+        }else if([j isKindOfClass:NSArray.class])note[@"rows"]=@([j count]);
+    }
+    @synchronized(NSProcessInfo.processInfo){LastRefused=note;RefusedFrames++;}
+}
+// Called by the hook's guard stage (MethodHookStages.h) after a refusal; never throws.
+void TIOOTAFlashNoteRefused(id call){@try{NoteRefused(call);}@catch(__unused id e){}}
 BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
     if(teleprompter)*teleprompter=nil;
     if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);
@@ -555,4 +600,5 @@ BOOL TIOOTAFlashAuthorize(NSError **error){
     return [Current() prepareDirectory:dir device:device uptime:now error:error];
 }
 BOOL TIOOTAFlashCancel(void){return [Current() cancel];}
-NSDictionary *TIOOTAFlashStatus(void){NSMutableDictionary *s=[[Current() status] mutableCopy];s[@"flashBuild"]=@(TIOOTAFlashBuild());[s addEntriesFromDictionary:TIOOTAFlashArmStatus()];s[@"automaticUpdateDisabled"]=@(TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation));@synchronized(NSProcessInfo.processInfo){s[@"recentTargetVersionRead"]=@(ObservedDevice.length&&NSProcessInfo.processInfo.systemUptime-ObservedAt<=120);s[@"versionReadAge"]=@(ObservedDevice.length?MAX(0,NSProcessInfo.processInfo.systemUptime-ObservedAt):-1);}return s;}
+NSDictionary *TIOOTAFlashStatus(void){NSMutableDictionary *s=[[Current() status] mutableCopy];s[@"flashBuild"]=@(TIOOTAFlashBuild());[s addEntriesFromDictionary:TIOOTAFlashArmStatus()];
+    @synchronized(NSProcessInfo.processInfo){s[@"refusedFrames"]=@(RefusedFrames);if(LastRefused)s[@"lastRefusedFrame"]=LastRefused;}s[@"automaticUpdateDisabled"]=@(TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation));@synchronized(NSProcessInfo.processInfo){s[@"recentTargetVersionRead"]=@(ObservedDevice.length&&NSProcessInfo.processInfo.systemUptime-ObservedAt<=120);s[@"versionReadAge"]=@(ObservedDevice.length?MAX(0,NSProcessInfo.processInfo.systemUptime-ObservedAt):-1);}return s;}
