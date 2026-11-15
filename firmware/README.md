@@ -17,18 +17,18 @@ TMG12 (`RELEASE`) is TMG11 like for like on stock 1.0.6.11 (`stockBase` in `buil
 
 Every stock offset the tree uses is named in `src/stock_layout.h` and proven from the stock image by `tests/stock_layout_test.py`.
 
-**Candidate 2 build record** (tree `tmg12(26)`, `$TURBO_INPUTS/tmg12-emu/f6c2/build-a/audit.json`). The module is 164,924 bytes at 0x10929204. The AP is 8,132,168 bytes. Module room is 1,632,756 bytes, which leaves 1,467,832 bytes of headroom below the AP cap and 2,288,056 below the partition limit. The audit passes with 25 patch sites, 15 unchanged stock payloads and 7 startup descriptors, on cores `Strix OS 1.0.6` build 11. Three builds from clean output folders gave byte-identical ZIPs.
+**Candidate 3 build record** (tree `tmg12(36)`, `$TURBO_INPUTS/tmg12-emu/f7c3/build-a/audit.json`). The module is 165,052 bytes at 0x10929204. The AP is 8,132,296 bytes. Module room is 1,632,756 bytes, which leaves 1,467,704 bytes of headroom below the AP cap and 2,287,928 below the partition limit. The audit passes with 25 patch sites, 15 unchanged stock payloads and 7 startup descriptors, on cores `Strix OS 1.0.6` build 11. Three builds from clean output folders gave byte-identical ZIPs.
 
 | Item | Value |
 | --- | --- |
-| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-EMU-ONLY-NOT-FOR-DEVICE.zip`, 9,549,069 B |
-| ZIP SHA-256 | `a8b9de49f2d5dc45311c5b19d61f96d9cc1acb2ed81ab55fb14534c0b68ad849` |
-| AP SHA-256 | `9a9e95b03773f0ab6f1eaafc0d732508c39d36548b901e2ffd67e229fc240388` |
-| Build identity (status `build`) | `9abf3bcf9a9421729bdbdff193ee4da6fc5a587ba1f6e391a5d06c9944c40dae` |
+| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-EMU-ONLY-NOT-FOR-DEVICE.zip`, 9,549,172 B |
+| ZIP SHA-256 | `007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325` |
+| AP SHA-256 | `c1acdeb25bbf93aaf28d5f629168463b3dea454fe859574166aba5f85540d5f5` |
+| Build identity (status `build`) | `05af68ca7c798b2731d444229f03b592ca60b38beddc5d572bd514e1945dd38a` |
 
-**What was checked.** The firmware-only gate's stages (`fw-rebase`, `fw-layout`, `fw-build`, `fw-audit`, `fw-tests`, `fw-reproduce`, `source-audit`; see "Firmware-only gate" below), which include the host tests. On candidate 1 (`tmg12(23)`) and on candidate 2 (`tmg12(26)`) the firmware-only gate passed all seven stages with a plain build. The lead's static check found no changed byte on the boot-confirm path, and nothing in the module posts to the OTA queue; on candidate 2 its four checks pass.
+**What was checked.** The firmware-only gate's stages (`fw-rebase`, `fw-layout`, `fw-build`, `fw-audit`, `fw-tests`, `fw-reproduce`, `source-audit`; see "Firmware-only gate" below), which include the host tests. On candidate 1 (`tmg12(23)`), candidate 2 (`tmg12(26)`) and candidate 3 (`tmg12(36)`) the firmware-only gate passed all seven stages with a plain build. The lead's static check found no changed byte on the boot-confirm path, and nothing in the module posts to the OTA queue; on candidates 2 and 3 its four checks pass.
 
-**What was not checked.** At the time of writing there has been no emulator run of TMG12 and no device run. The emulator cannot show the OTA install, the Bluetooth link, real sensors or real timing.
+**What was not checked.** There has been no device run. The emulator lane ran candidate 1 on 2026-11-14 (boot, advertising, home, arming, the carousel and the module pages; no blocker found); its runs on candidate 2 were under way at the time of writing and candidate 3 had not been run. The emulator cannot show the OTA install, the Bluetooth link, real sensors or real timing.
 
 **Known limits (recorded by the port lead).**
 
