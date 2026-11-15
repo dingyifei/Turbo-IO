@@ -50,5 +50,4 @@ These are written up but neither approved nor built.
 - [AMap navigation](history/NAVIGATION.md) and [its background behaviour](history/NAVIGATION_BACKGROUND.md): replaced by MapKit navigation.
 - [Turbo Display navigation](history/TURBO_DISPLAY_NAVIGATION.md): early display and navigation experiments.
 - [V2 release](../official-addon/docs/RELEASE_V2.md) and [ios107 release](../official-addon/ios107-edition/RELEASE.md): the original addon release records.
-- [Android validation](../android-addon/docs/VALIDATION.md): Android 1.0.5 device evidence.
 - [Screenshots](screenshots/README.md) and [design artwork](design/developer-ecosystem-banner-20260926.md): provenance notes for images used in the README.

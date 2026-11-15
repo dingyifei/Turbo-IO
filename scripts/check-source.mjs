@@ -10,7 +10,6 @@ const reviewedScreenshots = new Map([
   ['firmware-research/strix-1.0.4.12/assets/turbo-photo-on-glasses.png', 'fc40e716e30ad8817aa27482e497b7ab7f23f77b03c884ef3533b2df0b96a49c'], // Owner-authorized glasses photo; EXIF/XMP removed, IDAT pixels unchanged, visually reviewed.
   ['firmware-research/strix-1.0.4.12/assets/turbo-photo.png', '47031ca47ddb044cedc6af2146018556954572311e2dfd58e807354e7ac17251'], // Owner-provided original color illustration; EXIF removed, pixels unchanged; presentation only.
   ['firmware-research/strix-1.0.4.12/assets/turbo-photo-firmware.png', '738169867ec0ca778cd6ce14e803aaa508bf16f8e169d1081db3e622d571db24'], // Exact embedded portrait, owner explicitly authorized publication; deterministic rebuild input.
-  ['harmony-sdk/entry/src/main/resources/base/media/rayneo_home_hero.png', '426720b141311bc859bc59f31763790250a898ef974708d0e69e4841180c51b1'], // Reviewed synthetic glasses illustration, no account/device screenshot.
   ['official-addon/docs/home-tabs-glass-light.png', '12c74fe54a48d2f6b4b5371381f7308732f8b35b07465ecf29728f33dbc969b4'],
   ['official-addon/docs/home-tabs-glass-dark.png', '2f14655122697a4dd0870147fb6bf71417f8dfea82a45670443e2dd1e13c9407'],
   ['official-addon/docs/navigation-search.png', 'd6a4dcb745bd87e67884fa686d87d033d9b557bd70a31cea4fc8098f7935245c'],
@@ -56,10 +55,9 @@ const reviewedAnimationAssets=new Map([
 const focusReview=JSON.parse(fs.readFileSync(new URL('./focus-reviewed-assets.json',import.meta.url),'utf8'));
 for(const [p,h] of Object.entries(focusReview.media))reviewedScreenshots.set(p,h);
 for(const [p,h] of Object.entries(focusReview.largeText))reviewedLargeSources.set(p,h);
-// Hash-pinned Android release assets. Gallery ZIP contents are independently
-// inspected by android-addon/tests/PrivateArtifactAudit.py; no blanket exemption.
-const androidReview=JSON.parse(fs.readFileSync(new URL('./android-release-reviewed-assets.json',import.meta.url),'utf8'));
-for(const [p,h] of Object.entries(androidReview.files))reviewedScreenshots.set(p,h);
+// Hash-pinned gallery ZIPs, firmware icons, stock firmware ZIPs and README images; no blanket exemption.
+const review=JSON.parse(fs.readFileSync(new URL('./reviewed-assets.json',import.meta.url),'utf8'));
+for(const [p,h] of Object.entries(review.files))reviewedScreenshots.set(p,h);
 // Exact TMIG1 concept art/build inputs and unchanged official stock archive.
 // The stock ZIP is independently inspected by the version-pinned firmware audit.
 const tmig1Review=JSON.parse(fs.readFileSync(new URL('./tmig1-reviewed-assets.json',import.meta.url),'utf8'));
@@ -105,14 +103,10 @@ export function audit(root){
     const dependency=/^core-probe\/Frameworks\/(?:RayneoNet|CocoaAsyncSocket|OpenSSL|RayneoLog|SwiftProtobuf|CocoaLumberjack|SSZipArchive)\.framework\//.test(relative) || relative==='core-probe/Vendor/opus-ios/libopus.a';
     if(dependency)return; // Explicit binary build dependencies; reviewed via the hash inventory.
     if(/\.(?:ipa|apk|hap|har|app|dex|jar|jks|keystore|a|o|dylib|so|p12|p7b|cer|pem|key|mobileprovision|wav|ogg|pcm|mp3|m4a|png|jpg|zip|log|jsonl)$/i.test(p)&&relative!=='official-addon/ios107-edition/i18n/strings.jsonl')findings.push({file:relative,rule:'non-source-artifact'});
-    if(relative==='harmony-sdk/build-profile.json5')findings.push({file:relative,rule:'local-signing-config'});
     if(s.size>2*1024*1024 && (!reviewedLargeSources.has(relative)||createHash('sha256').update(fs.readFileSync(p)).digest('hex')!==reviewedLargeSources.get(relative))){findings.push({file:relative,rule:'oversize-review'});return;}
     const b=fs.readFileSync(p);if(b.includes(0)){findings.push({file:relative,rule:'binary-content'});return;}
     b.toString('utf8').split('\n').forEach((line,i)=>{for(const [rule,re]of rules){
-      // One synthetic host in mocked HTTP tests; still scan the rest of that line.
-      const checked=rule==='dedicated-weather-tenant' && relative==='harmony-sdk/tests/remote-services.test.mjs'
-        ? line.replaceAll("'test." + "re.qweatherapi.com'", "'mock-weather-host'") : line;
-      if(re.test(checked))findings.push({file:relative,line:i+1,rule});
+      if(re.test(line))findings.push({file:relative,line:i+1,rule});
     }});
   }
   walk(root);return {files,findings};

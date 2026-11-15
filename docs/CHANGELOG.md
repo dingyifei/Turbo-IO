@@ -147,7 +147,7 @@
 
 ![Turbo IO Android 1.0.5 更新：六类功能、配套实验固件与刷后释放保护说明](screenshots/android-release-update-wide-20260927.png)
 
-**[下载完整 APK / TAP1-TEST-01 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · [完整安装与刷机教程](../android-addon/docs/INSTALL_AND_FLASH.md) · [公开范围与源码构建](../android-addon/README.md)**
+**[下载完整 APK / TAP1-TEST-01 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · 完整安装与刷机教程 · 公开范围与源码构建**
 
 *横版更新说明由 imagegen 生成，不是实机截图，也不能代替完整教程。公开 APK 不含微信读书网页正文适配或私人配置；公开派生包尚未再次实机刷写。眼镜自然重启后，必须按教程只读回查并解除结果保护；更新未结束或状态不明时不能释放。*
 
@@ -341,7 +341,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 | --- | --- | --- |
 | **原厂 Strix OS** | 官方菜单和功能；手机扩展可利用已有文字/字幕等通道，但没有我们的原生新菜单、TCE1图形编辑运行时或TAP1四槽应用 | 普通用户首选。保留官方 App / 固件；原厂有限卡片不等于新仪表盘 SDK |
 | **FOCUS-04 / TFP1**（历史实验版） | 四项同屏菜单、原生番茄；包含音乐/阅读交互等修复。**不包含后来的 TCE1/TAP1 运行时** | FOCUS-04 iOS 集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）与该 Release 固定固件；不是 Android GUARD-07 的升级候选 |
-| **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | [GUARD-07 APK + 同一 Release 的精确 ZIP](../android-addon/docs/INSTALL_AND_FLASH.md)；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
+| **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | GUARD-07 APK + 同一 Release 的精确 ZIP；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
 | **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | [固件研究索引](../firmware-research/strix-1.0.4.12/README.md)。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
 
 **不是固件越新就可以随便升级。** FOCUS-04 与 TAP1-TEST-01 均基于 Strix OS 1.0.4.12，系统版本数字可能不变；必须核对 Release 名、SHA-256、宿主和门禁，不只看“1.0.4.12”。所有自定义固件均是高风险实验包，不保证回滚或救砖。
@@ -383,7 +383,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 **默认原厂固件与自定义固件是两条路线：** 原厂固件下的有限卡片/通知模板不等于自由替换系统 UI；自定义 AP 路线已发展到 Turbo Display 和独立导航应用，但需要匹配固件与手机实现，不能直接套到四端。Claude Code、Hermes、WorkBuddy、OpenClaw 也不能仅凭下拉选项视作已接通。
 
-详细证据与使用限制：[iOS V1](v1-sdk.md#能力与边界) · [iOS V2](../official-addon/docs/VALIDATION.md) · [Android 当前发行](../android-addon/README.md) · [鸿蒙历史验收](../harmony-sdk/VALIDATION.md)。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
+详细证据与使用限制：[iOS V1](v1-sdk.md#能力与边界) · [iOS V2](../official-addon/docs/VALIDATION.md) · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
 
 ## 版本与历史进展
 
@@ -394,12 +394,12 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 - **iOS 1.0.5（201）+ Strix OS 1.0.4.12**：新增新版宿主的精确版本 / Build / UUID 适配，保留 1.0.4 和 1.0.2。非越狱 iPhone Air 私用研究版已安装并确认扩展加载；用户完成官方固件升级后反馈「一切正常」，目前未报告升级引入的功能异常。该反馈不是全部功能、长期后台或其他平台的全量回归结论。[兼容性、升级步骤与验收边界](../official-addon/docs/COMPATIBILITY_105.md)
 
-- **原生鸿蒙源码首次公开 · WORKBENCH 14**：独立 BLE 连接/初始化、自有语音模型已在 Mate X5 验证；模拟天气、待办和自定义卡片下发通过。高德原生 POI 搜索、步行算路、模拟导航回调及眼镜显示本轮通过。243 项本机测试通过；**手机地图底图目前白屏，骑行/驾车真机与实际外场导航尚未验收**。录音/提词器仍有未修复问题，系统通知转发未实现。[安装与使用](../harmony-sdk/README.md) · [逐项验收状态](../harmony-sdk/VALIDATION.md)
+- **原生鸿蒙源码首次公开 · WORKBENCH 14**：独立 BLE 连接/初始化、自有语音模型已在 Mate X5 验证；模拟天气、待办和自定义卡片下发通过。高德原生 POI 搜索、步行算路、模拟导航回调及眼镜显示本轮通过。243 项本机测试通过；**手机地图底图目前白屏，骑行/驾车真机与实际外场导航尚未验收**。录音/提词器仍有未修复问题，系统通知转发未实现。安装与使用 · 逐项验收状态
 
 - **Android 源码新增公开**：兼容官方 Android 1.0.4（195），**非 Root 设备已由用户实机验证可用**。模型/搜索/录音导出和路线文字已有研究机用户确认。模拟导航支持暂停、1/2/4/8倍速，自动测试通过，新增模拟镜片效果待验收。仍只提供源码，需自行编译签名，不是预打包成品。
 - **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。[兼容性与预览](../official-addon/docs/COMPATIBILITY_104.md)
-- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · [Android 导航](../android-addon/docs/ANDROID_104_HISTORY.md#5-导航怎么用)
+- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · Android 导航
 
 </details>
 
-模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限[首页列出的原厂砸壳 IPA](../README.md#ios-原厂砸壳-ipa-下载)，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 [Android文档](../android-addon/docs/ANDROID_104_HISTORY.md#2-兼容与安装边界)。
+模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限[首页列出的原厂砸壳 IPA](../README.md#ios-原厂砸壳-ipa-下载)，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 Android文档。

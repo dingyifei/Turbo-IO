@@ -6,7 +6,7 @@ V2 extends the compatible official RayNeo app with phone-side tools, glasses pro
 | --- | --- |
 | [ios107-edition](ios107-edition/README.md) | Active addon: build.sh, package.mjs, test.py, tests/ and local-translation/. |
 | [knowledge-bridge](knowledge-bridge/README.md) | Optional local knowledge server. |
-| research/ | Shared phone/glasses reference modules, also consumed by android-addon and dashboard-service. |
+| research/ | Shared phone/glasses reference modules, also consumed by dashboard-service. |
 | tar2-airplay/ and tar2-display/ | Separately licensed display SDKs; see [third-party notices](../THIRD_PARTY_NOTICES.md). |
 | docs/ | Historical V2 documentation. |
 

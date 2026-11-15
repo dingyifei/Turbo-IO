@@ -26,15 +26,8 @@ for(const extension of ['apk','dex','jar','jks','keystore','jsonl','hap','har','
 test('rejects private developer home paths',()=>{
   fixture({'build.sh':'sdk="'+['','Users','sample-person','Library','Android','sdk'].join('/')+'"'},r=>assert.ok(r.findings.some(f=>f.rule==='private-home')));
 });
-test('rejects Harmony local signing configuration',()=>{
-  fixture({'harmony-sdk/build-profile.json5':'{}'},r=>assert.ok(r.findings.some(f=>f.rule==='local-signing-config')));
-});
-test('weather mock exception is exact and does not hide another tenant on the same line',()=>{
-  const name='harmony-sdk/tests/remote-services.test.mjs';
-  const mock="'test."+'re.qweatherapi.com'+"'";
-  fixture({[name]:mock},r=>assert.deepEqual(r.findings,[]));
-  fixture({[name]:mock+"; 'private-fixture."+'re.qweatherapi.com'+"'"},r=>assert.ok(r.findings.some(f=>f.rule==='dedicated-weather-tenant')));
-  fixture({'settings.ts':mock},r=>assert.ok(r.findings.some(f=>f.rule==='dedicated-weather-tenant')));
+test('rejects a dedicated weather tenant host',()=>{
+  fixture({'settings.ts':"'private-fixture."+'re.qweatherapi.com'+"'"},r=>assert.ok(r.findings.some(f=>f.rule==='dedicated-weather-tenant')));
 });
 test('permits generated build directory without treating it as publishable',()=>{
   fixture({'build/output.dex':'fixture','README.md':'Source only'},r=>{assert.equal(r.files,1);assert.deepEqual(r.findings,[]);});
