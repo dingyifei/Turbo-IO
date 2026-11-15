@@ -32,7 +32,7 @@ Every stock offset the tree uses is named in `src/stock_layout.h` and proven fro
 
 **Known limits (recorded by the port lead).**
 
-- If the menu's arming check fails (trace event 141), the menu is left unarmed. The carousel then does not animate, but the build still advertises and is confirmed, so the recovery is a reflash.
+- If the menu's arming check fails (trace event 141), the menu is left unarmed. The carousel then does not animate, but the build still advertises and is confirmed, so the recovery is a reflash. Trace event 142 means the menu's canary word was overwritten, so the menu reads as unarmed, as after a failed 141; it is printed at a menu show, once per show, and it can also follow a 141 whose result has its value-1 bit (bit 0) set (the fill after the stock object was not intact).
 - The Light line keeps showing the last bucket after the sensor stops.
 - The phone status no longer carries the LVGL heap total; it shows it as not available.
 - Stored tile files are new version-2 files (`turbo_tiles_v2_{0,1}.cfg`). The TMG11 order and hidden set are not carried over, so TMG12 starts with the default order.

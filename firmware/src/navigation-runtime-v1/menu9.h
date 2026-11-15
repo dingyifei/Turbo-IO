@@ -41,6 +41,12 @@ static inline uint32_t m8_tail_key(void *app){return TIO_TAIL_MAGIC^(uint32_t)(u
 static inline M8NativeTail *m8_tail(void *app){
   if(!app)return NULL;M8NativeTail *t=m8_tail_at(app);return t->canary==m8_tail_key(app)?t:NULL;
 }
+/* True when the canary word of a menu holds none of the values the module writes there: not the armed key, not zero
+ * (the destructor disarmed it) and not TIO_TAIL_FILL (never armed, fill intact). Then something else overwrote it. It
+ * reads the same word as m8_tail and writes nothing. */
+static inline bool m8_tail_canary_broken(void *app){
+  if(!app)return false;uint32_t c=m8_tail_at(app)->canary;return c!=m8_tail_key(app)&&c!=0u&&c!=TIO_TAIL_FILL;
+}
 /* True when the module menu cannot take a page now: unarmed, or a Display page is open. */
 static inline bool m8_tail_busy(void *app){M8NativeTail *t=m8_tail(app);return !t||t->page;}
 /* Zero the tail, then set the canary. */

@@ -310,7 +310,9 @@ void *m8_hook_ctor(void *app){
   trace(140,0);
   return app;
 }
-void m8_hook_show(void *app){if(!tail(app)){stock_show(app);return;}retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);m8_hook_label_index(app,(int)*word(app,TIO_STOCK_MENU_SELECTED));fm_show(app);}
+/* An unarmed menu whose canary is broken (overwritten after arming, or by an overrun) logs event 142 once per show,
+ * with no state kept; a never-armed menu with its fill intact and a destroyed one log nothing. */
+void m8_hook_show(void *app){if(!tail(app)){if(m8_tail_canary_broken(app))trace(142,0);stock_show(app);return;}retire(app);stock_show(app);(void)fm_menu_rows();for(int i=TIO_STOCK_ITEMS;i<TIO_MENU_ITEMS;i++)m8_refresh_tile_label(app,i);m8_hook_label_index(app,(int)*word(app,TIO_STOCK_MENU_SELECTED));fm_show(app);}
 void m8_hook_hide(void *app){tgr_knob_cancel(app,stream_tick());if(!tail(app)){stock_hide(app);return;}tc_slot_hidden(camera_slot(app));tap_service_hidden(app);fm_hide(app);native_unregister_wheel(app);retire(app);tf_slot_hidden(focus(app));tm_slot_hidden(music(app));tn_slot_hidden(slot(app));stock_hide(app);}
 void m8_hook_destroy(void *app){tgr_knob_cancel(app,stream_tick());M8NativeTail *t=tail(app);
   if(t){   /* armed: tear the module down, then disarm, so a hook stock_destroy reaches sees an unarmed menu */

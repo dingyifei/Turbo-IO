@@ -45,6 +45,7 @@ static unsigned stock_calls[S_COUNT];
 static unsigned ui_calls;                /* every LVGL, lottie and menu_* call, and the render API */
 static unsigned module_calls;            /* slot creation and teardown, page and service work */
 static unsigned trace_event,trace_result,traces;
+static unsigned broken_shows;            /* trace lines with event 142: a broken canary seen at a menu show */
 static int wheel_delta;
 static size_t requested;
 static uint8_t *app;
@@ -118,6 +119,7 @@ void native_align(void *o,int a,int x,int y){(void)o;(void)a;(void)x;(void)y;ui(
 void native_log(unsigned a,unsigned b,unsigned c,unsigned d,const char *f,...){
   (void)a;(void)b;(void)c;(void)d;assert(!strcmp(f,"[TurboMenu8] event=%u result=%u"));
   va_list v;va_start(v,f);trace_event=va_arg(v,unsigned);trace_result=va_arg(v,unsigned);va_end(v);traces++;
+  if(trace_event==142){assert(trace_result==0);broken_shows++;}
 }
 void *tio_lv_obj_create_ex(void *p,uint32_t f){(void)p;(void)f;return object();}
 void tio_lv_obj_delete(void *o){(void)o;ui();}
@@ -242,9 +244,12 @@ static void manager_holds(void *menu){
   void *v=manager_bytes;memcpy(launcher_bytes+TIO_STOCK_LAUNCHER_MANAGER,&v,sizeof v);memcpy(manager_bytes+TIO_STOCK_MANAGER_MENU,&menu,sizeof menu);
 }
 /* Case 6: on an unarmed menu every stock-backed hook calls its stub exactly once (and nothing of the module), and every
- * replacement hook leaves the whole allocation byte-identical and calls no LVGL, lottie or menu_* function. */
-static void unarmed_hooks(bool destroyed){
+ * replacement hook leaves the whole allocation byte-identical and calls no LVGL, lottie or menu_* function.
+ * broken: the canary word was overwritten, so the one show prints event 142 once (and no other line); no other hook
+ * prints event 142. */
+static void unarmed_hooks(bool destroyed,bool broken){
   assert(!m8_tail(app));
+  unsigned lines=traces,b=broken_shows;
   manager_holds(app);   /* the menu stock's app id caller and the message hook find */
   uint8_t before[0x200];
   #define SAME(call) do{memcpy(before,app,requested);unsigned u=ui_calls,s=stock_total(),mc=module_calls;call;\
@@ -258,7 +263,8 @@ static void unarmed_hooks(bool destroyed){
   *(float *)(app+TIO_MENU_SCROLL_POSITION_OFFSET)=3.5f;memcpy(before,app,requested);
   SAME(m8_hook_render_slide(app));
   for(int i=0;i<(int)TIO_STOCK_MENU_TILES;i++)assert(m8_hook_frame_start(i)==(int)(TIO_STOCK_MENU_FIRST_FRAME+TIO_STOCK_MENU_FRAMES_PER_TILE*(unsigned)i)&&m8_hook_frame_index(m8_hook_frame_start(i))==i);
-  ONCE(S_SHOW,m8_hook_show(app));ONCE(S_NAMES,m8_hook_names(app));ONCE(S_DOTS,m8_hook_dots(app));
+  ONCE(S_SHOW,m8_hook_show(app));assert(broken_shows==b+broken&&traces==lines+broken);
+  ONCE(S_NAMES,m8_hook_names(app));ONCE(S_DOTS,m8_hook_dots(app));
   ONCE(S_DELETE_DOTS,m8_hook_delete_dots(app));ONCE(S_LOTTIE,m8_hook_lottie(app));
   ONCE(S_EVENT,assert(m8_hook_event(app,NULL)));
   for(int r=0;r<(int)TIO_STOCK_MENU_TILES;r++)ONCE(S_REFRESH_LABEL,m8_hook_refresh_label(app,r));
@@ -281,6 +287,7 @@ static void unarmed_hooks(bool destroyed){
   if(!destroyed){   /* destroy last: the module teardown does not run, stock's destructor does, once */
     unsigned f=forgets;ONCE(S_DESTROY,m8_hook_destroy(app));assert(forgets==f+1);
   }
+  assert(broken_shows==b+broken);   /* only the show printed event 142, and only when broken (the message hook's event 21 is its own) */
   #undef SAME
   #undef ONCE
 }
@@ -312,10 +319,12 @@ int main(void){
   remapped=true;assert(!strcmp(m8_hook_app_id(0),"TurboCamera")&&m8_hook_app_id(TIO_MENU_LAST)==stock_id(0));remapped=false;
   assert(stock_calls[S_APP_ID]==TIO_STOCK_ITEMS+1);
   manager_holds(app);
+  /* an armed show prints no line */
+  {unsigned lines=traces,b=broken_shows;m8_hook_show(app);assert(m8_tail(app)&&broken_shows==b&&traces==lines);}
   /* 5. destroy tears the module down, clears the canary, and a hook reached from inside stock_destroy sees an unarmed menu */
   reset_counts();destroy_probe=1;m8_hook_destroy(app);destroy_probe=0;
   assert(stock_calls[S_DESTROY]==1&&forgets==1&&!made_slot&&module_calls>0&&!m8_tail(app)&&m8_tail_at(app)->canary==0);
-  unarmed_hooks(true);dispose();
+  unarmed_hooks(true,false);dispose();
 
   /* 2, 3. every failing combination of the three checks (an overrun past the stock object, a moved label index, a motion
    *    count of 13): not armed, trace 141 with the failed bits, and the one write is stock's own motion count, made only
@@ -326,15 +335,19 @@ int main(void){
     assert(count==(mode&FAIL_COUNT?13u:(uint32_t)TIO_STOCK_MENU_TILES));
     if(!(mode&FAIL_COUNT)){uint32_t want=TIO_STOCK_MENU_TILES;memcpy(after_ctor+TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT,&want,4);}
     assert(!memcmp(after_ctor,app,requested));
-    unarmed_hooks(false);assert(!m8_tail(app));dispose();
+    unarmed_hooks(false,false);assert(!m8_tail(app));dispose();
   }
 
   /* 4. canary smashed after arming: unarmed from then on (the slots it made stay allocated: a leak, never a write) */
-  construct(0);assert(m8_tail(app));m8_tail_at(app)->canary^=1u;assert(!m8_tail(app));unarmed_hooks(false);dispose();
+  construct(0);assert(m8_tail(app));m8_tail_at(app)->canary^=1u;assert(!m8_tail(app));
+  /* each show of it prints one event 142 (no "reported once" state), and writes nothing to the menu */
+  for(int n=0;n<2;n++){uint8_t before[0x200];memcpy(before,app,requested);unsigned lines=traces,b=broken_shows,s=stock_calls[S_SHOW];
+    m8_hook_show(app);assert(broken_shows==b+1&&traces==lines+1&&stock_calls[S_SHOW]==s+1&&!memcmp(before,app,requested));}
+  unarmed_hooks(false,true);dispose();
 
   printf("PASS menu tail: host model tail %zu bytes at 0x%zx (the 32-bit target's 36 bytes at 0x10c, allocation 0x130, are menu9.h's compile-time assert), "
          "count edit movs r1,#%d equals the module's %d items; armed after an in-bounds constructor; refused for all 7 combinations of an overrun, "
-         "a moved label index and a wrong motion count (stock's count restored only when the count check passed), a smashed canary and after destroy; "
+         "a moved label index and a wrong motion count (stock's count restored only when the count check passed), a smashed canary (event 142 once per show, from no other hook) and after destroy (no 142, nor when refused or armed); "
          "stock-backed hooks call their stub once, replacement hooks touch nothing and the app id is stock's for every index on an unarmed menu\n",
          sizeof(M8NativeTail),(size_t)TIO_TAIL_OFFSET,MENU_TAIL_COUNT_EDIT,(int)TIO_MENU_ITEMS);
   return 0;
