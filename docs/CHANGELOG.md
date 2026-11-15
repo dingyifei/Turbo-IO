@@ -42,7 +42,7 @@
 
 **双缓冲内存不增加：239424字节；AP为7,435,336字节，仅增加1024字节。** 旧TVP1视频兼容保留，其余14个新版原厂载荷不变；公开源码重建所得AP与ZIP与实测候选逐字节一致。新高清需刷TVP2，不能只装手机插件；完整OTA和恢复风险依旧存在，非开发者请保留原厂固件。
 
-**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](archive/TVP2_TAR2.md) · [固件源码与重建](../firmware-research/strix-1.0.5.5-tvp2/README.md) · 原创高清模块 · GPLv3 AirPlay接收SDK**
+**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](archive/TVP2_TAR2.md) · 固件源码与重建 · 原创高清模块 · GPLv3 AirPlay接收SDK**
 
 不发布个人签名/合并IPA、视频素材、配对密钥、Cookie或账号。`tar2-airplay`是经维护者确认的GPLv3局部许可例外，其余目录非商业许可不变；本次未发布Android AirPlay接收器。Mentra OS商店应用完整兼容仍在继续适配，不在本次投屏实测结论内。
 
@@ -121,7 +121,7 @@
 
 修复开启官方「全天智记」后，导航、音乐、读书、番茄、滴滴和小应用可能无法从眼镜菜单进入的问题。**不关闭智记、不重写原厂录音，只调整六个扩展的共存判断；相对 TGR1 的 AP 增加 192 字节。** 原厂前台占用与助手活动检查保留，不包含 TBL1 亮度实验补丁。
 
-**[源码、复现与刷写说明](../firmware-research/strix-1.0.4.12/lifelog-coexist/README.md) · [下载 TLC1 固件 / SHA-256 / 审计](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
+**源码、复现与刷写说明 · [下载 TLC1 固件 / SHA-256 / 审计](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
 
 用户已确认智记开启时其他应用可进入，并在升级保护收尾说明后确认本轮音乐显示正常；持续采集、音频共存、反复抬头和长期稳定性仍需测试。**确认眼镜升级完成、自然回首页后，必须彻底退出重开手机雷鸟 App，结束本次进程内升级保护，否则音乐等内容可能无法同步。升级未完成或状态不明时不可强停。**
 
@@ -205,7 +205,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 3. **新增原生番茄时钟应用**：眼镜第十二项菜单，手机双向控制，短按暂停/继续、长按停止；息屏继续计时、到时空闲提醒，避免长期亮屏打扰。
 4. **Turbo IO 插件 UI 焕新**：首页眼镜动效、音乐/微信读书/导航/番茄卡片，整理内页与设置；只改自己的插件，不重做官方 App。
 
-**[FOCUS-04 固件与构建校验](../firmware-research/strix-1.0.4.12/native-navigation/focus/README.md)** · **配套手机构建和使用（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
+**FOCUS-04 固件与构建校验** · **配套手机构建和使用（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
 
 基于 Strix OS 1.0.4.12，仅 AP 内容变化，其他 13 个固件负载不变；AP **9,558,216 字节**，低于 9,600,000 字节限制。2026-09-25 用户实刷并确认此版正常；仍是试验用品，不代表全场景稳定、不会变砖或可保证救砖。配套宿主为雷鸟 AI **iOS 1.0.5（201）**，不可与旧包/门禁混用。
 
@@ -236,7 +236,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 ### 2026-09-24 · 微信读书研究：四本书架与原生阅读页
 
-**新增第十一项“微信读书”研究菜单：四本封面书架、原生文本窗口与手动/自动滚动。** 已公开[原创 AP / 手机模块、构建与协议说明](../firmware-research/strix-1.0.4.12/native-navigation/weread/README.md)，以及 [TWR1 实刷实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1)。源码重建 AP 与实刷版本一致，仅 AP 改变，其他13个负载不变。**旧 TWR1 的长按返回问题在 09-25 FOCUS-04 中加入修复，旧 Release 不变。非开发者请勿刷，不保证回滚或救砖。**
+**新增第十一项“微信读书”研究菜单：四本封面书架、原生文本窗口与手动/自动滚动。** 已公开原创 AP / 手机模块、构建与协议说明，以及 [TWR1 实刷实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1)。源码重建 AP 与实刷版本一致，仅 AP 改变，其他13个负载不变。**旧 TWR1 的长按返回问题在 09-25 FOCUS-04 中加入修复，旧 Release 不变。非开发者请勿刷，不保证回滚或救砖。**
 
 手机模块公开书架/统计、封面处理、TXT/EPUB 导入及阅读传输，**不含网页正文适配、Cookie、Key 或私用 IPA，也尚未接入主仓库默认构建及 TWR1 OTA 打包入口**；没有自己的匹配手机集成时先别刷。这不是“下载源码就能直接读取所有微信读书正文”的声明。书架/统计参考 [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading)，网页阅读可自行研究 AGPL 项目 [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin)。[架构思路与许可范围](history/WEREAD_RESEARCH.md)
 
@@ -257,7 +257,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 - **旧 TMU1 已知问题：轻碰旋钮可能误切歌。09-25 FOCUS-04 已加入输入过滤与去抖，旧 Release 不变。** 扫码登录可能报“环境异常”，本次用未登录可播放歌曲验收，不绕过风控、会员或版权限制。
 - 适配 **雷鸟 AI iOS 1.0.5（201）+ Strix OS 1.0.4.12**，Android / HarmonyOS 暂未接入此音乐播放器。
 
-**[完整教程：构建、签名、试刷、播放与协议](../firmware-research/strix-1.0.4.12/native-navigation/music/README.md)** · **[下载 TMU1 实测固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**。发布源码、精确实测固件及校验工具，不提供合并 IPA、个人签名、Key、账号或 Cookie。
+**完整教程：构建、签名、试刷、播放与协议** · **[下载 TMU1 实测固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**。发布源码、精确实测固件及校验工具，不提供合并 IPA、个人签名、Key、账号或 Cookie。
 
 > **试验用品，仅供开发者非商业学习研究，非开发者请勿刷！** 仅 AP 内容改变、其他13项保持原厂字节，清单更新 AP Size/MD5；不代表 OTA 只写 AP，也不保证不会变砖。断电、中断、错误固件可能导致无法启动或失去 OTA，原厂回滚不是救砖保证。实测通过不等于生产稳定版。普通 SDK/App 开发无需刷固件。
 
@@ -287,7 +287,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 **实机进展（2026-09-22）**：Turbo Display 完整图和局部更新已有镜片反馈；TNV1 已刷入并进入独立导航页，手机发起导航及后台修复获用户初步正常反馈。新增应用不等于生产稳定版，长期运行、全部模式、低电量和异常恢复仍需专项验证。
 
-**TNV1 匹配版本已公开：** [下载高风险固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · [完整源码、构建与手机合并](../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md) · [升级、导航与传图测试说明](../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md)。此包保留 **Turbo Display 测试工具**并新增**独立原生导航应用**，含配套 iOS 1.0.5（201）源码与后台修复；仅 AP 内容变化，另13项不变。使用自己的配置和签名，不提供合并后 IPA。旧 R3 Release 不含这两项，不能混用。**非开发者请勿刷；实机成功不代表不会变砖或保证救砖。**
+**TNV1 匹配版本已公开：** [下载高风险固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · 完整源码、构建与手机合并 · 升级、导航与传图测试说明。此包保留 **Turbo Display 测试工具**并新增**独立原生导航应用**，含配套 iOS 1.0.5（201）源码与后台修复；仅 AP 内容变化，另13项不变。使用自己的配置和签名，不提供合并后 IPA。旧 R3 Release 不含这两项，不能混用。**非开发者请勿刷；实机成功不代表不会变砖或保证救砖。**
 
 <a id="animation-test"></a>
 
@@ -295,7 +295,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第八项 Turbo Display，内置 12 帧素材、在眼镜端定时绘制，手机无需逐帧传输。2026-09-22 研究机已刷入，用户确认动画播放，30 秒结束计数 1799 次提交；这是约 60 次/秒的**提交计数**，不是物理面板 60 FPS 的测量，也未证明长期热稳定或全部情形无丢帧。它不是 GIF 上传器或面向普通用户的动画 App。
 
-[查看素材预览、实测边界、AP 校验值与离线重建](../firmware-research/strix-1.0.4.12/native-navigation/animation/README.md) · [ANIM60 高风险实验固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-anim60)。ANIM60 与 TNV1 是不同固件候选，不能混用升级授权或手机端门禁；公开源码目前不提供 ANIM60 专用手机 OTA 操作入口。**普通 SDK/App 开发不需要刷固件。**
+查看素材预览、实测边界、AP 校验值与离线重建 · [ANIM60 高风险实验固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-anim60)。ANIM60 与 TNV1 是不同固件候选，不能混用升级授权或手机端门禁；公开源码目前不提供 ANIM60 专用手机 OTA 操作入口。**普通 SDK/App 开发不需要刷固件。**
 
 > **仅限开发者的非商业学习研究，有风险，不是日常导航产品。** 不在驾驶、骑行或过马路时操作/测试；可能出现断连、延迟、旧指引或熄屏。使用自定义固件还可能无法启动或失去 OTA，原厂回滚不是救砖保证。普通 SDK/App 开发不需要刷固件。
 
@@ -306,9 +306,9 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 2026-09-21，基于 **Strix OS 1.0.4.12** 的 Turbo Photo R3 获得用户真机确认：更新后显示自定义图片，图片页可退出并再次进入。仅 AP 负载改变，另 13 项不变；不等于完整 OTA 只写 AP。**不保证回滚或救砖**：掉电、意外中断、版本不匹配、错误代码/资源都可能导致无法启动或失去 OTA。不能宣传“几乎刷不死”。
 
-**为什么只改 application（`nuttx_ap.bin`）？** 菜单、页面和 PNG 显示的目标代码位于 AP；先把改动限制在这里，保留其余原厂组件，减少变量与额外风险，验证眼镜应用/UI 扩展能力，而非重写系统。AP 不是隔离沙盒，错误仍可能导致整机无法启动；“只改 AP”不是不会变砖的保证。[设计取舍](../firmware-research/strix-1.0.4.12/docs/PROCESS.md)
+**为什么只改 application（`nuttx_ap.bin`）？** 菜单、页面和 PNG 显示的目标代码位于 AP；先把改动限制在这里，保留其余原厂组件，减少变量与额外风险，验证眼镜应用/UI 扩展能力，而非重写系统。AP 不是隔离沙盒，错误仍可能导致整机无法启动；“只改 AP”不是不会变砖的保证。设计取舍
 
-**[研究过程、源码、已知问题与离线测试](../firmware-research/strix-1.0.4.12/README.md)** · **[实验固件 Pre-release 与校验值](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-turbophoto-r3)**。普通 SDK/App 开发不需要刷这个固件。R3 只验证嵌入图片页，不含后续 TDP1 传图和 TNV1 导航；它不是通用眼镜 App 安装系统，长期稳定性和故障恢复未验。
+**研究过程、源码、已知问题与离线测试** · **[实验固件 Pre-release 与校验值](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-turbophoto-r3)**。普通 SDK/App 开发不需要刷这个固件。R3 只验证嵌入图片页，不含后续 TDP1 传图和 TNV1 导航；它不是通用眼镜 App 安装系统，长期稳定性和故障恢复未验。
 
 </details>
 
@@ -342,7 +342,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 | **原厂 Strix OS** | 官方菜单和功能；手机扩展可利用已有文字/字幕等通道，但没有我们的原生新菜单、TCE1图形编辑运行时或TAP1四槽应用 | 普通用户首选。保留官方 App / 固件；原厂有限卡片不等于新仪表盘 SDK |
 | **FOCUS-04 / TFP1**（历史实验版） | 四项同屏菜单、原生番茄；包含音乐/阅读交互等修复。**不包含后来的 TCE1/TAP1 运行时** | FOCUS-04 iOS 集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）与该 Release 固定固件；不是 Android GUARD-07 的升级候选 |
 | **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | GUARD-07 APK + 同一 Release 的精确 ZIP；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
-| **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | [固件研究索引](../firmware-research/strix-1.0.4.12/README.md)。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
+| **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | 固件研究索引。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
 
 **不是固件越新就可以随便升级。** FOCUS-04 与 TAP1-TEST-01 均基于 Strix OS 1.0.4.12，系统版本数字可能不变；必须核对 Release 名、SHA-256、宿主和门禁，不只看“1.0.4.12”。所有自定义固件均是高风险实验包，不保证回滚或救砖。
 

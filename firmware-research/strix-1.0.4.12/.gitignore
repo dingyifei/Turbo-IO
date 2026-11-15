@@ -1,9 +1,0 @@
-work/
-__pycache__/
-*.pyc
-.venv/
-*.o
-*.elf
-*.bin
-*.zip
-*.log

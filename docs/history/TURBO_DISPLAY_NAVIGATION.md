@@ -34,7 +34,7 @@
 4. 查看箭头、距离、路名与路线示意图。手机路线数据持续驱动原生界面，不是连续传导航截图。
 5. 使用 **停止并退出眼镜导航**，或眼镜实体返回结束显示。真实导航可按授权退后台；模拟只有系统短时后台额度，不承诺无限锁屏模拟。
 
-使用 [TNV1 实验 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) 和[匹配源码构建说明](../../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md)，先读[升级与验收步骤](../../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md)。**旧 R3 Release 不含此功能，不能混用。** 不提供合并后/签名 IPA；服务 Key 和签名由使用者配置。
+使用 [TNV1 实验 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) 和匹配源码构建说明，先读升级与验收步骤。**旧 R3 Release 不含此功能，不能混用。** 不提供合并后/签名 IPA；服务 Key 和签名由使用者配置。
 
 ## 3. 已实现、已验证与已发布
 
@@ -57,4 +57,4 @@
 - 不随意扩大图像尺寸、控件数量或传输队列；内存、限流、退出释放及错误回执需要一起验证。
 - 发布仍只包含经审查的源码/依赖和明确列出的研究附件，不公开私人Key、账号、日志、签名材料或已合并手机成品包。
 
-[返回主README](../../README.md) · [早期R3过程与风险](../../firmware-research/strix-1.0.4.12/README.md) · [iOS标准导航教程](NAVIGATION.md)
+[返回主README](../../README.md) · 早期R3过程与风险 · [iOS标准导航教程](NAVIGATION.md)

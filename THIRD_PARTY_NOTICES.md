@@ -24,9 +24,9 @@ Before publication, check the actual dependency inventory and retain each suppli
 
 The `firmware-strix-1.0.4.12-turbophoto-r3` prerelease contains an experimental modified OTA archive, its AP image, and a locally repacked original-content baseline. Original firmware code, libraries, and resources remain copyrighted by RayNeo, Bestechnic, and their respective rights holders. These binaries are not original firmware source code and are not relicensed under the repository's PolyForm license. No official endorsement or guaranteed recovery is implied. Original research code follows the repository license. The embedded Turbo portrait was explicitly authorized for publication by its owner.
 
-These are high-risk research specimens, not production firmware. Read `firmware-research/strix-1.0.4.12/docs/SAFETY.md` before handling them. The baseline is not a full flash backup or a validated unbrick image.
+These are high-risk research specimens, not production firmware. Their source folder, `firmware-research/strix-1.0.4.12/` (including `docs/SAFETY.md`, which must be read before handling them), was removed from the tree in cleanup(5) and is in git history. The baseline is not a full flash backup or a validated unbrick image.
 
-The `firmware-strix-1.0.4.12-tnv1` prerelease additionally provides the exact tested TNV1 navigation OTA archive and AP image, retaining the TDP1 display test tool. Only AP content differs from the 1.0.4.12 original payload baseline; the other 13 payloads are unchanged. These original-code/resource copyright and non-endorsement boundaries also apply. Read `firmware-research/strix-1.0.4.12/native-navigation/README.md`; rollback is not guaranteed. No personal merged/signed iOS package is included.
+The `firmware-strix-1.0.4.12-tnv1` prerelease additionally provides the exact tested TNV1 navigation OTA archive and AP image, retaining the TDP1 display test tool. Only AP content differs from the 1.0.4.12 original payload baseline; the other 13 payloads are unchanged. These original-code/resource copyright and non-endorsement boundaries also apply. Its README (`firmware-research/strix-1.0.4.12/native-navigation/README.md`) is in git history; rollback is not guaranteed. No personal merged/signed iOS package is included.
 
 ## TMU1 音乐 API 参考
 

@@ -44,7 +44,7 @@ Follow [docs/porting-flow.md](docs/porting-flow.md): present the whole plan to t
 |---|---|
 | `official-addon/ios107-edition/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.7, with its build, packaging, tests and the OTA flash guide |
 | `firmware/` | The patched glasses firmware, as one tree. Each release is an annotated `fw/tmgN` tag, the release label is in `firmware/RELEASE`, and `firmware/baseline/` holds the few inputs carried over from older releases. |
-| `firmware-research/` | Stock firmware and research notes. Not built. |
+| `firmware-research/` | Stock firmware ZIPs that the firmware build and the gate read (`strix-1.0.5.5/stock`, `strix-1.0.5.12/stock`), plus the old TMIG1 1.0.5.5 research tree. |
 | `scripts/` | Gate, packaging and source audit |
 | `tools/` | Offline analysis tools |
 | `docs/` | User and developer docs ([index](docs/README.md)). `docs/design-system/` is the UI spec. |
