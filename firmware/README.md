@@ -1,523 +1,201 @@
-# TurboIO firmware (single tree; current release label in `RELEASE`)
+# TurboIO firmware
 
-This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg11`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). The restructure kept ZIP8 byte-identical with a one-off `identityCarryOver` for `build.py`; the first TMG9 repin (`tmg9(1)`) removed it, and `build.py` is hashed live again. The TMG12 release build uses the same mechanism once more (see "TMG12 release build" below). The TMG8 sections below keep their text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`). TMG10 and TMG11 were built on stock 1.0.5.12; since TMG12 the tree is built on stock 1.0.6.11 (`stockBase` in `build-inputs.json`). The TMG10 and TMG11 sections describe 1.0.5.12, and the TMG9 and older sections describe 1.0.5.5 addresses and offsets.
+The source for the patched Strix OS firmware of the RayNeo iO glasses. The build compiles a module, links it into stock `nuttx_ap.bin` at 25 patch sites and packs the result with the other stock payloads, unchanged, into an OTA ZIP.
 
-## TMG12: TMG11 ported to stock Strix OS 1.0.6.11 (release build of candidate 4; CANDIDATE-NOT-APPROVED)
+There is one tree. The release label is the single line in [`RELEASE`](RELEASE). `build.py` names the ZIP from it and `tools/phone_pins.py` names the phone pins from it. Each released firmware is an annotated git tag `fw/tmgN`. Run `git show fw/tmgN` to see its ZIP hash and paired phone build. Release history lives in those tags, in git history and in [docs/CHANGELOG.md](../docs/CHANGELOG.md).
 
-**CANDIDATE-NOT-APPROVED. Nothing of TMG12 has run on glasses. Every check so far is offline or in the emulator. The release build below exists so that the phone track (C20 on the 1.0.21 host) can pin it; flashing it needs the owner's own go. There is no `fw/tmg12` tag yet.**
+Agents never flash. The owner flashes, with the steps in [OTA.md](../official-addon/ios107-edition/OTA.md).
 
-### TMG12 release build
+## Current release: TMG12
 
-On 2026-11-15 the owner moved TMG12 from emulator only to a device build. The tree now builds TMG12 as a normal release candidate, and its AP is byte-for-byte candidate 4's (`tmg12(42)`), so everything checked on candidate 4 holds for it.
+**CANDIDATE-NOT-APPROVED.** TMG12 has not run on glasses. Every check so far is offline or in the emulator. There is no `fw/tmg12` tag yet. The phone build that flashes it is C20 (release `c20` in [releases.json](../official-addon/ios107-edition/releases.json)).
 
-- **What changed.** `build.py` marks stock 1.0.6.11 as a phone release base (`phoneRelease` in `STOCK_SHAPES`), `build-inputs.json` sets `emuOnly` to false, and the ZIP takes the normal candidate name `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`. `RELEASE` stays TMG12. The emulator-only mode is kept for future bases: a base with `phoneRelease` false still needs `emuOnly`, still gets the `-EMU-ONLY-NOT-FOR-DEVICE.zip` name, and `tools/phone_pins.py` still refuses it. The tests prove this on a fixture copy of `build.py`.
-- **Why the AP did not move.** The build identity (the 32 bytes at AP offset 0x7b45fe, the status `build` field) hashes `build.py`. Neither `emuOnly` nor `RELEASE` is a build input. The edit to `build.py` changes nothing that is compiled or linked, so `build-inputs.json` carries `identityCarryOver` for `build.py`. It holds candidate 4's `build.py` hash (`carried`) and is bound to the current file (`live`), as the single-tree restructure did for ZIP8. `tests/identity_test.py` allows it only next to this ZIP's pin, with this carried hash. A `--repin` drops it by design. A repin of this tree gives an AP that differs from candidate 4's in exactly those 32 bytes (identity `45c4c4ba3d07b380314f59d8ffad7fdd30923f3bddec329aaaf6c15c1c2b8e13`), so do not repin while this release is current.
-- **The ZIP is candidate 4's ZIP.** The archive writer, member order, compression, dates and modes are unchanged, and the file name is not inside the container. So the release ZIP is byte-identical to candidate 4's emulator-only ZIP. The 15 payloads other than the AP are the stock 1.0.6.11 members, byte for byte. Three plain builds, one from the worktree and two from clean copies of the tree, gave the same bytes.
+TMG12 is TMG11 ported to stock Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)).
 
 | Item | Value |
 | --- | --- |
-| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`, 9,549,211 B |
+| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`, 9,549,211 bytes |
 | ZIP SHA-256 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
-| AP | 8,132,360 B, SHA-256 `6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50`, MD5 `96eebf1467b53759e816f05057df506e` |
-| Module | 165,116 B at 0x10929204 |
-| Build identity (status `build`) | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
-| Package | 17 entries: 16 manifest rows (payloads) and `OtaFileInfo.json`; the phone pins hold 17 member rows. The type-5 `OtaVersion` is `Strix OS 1.0.6.11` and the folder is `Strix_OS_1.0.6.11`. |
+| ZIP MD5 | `063b380629e1a01fcde04ce45a5dac15` |
+| Pinned copy | `$TURBO_INPUTS/tmg12/` |
+| AP (`nuttx_ap.bin`) | 8,132,360 bytes, SHA-256 `6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50`, MD5 `96eebf1467b53759e816f05057df506e` |
+| Module | 165,116 bytes at 0x10929204 |
+| Build identity (status `build` field) | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
+| Package | 17 entries: 16 payloads and `OtaFileInfo.json`. Only `nuttx_ap.bin` differs from stock; the other 15 payloads are stock 1.0.6.11, byte for byte. |
+| Audit | 25 patch sites, 7 startup descriptors, stock cores `Strix OS 1.0.6` build 11 |
+| Toolchain | LLVM/LLD 23.1.5 |
 
-**Checked.** Candidate 4 passed the firmware-only gate and the lead's static boot-confirm check, and its emulator round passed: cases C4-2 to C4-5 passed, and C4-1 was partial only because of an assumption in the run script, with no candidate failure. The release build passed the firmware-only gate (plain build) and the same static check. `tools/phone_pins.py` makes pins for a c20-style release of this ZIP on the 1.0.21 full host, and refuses a stock 1.0.6.11 release on any other host. **Not checked.** Nothing has run on glasses or gone over the phone link. The OTA install of a 1.0.6.11 package, its post-boot confirm and the phone's flash gate for a 17-member package have not been exercised.
+### Do not repin while TMG12 is current
 
-TMG12 (`RELEASE`) is TMG11 like for like on stock 1.0.6.11 (`stockBase` in `build-inputs.json`). The carousel has 8 stock and 6 module tiles (14 items, module ids 8 to 13; see "Tiles and persistence"). The module's navigation tile is labelled Turbo Nav, and stock's own Navigation app is added to the remote's input gate. The Sensors page shows a "UI heap" line (the LVGL memory counters) and a Light line read through stock's own latest-light getter (see the Sensors screen under TMG11).
+The build identity is 32 bytes in the AP, at AP offset 0x7b45fe. It hashes `build.py` and every source. `build.py` was edited after the last repin, but nothing it compiles or links changed. So `build-inputs.json` carries `identityCarryOver` for `build.py`: it binds the hash of the older `build.py` (`carried`) to the current file (`live`). `tests/identity_test.py` allows this only next to the TMG12 ZIP pin.
 
-**What stock changed that the port follows.**
+A `--repin` drops the carry-over. The AP then differs in those 32 bytes (identity `45c4c4ba3d07b380314f59d8ffad7fdd30923f3bddec329aaaf6c15c1c2b8e13`), and the ZIP no longer matches the pinned release. Repin only when you make a new release.
 
-- The menu object grew: `TIO_STOCK_MENU_BYTES` is 0x10c (it was 0xfc), so the allocation is 0x130 with the module's tail.
-- Stock has 8 tiles (`TIO_STOCK_MENU_TILES`), with Navigation inserted at index 4, so every stock tile from index 4 up moved by one.
-- The launcher's manager pointer moved to +0x15c (`TIO_STOCK_LAUNCHER_MANAGER`; it was +0x3c).
-- The package holds 16 payloads (`stockMembers`), one more than 1.0.5.12's 15.
+### What TMG12 changes
 
-Every stock offset the tree uses is named in `src/stock_layout.h` and proven from the stock image by `tests/stock_layout_test.py`.
+- The carousel has 8 stock and 6 module tiles: 14 items, module ids 8 to 13.
+- The module's navigation tile is labelled Turbo Nav. Stock's own Navigation app is added to the remote's input gate.
+- The Sensors page (Display Test, then one knob press) shows a "UI heap" line: the LVGL memory in use and its peak. It updates once a second.
+- A new "Light" line shows the bucket of the light value stock last cached ("0-1 lx" to "5000+ lx", or "n/a"). It is read through stock's own getter (`tio_light_latest` in `link.ld`). The module never starts or stops the sensor. Build with `TIO_SENSORS_LIGHT=0` to remove the line.
+- Tile settings are stored in new version-2 files (`turbo_tiles_v2_{0,1}.cfg`). The TMG11 order and hidden set are not carried over; TMG12 starts with the default order.
+- Tile commands from an old phone build (version 1) are refused with no reply.
 
-**Candidate 3 build record** (tree `tmg12(36)`, `$TURBO_INPUTS/tmg12-emu/f7c3/build-a/audit.json`). The module is 165,052 bytes at 0x10929204. The AP is 8,132,296 bytes. Module room is 1,632,756 bytes, which leaves 1,467,704 bytes of headroom below the AP cap and 2,287,928 below the partition limit. The audit passes with 25 patch sites, 15 unchanged stock payloads and 7 startup descriptors, on cores `Strix OS 1.0.6` build 11. Three builds from clean output folders gave byte-identical ZIPs.
+Stock 1.0.6.11 changed these, and the port follows:
 
-| Item | Value |
-| --- | --- |
-| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-EMU-ONLY-NOT-FOR-DEVICE.zip`, 9,549,172 B |
-| ZIP SHA-256 | `007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325` |
-| AP SHA-256 | `c1acdeb25bbf93aaf28d5f629168463b3dea454fe859574166aba5f85540d5f5` |
-| Build identity (status `build`) | `05af68ca7c798b2731d444229f03b592ca60b38beddc5d572bd514e1945dd38a` |
+- The menu object is 0x10c bytes (it was 0xfc), so the allocation with the module's tail is 0x130.
+- Stock has 8 tiles, with Navigation at index 4. Every stock tile from index 4 up moved by one.
+- The launcher's manager pointer is at +0x15c (it was +0x3c).
+- The package holds 16 payloads, one more than 1.0.5.12.
 
-**What was checked.** The firmware-only gate's stages (`fw-rebase`, `fw-layout`, `fw-build`, `fw-audit`, `fw-tests`, `fw-reproduce`, `source-audit`; see "Firmware-only gate" below), which include the host tests. On candidate 1 (`tmg12(23)`), candidate 2 (`tmg12(26)`) and candidate 3 (`tmg12(36)`) the firmware-only gate passed all seven stages with a plain build. The lead's static check found no changed byte on the boot-confirm path, and nothing in the module posts to the OTA queue; on candidates 2 and 3 its four checks pass.
+Every stock offset the tree uses is named in [`src/stock_layout.h`](src/stock_layout.h) and proven from the stock image by `tests/stock_layout_test.py`.
 
-**Emulator round.** The emulator lane ran candidate 1 (boot, advertising, home, arming, the carousel and the module pages), candidate 2 (13 full boots) and candidate 3, with no candidate failure: no crash, assert, hang, reset or new guest-error class. Candidate 3 had 11 full boots on the build and its three forced-failure images, 6 more on two retry test images and a repeat, and further boots for memory dumps and a heap read. Changes 1 to 4 of candidate 3 are shown: the "UI heap" figure once a second, the 100 ms retry after a refused first draw, event 142, and stock's text for the rank 2 Chinese label. Change 5 (the camera open with no view manager) needs the phone. The Display page passed 100 open and close cycles with the canary intact. The case of stock code running with a selection past index 7 on an unarmed menu is closed for the emulator by whole-object memory dumps: nothing outside the selection and motion fields is written.
+### What was checked
 
-**Static hardening studies.** No stock write into the module's tail was found outside the menu unit. Lottie's set-frame and the 51 launcher messages are closed for memory safety: the frame setter clamps, and no message makes stock index its 8-entry arrays with a selection of 8 to 13. On a boot that awaits confirmation, the only module code that can run before the confirm is the message hook and possibly the text hook.
+- The firmware-only gate passed with a plain build of the tree.
+- The ZIP is byte-identical to candidate 4's (`tmg12(42)`). Three plain builds, one from the worktree and two from clean copies, gave the same bytes.
+- A static check found no changed byte on the boot-confirm path, and nothing in the module posts to the OTA queue.
+- The emulator ran the candidates with no crash, assert, hang, reset or new guest-error class. The Display page passed 100 open and close cycles.
+- `tools/phone_pins.py` builds the `c20` pins from this ZIP for the 1.0.21 full host, and refuses a stock 1.0.6.11 release on any other host.
 
-**Memory.** The module asks for what TMG11 asked for, but the system heap is smaller: 24,241,248 bytes on 1.0.6.11 against 27,004,960 on 1.0.5.12. In the emulator stock uses about 3.7 MB of it at idle, and candidate 3 uses the same. The module's worst case live at once is about 350 KB, or about 443 KB in a one-tick overlap of the Camera frame and the Display page. Music and My Apps keep their blocks after a visit (about 130 KB together after one visit each).
+Not checked: anything on glasses, the phone link, the OTA install of a 1.0.6.11 package and its post-boot confirm, real sensors and real timing.
 
-**What was not checked.** Nothing has run on glasses. The phone link has not been exercised; the emulator cannot show the OTA install, the Bluetooth link, real sensors or real timing. The emulator has not shown a renderer that stays busy over several ticks (the retry images model one refused first draw), nor the O6 end of a real route from the phone. The loader and the boot ROM were not read.
+### Known limits
 
-**Known limits (recorded by the port lead).**
-
-- If the menu's arming check fails (trace event 141), the menu is left unarmed. The carousel then does not animate, but the build still advertises and is confirmed, so the recovery is a reflash. Trace event 142 means the menu's canary word was overwritten, so the menu reads as unarmed, as after a failed 141; it is printed at a menu show, once per show, and it can also follow a 141 whose result has its value-1 bit (bit 0) set (the fill after the stock object was not intact).
+- If the menu's arming check fails (trace event 141), the menu stays unarmed. The carousel does not animate, but the build still advertises and is confirmed, so the fix is a reflash. Event 142 means the menu's canary word was overwritten; the menu then reads as unarmed.
+- With event 141 result 4, stock logs a warning at each step and show while the selection is past index 7, and a press there launches nothing.
 - The Light line keeps showing the last bucket after the sensor stops.
-- The phone status no longer carries the LVGL heap total; it shows it as not available.
-- Stored tile files are new version-2 files (`turbo_tiles_v2_{0,1}.cfg`). The TMG11 order and hidden set are not carried over, so TMG12 starts with the default order.
-- An old phone build's tile commands (version 1) are refused with no reply.
-- The first "UI heap" interval after the Sensors page opens can be shorter than a second; every later one is a second.
-- With the menu's count check failed (event 141, result 4), stock logs a warning at each step and each show while the selection is past index 7 (8 to 12), and a press there launches nothing.
-- The Turbo Display page has no top-app check. Behind an app that comes up without hiding the menu, the page lives until its deadline (60, 120 or 300 s).
-- On an unarmed menu the app and focus services still answer the phone: an app query, install or remove and a focus start work without the menu, and they do not touch the menu object. From reading the code, not tested: an open Music page whose menu tail is then broken keeps its controller and power hold until its own timeout.
-- Lint exemption E8 (the 28-byte image descriptor size) stays, because no stock instruction witnesses that size.
-- The test models keep their own literal copies of the named stock values on purpose, as an independent check.
+- The phone status shows the LVGL heap total as not available.
+- The first "UI heap" interval after the Sensors page opens can be shorter than a second.
+- The Turbo Display page has no top-app check. Behind an app that opens without hiding the menu, the page stays until its deadline (60, 120 or 300 s).
+- The system heap is smaller than on 1.0.5.12: 24,241,248 bytes against 27,004,960. The module's worst case live at once is about 350 KB.
 
-**Emulator-only ZIPs of candidates 1 to 4.** They are flashable bytes under another name: only the file name and `audit.json` mark them as emulator-only. Candidates 1 to 3 stay out of the release folders under `$TURBO_INPUTS`, and `tools/phone_pins.py` refuses them in every mode: by name, by their bytes when they are listed under a base they are not built on, and by their SHA-256 (`SUPERSEDED_ZIPS`) on stock 1.0.6.11 under any label, because since 1.0.6.11 became a phone release base their bytes alone no longer give them away. Candidate 4's bytes are the release build above.
+### Device check
 
-## TMG11: TMG10 plus a read-only Sensors screen (phone build C18; release history)
+There is no TMG12-specific checklist yet. After the flash, check:
 
-TMG11 (`RELEASE` at tag `fw/tmg11`) keeps TMG10's stock base (1.0.5.12), its 25 patch sites and its 13 tiles. The only changes are:
+1. RayNeo shows Strix OS 1.0.6.11, and the phone's Glasses runtime screen shows the build identity above.
+2. The carousel has 14 items, the navigation tile reads Turbo Nav, and every tile behaves as on TMG11.
+3. The tile order is the default one.
+4. Display Test opens, and one knob press shows "Sensors (read only)".
+5. The IMU line reads ST or TDK.
+6. Folding the glasses changes the fold line.
+7. Turning and pressing the knob change its counts.
+8. The "UI heap" line shows memory, and the "Light" line shows a lux bucket.
+9. Leaving the page restores normal menu stepping.
 
-- **Sensors screen** (`display-runtime-v1/native_display_page.c`, `tmg11(1)`). It is a second mode of the Display Test page, and the first knob press on that page opens it. On its 100 ms tick it shows:
-  - the IMU family byte, new symbol `tio_imu_family`, AP 0x1985ac50 (1.0.5.5: 0x197f2d08; the rebase row is checked against both images by `tests/rebase_independent_test.py`): 0 unknown, 1 none, 2 ST, 3 TDK;
-  - a line labelled "Light", which is really the LVGL UI memory in use and its peak, in bytes (`native_light`, display unit + 0x1bc/+0x1c0, against a 16 MiB budget). It is not the ambient light sensor. On the owner's glasses it settles at about 8.79 MB. Reading the W1161 would need its driver started (`SNIOC_START`), which this read-only screen does not do;
-  - the fold state, `nav_folded(nav_input(nav_monitors()))`;
-  - the knob delta and press count.
+For comparison, the TMG11 owner check on 2026-11-12 found: IMU ST; fold reads "open" when unfolded (the Hall sensor is on the right hinge); the knob counts negative counter-clockwise, about 1,200 counts per turn. The C18 sensor log named the ST IMU (LSM6DSO32 driver, WHO_AM_I 0x6b), the MMC5603NJ magnetometer (ID 0x10), the W1161 light sensor (ID 0xe6) and the Mixo OTS knob (ID 0xB1).
 
-  It reads only. It never calls `start_report_imu`/`start_report_mag`, registers no handler, and writes no PMU, sensor-config, settings or flash state.
+To go back, see [Going back](../official-addon/ios107-edition/OTA.md#going-back) in OTA.md.
 
-  On the 1.0.6.11 tree (TMG12, emulator only; phase F5) the old "Light" line is renamed "UI heap <used> max <peak>" (the same two LVGL counters; the 16 MiB budget is no longer applied or reported, because the pool capacity has one witness only, so the phone status shows the total as not available). A new "Light" line shows the bucket of the light value stock last cached ("0-1 lx" … "5000+ lx", or "n/a" when stock has none or it is not a finite lux value of 0 or more). It is read through stock's latest-light getter (link.ld `tio_light_latest`), which takes the light manager's mutex and does no I2C; the module never starts, restarts or stops the sensor, so after the sensor stops the line keeps the last bucket. The nine bucket edges are copied from stock's debounce table, and `tests/native_light_host_test.py` checks them against the stock image on every run. The build flag `TIO_SENSORS_LIGHT=0` removes the line and the getter reference. `native_light.c` no longer carries the "not ported to 1.0.6.11" guard. The emulator's light model is constant, so the line is proven only on the glasses. On the 1.0.6.11 tree the screen reads the two UI heap figures on its first draw and then once a second (the page's activity cadence), and shows the last figures read in between, so the label is no longer redrawn on every 100 ms tick just because the heap number moved; the other lines still follow the 100 ms tick.
-- **Knob forwarding** (`music-runtime-v1/menu10.c`). While a page is open, wheel deltas and presses go to `tdp_native_knob` for that page. They are still not passed to stock, and every other path is unchanged.
-- **Pins.** Module 161,276 B. ZIP11 `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1`, 8,847,234 B, published to `$TURBO_INPUTS/tmg11/`. The emulator-only candidate built before the `RELEASE` change has the same bytes; only the archive name differs.
-- **Owner device check, 2026-11-12 (TMG11 flashed):**
-  - IMU: ST.
-  - Fold: "open" when the glasses are unfolded; the Hall sensor is on the right hinge.
-  - Knob: counter-clockwise is negative, about 1,200 counts per full turn.
-  - "Light": shows UI memory (about 8.79 MB), not light.
-  - The Sensor log on C18 named the parts: ST IMU on the "LSM6DSO32" driver (WHO_AM_I 0x6b), MMC5603NJ magnetometer (ID 0x10), W1161 light sensor (ID 0xe6, I2C0), Mixo OTS knob (ID 0xB1, I2C0).
-- **C18** is the 1.0.11 full host with `--release c18`. It bundles ZIP11 and accepts only `Strix OS 1.0.5.12`. It was the first same-version (1.0.5.12 to 1.0.5.12) flash, and the glasses accepted it (owner device check, 2026-11-12). The rollback is C16 + ZIP10.
-- **Device checks (owner):**
-  - the menu and every tile behave as on TMG10;
-  - Display Test opens as before, and one press shows "Sensors (read only)";
-  - the IMU line reads ST or TDK;
-  - the "Light" line reads UI memory, not light (see above);
-  - folding changes the fold line;
-  - turning and pressing the knob change its counts;
-  - leaving the page restores normal menu stepping.
+## Build
 
-## TMG10 candidate: TMG9 rebased onto stock Strix OS 1.0.5.12
+You need:
 
-**CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance. The phone side is C16 (flashes ZIP10) with C17 (rolls back to ZIP9), both 1.0.11 full-host builds; see "Phone builds C16 and C17" below. Neither is packaged, signed or installed.**
+- `TURBO_INPUTS` exported in every shell. It is the folder with the toolchain, the release ZIPs and `package.env`. `scripts/turbo-gate.sh` exports it for its own stages; a direct run of `test.py` or of a test in `firmware/tests/` does not.
+- The pinned toolchain: LLVM/LLD 23.1.5 in `$TURBO_INPUTS/toolchain/llvm-bin`. It has no `llvm-objdump`, so no tool here may need one. No package manager is needed.
+- The stock ZIP of the tree's base. Get its path from `build.py --show stock-zip`; never type it by hand. For 1.0.6.11 it is a canonical ZIP of the stock members under `$TURBO_INPUTS`, made by `tools/stock_zip.py`.
 
-TMG10 is TMG9 with no feature change, built on stock 1.0.5.12 (`firmware-research/strix-1.0.5.12/stock/`, ZIP `b7bfd3cc…4133`, AP `af701a65…13ae`) instead of 1.0.5.5. Every stock address moved, by 22 different amounts, so nothing was rebased by hand:
-
-- **The table.** `baseline/rebase-1.0.5.5-to-1.0.5.12.json` holds both columns for the 153 link.ld callees (149 moved; memcpy, memset, strcmp and strlen are in the copy region and stay; the strcmp veneer `ce_ext_10941968` moves and still targets 0x100109), the 25 edits, 14 literal values at 34 sites, the 11 stock ABI ranges, the module VA (0x1086fec0 → 0x10889684) and the per-base stock pins. `tools/rebase_derive.py` generated it from the decomp's static study (inputs and hashes in its `provenance`) and the TMG9 tree, and re-checked every value against both stock images; it refuses to write the table if a check fails. Each row lists the checks it passed (see the script's docstring for what each means).
-- **Applying it.** `tools/rebase_apply.py --write --to 1.0.5.12` swaps the columns (`--to 1.0.5.5` swaps them back; a round trip restores the tree exactly). `--check [--stock ZIP]` fails on a tree that is not wholly on one base, on any stale address of the other base anywhere under `src/`, `include/` and `tests/`, and, with the stock ZIP, on a patch site, trampoline prologue, registration literal or string that does not match it. `build.py` runs the same check before it compiles.
-- **Thumb bit.** Values are written exactly as the tree uses them: called or stored code pointers are odd (link.ld, the shim pointer, the render dispatch values), patch sites are even, RAM and `.data` addresses are plain byte addresses (a string may start at an odd address). The swap keeps the bit; `--check` asserts it.
-- **The 16 references past a Ghidra body end** (15 extrapolated by the matcher, plus `tgr_intercept`) all pass the masked 16-byte window and a unique masked signature at the new address (`rebase_derive.py` requires both for these rows). `tgr_intercept` uses the study's corrected 0x1062c439, not the matcher's 0x10625941, which is a different function.
-- **The two re-recorded edits** (the 284-byte menu allocation at 0x10683278 and the tail initialiser at 0x106832a2, both in the routine after FUN_10666c34) get `before` = the old pattern with its BL re-encoded to the moved callee (port_stock_new, stock_ctor); the result equals the 1.0.5.12 bytes. The routine at 0x10666ca4 was reviewed by hand against 0x10683240: same instructions, registers and struct offsets (+0x10, +0xe8/+0xec, the 0xfc allocation); the differences are three `movw r0,#0xb18` → `#0xc18` (an ap-01 trace event ID, +0x100, handed to the trace check and the log helper), BL displacements, and literal-pool words (two log strings, and the index-listener pointer, +116120 like the rest of the block). Neither edit touches an event ID, so both keep their meaning. The full reasoning is in the `tmg10(3)` commit message.
-- **RAM and data addresses.** Launcher global 0x19971594 → 0x19989694 (11 source sites, 8 of them in built files, plus a host-test pattern), file-callback struct 0x196aea48 → 0x196c6988 and the stream registration target 0x10569ba5 → 0x10583605 (decomp votes, and the literals the stock registration at the new edit site actually loads), display unit 0x184d4440 → 0x184ec384 (113 of 120 votes, and the field check below), and the four coexist.S strings (the same bytes at the new `.data` address).
-- **native_light** (`current` 0x184ec540, `peak` 0x184ec544) was an inference in the study (no literal loads them). It is now checked by a second method: they are display unit + 0x1bc and + 0x1c0, and the same stock ldr/str sites (around 0x104a1800 in 1.0.5.5, 0x104b9d24 in 1.0.5.12) read and write those two offsets from the old base literal in the old image and from the new base literal at their matcher partners in the new one. The study's neighbour shift (+0x17f44) gives the same values. The provider therefore stays enabled on 1.0.5.12. Its `#error` now accepts either hash-pinned profile.
-- **Section 3.3 constants.** The two render_idle.c dispatch values (0x10428d89 → 0x10440cf1, 0x105335ff → 0x1054c447) pass window, unique signature and literal votes; the addresses quoted in comments (align_pointer_cb in tio_bank.h and four test comments, the recorder helper in app_files_native.c, and since `tmg10(6)` lv_timer_create 0x105f6170 → 0x10602514 in native_page.c, which the study had skipped and the independent check found) are rewritten the same way. `rebase_apply.py --check` (and so `build.py`) now also fails on any hex token in a stock window (either base's AP flash, RAM 0x18000000–0x1a000000, the copy region) that is not an address of the tree's base in the table and not in the table's `notStock` list, so an address the table does not know fails the check too. Since TMG12 the RAM window ends at 0x1b600000 (it ended at 0x1a000000 before), and `tools/check_layout.py` uses the same end for its RAM rule.
-- **The 11 stock ABI ranges** (`tests/stock_abi_test.py`) are paired range by range: equal bytes except moved branch targets that land on the matcher partner (one range also ends with a code-pointer literal that moves with its target), with the new base's hash in the table. The test picks the column of the tree's `stockBase`, and compares the 25 edits with the TMG3 set moved through the same table.
-
-**Build changes.** `build-inputs.json` gains `stockBase` and `stockMembers` (all 15 stock payloads). `build.py` derives the archive name (`StrixOS-1.0.5.12-TurboIO-TMG10-…`), the audit `baseline`, `-DTD_STOCK_10512=1` (`-DTD_STOCK_1055=0`) and the SW_VER/BUILD_VER every core must report from `stockBase`. The 25 edits, the 14 untouched payloads, the 7 startup descriptors and the fixed ZIP date are unchanged. **Never mixed cores:** the audit refuses a stock set or candidate whose AP, APC1 and BTH do not all report `Strix OS 1.0.5` build 12 with one REV_INFO commit (55bc20b0-dirty on 1.0.5.12), and checks every non-AP member against `stockMembers`; a 1.0.5.12 AP can never ship with 1.0.5.5 APC1/BTH (their A2DP RPC changed). **Room:** the AP must stay below 9,600,000 bytes, which leaves 2,286,964 bytes for the module on 1.0.5.12 (2,391,352 on 1.0.5.5); the build asserts the module fits and both the build and the audit report `moduleRoom`, `moduleHeadroom` and `partitionHeadroom`. **Toolchain:** TMG10 is pinned to Homebrew LLVM/LLD 23.1.5 (owner-approved for TMG10 only); TMG9 stays on 23.1.4.
-
-**TMG9 survives at its tag only.** The build identity hashes `build.py` and every source, so no TMG9 build from this tree can be byte-identical to ZIP9; a 1.0.5.5 build from here (`rebase_apply.py --write --to 1.0.5.5`, then `--repin` with 23.1.4) would be a different, never-released ZIP. ZIP9 is rebuilt from the tag: `git archive fw/tmg9 firmware firmware-research/strix-1.0.5.5/stock | tar -x -C DIR`, then `cd DIR && python3 -I firmware/build.py --stock firmware-research/strix-1.0.5.5/stock/Strix-OS-1.0.5.5-original.zip --llvm-bin <LLVM 23.1.4 bin> --out OUT` gives `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` (checked on 2026-11-08 with `$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`).
-
-**Identity.** Caps and the build name are TMG9's (TD_BUILD_TMG6, `TD_CAPS_TMG9`); the status `build` field (build-identity sha256) is `60ec082d7abaf6c87478b57bb6112b64a55de6ae70307739752908642d67e3c2`.
-
-**Tests.** `tests/rebase_independent_test.py` (`tmg10(5)`, written separately without the table or the decomp study) re-derives all 205 stock addresses from the two images and agrees with the tree and the table. `src/image-upload-test/render_idle_test.c` had a stale fixture key (the 1.0.4.12 display unit + 0x124, so it failed on TMG9 too; no runner builds it); since `tmg10(6)` it is written as display unit + 0x124 and passes. `tests/stock_base_test.py` (new): labels and defines come from `stockBase`, mixed cores are refused (each of AP, APC1, BTH from the other base, and a BTH with another REV_INFO), the members are pinned, and one stale or unknown stock-window address makes the tree "on neither base". Since `tmg10(8)` the phone `test.py` runs it in `tmg4-host` (`tmg10-stock-base`), next to `tmg10-rebase-independent` and `tmg10-render-idle`. `tests/rebase_independent_test.py` (new, `tmg10(5)`) re-derives every stock address of the TMG9 tree on 1.0.5.12 without the table, the decomp study or `rebase_derive.py`, and then compares the tree and the table with its own values; see "Independent rebase check" below. Since `tmg10(8)` the phone `test.py` takes the tree audit's stock ZIP from `stockBase` and audits `--tree-firmware` (the ZIP of the tree, ZIP10), while its phone groups test one release configuration (`--release`, its ZIP and its own stock base); the gate runs the default release (ZIP9) in full and C16 and C17 on their OTA groups.
-
-**What a static rebase cannot show (device checks, all open).** Everything in the TMG9 checklist, plus: screen-on paths under heat (the display manager gained a panel temperature check and a 10 s VOM settle); the look of labels made through `native_label_create` (1.0.5.12 adds a line-breaking flag TMG does not set); notification dots over the changed ANCS code; heap headroom (the stock 'Umem' region is about 96 KiB smaller); the runtime status `lv` metrics from native_light look plausible. Trace/event IDs ≥ 0x700 moved by +0x100 in ap-01; a hex grep of `src/` found no TMG code that hard-codes one. No 1.0.5.12 rollback pair exists yet; it is defined with the phone port.
-
-### Independent rebase check (`tmg10(5)`)
-
-`python3 -I tests/rebase_independent_test.py [--old-tree DIR] [--stock-old ZIP] [--stock-new ZIP] [--new-tree DIR] [--table JSON]` exports `fw/tmg9` with `git archive` unless `--old-tree` names such an export. It takes the universe from the TMG9 tree's own files (link.ld, build-inputs.json, the stock ABI ranges, and every hex token under `src/`, `include/`, `tests/`, `trampolines.S` and `ImageWireFormat.h` that falls in the 1.0.5.5 AP or in RAM; a token there that is not a stock address must be listed in `NOT_STOCK` with a reason). It derives each new address from the two stock AP images alone: a masked Thumb-2 signature (BL/B.W immediates, pc-relative load offsets and literal-pool words masked; several window shapes, all unique ones must agree, one of at least 32 bytes or else a corroborating branch edge), caller votes (old BL/B.W sites paired by their own windows), pooled branch edges, literal votes for RAM, `.data` and code-pointer values, the same struct-field offset at paired sites (native_light), the string at both `.data` addresses, the image trailer (module VA), and identical copy-region bytes (memcpy, memset, strcmp, strlen). It fails on any unresolved address, any method that disagrees, any tree value or table row that differs from its own, a count mismatch between the old-tree universe and the rows checked, a known-bad `tgr_intercept` 0x10625941 that is not rejected, and a mutation (a neighbour's address in a temp copy of the tree or the table) that goes undetected. It prints one line per address with the methods used.
-
-Status at `tmg10(5)` (left failing on purpose; the tree and table are not changed by this commit): 205 addresses (153 link.ld + 25 edits + module = 179 code references, 11 ABI ranges, 15 literal values at 35 sites), all 205 re-derived with every method agreeing, and the table agrees on all 204 rows it has. The one failure: the comment `lv_timer_create at 0x105f6170` in `src/image-upload-test/native_page.c` is a 1.0.5.5 address the table has no row for, so it was not rewritten; on 1.0.5.12 the same code is at 0x10602514 (unique masked signature in 6 windows). The test fails until that comment is moved and the table gains the row.
-
-### Phone builds C16 and C17, and the C17 + ZIP9 rollback pair
-
-Written before any TMG10 flash, as plan step 9 requires. Nothing here is packaged, signed, installed or flashed.
-
-- **C16** flashes TMG10: the 1.0.11 full host (C15's code) built with `turbo-package.sh --host 1011-full --release c16`. It bundles ZIP10 (`4a597363…`, 8,846,364 B), accepts a type-1 readback of `Strix OS 1.0.5.5` or `Strix OS 1.0.5.12`, sends type 5 `{"OtaVersion":"Strix OS 1.0.5.12"}`, and its loopback feed offers versionName `0100050012` / versionCode 100050012 as `Strix_OS_1.0.5.12.zip` to queries with `versionCode=01.00.05.0005` or `01.00.05.0012`.
-- **C17** is the rollback: the same host with `--release c17`. It bundles ZIP9 (`def1afe2…`, 8,819,595 B, the `fw/tmg9` ZIP; rebuild it from the tag as described above), accepts only `Strix OS 1.0.5.12`, targets `Strix OS 1.0.5.5` and offers 1.0.5.5. **The rollback pair is C17 + ZIP9.** It is built before TMG10 is flashed and kept unflashed.
-- The default release (no `--release`) is unchanged: C14 on 1.0.7 and C15 on 1.0.11 with ZIP9, accepting 1.0.4.12 and 1.0.5.5. The version widenings are the owner's documented pin changes of 2026-11-08 (plan decision 9); no hash, size or authorization check was relaxed.
-- All of it is generated: `official-addon/ios107-edition/releases.json` names each release's firmware, stock base, ZIP (path under `$TURBO_INPUTS`, size, SHA-256) and accepted versions; `tools/phone_pins.py --write/--check` reads every ZIP, refuses one whose non-AP members are not the stock members of its base or whose AP/APC1/BTH do not report that base, requires the release carrying this tree's label to be the ZIP in `build-inputs.json`, and writes `FirmwarePins.h` (one block per release, picked by `TIO_RELEASE_<NAME>`), `firmware-pins.json` (the default, format unchanged) and `firmware-pins-c16.json` / `-c17.json`. The gate runs `--check`.
-- **TMG10 may be one-way (owner accepted, decision 10).** Two decomp questions stay open: (a) do the stock app or the installer refuse a firmware whose version is lower than the current one; (b) do the installer, bootloader or validation-confirm enforce anti-rollback. The static record so far: the app compares no versions when it discovers an update (OTA-END-TO-END D11), and the traced 1.0.5.5 AP paths have no version ordering or downgrade rule; but after TMG10 the running installer is 1.0.5.12's, whose install path is not traced, and the rollback logic lives in the newly installed AP. If TMG10 misbehaves, the default recovery is a fixed TMG10.x flashed forward, not C17.
-- **Folder collision.** The owner's phone already holds RayNeo's stock 1.0.5.12 download in `ota/Strix_OS_1.0.5.12`, the folder name C16 uses, and on 1.0.11 the stock app reused an on-disk package without downloading (C15.1 capture). C16 cannot be authorized while those bytes are there (every one of the 16 files must equal ZIP10), and the wizard says why; how to get ZIP10 into that folder is an owner decision. See section C16/C17 of `official-addon/ios107-edition/OTA.md` before its rewrite (`git show 4fb3775:official-addon/ios107-edition/OTA.md`); the current guide covers the same case under "Folder already in use".
-
-### ZIP10 candidate (reproducible, pinned)
-
-Repinned in `tmg10(6)` (the native_page.c comment is a build-identity input, so the identity and the AP/ZIP hashes moved; the module code and size did not). Built twice from clean output directories with LLVM/LLD 23.1.5; the two ZIPs are byte-identical, and a build from `git archive` of the commit gives the same bytes. Not copied anywhere outside the build output; the current tree no longer builds it, so rebuild it from the tag `fw/tmg10` the way "Rebuild and audit" rebuilds TMG11 from its tag.
-
-| Payload | Bytes | SHA-256 | MD5 |
-| --- | ---: | --- | --- |
-| ZIP | 8846364 | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` | `5f1284094ccc03496215122051416693` |
-| AP | 7473032 | `da16ecfa0757a58ad32cf763c138624e1d4bd9f23e13a55bd77e7da13e2fd4b6` | `c0365ebb45ade9348feb29cbebffabfc` |
-
-Module 159,996 bytes at 0x10889684 (TMG9: 160,000); 2,126,968 bytes left below the AP cap, 2,947,192 below the partition limit. `build.py --audit` passes: baseline 1.0.5.12, cores build 12 / REV_INFO 55bc20b0-dirty, 25 patch sites, 14 unchanged stock payloads, 7 startup descriptors.
-
-## TMG9 candidate (Round 3)
-
-**CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
-
-TMG9 is the first release built in this tree without a folder copy: `RELEASE` reads TMG9 and the frozen TMG8 tree is the tag `fw/tmg8` (ZIP8 `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`). The runtime build identity name (TD_BUILD_TMG6), the 25 patch sites and the sole raw edit stay unchanged. With one tree the phone pins (`FirmwarePins.h`, `firmware-pins.json`) follow the tree: each `tmg9(n)` commit that changes the build repins them with `tools/phone_pins.py --write`, so `test.py` audits the ZIP the tree actually builds. The final ZIP9 is the one published to `$IN/tmg9/`. The TMG8 and TMG7 sections below are historical.
-
-### TMG9 bug 1: the wrap moves the focus (`tmg9(2)`)
-
-On TMG8 a turn past either end of the menu animated a jump but left the highlighted item where it was. `m8_hook_wheel` wrote the target into the scroll position (`app+0xb0`) and called `native_snap`; stock `native_snap` re-seats the carousel from the selected index (`app+0x88`, through `setIndex` at 0x58e34c) and so overwrote the scroll position with the old item. TMG9 follows the pattern `remote_native.c` already uses: the hook writes `app+0x88 = target` and invalidates the shown frame (`app+0x90 = UINT32_MAX`), then calls `native_snap`, which re-seats the control and reruns the frame and label hooks, so `app+0x88`, the control index and `FMView.selected` all become the target. The 0xb0 write is gone and `eligible()` still guards the path. The grid page slide now follows the turn on a wrap: it takes the short way round like the carousel (forward when the forward distance modulo the tile count is at most half of it, ties forward), so last to first slides forward and first to last backward, and so does a wrap of several items in one event (12 to 1 forward, 0 to 11 backward). No patch site changes.
-
-Tests: `tests/tmg9_wheel_hook_test.c` and `tests/tmg9_wheel_host_test.py` (group `tmg9-wheel-hook`) slice the real `m8_hook_wheel` out of `menu10.c` and run it against a model of the stock wheel step and snap transcribed from the disassembly (0x4da6ae, 0x4da820, 0x58e34c, 0x58e90c) with the real `FMView`; the driver proves the harness is not vacuous by requiring the TMG8 body to fail it. `tests/tmg9_stepping_test.c` (formerly `tmg8_wheel_test.c`) steps the menu helper on its own. Still a device check: which sign of the raw count is forward when stock setting 0x24 is not 1 (log one turn).
-
-### TMG9 knob detent D: wire, storage and status (`tmg9(3)`)
-
-The knob detent D (raw counts per item) becomes a setting: 300 to 600 in steps of 50, default 400. This step stores and reports it; the stepping that reads D is `tmg9(4)`, the next section.
-
-**Status.** Caps bit 10, `TD_CAP_KNOB_DETENT`; `TD_CAPS_TMG9 = TD_CAPS_TMG8 | bit 10`, reported by TMG9. The status `detent` field is the live D: the stored value, or 400 when nothing is stored. From `tmg9(4)` it is also right before the menu is first shown (see the stepping section); in `tmg9(3)` it reported 400 until the settings had loaded. The validator (`diagnostics.c`, byte-shared with the phone) pairs `detent` with the caps: bit 10 accepts 300..600 in steps of 50, bit 9 alone accepts exactly 300 (TMG8), otherwise exactly 600 (TMG4..TMG7). TMG7, TMG8 and TMG9 samples all share the build field (`TD_BUILD_TMG6`, the label stays "TMG6").
-
-**Wire (TMG2 layout command).** Byte 7 is the peer byte: 0 (queries, grid SETs for TMG7), `TML_PEER_TMG8` = 1 (carousel SET), `TML_PEER_TMG9` = 2. TMG9 is a superset of TMG8: it is accepted for the carousel and also for grid SETs (values 2 and 3), so a TMG9 phone can set any layout and carry D in one command. The spare u32 at bytes 24..27 is D, and is non-zero only in a SET whose peer byte is `TML_PEER_TMG9`. A query still requires peer byte 0 and D = 0. D must be 300..600 and a multiple of 50. **D = 0 in a TMG9 SET means "leave the stored D unchanged"**, so a layout change never resets the knob step (and a TMG7 or TMG8 form SET to TMG9 glasses keeps it too); the default is restored by sending D = 400. `tml_decode` refuses every other combination, and `tml_accept` checks the same rules again (`TML_BLOCKED`, session token dropped) for callers that skip the decoder. The TMA2 reply is unchanged and describes the layout only; the phone confirms D by reading the status `detent` back. TMG7 and TMG8 glasses drop a command with peer byte 2 or a non-zero u32 at byte 24 (checked against copies of their decoders), so a phone must send a D-carrying SET only to a peer that reported bit 10.
-
-**Storage.** D/50 goes in the spare byte 6 of the existing 20-byte TMC2 record in the two-bank menu file (6..12; 0 = the default 400). Generation, bank alternation and CRC are as before (the CRC already covers byte 6). `tml_store` takes `(rows, detent)` and writes when either changes, so a D-only change persists (the old `rows == stored rows` early return would have skipped it); it still skips the write when neither changes. A record is written with byte 6 = 0 whenever D is the default, which is exactly what TMG7 and TMG8 write.
-
-**Rollback to ZIP8 or ZIP7 with a non-zero byte 6** (checked against `git show fw/tmg8:firmware-research/strix-1.0.5.5-tmg8/src/menu-grid-v2/menu_config.c` and the `fw/tmg7` copy; `tests/tmg9_detent_test.c` carries copies of both readers). Their `record()` requires byte 6 = 0, so a record with a non-default D is not valid for them and is ignored; it is not an error (`readable` stays true) and nothing is rewritten at boot. They use the other bank if it holds a record they can read (the previous layout, from before D was changed or from a record written while D was the default), otherwise the default of 3 rows. User-visible result: the menu works; the layout may be the previous one (or the 3-row grid), never garbage; D has no effect on ZIP8 or ZIP7. A user who never moved D, or who set 400, has byte 6 = 0 in every record and sees no difference. ZIP7 additionally ignores a carousel record (value 1), as it always did. If ZIP8 then saves a layout it writes the bank its default state points at, which can overwrite the newest TMG9 record; re-flashing TMG9 afterwards takes the valid record with the highest generation, so it can bring back an older TMG9 layout and D. That is recoverable from the phone.
-
-Tests: group `tmg9-detent` (`tests/tmg9_detent_test.c`): constants, status pairing for TMG7, TMG8 and TMG9 (every D from 0 to 1000), the decode table (every layout, peer byte and D), handler refusals, persistence across banks and a reboot (model), a damaged newest bank, a failed write, and the ZIP8/ZIP7 rollback cases. `native_remote_test.c` (group `tmg4-host`) drives the real handler: a TMG9 SET persists D, the status reports it, a reboot reads it back, TMG8-form and out-of-range commands get no reply and no write.
-
-### TMG9 hook-owned stepping (`tmg9(4)`)
-
-The main menu no longer lets the stock carousel round the knob into items. `m8_hook_wheel` adds the raw counts of a gesture into a signed int32 remainder (`TIOMenuStep`, kept in the heap `FMControl` next to the view; the whole `FMControl` stays under its 40,960 B cap) and steps **exactly one item per D counts**, D being the live detent (300 to 600 in steps of 50, 400 by default). A step goes through the same path as the remote and the bug-1 fix: write the selected index (`app+0x88`), invalidate the shown frame (`app+0x90`), call stock `native_snap`. The wrap is nothing special: it is the step past either end, the target being the index plus the steps modulo the item count (a lap of 13 items is 13 D counts and lands where it started; TMG11, stock 1.0.5.12). The gesture rules are those of the pages: a pause of more than 250 ms or a reversal drops the remainder, touch jitter (8 counts or fewer) is ignored without breaking the run, and the remainder carries over between events (one event of 2.5 D is two items with half a D carried). `eligible()` stays the first gate (a delta stock would drop is dropped before it builds a remainder).
-
-**Stock never sees a wheel delta in the launcher.** The `2 x delta` (`tio_menu_wheel_scaled`) and the edge counter (`tio_menu_wheel_wrap`) are gone, so stock's `position += delta / 600` and its round-at-.5 no longer decide anything. The only remaining `stock_wheel` call is for a menu that has **no controller to step with** (`FM_STEP_NO_CONTROL`: there is no navigation slot, the controller is closing, or `fm_show` made none because the heap block failed to allocate, the renderer was busy or there was no room): then the stock menu is all there is and it keeps its own rate, 600 counts per item, with the delta unscaled. `tests/tmg9_wheel_host_test.py` fails if a scaling helper, a `*2` or a second `stock_wheel` call comes back, and requires a body that hands stock a doubled delta to fail the stock-model checks.
-
-**Stock step side effects no longer run for a menu step.** TMG8 sent each non-wrap knob step through stock `0x4da6ae`, which also ran `0x4d9930` (starts the stock 0x98 timer), `0x4da65c`, and on an index change `0x4d9c2c` (`native_report_activity` 0x45c528, then the `app[0xe8]` index listener, then the manager `0x4d8ed2` and `0x4d88c8`, which builds the cJSON status gated by manager fields). TMG9 hands stock no delta, so only `native_snap` (0x4da820), `0x4d9b8c` and `setIndex` (0x58e34c) run, the same path the TMG8 remote step and wrap already took. The wheel driver still reports activity itself (0x56b006), but whatever the `app[0xe8]` listener publishes (for example a remembered selection) is no longer updated on knob steps, and the host model of `setIndex` leaves out its `ctrl[0x1c] = 0` write and the 0x98/0x9c timer pauses, so the harness cannot show whether anything depends on them. Accepted; it is a device check (item 6 below): leave the menu and come back, and see whether the selection persists as it did on TMG8.
-
-**One D for every list.** `tio_knob_detent()` (`common-v1/knob_detent.h`, defined in `remote_native.c`) is the single accessor. `wr_input_wheel` (pages), `tm_input_wheel` (music), the menu hook and the remote's `inject_counts` all read it at each event, so a change from the phone moves every list at once, mid-gesture included. The lockouts stay time based (200 ms on pages, 500 ms in music) and do not depend on D. `inject_counts` sends D in the launcher (one item or one page step per remote press) and 600 (`TK_DETENT_LEGACY`) in the seven other allowed apps, which are stock.
-
-**D before the menu is first shown.** The status `detent` and the accessor no longer wait for the first menu show. With a control state that has loaded the settings they answer from it; otherwise (no control state at all, or one a layout query created) they read the stored TMC2 record through the menu's own loader `tml_load` and take D from it, creating no control state and writing nothing. 400 comes back only when nothing readable is stored. So after a reboot the phone's knob screen reads back the persisted D immediately. The price is two small NAND reads (both banks of the menu file) per call while no control state has loaded the settings: before the first menu show, or for good if the control state could not be allocated. The accessor runs on every wheel event, remote inject and status sample, so in that state each of them reads the file; reads do not wear the flash, the pages and music are only reachable after the menu has been shown (which loads the settings and ends the reads), and the firmware has no writable static data to cache the value in (the owner tail and .bss are fixed; all state lives in the heap control), so no cache was added. Tests (`native_remote_test.c`): D = 500 stored, status before any menu init reports 500; nothing stored reports 400; a stored 400, 300 and 600; a failed read falls back to 400 and reads again when the error clears; no allocation, timer or write happens on the read path.
-
-**Direction.** Positive raw counts are forward (the next item), as on every page, and the hook uses the raw sign. Stock applies its own direction setting (`0x24`, default 1, read into `ctrl[0xa]`) by negating the delta when it is not 1, so with the default setting stock and the hook agree; with another value TMG8 moved the menu the other way from the wrap, and TMG9 does not read the setting for the menu at all. The RCA does not show the sign has to change, so the convention is kept; it is still a device check (below).
-
-**Items per turn** at about 2000 counts per turn: D = 300 gives 6.7, 350 5.7, 400 5.0 (default), 450 4.4, 500 4.0, 550 3.6, 600 3.3. Within one continuous gesture a turn carries the fractional part into the next one, so the average holds; a pause of more than 250 ms or a reversal drops the remainder.
-
-**Phone setting (ds3(p3)).** The knob screen (Developer, Glasses runtime) has a "Knob step" section: the step the glasses report with items per turn (2000 / D, one decimal), a stepper for 300..600 in steps of 50, an Apply capsule and a Result row. It is live only when the last fresh status carries caps bit 10; TMG8 and older show it dimmed with a "needs TMG9" note. Apply sends one D-carrying SET (`TML_PEER_TMG9`, through the layout link, which first reads the layout and re-sends it) and then asks for a status: the result reads Confirmed only when the status `detent` equals the new D (8 s window), otherwise Not confirmed. The SET reply alone never confirms, and nothing is retried. The footer and the status Raw units row follow the reported value (no hard-coded 300). Logic and states live in `TIOKnobStep` (`MenuLayout.m`), tested in `MenuLayoutTests.m` against the real menu_config store. Preview screens: `knob-tmg9`, `knob-tmg9-confirmed`, `knob-tmg9-failed`, `knob-tmg8` (and `knob` for older glasses).
-
-**Device checklist (for the user).** (1) Menu knob: one item per D, default 400 (about 5 per turn); the carousel and the 2 and 3 row grids. (2) Wrap at both ends (the highlight moves, not just the animation). (3) **Log one turn's sign**: turn the knob clockwise once from the first item and note whether the highlight goes forward or back; if it goes back the raw sign is reversed on this unit and the hook's convention must be flipped (the pages and music share it). (4) Change D from the phone (Glasses runtime, Knob step) and check the menu, a TIO page and music move at the new rate. (5) Remote Previous / Next moves one item in the launcher and one item in a stock app. (6) Leave the menu (open an app, go back) and check that the selection and the status line behave as on TMG8 (see the stock step side effects above).
-
-Tests: group `tmg9-stepping` (`tests/tmg9_stepping_test.c`): pages, music and the menu helper at D = 300, 350 ... 600, the 13 * D loop (TMG11, stock 1.0.5.12), wrap at both ends, gesture rules, the phone changing D mid-gesture, guards. Group `tmg9-wheel-hook`: the real `m8_hook_wheel` against the faithful stock model: one item per D, 13-item loop, wrap both ends, remote step, no scaled delta, both signs, carousel and 2 / 3 rows, `app+0x88`, control index, view selection, label and frame all equal the target.
-
-## TMG8 candidate (Round 2 fork)
-
-**CANDIDATE-NOT-APPROVED. The owner flashed ZIP8 and tested it on the glasses on 2026-10-30. That check found three bugs, all fixed in TMG9: a wrap past either end of the menu did not move the focus, the navigation title arrow was shifted, and music was blocked while navigating.**
-
-TMG8 starts as a source-identical fork of frozen TMG7 (tag `fw/tmg7`) with only the candidate archive name, this header and the phone-pin tool label renamed. Runtime build identity name (TD_BUILD_TMG6), patch sites (25) and the sole raw edit stay unchanged; the only wire change is the TMG8 caps bit described below (the status `detent` field, which already existed, reads 300 instead of 600 when that bit is set). Before the Round 2 commits land it builds the same AP as TMG7. The phone pins name TMG8 and the exact ZIP8 below (first pinned at `tmg8(12)`, moved to the rebuilt ZIP8 at `tmg8(17)`). The TMG7 sections below are historical: they describe frozen TMG7 and are kept as written. The tmg8 sections above are current. The test scripts keep their `tmg7_*` file names (renaming them would touch comments in `src` and force a repin); what they run is TMG8.
-
-## TMG8 caps bit and the carousel layout value
-
-The only wire change in TMG8 is one capability bit and one layout value that depends on it. One existing field follows the bit: the `detent` of every status and calibration sample reads 300 (`TK_DETENT_RAW`) when bit 9 is set and 600 (`TK_DETENT_LEGACY`) otherwise, and the codec checks exactly that pairing, so it adds no independent state and the phone accepts both forms.
-
-- **Caps bit.** `TD_CAP_MENU_CAROUSEL` is bit 9 (`0x200`) of the status `caps` word (`diagnostics.h`). `TD_CAPS_TMG8 = TD_CAPS_TMG6 | TD_CAP_MENU_CAROUSEL`. TMG8 glasses report `TD_CAPS_TMG8` in every status sample; the build field stays `TD_BUILD_TMG6` ("TMG6"), so TMG7 and TMG8 are told apart by this bit (and by the build-identity sha256), not by a new build name. TMG6 and TMG7 glasses report `TD_CAPS_TMG6` and never set it. `td_encode`/`td_decode` accept `TD_CAPS_TMG6` and `TD_CAPS_TMG8` for the TMG6 build; any other bit is still rejected.
-- **Layout value.** The menu layout record (`TMC2`, `menu_config.c`) now accepts 1 (carousel) besides the grid row counts 2 and 3. A stored 1 draws the carousel (below); 2 and 3 are unchanged, and the default stays 3.
-- **Negotiation.** Value 1 is honoured only from a peer that has seen the caps bit and says so: wire byte 7 of the `TML:` command (reserved and zero up to TMG7) is `TML_PEER_TMG8` (1) on a carousel SET and zero on every other command. `tml_decode` drops a SET of 1 with byte 7 zero, any grid SET or query with byte 7 set, and any other byte 7; `tml_accept` repeats the check and answers `TML_BLOCKED` without a write. So grid SETs and queries are byte-for-byte what TMG7 accepts, and a carousel SET is something TMG7 glasses decode-reject (they drop it with no reply and no write).
-- **Phone.** The phone (`MenuLayout.m`) encodes layout 1 in one place, and only when the last status sample of the current peer carries the caps bit (`TIOMenuLayoutLink.glassesReportTMG8Caps`, `TDGlassesReportTMG8Caps()`); a TMG7 or TMG6 peer is never sent it and the write is refused with a note. A reply that confirms 1 is accepted (only TMG8 glasses can send it).
-- **Compatibility.** C12 stays fully compatible with TMG7 and TMG6 glasses. An older phone (C11 and earlier) rejects a TMG8 status sample because of the new bit; C12 is the only phone paired with ZIP8. Rollback is C11 plus ZIP7: ZIP7 rejects a stored 1 as an invalid record, so it loads the last saved grid layout from the other storage bank (the default 3 rows only if none was ever saved), and a later C11 SET overwrites the carousel bank cleanly. Until ZIP7 is flashed back, C11's status and knob screens do not read TMG8 glasses (they reject the sample because of bit 9) and ignore layout replies with rows 1; the C11 OTA wizard does not use that sample, so the rollback flash itself still works.
-
-Host tests: `tests/tmg8_caps_test.c` (the `tmg8-caps` group in the phone `test.py`) covers the constants, the status codec, the command codec against a copy of the frozen TMG7 decoder, the storage state machine and reboot reload; the phone `MenuLayoutTests.m` and `tests/TDRuntimeTests.m` prove that the phone never encodes 1 for a TMG7 peer and report the caps accessor.
-
-## Carousel layout (Round 2)
-
-`fm_view_rows(v, FM_CAROUSEL)` (layout value 1, `focus_menu.c`, `LensMenuCarousel.dc.html`) draws one row of icons instead of the grid, through the same `FMView` widgets and `hide_legacy` of the stock rows. `fm_menu_rows()` and `fm_relayout()` now pass the stored value (1, 2 or 3) straight through; the value 1 is only ever stored after a SET that carried the TMG8 peer byte, so no extra gate is needed in the view. `tml_grid_rows` is gone.
-
-- **Geometry** (px on the 540x220 menu canvas, the board's `BIG` / `SMALL` tables). No route: the focused icon 80 px at `lens-full`, centre x 270, cy 68; neighbours 48 px at `lens-mid` (0x77), dx 124; outer 36 px at `lens-track` (0x38), dx 214; caret 24x3 at y 114; status line (16 px, `lens-high`, band M, x 40..500, centred) at y 146; focused name 24 px in band B; clock and battery in band T. With a route: 64 / 40 / 32 px at cy 92, dx 118 / 206, caret y 127, status y 140. The page dots and the grid names are not drawn. 80 px is the largest size (`FM_CAR_MAX`; the scaler clamps there) that keeps every glyph under `lens-peak-max`.
-- **One continuous model.** The focus is a fractional position `p` (8.8 fixed point). An item at signed distance `r` from it takes size, dx and brightness interpolated at `|r|` (knots 0..3 items; at 3 it is gone), so a wheel step, the wrap from the last item to the first and an interrupted step are the same slide: 160 ms cubic ease-out (`TIO_MOVE_MS`), a newer target restarts from where the position is, never queues, and goes the short way round (ties forward). A jump of several items slides through them in the same 160 ms. Items that would leave the 16 px side insets are not drawn (they are at most 11 % of `lens-track` by then).
-- **Scaler.** The 48x48 4 bpp art is scaled to any size up to 80 with a bilinear filter (`car_icon`, fixed point, no per-frame heap); 48 px is the art itself and the grid's nearest-neighbour `icon()` is unchanged. Deviation from ds2.md item 2 ("through the existing `icon()` scaler"): `icon()` is nearest-neighbour, and the carousel changes icon sizes continuously during the slide, which a nearest-neighbour scale shows as stepping, so the carousel uses its own bilinear scaler; it stays inside the same `car_side[k]` canvases of the 17280 B bank and the brightness gate measures its output (menu maximum 0.403 of 0.45), so there is no safety or glare impact. Switching the carousel to `icon()` is a small change in `focus_menu.c` if the coordinator wants the spec followed literally. Brightness is the art's level times the gain for `|r|` (0xFF, 0x77, 0x38), so a neighbour never exceeds 0x77 and an outer icon 0x38.
-- **Retained pixels.** The six visible items take canvas slots in order of `|r|` (centre 80x80, then at most 64, 48, 42, 36, 36 px square), 17280 B per bank, two banks, in a union with the grid's cell storage. The menu controller allocation grows from about 20 KiB to about 35 KiB (cap `FMControl` 40 KiB, was 32 KiB); allocation failure still leaves the native menu.
-- **Hooks for the next steps.** `fm_view_route(v, on, now)` is the route flag (navigation title in band T); `fm_view_line(v, text)` sets the status line (UTF-8, cut at a character boundary, empty hides it, no rewrite when unchanged); `fm_view_reduce_motion(v, on)` makes steps, wraps and the route slide snap. `fm_view_line` is wired by the live tile state (below); the navigation-title step wires `fm_view_route` from `nav_service`.
-- **Tests.** `tests/focus_grid_test.c` (geometry per tile set with and without a route, the neighbours are the art at 48 px, slide midpoint and direction, wrap both ways, canvas bounds over every fraction and jump size, interrupted step, Reduce Motion, the status line), `tests/native_ui_test.c` (a stored layout 1 reaches the view) and the layout gate in `tests/tmg7_layout_preview.m` (bands with the carousel icon spanning T and M, reserved rows, 16 px text, no filled panels, no icon on the clock, battery, line or caret; sizes, offsets, caret and line against the board's constants; EN and ZH, route on and off). Previews: `menu-carousel*-{en,zh}.png`.
-
-## Live tile state (Round 2)
-
-`focus-v1/tile_state.h` (header only, pure) turns one read-only snapshot of the existing service state (`tile_live.h`, `TSLive`) into the carousel's status line and the grid's state dots. Nothing is sent, written or woken, and no wire or patch site changes. Each service exports one small read accessor that fills only its own fields: `tf_live` (Pomodoro, the singleton timer, so it works whichever page is up), `tm_slot_live` (Music), `tn_slot_live` (Navigation), `tc_slot_live` (Camera); the phone link is `nav_bonded && nav_connection(0x80)`, the same test the services use. `focus_menu_native.c` takes the snapshot on the 1 Hz refresh and whenever the focus moves (`live_sync`, before the redraw so the line and the focus change in one frame), never per frame.
-
-| Tile | Condition | Line (EN / ZH) | Grid dot |
-|---|---|---|---|
-| Pomodoro | timer running or paused (local: no phone needed) | `18:42 left` / `剩余 18:42` | yes |
-| Music | phone linked, playing flag set, phone spoke within 30 s (the `tm_expired` window) | `Playing · <title>` / `正在播放 · <title>` | yes |
-| Navigation | phone linked, route session connected and not stale, metres left | `1.2 km to go` / `剩余 1.2 公里` (`950 m` and under: `640 m to go` / `剩余 640 米`) | yes |
-| Camera | phone camera session open | `Live view` / `实时取景` (the page's own text; the board has no camera string) | yes |
-| Music, Navigation | phone link down | `Phone not connected` / `手机未连接` | no |
-| everything else | stock apps, My Apps, Display Test | name only | no |
-
-- **Strings.** Five new `tio_text` keys (`TT_STATE_*`, EN ASCII and ZH); `{}` marks the figure. The middle dot is added in code because `tio_text` English stays ASCII. Seconds round up (`mm:ss`, two-digit minutes, `120:00` at most); kilometres have one decimal, whole kilometres from 100 km.
-- **Fit.** The line is one 16 px line in the 460 px core: text that does not fit is cut at a character (a title may be one long word) and ends in an ellipsis; invalid UTF-8 is never shown. The width estimate is the lyric one (`tm_advance`), which errs wide, and the label also clips.
-- **Carousel.** `fm_view_line` shows the focused tile's line under the caret (`lens-high`, y 146 or 140); empty hides it. The grid records the text but does not redraw for it.
-- **Grid dot.** `fm_view_active(v, mask)` (bit per tile id) draws a 5 px disc at `lens-mid` 1 px right of and 4 px above the icon box, i.e. (cx+17, cy-20) for the 32 px icon, never above band M (`LensMenuGrid2.dc.html`). Nine extra 8x5 canvases share one 40 B buffer; they are hidden in the carousel. The mask is only rewritten, and the grid only redrawn, when it changes.
-- **Not visible on every path.** The Camera session ends with its page, and Music stops updating once its page closes (the line lingers for 30 s from the last contact), so those lines appear on the menu only while something keeps them alive; Pomodoro, the phone-link line and, from tmg8(7), the Navigation line always work. A phone-fed state that outlives the page for Camera or Music would need a wire change and is out of scope.
-- **Tests.** `tests/tmg8_tile_state_test.c` (group `tmg8-tile-state`: the board's three scenarios EN and ZH, boundaries, truncation, stock apps), `tests/focus_grid_test.c` (dot geometry against the board, no overlap, one shared art, redraw only on change), `tests/native_ui_test.c` (the production `live_sync` and `fm_sync` over stubbed services: carousel line per focused tile, grid dots, phone off, language switch) and the preview gate (`menu-carousel*`, `menu-live*`; the boards' `STATUS` tables are parsed and compared with the production strings and dots). Previews: `menu-live*-{en,zh}.png`, `menu-carousel-{pomodoro,offline*,stock}*-{en,zh}.png`.
-
-
-## Navigation title (Round 2, option A)
-
-`focus-v1/nav_title.h` (header only, pure) draws the next turn in band T of the menu, in both layouts (`OptionANavTitle.dc.html`; option B, the shared title bar, is not built). While a route is live, connected, not stale and the phone is linked, an 18 px arrow and `<distance> · <road>` in lens-high sit centred between the clock and the battery, e.g. `↱ 200 m · Market St`. No wire or patch change: `tn_slot_live` copies `icon`, `distance_m` and `road` from the scene `nav_service` already holds, read only.
-
-- **Slot.** x 108..432 (the clock box is x 40..104 and the battery box x 436..500, both now 64 px wide), on the clock's row, y 23..45. The group (arrow, 6 px gap, left-aligned text) is centred on x 270. The page dots of the grid share band T and are hidden while the title shows. The carousel moves its row down and shrinks to 64/40/32 px through `fm_view_route`, wired from `live_sync`, and the title appears when that 160 ms slide ends (until then the 80 px centre icon still reaches into the title row; tmg8(15)); the grid does not move.
-- **Text.** `<d> m` to 10 m under 950 m, else `<d.d> km` (whole km from 100 km); the same units as the navigation page in both languages. An empty road shows the distance alone. The road is cut so its estimated width (the lyric estimator, which errs wide) fits 300 px: at the last word boundary (a space, or after any CJK character) and ending in an ellipsis; one word longer than the slot is cut at a character.
-- **Arrow.** The navigation page's glyph polylines (`navigation-runtime-v1/nav_glyph.h`, shared with `nav_visual.c`) at 45/256 scale, a 2 px anti-aliased stroke in lens-high on an 18 px canvas. The roundabout mark is dense at this size.
-- **Timing.** Written at most once per second (`NT_MIN_MS`): `fm_view_title` holds a changed arrow or text until a second after the last write, and `fm_sync` retries on its 1 Hz refresh. Hiding (route end, stale, link lost) is immediate. Text is banked like the status line, the arrow canvas is double buffered, and nothing is rewritten when unchanged.
-- **Route lifetime.** The route session now outlives the Navigation page (tmg8(7), "Background route state" below), so the title shows on the menu for as long as the phone's route is live and not stale.
-
-## Background route state (Round 2, ds2.md 3b)
-
-Leaving the Navigation page no longer ends the route. While a phone route is active, closing the page (long press, the launcher hiding, or the page lost to another owner) keeps the glasses' route **data** session, so the band T title and the Navigation tile line show on the menu for the whole route. No wire change: the phone sends the same messages at the same rate, and the glasses answer the same replies.
-
-- **What is kept.** `TNRuntime` (`navigation-runtime-v1/nav_runtime.c`, byte-shared with the phone) gets `hidden`: scene (manoeuvre, distance, road, remaining distance and time), `sid`, sequence and digest, and the stale clocks (`last_update`, `last_link`). The map's data (`TNRState`, about 8.4 KB) is copied to the heap at the moment the page closes (`tn_view_map_save`) and keeps being fed by map messages; a reopened page takes it back (`tn_view_map_restore`), so the next pose still finds its scene.
-- **Closing.** `tn_detach`: the power hold is released (`TN_POWER_RELEASE`, as before), the page is left once, then `hidden` is set before the widgets go so their delete event does not end the session. If the route is not live and fresh, or the heap copy cannot be made, the page closes as before (`tn_local_exit`: the session ends). A second close (the launcher hiding after a long press) changes nothing.
-- **While hidden.** UPDATE, HEARTBEAT, QUERY, MODE and the map messages are accepted with the usual sequence rules, replies stay `OK` and `active`, `awake` is clear. There is no render, no `nav_screen_on`, no power hold or sleep request, no LVGL object and no new timer (the service's existing timer keeps its period); the page's widgets are freed by the existing idle reaper. The menu reads the plain state at its own redraw (`nav_live.h`, `tn_live_fill`, shared by `nav_service` and the host tests).
-- **Ends on.** STOP from the phone (route end or arrival), 60 s without an UPDATE (the existing stale limit), 30 s without any packet, a phone disconnect (`tn_disconnect`), or a new START with a newer sid (a START with an older or equal sid is answered `STALE`; one that cannot start leaves the kept route alone). The menu read applies the same limits itself, so a title is never drawn for a route already gone. The launcher menu app being destroyed ends it too (the service lives in that app). `deleted` (a page widget removed by someone else) still ends a visible session. On TMG12, stock Navigation on top ends it too (next item).
-- **Stock Navigation ends the route (TMG12, owner decision O6).** When stock Navigation is the top page at the service's one-second check, a kept or visible route ends the way any lost page ends a route that cannot be kept (`retire`): the route data, the power hold, the page and the kept map copy all go. Trace event 42 records it, with result 1 for a kept route and 2 for a visible one. There is no new wire message. The phone learns of the end from the `NO_SESSION` reply to its next packet, and a START is answered `BUSY` while stock Navigation stays on top. Limits: the end comes at the next one-second check, so a look at stock Navigation shorter than about a second can be missed. A route started from the launcher while stock Navigation is not the top page (still running behind it, say) is not ended. Other stock apps on top do not end a kept route, as on TMG11. A waiting page with no route closes as before, with no event 42. The name compared is the one the remote's input gate admits; `tests/remote_app_name_test.py` checks both copies against stock's launcher table.
-- **Reopening.** The Navigation tile with a kept route runs `tn_attach`: the page is built from the kept scene and the map from the kept data, with no new handshake (same `sid` and sequence; the phone's next UPDATE is accepted and rendered), the hold is taken again and the usual 60 s of manual hold starts, as for a button press. If the previous page is still being removed the press does nothing and the next one works.
-- **Phone.** `TNVSession` has no page-closed signal. Its UPDATE cadence (one per changed scene, at most one a second; a refresh every 10 s; a HEARTBEAT when nothing is offered) goes on as long as the glasses answer `OK` and `active`. TMG7 glasses answer the first UPDATE after a page close with `NO_SESSION`, which ends the phone's session (unchanged). `NativeNavigationTests.m` covers both. No phone change was needed.
-- **Tests.** `navigation-runtime-v1/nav_test.c` (state machine against a mock UI: leave keeps the state and releases the hold, hidden updates do no render or wake, stale, silence, disconnect, STOP, replace, reopen, 2000 leave/reopen turns with every page left and every hold released), `nav_view_test.c` (map save and restore), `tests/tmg8_nav_background_test.c` (group `tmg8-nav-background`: the menu's title and tile line from a page-less route through `tn_live_fill`, `nt_title` and `ts_state`, EN and ZH), `tests/nav_service_test.c` (run by `tests/nav_service_host_test.py`: the service itself, below).
-- **Device checks (for the user's checklist).** (1) Battery drain over a 20-minute route with the Navigation page closed against the same route with it open (page closed should be clearly lower, never higher than open). (2) The band T title tracks the turns during a real route with the page closed: arrow, distance and road change with each manoeuvre, at most once a second. (3) Long-press out of Navigation mid-route, open another app and come back to the menu: the title and `n km to go` are still there; open Navigation again: the page shows the current turn and the map without a new START. (4) End the route on the phone, walk out of range, or stop sending for a minute: the title and the tile line disappear. (5) The panel does not wake on its own while the page is closed. (6) Whether the launcher menu app is destroyed while another app is open (the route then ends with it).
-- **Service host test (TMG12).** `tests/nav_service_host_test.py` compiles `nav_service.c` as it is, with the real runtime, view, map and LVGL binding files, and stubs only stock functions and the other services' hooks. Two pinned 32-bit pointer reads are adapted for the host, each matched exactly, so a changed production line fails the run. It covers the kept route and its reopening, the page close and reap (also with a busy renderer), the replies the phone gets, and the O6 cases: kept and visible routes under stock Navigation, other stock apps, near-miss names, a waiting page, no session, an unarmed menu and the one-second gate. It cannot show the stock launcher, real timing or the phone.
-
-### TMG9 summary, identity, rollback and device checklist (`tmg9(5)`, docs)
-
-**What TMG9 fixes.** (1) The wrap at either end of the menu now moves the highlighted item as well as the animation (`tmg9(2)`). (2) The 64-byte alignment of the navigation title, pager and bar draw banks (`tmg9(1)`). (3) The knob detent is a setting: D = raw counts per item, 300..600 in steps of 50, default 400 (`tmg9(3)`, `tmg9(4)`). About 5.0 items turn per 2000 counts at 400; 300 gives 6.7 and 600 gives 3.3. Phone side (not firmware): the knob step control on the Glasses runtime screen, and music and navigation fixes from the other lane.
-
-**Detent wire.** Caps bit 10 (`TD_CAP_KNOB_DETENT`, `TD_CAPS_TMG9`) says the glasses accept a TMG2 SET with peer byte 2 and D in the u32 at byte 24; D = 0 leaves the stored D alone. The status `detent` reports the live D and is the only confirmation the phone accepts. No other wire change.
-
-**Storage.** D/50 in byte 6 of the existing 20-byte TMC2 record, 0 meaning the default 400. A default D is always written as 0, so a record that never held a custom D is identical to what TMG7 and TMG8 write.
-
-**Identity.** The glasses still report the TMG6 build name; nothing reports the ZIP hash. TMG9 is recognised by (a) caps bit 10 in the status and (b) the build-identity sha256 in the status `build` field, which changes from TMG8's `7fe49d041471776203ba8af03424597b53413b4b2621c8edfd69eb9b51a3ad0b` to `ae2d87a40d7460e6861036ba1f9d5458821ee7ab035d56c122aac674614db5d1` (the `identity.sha256` of the ZIP9 build; the glasses never report the ZIP hash, which `official-addon/ios107-edition/firmware-pins.json` pins). Caps bit 10 without this hash, or this hash without bit 10, is not this ZIP9. The identity covers the firmware sources, so any later source change moves it and this paragraph with it.
-
-**Rollback to C12 + ZIP8.** Install C12 first, then flash ZIP8 (`effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6`, tag `fw/tmg8`) with C12's guarded OTA wizard (C13 accepts only ZIP9, so ZIP8 cannot be flashed from C13). Until ZIP8 is back, C12 rejects every TMG9 status sample (its validator allows no caps bit beyond `TD_CAPS_TMG8`, so bit 10 alone fails it, whatever D is), so its status, knob and carousel screens read nothing from TMG9 glasses; the C12 wizard does not use that sample and still flashes. A stored default D (byte 6 = 0) is read by ZIP8 as usual: the layout survives. A stored custom D (byte 6 non-zero) makes ZIP8 and ZIP7 ignore that record without an error and without rewriting it: they use the other bank if it holds a readable record, otherwise the 3-row default. The carousel choice may therefore be lost on rollback; set the layout again afterwards (ZIP8 stores byte 6 = 0 from then on). To keep the layout across a rollback, set the knob step back to 400 first. ZIP8 stepping is its fixed 300 counts per item.
-
-**Device checklist (all open; no glasses were contacted).**
-1. Wrap at both ends: forward past the last item lands on the first, backward past the first lands on the last, and the highlight and label follow the animation.
-2. Knob step: the default 400 changed from the phone (Glasses runtime, Knob step, Apply); the screen shows Confirmed only after the status reads the new D back, and the turn feel changes with it.
-3. Navigation title in the menu with a route live shows no shifted arrow.
-4. Music works while a route is active.
-5. Test bench: lyrics, card and tile states look right.
-6. Leave the menu (open an app, go back): the selection and the status line behave as on TMG8. TMG9 steps the menu without the stock step side effects (see the stepping section), and this is the check for that.
-7. Log one turn's direction sign (stock setting 0x24; the hook treats positive raw counts as forward). If clockwise steps backward, report it.
-Host evidence: 220 renders (EN and ZH, `logs/tmg9/final-preview/`) and the 233-row brightness gate, 0 failures: max general 0.4128 of 0.45, max band-B primary 0.6448 of 0.65, the same as TMG8.
-
-## Knob (Round 2, TMG8; superseded by the TMG9 stepping section above)
-
-This section describes frozen TMG8 (`fw/tmg8`): one fixed detent of 300, a doubled stock delta and the edge counter. TMG9 replaced all of it; the text is kept as history.
-
-`TIO_WHEEL_DETENT_RAW 300` (`tio_ui.h`, token `lens-wheel-detent`) is the one detent. `wr_input_wheel` (pages), `tm_input_wheel` (music) and `TK_DETENT_RAW` (`knob_calibration.h`, shared with the phone, static-asserted equal in `menu_wheel.h`) use it, so one item or step takes 300 raw counts, about 6.7 per ~2000-count turn. The main menu hands the stock carousel `2 x delta` (`m8_hook_wheel`, `tio_menu_wheel_scaled`) because the stock carousel needs 600 raw units per item. At either end the stock carousel clamps, so `tio_menu_wheel_wrap` counts the raw deltas that push against the end and jumps last to first (or first to last) after a full detent; this works in every layout because it only reads the focused rank and the visible count. Its state lives in the heap menu controller (`fm_wheel_wrap`), not in the fixed owner tail or .bss. Lockouts after a step: 200 ms on pages (was 300) and 500 ms in music (was 900); the press guards are unchanged.
-
-The remote's Previous/Next (`remote_native.c`, `inject_counts`) injects 300 raw counts when the launcher is on top, because its hook doubles the delta for the stock carousel and the TIO pages count in 300, and the stock 600 (`TK_DETENT_LEGACY`, what TMG7 injected) for the other seven allowed apps (recorder, prompter, subtitles, conversation assist, assistant, todo, notification), which are stock and have no doubling hook (tmg8(13); `native_remote_test.c` asserts the magnitude and direction for all eight).
-
-The status sample's `detent` is now 300 for a peer that reports the TMG8 caps bit and stays 600 (`TK_DETENT_LEGACY`) for TMG4..TMG7 samples, which the codec still accepts. Positive delta is taken as forward, as on every page, and the wrap jump was host-modelled only (TMG8 wrote the scroll position, which stock `native_snap` overwrote; TMG9 fixes that, see above); both need the device check. Tests: `src/music-runtime-v1/music_input_test.c` (`tmg8-music-input`, D fixed at 300 by a stand-in accessor) and, from TMG9, `tests/tmg9_stepping_test.c` (`tmg9-stepping`, the former `tmg8-wheel`).
-
-## Brightness gate and the mini-app art cap (Round 2)
-
-Glare comes from local hot spots, not total light, so every host render is measured (`tests/lens_brightness.h`, the metric of the Lens Brightness Audit and `ds2/tools/lens_metrics.py`): the **1 degree peak** is the mean of `L^2.2` (`L` = green/255) over the brightest 25x25 device-pixel window inside the image, and the lit share is the share of pixels above zero.
-
-- **Limits** (`tokens.json` v2): no render above `lens-peak-max` 0.45. The band-B primary readout (the navigation turn arrow, the focus hero timer) may reach `lens-peak-max-primary` 0.65. Unfocused menu icons stay at or below `lens-peak-max-unfocused` 0.20.
-- **Exceptions by region, not by file.** A widget counts as primary only if the fixture flags it AND its ink lies wholly in band B (y 112..172 on a page): a flagged widget outside band B is held to 0.45. A widget counts as an unfocused icon only if it is a menu canvas in the glyph zone (y 12..172 of the 540x220 menu) that is not the focused cell or the carousel centre. Each class is measured on its own plane, and the whole render must stay at or below 0.65 with a primary, 0.45 without.
-- **Where it runs.** `tests/tmg7_layout_preview.m` calls `Measure` for every render the layout gate or the mini-app runner checks (menu layouts, every page EN and ZH, the app and shelf samples). A new render is included automatically as long as it goes through `Gate` or `RunWire`; a raster that is not a widget list (the dashboard card, 256x194) calls `MeasureRaster`. `tests/tmg7_host_test.py` runs it over the SDK samples and all 20 committed gallery packages and writes `brightness.json` (`--brightness PATH`, default `OUT/brightness.json`): one row per render with `screen`, `version` (`tmg8`), `page`, `lang`, `lit_pct`, `light` (mean linear light per pixel), `peak_1deg`, `peak_x`, `peak_y` (top-left of the brightest window), `center_y` (light-weighted vertical centre), plus `peak_rest`, `peak_primary`, `peak_unfocused`, `limit` and `pass`. `tests/tmg8_brightness_test.py` then compares the C metric with a brute-force reference and, when it sits next to the checkout, with `ds2/tools/lens_metrics.py`, and recomputes one render per page from its dumped plane.
-- **Mini-app art cap.** `app-runtime-v1/app_view.c` draws TAP1 images (kind 4) and the progress fill (kind 3) at green `0x77` (`TAP_ART_LEVEL`) unless the item lies wholly in band B (`TAP_ART_BAND_B`), where it keeps full. The phone's `TAPPreview` applies the same rule (`TAPInBandB` in `AppUI.m`; the brightness test checks that the two agree). Before the cap the SDK music sample's album art measured 1.00 and the weather sample's sun 0.73 (the TMG7 audit rounded them 0.97 and 0.69); both now read below 0.30 on TMG8 glasses. Text, the caret and the track (`0x38`) are not capped, and the gallery wire is unchanged, so no gallery package changed. Accepted limit (coordinator ruling of 10-30 on review finding FW8-R1-05: pass via the cap only): the cap lives in the TMG8 firmware only. C12 also drives TMG6 and TMG7 glasses, where the same two samples still peak at about 1.00 and 0.73 (above `lens-peak-max`). The two sample packages were not reworked and no gallery digest was re-pinned; they are demos, not shipped content, and a rework that passes on any firmware stays a possible follow-up.
-- **Measuring on the host.** The preview repaints each render at 1x with AppKit and the macOS surrogate fonts (font smoothing off); canvases are blitted at their exact levels. Text peaks therefore move a little with the surrogate font; the navigation arrow is the closest to its limit (0.645 of 0.65).
-
-## Dashboard card (Round 2)
-
-`src/dashboard-v1/card.c` draws the TDC1 card (256x194, the wake-screen card slot) per `LensDashCard` and `spec/card/proposed.svg`. The wire is unchanged: the same `TDC1;weekly;claude5h;claudeWeek;ramFree;ramTotal;diskFree;diskTotal;icon;icon;icon` string, the same parser. `icons[3]` is still parsed and range-checked and is ignored by the renderer. `card.c` and `card.h` stay byte-identical with the phone copies.
-
-- **Top, 16 px.** `MacBook Pro · M5 Max` in lens-mid (box y 10), then `RAM <free> of <total> GB free` and `SSD <free> of <total> TB free` in lens-high (y 32 and y 52), one line each. RAM is tenths of GB and SSD is GB shown as TB, with the same one-decimal truncation as before.
-- **Bottom, three columns at x 6, 89 and 172.** The label (`Codex 7d`, `Claude 5h`, `Claude 7d`, 16 px, lens-mid, y 108), the number (`<n>%`, 32 px, lens-full, y 128) and a 70x3 bar at y 172 (track `0x003800`, fill lens-high, fill width = 70 x n / 100 rounded: the board's 69, 63 and 60). Box tops follow the board's SVG, where a text box top is the baseline minus 0.92 of the size.
-- **Removed.** The three 32 px icons (and `icons.inc` with their pixel data), the two divider lines, the hard-coded plan names and the old `Weekly ... left` row. The card never says `left` or `used`: the Claude values are neutral labels until the open question (percent left or used) is answered.
-- **6 px safe area.** Every box lies inside it. One exception in geometry: `100%` at 32 px is about 81 px wide, more than the 78 px the last column has before the safe edge, so in the last column only that number starts 4 px left (x 168). The other columns and all labels are fixed. Three `100%` side by side are tight (card-100-en preview).
-- **Test and gate.** `src/dashboard-v1/test_card.c` (run by `tests/tmg7_host_test.py` with ASan/UBSan) checks every string, size, intensity and position, the bar rounding, `icons[]` being ignored, allocation failure at every step and parser fuzz. `tests/tmg7_layout_preview.m` renders the production `dc_render` with host widgets, compares the result with the board's proposed SVG (9 strings, 6 rects) and measures it through `MeasureRaster` (`card-en`, `card-alt-en`, `card-100-en`, `card-zero-en`, `card-full-en` rows in `brightness.json`; the board's card peaks at 0.33 of 0.45).
-
-## Lyrics: the current line is never truncated (Round 2, ds2.md 7b)
-
-`src/music-runtime-v1/music_layout.h` (TMG8 only; `music.c` stays byte-shared with the phone and the advance estimator is unchanged) now fits the current lyric with `tm_fit_current`, bottom-aligned on band B's bottom edge (y 172), in this order:
-
-1. up to 2 lines at 24 px, inside band B, with the next lyric shown (as in TMG7);
-2. up to 4 lines at 24 px, growing up into band M (top y 60), with the next lyric's row hidden;
-3. up to 4 lines at 20 px;
-4. up to 5 lines at 16 px, the legibility floor.
-
-Only text that does not fit step 4 ends in an ellipsis (about 140 CJK characters, 28 per 16 px row). The next lyric keeps its one-line ellipsis (`tm_one_line`) and reappears as soon as the current lyric fits band B again, that is exactly when it needs at most two lines.
-
-- **Service.** The stock label API has no font setter, so `music_service.c` keeps one label per font (24, 20, 16 px) for the current lyric and shows only the fitted one; the next-lyric label is hidden with an empty text when it is not shown. The label box is `tm_cur_rect_for(fit)`: lines x (font + 4) ending at y 172, so the top is y 60 at 4 x 28, y 76 at 4 x 24 and y 72 at 5 x 20.
-- **Buffers.** The source buffer for the current lyric is 576 bytes and so is the wrapped output buffer (it was 244). The wire is frozen, so this is headroom, not a change in what reaches the glasses: `music.c` (byte-shared) refuses a lyric longer than 240 bytes and the phone clips every lyric to 240 bytes before it sends (`Clip(text,240)` in `MusicBridge.m`, no ellipsis), so the glasses never receive more than 80 CJK characters (240 bytes) for one line. A longer line is cut by the phone without an ellipsis, as in TMG7; marking those cuts would be a phone-side change (end `Clip` in U+2026 within 240 bytes when it stops early), not a firmware one. What the 576 byte buffer does guarantee is that the step 4 limit (140 four-byte glyphs, 560 bytes) is a property of the layout and never of a buffer.
-- **Unreadable bytes.** A CR, tab, zero width space or stray byte used to stop the wrap at that byte and drop the rest of the line; `tm_clean` now turns tabs and line feeds into a space and drops the others before the fit. A row never starts or ends with a space, and trailing spaces on the whole line are not text: they add no row, do not bump the fit step and do not hide the next lyric (tmg8(14)).
-- **Tests.** `tests/tmg8_lyrics_test.c` (group `tmg8-lyrics`, ASan/UBSan) checks the contract on Latin, Chinese and four-byte text at every length: the step is the first that holds the text, no ellipsis below step 4, nothing lost or added by the wrap, rows within 460 px, the next row hidden exactly past two lines, the box inside bands M and B (top never above y 60), the CJK boundaries 38 / 76 / 92 / 140, the 560 byte case and a 4000-case fuzz. `tests/tmg7_layout_preview.m` renders `lyrics-2line` ... `lyrics-over` (and `lyrics-long`, `lyrics-nextlong`), EN and ZH, through the production fit and the layout and brightness gates (peaks 0.18 to 0.30 of 0.45).
-
-## Menu icon art (Round 2)
-
-The menu icons are the Round 2 set, 14 since the 1.0.6.11 port: row 4 is a map pin for stock Navigation, drawn in the set's style (not vendor art), and the rows after it moved up by one (`00` recorder ... `03` todo, `04` map, `05` teleprompter ... `13` camera; the arrow, `09-navigation`, stays on Turbo Nav). `fm_icon_row()` in `focus_menu.c` maps a tile id to its row: the 14-item model draws rows 0..13 in order, the 13-item model (no stock base: host tests and the 1.0.5.12 phone pair) draws rows 0..3 and 5..13. Sources and masters live in `assets/menu-icons/` (`svg/NN-name.svg` is the source of truth; `png/NN-name.png` are 48x48 masters rasterised with `rsvg-convert -w 48 -h 48 -b black`, version recorded in `assets/menu-icons/README.md`). `tools/encode_icons.py` turns the masters into `src/focus-v1/focus_menu_icons.h` (4 bpp, even pixel high nibble, 24 B stride, nibble = level/17; 14 x 1152 B, `sizeof fm_icon4 == 16128`; TMG11 had 13 x 1152 B, 14976). `tests/tmg8_icons_test.py` (the `tmg8-icons` group in the phone `test.py`) proves the committed header is byte-identical to the regeneration from the masters. Gains are unchanged: unfocused 0x77, focused 0xFF. The art is the only change in this step; the carousel sizes (80 / 48 / 36 px) come with the carousel layout.
-
-## Host gates, previews and the phone test.py (TMG8)
-
-`python3 tests/tmg7_host_test.py --out DIR [--brightness PATH]` is the TMG8 host gate (the file keeps its TMG7 name). Beyond the TMG7 list in the "Host gates" section below it runs the carousel and tile-state menu tests, `src/dashboard-v1/test_card.c`, the layout gate over every page, the SDK samples and the 20 gallery packages, the brightness gate (`brightness.json`, see "Brightness gate" above) and its independent cross-check.
-
-- **Previews.** The layout gate writes every render to `DIR/preview/*.png`, English and Chinese, at the device size: every page, the focus, lyrics (all fit steps), navigation, dashboard card, mini-app and shelf renders, and the menu in all three layouts. The host run for the candidate is kept at `logs/tmg8/final-preview/`.
-- **Menu matrix.** `menu-matrix-<layout>-<route|noroute>-<linked|unlinked>-<en|zh>.png` renders carousel, 2 rows and 3 rows (layout) with the Navigation tile focused, with a live route or none, and with the phone linked or not, 24 files. Each goes through the same layout and brightness gate as every other render. Linked with a route shows the band-T turn title (the carousel moves to its route geometry); unlinked shows "Phone not connected" and no title even though the route data is present, and no state dots in the grid for the phone-fed tiles. The host script fails if any of the 24 files is missing.
-- **DS1 layout tests are unchanged.** Bands, reserved rows, 16 px text floor and the no-filled-panel rule are enforced on every widget of every render, the menu matrix included.
-- **Phone `test.py`** (`official-addon/ios107-edition`) now audits the supplied ZIP with this tree's `build.py`, runs the `tmg8-host` group (one run; the TMG7 host group is gone with the TMG7 retarget) and the `tmg8-*` and `tmg4-*` groups against this tree, and compares the phone's shared-source copies with this tree. The `pins` and `archive` groups check the ZIP8 pins and need `--firmware` to be the ZIP8 below. Any source edit needs a repin (`build.py --repin`) copied into `build-inputs.json`.
-
-## ZIP8 candidate (reproducible, pinned)
-
-Path (outside the repository, not tracked): `turboio-inputs/tmg8/StrixOS-1.0.5.5-TurboIO-TMG8-CANDIDATE-NOT-APPROVED.zip`, built from two fresh clean builds that are byte-identical, with `tmg8/SHA256SUMS`.
-
-| Payload | Bytes | SHA-256 | MD5 |
-| --- | ---: | --- | --- |
-| ZIP | 8819108 | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` | `2c1a67c2d0108ecdfab139210ad67e7d` |
-| AP | 7368072 | `5441188525e3fda393028694d093be713de360563ea2bb9696ec5c4c8c4a1fc1` | `2160d6a794be52c37797a06f173e50fe` |
-
-The audit confirms 25 patch sites, the sole raw edit unchanged (`0x4d9bec 0721->0d21`, stock 1.0.5.5; on 1.0.6.11 the same edit writes 14, see "Tiles and persistence"), 14 unchanged stock payloads, 7 preserved startup descriptors and an AP below 9.6 MB. The build-identity sha256 (status `build` field) is `7fe49d041471776203ba8af03424597b53413b4b2621c8edfd69eb9b51a3ad0b`; the glasses also report caps bit 9 (`TD_CAP_MENU_CAROUSEL`), which TMG7 never sets. The phone pins (`firmware-pins.json`, `FirmwarePins.h`) are generated by `tools/phone_pins.py` from this ZIP and are keyed to the exact bytes; C12 keeps accepting TMG7 and TMG6 glasses because only the optional caps bit, the carousel layout value (gated on it) and the status `detent` field, which follows the bit, differ on the wire.
-
-# TMG7 candidate (design-system fork)
-
-**CANDIDATE-NOT-APPROVED. Offline build only; no glasses or device I/O, and no physical acceptance.**
-
-TMG7 forks frozen TMG6 (tag `fw/tmg6`) and re-lays every glasses page to the design system in `docs/design-system/` (the spec wins over the code; glasses boards are drawn at 2x, so every px value is halved). Wire protocol, capabilities, firmware name (TD_BUILD_TMG6, TD_CAPS_TMG6), the 25 patch sites and the sole raw carousel edit are unchanged. Changes are source-level only:
-
-- Shared tokens in `src/common-v1` (lens intensity ramp, bands, 40..500 core, caret, 16 px text floor) with a transient hint helper that fades and hides.
-- Navigation (LensNav): the distance and instruction have fixed slots (x 84 and 196) that never move or resize (a distance of 10 km and more drops its tenths and rounds to the nearest kilometre, capped at 999 km), the map is the board's x 372..520 window (canvas at x 348, car within 3 px of the window centre, columns outside it blanked, the scale bar and its label inside it, 29 px clear of the band-B text), the turn glyph has a 7 px stroke, and the fixed clock footer is gone (removed at TMG6).
-- Music (LensMusic): current and next lyric labels are core width; the current lyric is never truncated (see Lyrics below), a one-line current lyric sits on the bottom row of band B, the next lyric is one line with an ellipsis, and the control hint is transient.
-- Main menu (LensMenu): status row, page dots, 24x3 caret, one focused name in the bottom band, two- and three-row grids. Tile and index math is unchanged.
-- Camera control hint is transient and is lit again when the camera session goes live. Focus hint: every wheel step lights it (also while the timer runs) and it is gone at 3000 ms (50 ms service tick while it fades).
-- Mini-app runtime: buttons are caret focus items (wheel focus clamps at the ends, no wrap; the caret snaps, the TAP runner has no tick to slide it), 14 px text draws at 16, and the My Apps shelf follows the bands (title and empty slots re-tinted to lens-mid after the page opens, two 222 px columns with a 16 px gutter). The 20 gallery apps are re-laid to the bands with no Exit or Back item: a long press goes back (from a detail page to the overview, and from the overview out of the app), so a detail page is never a dead end. TMG6 glasses, which are frozen, exit the app from either page. The TAP1 wire format is unchanged and older packages still decode.
-
-Modules removed at TMG4 stay removed: ride (didi-v1), English (context-english-v1), dots (dots-v1) and reader (weread-v1). None is restored here.
-
-## Host gates
-
-The tokens in `tio_ui.h` rescale with `TIO_PPD_X10`, but the page layouts are fitted to 24.8 px/deg only (measured: the menu bands break below 24.6, music's core-width assert holds only at 24.8, the turn glyph leaves band B from 25.4). Each page therefore refuses to build at any other value (`TIO_PAGES_CHECK`), and the host test proves it. If the measured ppd differs, the pages must be re-laid, not just that one number changed.
-
-`python3 tests/tmg7_host_test.py --out DIR` runs the tokens test at 22..27 px/deg, the mini-app runtime test, the navigation core and view tests, the menu grid test and the layout gate. The layout gate renders every page in English and Chinese to PNG and checks each widget against its band, the reserved rows, the 16 px floor and the no-filled-panel rule. The phone `test.py` in `official-addon/ios107-edition` now targets this tree: it audits the supplied ZIP with this tree's `build.py`, runs the tmg7 host group, and checks the shared sources against the phone copies. Its `pins` group stays red for a ZIP7 until the phone is re-pinned to ZIP7. Each source edit needs a repin (`build.py --repin`) and a copy of the repin output into `build-inputs.json`.
-
-After the flash the glasses still report the TMG6 firmware name and capabilities (TD_BUILD_TMG6, TD_CAPS_TMG6; the wire protocol is unchanged, so a `firmware: TMG6` status reads the same before and after). The proof that TMG7 is running is the status `build` field, the build-identity sha256 in `identity.sha256` of the build output, which changes from TMG6's `83b82fab9fe9356de62570deff5878b9cfc292b3037998088664e87bd90d8644` to `b86af6e1edf99fef2e1c1aa8bab8153295cb7f973ad0abe262e2f6c1b00d3bdf` for the current ZIP7. The glasses never report the ZIP hash.
-
-Phone pins name TMG7 and the exact ZIP7 hash (`tools/phone_pins.py`, name `TMG7`); the phone stays compatible with TMG6 glasses because the wire protocol and capabilities are unchanged. Navigation `Passing`, the knob observation and the older candidate records below are historical.
-
-# TMG6 candidate (historical)
-
-TMG6 keeps the 25 existing patch sites and unchanged sole raw carousel edit. New navigation opcode 12 is a 224-byte body: map generation, UTF-8 byte count, reserved zeros, 192-byte zero-padded text, and 24 bytes of word-end offsets. The phone sends it only after nav capability bit 3 is acknowledged; TMG5 peers advertising caps 7 retain their understood messages and presentation. The geographic map receives remaining route geometry independently of the turn schematic. FW6 uses a five-pixel route with a seven-pixel contrast halo and a larger centered heading-up marker.
-
-The fixed Passing line chooses the next crossing street from route/road data, then the current road, with unabridged route text as fallback when map data has no name. It tries stock-font sizes 18, 16 and 14 before word-boundary ellipsis. The map scale uses the same stock font family rather than enlarged bitmap digits. Three lyric slots each accept at most two explicitly wrapped lines and are clipped to nonoverlapping bounds. Native widgets and static text buffers remain allocated/owned through the existing lifecycle.
-
-## Knob calibration observation
-
-The user reports approximately **2000 raw counts per full rotation** on TMG5. This is a human-guided one-turn observation, not an independently measured hardware CPR specification. No calibration, scaling, detent constant, or wheel behavior changes are made; the existing 600-unit heuristic remains unchanged.
-
-Host previews use production geometry/raster/layout with explicitly documented macOS surrogate fonts; exact stock glyph appearance and physical acceptance remain human checks. C10 must be used with TMG5 before any optional human flash. Rollback is C9 plus ZIP5, or C8 plus ZIP4. The historical candidate records below remain historical.
-
-# TMG5 candidate
-
-## TMG5 candidate — current development branch
-
-TMG5 supersedes the historical candidate sections below. The exact candidate ZIP SHA256 is `6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef`; AP size is 7,355,400 bytes and AP MD5 is `8ece02af435fb8643c444ca5d412a2fe`. Two clean builds match byte for byte, with 25 existing patch sites and 14 unchanged stock payloads. This is build/host evidence; physical acceptance remains unrun.
-
-The phone remains compatible with TMG4 glasses. Tile actions now work during reordering and display acknowledgement/failure feedback; Reset also saves. Read-only status accepts safe supported app states, while knob calibration explains the main-menu prerequisite and releases a refused lease. Initial navigation geometry precedes turn updates; TMG5 advertises bounded correction/heading smoothing, a six-pixel route, and static square music artwork with wheel/tap control hints. Background roads are filtered on the phone. The existing music commands still invoke the phone's Spotify controls. Speech defaults to 1.2× with five persisted choices for both English and Chinese, and explicitly confirmed idle captions no longer block microphone selection because of a missing template or stopped session.
-
-**Human-only TMG4 → TMG5 checklist:**
-
-1. Install the C9 phone package only after its signing/build review. Turn RayNeo Auto Update on and then off once.
-2. Download the bundled exact TMG5 candidate in RayNeo and stop at **Ready to install**.
-3. Obtain a version read within two minutes, then use the existing single confirmation. This worker never flashes or talks to glasses.
-4. After reboot, restart the phone app. Check all 13 tiles and Camera, reorder/hide/save/reset feedback and persistence, language, read-only status, main-menu knob guidance, and one-turn measurement.
-5. Check simulated and real-GPS initial map timing, backward/forward corrections, turns and route contrast; check music artwork and wheel/tap controls, both speech languages at each speed, and caption source changes after stopping. Verify active navigation, display and OTA still block conflicting caption changes.
-6. Roll back with **C8 plus ZIP4**, or **C5 plus ZIP2**, using the matching old phone package and manual flash flow. C9 accepts only ZIP5; rollback and hardware recovery are not verified here.
-
-The firmware's source/input identity is separate from the ZIP hash. Runtime capabilities are accepted only for the matching TMG4/TMG5 family. OTA host guards, hash/freshness policy and single-confirmation behavior are unchanged. The sole preservation-check exception is the user-approved removal of `tm_rotate`, applied and committed by the coordinator in FW5 only; earlier firmware trees remain frozen.
-
-# TMG4: persistent tiles and language, runtime status and knob measurement
-
-**CANDIDATE-NOT-APPROVED. Offline build only; no glasses/device I/O or physical acceptance.** TMG4 includes the unflashed TMG3 delta. The phone offers only the exact TMG4 candidate through the existing wizard and single human confirmation. Normal legacy app replies and outbound legacy POSE are removed; the flash path still works with TMG2 installed.
-
-## Tiles and persistence
-
-One source, `src/menu-grid-v2/tile_config.{h,c}` (byte-identical in the phone edition), holds two tile models, chosen by the stock base define `TD_STOCK_10611`, which the phone build never sets. The stock tiles are fixed and visible; the six module tiles follow them in any of the 720 orders (a Lehmer rank 0–719), and every module tile but Camera can be hidden. Both carousel and grid use the same compact map; the two/three-row layout stays independent.
-
-| | 1.0.5.12 pair: TMG11 glasses, the phone, every compile without a base | Stock 1.0.6.11 (TMG12) |
-| --- | --- | --- |
-| Stock tile ids | 0–6: Recorder, Live Captions, Live Assist, To-do, Teleprompter, Lifelog, Do Not Disturb | 0–7: Recorder, Live Captions, Live Assist, To-do, Navigation (stock), Teleprompter, Lifelog, Do Not Disturb |
-| Module tile ids | 7–12: Display Test, Navigation, Music, Pomodoro, My Apps, Camera | 8–13: Turbo Display, Turbo Nav, Music, Pomodoro, My Apps, Camera |
-| Items, Camera id, visible items | 13, 12, 8–13 | 14, 13, 9–14 |
-| Hideable mask, all-ids mask | `0x0f80` (ids 7–11), `0x1fff` | `0x1f00` (ids 8–12), `0x3fff` |
-| Version byte (wire `TTL1`/`TTA1` and file `TTC1`) | 1 | 2 |
-| Stored banks | `turbo_tiles_v1_{0,1}.cfg` | `turbo_tiles_v2_{0,1}.cfg` |
-| File padding | bytes 25–27 zero | bytes 26–27 zero |
-
-Each bank holds 32 bytes: `TTC1`, the version, the item count, the little-endian hide mask, the generation, the canonical ids, the zero padding, CRC32. The 32-byte `TTL1`/`TTA1` command/reply uses a 74-byte `TTL:`/`TTA:` carrier, business 15, a single-use 120-second token, client binding and expected generation; saves require complete write/flush/fsync/close/readback before success. Each model refuses the other's version byte: on 1.0.6.11 a TMG11 bank is never read (new file names) and the glasses show the default 14-item order until the next save; an old phone's version-1 command gets no reply, so it times out. A TMG12 phone build must use the 14-item model and version 2.
-
-The edit roles `284-byte menu allocation` and `Carousel item count 7 to 13` in `build-inputs.json` are historical keys that tables, tests and baselines match by text, so they keep their wording: on 1.0.6.11 the allocation is the 0x10c-byte stock object plus the module's 36-byte tail (0x130), and the count edit writes 14 (`movs r1,#14`).
-
-Separate `turbo_lang_v1_{0,1}.cfg` banks contain20 bytes: `TLC1`, version1, language0EN/1ZH, reserved zeros, generation, reserved zeros and CRC32. Both new bank families use serial generations, wrapMAX to1, select valid older banks after corruption, and refuse ambiguous equal/conflicting or half-range generations. Missing/short/corrupt files fall back to built-in order/English; hard I/O errors prevent writes. Even an explicit first English save creates a verified record. `TLA1` source2 means persisted; the phone requires source2 before reporting sync.
-
-State is owned by the existing heap Control and bounded timer lookup. New NAND reads occur only at the existing first menu show, never from controller creation or boot. Pre-show mutation is unavailable. Active tile changes wait for the plain awake launcher and renderer idle, preserve the selected canonical ID or select Camera, and use the existing snap/count ABI. No raw patch was added; `0x4d9bec` remains7→13 and the verified runtime count field narrows it.
-
-## Runtime status and one-turn measurement
-
-`TDG1` v2 uses256 bytes and the existing571-byte protobuf/JSON transport. It reports TMG4, the source/build-input SHA, caps`0x3f`, optional NAND total/available and existing RAM metrics, language/source, tile generation/pending map, and the unchanged600 raw units per detent heuristic. Unknown metrics remain unmeasured. `STATUS` is request-only; it does not create the launcher or a periodic collection timer. Only an explicit status or periodic-start request probes NAND statistics.
-
-Build identity is SHA-256 over canonical source hashes, source order, toolchain versions, normalized build flags, stock/asset inputs and patch descriptors. It is neither a Git commit nor the ZIP hash. This candidate's identity is `71d7fb8798f77f029a694722e3ef612b63d180f1f58a5ab7eda986d190998cb1`. Generated pins and output paths are excluded to avoid a circular or machine-specific identity.
-
-Knob calibration is a volatile, bounded30-second window: rotate exactly one turn in one direction, then Finish. It counts raw physical wheel deltas, stores net and absolute movement, and cancels before synthetic remote dispatch or when launcher/gates are lost. Replayed START cannot renew a window. Canceled/expired/overflowed/zero or substantially reversed motion yields no estimate. Nothing is saved or recalibrated;600 stays unchanged. The phone requires matching peer/window/sequence/kind and both ACK and file-terminal ownership before another command. No uncertain retry is sent.
-
-## Navigation and T4 removal
-
-POSE2 keeps the existing14-byte body, bounded prediction and timing. The phone sends no op8 fallback. Missing capability bit1 or failed prediction-mirror allocation stops navigation with an explicit message. The shared12-byte base validator remains because POSE2 and SCENE2 use it. The removed WeRead/Ride/English/Dots reply classifier is gone; WP8 transport-equivalence fixtures remain. FW2/FW3 releases are immutable (tags `fw/tmg2` and `fw/tmg3`); `baseline/` supplies only the pinned animation and structural-preservation baseline.
-
-## Rebuild and audit
-
-Use the already-provisioned toolchain pinned in `build-inputs.json` (`toolchain`): LLVM/LLD 23.1.5 for TMG10, TMG11 and TMG12 (`$TURBO_INPUTS/toolchain/llvm-bin`), 23.1.4 for TMG9 and older tags (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`). No package manager is required. There is no llvm-objdump in that folder, so no tool here may depend on one. The stock ZIP is the one `build.py --show stock-zip` prints for the tree's `stockBase` (a repository file for 1.0.5.x, a file under `$TURBO_INPUTS` for 1.0.6.11); never spell the path out by hand.
-
-Export `TURBO_INPUTS` (the folder with the toolchain, release ZIPs and `package.env`) in every shell before running `official-addon/ios107-edition/test.py` or any test in `firmware/tests/` directly. `scripts/turbo-gate.sh` exports it for its own stages, but a direct run does not. `stock_base_test.py` always reads the 1.0.6.11 canonical stock ZIP from it; `rebase_independent_test.py` reads that ZIP for the 1.0.5.12 to 1.0.6.11 pair, which is its default now that the tree holds that table, while the older pair (`--pair 1.0.5.5:1.0.5.12`) uses repository stock ZIPs only. Both fail with a message that names the fix when the variable is missing and they need it.
+Build and audit:
 
 ```sh
 export TURBO_INPUTS=<the inputs folder>
 R=$(git rev-parse --show-toplevel)
 FW=$R/firmware
 TC=$TURBO_INPUTS/toolchain/llvm-bin
-STOCK=$(python3 -I "$FW/build.py" --show stock-zip --inputs "$TURBO_INPUTS")
-ZIP12=StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip   # the tree's TMG12 release build (candidate 4's bytes)
-ZIP11=StrixOS-1.0.5.12-TurboIO-TMG11-CANDIDATE-NOT-APPROVED.zip   # C18's firmware, published at $TURBO_INPUTS/tmg11/
+STOCK=$(python3 -I "$FW/build.py" --show stock-zip)
+ZIP=$(python3 -I "$FW/build.py" --show archive-name)
 D=$(mktemp -d)
 python3 -I "$FW/tools/rebase_apply.py" --check --stock "$STOCK"
-python3 -I "$FW/tests/rebase_independent_test.py"   # re-derives every rebased address; about 40 s
-python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"   # plain build of the tree; asserts every pin
-python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP12"
-# Release history: the reproduction check for C18's firmware is the newest fw/tmgN tag, rebuilt with its own build.py and pins:
-mkdir "$D/r11" && git -C "$R" archive fw/tmg11 firmware firmware-research/strix-1.0.5.12/stock | tar -x -C "$D/r11"
-python3 -I "$D/r11/firmware/build.py" --stock "$D/r11/firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip" --llvm-bin "$TC" --out "$D/r11/out"
-cmp "$D/r11/out/$ZIP11" "$TURBO_INPUTS/tmg11/$ZIP11"   # the pinned copy the phone pins are generated from
-python3 -I "$FW/tools/phone_pins.py" --check "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"   # every release in releases.json
+python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
+python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP"
+cmp "$D/build/$ZIP" "$TURBO_INPUTS/tmg12/$ZIP"
 ```
 
-**State of the tree.** The tree is on stock 1.0.6.11 and is not emulator-only (`build.py --show emu-only` prints `false`). Its last repin was for candidate 4 (`tmg12(42)`). A plain build gives the TMG12 release ZIP, with `build.py` carried over in the identity (see "TMG12 release build"). The tree's `build.py` cannot rebuild TMG11: the byte-for-byte reproduction of TMG11 comes from the tag, as in the block above (`fw/tmg11` carries its own `build.py`, `build-inputs.json` and stock ZIP).
+- `rebase_apply.py --check` confirms the tree is wholly on its stock base.
+- A plain build asserts every pin in `build-inputs.json` and stops at the first mismatch. It writes the ZIP and `audit.json` to `--out`.
+- `--audit` checks a ZIP: the patch sites, the unchanged stock payloads, the startup descriptors, the stock cores and an AP below 9,600,000 bytes.
+- `tests/rebase_independent_test.py` re-derives every rebased address. It takes about 40 s.
 
-**Firmware-only gate.** `bash scripts/turbo-gate.sh --firmware-only [--tree-zip ZIP]` runs the firmware checks with no phone build, no `package.env`, no `releases.json` entry and no `phone_pins.py` call. It writes `official-addon/ios107-edition/build/gate-firmware/` (its own `report.json`, with `"mode": "firmware-only"` and `"build": "plain"` or `"compile-only"`), and cannot be combined with `--preview`, `--only-build` or `--skip-tests`. The stages, in order:
+Other `--show` values: `base` (the stock base) and `emu-only` (`false` for this tree).
+
+## Update the pins
+
+Do this only for a new release. It ends the TMG12 identity carry-over (see above).
+
+1. Change the source. If the label changes, edit `RELEASE`.
+2. Run the build with `--repin` in place of a plain build:
+   ```sh
+   python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/repin" --repin
+   ```
+   It writes `$D/repin/build-inputs.pinned.json`.
+3. Review the diff, then copy that file over `firmware/build-inputs.json`.
+4. Run a plain build again. It must pass with the new pins.
+5. Copy the ZIP to `$TURBO_INPUTS/<folder>/`. Add or update its entry in `official-addon/ios107-edition/releases.json`: `firmware`, `stockBase`, `zip.input` (relative to `$TURBO_INPUTS`), `zip.bytes`, `zip.sha256`, `acceptCurrent` and `hosts`. Paste the size and hash from command output.
+6. Regenerate and check the phone pins (`FirmwarePins.h` and `firmware-pins*.json`):
+   ```sh
+   python3 -I "$FW/tools/phone_pins.py" --write "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"
+   python3 -I "$FW/tools/phone_pins.py" --check "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"
+   ```
+   `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c20`).
+
+`phone_pins.py` refuses emulator-only builds in every mode. It also refuses the superseded TMG12 candidates 1 to 3 by their SHA-256 (`SUPERSEDED_ZIPS`).
+
+## Gate
+
+Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. It needs no phone build, no `package.env` and no `releases.json` entry, and writes its report to `official-addon/ios107-edition/build/gate-firmware/`. It cannot be combined with `--preview`, `--only-build` or `--skip-tests`. Its stages, in order:
 
 1. `fw-rebase`: `rebase_apply.py --check`.
-2. `fw-layout`: `tests/stock_layout_test.py` (every `src/stock_layout.h` value proven from the stock AP), `tools/check_layout.py` (no raw stock offset or queue id in built code, test models and headers) and its `--self-test` (every rule caught in a planted copy), then the host drivers that run on the tree's base (`render_idle`, `native_ui`, `native_status`, `native`, `tmg9_wheel`, `menu_tail`, `nav_service`, `unarmed_services`, `native_light`, `native_display`), `tests/rebase_independent_test.py`, `tests/stock_abi_test.py`, `tests/stock_base_test.py`, `tools/check_kept.py`, `tools/check_cjk.py`, `tests/remote_app_name_test.py`, and the tile model in both shapes (13 items with no base define, 14 on 1.0.6.11). It needs no tree ZIP. The full gate runs the same stage after `pins`.
-3. `fw-build`: a plain build of the tree, or, with `--tree-zip`, `build.py --compile-only` (the given ZIP is then the tree ZIP and is not built); then, in both cases, `tests/sensors_light_off_link_test.py` (the module links with the Light line off as well as on).
+2. `fw-layout`: the stock-layout proof, `tools/check_layout.py` (no raw stock offset in built code) and its self-test, the host drivers, the independent rebase check, `stock_abi_test`, `stock_base_test`, `tools/check_kept.py`, `tools/check_cjk.py` and the tile model.
+3. `fw-build`: a plain build of the tree, then `tests/sensors_light_off_link_test.py`. With `--tree-zip ZIP` it compiles only and uses the given ZIP.
 4. `fw-audit`: `build.py --audit` of the tree ZIP.
-5. `fw-tests`: `test.py --firmware-only` (the tree audit, then only `tmg4-host`, `tmg9-wheel-hook` and `tmg9-detent`, which include the independent re-derivation, `stock_base_test` and `stock_abi_test`).
-6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD from `git archive` with that tag's own `build.py` and pins, which require its pinned ZIP (today `fw/tmg11`, ZIP `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1`, C18's firmware). Because the main tree's `build.py` no longer reproduces TMG11, this stage is now the reproduction check for C18's firmware.
+5. `fw-tests`: `test.py --firmware-only`.
+6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD (today `fw/tmg11`) with that tag's own `build.py` and pins.
 7. `source-audit`.
 
-The run ends with `GATE PASS (firmware-only, plain build)` or `GATE PASS (firmware-only, compile-only build; tree ZIP given, not built)`. The tree plain-builds, so run it without `--tree-zip`; a given ZIP must be one built on the tree's base. The full gate is unchanged in stages and order, except for the `fw-layout` stage after `pins` and that every `test.py` call also gets `--tree-stock`, and an emulator-only tree (`build.py --show emu-only` prints `true`) is built once per run for the stages that need its ZIP instead of being looked up in `releases.json`. An emulator-only tree is never a phone release: `phone_pins.py --tree-release` refuses it. The TMG12 tree is not emulator-only, so the full gate looks its ZIP up in `releases.json` (`--tree-release`): a release that carries TMG12 and this ZIP must be listed there before the full gate can pass.
+A pass ends with `GATE PASS (firmware-only, plain build)`. Run it without `--tree-zip`.
 
-The shared immutable animation is read from `baseline/animation-frames.l8` (provenance in `baseline/README.md`), SHA-256`f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d`; no duplicate binary asset is tracked. Normal builds enforce all pins. `--repin` is a deliberate developer operation, not a runtime update mechanism.
+The full gate (`bash scripts/turbo-gate.sh`, see [AGENTS.md](../AGENTS.md)) also builds the phone addon, checks the pins and runs the phone `test.py`. It looks the tree's ZIP up in `releases.json`, so a release that carries this ZIP must be listed there.
 
-The pins of `fw/tmg11` (ZIP11, C18's firmware), from that tag's `build-inputs.json` (`archive`, `APBytes`, `APSHA256`); the AP MD5 is computed from the AP member of the pinned ZIP:
+## Reproduce an earlier release
 
-| Payload | Bytes | SHA-256 | MD5 |
-| --- | ---: | --- | --- |
-| ZIP | 8847234 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` | `5b14d0dcd637157af2813c1f3554c912` |
-| AP | 7474312 | `611b6bad89b2eda0e8501121a8af64c102576b3450b29931ad165c8f9a07bea5` | `4f49638d26755f635b9da85e7dea3062` |
+The tree's `build.py` cannot rebuild an earlier release, because the build identity hashes `build.py` and every source. Rebuild from the tag, with its own `build.py`, pins and stock ZIP:
 
-The audit enforces25 patch sites, every manifest row but `nuttx_ap.bin` as an unchanged stock payload (rows minus one: 14 on 1.0.5.x, 15 on 1.0.6.11),7 startup descriptors, stock header/tail and AP below9.6MB. Host ASan/UBSan tests cover every new codec/file, malformed inputs, A/B faults and generation wrap, exhaustive720×32 maps, renderer rows/pages, timer wrap, and native adapter fault/ownership cases. These checks do not establish physical boot or flash acceptance.
+```sh
+TAG=fw/tmg11
+BASE=$(git -C "$R" show "$TAG":firmware/build-inputs.json | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["stockBase"])')
+mkdir "$D/old" && git -C "$R" archive "$TAG" firmware "firmware-research/strix-$BASE/stock" | tar -x -C "$D/old"
+python3 -I "$D/old/firmware/build.py" --stock "$D/old/firmware-research/strix-$BASE/stock/Strix-OS-$BASE-original.zip" --llvm-bin "$TC" --out "$D/old/out"
+```
 
-## Human flash and rollback
+Use LLVM/LLD 23.1.5 (`$TURBO_INPUTS/toolchain/llvm-bin`) for TMG10 and TMG11, and 23.1.4 (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`) for TMG9 and older. TMG2 does not reproduce with either; its tag note says why.
 
-Keep C5 and the immutable TMG2 ZIP. With TMG2 installed, follow the phone TMG4 wizard instructions (`git show 4fb3775:official-addon/ios107-edition/OTA.md`): Auto Update on then off once, download in RayNeo and stop at Ready to install, version read within120seconds, one human confirmation, manual Start install, then restart the phone app after glasses reboot. Check all13 default tiles; save/reboot reorder and visibility; save/reboot language; status metrics; one-turn calibration; POSE2 in a dead zone; all retained tiles and Spotify.
+## Earlier releases
 
-Rollback requires installing the TMG2-pinned C5 phone build and then flashing the TMG2 ZIP by hand. This TMG4 phone package rejects TMG2/TMG3 candidates. No loader code, dynamic imports, OTA/boot changes, new raw patch or device operation is included. Loader findings remain research for a possible TMG5.
+| Tag | Stock base | Phone build | ZIP SHA-256 |
+| --- | --- | --- | --- |
+| `fw/tmg11` | 1.0.5.12 | C18 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` |
+| `fw/tmg10` | 1.0.5.12 | C16 | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` |
+| `fw/tmg9` | 1.0.5.5 | C13 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` |
+| `fw/tmg8` | 1.0.5.5 | C12 | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` |
+| `fw/tmg7` | 1.0.5.5 | C11 | `6b06d0dd3124ac1f86c91e0879908f9bfe129a2051cf0b619d5b0b664bc3c0aa` |
+| `fw/tmg6` | 1.0.5.5 | C10 | `a134c0f9d8550cdd5b53559e4857e27ca92ec8b168543d2c357cbc1e3fbe4d6e` |
+| `fw/tmg5` | 1.0.5.5 | C9 | `6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef` |
+| `fw/tmg4` | 1.0.5.5 | C8 | `aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126` |
+| `fw/tmg3` | 1.0.5.5 | C6 | `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` |
+| `fw/tmg2` | 1.0.5.5 | C1 to C5 | `6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473` |
+
+Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the tag notes name them.
+
+## Files
+
+| Path | Contents |
+| --- | --- |
+| `RELEASE` | The release label |
+| `build.py` | Build, audit, repin and `--show` |
+| `build-inputs.json` | Every pin: stock base and hashes, the 25 edits, module, AP, ZIP and toolchain |
+| `src/` | Module source; `src/stock_layout.h` names every stock offset |
+| `link.ld`, `trampolines.S` | The link script with the stock symbol addresses, and the patch-site trampolines |
+| `include/`, `assets/` | Build includes and the menu icon art |
+| `baseline/` | Immutable inputs carried over from older releases, and the rebase tables ([README](baseline/README.md)) |
+| `tools/` | `rebase_apply.py`, `rebase_derive.py`, `phone_pins.py`, `stock_zip.py`, `check_layout.py`, `check_kept.py`, `check_cjk.py`, `encode_icons.py` |
+| `tests/` | Host tests and stock proofs |
