@@ -218,6 +218,27 @@
       "new": "0x1061bea9"
      }
     },
+    "correctComment": {
+     "lv_timer_create_comment": {
+      "derived": "0x10631b44",
+      "new": "0x104db610",
+      "bytes": [
+       114,
+       "a2abd86a112ebaad6ff81c2c80090378d5018cc1f5ded25ae6d40210728a5d26"
+      ],
+      "linkld": "stream_timer_create",
+      "reason": "the derived address lies inside an unrelated function; the comment names the LVGL timer constructor (stores the period at +0, the callback at +8 and the user data at +0xc), which is link.ld stream_timer_create"
+     },
+     "recorder_helper_comment": {
+      "derived": "0x107c6cc0",
+      "new": "0x105f9460",
+      "bytes": [
+       86,
+       "4503e72442837d4f93999c6345fff93a54dd87dc70438e6b337fb31bb865caa4"
+      ],
+      "reason": "the derived address lies inside an unrelated sort routine; the comment names the helper that clears a 64-byte statfs buffer, calls statfs and returns the word at +8 times the 64-bit word at +32"
+     }
+    },
     "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter (addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row)"
    }
   }
@@ -18055,10 +18076,12 @@
    "name": "recorder_helper_comment",
    "kind": "code",
    "old": "0x1073b9c8",
-   "new": "0x107c6cc0",
+   "new": "0x105f9460",
    "sites": {
     "src/app-runtime-v1/app_files_native.c": 1
    },
+   "derivedNew": "0x107c6cc0",
+   "correction": "the derived address lies inside an unrelated sort routine; the comment names the helper that clears a 64-byte statfs buffer, calls statfs and returns the word at +8 times the 64-bit word at +32",
    "verdict": "shift",
    "checks": [
     "sig",
@@ -18146,10 +18169,12 @@
    "name": "lv_timer_create_comment",
    "kind": "code",
    "old": "0x10602514",
-   "new": "0x10631b44",
+   "new": "0x104db610",
    "sites": {
     "src/image-upload-test/native_page.c": 1
    },
+   "derivedNew": "0x10631b44",
+   "correction": "the derived address lies inside an unrelated function; the comment names the LVGL timer constructor (stores the period at +0, the callback at +8 and the user data at +0xc), which is link.ld stream_timer_create",
    "verdict": "shift",
    "checks": [
     "sig",

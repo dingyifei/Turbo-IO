@@ -789,6 +789,24 @@ REVIEWED_UNIVERSE_CHANGES = {
         'reason': 'referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher '
                   'global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter '
                   '(addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row)',
+        # correctComment (phase F7 candidate 3): a code-comment value row whose old address was never the function the
+        # comment names. The row is derived and checked from the old tree exactly as before and must still give
+        # `derived`; only the table written takes `new`, which must hold the pinned bytes, start a function by its bytes
+        # (a pool word that a pc-relative load reads right before it, and a push {..., lr} at it) and, when `linkld`
+        # is given, be that accepted link.ld row's address. The row records the derived address as derivedNew.
+        'correctComment': {
+            'lv_timer_create_comment': {
+                'derived': '0x10631b44', 'new': '0x104db610', 'bytes': (114, 'a2abd86a112ebaad6ff81c2c80090378d5018cc1f5ded25ae6d40210728a5d26'),
+                'linkld': 'stream_timer_create',
+                'reason': 'the derived address lies inside an unrelated function; the comment names the LVGL timer '
+                          'constructor (stores the period at +0, the callback at +8 and the user data at +0xc), which is '
+                          'link.ld stream_timer_create'},
+            'recorder_helper_comment': {
+                'derived': '0x107c6cc0', 'new': '0x105f9460', 'bytes': (86, '4503e72442837d4f93999c6345fff93a54dd87dc70438e6b337fb31bb865caa4'),
+                'reason': 'the derived address lies inside an unrelated sort routine; the comment names the helper that '
+                          'clears a 64-byte statfs buffer, calls statfs and returns the word at +8 times the 64-bit '
+                          'word at +32'},
+        },
     },
 }
 FIELD_BASES = {'native_light_current': 'display_unit', 'native_light_peak': 'display_unit'}  # field method: value -> RAM base value
@@ -1555,6 +1573,41 @@ def stock_record(base, raw, files, build, rebase, pin=None):
     return out
 
 
+def comment_corrections(fixes, keyed, acc, new):
+    """REVIEWED_UNIVERSE_CHANGES correctComment, each checked against the accepted rows and the new image. Returns
+    {row name: {'new', 'reason'}}; any failed check stops the run before a table is written."""
+    out, olds = {}, {it['old'] for it in keyed.values() if it['family'] == 'value'}
+    for name, fix in fixes.items():
+        it, x = keyed.get(('value', name)), H(fix['new'])
+        why = []
+        if it is None or it['type'] != 'code' or not name.endswith('_comment'):
+            why.append('not a code-comment value row of the old table')
+        elif acc.get(('value', name)) != H(fix['derived']):
+            why.append('derived %s, the entry says %s' % (hex(acc[('value', name)]) if ('value', name) in acc else 'nothing', fix['derived']))
+        else:
+            n, digest = fix['bytes']
+            at = (x & ~1) - FLASH
+            if x & 1 != it['old'] & 1:
+                why.append('the Thumb bit differs from the old value')
+            if not 4 <= at <= len(new) - n or sha(new[at:at + n]) != digest:
+                why.append('the %d bytes at %s are not the pinned ones' % (n, fix['new']))
+            else:
+                h1, h2 = struct.unpack_from('<HH', new, at)
+                if not (h1 & 0xff00 == 0xb500 or (h1 == 0xe92d and h2 & 0x4000)):
+                    why.append('the code at %s is not a push {..., lr}' % fix['new'])
+                pool = (x & ~1) - 4
+                if pool & 3 or not any(load_literal(new, s) and load_literal(new, s)[2] == pool for s in range(max(FLASH, pool - 4096), pool, 2)):
+                    why.append('no pc-relative load reads the word right before %s' % fix['new'])
+            if 'linkld' in fix and (acc.get(('linkld', fix['linkld'])) or 0) & ~1 != x & ~1:
+                why.append('not the accepted link.ld %s address' % fix['linkld'])
+            if x in olds:
+                why.append('equals an old value: rewriting would be ambiguous')
+        if why:
+            raise SystemExit('rebase table NOT written: correctComment %s: %s' % (name, '; '.join(why)))
+        out[name] = {'new': fix['new'], 'reason': fix['reason']}
+    return out
+
+
 def propose(args):
     """--propose: verify each TSV proposal by this tool's own methods (docstring) and write --out and --report."""
     rebase, build = rebase_apply(), load_module(FW/'build.py', 'rebase_derive_build')
@@ -2115,6 +2168,7 @@ def propose(args):
             + sorted(set(universe.get('addLinkld', {})) - {k[1] for k in acc if k[0] == 'linkld'})
         if missing:
             raise SystemExit('rebase table NOT written: REVIEWED_UNIVERSE_CHANGES names rows that are not accepted rows: ' + ', '.join(missing))
+    corrections = comment_corrections(universe.get('correctComment', {}), keyed, acc, new) if not rejected else {}
     converted = []
     for it in items:
         if it['key'] not in acc:
@@ -2138,6 +2192,8 @@ def propose(args):
                    'oldPad': e['pad'], 'newPad': x['newPad'], **{k: x[k] for k in ('oldAfter', 'newAfter') if k in x}}
         elif it['family'] == 'value':
             row = {'name': it['key'][1], 'kind': it['type'], 'old': it['text'], 'new': hex(p), 'sites': it['sites']}
+            if it['key'][1] in corrections:
+                row.update(new=corrections[it['key'][1]]['new'], derivedNew=hex(p), correction=corrections[it['key'][1]]['reason'])
             if it['type'] == 'data':
                 row.update(oldString=it['static']['str']['old'].decode(), newString=it['static']['str']['new'].decode())
         else:
@@ -2167,6 +2223,8 @@ def propose(args):
                                     **({'universe': {'pruneLinkld': list(universe['pruneLinkld']),
                                                      'valueToLinkld': dict(universe['valueToLinkld']),
                                                      'addLinkld': {k: dict(v) for k, v in universe.get('addLinkld', {}).items()},
+                                                     **({'correctComment': {k: dict(v, bytes=list(v['bytes'])) for k, v in universe['correctComment'].items()}}
+                                                        if 'correctComment' in universe else {}),
                                                      'reason': universe['reason']}} if to in REVIEWED_UNIVERSE_CHANGES else {})}},
         'bases': bases,
         'moduleVA': {'old': old_table['moduleVA'][col], 'new': module, 'derivation': MODULE_DERIVATION},

@@ -197,7 +197,12 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
                                    'ce_focus_enabled', 'ce_head_mode', 'ce_stock_head_notify_resume',
                                    'ce_stock_head_start_resume', 'ce_stock_head_stop_resume',
                                    'ce_stock_sys_destroy_resume'},
-                        valueToLink={0x1998_9694: 'tio_launcher_global'}),   # '_': not a value token for rebase_apply
+                        valueToLink={0x1998_9694: 'tio_launcher_global'},   # '_': not a value token for rebase_apply
+                        # F7 candidate 3: code-comment values whose old address was never the function the comment
+                        # names. comment_corrections() checks each against this file's own derivation and the new image.
+                        commentFix={0x1060_2514: dict(derived=0x1063_1b44, new=0x104d_b610, link='stream_timer_create'),
+                                    0x1073_b9c8: dict(derived=0x107c_6cc0, new=0x105f_9460,
+                                                      body=(86, '4503e72442837d4f93999c6345fff93a54dd87dc70438e6b337fb31bb865caa4'))}),
     knownBad={'nav_top_app': dict(bad=0x106f4b25, good=0x106f4b59, windowsDiffer=None, split=True),
               'ce_ext_106d3310': dict(bad=0x106f4b25, good=0x106f4b59, windowsDiffer=None, split=True),
               'native_label_create': dict(bad=0x104e7234, good=0x104e587d, windowsDiffer=None)},
@@ -1503,6 +1508,9 @@ def run(old_fw, new_fw, table_path, old, new, cfg, abi=None, derive_only=False, 
     if derive_only:
         return u, rows, d, derived, row_problems, problems, [], [], 0, None, (kb_lines, kb_fails)
     # the table of the pair under test is read only now, after the derivation
+    cf_lines, cf_fails = comment_corrections(cfg, rows, new)
+    kb_lines += cf_lines
+    kb_fails += cf_fails
     table = json.loads(table_path.read_text())
     tree_problems = compare_tree(u, rows, new_fw, new)
     added = [r for r in table['linkld'] if r['symbol'] in cfg['addedAfterOldTree']]
@@ -1856,6 +1864,43 @@ def derive_only_result(key, rows, fails, soft, json_path):
         return 3
     print('derive-only PASS: %d rows resolved, known-bad rows pass' % len(rows))
     return 0
+
+
+def comment_corrections(cfg, rows, new):
+    """newTreeChanges commentFix: a code-comment value row must first derive to `derived` here; it then takes `new`, which
+    must be a function entry in the new image by its bytes (a word that a pc-relative load reads right before it, and a
+    push {..., lr} at it) and either the derived new address of link.ld `link` or the pinned `body` bytes. Returns
+    (printed lines, failures); the compare stage then sees the corrected rows."""
+    lines, fails = [], []
+    links = {r['name']: r['new'] for r in rows if r['kind'] == 'link'}
+    for old_value, fix in cfg.get('newTreeChanges', {}).get('commentFix', {}).items():
+        found = [r for r in rows if r['kind'] == 'value' and r['old'] == old_value]
+        x, why = fix['new'], []
+        if len(found) != 1:
+            fails.append('commentFix %s: %d value rows of the old tree' % (hex(old_value), len(found)))
+            continue
+        r = found[0]
+        if r['new'] != fix['derived']:
+            why.append('derived %s, the entry says %s' % (hex(r['new'] or 0), hex(fix['derived'])))
+        if x & 1 != old_value & 1 or not new.has(x, 8):
+            why.append('Thumb bit or address')
+        else:
+            h1, h2 = new.h(x), new.h(x + 2)
+            if not (h1 & 0xff00 == 0xb500 or (h1 == 0xe92d and h2 & 0x4000)):
+                why.append('no push {..., lr} at %s' % hex(x))
+            if not any(literal_ref(new, pc) and literal_ref(new, pc)[0] == x - 4 for pc in range(x - 4096, x - 4, 2)):
+                why.append('no pc-relative load reads the word before %s' % hex(x))
+        if 'link' in fix and (links.get(fix['link']) or 0) & ~1 != x:
+            why.append('not the derived link.ld %s' % fix['link'])
+        if 'body' in fix and hashlib.sha256(new.raw[x - FLASH:x - FLASH + fix['body'][0]]).hexdigest() != fix['body'][1]:
+            why.append('the %d bytes at %s are not the pinned ones' % (fix['body'][0], hex(x)))
+        if why:
+            fails.append('commentFix %s: %s' % (hex(old_value), '; '.join(why)))
+            continue
+        lines.append('comment fix: value %s derived %s, written %s (%s)' % (
+            hex(old_value), hex(r['new']), hex(x), 'link.ld ' + fix['link'] if 'link' in fix else 'pinned body'))
+        r['new'] = x
+    return lines, fails
 
 
 def mutation(old_fw, new_fw, table, old, new, rows, added=frozenset()):
