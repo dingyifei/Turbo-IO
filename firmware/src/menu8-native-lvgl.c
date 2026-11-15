@@ -52,12 +52,12 @@ static uint32_t le32(const uint8_t *p) {
 static uint16_t le16(const uint8_t *p) { return (uint16_t)(p[0]|((uint16_t)p[1]<<8)); }
 static bool png_type(const M8Decoder *d,const M8Image *i) {
   const uint8_t *raw=(const uint8_t*)d;
-  /* Native open writes selected decoder at 0, decoded buffer at 0x2c,
-   * expanded header at 0x20. Require LODEPNG, not a bin-decoder false match. */
-  uintptr_t decoder=le32(raw),buffer=le32(raw+0x2c);
-  if(!decoder || !buffer || (decoder&3) || raw[0x21]!=0x10 ||
-     le16(raw+0x24)!=i->width || le16(raw+0x26)!=i->height) return false;
-  const char *name=(const char*)(uintptr_t)le32((const uint8_t*)decoder+0x10);
+  /* Native open writes the selected decoder, the decoded buffer and the image header the decoder reported
+   * (offsets in stock_layout.h). Require LODEPNG, not a bin-decoder false match. */
+  uintptr_t decoder=le32(raw+TIO_STOCK_IMAGE_DSC_DECODER),buffer=le32(raw+TIO_STOCK_IMAGE_DSC_DECODED);
+  if(!decoder || !buffer || (decoder&3) || raw[TIO_STOCK_IMAGE_DSC_CF]!=0x10 ||
+     le16(raw+TIO_STOCK_IMAGE_DSC_WIDTH)!=i->width || le16(raw+TIO_STOCK_IMAGE_DSC_HEIGHT)!=i->height) return false;
+  const char *name=(const char*)(uintptr_t)le32((const uint8_t*)decoder+TIO_STOCK_IMAGE_DECODER_NAME);
   static const char expected[]="LODEPNG";
   if(!name) return false;
   for(unsigned n=0;n<sizeof expected;n++) if(name[n]!=expected[n]) return false;

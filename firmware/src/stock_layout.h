@@ -100,6 +100,22 @@
 /* LVGL global: peak memory in use. */
 #define TIO_STOCK_LVGL_MEM_PEAK 0x1c0u
 
+/* LVGL image decoder descriptor (filled by the decoder open function) and image decoder. */
+/* Image decoder descriptor: its size. */
+#define TIO_STOCK_IMAGE_DSC_BYTES 0x4cu
+/* Image decoder descriptor: the decoder that open selected. */
+#define TIO_STOCK_IMAGE_DSC_DECODER 0x0u
+/* Image decoder descriptor: the colour format byte of the image header the decoder reported. */
+#define TIO_STOCK_IMAGE_DSC_CF 0x21u
+/* Image decoder descriptor: the image width (16 bits) in that header. */
+#define TIO_STOCK_IMAGE_DSC_WIDTH 0x24u
+/* Image decoder descriptor: the image height (16 bits) in that header. */
+#define TIO_STOCK_IMAGE_DSC_HEIGHT 0x26u
+/* Image decoder descriptor: the decoded image buffer. */
+#define TIO_STOCK_IMAGE_DSC_DECODED 0x2cu
+/* Image decoder: its name string. */
+#define TIO_STOCK_IMAGE_DECODER_NAME 0x10u
+
 /* Light sensor sample: the light manager's cached copy that the latest-light getter (link.ld tio_light_latest) returns. */
 /* Light sample: size of the sample the getter copies out. */
 #define TIO_STOCK_LIGHT_SAMPLE_BYTES 0x10u
@@ -121,7 +137,9 @@
 #define TIO_STOCK_MESSAGE_DATA 0x4u
 /* Queued message: the data length. */
 #define TIO_STOCK_MESSAGE_LENGTH 0x8u
-/* Queued message: the release function for the data (zero selects the default). */
+/* Queued message: the release function for the data. Zero selects stock's deep-copy path: when data and length are
+ * non-zero, the queue copies the data into its own allocation and frees that copy with its own release function.
+ * Non-zero: the data pointer and this function are stored as given, with no copy. */
 #define TIO_STOCK_MESSAGE_RELEASE 0x14u
 /* File callback table: the receive callback. */
 #define TIO_STOCK_FILE_CB_RECEIVE 0x18u

@@ -4,7 +4,7 @@
 _Static_assert(sizeof(M8Image)==28,"image ABI");
 _Static_assert(offsetof(M8Image,data)==16,"data pointer ABI");
 #endif
-_Static_assert(sizeof(M8Decoder)==76,"decoder ABI");
+_Static_assert(sizeof(M8Decoder)==TIO_STOCK_IMAGE_DSC_BYTES,"decoder ABI");
 static bool api_ok(const M8RenderAPI *a) {
   return a && a->create_root && a->create_image && a->delete_root && a->hidden &&
     a->configure_root && a->decode_open && a->decode_is_png && a->decode_close &&
@@ -39,7 +39,7 @@ bool m8_render_prepare(M8Render *r,const M8RenderAPI *a,void *parent,const M8Ima
   if(!r || !api_ok(a) || !parent || !source_ok(i) || r->root || r->image || r->source) return false;
   M8Decoder decoder;
   /* Volatile zero prevents an unbound memset helper in the freestanding object. */
-  for(unsigned n=0;n<19;n++) ((volatile uint32_t*)decoder.words)[n]=0;
+  for(unsigned n=0;n<sizeof decoder.words/sizeof decoder.words[0];n++) ((volatile uint32_t*)decoder.words)[n]=0;
   if(a->decode_open(&decoder,i)!=1) return false;
   bool png=a->decode_is_png(&decoder,i);
   a->decode_close(&decoder);

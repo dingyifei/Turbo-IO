@@ -23,7 +23,11 @@
    "sha256=34baf45a6de62cf4341c20635ad8f935677fd7683ec8a01f78158e96574b956e,len=71": 1,
    "sha256=f5d7fc00ae15d2a6ef9143bda8690a34487586833cf50f2bcc3e6d1c9bd53599,len=19": 1,
    "sha256=9dda0735e0a99d4f15d547a39586883f175ce81c0a865b0afe04d04f94e80143,len=17": 1,
-   "sha256=2c918cb20026712a3927905ffdcd9b4cb7b76682d224f3791aa11e752d0d2b15,len=69": 1
+   "sha256=2c918cb20026712a3927905ffdcd9b4cb7b76682d224f3791aa11e752d0d2b15,len=69": 1,
+   "sha256=a75c3f0b13374f936051c24b3258802a9ba4dea6d01ae24c81bc6c2f5acda2f6,len=7": 1,
+   "sha256=d638ab769f639b024c5514610ef439edf73b586350d45e08c5e80973bfe13eec,len=19": 1,
+   "sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19": 1,
+   "sha256=24926e315c4025ddca43ab8313ea7e654c583baaa05108fceb57e9f8728c4022,len=107": 1
   }
  },
  "moduleMessageIds": [
@@ -2076,6 +2080,359 @@
     }
    ],
    "why": "the display brightness callback reads a sample into its buffer and loads the lux float from this offset"
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_BYTES",
+   "n": 1,
+   "where": "link:tio_lv_image_decoder_open",
+   "at": 10,
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 2
+   },
+   "transform": "id",
+   "why": "Decoder open clears the whole descriptor first: the size argument of its memset call."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_BYTES",
+   "n": 2,
+   "where": "str:sha256=24926e315c4025ddca43ab8313ea7e654c583baaa05108fceb57e9f8728c4022,len=107#0",
+   "at": 56,
+   "function": {
+    "where": "str:sha256=24926e315c4025ddca43ab8313ea7e654c583baaa05108fceb57e9f8728c4022,len=107#0",
+    "at": -44
+   },
+   "shape": "movs-imm8",
+   "regs": {
+    "rd": 2
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 60,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 0,
+      "rn": 7
+     },
+     "field": 12
+    },
+    {
+     "at": 86,
+     "shape": "bl",
+     "target": "link:tio_lv_image_decoder_open"
+    }
+   ],
+   "why": "A launcher image view clears its stack descriptor with this size, then passes the same address to decoder open."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_DECODER",
+   "n": 1,
+   "where": "link:tio_lv_image_decoder_open",
+   "at": 110,
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 100,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 1,
+      "rn": 4
+     },
+     "field": 32
+    }
+   ],
+   "why": "On the fresh (not cached) path, open stores the decoder the search returned at this offset."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_DECODER",
+   "n": 2,
+   "where": "link:tio_lv_image_decoder_close",
+   "at": 4,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 0
+   },
+   "transform": "id",
+   "why": "Decoder close loads the selected decoder from this offset before calling its close callback."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_CF",
+   "n": 1,
+   "where": "ptr:str:sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19#0@0x18",
+   "at": 114,
+   "shape": "ldrb.w-imm12",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 12,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 4,
+      "rm": 1
+     }
+    }
+   ],
+   "why": "The built-in binary image decoder open callback reads the colour format byte from its descriptor argument."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_CF",
+   "n": 2,
+   "where": "call:ptr:str:sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19#0@0x18@0xb4",
+   "at": 14,
+   "shape": "ldrb.w-imm12",
+   "regs": {
+    "rt": 0,
+    "rn": 0
+   },
+   "transform": "id",
+   "why": "The binary decoder helper for indexed images reads the colour format byte of the descriptor to get its bits per pixel."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_WIDTH",
+   "n": 1,
+   "where": "call:ptr:str:sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19#0@0x18@0xb4",
+   "at": 42,
+   "shape": "ldrh-imm5",
+   "regs": {
+    "rt": 1,
+    "rn": 5
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 6,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 5,
+      "rm": 0
+     }
+    }
+   ],
+   "why": "The binary decoder helper reads the header width of its descriptor argument to size its draw buffer."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_WIDTH",
+   "n": 2,
+   "where": "ptr:str:sha256=a75c3f0b13374f936051c24b3258802a9ba4dea6d01ae24c81bc6c2f5acda2f6,len=7#0@-0x16",
+   "at": 98,
+   "shape": "strh-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": {
+    "add": 32
+   },
+   "context": [
+    {
+     "at": 12,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 4,
+      "rm": 2
+     }
+    },
+    {
+     "where": "call:link:tio_lv_image_decoder_open@0x68",
+     "at": 196,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 2,
+      "rm": 5
+     }
+    },
+    {
+     "where": "call:link:tio_lv_image_decoder_open@0x68",
+     "at": 4,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 5,
+      "rm": 1
+     }
+    },
+    {
+     "where": "link:tio_lv_image_decoder_open",
+     "at": 100,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 1,
+      "rn": 4
+     },
+     "field": 32
+    }
+   ],
+   "why": "The PNG info callback stores the width at header offset 4; open passes descriptor plus 0x20 as that header through the search."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_HEIGHT",
+   "n": 1,
+   "where": "call:ptr:str:sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19#0@0x18@0xb4",
+   "at": 24,
+   "shape": "ldrh-imm5",
+   "regs": {
+    "rt": 6,
+    "rn": 5
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 6,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 5,
+      "rm": 0
+     }
+    }
+   ],
+   "why": "The binary decoder helper reads the header height of its descriptor argument to size its draw buffer."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_HEIGHT",
+   "n": 2,
+   "where": "ptr:str:sha256=a75c3f0b13374f936051c24b3258802a9ba4dea6d01ae24c81bc6c2f5acda2f6,len=7#0@-0x16",
+   "at": 114,
+   "shape": "strh-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": {
+    "add": 32
+   },
+   "context": [
+    {
+     "at": 12,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 4,
+      "rm": 2
+     }
+    },
+    {
+     "where": "call:link:tio_lv_image_decoder_open@0x68",
+     "at": 196,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 2,
+      "rm": 5
+     }
+    },
+    {
+     "where": "call:link:tio_lv_image_decoder_open@0x68",
+     "at": 4,
+     "shape": "mov-reg",
+     "regs": {
+      "rd": 5,
+      "rm": 1
+     }
+    },
+    {
+     "where": "link:tio_lv_image_decoder_open",
+     "at": 100,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 1,
+      "rn": 4
+     },
+     "field": 32
+    }
+   ],
+   "why": "The PNG info callback stores the height at header offset 6; open passes descriptor plus 0x20 as that header through the search."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_DECODED",
+   "n": 1,
+   "where": "link:tio_lv_image_decoder_open",
+   "at": 146,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 100,
+     "shape": "add.w-imm",
+     "regs": {
+      "rd": 1,
+      "rn": 4
+     },
+     "field": 32
+    }
+   ],
+   "why": "On the fresh path, after the decoder open callback returns, open reads the decoded buffer from this offset."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DSC_DECODED",
+   "n": 2,
+   "where": "str:sha256=d638ab769f639b024c5514610ef439edf73b586350d45e08c5e80973bfe13eec,len=19#0",
+   "at": 94,
+   "function": {
+    "where": "str:sha256=d638ab769f639b024c5514610ef439edf73b586350d45e08c5e80973bfe13eec,len=19#0",
+    "at": -192
+   },
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 6,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "The PNG decoder open callback stores its decoded buffer into the descriptor at this offset."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DECODER_NAME",
+   "n": 1,
+   "where": "str:sha256=a75c3f0b13374f936051c24b3258802a9ba4dea6d01ae24c81bc6c2f5acda2f6,len=7#0",
+   "at": 2,
+   "function": {
+    "where": "str:sha256=a75c3f0b13374f936051c24b3258802a9ba4dea6d01ae24c81bc6c2f5acda2f6,len=7#0",
+    "at": -32
+   },
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "The PNG decoder init stores the name string it has just loaded into the new decoder at this offset."
+  },
+  {
+   "constant": "TIO_STOCK_IMAGE_DECODER_NAME",
+   "n": 2,
+   "where": "str:sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19#0",
+   "at": 50,
+   "function": {
+    "where": "str:sha256=4f2dcbe96a3818edf28a4c056ed365d6ae7c1cd8f4da34ec031af73943a40463,len=19#0",
+    "at": -32
+   },
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 46,
+     "shape": "ldr-lit",
+     "regs": {
+      "rt": 3
+     }
+    }
+   ],
+   "why": "The binary decoder init stores its name string, loaded just before, into the new decoder at this offset."
   }
  ]
 }

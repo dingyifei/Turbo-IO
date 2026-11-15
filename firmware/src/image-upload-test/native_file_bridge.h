@@ -4,9 +4,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "image_test.h"
-/* Strix 1.0.4.12 report_file_recv_complete wire-to-callback ABI. This is an
- * internal AP callback layout, NOT a packet sent by the phone. The source and
- * payload expire when the original callback returns. Never retain either. */
+/* Strix 1.0.6.11 file-receive callback object. Stock's builder zeroes a
+ * 0x15c-byte stack object, fills these fields from the file receiver's state
+ * (complete from its own argument) and passes it to the callback at +0x18 of
+ * each registered slot; the trailing 12 bytes stay zero and are not modelled.
+ * tests/stock_layout_test.py checks every offset here against that builder.
+ * This is an internal AP callback layout, NOT a packet sent by the phone. The
+ * source and payload expire when the original callback returns. Never retain
+ * either. */
 typedef struct {
  const uint8_t *data;
  uint32_t declared;

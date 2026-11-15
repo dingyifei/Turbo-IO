@@ -9,7 +9,9 @@ The test resolves each locator from link.ld, the build-inputs.json edits and the
 instruction with its own small Thumb-2 decoder, and compares. It also checks that the two witnesses of a value sit
 in two different stock functions (one named exception), the pinned literal-load totals, the table addresses of the
 LVGL memory counters, the header's refusal of every other stock base, the edits that the header's values must agree
-with, and the module message ids. A +1 witness must be followed by bls or bhi, so the bound is shown to be inclusive.
+with, the module message ids, that every code-comment row of the active table names a function entry by the
+image bytes, and render_idle.c's five named stock addresses (table rows, the dispatch stores, the .data copy
+destination and the heap region's end). A +1 witness must be followed by bls or bhi, so the bound is shown to be inclusive.
 The header may define no macro that escapes the witness rule, the one derived constant is named, and no free text in
 the JSON or the header may hold a vendor string. Finally it mutates the header values and the image bytes (every
 bit of the first use of each encoding included) and requires every mutation to be refused. Nothing here writes a
@@ -23,6 +25,8 @@ Locator forms (offsets are signed and counted from the located address):
   str:ID#K       the K-th literal load of the runtime address of one NUL-terminated string; ID is "text" for the
                  three LVGL names only, and sha256=<hex>,len=<n> for every other string
   call:LOC@OFF   the target of the BL at LOC+OFF
+  ptr:LOC@OFF    the Thumb code pointer (bit 0 cleared) that the 16-bit literal load at LOC+OFF reads (OFF may be
+                 negative); the word must be odd and point into the AP image
 
 The literal-load scan looks at every halfword of the image (no instruction-boundary check): a 16-bit ldr rt,[pc,#n]
 or a 32-bit ldr.w rt,[pc,#+-n] counts when its literal word is 4-byte aligned and equals the value.
@@ -53,7 +57,7 @@ SAME_FUNCTION_EXCEPTION = ('TIO_STOCK_MESSAGE_ID_MAX', 'same-function: bound and
 # Decision R3: the one derived constant, with its parts. Any other derived header macro is refused.
 DERIVED_CONSTANT = ('TIO_MENU_SCROLL_POSITION_OFFSET', ('TIO_STOCK_MENU_MOTION', 'TIO_STOCK_MOTION_POSITION'))
 # The number of context entries over all records, so that a dropped context is noticed.
-CONTEXT_ENTRIES = 69
+CONTEXT_ENTRIES = 85
 # A +1 witness is an unsigned compare whose bound is inclusive: the next flag reader is bls (in range) or bhi (out
 # of range), with only flag-preserving register moves between. bcc/bcs would make the bound exclusive.
 PLUS_ONE_SHAPES = ('cmp-imm8', 'cmp.w-imm')
@@ -474,6 +478,7 @@ def load_module(path, name):
 
 
 RAM_WINDOW = load_module(FW/'tools'/'check_layout.py', 'stock_layout_lint').RAM_WINDOW
+rebase_apply = load_module(FW/'tools'/'rebase_apply.py', 'stock_layout_rebase_apply')
 
 
 def active_table(spec):
@@ -746,6 +751,18 @@ class World:
         return self.cache[loc]
 
     def _resolve(self, loc):
+        if loc.startswith('ptr:'):
+            inner, _, off = loc[4:].rpartition('@')
+            if not inner or not re.fullmatch(r'-?0x[0-9a-f]+', off):
+                raise Fail('%s: malformed ptr: locator' % loc)
+            a = self.resolve(inner) + int(off, 16)
+            d = decode(self.img, a, 'ldr-lit')
+            if d is None:
+                raise Fail('%s: no literal load at %s%s (bytes %s)' % (loc, inner, signed(int(off, 16)), insn_bytes(self.img, a)))
+            w = self.img.word(d.field)
+            if not w & 1 or not self.img.inside(w & ~1):
+                raise Fail('%s: the loaded word is not a Thumb code pointer into the AP image' % loc)
+            return w & ~1
         if loc.startswith('call:'):
             inner, _, off = loc[5:].rpartition('@')
             if not inner or not re.fullmatch(r'0x[0-9a-f]+', off):
@@ -783,7 +800,7 @@ class World:
         raise Fail('%s: unknown locator form' % loc)
 
     def is_entry_form(self, loc):
-        return loc.split(':', 1)[0] in ('link', 'edit', 'value', 'call')
+        return loc.split(':', 1)[0] in ('link', 'edit', 'value', 'call', 'ptr')
 
     def check_load(self, loc, used):
         """For a lit: or str: locator, the instruction at the located address must decode as a literal load."""
@@ -797,8 +814,8 @@ class World:
 def locators_in(loc):
     """Every locator nested in loc, outermost first."""
     out = [loc]
-    while loc.startswith('call:'):
-        loc = loc[5:].rpartition('@')[0]
+    while loc.startswith(('call:', 'ptr:')):
+        loc = loc.split(':', 1)[1].rpartition('@')[0]
         out.append(loc)
     return out
 
@@ -945,6 +962,102 @@ def check_highest(rec, header_value):
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# Code-comment rows of the active table (a source comment quotes a stock function by address). Each row's new address
+# must be a function entry in the image, decided from the bytes alone (never from an index's function table, which
+# misses leaves reached only through a pointer): it equals a link.ld symbol, or the code before it ends (a return, or
+# a literal-pool word that a pc-relative load reads, after at most one padding halfword) and the code at it starts a
+# function (a push {..., lr}, or a short leaf that reaches bx lr with no branch, call or push on the way).
+# ---------------------------------------------------------------------------------------------------------------
+
+COMMENT_ROW_SUFFIX = '_comment'
+LEAF_MAX = 12            # instructions a leaf may run before its bx lr
+PAD_HALFWORDS = (0x0000, 0xbf00)
+
+
+def pool_loaded(img, w):
+    """True when a 16-bit ldr rt,[pc,#n] or a 32-bit ldr.w rt,[pc,#+-n] reads the aligned word at w."""
+    if w & 3 or not img.inside(w, 4):
+        return False
+    for a in range(max(FLASH, w - 4096), w, 2):
+        h = img.hw(a)
+        if 0x4800 <= h <= 0x4fff and ((a + 4) & ~3) + (h & 0xff) * 4 == w:
+            return True
+        if h == 0xf8df and img.inside(a + 2) and ((a + 4) & ~3) + (img.hw(a + 2) & 0xfff) == w:
+            return True
+    for a in range(w + 4, min(img.end - 4, w + 4096), 2):
+        if img.hw(a) == 0xf85f and ((a + 4) & ~3) - (img.hw(a + 2) & 0xfff) == w:
+            return True
+    return False
+
+
+def ends_before(img, x):
+    """How the code before x ends: 'return', 'pool' or None."""
+    for pad in (0, 2):
+        y = x - pad
+        if pad and img.hw(y) not in PAD_HALFWORDS:
+            break
+        h = img.hw(y - 2)
+        if size_of(img.hw(y - 4)) != 4 and (h == 0x4770 or h & 0xff00 == 0xbd00):
+            return 'return'
+        if img.hw(y - 4) == 0xe8bd and h & 0x8000 or (img.hw(y - 4), h) == (0xf85d, 0xfb04):
+            return 'return'
+        if y % 4 == 0 and pool_loaded(img, y - 4):
+            return 'pool'
+    return None
+
+
+def starts_function(img, x):
+    """How the code at x starts a function: 'push', 'leaf' or None."""
+    h1, h2 = img.halves(x)
+    if any(shape_matches(s, h1, h2) for s in PUSH_SHAPES):
+        return 'push'
+    a, itn = x, 0
+    for _ in range(LEAF_MAX):
+        h1, h2 = img.halves(a)
+        kind, n = classify(h1, h2, a)
+        cond = itn > 0
+        if itn:
+            itn -= 1
+        if kind == 'it':
+            itn = n
+        elif kind == 'return':
+            return 'leaf' if h1 == 0x4770 and not cond else None
+        elif kind != 'other' or is_flow(h1, h2, a) or any(shape_matches(s, h1, h2) for s in PUSH_SHAPES):
+            return None
+        a += size_of(h1)
+    return None
+
+
+def code_entry(img, x, link_addresses):
+    """Why x is a function entry ('link.ld symbol', 'pool, push' and so on), or None."""
+    if x in link_addresses:
+        return 'link.ld symbol'
+    before, start = ends_before(img, x), starts_function(img, x)
+    return '%s, %s' % (before, start) if before and start else None
+
+
+def check_comment_rows(img, link, table):
+    """(fails, number of code-comment rows) for the active table's code-comment rows, plus a self-check: the same rule
+    must refuse the next halfword after every row."""
+    fails, rows = [], [v for v in table['values'] if v['name'].endswith(COMMENT_ROW_SUFFIX)]
+    if not rows:
+        fails.append('the active table has no code-comment rows; the comment-row check would prove nothing')
+    addresses = set(link.values())
+    for v in rows:
+        x = int(v['new'], 16) & ~1
+        if v.get('kind') != 'code':
+            fails.append('table row %s is a comment row but not a code row' % v['name'])
+            continue
+        if not img.inside(x, 8) or code_entry(img, x, addresses) is None:
+            fails.append('table row %s: new %s is not a function entry by its bytes (the code before it ends with %s, the '
+                         'code at it starts %s)' % (v['name'], v['new'], ends_before(img, x) if img.inside(x, 8) else 'nothing',
+                                                    starts_function(img, x) if img.inside(x, 8) else 'nothing'))
+        elif code_entry(img, x + 2, addresses) is not None:
+            fails.append('table row %s: the entry rule also accepts %s+2, so it decides nothing there' % (v['name'], v['new']))
+    return fails, len(rows)
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # JSON structure (check 3).
 # ---------------------------------------------------------------------------------------------------------------
 
@@ -981,7 +1094,7 @@ def check_json(data):
                 fails.append('%s: function needs exactly where and at' % tag)
             else:
                 locs.append(r['function']['where'])
-        elif not r['where'].split(':', 1)[0] in ('link', 'edit', 'value', 'call'):
+        elif not r['where'].split(':', 1)[0] in ('link', 'edit', 'value', 'call', 'ptr'):
             fails.append('%s: a %s locator is never a function entry; the record needs a function' % (tag, r['where'].split(':', 1)[0]))
         if 'exception' in r and (r['constant'], r['exception']) != SAME_FUNCTION_EXCEPTION:
             fails.append('%s: the only allowed exception is %s on %s' % (tag, SAME_FUNCTION_EXCEPTION[1], SAME_FUNCTION_EXCEPTION[0]))
@@ -1063,6 +1176,64 @@ def before_image(before, address):
     return img, len(raw)
 
 
+SHIM_POOL_ROWS = {0: 'file_callback_struct', 3: 'stream_register_target'}   # register -> active table value row
+
+
+def shim_pool_words(img, a, used=None):
+    """{0: word, 3: word}: the literal words that the edit's stock ldr r0 (at +2) and ldr r3 (at +4) read."""
+    out = {}
+    for off, rt in ((2, 0), (4, 3)):
+        d = decode(img, a + off, 'ldr-lit', used)
+        if d is None or d.regs != {'rt': rt}:
+            raise Fail('edit stream_register_shim: the stock instruction at +%d is not ldr r%d,[pc,#n]' % (off, rt))
+        out[rt] = img.word(d.field)
+    return out
+
+
+def shim_body(text):
+    m = re.search(r'^stream_register_shim:\n(.*?)^\.ltorg', text, re.M | re.S)
+    if not m:
+        raise Fail('trampolines.S has no stream_register_shim body ending at .ltorg')
+    return [l.strip() for l in m.group(1).splitlines() if l.strip()]
+
+
+def check_shim_literals(text, pool, values, end):
+    """Failures: the shim's hex literal loads against stock's pool words and the table rows of the same roles."""
+    fails = []
+    try:
+        body = shim_body(text)
+    except Fail as e:
+        return [str(e)]
+    for rt, row in sorted(SHIM_POOL_ROWS.items()):
+        lits = [int(m.group(1), 16) for l in body for m in [re.fullmatch(r'ldr r%d,=(0x[0-9a-fA-F]+)' % rt, l)] if m]
+        if len(lits) != 1:
+            fails.append('stream_register_shim has %d hex literal loads into r%d, need 1' % (len(lits), rt))
+        elif lits[0] != pool[rt]:
+            fails.append('stream_register_shim loads %s into r%d; stock\'s instruction in that role reads %s' % (
+                hexs(lits[0]), rt, hexs(pool[rt])))
+        if values.get(row) != pool[rt]:
+            fails.append('table value %s is %s; stock\'s ldr r%d reads %s' % (row, hexs(values.get(row, 0)), rt, hexs(pool[rt])))
+    if not RAM_WINDOW[0] <= pool[0] < RAM_WINDOW[1]:
+        fails.append('stock\'s ldr r0 word %s is not in the RAM window' % hexs(pool[0]))
+    if not pool[3] & 1 or not FLASH <= pool[3] & ~1 < end:
+        fails.append('stock\'s ldr r3 word %s is not a Thumb code pointer into the AP image' % hexs(pool[3]))
+    if 'str r3,[r0]' not in body or 'str r3,[r0,#TIO_STOCK_FILE_CB_RECEIVE]' not in body:
+        fails.append('stream_register_shim does not store r3 at [r0] and at [r0,#TIO_STOCK_FILE_CB_RECEIVE]')
+    return fails
+
+
+def mutated_shims(text, pool):
+    """(what, text) variants the pool-word witness must refuse: each literal plus one, and the two literals swapped."""
+    a, b = 'ldr r0,=0x%x' % pool[0], 'ldr r3,=0x%x' % pool[3]
+    out = [('the r0 literal plus one', text.replace(a, 'ldr r0,=0x%x' % (pool[0] + 1), 1)),
+           ('the r3 literal plus one', text.replace(b, 'ldr r3,=0x%x' % (pool[3] + 1), 1)),
+           ('the two literals swapped', text.replace(a, '@A@', 1).replace(b, 'ldr r3,=0x%x' % pool[0], 1)
+            .replace('@A@', 'ldr r0,=0x%x' % pool[3], 1))]
+    if any(t == text for _, t in out):
+        raise Fail('stream_register_shim: a self-check mutation did not change the shim text')
+    return out
+
+
 def check_item5(spec, world, H, data, used):
     fails = []
     edits = spec['edits']
@@ -1117,6 +1288,15 @@ def check_item5(spec, world, H, data, used):
             x += d.n
         if x - a != n:
             raise Fail('edit stream_register_shim: before has %d bytes, not the five instructions' % n)
+        # The two literal-pool words stock's own ldr r0 and ldr r3 read (in the real image) must be the two hex literals
+        # the shim loads into r0 and r3 for the same stores, and the table's values for those roles. A plain build does
+        # not compare these words (only rebase_apply --check --stock does), so this witness stands on its own.
+        pool = shim_pool_words(world.img, a, used)
+        shim = (FW/'trampolines.S').read_text()
+        fails += check_shim_literals(shim, pool, world.values, world.img.end)
+        for what, text in mutated_shims(shim, pool):
+            if not check_shim_literals(text, pool, world.values, world.img.end):
+                fails.append('edit stream_register_shim: the pool-word witness still passes with %s' % what)
     except Fail as x:
         fails.append(str(x))
     ids = data.get('moduleMessageIds', [])
@@ -1133,6 +1313,223 @@ def check_item5(spec, world, H, data, used):
         elif int(hits[0], 16) <= H['TIO_STOCK_MESSAGE_ID_MAX'][0]:
             fails.append('module message id %s is %s, not above TIO_STOCK_MESSAGE_ID_MAX %d' % (row['name'], hits[0], H['TIO_STOCK_MESSAGE_ID_MAX'][0]))
     return fails, len(ids)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# The file-receive callback object of src/image-upload-test/native_file_bridge.h (TIONativeFile), witnessed in the
+# stock function that builds it: it zeroes a stack object at sp+FILE_OBJECT_BASE, fills each field from the file
+# receiver's state (the complete byte from its own argument) and passes the object to every registered slot's
+# callback. The builder is the target of the BL a fixed distance after the one load of one receiver log string.
+# Each field's store (or address computation) is decoded, its immediate minus FILE_OBJECT_BASE must equal the
+# header's offsetof, and each comparison must fail with the header value plus one and with the image bit changed.
+# ---------------------------------------------------------------------------------------------------------------
+
+FILE_BUILDER_STRING = 'sha256=4e0b5c3f7e1ab6135d74e8473ed97f3549959609d38488aa88e07e88ebc64a2d,len=71'
+FILE_BUILDER_CALL = 0x10c        # the BL to the builder, from the string's one load
+FILE_OBJECT_BASE = 4             # the object starts at sp+4 in the builder's frame
+# (field, offset from the builder entry, shape, registers, immediate minus this = the header value)
+FILE_OBJECT_FIELDS = (
+    ('object start (memset)', 0x10, 'adds-imm3', {'rd': 0, 'rn': 7}, 'base', 0),
+    ('object start (passed to the slots)', 0x5e, 'adds-imm3', {'rd': 0, 'rn': 7}, 'base', 0),
+    ('object bytes (memset size)', 0x0a, 'mov.w-imm', {'rd': 2}, 'object', 0),
+    ('data', 0x1e, 'str-imm5', {'rt': 3, 'rn': 7}, 'data', FILE_OBJECT_BASE),
+    ('declared', 0x28, 'str-imm5', {'rt': 3, 'rn': 7}, 'declared', FILE_OBJECT_BASE),
+    ('filename', 0x3a, 'add.w-imm', {'rd': 0, 'rn': 7}, 'filename', FILE_OBJECT_BASE),
+    ('filename bytes (memcpy size)', 0x24, 'mov.w-imm', {'rd': 2}, 'filename_bytes', 0),
+    ('uuid', 0x3e, 'add.w-imm', {'rd': 5, 'rn': 7}, 'uuid', FILE_OBJECT_BASE),
+    ('route', 0x32, 'strb.w-imm12', {'rt': 3, 'rn': 7}, 'route', FILE_OBJECT_BASE),
+    ('complete', 0x1a, 'strb.w-imm12', {'rt': 5, 'rn': 7}, 'complete', FILE_OBJECT_BASE),
+    ('received', 0x42, 'str.w-imm12', {'rt': 3, 'rn': 7}, 'received', FILE_OBJECT_BASE),
+)
+# The uuid copy: three ldm r4!,{r0-r3} / stm r5!,{r0-r3} pairs, then ldm.w r4 / stm.w r5 of the same four registers.
+FILE_UUID_COPY = (0x4a, (0xcc0f, 0xc50f) * 3 + (0xe894, 0x000f, 0xe885, 0x000f), 64)
+FILE_PROBE = (('data', 'offsetof(TIONativeFile,data)'), ('declared', 'offsetof(TIONativeFile,declared)'),
+              ('filename', 'offsetof(TIONativeFile,filename)'), ('filename_bytes', 'sizeof(((TIONativeFile*)0)->filename)'),
+              ('uuid', 'offsetof(TIONativeFile,uuid)'), ('uuid_bytes', 'sizeof(((TIONativeFile*)0)->uuid)'),
+              ('route', 'offsetof(TIONativeFile,route)'), ('complete', 'offsetof(TIONativeFile,complete)'),
+              ('received', 'offsetof(TIONativeFile,received)'), ('size', 'sizeof(TIONativeFile)'))
+
+
+def file_header_values(flags):
+    """{key: value} of TIONativeFile's layout on the 32-bit target, read from clang's own assembly output."""
+    text = '#include "native_file_bridge.h"\nconst unsigned tio_probe[] = {%s};\n' % ', '.join(e for _, e in FILE_PROBE)
+    rc, out, err = clang(['--target=arm-none-eabi', '-mthumb', '-S', '-o', '-', '-I', str(FW/'src'/'image-upload-test')] + flags, text)
+    if rc:
+        raise Fail('clang on the native_file_bridge.h probe failed: %s' % err.strip().splitlines()[0])
+    m = re.search(r'^tio_probe:\n((?:\s*\.long\s+\d+.*\n)+)', out, re.M)
+    got = [int(x) for x in re.findall(r'\.long\s+(\d+)', m.group(1))] if m else []
+    if len(got) != len(FILE_PROBE):
+        raise Fail('the native_file_bridge.h probe gave %d values, need %d' % (len(got), len(FILE_PROBE)))
+    return dict(zip((k for k, _ in FILE_PROBE), got))
+
+
+def file_object_compare(img, entry, hv, field, used=None):
+    """Failures of one FILE_OBJECT_FIELDS entry against the header values hv."""
+    name, at, shape, regs, key, adjust = field
+    d = decode(img, entry + at, shape, used)
+    if d is None or d.regs != regs:
+        return ['file object %s: builder+0x%x is not %s %s' % (name, at, shape, regs)]
+    want = {'base': FILE_OBJECT_BASE}.get(key, hv.get(key))
+    got = d.field - adjust
+    if key == 'object':
+        return [] if hv['size'] <= got else ['file object: TIONativeFile is %s bytes, stock\'s object %s' % (hexs(hv['size']), hexs(got))]
+    return [] if got == want else ['file object %s: stock gives %s, native_file_bridge.h says %s' % (name, hexs(got), hexs(want))]
+
+
+def check_file_object(world, flags, used):
+    """(failures, mutations refused) for native_file_bridge.h's TIONativeFile against the stock builder."""
+    img, fails, refused = world.img, [], 0
+    try:
+        hv = file_header_values(flags)
+        loads = world.loads(world.string_runtime(FILE_BUILDER_STRING))
+        if len(loads) != 1:
+            raise Fail('file object: the builder\'s locator string has %d loads, need 1' % len(loads))
+        if not any(decode(img, loads[0], sh, used) for sh in LOAD_SHAPES):
+            raise Fail('file object: the locator string\'s one load is not a 16-bit literal load')
+        bl = decode(img, loads[0] + FILE_BUILDER_CALL, 'bl', used)
+        if bl is None:
+            raise Fail('file object: no BL at the locator string\'s load +0x%x' % FILE_BUILDER_CALL)
+        entry = bl.field & ~1
+        identity(img, entry, used)
+        reached = walk(img, entry)
+    except Fail as e:
+        return [str(e)], 0
+    for field in FILE_OBJECT_FIELDS:
+        if entry + field[1] not in reached:
+            fails.append('file object %s: builder+0x%x is not reached from the builder entry' % (field[0], field[1]))
+            continue
+        fails += file_object_compare(img, entry, hv, field, used)
+    at, words, n = FILE_UUID_COPY
+    if [img.hw(entry + at + 2 * k) for k in range(len(words))] != list(words) or hv['uuid_bytes'] != n:
+        fails.append('file object uuid: stock copies %d bytes with four ldm/stm pairs, native_file_bridge.h has %d' % (n, hv['uuid_bytes']))
+    if fails:
+        return fails, 0
+    # Self-check: each comparison must fail with the header value plus one and with the immediate's low bit flipped.
+    for field in FILE_OBJECT_FIELDS:
+        key = field[4]
+        if key not in ('base', 'object'):
+            if not file_object_compare(img, entry, dict(hv, **{key: hv[key] + 1}), field):
+                fails.append('file object %s: still passes with the header value plus one' % field[0])
+            else:
+                refused += 1
+        if key == 'object':
+            continue                  # an upper bound, not an equality: checked below with a header that is too large
+        k, bit = ENC[field[2]]['low']
+        o = entry + field[1] + 2 * k - FLASH + (bit >> 3)
+        old = img.b[o]
+        img.b[o] = old ^ (1 << (bit & 7))
+        try:
+            if not file_object_compare(img, entry, hv, field):
+                fails.append('file object %s: still passes with its immediate changed in the image' % field[0])
+            else:
+                refused += 1
+        finally:
+            img.b[o] = old
+    big = decode(img, entry + FILE_OBJECT_FIELDS[2][1], 'mov.w-imm').field + 1
+    if not file_object_compare(img, entry, dict(hv, size=big), FILE_OBJECT_FIELDS[2]):
+        fails.append('file object: the size check still passes with a header larger than stock\'s object')
+    else:
+        refused += 1
+    return fails, refused
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# render_idle.c's named stock addresses.
+# ---------------------------------------------------------------------------------------------------------------
+
+RENDER_IDLE = FW/'src'/'image-upload-test'/'render_idle.c'
+IDLE_TABLE_ROWS = {'IDLE_LVGL_GLOBAL': 'display_unit', 'IDLE_DISPATCH_GPU': 'render_dispatch_gpu',
+                   'IDLE_DISPATCH_SW': 'render_dispatch_sw'}
+IDLE_DISPATCH = ('IDLE_DISPATCH_GPU', 'IDLE_DISPATCH_SW')
+IDLE_RAM = ('IDLE_RAM_START', 'IDLE_RAM_END')
+IDLE_STORE_WINDOW = 3     # instructions after the literal load that may hold the dispatch store
+IDLE_SUB_WINDOW = 4       # instructions after the two literal loads that may hold the end-minus-start subtraction
+
+
+def idle_values():
+    """render_idle.c's IDLE_* defines; each must be one integer literal on its own #define line."""
+    vals = {}
+    for m in re.finditer(r'^#define\s+(IDLE_\w+)\s+(\S+)\s*$', RENDER_IDLE.read_text(), re.M):
+        if m.group(1) in vals:
+            raise Fail('render_idle.c defines %s twice' % m.group(1))
+        vals[m.group(1)] = int(m.group(2), 0)
+    want = set(IDLE_TABLE_ROWS) | set(IDLE_RAM)
+    if set(vals) != want:
+        raise Fail('render_idle.c IDLE_* defines are %s, need %s' % (sorted(vals), sorted(want)))
+    return vals
+
+
+def literal_loads(img, w):
+    """(address, rt) of every 16-bit ldr rt,[pc,#n] that reads the aligned word at w."""
+    out = []
+    for a in range(max(FLASH, w - 1020), w, 2):
+        h = img.hw(a)
+        if 0x4800 <= h <= 0x4fff and ((a + 4) & ~3) + (h & 0xff) * 4 == w:
+            out.append((a, h >> 8 & 7))
+    return out
+
+
+def pool_words(img, v):
+    return [FLASH + o for o in range(0, len(img.b) - 3, 4) if struct.unpack_from('<I', img.b, o)[0] == v]
+
+
+def idle_compare(img, vals, values, data_dst, H):
+    """Failures for render_idle.c's values `vals` against the table, the image and the .data copy descriptor."""
+    fails = []
+    for name, row in sorted(IDLE_TABLE_ROWS.items()):
+        if values.get(row) != vals[name]:
+            fails.append('render_idle.c %s is %s, the active table\'s %s is %s' % (name, hexs(vals[name]), row,
+                                                                                 hexs(values[row]) if row in values else 'missing'))
+    # Each dispatch value is one pool word in the image, loaded and stored at the draw unit's dispatch offset.
+    for name in IDLE_DISPATCH:
+        words = pool_words(img, vals[name])
+        ok = len(words) == 1 and any(
+            any((h & 0xf800) == 0x6000 and (h & 7) == rt and (h >> 6 & 31) * 4 == H['TIO_STOCK_DRAW_UNIT_DISPATCH'][0]
+                for h in (img.hw(a + 2 * k) for k in range(1, IDLE_STORE_WINDOW + 1)))
+            for a, rt in literal_loads(img, words[0]))
+        if not ok:
+            fails.append('render_idle.c %s: not one pool word that stock loads and stores at the draw unit\'s dispatch '
+                         'offset (%d copies)' % (name, len(words)))
+    # The RAM start is the .data copy destination; the RAM end is the one pool word that stock's heap-region function
+    # loads next to the heap start and subtracts it from (size = end - start).
+    if vals['IDLE_RAM_START'] != data_dst:
+        fails.append('render_idle.c IDLE_RAM_START is %s, the .data copy destination is %s' % (hexs(vals['IDLE_RAM_START']), hexs(data_dst)))
+    words = pool_words(img, vals['IDLE_RAM_END'])
+    loads = literal_loads(img, words[0]) if len(words) == 1 else []
+    found = False
+    for a, re_ in loads:
+        for b in (a - 2, a + 2):
+            h = img.hw(b)
+            if not 0x4800 <= h <= 0x4fff:
+                continue
+            rs, start = h >> 8 & 7, img.word(((b + 4) & ~3) + (h & 0xff) * 4)
+            sub = 0x1800 | 1 << 9 | rs << 6 | re_ << 3 | re_       # subs rE,rE,rS
+            last = max(a, b)
+            if data_dst <= start < vals['IDLE_RAM_END'] and any(img.hw(last + 2 * k) == sub for k in range(1, IDLE_SUB_WINDOW + 1)):
+                found = True
+    if not found:
+        fails.append('render_idle.c IDLE_RAM_END: not the one pool word that stock loads beside a RAM start and subtracts '
+                     'that start from (%d copies, %d loads)' % (len(words), len(loads)))
+    return fails
+
+
+def check_render_idle(world, raw, H):
+    """(failures, mutations refused) for render_idle.c's named stock addresses."""
+    try:
+        vals = idle_values()
+    except Fail as e:
+        return [str(e)], 0
+    data_dst = rebase_apply.data_copy(raw)[2]
+    fails = idle_compare(world.img, vals, world.values, data_dst, H)
+    if fails:
+        return fails, 0
+    refused = 0
+    for name in sorted(vals):
+        if idle_compare(world.img, dict(vals, **{name: vals[name] + 1}), world.values, data_dst, H):
+            refused += 1
+        else:
+            fails.append('render_idle.c %s: still passes plus one' % name)
+    return fails, refused
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -1341,10 +1738,16 @@ def main(argv):
     for row, name in (('native_light_current', 'TIO_STOCK_LVGL_MEM_USED'), ('native_light_peak', 'TIO_STOCK_LVGL_MEM_PEAK')):
         if row not in v or 'display_unit' not in v or v[row] != v['display_unit'] + H[name][0]:
             fails.append('table row %s is not display_unit + %s' % (row, name))
+    cf, ncomment = check_comment_rows(img, world.link, table)
+    fails += cf
 
     # 8. Item 5.
     f5, nids = check_item5(spec, world, H, data, used)
     fails += f5
+    ff, nfile = check_file_object(world, host_layout.flags(), used)
+    fails += ff
+    fi, nidle = check_render_idle(world, raw, H)
+    fails += fi
 
     # Every decoder entry must have matched at least once, and every store recogniser must match its sample.
     unused = sorted(set(ENC) - used)
@@ -1442,9 +1845,13 @@ def main(argv):
     print('PASS stock layout (%s): %d constants, %d witnesses (%d constants with two, in distinct functions except %d named '
           'same-function pair%s; %d derived constant%s with one direct witness), bases %s and no define refused, %d mutations '
           'refused, every encoding refuses a changed opcode, the menu allocation, carousel count and file callback edits '
-          'agree, %d module message ids above %d' % (
+          'agree, the shim\'s two literals are stock\'s pool words (3 mutations refused), native_file_bridge.h\'s file object '
+          'matches its stock builder (%d mutations refused), render_idle.c\'s five stock addresses match the table, the image '
+          'and the .data copy (%d mutations refused), %d module message ids above %d, %d code-comment table rows are '
+          'function entries by their bytes' % (
               TREE_BASE, len(H), len(recs), len(leaves), same_pairs, '' if same_pairs == 1 else 's', len(derived),
-              '' if len(derived) == 1 else 's', ', '.join(bases), refused_count, nids, H['TIO_STOCK_MESSAGE_ID_MAX'][0]))
+              '' if len(derived) == 1 else 's', ', '.join(bases), refused_count, nfile, nidle, nids, H['TIO_STOCK_MESSAGE_ID_MAX'][0],
+              ncomment))
 
 
 def uses_of(rec, world, img):

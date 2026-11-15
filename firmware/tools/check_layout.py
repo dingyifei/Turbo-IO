@@ -36,6 +36,11 @@ Rules (C files and headers unless noted):
             for any base register other than sp and pc.
   queue     any literal in the first argument of a call to stream_queue_send, or to a parameter of the enclosing
             function declared with type TIOCopyEnqueue (called as q(, (*q)( or (q)().
+  raw       only in the RAW_FILES below (the image decoder and render-graph files, whose stock offsets and addresses
+            have names since TMG12 candidate 3): (a) a literal in 0x10000000..0x1fffffff anywhere but on a #define
+            line; (b) a literal added to (either order) or indexing a byte-pointer local initialised from a byte-view
+            cast, such as raw+0x2c or raw[0x21] after const uint8_t *raw=(const uint8_t*)d; (c) sizeof compared with a
+            literal (sizeof(T)==76, 76==sizeof x).
 
 Scope: the built set (build-inputs.json sources and extras and the .c files they include), the C test models
 (tests/*.c and the two test files under src/ that test.py runs), and the headers (every .h under src/ and include/,
@@ -57,7 +62,8 @@ import rebase_apply  # noqa: E402  (read-only use: the active table and the flas
 
 SRC_TESTS = ('src/image-upload-test/render_idle_test.c', 'src/image-upload-test/native_file_bridge_test.c')
 
-# Whole-file exemptions (E1 to E3) and exact-text exemptions (E4 to E7). Never a line number or a function name.
+# Whole-file exemptions (E1 to E3) and exact-text exemptions (E4, E5, E7 and E8; E6 was removed when the image
+# decoder offsets got names). Never a line number or a function name.
 EXEMPT_FILES = (
     ('E1', 'src/dashboard-v1/native.c', 'A2UI subsystem: out of scope for this port, not studied'),
     ('E2', 'src/dashboard-editor-v1/editor_native.c', 'A2UI subsystem: out of scope for this port, not studied'),
@@ -70,8 +76,9 @@ EXEMPT_TEXTS = (
      'the module\'s own TAI1 store record, not a stock object'),
     ('E5', 'src/navigation-runtime-v1/nav_map.c', (('cast', '(const char *)p+8', 1),),
      'the module\'s own navigation wire body'),
-    ('E6', 'src/menu8-native-lvgl.c', (('cast', '(const uint8_t*)decoder+0x10', 1),),
-     'the stock PNG decoder\'s name field has no second witness; png_type validates itself and only returns false'),
+    ('E8', 'src/menu8-renderer.c', (('raw', 'sizeof(M8Image)==28', 1),),
+     'the module\'s own image source record, laid out as LVGL\'s image descriptor; stock reads it only through '
+     'lv_image_set_src and the decoder, and no stock_layout.h witness covers that descriptor yet'),
     ('E7', 'trampolines.S', (('asm', 'str r3,[r0]', 1),),
      'the shim replays stock\'s own store to file callback slot +0 from the edited range; the witness test checks '
      'the edit\'s before-bytes hold that store'),
@@ -91,7 +98,9 @@ GUARD_LINE_2 = '#error not ported to 1.0.6.11 yet: '
 GUARD_LINE_3 = '#endif'
 # link.ld symbols referenced by no built file, header or edit target. The F4 prune changes this list in its commit.
 UNREFERENCED = ()
-RULES = ('cast', 'helper', 'wordcast', 'index', 'abs', 'addr', 'asm', 'queue')
+RULES = ('cast', 'helper', 'wordcast', 'index', 'abs', 'addr', 'asm', 'queue', 'raw')
+# Rule raw: the files it covers.
+RAW_FILES = ('src/image-upload-test/render_idle.c', 'src/menu8-native-lvgl.c', 'src/menu8-renderer.c')
 # The stock windows of rule abs. The flash window comes from rebase_apply (FLASH and the table's AP sizes). The RAM
 # start is rebase_apply.DATA_RUNTIME. The RAM end and the copy region are written in rebase_apply only inside
 # leftovers(), so they are repeated here, and check() runs leftovers() on both edges of every window: if the two
@@ -620,6 +629,58 @@ def scan_c(rel, raw, helper_map, abs_ok, windows):
     return hits, t
 
 
+COMPARE = r'(?:==|!=|<=|>=|<(?![<=])|>(?![>=]))'
+SIZEOF = r'\bsizeof\s*(?:\([^()]*\)|' + IDENT + r'(?:\s*(?:\.|->)\s*' + IDENT + r'|\s*\[[^\]]*\])*)'
+
+
+def define_line(t, pos):
+    """True when t[pos] lies on a #define line, continuation lines included."""
+    start = t.rfind('\n', 0, pos) + 1
+    while start > 1 and t[start - 2] == '\\':
+        start = t.rfind('\n', 0, start - 1) + 1
+    return re.match(r'[ \t]*#[ \t]*define\b', t[start:]) is not None
+
+
+def scan_raw(rel, raw, t):
+    """Rule raw for the files in RAW_FILES."""
+    if rel not in RAW_FILES:
+        return []
+    hits = []
+
+    def add(a, b):
+        hits.append(Hit(rel, line_of(t, a), 'raw', span_text(raw, t, a, b)))
+    # (a) a stock-region literal off a #define line
+    for m in INT.finditer(t):
+        if ADDR_REGION[0] <= c_int(m.group(1)) < ADDR_REGION[1] and not define_line(t, m.start()):
+            add(m.start(), m.end())
+    # (b) a literal added to or indexing a byte-pointer local initialised from a byte-view cast
+    for name, params, start, body_open, body_close in functions(t):
+        body = t[body_open:body_close]
+        names = set()
+        for m in BYTE_DECL.finditer(body):
+            if m.group(2) and BYTEVIEW.search(body[m.end():additive_end(body, m.end())]):
+                names.add(m.group(1))
+        for local in sorted(names):
+            for m in re.finditer(r'(?<![\w.>])' + local + r'\s*(\+(?![+=])|\[)\s*', body):
+                a = body_open + m.start()
+                if m.group(1) == '[':
+                    e = match_paren(t, body_open + m.end(1) - 1)
+                    if e > 0 and has_literal(t[body_open + m.end(1):e]):
+                        add(a, e + 1)
+                else:
+                    end = additive_end(t, body_open + m.end())
+                    if has_literal(t[body_open + m.end():end]):
+                        add(a, end)
+            for m in re.finditer(r'(?<![\w.])' + NUM + r'\s*\+\s*' + local + r'\b', body):
+                add(body_open + m.start(), body_open + m.end())
+    # (c) sizeof compared with a literal, either side
+    for m in re.finditer(SIZEOF + r'\s*' + COMPARE + r'\s*' + NUM + r'(?![\w.])', t):
+        add(m.start(), m.end())
+    for m in re.finditer(r'(?<![\w.])' + NUM + r'\s*' + COMPARE + r'\s*' + SIZEOF, t):
+        add(m.start(), m.end())
+    return hits
+
+
 def scan_receivers(rel, raw, t, stale):
     """Rule addr (b) and (c) for render_idle.c; `stale` collects receiver rows whose identifier is not declared."""
     hits = []
@@ -848,9 +909,13 @@ def check(fw, table):
         h, t = _SCAN_CACHE[key]
         hits += h
         hits += scan_receivers(rel, raw, t, stale)
+        hits += scan_raw(rel, raw, t)
     for rel in (r[0] for r in RECEIVERS):
         if rel not in raws:
             stale.append('receiver row file %s is not in scope' % rel)
+    for rel in RAW_FILES:
+        if rel not in raws:
+            stale.append('rule raw file %s is not in scope' % rel)
     errors += stale
     # Exemptions: whole files, then exact texts. Each must match at least one hit.
     left = []
@@ -1007,6 +1072,7 @@ def self_test(fw, table):
     # A RAM-window address that no table value uses, and a table value that render_idle.c uses.
     stray = next(a for a in range(RAM_WINDOW[0] + 0x10, RAM_WINDOW[1], 4) if a not in values)
     idle = 'src/image-upload-test/render_idle.c'
+    m8, m8r = 'src/menu8-native-lvgl.c', 'src/menu8-renderer.c'
     owned = [v for v in table['values'] if idle in v['sites'] and v['kind'] == 'ram']
     if len(owned) != 1:
         fail('expected one RAM value row with a site in %s, found %d' % (idle, len(owned)))
@@ -1033,8 +1099,10 @@ def self_test(fw, table):
                              '\nstatic void *tio_plant_abs(void){return *(void **)(uintptr_t)%#x;}\n' % stray)),
             ('addr', idle, 'display+0x2a0',
              lambda: into_function(c, idle, 'tio_render_graph_idle', 'uint32_t layer=0;read(display+0x2a0,&layer);')),
-            ('addr', idle, '%s+0x124' % owned,
-             lambda: into_function(c, idle, 'tio_render_graph_idle', 'read(%s+0x124,0);' % owned)),
+            # In app_service.c, since rule raw also refuses a bare stock address in render_idle.c.
+            ('addr', 'src/app-runtime-v1/app_service.c', '%s+0x124' % owned,
+             lambda: c.write('src/app-runtime-v1/app_service.c', c.read('src/app-runtime-v1/app_service.c') +
+                             '\nstatic uint32_t tio_plant_addr(void){return %s+0x124;}\n' % owned)),
             ('addr', idle, 'ram(unit,32)',
              lambda: into_function(c, idle, 'tio_render_graph_idle', 'if(!ram(unit,32))return false;')),
             ('asm', 'trampolines.S', 'ldr r2,[r1,#4]',
@@ -1047,6 +1115,9 @@ def self_test(fw, table):
             ('queue', 'src/focus-v1/focus_service.c', 'q(1,&m)',
              lambda: into_function(c, 'src/focus-v1/focus_service.c', None,
                                    'TIONativeMessage m={0};q(1,&m);', r'\bTIOCopyEnqueue\s+q\b')),
+            ('raw', m8, 'raw+0x2c',
+             lambda: c.write(m8, c.read(m8) + '\nstatic uint32_t tio_plant_raw(const M8Decoder *d){const uint8_t '
+                             '*raw=(const uint8_t*)d;return le32(raw+0x2c);}\n')),
         ]
         caught = set()
         for rule, rel, text, plant in planted:
@@ -1101,10 +1172,17 @@ def self_test(fw, table):
              append(app, 'static void *tio_v14(void){return *(void **)(uintptr_t)(%#x);}' % stray)),
             ('addr', idle, '(display)+0x2a0',
              lambda: into_function(c, idle, 'tio_render_graph_idle', 'uint32_t layer=0;read((display)+0x2a0,&layer);')),
-            ('addr', idle, '%s+(0x124)' % owned,
-             lambda: into_function(c, idle, 'tio_render_graph_idle', 'read(%s+(0x124),0);' % owned)),
+            ('addr', app, '%s+(0x124)' % owned, append(app, 'static uint32_t tio_v16(void){return %s+(0x124);}' % owned)),
             ('asm', 'trampolines.S', 'ldr r2,[\\b,#4]',
              append('trampolines.S', ' .macro TIO_V17 b\n ldr r2,[\\b,#4]\n .endm')),
+            ('raw', m8, 'raw[0x21]', append(m8, 'static int tio_v18(const M8Decoder *d){const uint8_t *raw=(const '
+                                               'uint8_t*)d;return raw[0x21];}')),
+            ('raw', m8, '0x2c+raw', append(m8, 'static const uint8_t *tio_v19(const M8Decoder *d){const uint8_t '
+                                              '*raw=(const uint8_t*)d;return 0x2c+raw;}')),
+            ('raw', idle, '0x1b600000', append(idle, 'static const uint32_t tio_v20=0x1b600000;')),
+            ('raw', m8r, 'sizeof(M8Decoder)==76', append(m8r, '_Static_assert(sizeof(M8Decoder)==76,"v21");')),
+            ('raw', m8r, '76!=sizeof decoder.words', append(m8r, 'static int tio_v22(M8Decoder decoder){return '
+                                                               '76!=sizeof decoder.words;}')),
         ]
         for rule, rel, text, plant in variants:
             plant()
@@ -1115,8 +1193,10 @@ def self_test(fw, table):
             if extra != {(rel, rule, text): 1} or errors != base_errors:
                 fail('planted %s %r in %s: expected exactly that one new hit, got %s %s' % (rule, text, rel, extra,
                                                                                           errors))
-        # The sizeof stride form and a table-value cast pass.
-        for rel, text in (('src/music-runtime-v1/menu10.c',
+        # The sizeof stride form, a table-value cast, a stock address on a #define line and a sizeof quotient pass.
+        for rel, text in ((idle, '\n#define TIO_PLANT_OK3 \\\n 0x1b600000\n'),
+                          (m8r, '\nstatic unsigned tio_plant_ok4(M8Decoder d){return sizeof d.words/sizeof d.words[0];}\n'),
+                          ('src/music-runtime-v1/menu10.c',
                            '\nstatic void *tio_plant_ok(void *app,unsigned i){return '
                            'ptr(app,TIO_STOCK_MENU_ROWS+sizeof(uint32_t)*i);}\n'),
                           ('src/music-runtime-v1/menu10.c',
