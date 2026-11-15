@@ -49,6 +49,18 @@
         "sha256": "edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1"
       },
       "acceptCurrent": ["1.0.5.12"]
+    },
+    "c20": {
+      "builds": "C20: flashes TMG12 (TMG11 ported to stock 1.0.6.11) from the 1.0.21 full host",
+      "hosts": ["1021-full"],
+      "firmware": "TMG12",
+      "stockBase": "1.0.6.11",
+      "zip": {
+        "input": "tmg12/StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip",
+        "bytes": 9549211,
+        "sha256": "3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373"
+      },
+      "acceptCurrent": ["1.0.5.12", "1.0.6.11"]
     }
   }
 }

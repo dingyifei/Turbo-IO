@@ -2,7 +2,7 @@
 // No TIO_RELEASE_<NAME> define selects the default release; turbo-package.sh --release cN defines one.
 #ifndef TIO_FIRMWARE_PINS_H
 #define TIO_FIRMWARE_PINS_H
-#if defined(TIO_RELEASE_C16) + defined(TIO_RELEASE_C17) + defined(TIO_RELEASE_C18) > 1
+#if defined(TIO_RELEASE_C16) + defined(TIO_RELEASE_C17) + defined(TIO_RELEASE_C18) + defined(TIO_RELEASE_C20) > 1
 #error "more than one TIO_RELEASE_<NAME> defined"
 #endif
 #if defined(TIO_RELEASE_C16)
@@ -71,6 +71,28 @@
 #define TIO_FW_ACCEPTED_QUERY_CODES @[@"01.00.05.0012"]
 #define TIO_FW_ACCEPTED_VERSIONS_TEXT @"1.0.5.12"
 #define TIO_FW_MEMBER_PINS @{@"OtaFileInfo.json":@[@2700,@"71b476202288bb14e1106a88509ba6caf5c5247e417d329012945ae3671054ab"],@"bt_controller.bin":@[@625364,@"0060cc360b04577e8f5ce8f5d54fabde6103a6fef5a1a052260097920165a0c6"],@"cb_fw_venus.bin":@[@114592,@"8799f12071bdac082218e3601c24ab0989275fc2f7db74e37b8314a225c2cf7d"],@"fac_test_img.bin":@[@1821552,@"18eb0901c3e0daeae48dd5f015252b6931ea7368f0160c2c985c4e74296d17eb"],@"images.bin":@[@383431,@"219ba2f7935850a059ac7e6a1ffa181056ce70891501db28238940dfbdc44cc5"],@"lotties.bin":@[@651481,@"ad66d83a3394034f825a12769aad292fc03e59fa865fe06bc43536b918a0b32b"],@"nuttx_ap.bin":@[@7474312,@"611b6bad89b2eda0e8501121a8af64c102576b3450b29931ad165c8f9a07bea5"],@"nuttx_apc1.bin":@[@1435740,@"abee438702d29936a01e60b863f3f3ecdea73097d60c09bcded1a61606098e08"],@"nuttx_audio.bin":@[@1461920,@"549a72c032595e3829da7d63b7e1fd13cceda1a55dfefa7a7cad02db5a9b42ab"],@"nuttx_bth.bin":@[@1194132,@"a7c4618ac992170d71fe0951ef6febfa46f13409c0bfc73c06ba74b0a00033f0"],@"ota_installer_progress.bin":@[@5616,@"6fd65d296a667e1a7d94ec129adfd26458a4008ef403b331f855192c36eb3e3f"],@"pil_algo_up_demo_nand.dll":@[@504388,@"e266726fe055ac6ec6f785a9440e8da7421402f2b4d3d7889039ad9b94e119c2"],@"pil_algo_vad_demo.dll":@[@433900,@"5391fd024f1dfd38d031aeff5b1f4e91b13ca6d51f30e67763cd9fdf9db521a8"],@"pil_algo_wakeup_dll_nand.dll":@[@287560,@"d1594cb8658b228e52c2606d02f1eab696d35a11ed42ddcb725e76a745f5550f"],@"rives.bin":@[@689431,@"836bc019f7152890b94cafafe2edaa024f317526318349f7833319e41158b104"],@"smf.json":@[@23510,@"2713dc3a302a65c101fa981500cd8b217766c526b6045bf02db5e9e6763d076d"]}
+#elif defined(TIO_RELEASE_C20)
+#define TIO_FW_NAME @"TMG12"
+#define TIO_FW_ZIP_BYTES 9549211u
+#define TIO_FW_ZIP_SHA256 @"3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373"
+#define TIO_FW_AP_BYTES 8132360u
+#define TIO_FW_AP_SHA256 @"6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50"
+#define TIO_FW_AP_MD5 @"96eebf1467b53759e816f05057df506e"
+#define TIO_FW_MANIFEST_BYTES 2886u
+#define TIO_FW_MANIFEST_SHA256 @"5d174ed0ecb3dd15806c22af49e88956775bdddfea7e5c9233e32a235cc4837c"
+#define TIO_FW_PAYLOAD_BYTES 18474970u
+#define TIO_FW_PAYLOAD_SLICES 369u
+#define TIO_FW_RELEASE @"c20"
+#define TIO_FW_RELEASE_MARKER "ota release=c20; firmware=TMG12; zip=3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373; accepts Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11"
+#define TIO_FW_BASE @"1.0.6.11"
+#define TIO_FW_OTA_VERSION @"Strix OS 1.0.6.11"
+#define TIO_FW_OTA_FOLDER @"Strix_OS_1.0.6.11"
+#define TIO_FW_FEED_VERSION_NAME @"0100060011"
+#define TIO_FW_FEED_VERSION_CODE 100060011
+#define TIO_FW_ACCEPTED_OS_VERSIONS @[@"Strix OS 1.0.5.12",@"Strix OS 1.0.6.11"]
+#define TIO_FW_ACCEPTED_QUERY_CODES @[@"01.00.05.0012",@"01.00.06.0011"]
+#define TIO_FW_ACCEPTED_VERSIONS_TEXT @"1.0.5.12 / 1.0.6.11"
+#define TIO_FW_MEMBER_PINS @{@"OtaFileInfo.json":@[@2886,@"5d174ed0ecb3dd15806c22af49e88956775bdddfea7e5c9233e32a235cc4837c"],@"amap_rtos_sdk":@[@775548,@"a14c47776864b5786bf61e4c37e159259c8d7c9b94ad6664e4526eadc445574a"],@"bt_controller.bin":@[@632384,@"dd935af210755d94c43995c62d9ec03e469157cd14965b1642c83d2f1daa440b"],@"cb_fw_venus.bin":@[@114592,@"8799f12071bdac082218e3601c24ab0989275fc2f7db74e37b8314a225c2cf7d"],@"fac_test_img.bin":@[@1821552,@"18eb0901c3e0daeae48dd5f015252b6931ea7368f0160c2c985c4e74296d17eb"],@"images.bin":@[@390937,@"404ae1d33592db7592467b24bc29c1c783260fb7cf53f4be22838097f38fa501"],@"lotties.bin":@[@661305,@"a8b5fa78e57775a025d90aa94d41245495a555c7ca4399b226b515bc03997162"],@"nuttx_ap.bin":@[@8132360,@"6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50"],@"nuttx_apc1.bin":@[@1442112,@"c24794d051df5803152fac770051374aff4bd34f6d41ef8ab39853e7b4d05ba9"],@"nuttx_audio.bin":@[@1461920,@"549a72c032595e3829da7d63b7e1fd13cceda1a55dfefa7a7cad02db5a9b42ab"],@"nuttx_bth.bin":@[@1250856,@"1fd910ea03124cd26d010c3ea3ef6a1b68dc61bd6283dcd07d2ad744d28759ec"],@"nuttx_ota.bin":@[@536384,@"016cdd0ba9424512c9669d229b7c81d94eebdb24e15ba3c1c7b461ca32f2bc1a"],@"ota_installer_progress.bin":@[@5616,@"6fd65d296a667e1a7d94ec129adfd26458a4008ef403b331f855192c36eb3e3f"],@"pil_algo_up_demo_nand.dll":@[@504388,@"e266726fe055ac6ec6f785a9440e8da7421402f2b4d3d7889039ad9b94e119c2"],@"pil_algo_vad_demo.dll":@[@433900,@"0153a5a8e6b69ca0b9dd4cc742d45a758351d8209e604f38dbfe046c31f29f01"],@"pil_algo_wakeup_dll_nand.dll":@[@287560,@"d1594cb8658b228e52c2606d02f1eab696d35a11ed42ddcb725e76a745f5550f"],@"smf.json":@[@23556,@"43998e7acf06c8f9bc39635655d79120b7061a46f7b23f791f8699536f81836d"]}
 #else
 #define TIO_FW_NAME @"TMG9"
 #define TIO_FW_ZIP_BYTES 8819595u
