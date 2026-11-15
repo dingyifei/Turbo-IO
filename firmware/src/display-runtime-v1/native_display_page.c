@@ -124,13 +124,16 @@ static void animation_step(TDPNativePage *p,uint32_t now){
 #endif
 static char *text_add(char *s,const char *t){while(*t)*s++=*t++;return s;}
 static char *signed_number(char *s,int32_t n){if(n<0){*s++='-';return number(s,0u-(uint32_t)n);}*s++='+';return number(s,(uint32_t)n);}
-static void sensors_text(TDPNativePage *p){
+/* sample: read the two UI heap figures now. They are read on the first draw and then once a second (tick()'s activity
+ * cadence); in between the last figures read are shown, so the label is not redrawn ten times a second just because
+ * the heap number moved. The other lines are read on every call. */
+static void sensors_text(TDPNativePage *p,bool sample){
  if(!p->label)return;
  char text[TDP_SENSORS_TEXT];char *s=text_add(text,"Sensors (read only)\nIMU ");
  uint32_t imu=tio_imu_family;
  s=text_add(s,imu==2?"ST":imu==3?"TDK":imu==1?"none":"unknown");*s++=' ';*s++='(';s=number(s,imu);*s++=')';
  s=text_add(s,"\nUI heap ");
- TDDiagnostics *d=&p->light;TDLightOwner owner={td_gettid()};td_init(d,0);td_stock_light(&owner,d);
+ TDDiagnostics *d=&p->light;if(sample){TDLightOwner owner={td_gettid()};td_init(d,0);td_stock_light(&owner,d);}
  if(d->valid&(1u<<TD_LV_USED)){s=number(s,d->values[TD_LV_USED]);s=text_add(s," max ");s=number(s,d->values[TD_LV_PEAK]);}
  else s=text_add(s,"n/a");
 #if TIO_SENSORS_LIGHT
@@ -156,10 +159,10 @@ void tdp_native_knob(TDPNativePage *p,int32_t delta,bool press){
 #endif
   p->sensor_mode=true;m8_native_api.hidden(p->canvas,true);
   tio_lv_obj_set_size(p->label,512,164);native_align(p->label,2,0,0);
-  p->runtime.deadline=stream_tick()+300000u;p->shown[0]=0;sensors_text(p);return;
+  p->runtime.deadline=stream_tick()+300000u;p->shown[0]=0;sensors_text(p,true);return;
  }
  p->knob_delta+=delta;if(press)p->knob_press++;
- sensors_text(p);
+ sensors_text(p,false);
 }
 static void emit(TDPReply result){
  result.max_rect_bytes=TDP_NATIVE_PIXELS_MAX;
@@ -200,12 +203,13 @@ static void tick(void *timer){
   stream_timer_delete(timer);stream_free(p);return;
  }
  flush_reply(p);
- if(p->sensor_mode)sensors_text(p);
+ const bool second=(uint32_t)(now-p->last_activity)>=1000u;
+ if(p->sensor_mode)sensors_text(p,second);
  (void)tdp_tick(&p->runtime,&callbacks,now);
 #ifdef TIO_ANIMATION_EXPERIMENT
  if(p->animation_mode)animation_step(p,now);
 #endif
- if((uint32_t)(now-p->last_activity)>=1000u){p->last_activity=now;native_report_activity();
+ if(second){p->last_activity=now;native_report_activity();
 #ifdef TIO_ANIMATION_EXPERIMENT
   if(p->animation_mode){
    animation_status(p);

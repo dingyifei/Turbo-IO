@@ -86,8 +86,8 @@ void native_report_activity(void){}
 int32_t tio_lv_obj_get_width(void *p){assert(p==(void *)1);return 540;}
 int32_t tio_lv_obj_get_height(void *p){assert(p==(void *)1);return 280;}
 void tio_lv_obj_set_size(void *p,int32_t w,int32_t h){assert(p);((Obj *)p)->w=w;((Obj *)p)->h=h;}
-static char label_text[200];
-void native_label_text(void *p,const char *s){assert(p&&s&&strlen(s)<160);strcpy(label_text,s);}
+static char label_text[200];static unsigned label_writes;
+void native_label_text(void *p,const char *s){assert(p&&s&&strlen(s)<160);strcpy(label_text,s);label_writes++;}
 /* Sensors screen providers (F5): stubs with values the cases set. */
 #include "../diagnostics-v1/native_light.h"
 volatile uint8_t tio_imu_family=2;
@@ -194,12 +194,26 @@ int main(void){
  assert(!strcmp(label_text,"Sensors (read only)\nIMU ST (2)\nUI heap 8790000 max 8800000\nFold open\nKnob +0 press 0"));
  assert(!strstr(label_text,"Light")&&!light_reads);
 #endif
- heap_valid=false;now+=100;pulse();assert(strstr(label_text,"\nUI heap n/a\n"));
+ heap_valid=false;now+=1000;pulse();assert(strstr(label_text,"\nUI heap n/a\n"));   /* the next once-a-second sample */
+ /* The heap figures are sampled once a second, not on every 100 ms tick. Right after a sample, nine ticks with a new heap
+  * figure each redraw nothing; the tick one second after the sample shows the latest figure, in one redraw. */
+ heap_valid=true;heap_used=1000;now+=1000;pulse();assert(strstr(label_text,"\nUI heap 1000 max 8800000\n"));
+ {unsigned writes=label_writes;
+  for(unsigned i=1;i<=9;i++){heap_used=1000+i;now+=100;pulse();}
+  assert(label_writes==writes&&strstr(label_text,"\nUI heap 1000 max 8800000\n"));
+  heap_used=2000;now+=100;pulse();assert(label_writes==writes+1&&strstr(label_text,"\nUI heap 2000 max 8800000\n"));
+  /* A fold or knob change between samples still shows at once (fold: the next tick; knob: the knob call itself), with
+   * the last sampled heap figure. */
+  writes=label_writes;heap_used=3000;folded=true;now+=100;pulse();
+  assert(label_writes==writes+1&&strstr(label_text,"\nUI heap 2000 max 8800000\n")&&strstr(label_text,"\nFold closed\n"));
+  heap_used=4000;tdp_native_knob(page,5,false);
+  assert(label_writes==writes+2&&strstr(label_text,"\nUI heap 2000 max 8800000\n")&&strstr(label_text,"\nKnob +5 press 0"));
+  folded=false;page->knob_delta=0;heap_used=8790000;}
  /* The worst case: every piece at its largest value, formatted by the real sensors_text. The IMU byte is a uint8_t, so
   * its number has at most 3 digits; the heap values and the press count are uint32_t (10 digits); the knob delta is an
   * int32_t (11 characters with the sign); "unknown", "closed" and the 12-character light buckets are the longest words. */
  heap_valid=true;heap_used=heap_peak=4294967295u;tio_imu_family=255;folded=true;light_bucket=6;
- page->knob_delta=-2147483647-1;page->knob_press=4294967295u;tdp_native_knob(page,0,false);
+ page->knob_delta=-2147483647-1;page->knob_press=4294967295u;sensors_text(page,true);   /* the real code, with a heap sample */
 #if TIO_SENSORS_LIGHT
  assert(!strcmp(label_text,"Sensors (read only)\nIMU unknown (255)\nUI heap 4294967295 max 4294967295\nLight 1000-4000 lx\nFold closed\nKnob -2147483648 press 4294967295"));
 #else
@@ -211,7 +225,7 @@ int main(void){
  {static const int32_t deltas[]={-2147483647-1,2147483647,0};static const uint32_t presses[]={0,4294967295u};size_t most=0;
   for(unsigned imu=0;imu<256;imu++)for(int b=-1;b<=9;b++)for(int f=0;f<3;f++)for(unsigned v=0;v<2;v++)for(unsigned k=0;k<6;k++){
    tio_imu_family=(uint8_t)imu;light_bucket=b;no_monitors=f==2;folded=f==1;heap_valid=v;
-   page->knob_delta=deltas[k%3];page->knob_press=presses[k/3];tdp_native_knob(page,0,false);
+   page->knob_delta=deltas[k%3];page->knob_press=presses[k/3];sensors_text(page,true);
    size_t len=strlen(label_text)+1;if(len>most)most=len;}
   assert(most==longest);no_monitors=false;heap_valid=true;}
  tdp_native_retire(page);for(int i=0;i<3&&timer;i++){now+=100;pulse();}assert(!timer&&!owner&&allocs==frees);
