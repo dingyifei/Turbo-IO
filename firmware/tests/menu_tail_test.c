@@ -5,7 +5,9 @@
  * port_stock_new mallocs exactly the size it is asked for, so AddressSanitizer catches any access past the module's
  * allocation. The model constructor writes exactly TIO_STOCK_MENU_BYTES bytes (label index -1, motion count
  * max(N,1) as stock's motion init does), and variants of it overrun, move the label index or keep another count, alone or
- * in any combination.
+ * in any combination. Two more variants overrun the whole tail (with the fill minus one, as image A of the F7 smoke, or
+ * with zeros), and port_stock_new can hand the same block out again, so a menu can be destroyed and built a second and
+ * third time on one address or on another (study S1 risk 1).
  * Host only: no device, no stock bytes. */
 #include "common-v1/tio_text.h"
 #include "music-runtime-v1/menu_tiles.h"
@@ -50,7 +52,15 @@ static int wheel_delta;
 static size_t requested;
 static uint8_t *app;
 enum { FAIL_FILL=1u, FAIL_LABEL=2u, FAIL_COUNT=4u };   /* the constructor check's failure bits (m8_hook_ctor) */
+/* Constructor variants that are not failure bits themselves (both make the fill check fail, bit FAIL_FILL):
+ * OVERRUN_TAIL writes every word from the end of the stock object to the end of the allocation with the fill minus one,
+ *   as emu-1 saw on image A (F7 smoke 3, section 3.5): the canary word is then neither key, zero nor fill. On the host
+ *   the 4-byte FAIL_FILL overrun lands in the alignment gap before the tail, not on the canary; on the 32-bit target
+ *   the tail starts right after the stock object, so that overrun reaches the canary, which this variant models.
+ * OVERRUN_ZERO writes zero over the same words: a zero canary reads as "disarmed by the destructor". */
+enum { OVERRUN_TAIL=8u, OVERRUN_ZERO=16u };
 static unsigned ctor_mode;               /* 0 in bounds, or FAIL_* bits: overrun by 4 bytes, label index moved, motion count 13 */
+static uint8_t *reuse_block;             /* non-NULL: port_stock_new hands out this block again (the allocator reused the address) */
 static uint8_t after_ctor[0x200];        /* the allocation as stock_ctor left it */
 static unsigned destroy_probe;           /* 1: stock_destroy checks the menu reads as unarmed from inside it */
 static unsigned page_seen;               /* 1 when tdp_native_dispatch got a NULL page */
@@ -62,11 +72,13 @@ static uint32_t *word_at(unsigned off){return (uint32_t *)(app+off);}
 static void put_ptr(unsigned off,void *v){memcpy(app+off,&v,sizeof v);}
 
 /* ---- the allocation and the model constructor ---------------------------------------------------------------- */
-void *port_stock_new(size_t n){requested=n;return malloc(n);}
+void *port_stock_new(size_t n){requested=n;if(reuse_block){uint8_t *p=reuse_block;reuse_block=NULL;return p;}return malloc(n);}
 void *stock_ctor(void *p){
   stock_calls[S_CTOR]++;assert(p==app);
   unsigned bytes=TIO_STOCK_MENU_BYTES+(ctor_mode&FAIL_FILL?4u:0u);
   memset(p,0x11,bytes);
+  if(ctor_mode&(OVERRUN_TAIL|OVERRUN_ZERO))
+    for(uint32_t off=TIO_STOCK_MENU_BYTES;off+4u<=requested;off+=4u)*word_at(off)=ctor_mode&OVERRUN_TAIL?TIO_TAIL_FILL-1u:0u;
   *word_at(TIO_STOCK_MENU_LABEL_INDEX)=ctor_mode&FAIL_LABEL?0u:UINT32_MAX;
   unsigned n=ctor_mode&FAIL_COUNT?13u:(unsigned)MENU_TAIL_COUNT_EDIT;*word_at(TIO_STOCK_MENU_MOTION+TIO_STOCK_MOTION_COUNT)=n?n:1u;
   assert(requested<=sizeof after_ctor);memcpy(after_ctor,p,requested);
@@ -345,10 +357,62 @@ int main(void){
     m8_hook_show(app);assert(broken_shows==b+1&&traces==lines+1&&stock_calls[S_SHOW]==s+1&&!memcmp(before,app,requested));}
   unarmed_hooks(false,true);dispose();
 
+  /* 8. An overrun that reaches the canary (image A of the F7 smoke): event 141 with the fill bit, then event 142 at
+   *    every later show and at no hide, with nothing written to the menu; alone and together with the label-index and
+   *    count bits. With the fill intact (only the label-index bit, the count bit, or both) the 141 line carries those
+   *    bits and no show ever prints 142. An overrun of zeros fails the fill check too, but a zero canary reads as
+   *    "disarmed by the destructor", so it prints no 142 (menu9.h, m8_tail_canary_broken). */
+  for(unsigned extra=0;extra<8;extra+=FAIL_LABEL){
+    construct(OVERRUN_TAIL|extra);
+    assert(!m8_tail(app)&&!made_slot&&trace_event==141&&trace_result==(FAIL_FILL|extra)&&m8_tail_canary_broken(app));
+    for(int n=0;n<3;n++){uint8_t before[0x200];memcpy(before,app,requested);unsigned lines=traces,b=broken_shows;
+      m8_hook_show(app);assert(broken_shows==b+1&&traces==lines+1&&trace_event==142&&!memcmp(before,app,requested));
+      m8_hook_hide(app);assert(broken_shows==b+1&&traces==lines+1&&!memcmp(before,app,requested));}
+    unarmed_hooks(false,true);dispose();
+  }
+  for(unsigned mode=FAIL_LABEL;mode<8;mode+=FAIL_LABEL){
+    construct(mode);assert(!m8_tail(app)&&trace_event==141&&trace_result==mode&&!(trace_result&FAIL_FILL)&&!m8_tail_canary_broken(app));
+    for(int n=0;n<3;n++){unsigned lines=traces,b=broken_shows;m8_hook_show(app);m8_hook_hide(app);assert(traces==lines&&broken_shows==b);}
+    dispose();
+  }
+  construct(OVERRUN_ZERO);assert(!m8_tail(app)&&trace_event==141&&trace_result==FAIL_FILL&&!m8_tail_canary_broken(app));
+  for(int n=0;n<3;n++){unsigned lines=traces,b=broken_shows;m8_hook_show(app);m8_hook_hide(app);assert(traces==lines&&broken_shows==b);}
+  dispose();
+
+  /* 9. A repeated lifecycle (study S1 risk 1: the launcher torn down and rebuilt, so destroy, allocate and construct run
+   *    again). Each later life prints event 140 or 141 exactly as a first construction does, arms with the key of its own
+   *    address, and reaches no module state of an earlier life. */
+  {
+    construct(0);uint8_t *a=app;const uint32_t key_a=m8_tail_key(a);assert(m8_tail(a)&&m8_tail_at(a)->canary==key_a);
+    {static int first_life;M8NativeTail *t=m8_tail(a);t->row=t->label=t->icon=t->dot=&first_life;t->last_session=77u;t->errors=5u;}
+    m8_hook_destroy(a);assert(!m8_tail(a)&&m8_tail_at(a)->canary==0u&&!made_slot);
+    /* the same block again (the allocator hands the freed address out once more): the fill replaces the zero canary, the
+     * check passes, and the tail is armed with the same address's key and holds nothing of the first life */
+    reuse_block=a;construct(0);assert(app==a&&trace_event==140&&trace_result==0);
+    {M8NativeTail *t=m8_tail(a);assert(t&&t->canary==key_a&&made_slot&&t->navigation==made_slot&&made_slot->music==&music_slot&&made_slot->camera==&camera);
+     assert(!t->row&&!t->label&&!t->icon&&!t->dot&&!t->page&&t->last_session==0u&&t->errors==0u);}
+    /* a later life whose check fails prints 141 with its bits, once, and stays unarmed; the life after it arms again */
+    m8_hook_destroy(a);reuse_block=a;construct(FAIL_LABEL);assert(app==a&&trace_event==141&&trace_result==FAIL_LABEL&&!m8_tail(a)&&!made_slot);
+    m8_hook_destroy(a);assert(m8_tail_at(a)->canary==TIO_TAIL_FILL);   /* an unarmed destroy leaves the tail alone */
+    reuse_block=a;construct(0);assert(app==a&&trace_event==140&&m8_tail(a)==m8_tail_at(a));
+    /* a life at another address B while A's bytes stay readable (a stale pointer to the old menu) */
+    m8_hook_destroy(a);construct(0);uint8_t *b=app;const uint32_t key_b=m8_tail_key(b);
+    assert(b!=a&&trace_event==140&&key_b!=key_a&&m8_tail(b)&&m8_tail_at(b)->canary==key_b&&m8_tail(b)->navigation==made_slot);
+    assert(!m8_tail(a)&&m8_tail_at(a)->canary==0u);   /* nothing is armed at the old address */
+    {uint8_t before[0x200];memcpy(before,a,requested);assert(!m8_hook_frame(a,100));m8_hook_label_frame(a,100);assert(!memcmp(before,a,requested));}
+    /* the old key does not arm the new menu: B holding A's key is unarmed, and its show reports a broken canary */
+    m8_tail_at(b)->canary=key_a;assert(!m8_tail(b)&&m8_tail_canary_broken(b));
+    {unsigned b142=broken_shows;m8_hook_show(b);assert(broken_shows==b142+1);}
+    m8_tail_at(b)->canary=key_b;assert(m8_tail(b));
+    m8_hook_destroy(b);assert(!made_slot);free(a);dispose();
+  }
+
   printf("PASS menu tail: host model tail %zu bytes at 0x%zx (the 32-bit target's 36 bytes at 0x10c, allocation 0x130, are menu9.h's compile-time assert), "
          "count edit movs r1,#%d equals the module's %d items; armed after an in-bounds constructor; refused for all 7 combinations of an overrun, "
          "a moved label index and a wrong motion count (stock's count restored only when the count check passed), a smashed canary (event 142 once per show, from no other hook) and after destroy (no 142, nor when refused or armed); "
-         "stock-backed hooks call their stub once, replacement hooks touch nothing and the app id is stock's for every index on an unarmed menu\n",
+         "stock-backed hooks call their stub once, replacement hooks touch nothing and the app id is stock's for every index on an unarmed menu; "
+         "an overrun over the canary gives 141 with the fill bit and 142 at every show (label or count bit alone, or a zero overrun: no 142); "
+         "a second and third lifecycle on the same block and on another address print 140/141 as a first one, arm with their own address's key and reach nothing of an earlier life\n",
          sizeof(M8NativeTail),(size_t)TIO_TAIL_OFFSET,MENU_TAIL_COUNT_EDIT,(int)TIO_MENU_ITEMS);
   return 0;
 }

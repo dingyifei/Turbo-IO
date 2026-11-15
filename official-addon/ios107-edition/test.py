@@ -131,6 +131,8 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg12-grid-10611',[FW/'tests/focus_grid_test.c',FW/'src/focus-v1/focus_menu.c',FW/'src/common-v1/tio_text.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src',['-DTD_STOCK_10611=1'])
     ctest('tmg12-timer-wrap-10611',[FW/'tests/timer_wrap_test.c',FW/'src/menu-grid-v2/tile_config.c',FW/'src/menu-grid-v2/menu_config.c'],FW/'src',['-DTD_STOCK_10611=1'])
     run('tmg12-menu-tail',['python3','-I',FW/'tests/menu_tail_host_test.py','--out',out/'menu-tail-host'])
+    run('tmg12-nav-service',['python3','-I',FW/'tests/nav_service_host_test.py','--out',out/'tmg12-nav-service-host'])
+    run('tmg12-unarmed-services',['python3','-I',FW/'tests/unarmed_services_host_test.py','--out',out/'unarmed-services-host'])
     ctest('tmg5-music',[FW/'src/music-runtime-v1/music_test.c',FW/'src/music-runtime-v1/music.c'],FW/'src/music-runtime-v1')
     ctest('tmg5-noncardinal',[FW/'tests/noncardinal_smoothing_test.c'],FW/'src')
     ctest('tmg5-smoothing',[FW/'tests/smoothing_test.c',FW/'src/navigation-runtime-v1/nav_runtime.c'],FW/'src')

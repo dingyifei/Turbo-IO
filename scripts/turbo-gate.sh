@@ -289,7 +289,8 @@ fw_layout_stage() {
   mkdir -p "$GATE/fw-layout"
   python3 -I "$REPO/firmware/tests/stock_layout_test.py" --stock "$STOCK"
   python3 -I "$REPO/firmware/tools/check_layout.py" "$REPO/firmware"
-  for name in render_idle native_ui native_status native tmg9_wheel menu_tail; do
+  python3 -I "$REPO/firmware/tools/check_layout.py" --self-test "$REPO/firmware"
+  for name in render_idle native_ui native_status native tmg9_wheel menu_tail nav_service unarmed_services; do
     python3 -I "$REPO/firmware/tests/${name}_host_test.py" --out "$GATE/fw-layout/$name"
   done
   python3 -I "$REPO/firmware/tests/native_light_host_test.py" --stock "$STOCK" --out "$GATE/fw-layout/native_light"
@@ -318,6 +319,8 @@ fw_build_stage() {
     built=$(build_tree_zip "$GATE/fw-build")
     printf 'plain build: %s\n' "$built"
   fi
+  rm -rf "$GATE/fw-light-off"
+  python3 -I "$REPO/firmware/tests/sensors_light_off_link_test.py" --stock "$STOCK" --llvm-bin "$TC" --out "$GATE/fw-light-off"
 }
 fw_audit_stage() {
   local zip
