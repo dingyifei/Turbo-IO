@@ -275,7 +275,13 @@
     "smf.json": "43998e7acf06c8f9bc39635655d79120b7061a46f7b23f791f8699536f81836d"
   },
   "stockManifestSHA256": "c5c09444e28bde6d13c9916aca17dd78b19e676854be4991b260e134d55f91a9",
-  "emuOnly": true,
+  "emuOnly": false,
+  "identityCarryOver": {
+    "build.py": {
+      "carried": "45b9ffc44e6cec3794fe8941a6dfdaa4ec22120ed1e79c271e5ca6eb9fd674eb",
+      "live": "0cf0356af648fcfb5369a085456d9fb96db03ac2b0b9884487b937af13d34228"
+    }
+  },
   "stockZIPProvenance": {
     "ownerRezip": {
       "name": "Strix_OS_1.0.6.11-rezipped-20261112-224028.zip",

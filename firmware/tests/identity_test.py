@@ -44,10 +44,15 @@ def main():
         try:build.build_input_identity(bare,versions,flags(target),asset);raise SystemExit('unbound carry-over (no live pin) was accepted')
         except AssertionError:pass
         script.write_bytes(old_script)
-    # The shipped carry-over is bound to the shipped build.py and to ZIP8; --repin must drop it.
+    # The shipped carry-over is bound to the shipped build.py and to one recorded ZIP, with the build.py hash that ZIP was
+    # built from; --repin must drop it. ZIP8: the single-tree restructure. TMG12: the release build, whose AP is
+    # candidate 4's (candidate 4 was built from the build.py hashed below, which marked 1.0.6.11 emulator only).
     build.HERE=FW
+    carry_overs={'effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6':'e21a4556a2bd2be5740c0229b589f76f9e1a46a14d8793ab6a2efaa135d362f3',
+                 '3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373':'45b9ffc44e6cec3794fe8941a6dfdaa4ec22120ed1e79c271e5ca6eb9fd674eb'}
     if 'identityCarryOver' in inputs:
-        assert inputs['archive']['sha256']=='effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6','identityCarryOver outlived ZIP8: remove it and repin'
+        assert inputs['archive']['sha256'] in carry_overs,'identityCarryOver outlived its ZIP: remove it and repin'
+        assert inputs['identityCarryOver']['build.py']['carried']==carry_overs[inputs['archive']['sha256']],'identityCarryOver carries another build.py than its ZIP was built from'
         assert inputs['identityCarryOver']['build.py']['live']==build.sha((FW/'build.py').read_bytes())
         assert 'identityCarryOver' not in build.load_spec(True) and 'identityCarryOver' in build.load_spec(False)
     print('PASS identity: canonical paths, derived-pin/test exclusion, source/order/toolchain sensitivity, build.py carry-over fail-closed scope, repin drop and no HEAD/time dependency')

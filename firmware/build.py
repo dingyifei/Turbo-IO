@@ -20,7 +20,9 @@ STOCK_BASES = ('1.0.5.5', '1.0.5.12', '1.0.6.11')
 CORES = {'nuttx_ap.bin': 'ap', 'nuttx_apc1.bin': 'apc1', 'nuttx_bth.bin': 'bth'}
 # The package shape of each base: its exact payload names (OtaFileInfo.json rows; the archive adds OtaFileInfo.json),
 # whether the stock ZIP is the official download or a canonical ZIP of pinned members (tools/stock_zip.py), where
-# that stock ZIP lives, and whether a build on it may ever become a phone release (False: emulator only).
+# that stock ZIP lives, and whether a build on it may ever become a phone release (False: emulator only; a tree on such
+# a base must set emuOnly). 1.0.6.11 was emulator only through TMG12 candidate 4 and became a phone release base for
+# the TMG12 release build; the phoneRelease False mode stays for any future base that is not ready for a device.
 _PAYLOADS_105 = tuple(sorted(('bt_controller.bin', 'cb_fw_venus.bin', 'fac_test_img.bin', 'images.bin', 'lotties.bin',
     'nuttx_ap.bin', 'nuttx_apc1.bin', 'nuttx_audio.bin', 'nuttx_bth.bin', 'ota_installer_progress.bin',
     'pil_algo_up_demo_nand.dll', 'pil_algo_vad_demo.dll', 'pil_algo_wakeup_dll_nand.dll', 'rives.bin', 'smf.json')))
@@ -30,7 +32,7 @@ STOCK_SHAPES = {
     '1.0.5.12': {'payloads': _PAYLOADS_105, 'container': 'official', 'phoneRelease': True,
                  'stockZIPPath': ('repo', 'firmware-research/strix-1.0.5.12/stock/Strix-OS-1.0.5.12-original.zip')},
     '1.0.6.11': {'payloads': tuple(sorted(set(_PAYLOADS_105) - {'rives.bin'} | {'amap_rtos_sdk', 'nuttx_ota.bin'})),
-                 'container': 'canonical-members', 'phoneRelease': False,
+                 'container': 'canonical-members', 'phoneRelease': True,
                  'stockZIPPath': ('inputs', 'tmg12-emu/stock/Strix-OS-1.0.6.11-members-canonical.zip')}}
 EMU_NOTICE = 'EMULATOR ONLY - NOT FOR DEVICE'
 
@@ -299,10 +301,12 @@ def build_input_identity(spec, versions, flags, asset_sha):
                     and not path.name.endswith(('_test.c','.test.c'))):
                 entries.append([path.relative_to(HERE).as_posix(), sha(path.read_bytes())])
     # identityCarryOver: build.py is a build input, so editing it changes the identity embedded in the AP.
-    # The single-tree restructure edited build.py only to move file locations and the release label, and the
-    # identity of the already reproduced ZIP8 must not move, so build.py's contribution is carried over from the
-    # pre-restructure file. The carry-over is bound to one exact build.py ('live'): any other build.py fails closed,
-    # and --repin drops the key, so build.py is hashed live again from the next repin on.
+    # When an edit to build.py does not change what is compiled or linked, and an already checked AP must not move,
+    # build.py's contribution is carried over from the earlier file ('carried'). Used twice: the single-tree
+    # restructure (ZIP8, removed at tmg9(1)) and the TMG12 release build, whose build.py differs from candidate 4's
+    # only in marking 1.0.6.11 a phone release base, so its AP stays candidate 4's. The carry-over is bound to one
+    # exact build.py ('live'): any other build.py fails closed, and --repin drops the key, so build.py is hashed
+    # live again from the next repin on.
     carried = spec.get('identityCarryOver', {})
     assert set(carried) <= {'build.py'}, 'identityCarryOver may only name build.py'
     script_sha = sha((HERE/'build.py').read_bytes())
@@ -333,7 +337,7 @@ def build_input_identity(spec, versions, flags, asset_sha):
 def load_spec(repin=False):
     spec = json.loads((HERE / 'build-inputs.json').read_text())
     if repin:
-        # A repin hashes build.py live and writes a pinned spec that no longer carries the restructure exception.
+        # A repin hashes build.py live and writes a pinned spec that no longer carries an identityCarryOver.
         spec.pop('identityCarryOver', None)
     return spec
 

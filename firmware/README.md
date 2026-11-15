@@ -1,10 +1,29 @@
 # TurboIO firmware (single tree; current release label in `RELEASE`)
 
-This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg11`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). The restructure kept ZIP8 byte-identical with a one-off `identityCarryOver` for `build.py`; the first TMG9 repin (`tmg9(1)`) removed it, and `build.py` is hashed live again. The TMG8 sections below keep their text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`). TMG10 and TMG11 were built on stock 1.0.5.12; since TMG12 the tree is built on stock 1.0.6.11 (`stockBase` in `build-inputs.json`). The TMG10 and TMG11 sections describe 1.0.5.12, and the TMG9 and older sections describe 1.0.5.5 addresses and offsets.
+This is the one firmware tree. It used to be copied for every release (`firmware-research/strix-1.0.5.5-tmgN`); since the single-tree restructure (`fw(1)` to `fw(3)`) there is no copy: each released candidate is an annotated git tag `fw/tmg2` … `fw/tmg11`, and `git checkout fw/tmgN` restores that release's tree and its history. The release label is the single line in [`RELEASE`](RELEASE); `build.py` (archive name) and `tools/phone_pins.py` (phone pin name) read it, and `tests/release_label_test.py` proves it is never derived from a folder name. [`baseline/`](baseline/README.md) keeps the few immutable inputs the older trees used to provide (the shared animation, the TMG3 patch-site set, the TMG2 originals that `tools/check_kept.py` compares against). The restructure kept ZIP8 byte-identical with a one-off `identityCarryOver` for `build.py`; the first TMG9 repin (`tmg9(1)`) removed it, and `build.py` is hashed live again. The TMG12 release build uses the same mechanism once more (see "TMG12 release build" below). The TMG8 sections below keep their text as written, with old folder names read as tags (`../strix-1.0.5.5-tmg7` is `fw/tmg7`). TMG10 and TMG11 were built on stock 1.0.5.12; since TMG12 the tree is built on stock 1.0.6.11 (`stockBase` in `build-inputs.json`). The TMG10 and TMG11 sections describe 1.0.5.12, and the TMG9 and older sections describe 1.0.5.5 addresses and offsets.
 
-## TMG12: TMG11 ported to stock Strix OS 1.0.6.11 (EMULATOR ONLY, NOT FOR DEVICE)
+## TMG12: TMG11 ported to stock Strix OS 1.0.6.11 (release build of candidate 4; CANDIDATE-NOT-APPROVED)
 
-**EMULATOR ONLY, NOT FOR DEVICE. This build has not run on glasses and is not approved for one. There is no phone release for it and no `fw/tmg12` tag.**
+**CANDIDATE-NOT-APPROVED. Nothing of TMG12 has run on glasses. Every check so far is offline or in the emulator. The release build below exists so that the phone track (C20 on the 1.0.21 host) can pin it; flashing it needs the owner's own go. There is no `fw/tmg12` tag yet.**
+
+### TMG12 release build
+
+On 2026-11-15 the owner moved TMG12 from emulator only to a device build. The tree now builds TMG12 as a normal release candidate, and its AP is byte-for-byte candidate 4's (`tmg12(42)`), so everything checked on candidate 4 holds for it.
+
+- **What changed.** `build.py` marks stock 1.0.6.11 as a phone release base (`phoneRelease` in `STOCK_SHAPES`), `build-inputs.json` sets `emuOnly` to false, and the ZIP takes the normal candidate name `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`. `RELEASE` stays TMG12. The emulator-only mode is kept for future bases: a base with `phoneRelease` false still needs `emuOnly`, still gets the `-EMU-ONLY-NOT-FOR-DEVICE.zip` name, and `tools/phone_pins.py` still refuses it. The tests prove this on a fixture copy of `build.py`.
+- **Why the AP did not move.** The build identity (the 32 bytes at AP offset 0x7b45fe, the status `build` field) hashes `build.py`. Neither `emuOnly` nor `RELEASE` is a build input. The edit to `build.py` changes nothing that is compiled or linked, so `build-inputs.json` carries `identityCarryOver` for `build.py`. It holds candidate 4's `build.py` hash (`carried`) and is bound to the current file (`live`), as the single-tree restructure did for ZIP8. `tests/identity_test.py` allows it only next to this ZIP's pin, with this carried hash. A `--repin` drops it by design. A repin of this tree gives an AP that differs from candidate 4's in exactly those 32 bytes (identity `45c4c4ba3d07b380314f59d8ffad7fdd30923f3bddec329aaaf6c15c1c2b8e13`), so do not repin while this release is current.
+- **The ZIP is candidate 4's ZIP.** The archive writer, member order, compression, dates and modes are unchanged, and the file name is not inside the container. So the release ZIP is byte-identical to candidate 4's emulator-only ZIP. The 15 payloads other than the AP are the stock 1.0.6.11 members, byte for byte. Three plain builds, one from the worktree and two from clean copies of the tree, gave the same bytes.
+
+| Item | Value |
+| --- | --- |
+| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`, 9,549,211 B |
+| ZIP SHA-256 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
+| AP | 8,132,360 B, SHA-256 `6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50`, MD5 `96eebf1467b53759e816f05057df506e` |
+| Module | 165,116 B at 0x10929204 |
+| Build identity (status `build`) | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
+| Package | 17 entries: 16 manifest rows (payloads) and `OtaFileInfo.json`; the phone pins hold 17 member rows. The type-5 `OtaVersion` is `Strix OS 1.0.6.11` and the folder is `Strix_OS_1.0.6.11`. |
+
+**Checked.** Candidate 4 passed the firmware-only gate and the lead's static boot-confirm check, and its emulator round passed: cases C4-2 to C4-5 passed, and C4-1 was partial only because of an assumption in the run script, with no candidate failure. The release build passed the firmware-only gate (plain build) and the same static check. `tools/phone_pins.py` makes pins for a c20-style release of this ZIP on the 1.0.21 full host, and refuses a stock 1.0.6.11 release on any other host. **Not checked.** Nothing has run on glasses or gone over the phone link. The OTA install of a 1.0.6.11 package, its post-boot confirm and the phone's flash gate for a 17-member package have not been exercised.
 
 TMG12 (`RELEASE`) is TMG11 like for like on stock 1.0.6.11 (`stockBase` in `build-inputs.json`). The carousel has 8 stock and 6 module tiles (14 items, module ids 8 to 13; see "Tiles and persistence"). The module's navigation tile is labelled Turbo Nav, and stock's own Navigation app is added to the remote's input gate. The Sensors page shows a "UI heap" line (the LVGL memory counters) and a Light line read through stock's own latest-light getter (see the Sensors screen under TMG11).
 
@@ -50,7 +69,7 @@ Every stock offset the tree uses is named in `src/stock_layout.h` and proven fro
 - Lint exemption E8 (the 28-byte image descriptor size) stays, because no stock instruction witnesses that size.
 - The test models keep their own literal copies of the named stock values on purpose, as an independent check.
 
-**The ZIP is flashable bytes under another name.** Only the file name and `audit.json` mark it as emulator-only; inside, it is a complete package. The phone pin tool (`tools/phone_pins.py`) refuses it. It must stay out of the release folders under `$TURBO_INPUTS`, and it gets no `fw/tmg12` tag.
+**Emulator-only ZIPs of candidates 1 to 4.** They are flashable bytes under another name: only the file name and `audit.json` mark them as emulator-only. Candidates 1 to 3 stay out of the release folders under `$TURBO_INPUTS`, and `tools/phone_pins.py` refuses them in every mode: by name, by their bytes when they are listed under a base they are not built on, and by their SHA-256 (`SUPERSEDED_ZIPS`) on stock 1.0.6.11 under any label, because since 1.0.6.11 became a phone release base their bytes alone no longer give them away. Candidate 4's bytes are the release build above.
 
 ## TMG11: TMG10 plus a read-only Sensors screen (phone build C18; release history)
 
@@ -73,7 +92,7 @@ TMG11 (`RELEASE` at tag `fw/tmg11`) keeps TMG10's stock base (1.0.5.12), its 25 
   - Knob: counter-clockwise is negative, about 1,200 counts per full turn.
   - "Light": shows UI memory (about 8.79 MB), not light.
   - The Sensor log on C18 named the parts: ST IMU on the "LSM6DSO32" driver (WHO_AM_I 0x6b), MMC5603NJ magnetometer (ID 0x10), W1161 light sensor (ID 0xe6, I2C0), Mixo OTS knob (ID 0xB1, I2C0).
-- **C18** is the 1.0.11 full host with `--release c18`. It bundles ZIP11 and accepts only `Strix OS 1.0.5.12`. This is the first same-version (1.0.5.12 to 1.0.5.12) flash; the glasses may refuse it, and then nothing is written. The rollback is C16 + ZIP10.
+- **C18** is the 1.0.11 full host with `--release c18`. It bundles ZIP11 and accepts only `Strix OS 1.0.5.12`. It was the first same-version (1.0.5.12 to 1.0.5.12) flash, and the glasses accepted it (owner device check, 2026-11-12). The rollback is C16 + ZIP10.
 - **Device checks (owner):**
   - the menu and every tile behave as on TMG10;
   - Display Test opens as before, and one press shows "Sensors (read only)";
@@ -416,7 +435,7 @@ The firmware's source/input identity is separate from the ZIP hash. Runtime capa
 
 One source, `src/menu-grid-v2/tile_config.{h,c}` (byte-identical in the phone edition), holds two tile models, chosen by the stock base define `TD_STOCK_10611`, which the phone build never sets. The stock tiles are fixed and visible; the six module tiles follow them in any of the 720 orders (a Lehmer rank 0–719), and every module tile but Camera can be hidden. Both carousel and grid use the same compact map; the two/three-row layout stays independent.
 
-| | 1.0.5.12 pair: TMG11 glasses, the phone, every compile without a base | Stock 1.0.6.11 (TMG12, emulator only) |
+| | 1.0.5.12 pair: TMG11 glasses, the phone, every compile without a base | Stock 1.0.6.11 (TMG12) |
 | --- | --- | --- |
 | Stock tile ids | 0–6: Recorder, Live Captions, Live Assist, To-do, Teleprompter, Lifelog, Do Not Disturb | 0–7: Recorder, Live Captions, Live Assist, To-do, Navigation (stock), Teleprompter, Lifelog, Do Not Disturb |
 | Module tile ids | 7–12: Display Test, Navigation, Music, Pomodoro, My Apps, Camera | 8–13: Turbo Display, Turbo Nav, Music, Pomodoro, My Apps, Camera |
@@ -458,7 +477,7 @@ R=$(git rev-parse --show-toplevel)
 FW=$R/firmware
 TC=$TURBO_INPUTS/toolchain/llvm-bin
 STOCK=$(python3 -I "$FW/build.py" --show stock-zip --inputs "$TURBO_INPUTS")
-ZIP12=StrixOS-1.0.6.11-TurboIO-TMG12-EMU-ONLY-NOT-FOR-DEVICE.zip   # the tree's emulator-only ZIP; never a release
+ZIP12=StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip   # the tree's TMG12 release build (candidate 4's bytes)
 ZIP11=StrixOS-1.0.5.12-TurboIO-TMG11-CANDIDATE-NOT-APPROVED.zip   # C18's firmware, published at $TURBO_INPUTS/tmg11/
 D=$(mktemp -d)
 python3 -I "$FW/tools/rebase_apply.py" --check --stock "$STOCK"
@@ -472,7 +491,7 @@ cmp "$D/r11/out/$ZIP11" "$TURBO_INPUTS/tmg11/$ZIP11"   # the pinned copy the pho
 python3 -I "$FW/tools/phone_pins.py" --check "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"   # every release in releases.json
 ```
 
-**State of the tree.** The tree is on stock 1.0.6.11 and emulator-only (`build.py --show emu-only` prints `true`). It was repinned at `tmg12(23)` and again at `tmg12(26)`, and a plain build gives the TMG12 emulator-only ZIP (see the TMG12 section). The tree's `build.py` cannot rebuild TMG11: the byte-for-byte reproduction of TMG11 comes from the tag, as in the block above (`fw/tmg11` carries its own `build.py`, `build-inputs.json` and stock ZIP).
+**State of the tree.** The tree is on stock 1.0.6.11 and is not emulator-only (`build.py --show emu-only` prints `false`). Its last repin was for candidate 4 (`tmg12(42)`). A plain build gives the TMG12 release ZIP, with `build.py` carried over in the identity (see "TMG12 release build"). The tree's `build.py` cannot rebuild TMG11: the byte-for-byte reproduction of TMG11 comes from the tag, as in the block above (`fw/tmg11` carries its own `build.py`, `build-inputs.json` and stock ZIP).
 
 **Firmware-only gate.** `bash scripts/turbo-gate.sh --firmware-only [--tree-zip ZIP]` runs the firmware checks with no phone build, no `package.env`, no `releases.json` entry and no `phone_pins.py` call. It writes `official-addon/ios107-edition/build/gate-firmware/` (its own `report.json`, with `"mode": "firmware-only"` and `"build": "plain"` or `"compile-only"`), and cannot be combined with `--preview`, `--only-build` or `--skip-tests`. The stages, in order:
 
@@ -484,7 +503,7 @@ python3 -I "$FW/tools/phone_pins.py" --check "$R/official-addon/ios107-edition" 
 6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD from `git archive` with that tag's own `build.py` and pins, which require its pinned ZIP (today `fw/tmg11`, ZIP `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1`, C18's firmware). Because the main tree's `build.py` no longer reproduces TMG11, this stage is now the reproduction check for C18's firmware.
 7. `source-audit`.
 
-The run ends with `GATE PASS (firmware-only, plain build)` or `GATE PASS (firmware-only, compile-only build; tree ZIP given, not built)`. The tree plain-builds, so run it without `--tree-zip`; a given ZIP must be one built on the tree's base. The full gate is unchanged in stages and order, except for the `fw-layout` stage after `pins` and that every `test.py` call also gets `--tree-stock`, and an emulator-only tree (`build.py --show emu-only` prints `true`) is built once per run for the stages that need its ZIP instead of being looked up in `releases.json`. An emulator-only tree is never a phone release: `phone_pins.py --tree-release` refuses it.
+The run ends with `GATE PASS (firmware-only, plain build)` or `GATE PASS (firmware-only, compile-only build; tree ZIP given, not built)`. The tree plain-builds, so run it without `--tree-zip`; a given ZIP must be one built on the tree's base. The full gate is unchanged in stages and order, except for the `fw-layout` stage after `pins` and that every `test.py` call also gets `--tree-stock`, and an emulator-only tree (`build.py --show emu-only` prints `true`) is built once per run for the stages that need its ZIP instead of being looked up in `releases.json`. An emulator-only tree is never a phone release: `phone_pins.py --tree-release` refuses it. The TMG12 tree is not emulator-only, so the full gate looks its ZIP up in `releases.json` (`--tree-release`): a release that carries TMG12 and this ZIP must be listed there before the full gate can pass.
 
 The shared immutable animation is read from `baseline/animation-frames.l8` (provenance in `baseline/README.md`), SHA-256`f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d`; no duplicate binary asset is tracked. Normal builds enforce all pins. `--repin` is a deliberate developer operation, not a runtime update mechanism.
 

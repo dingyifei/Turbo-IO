@@ -2,15 +2,18 @@
 """Generate the phone's firmware pins for every release configuration from the exact release ZIPs.
 
 Input: official-addon/ios107-edition/releases.json (one entry per phone release: the firmware label, the stock base
-the ZIP is built on, the ZIP's path under $TURBO_INPUTS with its size and SHA-256, and the accepted current glasses
-versions). For each release this reads the ZIP, checks its manifest, its pinned identity, that every non-AP member
+the ZIP is built on, the ZIP's path under $TURBO_INPUTS with its size and SHA-256, the accepted current glasses
+versions, and its hosts: the default release 107 and/or 1011-full, a named release exactly one of 1011-full and
+1021-full, and a stock 1.0.6.11 release only 1021-full). For each release this reads the ZIP, checks its manifest, its pinned identity, that every non-AP member
 is byte-for-byte the member of the stock ZIP of its base, and that AP, APC1 and BTH all report that base (build.py's
 core_identity). The release whose firmware is the tree's label (../RELEASE) must also be the ZIP in
 ../build-inputs.json, on the same stock base. An emulator-only build is never a phone release: a base whose
 phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP name are all refused, in every mode
 (--resolve included) before the ZIP is read and before anything is written. Every mode, --resolve included, also
 refuses a ZIP whose own package shape or cores (AP, APC1, BTH) are not on its stock base, so an older emulator-only
-ZIP listed under a phone base is refused even when no name, label or tree record marks it.
+ZIP listed under a phone base is refused even when no name, label or tree record marks it. An older emulator-only
+ZIP that is a valid build on a base that has since become a phone release base (the TMG12 candidates 1 to 3 on
+1.0.6.11) is refused by its pinned SHA-256 (SUPERSEDED_ZIPS), in every mode, before the ZIP is read.
 
 Output (--write DIR / --check DIR):
   FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME> (no define = default)
@@ -39,6 +42,21 @@ ROOT = FW.parent
 ED = ROOT/'official-addon'/'ios107-edition'
 RELEASE_NAME = re.compile(r'default|c[0-9]+')
 VERSION = re.compile(r'([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)')
+# The host names turbo-package.sh uses (--host). The default release is the build with no --release (1.0.7 and the
+# 1.0.11 full host); a named release (--release cN) is built for exactly one full host: 1.0.11 (C16 to C18) or 1.0.21.
+HOSTS = ('107', '1011-full', '1021-full')
+DEFAULT_HOSTS = ('107', '1011-full')
+NAMED_HOSTS = ('1011-full', '1021-full')
+# Stock bases that only some hosts may flash. Only the 1.0.21 host is ported to flash a 1.0.6.11 package.
+BASE_HOSTS = {'1.0.6.11': ('1021-full',)}
+# ZIPs that must never become a phone release, by SHA-256: the emulator-only TMG12 candidates 1 to 3 on stock
+# 1.0.6.11, which the TMG12 release (candidate 4's bytes) replaced. Their own bytes are a valid 1.0.6.11 build, so
+# once 1.0.6.11 became a phone release base only this list refuses them under a label other than the tree's.
+SUPERSEDED_ZIPS = {
+    'eacb5dcabc513570978edc31a47d3304b2bc361036d5b171e15bd4c3c281e9b5': 'TMG12 emulator-only candidate 1',
+    'a8b9de49f2d5dc45311c5b19d61f96d9cc1acb2ed81ab55fb14534c0b68ad849': 'TMG12 emulator-only candidate 2',
+    '007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325': 'TMG12 emulator-only candidate 3',
+}
 
 
 def release_label(root=None):
@@ -162,10 +180,15 @@ def load_releases(path):
             raise ValueError(name + ': acceptCurrent must list distinct versions')
         for version in accept:
             version_parts(version)
-        if not isinstance(spec.get('hosts'), list) or not spec['hosts'] or not set(spec['hosts']) <= {'107', '1011-full'}:
-            raise ValueError(name + ': hosts must be 107 and/or 1011-full')
-        if name != 'default' and spec['hosts'] != ['1011-full']:
-            raise ValueError(name + ': a named release is a 1.0.11 full-host build')
+        if not isinstance(spec.get('hosts'), list) or not spec['hosts'] or not set(spec['hosts']) <= set(HOSTS):
+            raise ValueError(name + ': hosts must be among ' + ', '.join(HOSTS))
+        if name == 'default' and not set(spec['hosts']) <= set(DEFAULT_HOSTS):
+            raise ValueError(name + ': the default release is built only for ' + ' and/or '.join(DEFAULT_HOSTS))
+        if name != 'default' and (len(spec['hosts']) != 1 or spec['hosts'][0] not in NAMED_HOSTS):
+            raise ValueError(name + ': a named release is a build for exactly one full host: ' + ' or '.join(NAMED_HOSTS))
+        allowed = BASE_HOSTS.get(spec['stockBase'])
+        if allowed is not None and not set(spec['hosts']) <= set(allowed):
+            raise ValueError(name + ': a stock ' + spec['stockBase'] + ' release is built only for ' + ' and/or '.join(allowed))
     return data['releases']
 
 
@@ -179,6 +202,9 @@ def refuse_emulator_only(name, spec, build=None, tree_spec=None, tree_label=None
         raise ValueError(name + ': stock ' + spec['stockBase'] + ' has no phone release (emulator only)')
     if '-EMU-ONLY-' in spec['zip']['input']:
         raise ValueError(name + ': an -EMU-ONLY- ZIP cannot be a phone release')
+    # Every mode checks the ZIP's bytes against this pinned SHA-256 before using them, so refusing the pin is enough.
+    if spec['zip']['sha256'] in SUPERSEDED_ZIPS:
+        raise ValueError(name + ': this ZIP is superseded (' + SUPERSEDED_ZIPS[spec['zip']['sha256']] + ') and cannot be a phone release')
     if build.emu_only(tree_spec):
         if spec['firmware'] == tree_label:
             raise ValueError(name + ': ' + tree_label + ' is the label of an emuOnly tree')

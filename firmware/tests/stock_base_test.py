@@ -102,9 +102,14 @@ def main():
         assert sorted(flags)==sorted(['-DTD_STOCK_10412=0']+['-DTD_STOCK_%s=%d'%(x.replace('.',''),x==b) for x in BASES]),flags
     refused(lambda:build.stock_base({'stockBase':'1.0.5.6'}),'unknown stock base')
     refused(lambda:build.stock_base({}),'missing stock base')
-    # emuOnly: a 1.0.6.11 tree must say so; the tree's own value is read as written.
-    refused(lambda:build.emu_only({'stockBase':'1.0.6.11'}),'1.0.6.11 tree that is not emuOnly','emuOnly:')
+    # emuOnly: the tree's own value is read as written. 1.0.6.11 is a phone release base (TMG12 release build), so a
+    # 1.0.6.11 tree may leave emuOnly out; on a base with no phone release (a fixture copy of build.py) it must say so.
+    assert build.emu_only({'stockBase':'1.0.6.11'}) is False
     assert build.emu_only({'stockBase':'1.0.6.11','emuOnly':True}) is True and build.emu_only(spec) is spec.get('emuOnly',False)
+    no_phone=load(FW/'build.py','stock_base_build_no_phone');no_phone.STOCK_SHAPES['1.0.6.11']=dict(no_phone.STOCK_SHAPES['1.0.6.11'],phoneRelease=False)
+    refused(lambda:no_phone.emu_only({'stockBase':'1.0.6.11'}),'a tree that is not emuOnly on a base with no phone release','emuOnly:')
+    refused(lambda:no_phone.emu_only({'stockBase':'1.0.6.11','emuOnly':False}),'emuOnly false on a base with no phone release','emuOnly:')
+    assert no_phone.emu_only({'stockBase':'1.0.6.11','emuOnly':True}) is True
     # stockZIPProvenance: on the real tree, present exactly when the base's stock container is canonical-members, and
     # then exactly stock_zip.py's pinned provenance record for that base (no extra keys). rebase_apply --write keeps it.
     canonical=build.package_shape(base)['container']=='canonical-members'
@@ -131,7 +136,7 @@ def main():
         files[b],rows=build.safe_zip(paths[b],pins[b],b)
         shape=build.package_shape(b);n=len(names[b])
         assert shape['base']==b and sorted(shape['payloads'])==names[b] and (shape['manifestRows'],shape['archiveEntries'],shape['unchangedPayloads'])==(n,n+1,n-1),(b,shape)
-        assert (shape['container'],shape['phoneRelease'])==(('canonical-members',False) if b=='1.0.6.11' else ('official',True)),(b,shape)
+        assert (shape['container'],shape['phoneRelease'])==(('canonical-members',True) if b=='1.0.6.11' else ('official',True)),(b,shape)
         assert sorted(files[b])==sorted(names[b]+['OtaFileInfo.json']) and sorted(r['Name'] for r in rows)==names[b],b
         cores=build.core_identity(files[b],b)
         assert cores['buildVer']==b.rsplit('.',1)[1];revs.add(cores['revInfo'])

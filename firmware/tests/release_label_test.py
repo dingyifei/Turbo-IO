@@ -37,9 +37,19 @@ def main():
         assert build.archive_name(base=other,emu_only=True)==want_name(other,label,True)
         if phone:assert build.archive_name(base=other,emu_only=False)==want_name(other,label,False)
         else:refused(lambda:build.archive_name(base=other,emu_only=False),'candidate name for %s'%other)
-    assert not build.package_shape('1.0.6.11')['phoneRelease']
-    refused(lambda:build.archive_name(base='1.0.6.11',emu_only=False),'candidate name for 1.0.6.11')
-    refused(lambda:build.emu_only({'stockBase':'1.0.6.11'}),'1.0.6.11 tree that is not emuOnly')
+    # 1.0.6.11 is a phone release base since the TMG12 release build: the candidate name is allowed there, and a 1.0.6.11
+    # tree without emuOnly is accepted.
+    assert build.package_shape('1.0.6.11')['phoneRelease']
+    assert build.archive_name(base='1.0.6.11',emu_only=False)==want_name('1.0.6.11',label,False)
+    assert build.emu_only({'stockBase':'1.0.6.11'}) is False
+    # The emulator-only mode stays for future bases: a fixture copy of build.py whose 1.0.6.11 shape has no phone
+    # release gets the EMU name by default, and the candidate name and a tree without emuOnly are refused there.
+    fixture=load(FW/'build.py','release_label_build_no_phone');fixture.STOCK_SHAPES['1.0.6.11']=dict(fixture.STOCK_SHAPES['1.0.6.11'],phoneRelease=False)
+    assert not fixture.package_shape('1.0.6.11')['phoneRelease']
+    assert fixture.archive_name(base='1.0.6.11')==want_name('1.0.6.11',label,True)
+    refused(lambda:fixture.archive_name(base='1.0.6.11',emu_only=False),'candidate name for a base with no phone release')
+    refused(lambda:fixture.emu_only({'stockBase':'1.0.6.11'}),'a tree that is not emuOnly on a base with no phone release')
+    assert fixture.emu_only({'stockBase':'1.0.6.11','emuOnly':True}) is True
     refused(lambda:build.emu_only({'stockBase':base,'emuOnly':'true'}),'emuOnly that is not a bool')
     assert 'name' not in json.loads((FW/'build-inputs.json').read_text())['archive'],'the archive name has one source: RELEASE'
     with tempfile.TemporaryDirectory(prefix='release-label-') as tmp:
