@@ -18,24 +18,10 @@ static NSDictionary *Fetch(uint16_t port,NSString *method,NSString *target,NSStr
 }
 static NSDictionary *Query(uint16_t port,NSString *path){NSDictionary *r=Fetch(port,@"GET",path,@"");assert([r[@"code"] intValue]==200);return [NSJSONSerialization JSONObjectWithData:r[@"body"] options:0 error:nil];}
 // The release's feed policy, written out here by hand (not from FirmwarePins.h) so a wrong generated value fails.
-#if defined(TIO_RELEASE_C20)
-// C20 (TMG12 on 1.0.6.11): flashes glasses that report 1.0.5.12 (TMG11) or 1.0.6.11 (stock, or a TMG12 flashed again);
-// its releases.json entry must match.
+// C21, the only release (TMG12 on 1.0.6.11): flashes glasses that report 1.0.5.12 (TMG11) or 1.0.6.11 (stock, or a
+// TMG12 flashed again); its releases.json entry must match.
 static NSArray *Accepted(void){return @[@"01.00.05.0012",@"01.00.06.0011"];}
 static NSString *const WantName=@"0100060011";static const int WantCode=100060011;static NSString *const WantFile=@"Strix_OS_1.0.6.11.zip";
-#elif defined(TIO_RELEASE_C16)
-static NSArray *Accepted(void){return @[@"01.00.05.0005",@"01.00.05.0012"];}
-static NSString *const WantName=@"0100050012";static const int WantCode=100050012;static NSString *const WantFile=@"Strix_OS_1.0.5.12.zip";
-#elif defined(TIO_RELEASE_C18)
-static NSArray *Accepted(void){return @[@"01.00.05.0012"];}
-static NSString *const WantName=@"0100050012";static const int WantCode=100050012;static NSString *const WantFile=@"Strix_OS_1.0.5.12.zip";
-#elif defined(TIO_RELEASE_C17)
-static NSArray *Accepted(void){return @[@"01.00.05.0012"];}
-static NSString *const WantName=@"0100050005";static const int WantCode=100050005;static NSString *const WantFile=@"Strix_OS_1.0.5.5.zip";
-#else
-static NSArray *Accepted(void){return @[@"01.00.04.0012",@"01.00.05.0005"];}
-static NSString *const WantName=@"0100050005";static const int WantCode=100050005;static NSString *const WantFile=@"Strix_OS_1.0.5.5.zip";
-#endif
 int main(int argc,const char **argv){@autoreleasepool{
     assert([TIO_FW_ACCEPTED_QUERY_CODES isEqual:Accepted()]);
     assert(argc==2);NSURL *file=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];NSError *error=nil;

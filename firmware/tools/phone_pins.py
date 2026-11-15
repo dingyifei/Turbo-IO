@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Generate the phone's firmware pins for every release configuration from the exact release ZIPs.
 
-Input: official-addon/ios107-edition/releases.json (one entry per phone release: the firmware label, the stock base
-the ZIP is built on, the ZIP's path under $TURBO_INPUTS with its size and SHA-256, the accepted current glasses
-versions, and its hosts: the default release 107 and/or 1011-full, a named release exactly one of 1011-full and
-1021-full, and a stock 1.0.6.11 release only 1021-full). For each release this reads the ZIP, checks its manifest, its pinned identity, that every non-AP member
+Input: official-addon/ios107-edition/releases.json (one entry per phone release, named cN: the firmware label, the
+stock base the ZIP is built on (1.0.6.11, the only base a phone release may have), the ZIP's path under $TURBO_INPUTS
+with its size and SHA-256, the accepted current glasses versions, and its hosts, which must be exactly ["1021-full"],
+the 1.0.21 full host). For each release this reads the ZIP, checks its manifest, its pinned identity, that every non-AP member
 is byte-for-byte the member of the stock ZIP of its base, and that AP, APC1 and BTH all report that base (build.py's
 core_identity). The release whose firmware is the tree's label (../RELEASE) must also be the ZIP in
 ../build-inputs.json, on the same stock base. An emulator-only build is never a phone release: a base whose
@@ -16,9 +16,10 @@ ZIP that is a valid build on a base that has since become a phone release base (
 1.0.6.11) is refused by its pinned SHA-256 (SUPERSEDED_ZIPS), in every mode, before the ZIP is read.
 
 Output (--write DIR / --check DIR):
-  FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME> (no define = default)
-  firmware-pins.json      the default release (format unchanged since TMG3)
-  firmware-pins-<n>.json  each other release, with its version policy
+  FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME>. With no define, the
+                          only release is chosen when releases.json has exactly one; with several, no define is a
+                          compile error.
+  firmware-pins-<n>.json  each release's pins with its version policy (there is no firmware-pins.json)
 
 Every version literal of the phone's OTA path comes from these macros: the accepted current OsVersion, the feed's
 query classifier, the type-5 OtaVersion, the official folder name, the feed's versionName/versionCode/download name,
@@ -40,15 +41,12 @@ import zipfile
 FW = Path(__file__).resolve().parents[1]
 ROOT = FW.parent
 ED = ROOT/'official-addon'/'ios107-edition'
-RELEASE_NAME = re.compile(r'default|c[0-9]+')
+RELEASE_NAME = re.compile(r'c[0-9]+')
 VERSION = re.compile(r'([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)')
-# The host names turbo-package.sh uses (--host). The default release is the build with no --release (1.0.7 and the
-# 1.0.11 full host); a named release (--release cN) is built for exactly one full host: 1.0.11 (C16 to C18) or 1.0.21.
-HOSTS = ('107', '1011-full', '1021-full')
-DEFAULT_HOSTS = ('107', '1011-full')
-NAMED_HOSTS = ('1011-full', '1021-full')
-# Stock bases that only some hosts may flash. Only the 1.0.21 host is ported to flash a 1.0.6.11 package.
-BASE_HOSTS = {'1.0.6.11': ('1021-full',)}
+# The one host name (turbo-package.sh --host) a release may list: the 1.0.21 full host.
+HOSTS = ('1021-full',)
+# The one stock base a phone release may be built on. The firmware tree's own stock-base knowledge stays in build.py.
+RELEASE_BASES = ('1.0.6.11',)
 # ZIPs that must never become a phone release, by SHA-256: the emulator-only TMG12 candidates 1 to 3 on stock
 # 1.0.6.11, which the TMG12 release (candidate 4's bytes) replaced. Their own bytes are a valid 1.0.6.11 build, so
 # once 1.0.6.11 became a phone release base only this list refuses them under a label other than the tree's.
@@ -105,7 +103,7 @@ def read_archive(raw, base):
 
 
 def pins_for(archive, name, base):
-    """The identity pins of one ZIP (the ten fields of firmware-pins.json); the base is the stock base it is built on."""
+    """The identity pins of one ZIP (the first ten fields of firmware-pins-<n>.json); the base is the stock base it is built on."""
     raw = Path(archive).read_bytes()
     manifest_data, payloads = read_archive(raw, base)
     ap = payloads['nuttx_ap.bin']
@@ -163,14 +161,16 @@ def load_build(root=FW):
 
 def load_releases(path):
     data = json.loads(Path(path).read_text())
-    if data.get('schema') != 1 or not isinstance(data.get('releases'), dict) or 'default' not in data['releases']:
-        raise ValueError('releases.json: schema 1 with a default release required')
+    if data.get('schema') != 1 or not isinstance(data.get('releases'), dict) or not data['releases']:
+        raise ValueError('releases.json: schema 1 with at least one release required')
     for name, spec in data['releases'].items():
         if not RELEASE_NAME.fullmatch(name):
-            raise ValueError('release name must be default or cN: ' + name)
+            raise ValueError('release name must be cN: ' + name)
         if not re.fullmatch(r'TMG[0-9]+', spec.get('firmware', '')):
             raise ValueError(name + ': firmware must be a TMG label')
         version_parts(spec.get('stockBase'))
+        if spec['stockBase'] not in RELEASE_BASES:
+            raise ValueError(name + ': a phone release is built only on stock ' + ' or '.join(RELEASE_BASES))
         zip_spec = spec.get('zip', {})
         if (not isinstance(zip_spec.get('input'), str) or zip_spec['input'].startswith(('/', '~')) or '..' in zip_spec['input']
                 or type(zip_spec.get('bytes')) is not int or not re.fullmatch(r'[0-9a-f]{64}', zip_spec.get('sha256', ''))):
@@ -180,15 +180,8 @@ def load_releases(path):
             raise ValueError(name + ': acceptCurrent must list distinct versions')
         for version in accept:
             version_parts(version)
-        if not isinstance(spec.get('hosts'), list) or not spec['hosts'] or not set(spec['hosts']) <= set(HOSTS):
-            raise ValueError(name + ': hosts must be among ' + ', '.join(HOSTS))
-        if name == 'default' and not set(spec['hosts']) <= set(DEFAULT_HOSTS):
-            raise ValueError(name + ': the default release is built only for ' + ' and/or '.join(DEFAULT_HOSTS))
-        if name != 'default' and (len(spec['hosts']) != 1 or spec['hosts'][0] not in NAMED_HOSTS):
-            raise ValueError(name + ': a named release is a build for exactly one full host: ' + ' or '.join(NAMED_HOSTS))
-        allowed = BASE_HOSTS.get(spec['stockBase'])
-        if allowed is not None and not set(spec['hosts']) <= set(allowed):
-            raise ValueError(name + ': a stock ' + spec['stockBase'] + ' release is built only for ' + ' and/or '.join(allowed))
+        if spec.get('hosts') != list(HOSTS):
+            raise ValueError(name + ': hosts must be exactly ' + json.dumps(list(HOSTS)))
     return data['releases']
 
 
@@ -322,25 +315,30 @@ def block(name, pins, members, policy):
 
 
 def render(releases, computed):
-    named = [n for n in releases if n != 'default']
+    names = list(releases)
+    if not names:
+        raise ValueError('no release to render')
+    defined = ['defined(TIO_RELEASE_%s)' % n.upper() for n in names]
     lines = ['// Generated by phone_pins.py from releases.json and the exact release ZIPs; do not edit.',
-             '// No TIO_RELEASE_<NAME> define selects the default release; turbo-package.sh --release cN defines one.',
+             '// TIO_RELEASE_<NAME> selects a release (build.sh TIO_RELEASE=cN, turbo-package.sh --release cN). With no',
+             '// define, the only release is selected when there is one; with several, no define is a compile error.',
              '#ifndef TIO_FIRMWARE_PINS_H', '#define TIO_FIRMWARE_PINS_H']
-    if named:
-        lines.append('#if ' + ' + '.join('defined(TIO_RELEASE_%s)' % n.upper() for n in named) + ' > 1')
+    if len(names) > 1:
+        lines.append('#if ' + ' + '.join(defined) + ' > 1')
         lines += ['#error "more than one TIO_RELEASE_<NAME> defined"', '#endif']
-    for i, name in enumerate(named):
-        lines.append(('#if' if i == 0 else '#elif') + ' defined(TIO_RELEASE_%s)' % name.upper())
+    lines.append('#if ' + ' && '.join('!' + d for d in defined))
+    if len(names) == 1:
+        lines.append('#define TIO_RELEASE_%s 1' % names[0].upper())
+    else:
+        lines.append('#error "several releases: define one TIO_RELEASE_<NAME>"')
+    lines.append('#endif')
+    for i, name in enumerate(names):
+        lines.append(('#if' if i == 0 else '#elif') + ' ' + defined[i])
         lines += block(name, *computed[name])
-    if named:
-        lines.append('#else')
-    lines += block('default', *computed['default'])
-    if named:
-        lines.append('#endif')
+    lines.append('#endif')
     lines.extend(['#endif', ''])
-    outputs = {'FirmwarePins.h': '\n'.join(lines).encode('utf-8'),
-               'firmware-pins.json': (json.dumps(computed['default'][0], indent=2) + '\n').encode('utf-8')}
-    for name in named:
+    outputs = {'FirmwarePins.h': '\n'.join(lines).encode('utf-8')}
+    for name in names:
         pins, _members, policy = computed[name]
         outputs['firmware-pins-%s.json' % name] = (json.dumps({**pins, **policy}, indent=2) + '\n').encode('utf-8')
     return outputs
@@ -385,9 +383,8 @@ def main(argv=None):
             if args.zip is None or args.verify not in releases:
                 raise ValueError('--verify needs --zip and a known release')
             pins, _members, policy = release_pins(args.verify, releases[args.verify], args.zip)
-            name = 'firmware-pins.json' if args.verify == 'default' else 'firmware-pins-%s.json' % args.verify
-            want = pins if args.verify == 'default' else {**pins, **policy}
-            if json.loads((args.dir/name).read_text()) != want:
+            name = 'firmware-pins-%s.json' % args.verify
+            if json.loads((args.dir/name).read_text()) != {**pins, **policy}:
                 print('PHONEPINS_MISMATCH: ' + name, file=sys.stderr)
                 return 1
             print('PHONEPINS_RELEASE_OK ' + args.verify)
@@ -406,7 +403,8 @@ def main(argv=None):
             path = args.check / name
             if not path.is_file() or path.read_bytes() != data:
                 failures.append(name)
-        stale = sorted(p.name for p in args.check.glob('firmware-pins-*.json') if p.name not in outputs)
+        # Any other firmware-pins*.json (a removed release, or the old firmware-pins.json) is stale.
+        stale = sorted(p.name for p in args.check.glob('firmware-pins*.json') if p.name not in outputs)
         if failures or stale:
             print('PHONEPINS_MISMATCH: ' + ', '.join(failures + ['stale ' + s for s in stale]), file=sys.stderr)
             return 1

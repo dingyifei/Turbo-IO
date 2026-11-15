@@ -382,7 +382,7 @@
     "tests/MemberCountTests.m": {
       "status": "run",
       "group": "member-count",
-      "note": "Member and manifest-row counts follow the member pins: the release's own ZIP with FirmwarePins.h (16 members, 15 rows on 1.0.5.x), the stock 1.0.6.11 ZIP with fixture pins made by test.py (17 members, 16 rows, amap_rtos_sdk with a loadable/libs/ BurnPath kept flat in the folder), and a fixture whose pin names a path (refused flat and in the subfolder). Missing, extra, subfolder-entry and BurnPath-placed members refused. Neither releases.json nor FirmwarePins.h is touched."
+      "note": "Member and manifest-row counts follow the member pins: the release's own ZIP with FirmwarePins.h (C21 on 1.0.6.11: 17 members, 16 rows), the stock 1.0.6.11 ZIP with fixture pins made by test.py (17 members, 16 rows, amap_rtos_sdk with a loadable/libs/ BurnPath kept flat in the folder), and a fixture whose pin names a path (refused flat and in the subfolder). Missing, extra, subfolder-entry and BurnPath-placed members refused. Neither releases.json nor FirmwarePins.h is touched."
     }
   }
 }

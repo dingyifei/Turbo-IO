@@ -25,12 +25,24 @@ export function privateBundleNames(dir,allowed=new Set()){
 }
 export function privateArchiveNames(names){const ok=new Set(['Payload/Runner.app/TurboIOPrivatePreparation.json','Payload/Runner.app/Frameworks/TurboIOPrivateAddon.dylib']);return names.filter(n=>n&&!n.endsWith('/')&&PRIVATE_NAME.test(n)&&!ok.has(n));}
 const here=path.dirname(fileURLToPath(import.meta.url));
-const pins=JSON.parse(fs.readFileSync(new URL('./firmware-pins.json',import.meta.url),'utf8'));
-// Release configurations (releases.json): no --release is the default release (firmware-pins.json); --release cN
-// (full 1.0.11 host only) takes firmware-pins-cN.json, written by firmware/tools/phone_pins.py from that ZIP.
-export function releasePins(name){
-  if(name===undefined||name==='default')return {...pins,release:'default'};
-  if(typeof name!=='string'||!/^c[0-9]+$/.test(name))throw Error('unknown_release');
+// Release configurations (releases.json): every release is named cN, and its pins are firmware-pins-cN.json,
+// written by firmware/tools/phone_pins.py from that ZIP. No --release means the only release in releases.json;
+// with several releases, a release must be named.
+function releasesJSON(){return JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases??{};}
+// Every release name in releases.json (the generator's input), so a new release is covered without editing this file.
+export function releaseNames(){
+  const names=Object.keys(releasesJSON());
+  if(!names.length||names.some(n=>!/^c[0-9]+$/.test(n)))throw Error('invalid_releases_json');
+  return names;
+}
+// The release a build uses when none is named: the only one in releases.json.
+export function soleRelease(){
+  const names=releaseNames();
+  if(names.length!==1)throw Error('release_required');
+  return names[0];
+}
+export function releasePins(name=soleRelease()){
+  if(typeof name!=='string'||!/^c[0-9]+$/.test(name)||!releaseNames().includes(name))throw Error('unknown_release');
   const file=new URL(`./firmware-pins-${name}.json`,import.meta.url);
   if(!fs.existsSync(file))throw Error('unknown_release');
   const p=JSON.parse(fs.readFileSync(file,'utf8'));
@@ -38,13 +50,7 @@ export function releasePins(name){
   return p;
 }
 // The addon names its release in one string (ExperimentalOTA.m, from FirmwarePins.h): it must be the requested
-// release with that ZIP, and a named release build must not also carry the default block's marker.
-// Every release name in releases.json (the generator's input), so a new release is covered without editing this file.
-export function releaseNames(){
-  const names=Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases??{});
-  if(!names.includes('default')||names.some(n=>!/^(default|c[0-9]+)$/.test(n)))throw Error('invalid_releases_json');
-  return names;
-}
+// release with that ZIP, and must not also carry another release's marker.
 export function releaseMarker(p){return `ota release=${p.release}; firmware=${p.name}; zip=${p.zipSHA256}; accepts `;}
 export function validateReleaseAddon(addon,p){
   if(!Buffer.isBuffer(addon)||!addon.includes(Buffer.from(releaseMarker(p))))throw Error('addon_release_mismatch');
@@ -112,10 +118,10 @@ export const HOST_PROFILES=Object.freeze({
 });
 // The packager host name (turbo-package.sh --host, releases.json hosts) of each profile that bundles a release.
 export const RELEASE_HOST_NAMES=Object.freeze({ios107:'107',ios1011:'1011-full',ios1021:'1021-full'});
-// The hosts a release is built for (releases.json). A release ZIP is bundled only for one of them: the default
-// release for 107 and 1011-full, each named release for exactly one full host.
-export function releaseHosts(name='default'){
-  const releases=JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases??{};
+// The hosts a release is built for (releases.json). A release ZIP is bundled only for one of them; every release
+// is built only for 1021-full, so the 1.0.7 and full 1.0.11 profiles have no release to bundle.
+export function releaseHosts(name=soleRelease()){
+  const releases=releasesJSON();
   if(!Object.hasOwn(releases,name)||!Array.isArray(releases[name].hosts)||releases[name].hosts.some(h=>typeof h!=='string'))throw Error('unknown_release');
   return releases[name].hosts;
 }
@@ -217,13 +223,13 @@ export function validateOptions(o) {
     return;
   }
   if(host.noProduct&&o.product!==undefined)throw Error('full_1011_host_takes_no_product');
-  // The release must be built for this host: the default release for 107 and 1011-full, a named release for its one host.
-  if(!releaseHosts(o.release??'default').includes(RELEASE_HOST_NAMES[host.name]))throw Error('release_not_built_for_host');
+  // The release (the only one when none is named) must be built for this host.
+  if(!releaseHosts(o.release).includes(RELEASE_HOST_NAMES[host.name]))throw Error('release_not_built_for_host');
   const release=releasePins(o.release);
   if(o['experimental-ota']!==undefined&&o['experimental-ota']!==release.name)throw Error('only_exact_'+release.name.toLowerCase()+'_supported');
   if(o.bundle!=='com.rayneo.venus.pub'||typeof o.firmware!=='string'||!path.isAbsolute(o.firmware))throw Error('exact_host_and_firmware_resource_required');
 }
-export function validateResearchPair(symbols, kind, firmware, p=pins) {
+export function validateResearchPair(symbols, kind, firmware, p=releasePins()) {
   if(kind!==p.name||!symbols.includes('_TIOMenuLayoutController')||!symbols.includes('OBJC_CLASS_$_TIORoadMap'))throw Error('ios107_addon_required');
   if(!Buffer.isBuffer(firmware)||firmware.length!==p.zipBytes||createHash('sha256').update(firmware).digest('hex')!==p.zipSHA256)throw Error('navs3_firmware_identity_mismatch');
 
@@ -275,13 +281,13 @@ export function entitlementsFor(p,o) {
 }
 function run(program,args,options={}){return exec(program,args,{stdio:['pipe','pipe','pipe'],...options});}
 function main(){
-  if(process.argv.includes('--help'))console.log(`iOS 1.0.7/230 APP107: exact ${pins.name} OTA candidate included by default. Installation does NOT grant flash permission; manual one-shot authorization required.`);
+  if(process.argv.includes('--help'))console.log('iOS 1.0.7/230 APP107: no release in releases.json is built for this host, so it is refused. Installation never grants flash permission; manual one-shot authorization is required.');
   if(process.argv.includes('--help'))console.log('Optional Apple AI: --apple-ai-dylib /absolute/TurboAppleAI.dylib (requires TIO_APPLE_AI=1 addon)');
   if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see official-addon/ios107-edition/local-translation/README.md)');
   if(process.argv.includes('--help'))console.log('Download-only 1.0.11/259: --host ios1011-download, no --firmware and no --product. App.framework stays stock; no OTA flashing.');
-  if(process.argv.includes('--help'))console.log('Full 1.0.21/1 (C20): --host ios1021 --release cN with --firmware, no --product: only a release whose releases.json hosts list 1021-full. Route patch at the 1.0.21 offsets; TMG flashing disarmed until armed on the phone; needs an addon built with that TIO_RELEASE.');
-  if(process.argv.includes('--help'))console.log(`Full 1.0.11/259 (C15): --host ios1011 with --firmware, no --product. Route patch at the 1.0.11 offsets; TMG flashing disarmed until armed on the phone. --release c16|c17 (C16 flashes TMG10, C17 rolls back to TMG9) takes that release\'s ZIP and needs an addon built with TIO_RELEASE=cN.`);
-  if(process.argv.includes('--help')){console.log(`node official-addon/ios107-edition/package.mjs --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-${pins.name}-CANDIDATE-NOT-APPROVED.zip [--product iPhone18,2]`);return;}
+  if(process.argv.includes('--help'))console.log('Full 1.0.21/1 (C21): --host ios1021 [--release cN] with --firmware, no --product: a release whose releases.json hosts list 1021-full (without --release, the only release). Route patch at the 1.0.21 offsets; TMG flashing disarmed until armed on the phone; needs an addon built for that release.');
+  if(process.argv.includes('--help'))console.log('Full 1.0.11/259: --host ios1011. No release in releases.json is built for this host, so it is refused.');
+  if(process.argv.includes('--help')){console.log('node official-addon/ios107-edition/package.mjs --host ios1021 --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-release-CANDIDATE-NOT-APPROVED.zip [--release cN]');return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
   if(args.length%2)throw Error('expected_named_arguments');
   const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','experimental-ota','firmware','translation-module-dir','translation-models','apple-ai-dylib','host','release'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
@@ -295,7 +301,8 @@ function main(){
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
   if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=APP107-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
-  const release=releasePins(o.release);
+  // Only a firmware host bundles a release; a download-only build reads no release pins.
+  const release=host.firmware?releasePins(o.release):undefined;
   if(host.firmware){validateResearchPair(symbols,release.name,firmware,release);validateReleaseAddon(fs.readFileSync(o.addon),release);}else if(firmware)throw Error('download_only_host_takes_no_firmware_or_product');
   if(!host.routePatch)validateDownloadOnlyAddon(symbols,fs.readFileSync(o.addon));
   if(host.fullHost)validateFullHostAddon(host.name,symbols,fs.readFileSync(o.addon));

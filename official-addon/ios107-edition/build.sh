@@ -23,8 +23,8 @@ if [[ ${TIO_OTA_FLASH_ENABLED:-0} == 1 ]]; then
   [[ "$mode" == embedded ]] || { echo 'Flash gate requires separate embedded build' >&2; exit 2; }
   link_options+=(-DTIO_OTA_FLASH_ENABLED=1 -DTIO_OTA_FEED_ARMING_ENABLED=1)
 fi
-# TIO_RELEASE=cN selects that release's block of FirmwarePins.h (releases.json); unset is the default release.
-# Named releases are 1.0.11 full-host flash builds (turbo-package.sh --host 1011-full --release cN).
+# TIO_RELEASE=cN selects that release's block of FirmwarePins.h (releases.json; turbo-package.sh --release cN).
+# Unset, FirmwarePins.h selects the only release when releases.json has one, and fails to compile when it has several.
 if [[ -n ${TIO_RELEASE:-} ]]; then
   release_macro=TIO_RELEASE_$(printf '%s' "$TIO_RELEASE" | tr '[:lower:]' '[:upper:]')
   [[ $TIO_RELEASE =~ ^c[0-9]+$ && ${TIO_OTA_FLASH_ENABLED:-0} == 1 ]] || { echo 'TIO_RELEASE=cN needs TIO_OTA_FLASH_ENABLED=1' >&2; exit 2; }

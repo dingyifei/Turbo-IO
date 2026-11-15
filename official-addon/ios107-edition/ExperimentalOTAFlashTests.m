@@ -4,14 +4,8 @@
 #include <assert.h>
 static void V(NSMutableData *d,NSUInteger n){do{uint8_t b=n&127;n>>=7;if(n)b|=128;[d appendBytes:&b length:1];}while(n);}
 static NSData *F(NSUInteger type,id json,NSData *binary){NSMutableData *d=[NSMutableData new];V(d,8);V(d,1);V(d,16);V(d,type);if(json){NSData *j=[NSJSONSerialization dataWithJSONObject:json options:0 error:nil];V(d,26);V(d,j.length);[d appendData:j];}if(binary){V(d,34);V(d,binary.length);[d appendData:binary];}return d;}
-// The release's type-5 target, written out by hand so a wrong generated value fails.
-#if defined(TIO_RELEASE_C20)
+// The type-5 target of C21, the only release, written out by hand so a wrong generated value fails.
 static NSString *const Target=@"Strix OS 1.0.6.11";
-#elif defined(TIO_RELEASE_C16) || defined(TIO_RELEASE_C18)
-static NSString *const Target=@"Strix OS 1.0.5.12";
-#else
-static NSString *const Target=@"Strix OS 1.0.5.5";
-#endif
 static TIOOTAFlashGate *Ready(NSURL *dir){TIOOTAFlashGate *g=[TIOOTAFlashGate new];NSError *e=nil;assert([g prepareDirectory:dir device:@"TEST_DEVICE" uptime:10 error:&e]);return g;}
 int main(int argc,const char **argv){@autoreleasepool{
     assert(argc==3);NSURL *dir=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];

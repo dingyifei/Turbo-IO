@@ -9,7 +9,7 @@
   "manifestSHA256": "5d174ed0ecb3dd15806c22af49e88956775bdddfea7e5c9233e32a235cc4837c",
   "payloadBytes": 18474970,
   "payloadSlices": 369,
-  "release": "c20",
+  "release": "c21",
   "stockBase": "1.0.6.11",
   "otaVersion": "Strix OS 1.0.6.11",
   "folder": "Strix_OS_1.0.6.11",

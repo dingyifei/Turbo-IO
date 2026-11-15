@@ -202,44 +202,51 @@ tree_zip() {
   release=$(python3 -I "$PINS" --tree-release) || return 1
   python3 -I "$PINS" --resolve "$release" --inputs "$TURBO_INPUTS"
 }
-named_releases() {
-  python3 -I -c 'import json,sys;print(" ".join(n for n in json.load(open(sys.argv[1]))["releases"] if n!="default"))' "$ED/releases.json"
-}
-# The named releases as a checked list: a failed read aborts the stage (an assignment keeps errexit), and an
-# empty list fails rather than silently testing nothing.
+# The releases in releases.json, in order, as a checked list: a failed read aborts the stage (an assignment keeps
+# errexit), and an empty list fails rather than silently testing nothing.
 release_list() {
   local names
-  names=$(named_releases)
-  [[ -n $names ]] || { echo 'releases.json lists no named release' >&2; return 1; }
+  names=$(python3 -I -c 'import json,sys;print(" ".join(json.load(open(sys.argv[1]))["releases"]))' "$ED/releases.json")
+  [[ -n $names ]] || { echo 'releases.json lists no release' >&2; return 1; }
   printf '%s\n' "$names"
 }
+# The release the full test.py run tests (the first in releases.json; today C21, the only one) and its checked ZIP.
+first_release() {
+  local names
+  names=$(release_list) || return 1
+  printf '%s\n' "${names%% *}"
+}
+first_release_zip() {
+  local name
+  name=$(first_release) || return 1
+  python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS"
+}
+# The release groups of test.py: pins, archive, directory, member counts, gate, feed, wizard and full-host groups,
+# compiled with the release's TIO_RELEASE define against its own ZIP and stock base.
+RELEASE_GROUPS=pins,archive,directory,member-count,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1011,tmg4-wizard-1021,ios1011-arm-store,ios1021-arm-store,ios1011-full-guard,ios1011-full-edge,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
+# One full test.py run for the first release (it includes every release group), then the release groups alone for
+# each other release, so no group runs twice for the same release. With one release (C21) that is the full run only.
 test_stage() {
-  : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   : "${TURBO_APP107:?package.env must set TURBO_APP107}"
   : "${TURBO_PATCHED_APP:?package.env must set TURBO_PATCHED_APP}"
-  local tree
-  tree=$(tree_zip)
-  cd "$ED"
-  # The default release (C14/C15) with TURBO_FIRMWARE; test.py's pins group refuses any other ZIP.
-  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --tree-stock "$STOCK" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
-}
-# Every named release (C16 to C18 for 1.0.11, C20 for 1.0.21 once releases.json has it): its pins, archive, directory,
-# member counts, gate, feed, wizard and full-host groups for both full hosts, compiled with its TIO_RELEASE define
-# against its own ZIP and stock base. A 1.0.6.11 release (17 members, 16 manifest rows) runs the same groups.
-RELEASE_GROUPS=pins,archive,directory,member-count,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1011,tmg4-wizard-1021,ios1011-arm-store,ios1021-arm-store,ios1011-full-guard,ios1011-full-edge,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
-release_stage() {
-  local tree name zip names
+  local tree name zip names first
   tree=$(tree_zip)
   names=$(release_list)
+  first=$(first_release)
   cd "$ED"
   for name in $names; do
     zip=$(python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS")
-    rm -rf "build/tests-$name"
-    python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} ${TURBO_APP1021:+--app1021 "$TURBO_APP1021"} --only "$RELEASE_GROUPS"
+    if [[ $name == "$first" ]]; then
+      python3 test.py --release "$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
+    else
+      rm -rf "build/tests-$name"
+      python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} ${TURBO_APP1021:+--app1021 "$TURBO_APP1021"} --only "$RELEASE_GROUPS"
+    fi
   done
 }
 package_test_stage() {
-  : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
+  local zip
+  zip=$(first_release_zip)
   cd "$ED"
   unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE
   : "${TURBO_APP107:?package.env must set TURBO_APP107}"
@@ -247,57 +254,40 @@ package_test_stage() {
   # failed its fixed patched-output hash (500d3360... versus fd68e86b...),
   # so those two optional inputs stay unset. See package-probe-pair.log.
   export IOS107_TEST_UNSIGNED_APP=$TURBO_APP107
-  IOS107_TEST_FIRMWARE="$TURBO_FIRMWARE" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
+  TIO_TEST_RELEASE_ZIP="$zip" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
 }
-# Optional: 1.0.11/259 host checks, download-only and full (C15). Runs only when TURBO_APP1011 is set.
+# Optional: 1.0.11/259 host checks, download-only and full. Runs only when TURBO_APP1011 is set. No release is built
+# for the full 1.0.11 host, so its package path is not run.
 host1011_stage() {
-  : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   [[ -d "$TURBO_APP1011" ]] || { echo 'TURBO_APP1011 is not a directory' >&2; return 1; }
-  local tree
+  local tree zip
   tree=$(tree_zip)
+  zip=$(first_release_zip)
   cd "$ED"
-  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --tree-stock "$STOCK" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
-  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE IOS107_TEST_FIRMWARE
+  python3 test.py --release "$(first_release)" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
+  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE TIO_TEST_RELEASE_ZIP
   IOS1011_TEST_APP="$TURBO_APP1011" node --test package.test.mjs
-  # The full 1.0.11 package path up to (not including) signing: fresh addon build and both 1.0.11 guards,
-  # for the default release and for every named release built for 1011-full (its TIO_RELEASE build and its
-  # checked ZIP). A release built only for 1021-full (C20) is refused there, so it is not listed here.
-  bash "$REPO/scripts/turbo-package.sh" --host 1011-full --build-only gate-1011-full
-  local name names
-  names=$(releases_for_host 1011-full)
-  for name in $names; do
-    bash "$REPO/scripts/turbo-package.sh" --host 1011-full --release "$name" --build-only "gate-1011-full-$name"
-  done
 }
-# The named releases built for one packager host (releases.json hosts), space separated; empty when there is none.
+# The releases built for one packager host (releases.json hosts), space separated; empty when there is none.
 releases_for_host() {
-  python3 -I -c 'import json,sys;print(" ".join(n for n,r in json.load(open(sys.argv[1]))["releases"].items() if n!="default" and sys.argv[2] in r.get("hosts",[])))' "$ED/releases.json" "$1"
+  python3 -I -c 'import json,sys;print(" ".join(n for n,r in json.load(open(sys.argv[1]))["releases"].items() if sys.argv[2] in r.get("hosts",[])))' "$ED/releases.json" "$1"
 }
-# Optional: 1.0.21/1 host checks, download-only (C19) and full (C20). Runs only when TURBO_APP1021 is set.
-# The full 1.0.21 package path (--host 1021-full, up to signing) runs for every release built for 1021-full;
-# until releases.json lists one, the stage says so and checks only that 1021-full refuses to build without one.
+# Optional: 1.0.21/1 host checks, download-only (C19) and full (C21). Runs only when TURBO_APP1021 is set.
+# The full 1.0.21 package path (--host 1021-full, up to signing) runs for every release built for 1021-full.
 host1021_stage() {
-  : "${TURBO_FIRMWARE:?package.env must set TURBO_FIRMWARE}"
   [[ -d "$TURBO_APP1021" ]] || { echo 'TURBO_APP1021 is not a directory' >&2; return 1; }
-  local tree name names rc
+  local tree zip name names
   tree=$(tree_zip)
+  zip=$(first_release_zip)
   cd "$ED"
-  python3 test.py --firmware "$TURBO_FIRMWARE" --tree-firmware "$tree" --tree-stock "$STOCK" --out build/tests-1021 --app1021 "$TURBO_APP1021" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} \
+  python3 test.py --release "$(first_release)" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --out build/tests-1021 --app1021 "$TURBO_APP1021" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} \
     --only host,ios1011-guard,ios1021-download-guard,ios1021-host,ios1021-full-guard,ota-host-1021,host-selectors
-  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE IOS107_TEST_FIRMWARE
+  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE TIO_TEST_RELEASE_ZIP
   IOS1021_TEST_APP="$TURBO_APP1021" node --test package.test.mjs
   # The download-only 1.0.21 package path (C19), unchanged.
   bash "$REPO/scripts/turbo-package.sh" --host 1021 --build-only gate-1021
   names=$(releases_for_host 1021-full)
-  if [[ -z $names ]]; then
-    echo 'host1021: no release in releases.json is built for 1021-full yet; the full 1.0.21 package path was not run'
-    set +e
-    bash "$REPO/scripts/turbo-package.sh" --host 1021-full --build-only gate-1021-full-no-release >/dev/null 2>&1
-    rc=$?
-    set -e
-    [[ $rc == 2 ]] || { echo "turbo-package.sh --host 1021-full without --release did not refuse (exit $rc)" >&2; return 1; }
-    return 0
-  fi
+  [[ -n $names ]] || { echo 'host1021: no release in releases.json is built for 1021-full' >&2; return 1; }
   for name in $names; do
     bash "$REPO/scripts/turbo-package.sh" --host 1021-full --release "$name" --build-only "gate-1021-full-$name"
   done
@@ -402,7 +392,7 @@ if [[ $firmware_only == 1 ]]; then
   stage fw-tests fw_tests_stage
   stage fw-reproduce fw_reproduce_stage
   stage source-audit source_audit_stage
-  for name in private build symbols pins test releases package-test host1011 host1021 preview; do report skip "$name" '--firmware-only'; done
+  for name in private build symbols pins test package-test host1011 host1021 preview; do report skip "$name" '--firmware-only'; done
   active=finish
   report finish PASS "$started" 0 ''
   if [[ -n $tree_zip_arg ]]; then
@@ -419,17 +409,15 @@ stage symbols symbols_stage
 stage pins pins_stage
 stage fw-layout fw_layout_stage
 if [[ $only_build == 1 ]]; then
-  for name in test releases package-test host1011 host1021 source-audit preview; do report skip "$name" '--only-build'; done
+  for name in test package-test host1011 host1021 source-audit preview; do report skip "$name" '--only-build'; done
 else
   if [[ $skip_tests == 1 ]]; then
     report skip test '--skip-tests'
-    report skip releases '--skip-tests'
     report skip package-test '--skip-tests'
     report skip host1011 '--skip-tests'
     report skip host1021 '--skip-tests'
   else
     stage test test_stage
-    stage releases release_stage
     stage package-test package_test_stage
     if [[ -n "$TURBO_APP1011" ]]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi
     if [[ -n "${TURBO_APP1021:-}" ]]; then stage host1021 host1021_stage; else report skip host1021 'TURBO_APP1021 not set'; fi

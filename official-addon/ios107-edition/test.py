@@ -8,7 +8,7 @@ parser.add_argument('--patched-app',type=Path)
 parser.add_argument('--app1011',type=Path,help='stock 1.0.11/259 Runner.app (download-only host checks)')
 parser.add_argument('--app1021',type=Path,help='stock 1.0.21/1 Runner.app (download-only C19 and full C20 host checks)')
 parser.add_argument('--only',help='comma-separated test groups')
-parser.add_argument('--release',help='phone release configuration from releases.json (default, c16, c17, c18; default: default); --firmware must be its ZIP')
+parser.add_argument('--release',help='phone release configuration from releases.json (cN; default: the only release, when there is exactly one); --firmware must be its ZIP')
 parser.add_argument('--out',type=Path,help='log and binary directory (default build/tests)')
 parser.add_argument('--tree-firmware',type=Path,help='the ZIP built from the current firmware tree, for the tree audit (default: --firmware)')
 parser.add_argument('--tree-stock',type=Path,help="the stock ZIP of the tree's base, for the tree audit and tmg4-stock-abi (default: build.py --show stock-zip)")
@@ -50,14 +50,17 @@ subprocess.run(['python3',FW/'build.py','--stock',tree_stock,'--audit',args.tree
 if args.firmware_only:release=release_stock=None;release_versions=[];release_define=[]
 else:
     # The phone groups test one release configuration: its ZIP (--firmware), its stock base and its version policy.
-    args.release=args.release or 'default'
+    # With no --release, the only release in releases.json; with several, --release is required.
     releases=json.loads((P/'releases.json').read_text())['releases']
+    if args.release is None:
+        if len(releases)!=1:raise SystemExit('pass --release: releases.json lists '+', '.join(releases))
+        args.release=next(iter(releases))
     if args.release not in releases:raise SystemExit('unknown release '+args.release)
     release=releases[args.release]
     release_stock=show_stock_zip(release['stockBase'])
     if not release_stock.is_file():raise SystemExit('stock ZIP not found: '+str(release_stock)+' (stock '+release['stockBase']+' of release '+args.release+')')
     release_versions=['Strix OS '+v for v in release['acceptCurrent']]
-    release_define=[] if args.release=='default' else ['-DTIO_RELEASE_%s=1'%args.release.upper()]
+    release_define=['-DTIO_RELEASE_%s=1'%args.release.upper()]
     print('release: '+args.release+' ('+release['firmware']+' on stock '+release['stockBase']+'; accepts '+', '.join(release_versions)+')')
 out=(args.out or P/'build/tests').resolve();out.mkdir(parents=True,exist_ok=True)
 def run(name,cmd,env=None):
@@ -197,9 +200,10 @@ seen.add('pins')
 if only is None or 'pins' in only:
     # This release's ZIP against its firmware-pins JSON and its stock base; the gate runs the full generator --check.
     run('pins',['python3','-I',FW/'tools/phone_pins.py','--verify',args.release,'--zip',args.firmware,'--dir',P])
-    # The generator itself, when this run has two different release ZIPs (the gate's default run: ZIP9 and the tree's ZIP10).
-    if args.tree_firmware and args.tree_firmware.resolve()!=args.firmware.resolve():
-        run('pins-generator',['python3','-I',FW/'tests/phone_pins_test.py',args.firmware,args.tree_firmware])
+    # The generator itself, with this release's ZIP and the tree's ZIP (once when they are the same file); release ZIPs
+    # not given here are read from $TURBO_INPUTS.
+    zips=[args.firmware]+([args.tree_firmware] if args.tree_firmware and args.tree_firmware.resolve()!=args.firmware.resolve() else [])
+    run('pins-generator',['python3','-I',FW/'tests/phone_pins_test.py',*zips])
     groups.append('pins');print('pins: PASS')
 else:skip('pins','not selected by --only')
 
@@ -289,7 +293,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         rows_dir=root/'stock-1.0.6.11-rows';shutil.copytree(target,rows_dir)
         (rows_dir/'OtaFileInfo.json').write_text(json.dumps([r for r in rows if r['Name']!='amap_rtos_sdk']))
         # The rows-extra fixtures: one invented row too many, pins re-made from the folder (n rows against n pins),
-        # on the stock 1.0.6.11 folder (17 rows, 17 pins) and on this release's own folder (16 rows, 16 pins on 1.0.5.x).
+        # on the stock 1.0.6.11 folder (17 rows, 17 pins) and on this release's own folder (n rows against n pins).
         def extra_row(src,dst):
             shutil.copytree(src,dst);base=json.loads((dst/'OtaFileInfo.json').read_text())
             invented=dict(base[0]);invented['Name']='invented.bin';invented['BurnPath']='invented.bin'

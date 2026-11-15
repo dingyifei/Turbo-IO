@@ -12,9 +12,10 @@ test('exact new version, build and UUID; mismatches rejected',()=>{
  assert.equal(inspectedHost({...info,CFBundleVersion:'231'},'410defdbf93739eaacf2f616abff9d0b'),null);
  assert.equal(inspectedHost(info,'98a03b57e8163ba19778e55fabe8d762'),null);
 });
-test('TMG9 OTA packaging is available by default; other candidates rejected',()=>{
- validateOptions(options);
- validateOptions({...options,'experimental-ota':'TMG9'});
+// No release in releases.json is built for the 1.0.7 host (the default host profile), so its packaging is refused.
+test('1.0.7 packaging is refused: no release is built for it; other candidates rejected',()=>{
+ assert.throws(()=>validateOptions(options),/release_not_built_for_host/);
+ assert.throws(()=>validateOptions({...options,'experimental-ota':'TMG9'}),/release_not_built_for_host/);
  for(const flag of ['TMG8','TMG7','TMG6','TMG5','TMG4','TMG3','TMG2','TMIG1','enabled',''])assert.throws(()=>validateOptions({...options,'experimental-ota':flag}));
  assert.throws(()=>validateOptions({...options,firmware:undefined}));
  assert.throws(()=>validateOptions({...options,bundle:'example.other'}));
@@ -60,12 +61,15 @@ test('phone gates require exact host, healthy source and inspected new offsets',
  assert.match(fs.readFileSync(new URL('./OTAHost.h',import.meta.url),'utf8'),/static inline BOOL TIOOTA107HostMatches\(NSDictionary \*info\) \{\n    return \[info\[@"CFBundleIdentifier"\] isEqual:@"com\.rayneo\.venus\.pub"\] &&\n        \[info\[@"CFBundleShortVersionString"\] isEqual:@"1\.0\.7"\] &&\n        \[info\[@"CFBundleVersion"\] isEqual:@"230"\] &&\n        \[info\[@"TIOExperimentalOTAQueryRouting"\] isEqual:@"ios107-tmg2-loopback-flash-gated"\];\n\}/);
  assert.equal(fs.existsSync(new URL('./patch-ios106-route.mjs',import.meta.url)),false);
 });
-test('exact firmware resource, not a flash authorization',t=>{
- const p=process.env.IOS107_TEST_FIRMWARE;if(!p)return t.skip('set IOS107_TEST_FIRMWARE');
+// The release ZIP (the gate passes the only release's checked ZIP) against that release's pins.
+test('exact firmware resource, not a flash authorization',async t=>{
+ const p=process.env.TIO_TEST_RELEASE_ZIP;if(!p)return t.skip('set TIO_TEST_RELEASE_ZIP');
+ const {releasePins}=await import('./package.mjs');const name=releasePins().name;
  const b=fs.readFileSync(p),sym='_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap';
- validateResearchPair(sym,'TMG9',b);const bad=Buffer.from(b);bad[bad.length-1]^=1;
- assert.throws(()=>validateResearchPair(sym,'TMG9',bad));
- assert.throws(()=>validateResearchPair('', 'TMG9',b));
+ validateResearchPair(sym,name,b);const bad=Buffer.from(b);bad[bad.length-1]^=1;
+ assert.throws(()=>validateResearchPair(sym,name,bad));
+ assert.throws(()=>validateResearchPair('',name,b));
+ assert.throws(()=>validateResearchPair(sym,'TMG9',b));
 });
 test('real decrypted original input and loader preservation',t=>{
  const runner=process.env.IOS107_TEST_RUNNER,image=process.env.IOS107_TEST_APP_IMAGE;
@@ -279,7 +283,7 @@ test('download-only options take no firmware, candidate flag or product',()=>{
  for(const extra of [{firmware:'/example/TMG8.zip'},{product:'iPhone17,1'},{'experimental-ota':'TMG8'},{bundle:'example.other'}])assert.throws(()=>validateOptions({...options1011,...extra}));
  assert.throws(()=>validateOptions({...options1011,host:'ios1011'}));
  assert.throws(()=>validateOptions({...options,host:'ios1011-download'}));
- validateOptions({...options,host:'ios107'});
+ assert.throws(()=>validateOptions({...options,host:'ios107'}),/release_not_built_for_host/);
 });
 test('download-only host gate rejects other versions, TIO markers and unknown bytes',()=>{
  for(const bad of [info,{...info1011,CFBundleVersion:'258'},{...info1011,TIOHostProfile:'ios1011-download'},{...info1011,CFBundleIdentifier:'example.other'}])
@@ -359,17 +363,20 @@ test('real 1.0.11 input: unsigned preparation leaves App.framework byte-identica
   assert.equal(fs.existsSync(path.join(out,leakGuard.CANDIDATE_RESOURCE)),false);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
-test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional',()=>{
+test('wrappers: --host 1011 packages without firmware or product; the 1.0.11 gate stage is optional; the 1.0.7 package path is gone',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
  const branch=wrapper.slice(wrapper.indexOf('if [[ $host == 1011 || $host == 1021 ]]; then\npkg_host'),wrapper.indexOf('\nelif [[ $host == 1011-full || $host == 1021-full ]]; then\n# The full hosts'));
  assert.match(branch,/--host "\$pkg_host" --app "\$pkg_app"/);
  assert.doesNotMatch(branch,/--firmware|--product|TURBO_APP107/);
  assert.match(branch,/hostProfile'\] in \('ios1011-download','ios1021-download'\)/);
  assert.match(wrapper,/unset [^\n]*TURBO_APP1011/);
- assert.match(wrapper,/--firmware "\$TURBO_FIRMWARE" --product "\$TURBO_PRODUCT"/);
+ // No release is built for 1.0.7, so the 1.0.7 package path (TURBO_FIRMWARE, the old default release's ZIP) is gone.
+ assert.doesNotMatch(wrapper,/--product "\$TURBO_PRODUCT"|TURBO_FIRMWARE[^ ]/);
+ assert.match(wrapper,/else\n  echo "PACKAGE FAIL: no release is built for --host \$host" >&2; exit 2\nfi/);
  const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
  assert.match(gate,/if \[\[ -n "\$TURBO_APP1011" \]\]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi/);
- assert.match(gate,/stage test test_stage\n    stage releases release_stage\n    stage package-test package_test_stage/);
+ // One test stage: the full test.py run for the first release (C21), the release groups alone for any other.
+ assert.match(gate,/stage test test_stage\n    stage package-test package_test_stage/);assert.doesNotMatch(gate,/release_stage|TURBO_FIRMWARE:\?|--host 1011-full/);
 });
 // The full 1.0.11 export panel model is pure and tested (DownloadOnlySafetyTests); pin the UI's call so
 // the guard row's green still needs the installed hook and a stock call seen in this launch.
@@ -530,9 +537,9 @@ test('turbo-package.sh builds the addon fresh with the requested flags before si
  const copy=pos('cp -p "$ADDON" "$LOG_DIR/addon/TurboIOPrivateAddon.dylib"\nADDON=$LOG_DIR/addon/TurboIOPrivateAddon.dylib');
  assert.ok(sourced<scrub&&scrub<remove&&remove<build&&build<built&&built<check&&check<copy&&copy<buildOnly&&buildOnly<sign&&sign<guard1011);
  // The signed dylib is the checked copy: its SHA-256 is checked again right before each package.mjs run.
- // Three package runs: 1.0.7, download-only 1.0.11 and full 1.0.11 (C15).
- assert.equal([...wrapper.matchAll(/run_logged addon-unchanged addon_unchanged\nrun_logged package node "\$ED\/package\.mjs"/g)].length,3);
- assert.equal([...wrapper.matchAll(/run_logged package node/g)].length,3);
+ // Two package runs: download-only (1.0.11 and 1.0.21) and full (1.0.21; the 1.0.7 path is gone, no release is built for it).
+ assert.equal([...wrapper.matchAll(/run_logged addon-unchanged addon_unchanged\nrun_logged package node "\$ED\/package\.mjs"/g)].length,2);
+ assert.equal([...wrapper.matchAll(/run_logged package node/g)].length,2);
  assert.ok(wrapper.includes("addon_sha=$(tail -n 1 \"$LOG_DIR/addon-check.log\")"));
  // The fresh build is not inside a host branch: it runs for 1.0.7 and 1.0.11 alike.
  assert.ok(build<wrapper.indexOf('elif [[ $host == 1011 ]]; then\n  [[ -f "$TURBO_PROFILE"'));
@@ -674,12 +681,13 @@ test('full 1.0.11 profile row: same pinned input, 1.0.11 route offsets, firmware
  for(const [name,want] of Object.entries(ROUTE_PROFILES)){const m=otaHost.match(new RegExp(`if\\(\\[profile isEqual:@"${name}"\\]\\)return @\\[@(\\d+),@(\\d+)\\];`));assert.ok(m,name);assert.deepEqual([+m[1],+m[2]],[...want.offsets]);}
  for(const bad of ['ios1011-download','IOS1011','','__proto__'])assert.throws(()=>routeProfile(bad),/Unknown route profile/);
 });
-test('full 1.0.11 options: firmware required, no product, exact candidate only',()=>{
+// No release in releases.json is built for the full 1.0.11 host, so every full 1.0.11 packaging is refused.
+test('full 1.0.11 options: no product, and no release is built for this host',()=>{
  const o={...options1011,host:'ios1011',firmware:'/example/TMG9.zip'};
- validateOptions(o);validateOptions({...o,'experimental-ota':'TMG9'});
- assert.throws(()=>validateOptions({...o,firmware:undefined}),/exact_host_and_firmware_resource_required/);
+ assert.throws(()=>validateOptions(o),/release_not_built_for_host/);assert.throws(()=>validateOptions({...o,'experimental-ota':'TMG9'}),/release_not_built_for_host/);
+ assert.throws(()=>validateOptions({...o,firmware:undefined}),/release_not_built_for_host/);
  assert.throws(()=>validateOptions({...o,product:'iPhone17,1'}),/full_1011_host_takes_no_product/);
- for(const extra of [{'experimental-ota':'TMG8'},{bundle:'example.other'},{firmware:'relative/TMG9.zip'}])assert.throws(()=>validateOptions({...o,...extra}));
+ for(const extra of [{'experimental-ota':'TMG8'},{bundle:'example.other'},{firmware:'relative/TMG9.zip'},{release:'c21'}])assert.throws(()=>validateOptions({...o,...extra}));
 });
 test('full 1.0.11 addon gate: both 1.0.11 guards and the arm step required',()=>{
  const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_1011_ARM_SYMBOLS];
@@ -722,62 +730,66 @@ test('real 1.0.11 input: route patch profile ios1011 gives the pinned output and
  assert.throws(()=>patch(a),/1\.0\.7\/230/);assert.throws(()=>patch(output,'ios1011'),/requires pinned 1\.0\.11\/259/);assert.throws(()=>patch(a,'ios1011-download'));
  let differing=0;for(let i=0;i<a.length;i++)if(a[i]!==output[i])differing++;assert.ok(differing>0&&differing<=report.changes.reduce((n,c)=>n+c.bytes,0));
 });
-test('wrappers: --host 1011-full and 1021-full package the full builds with firmware and without product; --host 1011 and 1021 unchanged',()=>{
+test('wrappers: --host 1021-full packages the full build with the release ZIP and without product; --host 1011 and 1021 unchanged',()=>{
  const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
  const branch=wrapper.slice(wrapper.indexOf('elif [[ $host == 1011-full || $host == 1021-full ]]; then\n# The full hosts'),wrapper.indexOf('\nelse\nrun_logged addon-unchanged'));
  assert.match(branch,/full_profile=ios1011; full_app=\$TURBO_APP1011; full_guard=full_1011_guard; full_stage=full-1011-guard/);
  assert.match(branch,/full_profile=ios1021; full_app=\$TURBO_APP1021; full_guard=full_1021_guard; full_stage=full-1021-guard/);
  assert.match(branch,/run_logged "\$full_stage" "\$full_guard" "\$ADDON"/);
- assert.match(branch,/--host "\$full_profile" --app "\$full_app"/);assert.match(branch,/--firmware "\$firmware" \$\{release:\+--release "\$release"\}/);
+ assert.match(branch,/--host "\$full_profile" --app "\$full_app"/);assert.match(branch,/--firmware "\$firmware" --release "\$release"/);
  assert.match(branch,/routing=\{'ios1011':'ios1011-tmg-loopback-flash-gated-arm-required','ios1021':'ios1021-tmg-loopback-flash-gated-arm-required'\}\[profile\]/);
- // The default release's ZIP is TURBO_FIRMWARE; --release cN takes its checked ZIP from releases.json, only on a full
- // host, and only when releases.json lists that host for the release. 1021-full has no default release.
- assert.match(wrapper,/firmware=\$\{TURBO_FIRMWARE:-\}\n/);
- assert.match(wrapper,/if \[\[ \$host == 1021-full && -z \$release \]\]; then\n  echo 'PACKAGE FAIL: --host 1021-full needs --release cN \(a release built for 1021-full\)' >&2; exit 2\nfi/);
- assert.match(wrapper,/  \[\[ \$host == 1011-full \|\| \$host == 1021-full \]\] \|\| \{ echo 'PACKAGE FAIL: --release needs --host 1011-full or 1021-full' >&2; exit 2; \}\n  release_built_for "\$release" "\$host" \|\| \{[^\n]*exit 2; \}\n  firmware=\$\(python3 -I "\$REPO\/firmware\/tools\/phone_pins\.py" --resolve "\$release" --inputs "\$TURBO_INPUTS"\)/);
- assert.match(wrapper,/elif \[\[ \$host == 107 \|\| \$host == 1011-full \]\]; then\n  release_built_for default "\$host" \|\|/);
+ // Without --release the build is the only release in releases.json (several: --release required). A firmware host
+ // takes the release's checked ZIP from releases.json, only when releases.json lists that host for the release; a
+ // download-only host refuses an explicit --release.
+ assert.match(wrapper,/firmware=''\n/);assert.doesNotMatch(wrapper,/release_built_for default|release:-default|'firmware-pins\.json'/);
+ assert.match(wrapper,/if len\(names\)!=1: sys\.exit\("several releases in releases\.json: pass --release cN"\)/);
+ assert.match(wrapper,/if \[\[ \$host == 1011 \|\| \$host == 1021 \]\]; then\n  \[\[ -z \$explicit_release \]\] \|\| \{ echo 'PACKAGE FAIL: --release needs --host 1021-full[^\n]*exit 2; \}\nelse\n  release_built_for "\$release" "\$host" \|\| \{[^\n]*exit 2; \}\n  firmware=\$\(python3 -I "\$REPO\/firmware\/tools\/phone_pins\.py" --resolve "\$release" --inputs "\$TURBO_INPUTS"\)/);
  assert.match(wrapper,/sys\.argv\[3\] in r\["hosts"\]/);
  assert.match(wrapper,/elif \[\[ \$host == 1021-full \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1021\)/);
  assert.match(wrapper,/\[\[ \$host != 1021-full \]\] \|\| run_logged full-1021-guard full_1021_guard "\$ADDON"/);
  assert.match(wrapper,/full_1021_guard\(\) \{\n  local symbols name\n  full_1011_guard "\$1"/);
  for(const n of packaging.FULL_1021_ARM_SYMBOLS)assert.ok(wrapper.includes(n),n);assert.ok(wrapper.includes(packaging.FULL_1021_ARM_MARKER));
- assert.match(wrapper,/\[\[ -z \$release \]\] \|\| build_flags\+=\(TIO_RELEASE="\$release"\)/);
+ assert.match(wrapper,/\nbuild_flags\+=\(TIO_RELEASE="\$release"\)\n/);
+ assert.match(branch,/'firmware-pins-'\+sys\.argv\[2\]\+'\.json'/);
  assert.match(branch,/report\['release'\]==sys\.argv\[2\]/);
  assert.match(branch,/ipa\.read\('Payload\/Runner\.app\/TurboWeReadCandidate\.zip'\)/);assert.match(branch,/bundled ZIP in the signed IPA is not the release ZIP/);
  assert.doesNotMatch(branch,/--product|TURBO_APP107|ios1011-download|ios1021-download/);
  assert.match(branch,/report\['hostProfile'\]==profile and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
  assert.match(branch,/info\.get\('TIOHostProfile'\)==profile/);assert.match(branch,/info\.get\('TIOExperimentalOTAQueryRouting'\)==routing/);
  assert.match(branch,/'UISupportedDevices' not in info/);
- assert.match(wrapper,/elif \[\[ \$host == 1011-full \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_FIRMWARE TURBO_APP1011\)/);
+ assert.match(wrapper,/elif \[\[ \$host == 1011-full \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011\)/);
  assert.match(wrapper,/if \[\[ \$host == 1011 \]\]; then required=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1011\)/);
  assert.match(wrapper,/\[\[ \$host != 1011-full \]\] \|\| run_logged full-1011-guard full_1011_guard "\$ADDON"/);
  assert.match(wrapper,/full_1011_guard\(\) \{\n  local symbols name\n  download_only_guard "\$1"/);
 });
 
-// Release configurations (releases.json, firmware/tools/phone_pins.py): default = C14/C15 (ZIP9), c16 (ZIP10), c17 (ZIP9 rollback), c18 (ZIP11).
-test('releases: pins per release, the addon release marker and the full-host-only --release',async()=>{
+// Release configurations (releases.json, firmware/tools/phone_pins.py): C21 (TMG12 on stock 1.0.6.11, for the full
+// 1.0.21 host) is the only release, and a build that names no release is C21.
+test('releases: the only release C21, its pins, the addon release marker and the full-host-only --release',async()=>{
  const m=await import('./package.mjs');
- const d=m.releasePins(),c16=m.releasePins('c16'),c17=m.releasePins('c17'),c18=m.releasePins('c18');
- assert.equal(d.release,'default');assert.equal(d.name,'TMG9');assert.equal(d.zipSHA256,'def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd');
- assert.equal(c16.name,'TMG10');assert.equal(c16.zipSHA256,'4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c');assert.equal(c16.zipBytes,8846364);
- assert.deepEqual(c16.acceptOsVersions,['Strix OS 1.0.5.5','Strix OS 1.0.5.12']);assert.equal(c16.otaVersion,'Strix OS 1.0.5.12');assert.equal(c16.folder,'Strix_OS_1.0.5.12');
- assert.deepEqual(c16.acceptQueryCodes,['01.00.05.0005','01.00.05.0012']);assert.equal(c16.feedVersionName,'0100050012');assert.equal(c16.feedVersionCode,100050012);
- assert.equal(c17.name,'TMG9');assert.equal(c17.zipSHA256,d.zipSHA256);assert.deepEqual(c17.acceptOsVersions,['Strix OS 1.0.5.12']);assert.equal(c17.otaVersion,'Strix OS 1.0.5.5');
- assert.equal(c18.name,'TMG11');assert.equal(c18.zipSHA256,'edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1');assert.equal(c18.zipBytes,8847234);assert.deepEqual(c18.acceptOsVersions,['Strix OS 1.0.5.12']);assert.equal(c18.otaVersion,'Strix OS 1.0.5.12');assert.deepEqual(c18.acceptQueryCodes,['01.00.05.0012']);
- for(const bad of ['c99','C16','default ','../c16','',null,1])assert.throws(()=>m.releasePins(bad),/unknown_release/);
- const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+'Strix OS 1.0.5.5; target Strix OS 1.0.5.12\0y');
- assert.ok(m.validateReleaseAddon(addon(c16),c16));assert.ok(m.validateReleaseAddon(addon(d),d));
- assert.throws(()=>m.validateReleaseAddon(addon(d),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(addon(c17),c16),/addon_release_mismatch/);
- assert.throws(()=>m.validateReleaseAddon(addon(c16),c17),/addon_release_mismatch/);
- assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['default','c16','c17','c18','c20']);
- const c20=m.releasePins('c20');assert.equal(c20.name,'TMG12');assert.equal(c20.zipSHA256,'3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373');assert.equal(c20.zipBytes,9549211);assert.equal(c20.otaVersion,'Strix OS 1.0.6.11');assert.equal(c20.folder,'Strix_OS_1.0.6.11');
- assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),Buffer.from('ota release=c17; ')]),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
- assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG10',Buffer.alloc(8846364),c16),/navs3_firmware_identity_mismatch/);
+ assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['c21']);
+ assert.equal(m.soleRelease(),'c21');
+ const c21=m.releasePins('c21');assert.deepEqual(m.releasePins(),c21);
+ assert.equal(c21.release,'c21');assert.equal(c21.name,'TMG12');assert.equal(c21.zipSHA256,'3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373');assert.equal(c21.zipBytes,9549211);
+ assert.equal(c21.otaVersion,'Strix OS 1.0.6.11');assert.equal(c21.folder,'Strix_OS_1.0.6.11');assert.equal(c21.stockBase,'1.0.6.11');
+ assert.deepEqual(c21.acceptOsVersions,['Strix OS 1.0.5.12','Strix OS 1.0.6.11']);assert.deepEqual(c21.acceptQueryCodes,['01.00.05.0012','01.00.06.0011']);
+ assert.equal(c21.feedVersionName,'0100060011');assert.equal(c21.feedVersionCode,100060011);
+ // No firmware-pins.json any more, and no pins file for a removed release.
+ for(const f of ['firmware-pins.json','firmware-pins-c16.json','firmware-pins-c17.json','firmware-pins-c18.json','firmware-pins-c20.json'])assert.equal(fs.existsSync(new URL('./'+f,import.meta.url)),false,f);
+ for(const bad of ['c99','c20','C21','default','default ','../c21','',null,1])assert.throws(()=>m.releasePins(bad),/unknown_release/);
+ const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+'Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11\0y');
+ assert.ok(m.validateReleaseAddon(addon(c21),c21));
+ const other={...c21,release:'c22'};
+ assert.throws(()=>m.validateReleaseAddon(addon(other),c21),/addon_release_mismatch/);
+ assert.throws(()=>m.validateReleaseAddon(addon({...c21,zipSHA256:'0'.repeat(64)}),c21),/addon_release_mismatch/);
+ assert.throws(()=>m.validateReleaseAddon(Buffer.from('ota release=c20; firmware=TMG12; zip='+c21.zipSHA256),c21),/addon_release_mismatch/);
+ assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG12',Buffer.alloc(c21.zipBytes),c21),/navs3_firmware_identity_mismatch/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};
- assert.throws(()=>m.validateOptions({...base,release:'c16'}),/release_requires_full_host/);
- assert.throws(()=>m.validateOptions({...base,host:'ios1011-download',firmware:undefined,release:'c16'}),/release_requires_full_host/);
- assert.throws(()=>m.validateOptions({...base,host:'ios1021-download',firmware:undefined,release:'c16'}),/release_requires_full_host/);
- m.validateOptions({...base,host:'ios1011',release:'c16'});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:'c99'}),/unknown_release/);
+ assert.throws(()=>m.validateOptions({...base,release:'c21'}),/release_requires_full_host/);
+ assert.throws(()=>m.validateOptions({...base,host:'ios1011-download',firmware:undefined,release:'c21'}),/release_requires_full_host/);
+ assert.throws(()=>m.validateOptions({...base,host:'ios1021-download',firmware:undefined,release:'c21'}),/release_requires_full_host/);
+ m.validateOptions({...base,host:'ios1021',release:'c21'});m.validateOptions({...base,host:'ios1021'});
+ assert.throws(()=>m.validateOptions({...base,host:'ios1021',release:'c99'}),/unknown_release/);
 });
 
 // C20: the full 1.0.21/1 host (ios1021). The same pinned input as the download-only C19 row, the route patch at the
@@ -795,24 +807,25 @@ test('full 1.0.21 profile: the C19 pins, its own route profile and markers, and 
  const r=routeProfile('ios1021');
  assert.deepEqual([...r.offsets],d.routes.map(([,o])=>o));assert.deepEqual([...r.inputs],[d.acceptedPairs[0][1]]);
  assert.equal(r.outputSHA,'cd8be91e82bdbc1c98b5dda4fa0d358b91a2187ea4571200760fac0c53cb7852');assert.equal(r.host,'1.0.21');assert.equal(r.build,1);
- // Releases: 1021-full takes only a release that lists it; the default and the 1.0.11 releases are refused.
+ // Releases: every release lists 1021-full only. It is accepted on ios1021 (named, or as the only release when none is
+ // named) and refused on ios107 and ios1011, which no release is built for.
  const m=await import('./package.mjs');
  assert.deepEqual(m.RELEASE_HOST_NAMES,{ios107:'107',ios1011:'1011-full',ios1021:'1021-full'});
- assert.deepEqual(m.releaseHosts(),['107','1011-full']);for(const n of ['c16','c17','c18'])assert.deepEqual(m.releaseHosts(n),['1011-full'],n);
- for(const bad of ['c99','__proto__','',' default'])assert.throws(()=>m.releaseHosts(bad),/unknown_release/);
+ assert.deepEqual(m.releaseHosts(),['1021-full']);assert.deepEqual(m.releaseHosts('c21'),['1021-full']);
+ for(const bad of ['c99','c20','__proto__','',' default','default'])assert.throws(()=>m.releaseHosts(bad),/unknown_release/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-1021-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip',host:'ios1021'};
- assert.throws(()=>m.validateOptions(base),/release_not_built_for_host/);
- for(const n of ['c16','c17','c18'])assert.throws(()=>m.validateOptions({...base,release:n}),/release_not_built_for_host/,n);
- assert.throws(()=>m.validateOptions({...base,release:'c99'}),/unknown_release/);
- assert.throws(()=>m.validateOptions({...base,release:'c16',product:'iPhone17,1'}),/full_1011_host_takes_no_product/);
- // Every release listing 1021-full is accepted on ios1021 and refused on ios1011 (none until the C20 entry lands).
+ m.validateOptions(base);m.validateOptions({...base,'experimental-ota':'TMG12'});
+ assert.throws(()=>m.validateOptions({...base,'experimental-ota':'TMG11'}),/only_exact_tmg12_supported/);
+ for(const n of ['c16','c17','c18','c20','c99'])assert.throws(()=>m.validateOptions({...base,release:n}),/unknown_release/,n);
+ assert.throws(()=>m.validateOptions({...base,product:'iPhone17,1'}),/full_1011_host_takes_no_product/);
+ assert.throws(()=>m.validateOptions({...base,firmware:undefined}),/exact_host_and_firmware_resource_required/);
  const releases=JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases;
  for(const [n,spec] of Object.entries(releases)){
-  if(spec.hosts.includes('1021-full')){m.validateOptions({...base,release:n});assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:n}),/release_not_built_for_host/);}
-  else assert.throws(()=>m.validateOptions({...base,release:n==='default'?undefined:n}),/release_not_built_for_host/,n);
+  assert.deepEqual(spec.hosts,['1021-full'],n);m.validateOptions({...base,release:n});
+  assert.throws(()=>m.validateOptions({...base,host:'ios1011',release:n}),/release_not_built_for_host/,n);
+  assert.throws(()=>m.validateOptions({...base,host:'ios107',release:n}),/release_requires_full_host/,n);
  }
- // The 1.0.11 host keeps its releases.
- m.validateOptions({...base,host:'ios1011',release:undefined});for(const n of ['c16','c17','c18'])m.validateOptions({...base,host:'ios1011',release:n});
+ assert.throws(()=>m.validateOptions({...base,host:'ios1011'}),/release_not_built_for_host/);assert.throws(()=>m.validateOptions({...base,host:'ios107'}),/release_not_built_for_host/);
 });
 test('full 1.0.21 addon gate: the full 1.0.11 guards plus the 1.0.21 arm marker',()=>{
  const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_1011_ARM_SYMBOLS,...packaging.FULL_1021_ARM_SYMBOLS];
