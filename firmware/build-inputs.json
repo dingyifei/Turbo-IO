@@ -134,7 +134,7 @@
       "offset": "0x51364c",
       "address": "0x106a364c",
       "before": "f0b585b0",
-      "after": "9bf2a2b8",
+      "after": "9bf2a3b8",
       "role": "Entry trampoline vm_event",
       "kind": "bw",
       "target": "m8_hook_vm_event",
@@ -144,7 +144,7 @@
       "offset": "0x514116",
       "address": "0x106a4116",
       "before": "1e2380b5",
-      "after": "9ff29db9",
+      "after": "9ff2d3b9",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x514126",
       "address": "0x106a4126",
       "before": "1e22a0f10f03",
-      "after": "9ff299b900bf",
+      "after": "9ff2cfb900bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x51139c",
       "address": "0x106a139c",
       "before": "4ff4867050f07cfc",
-      "after": "a2f202f800bf00bf",
+      "after": "a2f238f800bf00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,16 +244,16 @@
       "offset": "0x418482",
       "address": "0x105a8482",
       "before": "00242048214b84610360",
-      "after": "9af3d9ff00bf00bf00bf",
+      "after": "9bf30ff800bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
     }
   ],
-  "moduleBytes": 165052,
+  "moduleBytes": 165116,
   "moduleVA": "0x10929204",
-  "moduleSHA256": "236c60844687a4c6bde0aad11bf703c143c1eca5ced0a49fece20ca9629b92c1",
+  "moduleSHA256": "267a1a758dbdabe71892d4ff7a0556231f2e390779543cef2b7c7ce95fc0c841",
   "stockAP": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
   "stockBase": "1.0.6.11",
   "stockMembers": {
@@ -283,11 +283,11 @@
       "bytes": 18315227
     }
   },
-  "APBytes": 8132296,
+  "APBytes": 8132360,
   "archive": {
-    "bytes": 9549172,
-    "sha256": "007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325",
-    "md5": "080be0215cbc0136609dd55c09393a04"
+    "bytes": 9549211,
+    "sha256": "3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373",
+    "md5": "063b380629e1a01fcde04ce45a5dac15"
   },
   "sources": [
     {
@@ -312,7 +312,7 @@
     },
     {
       "source": "app-runtime-v1/app_lvgl.c",
-      "sha256": "46c2edcaf399bf24fb13ce08bb7e0cf2455a8fdc1be34afccef7385db6712403"
+      "sha256": "de36d6833a5e73c46968010361259499c03001621614b1e27303555ffb19801a"
     },
     {
       "source": "app-runtime-v1/app_runner.c",
@@ -320,7 +320,7 @@
     },
     {
       "source": "app-runtime-v1/app_service.c",
-      "sha256": "abd89f019d4e70c1a5018f4cb629af7f8ec87634a98603606645b464beed9b61"
+      "sha256": "50c48474488d3e4a900776000535e48e1e3da99f6fdf99351edb29738ef88d9d"
     },
     {
       "source": "app-runtime-v1/app_shelf.c",
@@ -360,7 +360,7 @@
     },
     {
       "source": "diagnostics-v1/diagnostics_service.c",
-      "sha256": "dc6f8d0d83bfedb4a990952626035efa2a76f5731fe50a0b411ac6df50a00266"
+      "sha256": "6e23c1d98cb4468a8f95d98bc11e6cf4562352732210aa36dbf97f25e1d655c8"
     },
     {
       "source": "diagnostics-v1/native_light.c",
@@ -380,7 +380,7 @@
     },
     {
       "source": "display-runtime-v1/native_display_page.c",
-      "sha256": "b68a06ecab18d5ed49f08afa7b594cd07951a7533e6130c406b2dcb26b751ba6"
+      "sha256": "8b37489f0edf7f75253a1eb70215624b891c70c7fd33d3ce1a5895ffafe10f0a"
     },
     {
       "source": "focus-v1/focus.c",
@@ -392,11 +392,11 @@
     },
     {
       "source": "focus-v1/focus_menu_native.c",
-      "sha256": "acb3dcccc68c289c58b8962f40fce9275dad256b537b30cd0d506011a431dcb9"
+      "sha256": "06ac3eaeb4641b59b0dc8cfa9aa8fa6e6854e5b003c622b273c31bb5a7bec07b"
     },
     {
       "source": "focus-v1/focus_service.c",
-      "sha256": "677eee8adb9fe26dd80a1b8f72032788bd59980a03c6878def8971a4c4430e3a"
+      "sha256": "498a484e10ac4c1d3ba25d9e8b6f135089b1471ad21ad76cbe0bad6994d83fea"
     },
     {
       "source": "focus-v1/focus_view.c",
@@ -408,7 +408,7 @@
     },
     {
       "source": "global-remote-v1/remote_native.c",
-      "sha256": "7635a106946b98f610e33515e45b4aecf42b6522a1e76c42c7021b5a54fe0349"
+      "sha256": "e153eb6038485796dc6ffb11f40df7d163a9e1f542e2823f3043fe7d3d491ca5"
     },
     {
       "source": "image-upload-test/render_idle.c",
@@ -424,7 +424,7 @@
     },
     {
       "source": "music-runtime-v1/menu10.c",
-      "sha256": "fd1946b14f795f6c991434e3e24edec875185ef861ceef94f8f1f753872990cf"
+      "sha256": "64c745f69e9b415b40997c377cd4bcbbd6cf7284e472b8449a212d7c1022e95a"
     },
     {
       "source": "music-runtime-v1/music.c",
@@ -432,7 +432,7 @@
     },
     {
       "source": "music-runtime-v1/music_service.c",
-      "sha256": "cd4197de42d5bbe350e15192a5ab95bc2a1dc5aff3e1d7a5722a72885c6846c3"
+      "sha256": "f13d15d09bf33177a593455d8b490881adf8d68d88762357e61d0a02210c7587"
     },
     {
       "source": "navigation-runtime-v1/nav_lvgl.c",
@@ -444,7 +444,7 @@
     },
     {
       "source": "navigation-runtime-v1/nav_service.c",
-      "sha256": "678225042317d1b1244b4fab727b158a72dba674183694c97ca641e6ff900ea3"
+      "sha256": "b18b29d6ef8951aaa7e52038b71db647edfa98d89d9af8d6b1caf4526c56e3d2"
     },
     {
       "source": "navigation-runtime-v1/nav_view.c",
@@ -460,7 +460,7 @@
     },
     {
       "source": "camera-v1/camera_native.c",
-      "sha256": "214fe3908cff4baa1da5a2f0f076ae2ab61eaa5b47e81ba55c351dec6f956a51"
+      "sha256": "3a20f1f2693ae11c83d1a5b2ba494859eb380bd31081b1808f81df2da6e8abfb"
     },
     {
       "source": "common-v1/business_idle.c",
@@ -488,7 +488,7 @@
     }
   ],
   "stockZIP": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",
-  "APSHA256": "c1acdeb25bbf93aaf28d5f629168463b3dea454fe859574166aba5f85540d5f5",
+  "APSHA256": "6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.5",
     "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"
