@@ -360,6 +360,9 @@ static NSString *ShortStatus(NSString *value) {
 
 - (NSInteger)maxReachable {
     if ([self.snapshot[@"stage"] integerValue]>=1) return 3;
+    // Armed: the Install step stays reachable whatever the checks and the folder say, so Disarm is always at hand
+    // (after a flash the host may clear the folder). Authorizing is unchanged: it still needs canAuthorize.
+    if ([self.snapshot[@"armed"] boolValue]) return 3;
     if (![self.snapshot[@"canContinueFromCheck"] boolValue]) return 1;
     return [self.snapshot[@"directory"] integerValue]==TIOOTACheckOK?3:2;
 }

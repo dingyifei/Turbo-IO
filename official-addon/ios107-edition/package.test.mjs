@@ -769,7 +769,8 @@ test('releases: pins per release, the addon release marker and the full-host-onl
  assert.ok(m.validateReleaseAddon(addon(c16),c16));assert.ok(m.validateReleaseAddon(addon(d),d));
  assert.throws(()=>m.validateReleaseAddon(addon(d),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(addon(c17),c16),/addon_release_mismatch/);
  assert.throws(()=>m.validateReleaseAddon(addon(c16),c17),/addon_release_mismatch/);
- assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['default','c16','c17','c18']);
+ assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['default','c16','c17','c18','c20']);
+ const c20=m.releasePins('c20');assert.equal(c20.name,'TMG12');assert.equal(c20.zipSHA256,'3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373');assert.equal(c20.zipBytes,9549211);assert.equal(c20.otaVersion,'Strix OS 1.0.6.11');assert.equal(c20.folder,'Strix_OS_1.0.6.11');
  assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),Buffer.from('ota release=c17; ')]),c16),/addon_release_mismatch/);assert.throws(()=>m.validateReleaseAddon(Buffer.concat([addon(c16),addon(d)]),c16),/addon_release_mismatch/);
  assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG10',Buffer.alloc(8846364),c16),/navs3_firmware_identity_mismatch/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};

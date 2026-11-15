@@ -19,8 +19,9 @@ static NSDictionary *Fetch(uint16_t port,NSString *method,NSString *target,NSStr
 static NSDictionary *Query(uint16_t port,NSString *path){NSDictionary *r=Fetch(port,@"GET",path,@"");assert([r[@"code"] intValue]==200);return [NSJSONSerialization JSONObjectWithData:r[@"body"] options:0 error:nil];}
 // The release's feed policy, written out here by hand (not from FirmwarePins.h) so a wrong generated value fails.
 #if defined(TIO_RELEASE_C20)
-// As planned for C20 (TMG11 on 1.0.5.12 to TMG12 on 1.0.6.11); its releases.json entry must match.
-static NSArray *Accepted(void){return @[@"01.00.05.0012"];}
+// C20 (TMG12 on 1.0.6.11): flashes glasses that report 1.0.5.12 (TMG11) or 1.0.6.11 (stock, or a TMG12 flashed again);
+// its releases.json entry must match.
+static NSArray *Accepted(void){return @[@"01.00.05.0012",@"01.00.06.0011"];}
 static NSString *const WantName=@"0100060011";static const int WantCode=100060011;static NSString *const WantFile=@"Strix_OS_1.0.6.11.zip";
 #elif defined(TIO_RELEASE_C16)
 static NSArray *Accepted(void){return @[@"01.00.05.0005",@"01.00.05.0012"];}

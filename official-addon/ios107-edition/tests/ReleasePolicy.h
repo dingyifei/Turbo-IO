@@ -4,7 +4,7 @@
 // C20 (the first 1.0.21 full-host release, TMG12 on stock 1.0.6.11) is written here as planned: from TMG11 on
 // 1.0.5.12 to 1.0.6.11. Its releases.json entry must say the same, or these tests fail.
 #if defined(TIO_RELEASE_C20)
-static inline NSArray *TRPAccepted(void){return @[@"Strix OS 1.0.5.12"];}
+static inline NSArray *TRPAccepted(void){return @[@"Strix OS 1.0.5.12",@"Strix OS 1.0.6.11"];}
 static NSString *const TRPTarget=@"Strix OS 1.0.6.11";
 static NSString *const TRPFolder=@"Strix_OS_1.0.6.11";
 #elif defined(TIO_RELEASE_C16)
