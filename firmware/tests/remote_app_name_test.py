@@ -12,7 +12,12 @@ entry's word 0 must map to a NUL-preceded, NUL-terminated printable string too, 
 An AP without exactly one such sequence is refused (1.0.5.12's launcher has 7 entries). Prints the name as SHA-256
 and length only. The source holds no stock address, so rebase_apply's leftover scan of tests/ stays clean.
 
+The navigation service holds a second copy of the name (owner decision O6: stock Navigation on top ends the module's
+own route). It must be the one string literal in nav_service.c's stock_navigation(), defined exactly once, and equal
+the same stock entry, so a stock rename fails here for both files.
+
   python3 -I firmware/tests/remote_app_name_test.py --stock <1.0.6.11 members ZIP> [--remote <remote_native.c>]
+      [--nav <nav_service.c>]
 """
 from pathlib import Path
 import argparse, hashlib, importlib.util, re, struct, zipfile
@@ -32,6 +37,7 @@ def main():
     ap_ = argparse.ArgumentParser()
     ap_.add_argument('--stock', type=Path, required=True)
     ap_.add_argument('--remote', type=Path, default=FW/'src/global-remote-v1/remote_native.c')
+    ap_.add_argument('--nav', type=Path, default=FW/'src/navigation-runtime-v1/nav_service.c')
     a = ap_.parse_args()
     rebase = load(FW/'tools/rebase_apply.py', 'remote_app_name_rebase')
     with zipfile.ZipFile(a.stock) as z:
@@ -52,21 +58,30 @@ def main():
         s = ap[off:end]
         assert ap[off - 1] == 0 and 0 < len(s) < 64 and all(0x20 < c < 0x7f for c in s), 'entry %d word 0 is not a string' % i
         names.append(s)
-    text = a.remote.read_text()
-    head = re.search(r'\bbool\s+input_allowed\s*\(\s*void\s*\)\s*\{', text)
-    assert head, 'no definition of input_allowed(void) in %s' % a.remote
+    nav = names[NAVIGATION_ENTRY]
+    assert names.count(nav) == 1, 'the Navigation name must name one entry only'
+    for path, function in ((a.remote, 'input_allowed'), (a.nav, 'stock_navigation')):
+        want = one_literal(path, function)
+        assert want == nav, '%s admits sha256=%s,len=%d; stock entry %d is sha256=%s,len=%d' % (
+            function, hashlib.sha256(want).hexdigest(), len(want), NAVIGATION_ENTRY, hashlib.sha256(nav).hexdigest(), len(nav))
+    print('PASS remote app name: stock launcher table %#x (8 entries, read through the launch-by-index sequence at %#x) entry %d names the '
+          'app input_allowed admits and the one stock_navigation compares with (sha256=%s,len=%d)' % (
+              table, f, NAVIGATION_ENTRY, hashlib.sha256(nav).hexdigest(), len(nav)))
+
+
+def one_literal(path, function):
+    """The one string literal in the body of bool <function>(void), which must be defined exactly once in path."""
+    text = path.read_text()
+    heads = list(re.finditer(r'\bbool\s+' + function + r'\s*\(\s*void\s*\)\s*\{', text))
+    assert heads, 'no definition of %s(void) in %s' % (function, path.name)
+    assert len(heads) == 1, '%s(void) is defined %d times in %s, want once' % (function, len(heads), path.name)
+    head = heads[0]
     depth, i = 1, head.end()
     while depth:   # the body, by brace depth (the function holds no brace inside a string)
         depth += {'{': 1, '}': -1}.get(text[i], 0); i += 1
     literals = re.findall(r'"((?:\\.|[^"\\])*)"', text[head.end():i - 1])
-    assert len(literals) == 1, 'input_allowed must hold exactly one string literal, found %d' % len(literals)
-    want = literals[0].encode()
-    nav = names[NAVIGATION_ENTRY]
-    assert want == nav, 'input_allowed admits sha256=%s,len=%d; stock entry %d is sha256=%s,len=%d' % (
-        hashlib.sha256(want).hexdigest(), len(want), NAVIGATION_ENTRY, hashlib.sha256(nav).hexdigest(), len(nav))
-    assert names.count(nav) == 1, 'the Navigation name must name one entry only'
-    print('PASS remote app name: stock launcher table %#x (8 entries, read through the launch-by-index sequence at %#x) entry %d names the '
-          'app input_allowed admits (sha256=%s,len=%d)' % (table, f, NAVIGATION_ENTRY, hashlib.sha256(nav).hexdigest(), len(nav)))
+    assert len(literals) == 1, '%s must hold exactly one string literal, found %d' % (function, len(literals))
+    return literals[0].encode()
 
 
 if __name__ == '__main__':

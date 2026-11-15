@@ -37,6 +37,8 @@ extern int tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *);
 extern void *fm_system(void *);
 extern int64_t fm_local_time(void *);
 extern bool focus_screen_on(void);
+extern void native_log(unsigned,unsigned,unsigned,unsigned,const char *,...);
+static void trace(unsigned e,unsigned r){native_log(1,0,0,0,"[TurboMenu8] event=%u result=%u",e,r);}
 static int64_t local_time(void){void *m=nav_monitors(),*s=m?fm_system(m):NULL;return s?fm_local_time(s):0;}
 static void *ptr(void *p,unsigned off){return p?*(void **)((uint8_t *)p+off):NULL;}
 static uint32_t word(void *p,unsigned off){return p?*(uint32_t *)((uint8_t *)p+off):0;}
@@ -48,6 +50,10 @@ static bool safe_home(void){
  if(!same(nav_top_app(),"com.rayneo.liteos.launcher"))return false;
  void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&!nav_folded(i)&&tio_business_idle();
 }
+/* Owner decision O6: stock Navigation on top ends the module's own navigation session (tick). The name is the one
+ * remote_native.c's input_allowed admits; tests/remote_app_name_test.py checks this literal against stock's launcher
+ * table too, so it must stay the one string literal in this function. Exact compare (same), no prefix match. */
+static bool stock_navigation(void){return same(nav_top_app(),"com.rayneo.liteos.navigation");}
 static bool owns(Control *c){return !c->retired&&c->slot&&c->app&&ptr(manager(),TIO_STOCK_MANAGER_MENU)==c->app&&word(manager(),TIO_STOCK_MANAGER_STATE)==1&&same(nav_top_app(),"com.rayneo.liteos.launcher");}
 static bool available(void *ctx){Control *c=ctx;
 #if TIO_MUSIC_RUNTIME
@@ -124,7 +130,14 @@ static bool resume(Control *c){
 static void tick(void *timer){
  Control *c=*(Control **)((uint8_t *)timer+TIO_STOCK_TIMER_USER);if(!c)return;TNUI u=api(c);uint32_t now=stream_tick();
  if((c->runtime.active||c->waiting)&&(uint32_t)(now-c->last_check)>=1000){c->last_check=now;
-  if(c->runtime.hidden){if(!paired())tn_disconnect(&c->runtime,&u);}   /* a background route has no page to own; it ends with its phone link */
+  /* Owner decision O6: a kept or visible route ends (retire: route, hold, page, map copy) when stock Navigation is the
+   * top page at this check; trace event 42, result 1 for a kept route, 2 for a visible one. The phone learns of it from
+   * the existing NO_SESSION reply to its next packet. Limits: the end comes at the next one-second check, so a look at
+   * stock Navigation shorter than about a second can be missed; a route started from the launcher while stock Navigation
+   * is not the top page (still running behind it, say) is not ended; other stock apps on top do not end a kept route
+   * (as on TMG11). While a route is active this reads the top page once a second. A waiting page keeps the path below. */
+  if(c->runtime.active&&stock_navigation()){bool kept=c->runtime.hidden;retire(c);trace(42,kept?1:2);}
+  else if(c->runtime.hidden){if(!paired())tn_disconnect(&c->runtime,&u);}   /* a background route has no page to own; it ends with its phone link */
   else if(!owns(c)||!safe_home())close_page(c);
   else if(!paired())tn_disconnect(&c->runtime,&u);
  }
