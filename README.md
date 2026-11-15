@@ -130,7 +130,6 @@ Key由我在本机安全填写，不索取聊天明文、不复用维护者配�
 | `firmware-research` | 原厂固件与研究笔记（1.0.4.12、1.0.5.5、TVP2），不参与当前构建 |
 | `dashboard-service` · `app-gallery` · `skills` | 仪表盘与小应用 SDK、20 个模板、Agent Skill |
 | `rayneo-protocol` · `rayneo-display` · `rayneo-audio-container` · `rayneo-transport-ios` | V1 时期的 Swift 协议、显示、音频容器与传输包，作为净室参考保留；V1 客户端本身已删除，见 [V1 归档说明](docs/archive/v1/v1-sdk.md) |
-| `watch-remote` | Apple Watch 遥控实验 |
 | `tools` · `scripts` | 离线分析工具；构建检查、打包与发布扫描脚本 |
 | `docs` | 文档，入口是 [文档索引](docs/README.md) |
 

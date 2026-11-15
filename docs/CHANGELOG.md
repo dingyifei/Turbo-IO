@@ -135,9 +135,9 @@
 
 *imagegen 生成的横版概念图，不是实机截图；示意界面不代表已完成全局输入验收。*
 
-把 Watch 作为眼镜的输入端：经配对 iPhone 的雷鸟插件中转，支持表冠上一项/下一项、屏幕确认/返回、两套手势映射，以及 10 分钟或始终开启的手机授权。[源码、构建与接入](../watch-remote/README.md) · [TGR1 协议与验收边界](../watch-remote/GLOBAL_REMOTE.md)
+把 Watch 作为眼镜的输入端：经配对 iPhone 的雷鸟插件中转，支持表冠上一项/下一项、屏幕确认/返回、两套手势映射，以及 10 分钟或始终开启的手机授权。源码、构建与接入 · TGR1 协议与验收边界
 
-**[下载 TGR1 实验 OTA / SHA-256 / 审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tgr1) · [兼容条件、校验与风险](../watch-remote/FIRMWARE_RELEASE.md)**
+**[下载 TGR1 实验 OTA / SHA-256 / 审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tgr1) · 兼容条件、校验与风险**
 
 **实验源码与固件，不是稳定遥控交付。** TGR1 虽已有用户刷入完成反馈，但“翻页翻不了”仍未闭环；本次上传的是原样归档包，没有重新编译或新真机验收。全局输入需要配套 TGR1，原厂固件与已发布 TAP1/FOCUS-04 不自动支持；旧版公开 APK 的固定候选门禁也不能直接导入本包。不发布私人 IPA、签名材料或个人配置；始终开启也不保证 Watch/手机后台可达。非开发者请勿刷，回滚不保证救砖。
 
