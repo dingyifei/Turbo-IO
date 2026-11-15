@@ -32,53 +32,41 @@ Earlier releases are recorded in the git tags `fw/tmgN` (firmware) and `app/cN` 
 The first attempt is also the dry run. Before the transfer starts, the phone's gate refuses anything it does not expect, and nothing is flashed. If it refuses, go to [If the gate refuses](#if-the-gate-refuses).
 
 1. Install C20 over the existing app.
-2. In RayNeo › Glasses › Software version, switch Auto Update on, then off. This saves the setting the gate reads.
-3. Open Turbo › Glasses › Glasses firmware. Charge the glasses above 50% and keep them connected.
-4. **Check** step: every row must pass. "TMG12 package" reads "Verified on this phone", "Local download source" reads "Running", "Transfer protection" reads "On", and "Auto Update off" reads "Off". "Glasses version read" can wait until step 9. Tap **Continue**.
+2. Open Turbo › Developer (expand it) › Wire log. Switch on **Record channel traffic** and **Start recording at launch**. If the gate refuses, this log is what you send.
+3. In RayNeo › Glasses › Software version, switch Auto Update on, then off. This saves the setting the gate reads.
+4. Open Turbo › Glasses › Glasses firmware. Charge the glasses above 50% and keep them connected.
+5. **Check** step: every row must pass. "TMG12 package" reads "Verified on this phone", "Local download source" reads "Running", "Transfer protection" reads "On", and "Auto Update off" reads "Off". "Glasses version read" can wait until step 10. Tap **Continue**.
    - If "Auto Update off" shows **Fix**, tap it and follow the prompt.
    - If any other row fails, stop. Do not continue.
-5. **Download** step: tap **Open download for 15 min**. Then tap **Go to RayNeo**.
-6. In RayNeo › Glasses › Software version, tap Download. Wait for "Ready to install". Do not tap Start install yet. Go back to Turbo.
-7. "Downloaded package" shows a check mark. Its text reads "All 16 files match TMG12"; TMG12 has 17 files, and the check covers all 17.
+6. **Download** step: tap **Open download for 15 min**. Then tap **Go to RayNeo**.
+7. In RayNeo › Glasses › Software version, tap Download. Wait for "Ready to install". Do not tap Start install yet. Go back to Turbo.
+8. "Downloaded package" shows a check mark and reads "Every file matches TMG12".
    - If it shows a red cross and starts with "ota/Strix_OS_1.0.6.11 already holds other…", see [Folder already in use](#folder-already-in-use-文件夹已被占用).
-   - If the 15 minutes run out first, open the download window again and repeat step 6.
-8. Tap **Install** in the step bar at the top. On the row "TMG flashing on this install", tap **Arm**, then **Arm flashing**. The row reads "Armed on this install: the other checks still decide". The dialog asks you to record a wire log first. Skip that: the first attempt is the dry run.
-9. On "Glasses version read", tap **Fix**, then **Go to RayNeo**. Open RayNeo › Glasses › Software version so it reads the glasses. Come back within 2 minutes. The row shows "…s ago · …s left". The glasses must report Strix OS 1.0.5.12 or 1.0.6.11.
-10. "Downloaded package" still shows a check mark.
-11. Tap **Authorize install**. Read the dialog, then tap **Authorize**. The Install row reads "Authorized · tap Start install in RayNeo". This allows one transfer. Tap Start install within 15 minutes and keep the glasses connected; otherwise the authorization lapses and you authorize again from step 9.
-12. Tap **Go to RayNeo**. In Software version, tap Start install.
-13. Wait. Keep both devices on and connected. The Install row reads "Installing · N parts verified". RayNeo finishes, then the glasses restart and reconnect.
-14. Close and reopen the RayNeo app.
-15. Open Turbo › Glasses › Glasses firmware › **Install** and tap **Disarm** on "TMG flashing on this install".
-   - If the Install step does not open, leave it. Nothing transfers without a new authorization, and the next Turbo build starts disarmed. Tell the developer.
+   - If the 15 minutes run out first, open the download window again and repeat step 7.
+9. Tap **Install** in the step bar at the top. On the row "TMG flashing on this install", tap **Arm**, then **Arm flashing**. The row reads "Armed on this install: the other checks still decide".
+10. On "Glasses version read", tap **Fix**, then **Go to RayNeo**. Open RayNeo › Glasses › Software version so it reads the glasses. Come back within 2 minutes. The row shows "…s ago · …s left". The glasses must report Strix OS 1.0.5.12 or 1.0.6.11.
+11. "Downloaded package" still shows a check mark.
+12. Tap **Authorize install**. Read the dialog, then tap **Authorize**. The Install row reads "Authorized · tap Start install in RayNeo". This allows one transfer. Tap Start install within 15 minutes and keep the glasses connected; otherwise the authorization lapses and you authorize again from step 10.
+13. Tap **Go to RayNeo**. In Software version, tap Start install.
+14. Wait. Keep both devices on and connected. The Install row reads "Installing · N parts verified". RayNeo finishes, then the glasses restart and reconnect.
+15. Close and reopen the RayNeo app.
+16. Open Turbo › Glasses › Glasses firmware › **Install** and tap **Disarm** on "TMG flashing on this install".
 
-You can disarm at any time before the transfer starts. From the start of the transfer until you restart the app, you cannot disarm. Restart the app, then disarm.
+While armed, the Install step always opens from the step bar, so Disarm is always reachable. You can disarm at any time before the transfer starts. From the start of the transfer until you restart the app, you cannot disarm. Restart the app, then disarm.
 
-If the Install row reads "Stopped: …" after the transfer started, do not try again. Restart the app, disarm, and hand the status file to the developer.
+Being left armed permits nothing by itself: every transfer needs a fresh authorization.
+
+If the Install row reads "Stopped: …" after the transfer started, do not try again. Restart the app, disarm, and export the wire log (see below).
 
 ## If the gate refuses
 
 A refusal shows either as a message in the wizard, or as RayNeo's install failing while the wizard still reads "Authorized" or "Not authorized". Take a screenshot of both apps. Then:
 
 1. Do not change any setting to get past the refusal. Never relax a version, hash or authorization check.
-2. Copy `Library/Application Support/TurboIOPrivateAddon/ExperimentalOTA/preparation-status.json` from the app's container (Xcode › Devices and Simulators › the app › Download Container). If Download Container is not available, send the screenshots and say so.
-3. If the build has the wire log (Turbo › Developer (expand it) › Wire log), tap **Export logs** too.
+2. Write down the failure line the wizard shows on the Install step.
+3. Open Turbo › Developer (expand it) › Wire log and tap **Export logs**.
 4. Disarm if you armed.
-5. Hand the screenshot, the status file and any log to the developer. Wait for a corrected build.
-
-What to read in `preparation-status.json`:
-
-| Field | Expected | If not |
-|---|---|---|
-| `flashGate.armHost` | `ios1021` | The installed build is not C20. |
-| `flashGate.armed` | `true` once you armed | Arming did not stick. Arm again. |
-| `flashGate.automaticUpdateDisabled` | `true` | Switch Auto Update on, then off, in RayNeo. |
-| `flashGate.recentTargetVersionRead` | `true` | No valid version read in the last 2 minutes, or the glasses reported another version, or the glasses have not confirmed their last update. |
-| `feed.firmwareQueries`, `feed.downloadRequests` | above 0 | `downloadRequests` 0: RayNeo did not download from Turbo. See [Folder already in use](#folder-already-in-use-文件夹已被占用). |
-| `feed.unknownQueries` | `0` | RayNeo 1.0.21 asks for updates in a form the local source does not answer. Developer fix. |
-| `officialDirectory.candidate` / `checkedMembers` / `integrityPassed` | `Turbo Menu TMG12` / `17` / `true` | `officialDirectory.note` says what is wrong with the folder. |
-| `flashGate.lastRefusedFrame` | absent, or from before you armed | It names the last refused frame. `type 4` with `Mode` other than 2: RayNeo asked for an install mode the gate does not accept. Developer fix. |
-| `flashGate.stage` / `failure` | `0` / empty before you authorize | `3` means the transfer stopped; `failure` gives the reason. A `failure` at stage `0` means Start install was tapped before you authorized. |
+5. Hand the screenshots, the failure line and the exported log to the developer. Wait for a corrected build.
 
 ## Folder already in use (文件夹已被占用)
 
@@ -89,11 +77,11 @@ This cannot flash stock firmware by mistake. Authorization needs all 17 files to
 1. Keep the download window open and check for an update again in RayNeo › Glasses › Software version. RayNeo has downloaded the Turbo package over its own stock files before.
 2. If the wizard still says the folder is in use, stop.
 3. Do not delete the app. Do not move or edit RayNeo's files by hand. Do not relax any check.
-4. Hand `preparation-status.json` to the developer.
+4. Export the wire log (Turbo › Developer › Wire log › **Export logs**) and hand it to the developer.
 
 ## After the flash
 
-1. Close and reopen the RayNeo app, then disarm (steps 14 and 15 above).
+1. Close and reopen the RayNeo app, then disarm (steps 15 and 16 above).
 2. RayNeo › Glasses › Software version shows Strix OS 1.0.6.11. If it shows another version, stop and tell the developer.
 3. Turbo › Developer (expand it) › Glasses runtime, row "Firmware and build", shows the build identity `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55`.
 4. Check the glasses features. There is no TMG12 device checklist in [firmware/README.md](../../firmware/README.md) yet. Until there is one, use the TMG11 owner check there (IMU, fold, knob, Sensors screen, sensor log) and the TMG12 section's list of changes (14-item carousel, Turbo Nav tile, new Light line). TMG12 starts with the default tile order; the TMG11 order is not carried over.
