@@ -96,7 +96,7 @@ At the end, report what passed, what failed and what was not run. A passing buil
 |---|---|
 | `official-addon/ios107-edition/` | The iOS addon: build, packaging, tests and the flash guide |
 | `firmware/` | The patched glasses firmware, one tree; the release label is in `firmware/RELEASE` |
-| `firmware-research/` | Stock Strix OS ZIPs that the firmware build reads, and older research notes |
+| `firmware-research/` | Stock Strix OS 1.0.5.5 and 1.0.5.12 ZIPs used by the firmware tests and by rebuilds of earlier releases, and older research notes |
 | `official-apps/` | Index and checksums of the published stock app inputs |
 | `dashboard-service/`, `app-gallery/`, `skills/` | The dashboard and mini-app SDK, 20 app templates, and an agent skill |
 | `rayneo-protocol/`, `rayneo-display/`, `rayneo-audio-container/`, `rayneo-transport-ios/` | Swift packages from the removed V1 client, kept as clean-room reference |

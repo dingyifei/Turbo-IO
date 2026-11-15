@@ -8,7 +8,7 @@ Neither half has run on a device yet. Every check so far is offline or in the em
 
 | | |
 |---|---|
-| Phone build | C20: RayNeo AI 1.0.21 (1), full host (`1021-full`) |
+| Phone build | C20: RayNeo AI 1.0.21 (1), full host (`--host 1021-full`; Info.plist `TIOHostProfile` `ios1021`) |
 | Firmware | TMG12: TMG11 ported to stock Strix OS 1.0.6.11 |
 | ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip` |
 | ZIP size | 9,549,211 bytes |
@@ -46,7 +46,7 @@ Each release has annotated tags: `app/cN` for the phone build, `fw/tmgN` for the
 | C13 | 1.0.7 (230) | TMG9 | 1.0.5.5 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` | `app/c13`, `fw/tmg9` |
 | C12 | 1.0.7 (230) | TMG8 | 1.0.5.5 | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` | `app/c12`, `fw/tmg8` |
 
-C14 and C15 are the `default` entry in `releases.json`; C16, C17 and C18 have their own entries. Firmware TMG2 to TMG7 are tagged `fw/tmg2` to `fw/tmg7`.
+C14 and C15 are the `default` entry in `releases.json`; C16, C17 and C18 have their own entries. C11 is tagged `app/c11` (paired with `fw/tmg7`). Firmware TMG2 to TMG7 are tagged `fw/tmg2` to `fw/tmg7`.
 
 Never flash the superseded TMG9 ZIP built before review round 1 (the `fw/tmg9` tag message names it). For TMG9, use only the ZIP in the table.
 

@@ -51,4 +51,4 @@ The history notes moved to [archive/history/](archive/history/) in cleanup(6).
 - [AMap navigation](archive/history/NAVIGATION.md) and [its background behaviour](archive/history/NAVIGATION_BACKGROUND.md): replaced by MapKit navigation.
 - [Turbo Display navigation](archive/history/TURBO_DISPLAY_NAVIGATION.md): early display and navigation experiments.
 - [ios107 release](../official-addon/ios107-edition/RELEASE.md): the original addon release record. The older V2 release docs (`official-addon/docs/`) were removed in cleanup(3) and are in git history.
-- [Screenshots](screenshots/README.md): provenance of the one image the README uses. The other screenshots, the design brief and the `turbo-io` setup skill (with its AGENT_SKILL guide) were removed in cleanup(6) and are in git history.
+- Screenshots: the screenshots, the design brief and the `turbo-io` setup skill (with its AGENT_SKILL guide) were removed in cleanup(6), and the last README image went with the review fixes after the README rewrite. All of them are in git history.

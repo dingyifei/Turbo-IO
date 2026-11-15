@@ -9,7 +9,7 @@ You build, sign and install the app yourself. No signed IPA is published. Agents
 | | |
 |---|---|
 | Phone build | C20 |
-| Host app | RayNeo AI 1.0.21 (1), full host (`ios1021`) |
+| Host app | RayNeo AI 1.0.21 (1), full host (`--host 1021-full`; Info.plist `TIOHostProfile` `ios1021`) |
 | Firmware | TMG12: TMG11 ported to stock Strix OS 1.0.6.11 |
 | Release entry | `c20` in [releases.json](releases.json); pins in [firmware-pins-c20.json](firmware-pins-c20.json) |
 | ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip` |
@@ -50,7 +50,7 @@ The stock app, the signing setup and the release ZIPs stay outside the repo. The
 | --- | --- |
 | `TURBO_PROFILE`, `TURBO_SIGN_ID`, `TURBO_DEVICE` | Signing a package |
 | `TURBO_APP1021` | Stock 1.0.21 `Runner.app`: C20 packages and the gate's `host1021` stage |
-| `TURBO_FIRMWARE`, `TURBO_APP107`, `TURBO_PATCHED_APP` | The gate's default-release tests |
+| `TURBO_FIRMWARE`, `TURBO_APP107`, `TURBO_PATCHED_APP` | The gate's default-release tests, the package tests and the host stages |
 | `TURBO_APP1011` | Stock 1.0.11 `Runner.app`: the gate's `host1011` stage (skipped when unset) |
 
 The packager finds the C20 ZIP at `$TURBO_INPUTS/tmg12/StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`, the path `releases.json` names, and refuses it unless its size and SHA-256 match. The firmware stages use the LLVM tools in `$TURBO_INPUTS/toolchain/llvm-bin`.
@@ -78,7 +78,7 @@ The dylib lands in `build/mapkit/TurboIOPrivateAddon.dylib`. This is the gate's 
 
 | Flag | Effect |
 | --- | --- |
-| `TIO_MAPKIT_ENABLED` | Apple Maps navigation. Needs `TIO_DISPLAY_PHONE=1` and the `embedded` mode. |
+| `TIO_MAPKIT_ENABLED` | Apple Maps navigation. Turns on `TIO_DISPLAY_PHONE`; needs the `embedded` mode. |
 | `TIO_DISPLAY_PHONE` | The phone-side display and navigation runtime |
 | `TIO_DISPLAY_FLASH` | Marks the addon as a flash build, which the packager requires. Needs `TIO_DISPLAY_PHONE=1` and `TIO_OTA_FLASH_ENABLED=1`. |
 | `TIO_OTA_FLASH_ENABLED` | Compiles the firmware wizard and its gate. It does not authorize a flash. |
@@ -122,7 +122,7 @@ Run the full gate from the repo root:
 bash scripts/turbo-gate.sh
 ```
 
-It runs, in order: the build and symbol checks, the pins check, the firmware layout checks, `test.py` on the default release, `test.py` on every named release in `releases.json` (C20 included), the node package tests, the `host1011` and `host1021` stages when their stock apps are set, and the source audit. `--preview` adds the preview screenshots and takes about 15 minutes. `--skip-tests` skips everything from `test.py` to the host stages.
+It runs, in order: the private-input check, the build and symbol checks, the pins check, the firmware layout checks, `test.py` on the default release, `test.py` on every named release in `releases.json` (C20 included), the node package tests, the `host1011` and `host1021` stages when their stock apps are set, and the source audit. `--preview` adds the preview screenshots and takes about 15 minutes. `--skip-tests` skips everything from `test.py` to the host stages.
 
 To run `test.py` on C20 yourself, from this folder:
 

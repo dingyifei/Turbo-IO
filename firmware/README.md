@@ -71,9 +71,9 @@ Not checked: anything on glasses, the phone link, the OTA install of a 1.0.6.11 
 
 ### Device check
 
-There is no TMG12-specific checklist yet. After the flash, check:
+There is no full TMG12 checklist yet. Until there is one, check at least the following, and compare with the TMG11 owner check below:
 
-1. RayNeo shows Strix OS 1.0.6.11, and the phone's Glasses runtime screen shows the build identity above.
+1. RayNeo › Glasses › Software version shows Strix OS 1.0.6.11, and Turbo › Developer › Glasses runtime, row "Firmware and build", shows the build identity above.
 2. The carousel has 14 items, the navigation tile reads Turbo Nav, and every tile behaves as on TMG11.
 3. The tile order is the default one.
 4. Display Test opens, and one knob press shows "Sensors (read only)".
@@ -145,7 +145,7 @@ Do this only for a new release. It ends the TMG12 identity carry-over (see above
 Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. It needs no phone build, no `package.env` and no `releases.json` entry, and writes its report to `official-addon/ios107-edition/build/gate-firmware/`. It cannot be combined with `--preview`, `--only-build` or `--skip-tests`. Its stages, in order:
 
 1. `fw-rebase`: `rebase_apply.py --check`.
-2. `fw-layout`: the stock-layout proof, `tools/check_layout.py` (no raw stock offset in built code) and its self-test, the host drivers, the independent rebase check, `stock_abi_test`, `stock_base_test`, `tools/check_kept.py`, `tools/check_cjk.py` and the tile model.
+2. `fw-layout`: the stock-layout proof, `tools/check_layout.py` (no raw stock offset in built code) and its self-test, the host drivers, the independent rebase check, `stock_abi_test`, `stock_base_test`, `tools/check_kept.py`, `tools/check_cjk.py`, the stock name and grid label tests, and the tile model.
 3. `fw-build`: a plain build of the tree, then `tests/sensors_light_off_link_test.py`. With `--tree-zip ZIP` it compiles only and uses the given ZIP.
 4. `fw-audit`: `build.py --audit` of the tree ZIP.
 5. `fw-tests`: `test.py --firmware-only`.
@@ -154,7 +154,7 @@ Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. 
 
 A pass ends with `GATE PASS (firmware-only, plain build)`. Run it without `--tree-zip`.
 
-The full gate (`bash scripts/turbo-gate.sh`, see [AGENTS.md](../AGENTS.md)) also builds the phone addon, checks the pins and runs the phone `test.py`. It looks the tree's ZIP up in `releases.json`, so a release that carries this ZIP must be listed there.
+The full gate (`bash scripts/turbo-gate.sh`, see [AGENTS.md](../AGENTS.md)) runs `fw-layout` but none of the other firmware-only stages. It builds the phone addon, checks the pins and runs the phone `test.py`. It looks the tree's ZIP up in `releases.json`, so a release that carries this ZIP must be listed there.
 
 ## Reproduce an earlier release
 
@@ -167,7 +167,7 @@ mkdir "$D/old" && git -C "$R" archive "$TAG" firmware "firmware-research/strix-$
 python3 -I "$D/old/firmware/build.py" --stock "$D/old/firmware-research/strix-$BASE/stock/Strix-OS-$BASE-original.zip" --llvm-bin "$TC" --out "$D/old/out"
 ```
 
-Use LLVM/LLD 23.1.5 (`$TURBO_INPUTS/toolchain/llvm-bin`) for TMG10 and TMG11, and 23.1.4 (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`) for TMG9 and older. TMG2 does not reproduce with either; its tag note says why.
+The recipe works as written for `fw/tmg10` and `fw/tmg11`, with LLVM/LLD 23.1.5 (`$TURBO_INPUTS/toolchain/llvm-bin`). For `fw/tmg9`, whose pins have no `stockBase`, set `BASE=1.0.5.5` by hand and use LLVM/LLD 23.1.4 (`$TURBO_INPUTS/toolchain/llvm-23.1.4/bin`). TMG8 and older were built from `firmware-research/strix-1.0.5.5-tmgN` at their tags, not from `firmware/`; the tag message names the folder. TMG2 does not reproduce with either toolchain; its tag note says why.
 
 ## Earlier releases
 
@@ -195,7 +195,8 @@ Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the 
 | `build-inputs.json` | Every pin: stock base and hashes, the 25 edits, module, AP, ZIP and toolchain |
 | `src/` | Module source; `src/stock_layout.h` names every stock offset |
 | `link.ld`, `trampolines.S` | The link script with the stock symbol addresses, and the patch-site trampolines |
+| `ImageWireFormat.h` | The image wire format shared with the phone |
 | `include/`, `assets/` | Build includes and the menu icon art |
 | `baseline/` | Immutable inputs carried over from older releases, and the rebase tables ([README](baseline/README.md)) |
-| `tools/` | `rebase_apply.py`, `rebase_derive.py`, `phone_pins.py`, `stock_zip.py`, `check_layout.py`, `check_kept.py`, `check_cjk.py`, `encode_icons.py` |
+| `tools/` | `rebase_apply.py`, `rebase_derive.py`, `phone_pins.py`, `stock_zip.py`, `check_layout.py`, `check_kept.py`, `check_cjk.py`, `encode_icons.py`, `test_branch.py` |
 | `tests/` | Host tests and stock proofs |

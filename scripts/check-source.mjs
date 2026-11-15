@@ -4,7 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 
-// Exact, reviewed non-source files (scripts/*-reviewed-assets.json), not a blanket media exclusion.
+// Exact, reviewed non-source files (scripts/reviewed-assets.json and scripts/ios107-reviewed-assets.json), not a blanket media exclusion.
 const reviewedScreenshots = new Map();
 
 // Values are never printed. Regex scanning is a release gate, not a guarantee.
