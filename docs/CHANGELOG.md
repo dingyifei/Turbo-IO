@@ -42,7 +42,7 @@
 
 **双缓冲内存不增加：239424字节；AP为7,435,336字节，仅增加1024字节。** 旧TVP1视频兼容保留，其余14个新版原厂载荷不变；公开源码重建所得AP与ZIP与实测候选逐字节一致。新高清需刷TVP2，不能只装手机插件；完整OTA和恢复风险依旧存在，非开发者请保留原厂固件。
 
-**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](TVP2_TAR2.md) · [固件源码与重建](../firmware-research/strix-1.0.5.5-tvp2/README.md) · [原创高清模块](../official-addon/tar2-display/README.md) · [GPLv3 AirPlay接收SDK](../official-addon/tar2-airplay/README.md)**
+**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](archive/TVP2_TAR2.md) · [固件源码与重建](../firmware-research/strix-1.0.5.5-tvp2/README.md) · 原创高清模块 · GPLv3 AirPlay接收SDK**
 
 不发布个人签名/合并IPA、视频素材、配对密钥、Cookie或账号。`tar2-airplay`是经维护者确认的GPLv3局部许可例外，其余目录非商业许可不变；本次未发布Android AirPlay接收器。Mentra OS商店应用完整兼容仍在继续适配，不在本次投屏实测结论内。
 
@@ -383,7 +383,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 **默认原厂固件与自定义固件是两条路线：** 原厂固件下的有限卡片/通知模板不等于自由替换系统 UI；自定义 AP 路线已发展到 Turbo Display 和独立导航应用，但需要匹配固件与手机实现，不能直接套到四端。Claude Code、Hermes、WorkBuddy、OpenClaw 也不能仅凭下拉选项视作已接通。
 
-详细证据与使用限制：[iOS V1](archive/v1/v1-sdk.md#能力与边界) · [iOS V2](../official-addon/docs/VALIDATION.md) · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
+详细证据与使用限制：[iOS V1](archive/v1/v1-sdk.md#能力与边界) · iOS V2 · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
 
 ## 版本与历史进展
 
@@ -392,12 +392,12 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 <details>
 <summary>展开 iOS / Android / HarmonyOS 版本记录</summary>
 
-- **iOS 1.0.5（201）+ Strix OS 1.0.4.12**：新增新版宿主的精确版本 / Build / UUID 适配，保留 1.0.4 和 1.0.2。非越狱 iPhone Air 私用研究版已安装并确认扩展加载；用户完成官方固件升级后反馈「一切正常」，目前未报告升级引入的功能异常。该反馈不是全部功能、长期后台或其他平台的全量回归结论。[兼容性、升级步骤与验收边界](../official-addon/docs/COMPATIBILITY_105.md)
+- **iOS 1.0.5（201）+ Strix OS 1.0.4.12**：新增新版宿主的精确版本 / Build / UUID 适配，保留 1.0.4 和 1.0.2。非越狱 iPhone Air 私用研究版已安装并确认扩展加载；用户完成官方固件升级后反馈「一切正常」，目前未报告升级引入的功能异常。该反馈不是全部功能、长期后台或其他平台的全量回归结论。兼容性、升级步骤与验收边界
 
 - **原生鸿蒙源码首次公开 · WORKBENCH 14**：独立 BLE 连接/初始化、自有语音模型已在 Mate X5 验证；模拟天气、待办和自定义卡片下发通过。高德原生 POI 搜索、步行算路、模拟导航回调及眼镜显示本轮通过。243 项本机测试通过；**手机地图底图目前白屏，骑行/驾车真机与实际外场导航尚未验收**。录音/提词器仍有未修复问题，系统通知转发未实现。安装与使用 · 逐项验收状态
 
 - **Android 源码新增公开**：兼容官方 Android 1.0.4（195），**非 Root 设备已由用户实机验证可用**。模型/搜索/录音导出和路线文字已有研究机用户确认。模拟导航支持暂停、1/2/4/8倍速，自动测试通过，新增模拟镜片效果待验收。仍只提供源码，需自行编译签名，不是预打包成品。
-- **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。[兼容性与预览](../official-addon/docs/COMPATIBILITY_104.md)
+- **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。兼容性与预览
 - **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · Android 导航
 
 </details>

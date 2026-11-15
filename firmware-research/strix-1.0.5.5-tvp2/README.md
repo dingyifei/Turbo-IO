@@ -2,7 +2,7 @@
 
 2026-10-23，用户在 iPhone 17 Pro Max / 雷鸟 iOS 1.0.7（230）/ TAR2 私用集成版测试反馈“没问题”。公开本次原样固件、原创扩展源码与可复现构建，不将一次用户验收等同所有机型/全部功能/后台稳定性验证。
 
-**[下载固件 / AP / SHA256SUMS / 源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [接收模块与接入](../../official-addon/tar2-airplay/README.md) · [刷机步骤](../../docs/TVP2_TAR2.md)**
+**[下载固件 / AP / SHA256SUMS / 源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [接收模块与接入](../../official-addon/tar2-airplay/README.md) · [刷机步骤](../../docs/archive/TVP2_TAR2.md)**
 
 ## 更新价值
 

@@ -10,12 +10,6 @@ const reviewedScreenshots = new Map([
   ['firmware-research/strix-1.0.4.12/assets/turbo-photo-on-glasses.png', 'fc40e716e30ad8817aa27482e497b7ab7f23f77b03c884ef3533b2df0b96a49c'], // Owner-authorized glasses photo; EXIF/XMP removed, IDAT pixels unchanged, visually reviewed.
   ['firmware-research/strix-1.0.4.12/assets/turbo-photo.png', '47031ca47ddb044cedc6af2146018556954572311e2dfd58e807354e7ac17251'], // Owner-provided original color illustration; EXIF removed, pixels unchanged; presentation only.
   ['firmware-research/strix-1.0.4.12/assets/turbo-photo-firmware.png', '738169867ec0ca778cd6ce14e803aaa508bf16f8e169d1081db3e622d571db24'], // Exact embedded portrait, owner explicitly authorized publication; deterministic rebuild input.
-  ['official-addon/docs/home-tabs-glass-light.png', '12c74fe54a48d2f6b4b5371381f7308732f8b35b07465ecf29728f33dbc969b4'],
-  ['official-addon/docs/home-tabs-glass-dark.png', '2f14655122697a4dd0870147fb6bf71417f8dfea82a45670443e2dd1e13c9407'],
-  ['official-addon/docs/navigation-search.png', 'd6a4dcb745bd87e67884fa686d87d033d9b557bd70a31cea4fc8098f7935245c'],
-  ['official-addon/docs/model-preview.png', '01e013c04f3b0841e4a7ef1ca83af89585154f562c23cfa71698ede373eb4f79'],
-  ['official-addon/docs/knowledge-preview.png', 'bb7acde21eddf1c5f83eb02b48cddf2228ad913796fe76f8f5187297a49eb5e7'],
-  ['official-addon/docs/profile-preview.png', '567cad6092cc82c543f2c01061615a2ae5e4f491bfd486ee11669dffb5db91b6'],
   ['docs/screenshots/app-home.png', 'ec995e6a4212b0f39c2114369f7264200c13fe84e81210fca34cf8cfbb7d41d9'],
   ['docs/screenshots/app-tools.png', '8d0ae97490dea2d772196ca529b3a9fb82dc4966d66ad1ab8ea4e5ef1befa2e1'],
   ['docs/screenshots/web-chat.png', '61d132ff1b925e158560b3c11aa27f6403be5d6d8a71c5e6fff547cbbc104423'],
@@ -57,9 +51,6 @@ for(const [p,h] of Object.entries(review.files))reviewedScreenshots.set(p,h);
 // The stock ZIP is independently inspected by the version-pinned firmware audit.
 const tmig1Review=JSON.parse(fs.readFileSync(new URL('./tmig1-reviewed-assets.json',import.meta.url),'utf8'));
 for(const [p,h] of Object.entries(tmig1Review.files))reviewedScreenshots.set(p,h);
-// NAVS3 hash-pinned prior assets plus visually reviewed synthetic release art.
-const navs3Review=JSON.parse(fs.readFileSync(new URL('./navs3-reviewed-assets.json',import.meta.url),'utf8'));
-for(const [p,h] of Object.entries(navs3Review.files))reviewedScreenshots.set(p,h);
 const ios107Review=JSON.parse(fs.readFileSync(new URL('./ios107-reviewed-assets.json',import.meta.url),'utf8'));
 for(const [p,h] of Object.entries(ios107Review.files))reviewedScreenshots.set(p,h);
 // Byte-identical copy of the already published synthetic ANIM60 build input.

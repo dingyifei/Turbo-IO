@@ -2,11 +2,7 @@
 
 ## TVP2 / TAR2 AirPlay receiver (2026-10-23)
 
-`official-addon/tar2-airplay/` is an explicitly authorized GPL-3.0-or-later subtree, including its required first-party display/transport copies. The root noncommercial restriction does not apply to that subtree. Other directories retain their existing licenses. No upstream third-party file is relicensed by this exception.
-
-The build pins UxPlay commit `517cbb1240d9b9f69330c55b957cdd52b4175b2a` (GPLv3 receiver core and retained per-file notices), libplist commit `2117b8fdb6b4096455bd2041a63e59a028120136` (LGPL), and OpenSSL 3.5.4 (Apache-2.0). These sources are fetched from upstream with pinned identities; their original notices remain with them. iOS uses system Bonjour and VideoToolbox, not the desktop GStreamer renderer. No private paired key, account, video fixture, compiled dependency or merged/signed vendor app is shipped in this source subtree. GPL compliance and vendor rights must be reviewed before distributing any combined binary; this release is not such a binary distribution.
-
-TVP2's eye-side first-party display code is separate from the phone-side GPL receiver and does not embed UxPlay. The experimental OTA's original RayNeo/other vendor code and resources retain their rights and the same non-endorsement/risk boundaries as prior firmware releases. Only the listed first-party extension source may be licensed by this project.
+`official-addon/tar2-airplay/` (a GPL-3.0-or-later subtree pinning UxPlay, libplist and OpenSSL) and `official-addon/tar2-display/` were removed from the tree in cleanup(3). Their notices and licenses stay with them in git history and are unchanged there.
 
 ## APP107 / iOS 1.0.7 compatibility (2026-10-19)
 

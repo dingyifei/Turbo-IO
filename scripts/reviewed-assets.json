@@ -25,6 +25,7 @@
     "docs/screenshots/android-release-update-wide-20260927.png": "5b4837af299fd5561530243cb72e691586fa11271ff719c31b027f05566da8fc",
     "docs/screenshots/app-gallery-20260926.png": "5ec2499a417861562c16196e0a65a2410cc5259de0e71548c2e7f26d7984d53b",
     "docs/screenshots/developer-ecosystem-big-step-20260926.png": "ebdf4f1d35f4b725fcaae9ed68f2608697e8b925c39f97e42c515a1bb72f1def",
+    "docs/screenshots/navs3-tmg2-hero-20261019.png": "ee9a3a4f6665c39d00170ad9f100e7e9811a003890688b7ce7d6bf9194d86fb7",
     "firmware/assets/menu-icons/png/00-recorder.png": "234741b6fe59278720db05c5dd4130c07829d540db52e999afcc1f8fb7070c6f",
     "firmware/assets/menu-icons/png/01-live-captions.png": "11cea5ab5c9bc391174deec1821ca828b300fb152e899ac588bd9a3d9c101331",
     "firmware/assets/menu-icons/png/02-live-assist.png": "16437b0c88393ac7c501fb3ba484ad8e0563ea5a8db8ea471accd80518b44858",
@@ -38,6 +39,7 @@
     "firmware/assets/menu-icons/png/10-music.png": "cee796bea5f279015074ace5ff7cd37de57fbc2183bf5bb1cca51a1c945c601a",
     "firmware/assets/menu-icons/png/11-pomodoro.png": "6f318b37f3de1a5b8f242018c53c33d7cfa3d6cdc0c463ee8bfb837c58f06f4b",
     "firmware/assets/menu-icons/png/12-my-apps.png": "34f83a02804c448a43334ca86e306fb2781d54918a7ba40c628d8eeeb46b6217",
-    "firmware/assets/menu-icons/png/13-camera.png": "273bc6281eba4a936c113fae2484d5cb67456724e4ece124b33a95dd7306d76f"
+    "firmware/assets/menu-icons/png/13-camera.png": "273bc6281eba4a936c113fae2484d5cb67456724e4ece124b33a95dd7306d76f",
+    "firmware/baseline/animation-frames.l8": "f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d"
   }
 }

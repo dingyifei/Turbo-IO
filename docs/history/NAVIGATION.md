@@ -32,7 +32,7 @@
 ## 2. 兼容性与高德依赖
 
 - **当前官方 App：iOS 雷鸟 AI 眼镜 1.0.5 / Build 201**。普通扩展保留1.0.4（195）、1.0.2（67）的历史适配；**TNV1实验OTA仅适配1.0.5（201）**。精确二进制约束见[V2构建说明](../../official-addon/README.md)。未知版本不要跳过检查。
-- **当前固件：Strix OS 1.0.4.12**。原厂升级后用户反馈正常，TNV1的固定AP修改版另有导航及后台实测反馈。见[1.0.5适配说明](../../official-addon/docs/COMPATIBILITY_105.md)和[TNV1验收边界](../../firmware-research/strix-1.0.4.12/native-navigation/README.md)。早期协议研究基于1.0.3.15，1.0.4.8为历史升级验证。每次重新生成SID并等待眼镜ACK，不能外推全部模式/固件。
+- **当前固件：Strix OS 1.0.4.12**。原厂升级后用户反馈正常，TNV1的固定AP修改版另有导航及后台实测反馈。见1.0.5适配说明和[TNV1验收边界](../../firmware-research/strix-1.0.4.12/native-navigation/README.md)。早期协议研究基于1.0.3.15，1.0.4.8为历史升级验证。每次重新生成SID并等待眼镜ACK，不能外推全部模式/固件。
 - Navi **11.2.100**（含地图），Foundation **1.9.1**（非IDFA包），Search **9.8.1**。使用静态库构建进扩展；不能再把相同SDK作为第二套动态库重复注入宿主。
 - 官方来源：[导航SDK下载](https://developer.amap.com/api/ios-navi-sdk/download)、[地图/搜索SDK下载](https://lbs.amap.com/api/ios-sdk/download)。使用前阅读并遵循其许可、隐私及服务要求。本仓库不再分发这些SDK二进制。
 
@@ -144,7 +144,6 @@ SubtitleHUD + ProtocolContext：当前设备、新SID、ACK门槛
 
 ## 8. 无Key测试
 
-<img src="../../official-addon/docs/navigation-search.png" width="280" alt="无账号无Key的模拟器搜索页：显式搜索与取消反馈，不是真实联网结果" />
 
 上图是公开源码的UIKit模拟器截图，使用公开测试词演示取消状态，不是眼镜截图或真实搜索结果。
 

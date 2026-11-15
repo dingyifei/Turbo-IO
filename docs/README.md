@@ -15,7 +15,6 @@ Status column:
 | [Agent skill](AGENT_SKILL.md) | Current | Installing the setup skill ([skill source](../skills/turbo-io/SKILL.md)) |
 | [Developer ecosystem](DEVELOPER_ECOSYSTEM.md) | Current | Dashboard and mini-app SDKs: your server, your glasses apps |
 | [Porting flow](porting-flow.md) | Current | How Turbo-IO moves to a new RayNeo firmware or app release |
-| [TVP2 / TAR2](TVP2_TAR2.md) | Current | Clear screen casting: install and acceptance |
 | [Clench tooling](../tools/clench/README.md) | Current | Offline tooth-tap recording and analysis |
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
 | [Licensing](LICENSING.md) | Current | Non-commercial terms and third-party boundaries |
@@ -46,8 +45,9 @@ These are written up but neither approved nor built.
 
 ## Historical
 
+- [TVP2 / TAR2](archive/TVP2_TAR2.md): clear screen casting. Its receiver SDK (`official-addon/tar2-airplay`, `tar2-display`) was removed in cleanup(3).
 - [WeRead research](history/WEREAD_RESEARCH.md): the reading integration, since removed.
 - [AMap navigation](history/NAVIGATION.md) and [its background behaviour](history/NAVIGATION_BACKGROUND.md): replaced by MapKit navigation.
 - [Turbo Display navigation](history/TURBO_DISPLAY_NAVIGATION.md): early display and navigation experiments.
-- [V2 release](../official-addon/docs/RELEASE_V2.md) and [ios107 release](../official-addon/ios107-edition/RELEASE.md): the original addon release records.
+- [ios107 release](../official-addon/ios107-edition/RELEASE.md): the original addon release record. The older V2 release docs (`official-addon/docs/`) were removed in cleanup(3) and are in git history.
 - [Screenshots](screenshots/README.md) and [design artwork](design/developer-ecosystem-banner-20260926.md): provenance notes for images used in the README.

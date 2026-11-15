@@ -1,5 +1,7 @@
 # TVP2 / TAR2 · 清晰投屏安装与验收
 
+> 归档：TVP2 / TAR2 的接收与显示模块（`official-addon/tar2-airplay`、`tar2-display`）已在 cleanup(3) 从源码树删除，保留在 git 历史中。本文只作记录。
+
 ## 版本与公开范围
 
 | 部分 | 本次状态 |
@@ -13,14 +15,14 @@
 
 ## 配套手机端
 
-完整私用集成版包含个人素材和签名，**不公开下载**。公开开发者按 [TAR2 SDK](../official-addon/tar2-airplay/README.md)构建接收器，按接入契约连接自己合法使用的iOS宿主。原厂1.0.7输入与既有SDK参考见 [ios107-edition](../official-addon/ios107-edition/README.md)；历史APP107/TMG2打包器仍固定旧候选，不能拿它误认为已经支持TVP2。
+完整私用集成版包含个人素材和签名，**不公开下载**。公开开发者按 TAR2 SDK构建接收器，按接入契约连接自己合法使用的iOS宿主。原厂1.0.7输入与既有SDK参考见 [ios107-edition](../../official-addon/ios107-edition/README.md)；历史APP107/TMG2打包器仍固定旧候选，不能拿它误认为已经支持TVP2。
 
 若自行迁移现有OTA组件，必须保留原版保护，并将候选ZIP、AP、解压15文件、每个分片的大小/哈希整套更新为TVP2；不能只改名字或替换下载URL。不能用硬编码“校验通过”替代真实回读。
 
 ## 固件安装（匹配并已接好TVP2门禁的手机端）
 
 1. 导出/备份手机App必要数据，确认眼镜电量至少50%，回首页，结束录音、智记、导航、音乐、阅读、相机、Mentra等任务。
-2. 下载本次完整TVP2 ZIP，用 `shasum -a 256 <ZIP>` 比对[固定SHA](../firmware-research/strix-1.0.5.5-tvp2/README.md)。单独AP不是刷机输入。
+2. 下载本次完整TVP2 ZIP，用 `shasum -a 256 <ZIP>` 比对[固定SHA](../../firmware-research/strix-1.0.5.5-tvp2/README.md)。单独AP不是刷机输入。
 3. 手机TurboIO → 设置 → 诊断与实验固件 → TVP2。内置候选或导入ZIP必须真正通过校验。
 4. 开启“15分钟只下载验收”，回原厂固件页检查、下载，等“软件就绪”。此步不授权安装。
 5. 回读官方解压目录，逐个核对15个载荷及清单。旧TVP1缓存、残缺包或哈希不符一律停，不反复强刷。

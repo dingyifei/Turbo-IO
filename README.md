@@ -35,7 +35,7 @@
 
 **手机构建与固件必须成对使用**，刷写、校验和回退只按 [OTA 教程](official-addon/ios107-edition/OTA.md)。`git show fw/tmg8` 可以看到该版本的 ZIP SHA-256、构建提交和配对的手机构建；从 TMG3 起，在标签上重新构建会逐字节得到同一个 ZIP。
 
-其他仍有效的发布：[TVP2 / TAR2 · 540×220 原生清晰投屏](docs/TVP2_TAR2.md)（2026-10-23，仅 iOS，需要 TVP2）· [Strix OS 1.0.4.12 原厂负载归档](firmware-research/strix-1.0.4.12/stock/README.md)（不是救砖工具）。
+其他仍有效的发布：[Strix OS 1.0.4.12 原厂负载归档](firmware-research/strix-1.0.4.12/stock/README.md)（不是救砖工具）。
 
 ## 使用前必读
 
@@ -125,7 +125,6 @@ Key由我在本机安全填写，不索取聊天明文、不复用维护者配�
 | 路径 | 内容 |
 | --- | --- |
 | `official-addon/ios107-edition` | 当前 iOS 扩展：构建、打包、测试与 OTA 刷写流程；旧版本在提交 `27ad86e` 中保留 |
-| `official-addon/tar2-airplay` · `tar2-display` | TVP2 投屏的接收与显示模块；**AirPlay 接收模块单独采用 GPLv3**，见[许可说明](docs/LICENSING.md) |
 | `official-apps` | 原厂 App 输入的版本索引与校验（不含 Turbo IO） |
 | `firmware` | 当前眼镜固件源码（单一源码树，版本为 `fw/tmgN` 标签）；`firmware/baseline` 保存早期版本的少量构建输入 |
 | `firmware-research` | 原厂固件与研究笔记（1.0.4.12、1.0.5.5、TVP2），不参与当前构建 |
