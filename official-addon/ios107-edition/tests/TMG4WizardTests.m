@@ -1,4 +1,9 @@
+// The real OTA wizard and gate on the armed full 1.0.21 host (tests/FullHostFixture.h), on the real
+// candidate files: the version read, its two-minute window, the accepted versions, the folder check,
+// Auto Update, the idle and health checks, one authorization, the peer, and every slice.
+// tests/TMG4WizardArmTests.m runs the arm step itself around the same gate. No device I/O.
 #import "TMG4WizardHost.h"
+#import "FullHostFixture.h"
 #import "OTAWizardModel.h"
 #import "ExperimentalOTAFlash.h"
 #import "ExperimentalOTA.h"
@@ -6,16 +11,25 @@
 #import "FirmwarePins.h"
 #import "ReleasePolicy.h"
 #import "TIOLanguage.h"
+#import <mach-o/loader.h>
 #include <assert.h>
 static NSString *Home;
 static NSTimeInterval Now=100;
 static BOOL Idle=YES,Healthy=YES;
 static NSDictionary *Prefs,*Host;
+static const struct mach_header *Image;
 NSString *TMG4Home(void){return Home;}
 NSTimeInterval TMG4Now(void){return Now;}
 NSDictionary *TMG4HostInfo(void){return Host;}
 NSDictionary *TMG4Prefs(void){return Prefs;}
 BOOL TDPPhonePauseForOTA(void){return Idle;}
+const struct mach_header *TMG4MainImage(void){return Image;}
+typedef struct {struct mach_header_64 h;struct uuid_command u;} FakeHeader;
+static const struct mach_header *FakeImage(NSString *uuid){
+    FakeHeader *f=calloc(1,sizeof *f);assert(f);f->h.magic=MH_MAGIC_64;f->h.filetype=MH_EXECUTE;f->h.ncmds=1;f->h.sizeofcmds=sizeof(struct uuid_command);
+    f->u.cmd=LC_UUID;f->u.cmdsize=sizeof(struct uuid_command);[[[NSUUID alloc]initWithUUIDString:uuid] getUUIDBytes:f->u.uuid];
+    return (const struct mach_header *)f;
+}
 NSDictionary *TIOExperimentalOTAFeedStatus(void){return @{@"bootstrapEligible":@YES,@"running":@YES,@"healthPassed":@(Healthy)};}
 static void Var(NSMutableData *d,NSUInteger n){do{uint8_t b=n&127;n>>=7;if(n)b|=128;[d appendBytes:&b length:1];}while(n);}
 static NSData *Frame(unsigned type,id json,NSData *binary){NSMutableData *d=[NSMutableData new];Var(d,8);Var(d,1);Var(d,16);Var(d,type);if(json){NSData *j=[NSJSONSerialization dataWithJSONObject:json options:0 error:nil];Var(d,26);Var(d,j.length);[d appendData:j];}if(binary){Var(d,34);Var(d,binary.length);[d appendData:binary];}return d;}
@@ -58,8 +72,10 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(argc==4);NSString *version=@(argv[3]);assert([TRPAccepted() containsObject:version]&&[TIO_FW_ACCEPTED_OS_VERSIONS isEqual:TRPAccepted()]&&[TIO_FW_OTA_FOLDER isEqual:TRPFolder]);
  Home=[@(argv[2])stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TRPFolder]];NSFileManager *fm=NSFileManager.defaultManager;
  assert([fm createDirectoryAtPath:[directory stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil]);assert([fm copyItemAtPath:@(argv[1]) toPath:directory error:nil]);
- Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.7",@"CFBundleVersion":@"230",@"TIOExperimentalOTAQueryRouting":@"ios107-tmg2-loopback-flash-gated"};
+ Host=TFHFullInfo();Image=FakeImage(TFH_UUID);[TMG4ArmStore() removeAllObjects];
  Prefs=@{@"fixture_ota_firmware_auto_update":@NO};TIOOTARecordTransportHookReady();assert(TIOOTAFlashBuild()&&TIOOTAFlashProtected());assert(TIOOTAScopedSenderCount()==0);
+ // Armed first: every check below is the gate's own (the arm step is tests/TMG4WizardArmTests.m).
+ assert(TIOOTAArmRequired()&&TIOOTAFlashArm(nil)&&[TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue]);
  // No TTL/TLG/TDG or nav reply/capability has been provided. The real business-9
  // observer and authorization policy must still permit the old installed OS.
  assert([Snapshot(NO)[@"canDownload"]boolValue]);assert(![Snapshot(NO)[@"canAuthorize"]boolValue]);Refused();
@@ -96,5 +112,5 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(Send(5,@{@"OtaVersion":TRPTarget},nil,@"fixture-peer"));assert(Send(6,manifest,nil,@"fixture-peer"));unsigned slices=0;NSUInteger total=0;
  for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)],@"fixture-peer"));slices++;total+=n;}}
  assert(slices==TIO_FW_PAYLOAD_SLICES&&total==TIO_FW_PAYLOAD_BYTES);assert([TIOOTAFlashStatus()[@"validatedSlices"]unsignedIntegerValue]==slices);
- [fm removeItemAtPath:Home error:nil];printf("PASS real OTA wizard/gate from %s: fresh validated business9, exact candidate and all slices, one authorization transition, no feature caps, stale/hash/peer/idle refusals; deviceIO=false\n",version.UTF8String);
+ [fm removeItemAtPath:Home error:nil];[TMG4ArmStore() removeAllObjects];printf("PASS real OTA wizard/gate on the armed full " TFH_NAME " host from %s: fresh validated business9, exact candidate and all slices, one authorization transition, no feature caps, stale/hash/peer/idle refusals; deviceIO=false\n",version.UTF8String);
 }return 0;}

@@ -1,6 +1,5 @@
-// Full 1.0.11 host (ios1011, C15) and, built with -DTIO_TEST_HOST_1021=1, the full 1.0.21 host
-// (ios1021, C20; tests/FullHostFixture.h), armed: the unchanged 1.0.7 wizard and gate, run like
-// tests/TMG4WizardTests.m on the real candidate files, plus the arm step around it.
+// Full 1.0.21 host (ios1021, C20 onward; tests/FullHostFixture.h), armed: the unchanged wizard and
+// gate, run like tests/TMG4WizardTests.m on the real candidate files, plus the arm step around it.
 // Disarmed, the wizard cannot authorize; armed, authorization opens the same Mode 2
 // only gate (the forced page's Mode 4 is refused), disarm before the transfer revokes
 // the grant, and disarm is refused once the transfer has started. No device I/O.
@@ -92,7 +91,7 @@ int main(int argc,char **argv){@autoreleasepool{
     assert([TIOOTAWizardHubStatusKey(s) isEqual:@"ota.hub.disarmed"]);
     NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e)&&[e.localizedDescription isEqual:TIOText(@"本机 TMG 刷写尚未启用；先在向导中启用，未授权。")]&&Stage()==0);
     for(NSNumber *mode in @[@1,@2,@3,@4])assert(!Send(4,@{@"Mode":mode},nil));
-    // Arm, then the 1.0.7 checks decide: the Auto Update toggle is still required.
+    // Arm, then the gate checks decide: the Auto Update toggle is still required.
     assert(TIOOTAFlashArm(nil));s=Snapshot();assert([s[@"armed"] boolValue]&&[s[@"arm"] integerValue]==TIOOTACheckOK&&[s[@"canAuthorize"] boolValue]);
     Prefs=@{@"fixture_ota_firmware_auto_update":@YES};assert(![Snapshot()[@"canAuthorize"] boolValue]&&!TIOOTAFlashAuthorize(nil)&&Stage()==0);
     Prefs=@{};assert(!TIOOTAFlashAuthorize(nil)&&Stage()==0);Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
@@ -111,11 +110,11 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(!TIOOTAFlashAuthorize(nil));
     assert(!Send(4,@{@"Mode":@4},nil));assert(!Send(4,@{@"Mode":@1},nil));assert(!Send(4,@{@"Mode":@3},nil));assert(Stage()==1);
     assert(Send(4,@{@"Mode":@2},nil)&&Stage()==2);
-    // Mid-transfer: disarm is refused and the record stays; the transfer continues as on 1.0.7.
+    // Mid-transfer: disarm is refused and the record stays; the transfer continues.
     assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed()&&Stage()==2);
     NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==TIO_FW_MEMBER_PINS.count);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
     // A started transfer no longer reads the arm record: with the record gone (a read failure, a
-    // preferences glitch or a disarm that raced the guard) or replaced by junk, the 1.0.7 gate decides.
+    // preferences glitch or a disarm that raced the guard) or replaced by junk, the gate decides.
     NSDictionary *record=TMG4ArmStore()[ArmKey];assert(record);[TMG4ArmStore() removeObjectForKey:ArmKey];assert(!TIOOTAFlashArmed());
     assert(Send(5,@{@"OtaVersion":TRPTarget},nil));TMG4ArmStore()[ArmKey]=@"junk";assert(Send(6,manifest,nil));[TMG4ArmStore() removeObjectForKey:ArmKey];unsigned slices=0;NSUInteger total=0;
     for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)]));slices++;total+=n;}}
@@ -128,5 +127,5 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(!TIOOTAFlashDisarm()&&TIOOTAFlashArmed()&&Stage()==3);
     for(NSNumber *mode in @[@1,@2,@4])assert(!Send(4,@{@"Mode":mode},nil));
     [fm removeItemAtPath:Home error:nil];[TMG4ArmStore() removeAllObjects];
-    printf("PASS full " TFH_NAME " wizard/gate from %s: disarmed cannot authorize; armed takes the 1.0.7 gate (Auto Update toggle, one authorization, Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 (also off main, run on main), is refused at stage 2 and 3 with the record kept; a started transfer ignores the arm record; deviceIO=false\n",version.UTF8String);
+    printf("PASS full " TFH_NAME " wizard/gate from %s: disarmed cannot authorize; armed takes the gate (Auto Update toggle, one authorization, Mode 4 refused, Mode 2 starts, all slices); disarm revokes at stage 1 (also off main, run on main), is refused at stage 2 and 3 with the record kept; a started transfer ignores the arm record; deviceIO=false\n",version.UTF8String);
 }return 0;}

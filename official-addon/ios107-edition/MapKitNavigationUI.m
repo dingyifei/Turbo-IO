@@ -29,7 +29,7 @@ static UIFont *ChromeFont(TIODesignTextStyle style,UIFontWeight weight){
 static NSString *Meters(double m){if(!isfinite(m)||m<0)return @"—";if(m>=1000)return [NSString stringWithFormat:FormatText(@"nav.unit.km"),m/1000];long r=m<50?lround(m):lround(m/10)*10;return [NSString stringWithFormat:FormatText(@"nav.unit.m"),r];}
 static NSString *Minutes(double s){if(!isfinite(s)||s<0)return @"—";long m=MAX(1,lround(ceil(s/60)));return m>=60?[NSString stringWithFormat:FormatText(@"nav.unit.hmin"),m/60,m%60]:[NSString stringWithFormat:FormatText(@"nav.unit.min"),m];}
 static NSString *Clock(double s){if(!isfinite(s)||s<0)return @"—";NSDateFormatter *f=[NSDateFormatter new];f.timeStyle=NSDateFormatterShortStyle;f.dateStyle=NSDateFormatterNoStyle;return [f stringFromDate:[NSDate dateWithTimeIntervalSinceNow:s]];}
-// The 1.0.7 host declares the location background mode; check rather than assume, since
+// The host app is expected to declare the location background mode; check rather than assume, since
 // enabling background updates without it raises an exception.
 static BOOL BackgroundLocation(void){id m=[NSBundle.mainBundle objectForInfoDictionaryKey:@"UIBackgroundModes"];return [m isKindOfClass:NSArray.class]&&[m containsObject:@"location"];}
 static NSString *AppState(void){switch(UIApplication.sharedApplication.applicationState){case UIApplicationStateActive:return @"active";case UIApplicationStateInactive:return @"inactive";default:return @"background";}}

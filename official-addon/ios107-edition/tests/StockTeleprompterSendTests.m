@@ -1,14 +1,15 @@
 // D5: the stock teleprompter's rayneonet_sendFile is the one stock file send the
-// OTA guard lets through, on the 1.0.7 flash host and on the 1.0.11 download-only
+// OTA guard lets through, on the 1.0.21 download-only host and on the full 1.0.21
 // host. Runs the unchanged phone policy (ExperimentalOTAFlash.m adapted by test.py
-// exactly like ios1011-guard) against fake app containers in a temp directory.
+// exactly like ios1021-download-guard) against fake app containers in a temp directory.
 // No device, network or signing.
 //
-// test.py builds this file in the same six TIO_* flag sets as ios1011-guard (two with the wire log) and
-// requires the same sweep= digest from each: the allow-list depends on no flag.
+// test.py builds this file in the same six TIO_* flag sets as ios1021-download-guard (two with the wire log)
+// and requires the same sweep= digest from each: the allow-list depends on no flag.
 #import "TMG4WizardHost.h"
 #import "HostCompatibility.h"
 #import "OTAHost.h"
+#import "FullHostFixture.h"
 #import "ExperimentalOTAFlash.h"
 #import "ExperimentalOTAGuard.h"
 #import <CommonCrypto/CommonDigest.h>
@@ -367,27 +368,23 @@ static void HostCases(BOOL downloadOnly){
             [Bits appendString:TIOOTAFlashBlockCallSnapshot(call,&snap)?@"1":@"0"];assert(TIOOTAFlashBlockCall(call)&&TIOOTADownloadOnlyBlockCall(call)&&snap==nil);}
         StageOverride=NSUIntegerMax;
     }else{
-        assert(!TIOOTADownloadOnlyHost());assert(TIOOTA107HostMatches(Host));
-#if TIO_OTA_FLASH_ENABLED
-        // The 1.0.7 flash host: the shape passes at stage 0, everything else refused as before.
-        assert(TIOOTAFlashBuild());assert([TIOOTAFlashStatus()[@"stage"] intValue]==0);
+        // The full host (disarmed; its file-call rule is the same armed or not, in every flag set):
+        // the shape passes at stage 0, everything else is refused.
+        assert(!TIOOTADownloadOnlyHost());assert(TIOOTAHostMatches(Host)&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());
+        assert([TIOOTAFlashStatus()[@"stage"] intValue]==0);
         assert(!TIOOTAFlashBlockCall(call));assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendFile",@"arguments":Args(doc,Upper)}));
         for(NSDictionary *c in refusedCalls)assert(TIOOTAFlashBlockCall(c));
         assert(TIOOTAFlashBlockCall(liarCall));
-        // R3: at OTA stage 1, 2 or 3 the teleprompter call is refused on the flash host.
+        // R3: at OTA stage 1, 2 or 3 the teleprompter call is refused on the full host.
         for(NSUInteger stage=1;stage<=3;stage++){StageOverride=stage;NSDictionary *snap=@{};assert(TIOOTAFlashBlockCallSnapshot(call,&snap)&&snap==nil);assert(TIOOTAFlashBlockCall(call));}
         StageOverride=0;assert(!TIOOTAFlashBlockCall(call));StageOverride=NSUIntegerMax;
         assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":@"fixture-peer",@"payload":start}}));
         assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@265,@"deviceId":@"fixture-peer",@"payload":query}}));
-#else
-        // Without the flash build the 1.0.7 path guards nothing, as before.
-        assert(!TIOOTAFlashBuild());assert(!TIOOTAFlashBlockCall(call));
-#endif
     }
     // E3: an allowed call hands back the checked snapshot; the forwarded call is built from the literal and that snapshot.
     {NSMutableDictionary *mutableArgs=[Args(lib,Lower) mutableCopy];NSDictionary *snap=nil;
      BOOL blocked=TIOOTAFlashBlockCallSnapshot(@{@"method":[@"rayneonet_" stringByAppendingString:@"sendFile"],@"arguments":mutableArgs},&snap);
-     BOOL guarded=downloadOnly||TIOOTAFlashBuild();
+     BOOL guarded=YES; // both hosts guard file calls in every flag set
      assert(!blocked);assert(guarded?(snap&&snap!=mutableArgs&&[snap isEqual:mutableArgs]):snap==nil);
      if(snap){FlutterMethodCall *fwd=TIOStockTeleprompterForwardCall(snap);assert([fwd isKindOfClass:FlutterMethodCall.class]&&[fwd.method isEqualToString:@"rayneonet_sendFile"]&&fwd.arguments==snap);}
      assert(!TIOStockTeleprompterForwardCall(nil));assert(!TIOStockTeleprompterForwardCall((id)@"x"));
@@ -395,7 +392,7 @@ static void HostCases(BOOL downloadOnly){
      snap=@{};assert(!TIOOTAFlashBlockCallSnapshot(@{@"method":@"rayneonet_connect",@"arguments":@{}},&snap)&&snap==nil);
      snap=@{};assert(!TIOOTAFlashBlockCallSnapshot(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@17,@"deviceId":@"fixture-peer",@"payload":start}},&snap)&&snap==nil);}
 #if TIO_DISPLAY_PHONE && TIO_OTA_FLASH_ENABLED
-    // R3: an addon scoped sender still decides first on the 1.0.7 flash host: it passes at stage 0 with no
+    // R3: an addon scoped sender still decides first on the full host: it passes at stage 0 with no
     // snapshot (its own arguments go on untouched) and is refused at stages 1-3.
     if(!downloadOnly){
         NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];__block BOOL entered=NO,failed=NO;
@@ -428,17 +425,16 @@ int main(void){@autoreleasepool{
     NSString *home2=[base stringByAppendingPathComponent:NSUUID.UUID.UUIDString];Dir(home2);assert(realpath(home2.UTF8String,real));
     PureCases(@(real));
     EdgeCases(Home);
-    // 1.0.11 download-only host.
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.11",@"CFBundleVersion":@"259",@"TIOHostProfile":@"ios1011-download"};
-    Image=FakeImage(@"22724C97-2EF9-388D-8E6A-6E051855A555");
+    // 1.0.21 download-only host.
+    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.21",@"CFBundleVersion":@"1",@"TIOHostProfile":@"ios1011-download"};
+    Image=FakeImage(TFH_UUID);
     HostCases(YES);TIOOTARecordTransportHookReady();HostCases(YES);
-    BOOL flash1011=TIOOTAFlashBuild(); // what test.py checks per flag set, as for ios1011-guard
-    // 1.0.7 OTA host.
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.7",@"CFBundleVersion":@"230",@"TIOExperimentalOTAQueryRouting":@"ios107-tmg2-loopback-flash-gated"};
-    Image=FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B");
+    BOOL flashBuild=TIOOTAFlashBuild(); // what test.py checks per flag set, as for ios1021-download-guard
+    // The full 1.0.21 host, disarmed.
+    Host=TFHFullInfo();
     NSString *sweep=[Bits copy];
     HostCases(NO);
-    assert([TIOOTADownloadOnlyGuardMarker containsString:@"IOS1011-DOWNLOAD-GUARD-03"]&&[TIOOTADownloadOnlyGuardMarker containsString:@"stock teleprompter sendFile allow-listed"]);
+    assert([TIOOTADownloadOnlyGuardMarker containsString:@"DOWNLOAD-ONLY-GUARD-03"]&&[TIOOTADownloadOnlyGuardMarker containsString:@"stock teleprompter sendFile allow-listed"]);
     [FM removeItemAtPath:base error:nil];
-    NSLog(@"PASS: stock teleprompter sendFile allow-list: %lu cases; flash build %s; sweep=%@",(unsigned long)Cases,flash1011?"on":"off",Digest(sweep));
+    NSLog(@"PASS: stock teleprompter sendFile allow-list: %lu cases; flash build %s; sweep=%@",(unsigned long)Cases,flashBuild?"on":"off",Digest(sweep));
 }return 0;}

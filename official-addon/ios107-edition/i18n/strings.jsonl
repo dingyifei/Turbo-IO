@@ -32,9 +32,9 @@
 {"key":"1 · 建立临时预览会话","en":"1 · Start temporary preview session"}
 {"key":"1 · 查询眼镜 SID","en":"1 · Query glasses SID"}
 {"key":"1 · 读取仪表盘基线","en":"1 · Read Dashboard baseline"}
-{"key":"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。","en":"Dedicated 1.0.7 OTA host or route marker mismatch; not authorized."}
-{"key":"1.0.7 实验来源宿主版本/UUID/标记不匹配","en":"1.0.7 experimental source host version, UUID, or marker mismatch"}
-{"key":"1.0.7 实验查询路径或对象头不匹配，未启动服务","en":"1.0.7 experimental query path or object header mismatch; service not started"}
+{"key":"OTA 专用宿主或路由标记不匹配，未授权。","en":"Dedicated OTA host or route marker mismatch; not authorized."}
+{"key":"实验来源宿主版本/UUID/标记不匹配","en":"Experimental source host version, UUID, or marker mismatch"}
+{"key":"实验查询路径或对象头不匹配，未启动服务","en":"Experimental query path or object header mismatch; service not started"}
 {"key":"10 分钟","en":"10 minutes"}
 {"key":"10 分钟到期 · 本轮结束","en":"10-minute lease expired · Session ended"}
 {"key":"10 分钟后自动关闭，重启 App 不恢复。","en":"Turns off automatically after 10 minutes; does not resume when the app restarts."}
@@ -92,7 +92,6 @@
 {"key":"API 测试失败","en":"API test failed"}
 {"key":"API 测试结果","en":"API test result"}
 {"key":"API、Schema、ZIP、测试与 GitHub 分发","en":"API, schema, ZIP, tests, and GitHub distribution"}
-{"key":"APP107-OTA-PHONE-01 · 默认锁定","en":"APP107-OTA-PHONE-01 · Locked by default"}
 {"key":"ASR final 已到达，等待官方聊天回包模板","en":"ASR final received; waiting for RayNeo app chat response template"}
 {"key":"Agent 与工具","en":"Agents and tools"}
 {"key":"Apple / Hy-MT2 本地翻译","en":"Apple / Hy-MT2 local translation"}
@@ -2350,7 +2349,7 @@
 {"key":"fwexport.hash.failed","en":"Hash failed: %@","zh":"哈希计算失败：%@"}
 {"key":"fwexport.hashing","en":"Computing SHA-256 and MD5…","zh":"正在计算 SHA-256 和 MD5…"}
 {"key":"fwexport.host","en":"Host: %@","zh":"宿主：%@"}
-{"key":"fwexport.host.download","en":"RayNeo AI 1.0.11 (259) · download only","zh":"RayNeo AI 1.0.11 (259) · 仅下载"}
+{"key":"fwexport.host.download","en":"RayNeo AI 1.0.21 (1) · download only","zh":"RayNeo AI 1.0.21 (1) · 仅下载"}
 {"key":"fwexport.host.unknown","en":"Not a supported download-only host","zh":"不是受支持的仅下载宿主"}
 {"key":"fwexport.rezip.failed","en":"Re-zip failed: %@","zh":"重新打包失败：%@"}
 {"key":"fwexport.rezip.message","en":"Turbo IO writes a new ZIP into its own folder and only reads RayNeo's files. The result is re-zipped, not the server's bytes, so its hash will differ from the server package.","zh":"Turbo IO 会在自己的目录中写入新的 ZIP，只读取官方文件。结果是重新打包的副本，不是服务器原始字节，哈希会与服务器固件包不同。"}
@@ -2473,14 +2472,13 @@
 {"key":"ota.arm.action","en":"Arm","zh":"启用"}
 {"key":"ota.disarm.action","en":"Disarm","zh":"停用"}
 {"key":"ota.arm.confirm.title","en":"Arm TMG flashing on this install?","zh":"在本机启用 TMG 刷写？"}
-{"key":"ota.arm.confirm.message","en":"This full build (1.0.11 or 1.0.21) refuses every firmware transfer until you arm it. Arming does not start anything: an install still needs the usual checks (Auto Update on and then off, the verified ZIP, your authorization). Record the update sequence with the wire log on this host before you flash, if it has not been confirmed there yet. You can disarm at any time except during a transfer, and a different Turbo IO build starts disarmed.","zh":"这个完整版（1.0.11 或 1.0.21）在启用前会拒绝所有固件传输。启用本身不会开始任何操作：安装仍需通过常规检查（自动更新先开后关、已验证的 ZIP、你的授权）。如果这个宿主上的更新流程还没确认过，刷写前请先用线路日志录一次。除传输进行中外随时可以停用；换成另一个 Turbo IO 构建后默认未启用。"}
+{"key":"ota.arm.confirm.message","en":"This full 1.0.21 build refuses every firmware transfer until you arm it. Arming does not start anything: an install still needs the usual checks (Auto Update on and then off, the verified ZIP, your authorization). Record the update sequence with the wire log on this host before you flash, if it has not been confirmed there yet. You can disarm at any time except during a transfer, and a different Turbo IO build starts disarmed.","zh":"这个 1.0.21 完整版在启用前会拒绝所有固件传输。启用本身不会开始任何操作：安装仍需通过常规检查（自动更新先开后关、已验证的 ZIP、你的授权）。如果这个宿主上的更新流程还没确认过，刷写前请先用线路日志录一次。除传输进行中外随时可以停用；换成另一个 Turbo IO 构建后默认未启用。"}
 {"key":"ota.arm.confirm.action","en":"Arm flashing","zh":"启用刷写"}
 {"key":"ota.arm.failed","en":"Could not arm flashing","zh":"无法启用刷写"}
 {"key":"ota.disarm.failed","en":"Cannot disarm while a transfer is running","zh":"传输进行中，无法停用"}
 {"key":"ota.disarm.failedEnded","en":"The transfer has ended: restart the app, then disarm","zh":"传输已结束，请重启 App 后再停用"}
 {"key":"ota.hub.disarmed","en":"Flashing disarmed","zh":"刷写未启用"}
-{"key":"fwexport.host.full","en":"RayNeo AI 1.0.11 (259) · full","zh":"RayNeo AI 1.0.11 (259) · 完整版"}
-{"key":"fwexport.host.full1021","en":"RayNeo AI 1.0.21 (1) · full","zh":"RayNeo AI 1.0.21 (1) · 完整版"}
+{"key":"fwexport.host.full","en":"RayNeo AI 1.0.21 (1) · full","zh":"RayNeo AI 1.0.21 (1) · 完整版"}
 {"key":"fwexport.guard.disarmed","en":"Flashing disarmed: OTA transfer refused","zh":"刷写未启用：拒绝 OTA 传输"}
 {"key":"fwexport.guard.disarmed.detail","en":"This install refuses every OTA transfer frame until you arm TMG flashing in the TMG wizard. Version, battery and the update check still pass.","zh":"在 TMG 向导中启用刷写之前，本次安装会拒绝所有 OTA 传输帧。版本、电量和更新检查仍会放行。"}
 {"key":"fwexport.guard.armed","en":"Flashing armed: the TMG wizard decides","zh":"刷写已启用：由 TMG 向导决定"}
@@ -2489,6 +2487,6 @@
 {"key":"hub.status.firmwareExport.armed","en":"Flashing armed","zh":"刷写已启用"}
 {"key":"hub.status.firmwareExport.disarmed","en":"Flashing disarmed","zh":"刷写未启用"}
 {"key":"本机 TMG 刷写尚未启用；先在向导中启用，未授权。","en":"TMG flashing is not armed on this install; arm it in the wizard first. Not authorized."}
-{"key":"只有完整版 1.0.11 或 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。","en":"Only the full 1.0.11 or 1.0.21 host needs and allows arming TMG flashing; not armed."}
+{"key":"只有完整版 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。","en":"Only the full 1.0.21 host needs and allows arming TMG flashing; not armed."}
 {"key":"无法确认本次安装；未启用。","en":"Could not identify this install; not armed."}
 {"key":"无法保存启用状态；未启用。","en":"Could not save the arm state; not armed."}

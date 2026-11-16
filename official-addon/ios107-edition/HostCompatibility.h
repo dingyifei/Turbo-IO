@@ -3,42 +3,19 @@
 #import <mach-o/dyld.h>
 #include <string.h>
 
-// Inspected host builds only. Interface signatures are independently checked
-// before installing hooks; inclusion is not a claim of feature acceptance.
-static inline NSString *TIOHostExpectedUUID(NSDictionary *info) {
-    NSString *version=info[@"CFBundleShortVersionString"];
-    NSString *build=[info[@"CFBundleVersion"] description];
-    if([version isEqual:@"1.0.2"]&&[build isEqual:@"67"])return @"EEEA85E5-4114-313C-B651-73C90A6B5D3C";
-    if([version isEqual:@"1.0.4"]&&[build isEqual:@"195"])return @"261C8E78-F955-3D7D-85F7-13B9082972CF";
-    if([version isEqual:@"1.0.5"]&&[build isEqual:@"201"])return @"748FD301-DA60-3095-A244-9BD0558FACA5";
-    if([version isEqual:@"1.0.6"]&&[build isEqual:@"218"])return @"98A03B57-E816-3BA1-9778-E55FABE8D762";
-    if([version isEqual:@"1.0.7"]&&[build isEqual:@"230"])return @"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B";
-    return nil;
-}
-// The 1.0.11/259 image is deliberately NOT in the table above, so every feature
-// gated on TIOHostImageMatches or TIOHostExpectedUUID stays off there. The same
-// image serves two profiles, told apart only by the packager's Info.plist marker
-// TIOHostProfile (both IPAs share the Runner UUID):
-//   "ios1011"  the full 1.0.11 build (C15): features on, TMG flashing disarmed until armed;
+// The one supported host: RayNeo AI 1.0.21/1. The same image serves two profiles, told
+// apart only by the packager's Info.plist marker TIOHostProfile (both IPAs share the Runner UUID):
+//   "ios1021"           the full build: features on, TMG flashing disarmed until armed;
 //   anything else, missing included: "ios1011-download", the refusing download-only guard.
-// The 1.0.21/1 image works the same way with its own marker "ios1021" (the full C20 build);
-// its download-only build (C19) carries the marker "ios1011-download".
 // On the download-only profile the addon installs only the rayneonet channel hook,
 // which carries the OTA transfer guard. Exact version, build and UUID; no ranges.
-// (The name predates the full profile; it identifies the 1.0.11 image for both.)
+// Any other app version, older RayNeo AI releases included, matches nothing here: no
+// profile, no features, no flashing (the packager refuses to build for it as well).
 static inline NSString *TIOHostDownloadOnlyUUID(NSDictionary *info) {
     NSString *version=info[@"CFBundleShortVersionString"];
     NSString *build=[info[@"CFBundleVersion"] description];
-    if([version isEqual:@"1.0.11"]&&[build isEqual:@"259"])return @"22724C97-2EF9-388D-8E6A-6E051855A555";
-    // 1.0.21/1: download-only (C19) and, with its own marker "ios1021", the full C20 build.
-    // Each image takes only its own full-profile marker (TIOHostFullExpectedUUID and
-    // TIOHostProfileFor check the version): the 1.0.11 marker never selects a full profile
-    // on 1.0.21, nor the 1.0.21 marker on 1.0.11.
     if([version isEqual:@"1.0.21"]&&[build isEqual:@"1"])return @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5";
     return nil;
-}
-static inline BOOL TIOHostIs1011(NSDictionary *info) {
-    return [info[@"CFBundleShortVersionString"] isEqual:@"1.0.11"]&&[[info[@"CFBundleVersion"] description] isEqual:@"259"];
 }
 static inline BOOL TIOHostIs1021(NSDictionary *info) {
     return [info[@"CFBundleShortVersionString"] isEqual:@"1.0.21"]&&[[info[@"CFBundleVersion"] description] isEqual:@"1"];
@@ -55,31 +32,18 @@ static inline BOOL TIOHostImageUUIDIs(const struct mach_header *h,NSString *expe
     }
     return NO;
 }
-static inline BOOL TIOHostImageMatches(const struct mach_header *h,NSDictionary *info) {
-    return TIOHostImageUUIDIs(h,TIOHostExpectedUUID(info));
-}
-// The packager's marker for the full 1.0.11 profile. Only this exact string selects it.
-#define TIO_HOST_PROFILE_1011_FULL @"ios1011"
-static inline BOOL TIOHost1011FullMarker(NSDictionary *info) {
-    return [info[@"TIOHostProfile"] isKindOfClass:NSString.class]&&[info[@"TIOHostProfile"] isEqualToString:TIO_HOST_PROFILE_1011_FULL];
-}
 // The packager's marker for the full 1.0.21 profile (C20). Only this exact string selects it.
 #define TIO_HOST_PROFILE_1021_FULL @"ios1021"
 static inline BOOL TIOHost1021FullMarker(NSDictionary *info) {
     return [info[@"TIOHostProfile"] isKindOfClass:NSString.class]&&[info[@"TIOHostProfile"] isEqualToString:TIO_HOST_PROFILE_1021_FULL];
 }
-// The full profile the marker selects on this exact version and build: "ios1011" for the
-// 1.0.11 marker on 1.0.11/259, "ios1021" for the 1.0.21 marker on 1.0.21/1, else nil.
-// (The image UUID is checked by the callers.)
+// "ios1021" for the full-profile marker on 1.0.21/1, else nil. (The image UUID is checked by the callers.)
 static inline NSString *TIOHostFullMarkerProfile(NSDictionary *info) {
-    if(TIOHost1011FullMarker(info)&&TIOHostIs1011(info))return TIO_HOST_PROFILE_1011_FULL;
-    if(TIOHost1021FullMarker(info)&&TIOHostIs1021(info))return TIO_HOST_PROFILE_1021_FULL;
-    return nil;
+    return TIOHost1021FullMarker(info)&&TIOHostIs1021(info)?TIO_HOST_PROFILE_1021_FULL:nil;
 }
-// TIOHostExpectedUUID plus the 1.0.11 and 1.0.21 UUIDs, each only with its own full-profile marker.
-// Features gate on this (or TIOHostFullImageMatches), so the download-only builds keep them off.
+// The 1.0.21 UUID, only with the full-profile marker. Features gate on this (or
+// TIOHostFullImageMatches), so the download-only build keeps them off.
 static inline NSString *TIOHostFullExpectedUUID(NSDictionary *info) {
-    NSString *uuid=TIOHostExpectedUUID(info);if(uuid)return uuid;
     return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHostFullMarkerProfile(info)?TIOHostDownloadOnlyUUID(info):nil;
 }
 static inline BOOL TIOHostFullImageMatches(const struct mach_header *h,NSDictionary *info) {
@@ -88,14 +52,15 @@ static inline BOOL TIOHostFullImageMatches(const struct mach_header *h,NSDiction
 static inline BOOL TIOHostDownloadOnlyImageMatches(const struct mach_header *h,NSDictionary *info) {
     return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHostImageUUIDIs(h,TIOHostDownloadOnlyUUID(info));
 }
-// "ios107" for the full 1.0.7/230 host; for the 1.0.11/259 image "ios1011" with its
-// full-profile marker, for the 1.0.21/1 image "ios1021" with its own, and
-// "ios1011-download" otherwise (missing, unknown or the other host's marker);
-// nil for anything else (older inspected hosts included).
+// The download-only runtime profile: the 1.0.21/1 image without its full-profile marker. The string
+// keeps its C15-era spelling: the packager writes it as the Info.plist marker and other modules compare it.
+#define TIO_HOST_PROFILE_DOWNLOAD_ONLY @"ios1011-download"
+// For the 1.0.21/1 image: "ios1021" with its full-profile marker, "ios1011-download" otherwise
+// (missing or unknown marker); nil for anything else (an unknown app or version, older RayNeo AI
+// releases included, or a build that is not the RayNeo app, such as a preview).
 static inline NSString *TIOHostProfileFor(const struct mach_header *h,NSDictionary *info) {
     if(![info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"])return nil;
-    if(TIOHostDownloadOnlyImageMatches(h,info))return TIOHostFullMarkerProfile(info)?:@"ios1011-download";
-    if([info[@"CFBundleShortVersionString"] isEqual:@"1.0.7"]&&[[info[@"CFBundleVersion"] description] isEqual:@"230"]&&TIOHostImageMatches(h,info))return @"ios107";
+    if(TIOHostDownloadOnlyImageMatches(h,info))return TIOHostFullMarkerProfile(info)?:TIO_HOST_PROFILE_DOWNLOAD_ONLY;
     return nil;
 }
 // Header of the running process's main executable (the image whose path is the

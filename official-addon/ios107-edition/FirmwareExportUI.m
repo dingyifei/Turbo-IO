@@ -22,7 +22,7 @@ static NSURL *Home(void){return [NSURL fileURLWithPath:NSHomeDirectory() isDirec
 // flag-independent. Auto Update is read from RayNeo's preferences, never written.
 static BOOL Guarded(void){return TIOHostDownloadOnlyGuardActive();}
 static NSDictionary *SafetyModel(void){
-    // Full 1.0.11 or 1.0.21 host: the guard row shows the arm state; the arm guard runs in the same transport
+    // Full 1.0.21 host: the guard row shows the arm state; the arm guard runs in the same transport
     // hook, and green needs a stock rayneonet call through it in this launch, as on the download-only host.
     if(TIOOTAArmHostName(TIOHostProfile())){
         NSDictionary *arm=TIOOTAFlashArmStatus();
@@ -163,7 +163,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     if(ip.section==SectionStatus){
         if(ip.row==0){
             NSString *profile=TIOHostProfile();
-            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1011"]?TIOText(@"fwexport.host.full"):[profile isEqual:@"ios1021"]?TIOText(@"fwexport.host.full1021"):TIOText(@"fwexport.host.unknown"));
+            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1021"]?TIOText(@"fwexport.host.full"):TIOText(@"fwexport.host.unknown"));
             c.detailTextLabel.text=profile?:@"none";c.accessibilityIdentifier=@"fwexport-host";
         }else if(ip.row==2){
             // G3: read only. Red when on, amber when not recorded, green when explicitly off.
@@ -174,14 +174,14 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
             c.accessibilityIdentifier=[@"fwexport-auto-" stringByAppendingString:m[@"autoUpdate"]];
         }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"ok"]){
             // Green: guard installed and a stock rayneonet call has passed the hook in this launch
-            // (full 1.0.11 host: flashing disarmed). The model names the row's strings.
+            // (full 1.0.21 host: flashing disarmed). The model names the row's strings.
             NSDictionary *m=self.safety?:SafetyModel();
             c.textLabel.text=TIOText(m[@"guardKey"]);c.detailTextLabel.text=TIOText(m[@"guardDetail"]);
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusOk);c.imageView.image=[UIImage systemImageNamed:@"checkmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusOk);
             c.accessibilityIdentifier=[m[@"guardKey"] stringByReplacingOccurrencesOfString:@"." withString:@"-"];
         }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"warn"]){
             // Amber: the hook is installed, but nothing yet shows the stock path goes through it
-            // (full 1.0.11 host: flashing armed on this install).
+            // (full 1.0.21 host: flashing armed on this install).
             NSDictionary *m=self.safety?:SafetyModel();
             c.textLabel.text=TIOText(m[@"guardKey"]);c.detailTextLabel.text=TIOText(m[@"guardDetail"]);
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusWarn);c.textLabel.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);

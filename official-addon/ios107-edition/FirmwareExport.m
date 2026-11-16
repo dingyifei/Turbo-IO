@@ -19,7 +19,7 @@ NSArray<NSString *> *TIOFirmwareExportRootPaths(void){
     return @[@"Library/Application Support/ota",@"Documents/ota",@"Library/Caches/ota",@"tmp/ota"];
 }
 // The folders the roots live in. A direct child whose name looks like an OTA or
-// firmware folder is searched too, because the 1.0.11 download location is not
+// firmware folder is searched too, because the stock app's download location is not
 // established; loose fota_* / *strix* files directly in a base are listed.
 static NSArray<NSString *> *Bases(void){return @[@"Library/Application Support",@"Documents",@"Library/Caches",@"tmp"];}
 NSURL *TIOFirmwareExportOwnDirectory(NSURL *home){

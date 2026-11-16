@@ -114,15 +114,6 @@
       "status": "run",
       "group": "session"
     },
-    "OTAHostTests.m": {
-      "status": "run",
-      "group": "ota-host"
-    },
-    "OTAHost1011Tests.m": {
-      "status": "run",
-      "group": "ota-host-1011",
-      "note": "Full 1.0.11 host: the ios1011 host marker is exact and never the 1.0.7 one; patch-route.mjs ios1011 on the stock 1.0.11 App gives the pinned output, accepted only for ios1011 at the 1.0.11 offsets. Needs --app1011."
-    },
     "PhoneOTAGateTests.m": {
       "status": "run",
       "group": "phone-ota-gate"
@@ -200,32 +191,32 @@
     "tests/FirmwareExportTests.m": {
       "status": "run",
       "group": "firmware-export",
-      "note": "Download-only 1.0.11 export panel logic: bounded, link-safe enumeration, SHA-256/MD5 checked against shasum and md5, re-zip only into the addon folder, sources unchanged."
+      "note": "Export panel logic: bounded, link-safe enumeration, SHA-256/MD5 checked against shasum and md5, re-zip only into the addon folder, sources unchanged."
     },
     "tests/StockTeleprompterSendTests.m": {
       "status": "run",
       "group": "stock-teleprompter",
-      "note": "D5: the stock teleprompter rayneonet_sendFile is allow-listed on the 1.0.7 flash host and the 1.0.11 download-only host only in its exact shape (three string keys, a regular non-ZIP file of 1 byte to 1 MiB at <container>/Library/Application Support/user_<digits>/teleprompter/<UUID> or <container>/Documents/user_<digits>/teleprompter/<UUID>, no symlink, taskId = UUID, OTA stage 0). Built in the same six TIO_* flag sets as ios1011-guard; every build must print the same sweep digest."
+      "note": "D5: the stock teleprompter rayneonet_sendFile is allow-listed on the 1.0.21 download-only host and the full 1.0.21 host only in its exact shape (three string keys, a regular non-ZIP file of 1 byte to 1 MiB at <container>/Library/Application Support/user_<digits>/teleprompter/<UUID> or <container>/Documents/user_<digits>/teleprompter/<UUID>, no symlink, taskId = UUID, OTA stage 0). Built in the same six TIO_* flag sets as ios1021-download-guard; every build must print the same sweep digest, equal to its pin."
     },
-    "tests/Host1011GuardTests.m": {
+    "tests/DownloadOnlyGuardTests.m": {
       "status": "run",
-      "group": "ios1011-guard",
-      "note": "Download-only 1.0.11/259 host: every business-9 frame but the empty version query is refused, built in six TIO_* flag sets (full, flash, phone, none, and full and none with the wire log recording every guard call through tests/WireLogGuardHarness.h) that must print the same sweep digest. With --app1011 it also runs as ios1011-host against the real Runner. Built again with -DTIO_TEST_HOST_1021=1 as ios1021-download-guard (download-only 1.0.21/1, C19), whose sweep must equal the 1.0.11 one; with --app1021 also as ios1021-host against the real 1.0.21 Runner."
+      "group": "ios1021-download-guard",
+      "note": "Download-only 1.0.21/1 host (ios1021-download, C19 onward): every business-9 frame but the empty version query is refused, built in six TIO_* flag sets (full, flash, phone, none, and full and none with the wire log recording every guard call through tests/WireLogGuardHarness.h) that must print the same sweep digest, equal to the digest pinned in test.py. The full host's markers on the same image are the control (the disarmed full host, whose sweep differs). With --app1021 it also runs as ios1021-host against the real 1.0.21 Runner."
     },
-    "tests/Host1011FullGuardTests.m": {
+    "tests/FullHostGuardTests.m": {
       "status": "run",
-      "group": "ios1011-full-guard",
-      "note": "Full 1.0.11/259 host (ios1011, C15): TMG flashing disarmed by default, only the empty reads 1, 2, 11 and the exact size query pass business 9, in the same six TIO_* flag sets as ios1011-guard with one sweep digest; malformed or foreign arm records count as disarmed; armed (flash builds only) the business-9 sweep equals the 1.0.7 host; disarm restores the refusal. With --app1011 it also checks the real Runner. Built again with -DTIO_TEST_HOST_1021=1 (tests/FullHostFixture.h) as ios1021-full-guard for the full 1.0.21/1 host (ios1021, C20), where the 1.0.11 markers and arm record must never select or arm it; with --app1021 it checks the real 1.0.21 Runner."
+      "group": "ios1021-full-guard",
+      "note": "Full 1.0.21/1 host (ios1021, C20 onward; tests/FullHostFixture.h): TMG flashing disarmed by default, only the empty reads 1, 2, 11 and the exact size query pass business 9, in the same six TIO_* flag sets as ios1021-download-guard with one sweep digest, equal to its pin; malformed or foreign arm records (the retired otaFlashArmRecord.ios1011 key included) count as disarmed; armed (flash builds only) the business-9 sweep must equal the per-flag-set pin in test.py; disarm restores the refusal. With --app1021 it also checks the real Runner."
     },
-    "tests/Host1011ArmStoreTests.m": {
+    "tests/FullHostArmStoreTests.m": {
       "status": "run",
-      "group": "ios1011-arm-store",
-      "note": "Full 1.0.11 host: the arm record is read only from the addon suite's persistent domain, with the real CFPreferences calls on a throwaway suite (removed afterwards). A launch argument -otaFlashArmRecord.ios1011 <XML dict> in a child process, an in-process argument domain and a registered default must not arm; arm and disarm round-trip through the persistent domain. Built again with -DTIO_TEST_HOST_1021=1 as ios1021-arm-store (key otaFlashArmRecord.ios1021)."
+      "group": "ios1021-arm-store",
+      "note": "Full 1.0.21 host: the arm record is read only from the addon suite's persistent domain, with the real CFPreferences calls on a throwaway suite (removed afterwards). A launch argument -otaFlashArmRecord.ios1021 <XML dict> in a child process, an in-process argument domain and a registered default must not arm; arm and disarm round-trip through the persistent domain."
     },
-    "tests/Host1011FullEdgeTests.m": {
+    "tests/FullHostEdgeTests.m": {
       "status": "run",
-      "group": "ios1011-full-edge",
-      "note": "Full 1.0.11/259 host (ios1011) edge cases beyond ios1011-full-guard: TIOHostProfile near misses fall to ios1011-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, arm record field types, near-miss keys and the standard defaults never arm, disarm removes any record. Duplicate or escaped OtaSize keys in the raw size query are refused; v must be the integer 1 and armedAt a plain number. Same six TIO_* flag sets, one sweep digest. Known gaps would print as XFAIL (none at present) and abort as XPASS once fixed. Built again with -DTIO_TEST_HOST_1021=1 as ios1021-full-edge for the full 1.0.21 host, with the near misses built from its own marker and the other full host's markers, versions, image and arm key added."
+      "group": "ios1021-full-edge",
+      "note": "Full 1.0.21/1 host (ios1021) edge cases beyond ios1021-full-guard: TIOHostProfile near misses fall to ios1021-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, arm record field types, near-miss keys (the retired otaFlashArmRecord.ios1011 key included) and the standard defaults never arm, disarm removes any record. Duplicate or escaped OtaSize keys in the raw size query are refused; v must be the integer 1 and armedAt a plain number. Same six TIO_* flag sets, one sweep digest, equal to its pin. Known gaps would print as XFAIL (none at present) and abort as XPASS once fixed."
     },
     "tests/LanguageFlagTests.m": {
       "status": "run",
@@ -321,12 +312,13 @@
     },
     "tests/TMG4WizardTests.m": {
       "status": "run",
-      "group": "tmg4-wizard"
+      "group": "tmg4-wizard",
+      "note": "The real OTA wizard and gate on the armed full 1.0.21 host (tests/FullHostFixture.h) and the real candidate files."
     },
-    "tests/TMG4Wizard1011Tests.m": {
+    "tests/TMG4WizardArmTests.m": {
       "status": "run",
-      "group": "tmg4-wizard-1011",
-      "note": "Full 1.0.11 host, armed: the unchanged 1.0.7 wizard and gate on the real candidate (Auto Update toggle, one authorization, forced-page Mode 4 refused, Mode 2 starts, all slices); a started transfer no longer reads the arm record (removed or junk record mid-transfer); disarm revokes at stage 1, also when called off the main thread (it runs on main), and is refused with the record kept at stage 2 and after a failed transfer (stage 3). Built again with -DTIO_TEST_HOST_1021=1 as tmg4-wizard-1021 for the full 1.0.21 host. Member counts come from the pins."
+      "group": "tmg4-wizard-1021",
+      "note": "Full 1.0.21 host, armed: the unchanged wizard and gate on the real candidate (Auto Update toggle, one authorization, forced-page Mode 4 refused, Mode 2 starts, all slices); a started transfer no longer reads the arm record (removed or junk record mid-transfer); disarm revokes at stage 1, also when called off the main thread (it runs on main), and is refused with the record kept at stage 2 and after a failed transfer (stage 3). Member counts come from the pins."
     },
     "tests/TileRoundTripTests.m": {
       "status": "run",
@@ -360,7 +352,7 @@
     "tests/DownloadOnlySafetyTests.m": {
       "status": "run",
       "group": "download-only-safety",
-      "note": "G2/G3 for the download-only 1.0.11 host: hook target failures leave the guard off and the export panel unsafe; Auto Update off/on/missing read only, worst key wins."
+      "note": "G2/G3 for the download-only 1.0.21 host: hook target failures leave the guard off and the export panel unsafe; Auto Update off/on/missing read only, worst key wins."
     },
     "tests/MusicNavigationTests.m": {
       "status": "run",
@@ -377,7 +369,7 @@
     "OTAHost1021Tests.m": {
       "status": "run",
       "group": "ota-host-1021",
-      "note": "Full 1.0.21 host (ios1021, C20): the ios1021 host marker is exact and never the 1.0.11 or 1.0.7 one; patch-route.mjs ios1021 on the stock 1.0.21 App gives the pinned output, refuses an input one byte off its pin (and the 1.0.11 App), and the output is accepted only for ios1021 at the 1.0.21 offsets. Needs --app1021."
+      "note": "Full 1.0.21 host (ios1021, C20 onward): the ios1021 host marker is exact, near misses and the retired 1.0.11 and 1.0.7 markers are refused; patch-route.mjs ios1021 on the stock 1.0.21 App gives the pinned output, refuses an input one byte off its pin, and the output is accepted only for ios1021 at the 1.0.21 offsets. Needs --app1021."
     },
     "tests/MemberCountTests.m": {
       "status": "run",

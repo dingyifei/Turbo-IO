@@ -1,16 +1,16 @@
-// Full 1.0.11/259 host (profile ios1011, C15) and, built with -DTIO_TEST_HOST_1021=1, the
-// full 1.0.21/1 host (ios1021, C20; tests/FullHostFixture.h): TMG flashing is disarmed until the
-// owner arms it on this install. Runs the unchanged phone policy
+// Full 1.0.21/1 host (profile ios1021, C20 onward; tests/FullHostFixture.h): TMG flashing is
+// disarmed until the owner arms it on this install. Runs the unchanged phone policy
 // (ExperimentalOTAFlash.m / ExperimentalOTAFeed.m, adapted by test.py exactly like
-// ios1011-guard) against full-profile 1.0.11 host info. No device, network or signing.
+// ios1021-download-guard) against full-profile host info. No device, network or signing.
 // Optional argv: <Runner> <Info.plist> of that host also checks the real image.
 //
-// test.py builds this file in every ios1011-guard flag set and requires the same
-// disarmed sweep= digest from each: the disarmed refusal must not depend on build
-// flags. Armed (only possible in a flash build), the business-9 sweep must equal the
-// 1.0.7 host's in the same binary; disarming must bring back the disarmed sweep.
+// test.py builds this file in every guard flag set and requires the same disarmed
+// sweep= digest from each: the disarmed refusal must not depend on build flags.
+// Armed (only possible in a flash build), the business-9 sweep is printed as
+// "armed sweep=" and test.py compares it with its pinned digest for that flag set;
+// disarming must bring back the disarmed sweep.
 // The authorized gate itself (Mode 2 only, forced-page Mode 4 refused, disarm refused
-// mid-transfer) is run by the tmg4-wizard-1011 group.
+// mid-transfer) is run by the tmg4-wizard-1021 group.
 #import "TMG4WizardHost.h"
 #import "FullHostFixture.h"
 #import "HostCompatibility.h"
@@ -194,19 +194,21 @@ int main(int argc,char **argv){@autoreleasepool{
         const struct mach_header *h=runner.bytes;
         // The stock plist is the download-only profile; the packager's two markers make it the full one.
         assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);
-        // The other full host's markers leave it download-only.
-        real[@"TIOHostProfile"]=TFH_OTHER_PROFILE;real[@"TIOExperimentalOTAQueryRouting"]=TFH_OTHER_ROUTING;
+        // Near-miss and retired markers leave it download-only.
+        real[@"TIOHostProfile"]=TFH_NEAR_PROFILE;real[@"TIOExperimentalOTAQueryRouting"]=TFH_NEAR_ROUTING;
+        assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches(h,real));
+        real[@"TIOHostProfile"]=@"ios1011";real[@"TIOExperimentalOTAQueryRouting"]=@"ios1011-tmg-loopback-flash-gated-arm-required";
         assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches(h,real));
         real[@"TIOHostProfile"]=TFH_PROFILE;real[@"TIOExperimentalOTAQueryRouting"]=TFH_ROUTING;
-        assert([TIOHostProfileFor(h,real) isEqual:TFH_PROFILE]);assert(TIOHostFullImageMatches(h,real));assert(!TIOHostImageMatches(h,real));
+        assert([TIOHostProfileFor(h,real) isEqual:TFH_PROFILE]);assert(TIOHostFullImageMatches(h,real));
         full=real;Image=h;
     }
     Host=full;Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     NSMutableDictionary *store=TMG4ArmStore();[store removeAllObjects];
-    assert(TFH_HOST_MATCHES(Host)&&!TFH_OTHER_HOST_MATCHES(Host)&&!TIOOTA107HostMatches(Host)&&[TIOOTAHostProfile(Host) isEqual:TFH_PROFILE]);
+    assert(TFH_HOST_MATCHES(Host)&&[TIOOTAHostProfile(Host) isEqual:TFH_PROFILE]);
     assert(!TIOOTADownloadOnlyHost()&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());
-    // A stale 1.0.7 routing marker never makes this the 1.0.7 OTA host.
-    NSMutableDictionary *stale=[full mutableCopy];stale[@"TIOExperimentalOTAQueryRouting"]=@"ios107-tmg2-loopback-flash-gated";assert(!TIOOTA107HostMatches(stale)&&!TIOOTAHostProfile(stale));
+    // A stale routing marker (the retired 1.0.7 one) never makes this an OTA host.
+    NSMutableDictionary *stale=[full mutableCopy];stale[@"TIOExperimentalOTAQueryRouting"]=@"ios107-tmg2-loopback-flash-gated";assert(!TIOOTAHostProfile(stale));
     // The full host's routing marker makes it an OTA host, so the phone-only flag set has the flash path too.
 #if TIO_OTA_FLASH_ENABLED
     assert(TIOOTAFlashBuild());
@@ -225,19 +227,19 @@ int main(int argc,char **argv){@autoreleasepool{
     NSDictionary *good=@{@"v":@1,@"host":TFH_PROFILE,@"install":install,@"armedAt":@1};
     NSMutableArray *bad=[NSMutableArray arrayWithObjects:@"armed",@YES,@[good],@{},NSNull.null,nil];
     for(NSString *k in good){NSMutableDictionary *m=[good mutableCopy];[m removeObjectForKey:k];[bad addObject:m];}
-    for(NSArray *kv in @[@[@"v",@2],@[@"v",@"1"],@[@"host",@"ios107"],@[@"host",@"ios1011-download"],@[@"host",TFH_OTHER_PROFILE],@[@"install",@"00000000-0000-0000-0000-000000000001"],@[@"install",@1],@[@"install",install.lowercaseString],@[@"armedAt",@"1"],@[@"extra",@1]]){
+    for(NSArray *kv in @[@[@"v",@2],@[@"v",@"1"],@[@"host",@"ios1011"],@[@"host",@"ios1011-download"],@[@"host",TFH_NEAR_PROFILE],@[@"install",@"00000000-0000-0000-0000-000000000001"],@[@"install",@1],@[@"install",install.lowercaseString],@[@"armedAt",@"1"],@[@"extra",@1]]){
         NSMutableDictionary *m=[good mutableCopy];m[kv[0]]=kv[1];[bad addObject:m];
     }
     for(id record in bad){
         store[ArmKey]=record;assert(!TIOOTAFlashArmed());assert(![TIOOTAFlashArmStatus()[@"armed"] boolValue]);
         Quick();AuthorizeRefused(NotArmed);
     }
-    // A valid record under the other full host's key does not arm this one.
-    {NSMutableDictionary *other=[good mutableCopy];other[@"host"]=TFH_OTHER_PROFILE;store[TFH_OTHER_ARM_KEY]=other;store[@"otaFlashArmRecord"]=good;
+    // A record under the retired 1.0.11 key (host ios1011, as C15-C18 wrote it) does not arm this host.
+    {NSMutableDictionary *other=[good mutableCopy];other[@"host"]=@"ios1011";store[TFH_RETIRED_ARM_KEY]=other;store[@"otaFlashArmRecord"]=good;
      assert(!TIOOTAFlashArmed());assert(![TIOOTAFlashArmStatus()[@"armed"] boolValue]);assert([TIOOTAFlashArmStatus()[@"armHost"] isEqual:TFH_PROFILE]);Quick();AuthorizeRefused(NotArmed);}
     [store removeAllObjects];
-    // Arm: refused on near-miss hosts, whatever the flags (the other full host's routing marker included).
-    for(NSArray *kv in @[@[@"TIOExperimentalOTAQueryRouting",NSNull.null],@[@"TIOExperimentalOTAQueryRouting",@"ios107-tmg2-loopback-flash-gated"],@[@"TIOExperimentalOTAQueryRouting",TFH_OTHER_ROUTING],@[@"CFBundleVersion",TFH_NEXT_BUILD]]){
+    // Arm: refused on near-miss hosts, whatever the flags (near-miss and retired routing markers included).
+    for(NSArray *kv in @[@[@"TIOExperimentalOTAQueryRouting",NSNull.null],@[@"TIOExperimentalOTAQueryRouting",@"ios107-tmg2-loopback-flash-gated"],@[@"TIOExperimentalOTAQueryRouting",TFH_NEAR_ROUTING],@[@"CFBundleVersion",TFH_NEXT_BUILD]]){
         NSMutableDictionary *m=[full mutableCopy];if(kv[1]==NSNull.null)[m removeObjectForKey:kv[0]];else m[kv[0]]=kv[1];Host=m;
         NSError *e=nil;assert(!TIOOTAFlashArm(&e)&&[e.localizedDescription isEqual:TIOText(TFH_ARM_REFUSED)]);assert(!store.count);
         // A valid record does not help a near-miss host either: still the disarmed refusal.
@@ -247,12 +249,12 @@ int main(int argc,char **argv){@autoreleasepool{
     Host=full;const struct mach_header *pinned=Image;Image=FakeImage(@"00000000-0000-0000-0000-000000000001");
     {NSError *e=nil;assert(!TIOOTAFlashArm(&e)&&e);store[ArmKey]=good;assert(![TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue]);assert([Sweep() isEqual:sweep]);[store removeAllObjects];}
     Image=pinned;
-    // The marker-less image is the download-only host (so is this image with the other full host's
-    // profile marker, alone or with both of its markers): arm state plays no part, only the version query passes.
+    // The marker-less image is the download-only host (so is this image with a near-miss profile
+    // marker, alone or with a near-miss routing marker): arm state plays no part, only the version query passes.
     NSMutableDictionary *unmarked=[full mutableCopy];[unmarked removeObjectForKey:@"TIOHostProfile"];[unmarked removeObjectForKey:@"TIOExperimentalOTAQueryRouting"];
     for(NSDictionary *h in @[unmarked,({NSMutableDictionary *m=[full mutableCopy];m[@"TIOHostProfile"]=@"ios1011-download";m;}),
-        ({NSMutableDictionary *m=[unmarked mutableCopy];m[@"TIOHostProfile"]=TFH_OTHER_PROFILE;m;}),
-        ({NSMutableDictionary *m=[unmarked mutableCopy];m[@"TIOHostProfile"]=TFH_OTHER_PROFILE;m[@"TIOExperimentalOTAQueryRouting"]=TFH_OTHER_ROUTING;m;})]){
+        ({NSMutableDictionary *m=[unmarked mutableCopy];m[@"TIOHostProfile"]=TFH_NEAR_PROFILE;m;}),
+        ({NSMutableDictionary *m=[unmarked mutableCopy];m[@"TIOHostProfile"]=TFH_NEAR_PROFILE;m[@"TIOExperimentalOTAQueryRouting"]=TFH_NEAR_ROUTING;m;})]){
         Host=h;store[ArmKey]=good;assert(TIOOTADownloadOnlyHost()&&!TIOOTAArmRequired()&&!TIOOTAFlashArmed());
         assert(Allowed(Frame(1,nil,nil),@"fixture-peer"));assert(!Allowed(Frame(2,nil,nil),@"fixture-peer"));assert(!Allowed(Frame(3,@{@"OtaSize":@(TIO_FW_ZIP_BYTES)},nil),@"fixture-peer"));
         for(NSNumber *mode in @[@1,@2,@3,@4])assert(!Allowed(Frame(4,@{@"Mode":mode},nil),@"fixture-peer"));
@@ -266,23 +268,18 @@ int main(int argc,char **argv){@autoreleasepool{
         assert(record.count==4&&[record[@"v"] isEqual:@1]&&[record[@"host"] isEqual:TFH_PROFILE]&&[record[@"install"] isEqual:install]&&[record[@"armedAt"] isKindOfClass:NSNumber.class]);
         NSDictionary *status=TIOOTAFlashArmStatus();assert([status[@"armRequired"] boolValue]&&[status[@"armed"] boolValue]&&[status[@"armedForTransfer"] boolValue]&&status[@"armedAt"]);
         assert([TIOOTAFlashStatus()[@"armed"] boolValue]);
-        // Armed, the business-9 rule is the 1.0.7 host's, bit for bit, in this flag set.
+        // Armed, the business-9 rule is the gate's; test.py compares this digest with its pin for the flag set.
         NSString *armedSweep=Sweep();
-        Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.7",@"CFBundleVersion":@"230",@"TIOExperimentalOTAQueryRouting":@"ios107-tmg2-loopback-flash-gated"};
-        Image=FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B");
-        assert(!TIOOTAArmRequired()&&![TIOOTAFlashArmStatus()[@"armed"] boolValue]);
-        NSString *sweep107=Sweep();assert([armedSweep isEqual:sweep107]);
-        Host=full;Image=pinned;
         // An unauthorized gate still refuses every start, the forced page's Mode 4 included.
         for(NSNumber *mode in @[@1,@2,@3,@4])assert(!Allowed(Frame(4,@{@"Mode":mode},nil),@"fixture-peer"));
-        // Authorization now gets past the arm step and stops at the next 1.0.7 check (no local feed here).
+        // Authorization now gets past the arm step and stops at the next gate check (no local feed here).
         AuthorizeRefused(@"未确认本机下载来源与健康检查，未授权。");
         // Arming twice keeps one record; disarm brings back the disarmed refusal.
         assert(TIOOTAFlashArm(nil)&&store.count==1);
         assert(TIOOTAFlashDisarm());assert(!store.count&&!TIOOTAFlashArmed());
         DisarmedRules();assert([Sweep() isEqual:sweep]);AuthorizeRefused(NotArmed);
         assert(TIOOTAFlashDisarm());
-        printf("armed sweep equals the 1.0.7 sweep (%s)\n",Digest(armedSweep).UTF8String);
+        printf("armed sweep=%s\n",Digest(armedSweep).UTF8String);
     }else{
         // No flash build: arming is refused, and even a valid record leaves the disarmed refusal.
         assert(!armed&&[armError.localizedDescription isEqual:TIOText(@"没有试刷构建与发送保护；未开放。")]);assert(!store.count);
@@ -290,9 +287,9 @@ int main(int argc,char **argv){@autoreleasepool{
         DisarmedRules();assert([Sweep() isEqual:sweep]);AuthorizeRefused(NotArmed);
         assert(TIOOTAFlashDisarm()&&!store.count);
     }
-    // The 1.0.7 host never needs or accepts the arm step.
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.7",@"CFBundleVersion":@"230",@"TIOExperimentalOTAQueryRouting":@"ios107-tmg2-loopback-flash-gated"};
-    Image=FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B");
+    // An app that is not the supported host (another version, no markers, another image) never needs or accepts the arm step.
+    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":TFH_NEAR_VERSION,@"CFBundleVersion":TFH_NEAR_BUILD};
+    Image=FakeImage(@"00000000-0000-0000-0000-000000000004");
     {NSError *e=nil;assert(!TIOOTAArmRequired());assert(!TIOOTAFlashArm(&e)&&e&&!store.count);}
     Host=full;Image=pinned;
     // The export panel's guard row reads the same arm state.

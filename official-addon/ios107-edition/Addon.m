@@ -838,18 +838,18 @@ static BOOL Signature(Class cls,NSString *name,NSUInteger argc,const char *retur
 #import "HostCompatibility.h"
 #import "OTAHost.h"
 static const struct mach_header *MainImage(void) {return TIOHostMainImage();}
-// Feature hooks: the inspected full hosts (1.0.7/230 and older) and the full 1.0.11/259 and
-// 1.0.21/1 profiles (packager marker TIOHostProfile=ios1011 or ios1021, each on its own pinned
-// image). Never the download-only builds: an image without its own exact marker does not match.
+// Feature hooks: the full 1.0.21/1 profile (packager marker TIOHostProfile=ios1021 on its pinned
+// image). Never the download-only build: the image without its exact marker does not match, and
+// neither does any other app version.
 static BOOL VersionMatches(void) {
     if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return NO;
     return TIOHostFullImageMatches(MainImage(),NSBundle.mainBundle.infoDictionary);
 }
 NSString *TIOHostProfile(void) {
     if(![NSBundle.mainBundle.bundleIdentifier isEqual:TargetBundle])return nil;
-    // Same test as the refusal (TIOOTADownloadOnlyHost): the pinned 1.0.11 image OR
-    // the packager's TIOHostProfile marker. Load, the hub catalog, the guard row and
-    // the refusal must never disagree about the download-only host.
+    // Same test as the refusal (TIOOTADownloadOnlyHost): the pinned 1.0.21 image without its full
+    // marker OR the packager's download-only TIOHostProfile marker. Load, the hub catalog, the guard
+    // row and the refusal must never disagree about the download-only host.
     if(TIOOTADownloadOnlyHost())return @"ios1011-download";
     return TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary);
 }
@@ -859,7 +859,7 @@ NSString *TIOHostProfile(void) {
 // needs the hook installed and recorded ready, not TIOOTAFlashBuild().
 BOOL TIOHostDownloadOnlyGuardActive(void) {
     return TIODownloadOnlyGuardActiveFor(TIOHostProfile(),TIOGlassesChannelHookInstalled(),[TIOOTAGuardStatus()[@"transportHookReady"] boolValue])&&
-        TIOOTADownloadOnlyHost()&&!TIOOTA107HostMatches(NSBundle.mainBundle.infoDictionary);
+        TIOOTADownloadOnlyHost();
 }
 static void AddEntry(void) {
     UIViewController *top=TopController();UIWindow *window=top.view.window;if(!window)return;
@@ -877,7 +877,7 @@ __attribute__((constructor)) static void Load(void) {
             TIOStartExperimentalOTAFeedIfMarked();
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
-            // The download-only host (1.0.11/259) sends no addon-originated frame:
+            // The download-only host sends no addon-originated frame:
             // no language-flag push, no clench-lab restore, no watch remote.
             BOOL downloadOnly=[TIOHostProfile() isEqual:@"ios1011-download"];
             if(!downloadOnly)TIOLanguageFlagStart();
@@ -912,11 +912,11 @@ __attribute__((constructor)) static void Load(void) {
                 ^{id instance=((id(*)(id,SEL))objc_msgSend)(helper,NSSelectorFromString(@"shared"));if(instance)((void(*)(id,SEL))objc_msgSend)(instance,NSSelectorFromString(@"stopWorkflow"));});
 #endif
             if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
-            // Download-only host (1.0.11/259): no feature hooks, only the rayneonet
-            // channel hook so TIOOTAFlashBlockCall refuses every OTA frame but the
-            // empty version query. TIOOTA107HostMatches stays false there.
+            // Download-only host: no feature hooks, only the rayneonet channel hook so
+            // TIOOTAFlashBlockCall refuses every OTA frame but the empty version query.
+            // TIOOTAHostMatches stays false there.
             else if(downloadOnly)TIOInstallGlassesChannelHook();
-            // Full 1.0.11 host (C15): the same hook carries the arm guard (TIOOTAFlashBlockCall), so it is
+            // Full host: the same hook carries the arm guard (TIOOTAFlashBlockCall), so it is
             // installed whenever the arm step applies, whatever the voice and AlwaysOn signature checks
             // said. TIOInstallGlassesChannelHook returns at once if the hook is already in place.
             if(TIOOTAArmRequired())TIOInstallGlassesChannelHook();
@@ -927,13 +927,13 @@ __attribute__((constructor)) static void Load(void) {
             NSMutableString *loadInfo=[NSMutableString stringWithFormat:@"setup reached; hooks=%d; version=%d; voiceClass=%d; alwaysOnClass=%d\n",valid,VersionMatches(),voice!=Nil,ao!=Nil];
 #if TIO_DISPLAY_PHONE
 #if TIO_DISPLAY_FLASH
-            [loadInfo appendString:@"display extension=APP107-OTA-PHONE-01; loopback restart recovery; OTA default locked\n"];
+            [loadInfo appendString:@"display extension=TMG-OTA-PHONE-01; loopback restart recovery; OTA default locked\n"];
 #else
             [loadInfo appendString:@"display extension=MUSIC-OTA-PHONE-01; numeric diagnostics; OTA writes disabled; legacy N8W retained\n"];
 #endif
 #endif
             [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d; stockTraffic=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOGlassesChannelStockTrafficSeen(),TIOOTADownloadOnlyGuardMarker];
-            // Full 1.0.11 (C15) or 1.0.21 (C20) host: TMG flashing stays disarmed until armed in the wizard; say which.
+            // Full 1.0.21 host: TMG flashing stays disarmed until armed in the wizard; say which.
             if(TIOOTAArmRequired()){NSDictionary *arm=TIOOTAFlashArmStatus();[loadInfo appendFormat:@"armRequired=1; armed=%d; armedForTransfer=%d\n%@\n",[arm[@"armed"] boolValue],[arm[@"armedForTransfer"] boolValue],TIOOTAArmGuardMarker];if([arm[@"armHost"] isEqual:@"ios1021"])[loadInfo appendFormat:@"%@\n",TIOOTAArm1021GuardMarker];}
             // The hook appends "stockTraffic=1; first stock call ..." to this file when a stock rayneonet call first passes it.
             // The image and the packager's marker should agree; say so when only one selects the download-only host.

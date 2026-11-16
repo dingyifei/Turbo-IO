@@ -1,17 +1,9 @@
-// Native runtime independently checks this same exact version/build/UUID matrix.
+// The one inspected host image (version/build/UUID) the packager prepares. The native runtime checks the same
+// image independently (HostCompatibility.h). Any other app, older versions included, is refused.
 export const inspectedHosts = Object.freeze([
-  Object.freeze({version:'1.0.7',build:'230',uuid:'410defdbf93739eaacf2f616abff9d0b'}),
-  Object.freeze({version:'1.0.6',build:'218',uuid:'98a03b57e8163ba19778e55fabe8d762'}),
-  Object.freeze({version:'1.0.2',build:'67',uuid:'eeea85e54114313cb65173c90a6b5d3c'}),
-  Object.freeze({version:'1.0.4',build:'195',uuid:'261c8e78f9553d7d85f713b9082972cf'}),
-  Object.freeze({version:'1.0.5',build:'201',uuid:'748fd301da603095a2449bd0558faca5'}),
-  // The 1.0.11 image (HostCompatibility.h TIOHostDownloadOnlyUUID). Without the
-  // packager's TIOHostProfile=ios1011 marker the addon runs it download-only (the OTA
-  // transfer guard alone); with it, as the full C15 host. The decrypted input carries
-  // a stale Apple signature, which macho-embed strips for both builds.
-  Object.freeze({version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555',profile:'ios1011-download',downloadOnly:true,staleSignature:true}),
   // The 1.0.21 image: download-only (C19) without the packager's TIOHostProfile=ios1021
-  // marker; with it, the full C20 host (package.mjs ios1021).
+  // marker; with it, the full host (package.mjs ios1021). The decrypted input carries a
+  // stale Apple signature, which macho-embed strips for both builds.
   Object.freeze({version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5',profile:'ios1021-download',downloadOnly:true,staleSignature:true}),
 ]);
 export function inspectedHost(info, uuid) {

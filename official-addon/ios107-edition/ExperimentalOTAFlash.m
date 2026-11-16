@@ -59,9 +59,9 @@ BOOL TIOOTAFileCallBlocked(NSString *method,BOOL scopedImage,NSUInteger stage){
 }
 // D5: the stock teleprompter's file send. Compiled in every build, no TIO_* flag.
 // An allow-list: anything that is not exactly this shape stays refused by
-// TIOOTAFileCallBlocked. Stock 1.0.7 sends {deviceId, filePath, taskId} with
+// TIOOTAFileCallBlocked. The stock app sends {deviceId, filePath, taskId} with
 // filePath <container>/Library/Application Support/user_<digits>/teleprompter/<UUID>
-// and taskId the same UUID; 1.0.11 may stage under Documents/user_<digits>/teleprompter/.
+// and taskId the same UUID; newer app versions may stage under Documents/user_<digits>/teleprompter/.
 // Limits beyond the observed shape, kept on purpose: deviceId at most 256
 // characters, at most 20 digits after user_, file name a UUID in one case.
 // Where the bytes go, from a static decomp read only (not checked on the
@@ -308,10 +308,10 @@ BOOL TIOOTAFlashDisableAutoUpdate(void){
     [p synchronize];return YES;
 }
 static id Get(id obj,NSString *key){@try{return [obj valueForKey:key];}@catch(NSException *e){return nil;}}
-// Download-only 1.0.11/259 host (G1). The refusal below is compiled in every
+// Download-only 1.0.21/1 host (G1). The refusal below is compiled in every
 // build and depends on no TIO_* flag: TIO_OTA_FLASH_ENABLED, TIO_DISPLAY_FLASH
-// and TIO_DISPLAY_PHONE only shape the 1.0.7 path further down.
-NSString *const TIOOTADownloadOnlyGuardMarker=@"ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed; business 9 refused except the empty version query";
+// and TIO_DISPLAY_PHONE only shape the armed gate path further down.
+NSString *const TIOOTADownloadOnlyGuardMarker=@"ota guard=DOWNLOAD-ONLY-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed; business 9 refused except the empty version query";
 BOOL TIOOTADownloadOnlyHost(void){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
     // The packager's marker alone also counts: refusing more is the safe side.
@@ -336,16 +336,14 @@ static BOOL DownloadOnlyBlock(id call,NSDictionary **teleprompter){
     return blocked;
 }
 BOOL TIOOTADownloadOnlyBlockCall(id call){return DownloadOnlyBlock(call,NULL);}
-// Full 1.0.11 host (ios1011, C15): TMG flashing is disarmed until the owner arms it
+// Full 1.0.21 host (ios1021, C20 onward): TMG flashing is disarmed until the owner arms it
 // in the flash wizard. Like G1 this refusal is compiled in every build and depends
 // on no TIO_* flag. While disarmed, business 9 lets through only the reads the
 // stock firmware page makes (empty OS version 1, battery 2, idle 11) and the size
 // query (3, OtaSize equal to the bundled ZIP), so its update check against the
 // loopback feed and the wire log see the real sequence; type 4 (any Mode) and the
 // version, manifest and slice frames (5, 6, 7) are refused, whatever the Auto Update
-// toggle says. The 1.0.11 order (2/3/1/4), the type 3 shape and the normal page's
-// Mode are known only from a static read: the C15 capture must confirm them before
-// anyone arms. Armed, the host takes the 1.0.7 path below unchanged (TIOOTAFlashGate:
+// toggle says. Armed, the host takes the gate path below (TIOOTAFlashGate:
 // Mode 2 only, so a forced page's Mode 4 is still refused; Auto Update off; fresh
 // version read; single confirmation).
 NSString *const TIOOTAArmGuardMarker=@"ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install; business 9 transfer frames refused while disarmed; reads and the exact size query pass";
@@ -403,37 +401,33 @@ BOOL TIOOTARawJSONNamesKeyOnce(NSData *data,NSString *key){
     NSUInteger after=NSMaxRange(first);
     return [json rangeOfData:quoted options:0 range:NSMakeRange(after,json.length-after)].location==NSNotFound;
 }
-// The full 1.0.21 host (ios1021, C20) runs the same disarm guard, arm step and transfer gate as the full
-// 1.0.11 host: every check above and below is shared, only the host name, its routing marker, its pinned
-// image and its arm record key differ. The packaging scripts require this marker for --host 1021-full.
+// The full 1.0.21 host's own marker next to TIOOTAArmGuardMarker: the same disarm guard, arm step and
+// transfer gate, with its host name, routing marker, pinned image and arm record key. The packaging
+// scripts require this marker for --host 1021-full.
 NSString *const TIOOTAArm1021GuardMarker=@"ota guard=IOS1021-FULL-DISARM-01; flag-independent; the IOS1011-FULL-DISARM-01 rules on the full 1.0.21 host; arm record otaFlashArmRecord.ios1021";
 BOOL TIOOTAArmRequired(void){
     if(TIOOTADownloadOnlyHost())return NO;
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
-    // Any one sign of a full build (1.0.11 or 1.0.21) asks for the arm step: refusing more is the safe side.
-    return TIOOTAArmHostName(TIOHostProfileFor(TIOHostMainImage(),info))||[info[@"TIOHostProfile"] isEqual:@"ios1011"]||[info[@"TIOHostProfile"] isEqual:@"ios1021"]||
-        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1011_ROUTING_MARKER]||[info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1021_ROUTING_MARKER];
+    // Any one sign of a full build asks for the arm step: refusing more is the safe side.
+    return TIOOTAArmHostName(TIOHostProfileFor(TIOHostMainImage(),info))||[info[@"TIOHostProfile"] isEqual:@"ios1021"]||
+        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1021_ROUTING_MARKER];
 }
-// The full host this build is for, as the packager's TIOHostProfile marker names it: "ios1021" only for
-// that exact string, otherwise "ios1011" (the name before C20). It picks the arm record key, the record's
-// host field and the exact host check; a build whose marker, version, routing marker or image does not
-// fit that one host fails ArmTransferHost and stays disarmed.
-static NSString *ArmHost(void){
-    id marker=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];
-    return [marker isKindOfClass:NSString.class]&&[marker isEqualToString:@"ios1021"]?@"ios1021":@"ios1011";
-}
+// The one full host the arm step knows: "ios1021". It picks the arm record key, the record's host field
+// and the exact host check; a build whose marker, version, routing marker or image does not fit that host
+// fails ArmTransferHost and stays disarmed. A record left under the retired key otaFlashArmRecord.ios1011
+// (C15-C18) is never read.
+static NSString *ArmHost(void){return @"ios1021";}
 // The arm record lives in the addon's own preferences suite, never in the host's.
 // It names the addon image it was made by: that image's LC_UUID. LC_UUID is a hash of
 // the dylib's contents, not an install identity. An addon dylib that differs by one byte
 // reads as disarmed, but a repackage with a byte-identical dylib stays armed, and a
-// C15 -> C13 -> C15 round trip keeps the record (C13 never reads or clears it).
-// Disarm before rolling back. Each full host has its own key: otaFlashArmRecord.ios1011
-// or otaFlashArmRecord.ios1021.
+// round trip through a build that never reads the record keeps it.
+// Disarm before rolling back. The key is otaFlashArmRecord.ios1021.
 static NSString *ArmKey(void){return [@"otaFlashArmRecord." stringByAppendingString:ArmHost()];}
 static NSString *ArmSuite(void){return @"io.turboio.official-private-addon";}
 // Only the suite's own persistent domain (current user, any host). CFPreferencesCopyValue
 // looks in that one domain and nowhere else, so a launch argument (NSArgumentDomain,
-// e.g. -otaFlashArmRecord.ios1011 <dict>), a registered default or the host's own
+// e.g. -otaFlashArmRecord.ios1021 <dict>), a registered default or the host's own
 // preferences can never arm. -[NSUserDefaults initWithSuiteName:] searches the argument
 // domain too, so it is not used here.
 static id ArmRecord(void){
@@ -481,7 +475,7 @@ static BOOL ArmTransferHost(void){
 static BOOL ArmedForTransfer(void){return TIOOTAFlashArmed()&&ArmTransferHost();}
 BOOL TIOOTAFlashArm(NSError **error){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
-    if(!TIOOTAArmRequired()||!TIOOTAArmHostMatches(ArmHost(),info)||!TIOHostFullImageMatches(TIOHostMainImage(),info)){Error(error,TIOText(@"只有完整版 1.0.11 或 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。"));return NO;}
+    if(!TIOOTAArmRequired()||!TIOOTAArmHostMatches(ArmHost(),info)||!TIOHostFullImageMatches(TIOHostMainImage(),info)){Error(error,TIOText(@"只有完整版 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。"));return NO;}
     if(!TIOOTAFlashProtected()){Error(error,TIOText(@"没有试刷构建与发送保护；未开放。"));return NO;}
     NSString *install=ArmInstallID();if(!install){Error(error,TIOText(@"无法确认本次安装；未启用。"));return NO;}
     ArmRecordWrite(@{@"v":@1,@"host":ArmHost(),@"install":install,@"armedAt":@(floor(NSDate.date.timeIntervalSince1970))});
@@ -542,13 +536,13 @@ BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){
     if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);
     if(TIOOTAArmRequired()){
         // Only a business-9 frame can depend on the arm state: for every other call the
-        // disarmed rule and the armed (1.0.7) rule give the same verdict, so the record is
-        // not read for them. The 1.0.7 path's disconnect side effect (forget the version
+        // disarmed rule and the armed gate rule give the same verdict, so the record is
+        // not read for them. The gate path's disconnect side effect (forget the version
         // read, revoke a stage 1 grant) still runs, armed or not, in every build.
         if(!Business9Call(call)){ObserveDisconnect(Get(call,@"method"));return DisarmedBlock(call,teleprompter);}
         // Once a transfer has started (stage 2) the record is not read again: a record read
         // failure, a preferences glitch or a disarm racing the guard cannot cut it. The host
-        // checks still apply, and the 1.0.7 gate below decides every frame.
+        // checks still apply, and the gate below decides every frame.
         if(!(GateStage()==2?ArmTransferHost():ArmedForTransfer()))return DisarmedBlock(call,teleprompter);
     }
     if(!TIOOTAFlashBuild())return NO;
@@ -580,7 +574,7 @@ void TIOOTAFlashObserveEvent(NSDictionary *event){
     }
 }
 BOOL TIOOTAFlashAuthorize(NSError **error){
-    if(!TIOOTAHostMatches(NSBundle.mainBundle.infoDictionary)){Error(error,TIOText(@"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。"));return NO;}
+    if(!TIOOTAHostMatches(NSBundle.mainBundle.infoDictionary)){Error(error,TIOText(@"OTA 专用宿主或路由标记不匹配，未授权。"));return NO;}
     if(TIOOTAArmRequired()&&!ArmedForTransfer()){Error(error,TIOText(@"本机 TMG 刷写尚未启用；先在向导中启用，未授权。"));return NO;}
     NSDictionary *feed=TIOExperimentalOTAFeedStatus();
     if(![feed[@"bootstrapEligible"] boolValue]||![feed[@"running"] boolValue]||![feed[@"healthPassed"] boolValue]){Error(error,TIOText(@"未确认本机下载来源与健康检查，未授权。"));return NO;}

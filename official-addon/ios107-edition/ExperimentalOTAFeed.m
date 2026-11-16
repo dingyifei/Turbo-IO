@@ -226,7 +226,7 @@ void TIORefreshExperimentalOTAReport(void){
         NSFileManager *fm=NSFileManager.defaultManager;NSError *error=nil;
         if([fm createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&error]&&[directory setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:&error]){
             NSMutableDictionary *report=[@{@"build":@"OTA-PREPARE-02",@"timestamp":@(NSDate.date.timeIntervalSince1970),@"processIdentifier":@(NSProcessInfo.processInfo.processIdentifier),@"launchID":LaunchID?:@"",@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"flashAuthorized":@NO,@"transferSessionBound":@NO} mutableCopy];
-            if(TIOOTAFlashBuild()){report[@"build"]=@"APP107-OTA-PHONE-01";report[@"flashGate"]=TIOOTAFlashStatus();report[@"flashAuthorized"]=report[@"flashGate"][@"authorized"];}
+            if(TIOOTAFlashBuild()){report[@"build"]=@"TMG-OTA-PHONE-01";report[@"flashGate"]=TIOOTAFlashStatus();report[@"flashAuthorized"]=report[@"flashGate"][@"authorized"];}
             NSURL *zip=[directory URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];error=nil;
             report[@"archive"]=TIOReadExperimentalOTA(zip,&error)?:@{@"integrityPassed":@NO};
             NSURL *official=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];error=nil;
@@ -246,12 +246,12 @@ void TIOStartExperimentalOTAFeedIfMarked(void){
         LaunchID=NSUUID.UUID.UUIDString;
         NSBundle *bundle=NSBundle.mainBundle;
         if(!TIOOTAFlashBuild())return;
-        // ios107 or a full host (ios1011, ios1021), each with its own routing marker, pinned image and route offsets.
+        // The full host (ios1021), with its own routing marker, pinned image and route offsets.
         // On a full host the feed runs while TMG flashing is disarmed: answering the stock update check is not a transfer.
         NSString *profile=TIOOTAHostProfile(bundle.infoDictionary);
-        if(!profile||!TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)){BootstrapFailure=TIOText(@"1.0.7 实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
+        if(!profile||!TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)){BootstrapFailure=TIOText(@"实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
         NSString *file=[bundle.bundlePath stringByAppendingPathComponent:@"Frameworks/App.framework/App"];
-        if(!TIOOTARouteFileMatches(file,profile)){BootstrapFailure=TIOText(@"1.0.7 实验查询路径或对象头不匹配，未启动服务");TIORefreshExperimentalOTAReport();return;}
+        if(!TIOOTARouteFileMatches(file,profile)){BootstrapFailure=TIOText(@"实验查询路径或对象头不匹配，未启动服务");TIORefreshExperimentalOTAReport();return;}
         BootstrapEligible=YES;EnsureFeedListening();ScheduleHealthCheck();
         TIORefreshExperimentalOTAReport();
 #if TARGET_OS_IPHONE

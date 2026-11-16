@@ -113,18 +113,22 @@ STOCK=$(python3 -I "$REPO/firmware/build.py" --show stock-zip --inputs "$TURBO_I
 TC=$TURBO_INPUTS/toolchain/llvm-bin
 rm -rf "$GATE/tree-build"
 # The external configuration is the only source of packaging inputs. The firmware-only gate reads none of it.
-# TURBO_APP1011 and TURBO_APP1021 (optional, read-only test inputs) may also come from the environment.
+# TURBO_APP1021 (the stock 1.0.21/1 Runner.app, a read-only test input) may also come from the environment; the
+# stages that need the real app (test, package-test, host1021) require it.
 if [[ $firmware_only == 0 ]]; then
-  inherited_app1011=${TURBO_APP1011:-}
   inherited_app1021=${TURBO_APP1021:-}
-  unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_PRODUCT TURBO_FIRMWARE TURBO_APP107 TURBO_PATCHED_APP TURBO_APP1011 TURBO_APP1021
+  unset TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1021
   [[ -f "$TURBO_INPUTS/package.env" ]] || { echo 'Missing external package.env' >&2; exit 1; }
   set -a
   source "$TURBO_INPUTS/package.env"
   set +a
-  TURBO_APP1011=${TURBO_APP1011:-$inherited_app1011}
   TURBO_APP1021=${TURBO_APP1021:-$inherited_app1021}
 fi
+# The stock 1.0.21/1 app, for the stages that test or package against the real host.
+require_app1021() {
+  [[ -n ${TURBO_APP1021:-} ]] || { echo 'package.env (or the environment) must set TURBO_APP1021' >&2; return 1; }
+  [[ -d "$TURBO_APP1021" ]] || { echo 'TURBO_APP1021 is not a directory' >&2; return 1; }
+}
 private_stage() {
   local backup=$TURBO_INPUTS/private-backup/ios107 file
   for file in PrivateBootstrap.h PrivateBootstrap.m; do
@@ -149,22 +153,22 @@ symbols_stage() {
   if grep -Fq 'AMapNavi' "$GATE/symbols.txt"; then echo 'Unexpected AMapNavi symbol' >&2; return 1; fi
   # The default build carries no wire log: its recorder exists only in TIO_WIRE_LOG=1 builds.
   bash "$REPO/scripts/wirelog-absent.sh" "$addon"
-  marker_count=$(grep -a -c 'display extension=APP107-OTA-PHONE-01;' "$addon" || true)
-  [[ $marker_count -ge 1 ]] || { echo 'Missing APP107 display marker' >&2; return 1; }
-  # G1/G2: the flag-independent 1.0.11 download-only guard is in every build.
+  marker_count=$(grep -a -c 'display extension=TMG-OTA-PHONE-01;' "$addon" || true)
+  [[ $marker_count -ge 1 ]] || { echo 'Missing TMG-OTA-PHONE-01 display marker' >&2; return 1; }
+  # G1/G2: the flag-independent download-only guard is in every build.
   local name
   for name in _TIOOTADownloadOnlyHost _TIOOTADownloadOnlyBlockCall _TIOOTADownloadOnlyGuardMarker \
     _TIOGlassesChannelHookFailure _TIOChannelHookTargetFailure _TIODownloadOnlyGuardActiveFor _TIOFirmwareExportSafetyModel _TIOHostDownloadOnlyGuardActive \
     _TIOStockTeleprompterSendAllowed; do
-    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 guard symbol $name" >&2; return 1; }
+    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing download-only guard symbol $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$addon" || { echo 'Missing 1.0.11 guard marker' >&2; return 1; }
-  # C15: the flag-independent disarm guard and the arm step of the full 1.0.11 host are in every build too.
+  grep -aFq 'ota guard=DOWNLOAD-ONLY-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$addon" || { echo 'Missing download-only guard marker' >&2; return 1; }
+  # C15: the flag-independent disarm guard and the arm step (the full host's arm check) are in every build too.
   for name in _TIOOTAArmRequired _TIOOTADisarmedBlockCall _TIOOTADisarmedReadAllowed _TIOOTAArmGuardMarker \
     _TIOOTAFlashArm _TIOOTAFlashDisarm _TIOOTAFlashArmed _TIOOTAFlashArmStatus _TIOFirmwareExportSafetyModelFull; do
-    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.11 arm guard symbol $name" >&2; return 1; }
+    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing arm guard symbol $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$addon" || { echo 'Missing 1.0.11 arm guard marker' >&2; return 1; }
+  grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$addon" || { echo 'Missing arm guard marker' >&2; return 1; }
   # C20: the full 1.0.21 host's arm marker and the pin-derived member count are in every build too.
   for name in _TIOOTAArm1021GuardMarker _TIOExperimentalOTAMemberCount _TIOOTAFlashNoteRefused; do
     grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.21 full host symbol $name" >&2; return 1; }
@@ -223,12 +227,12 @@ first_release_zip() {
 }
 # The release groups of test.py: pins, archive, directory, member counts, gate, feed, wizard and full-host groups,
 # compiled with the release's TIO_RELEASE define against its own ZIP and stock base.
-RELEASE_GROUPS=pins,archive,directory,member-count,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1011,tmg4-wizard-1021,ios1011-arm-store,ios1021-arm-store,ios1011-full-guard,ios1011-full-edge,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
-# One full test.py run for the first release (it includes every release group), then the release groups alone for
-# each other release, so no group runs twice for the same release. With one release (C21) that is the full run only.
+RELEASE_GROUPS=pins,archive,directory,member-count,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1021,ios1021-arm-store,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
+# One full test.py run for the first release (it includes every release group and the real 1.0.21 app's groups), then
+# the release groups alone for each other release, so no group runs twice for the same release. With one release
+# (C21) that is the full run only.
 test_stage() {
-  : "${TURBO_APP107:?package.env must set TURBO_APP107}"
-  : "${TURBO_PATCHED_APP:?package.env must set TURBO_PATCHED_APP}"
+  require_app1021
   local tree name zip names first
   tree=$(tree_zip)
   names=$(release_list)
@@ -237,54 +241,30 @@ test_stage() {
   for name in $names; do
     zip=$(python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS")
     if [[ $name == "$first" ]]; then
-      python3 test.py --release "$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --app107 "$TURBO_APP107" --patched-app "$TURBO_PATCHED_APP"
+      python3 test.py --release "$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --app1021 "$TURBO_APP1021"
     else
       rm -rf "build/tests-$name"
-      python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} ${TURBO_APP1021:+--app1021 "$TURBO_APP1021"} --only "$RELEASE_GROUPS"
+      python3 test.py --release "$name" --out "build/tests-$name" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --app1021 "$TURBO_APP1021" --only "$RELEASE_GROUPS"
     fi
   done
 }
+# The node tests, with the release ZIP and the real 1.0.21 app for the tests that read them.
 package_test_stage() {
+  require_app1021
   local zip
   zip=$(first_release_zip)
   cd "$ED"
-  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE
-  : "${TURBO_APP107:?package.env must set TURBO_APP107}"
-  # The unsigned-app baseline probe passed. The separate runner/image probe
-  # failed its fixed patched-output hash (500d3360... versus fd68e86b...),
-  # so those two optional inputs stay unset. See package-probe-pair.log.
-  export IOS107_TEST_UNSIGNED_APP=$TURBO_APP107
-  TIO_TEST_RELEASE_ZIP="$zip" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
-}
-# Optional: 1.0.11/259 host checks, download-only and full. Runs only when TURBO_APP1011 is set. No release is built
-# for the full 1.0.11 host, so its package path is not run.
-host1011_stage() {
-  [[ -d "$TURBO_APP1011" ]] || { echo 'TURBO_APP1011 is not a directory' >&2; return 1; }
-  local tree zip
-  tree=$(tree_zip)
-  zip=$(first_release_zip)
-  cd "$ED"
-  python3 test.py --release "$(first_release)" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --app1011 "$TURBO_APP1011" --only host,ios1011-guard,ios1011-host,ios1011-full-guard,ota-host-1011,host-selectors
-  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE TIO_TEST_RELEASE_ZIP
-  IOS1011_TEST_APP="$TURBO_APP1011" node --test package.test.mjs
+  TIO_TEST_RELEASE_ZIP="$zip" IOS1021_TEST_APP="$TURBO_APP1021" node --test package.test.mjs apple-ai/package-resources.test.mjs local-translation/package-resources.test.mjs
 }
 # The releases built for one packager host (releases.json hosts), space separated; empty when there is none.
 releases_for_host() {
   python3 -I -c 'import json,sys;print(" ".join(n for n,r in json.load(open(sys.argv[1]))["releases"].items() if sys.argv[2] in r.get("hosts",[])))' "$ED/releases.json" "$1"
 }
-# Optional: 1.0.21/1 host checks, download-only (C19) and full (C21). Runs only when TURBO_APP1021 is set.
-# The full 1.0.21 package path (--host 1021-full, up to signing) runs for every release built for 1021-full.
+# The package path of both 1.0.21/1 hosts up to signing (--build-only): download-only (C19), and full for every
+# release built for 1021-full. The real app's test groups run in test_stage and package_test_stage.
 host1021_stage() {
-  [[ -d "$TURBO_APP1021" ]] || { echo 'TURBO_APP1021 is not a directory' >&2; return 1; }
-  local tree zip name names
-  tree=$(tree_zip)
-  zip=$(first_release_zip)
-  cd "$ED"
-  python3 test.py --release "$(first_release)" --firmware "$zip" --tree-firmware "$tree" --tree-stock "$STOCK" --out build/tests-1021 --app1021 "$TURBO_APP1021" ${TURBO_APP1011:+--app1011 "$TURBO_APP1011"} \
-    --only host,ios1011-guard,ios1021-download-guard,ios1021-host,ios1021-full-guard,ota-host-1021,host-selectors
-  unset IOS107_TEST_UNSIGNED_APP IOS107_TEST_RUNNER IOS107_TEST_APP_IMAGE TIO_TEST_RELEASE_ZIP
-  IOS1021_TEST_APP="$TURBO_APP1021" node --test package.test.mjs
-  # The download-only 1.0.21 package path (C19), unchanged.
+  require_app1021
+  local name names
   bash "$REPO/scripts/turbo-package.sh" --host 1021 --build-only gate-1021
   names=$(releases_for_host 1021-full)
   [[ -n $names ]] || { echo 'host1021: no release in releases.json is built for 1021-full' >&2; return 1; }
@@ -392,7 +372,7 @@ if [[ $firmware_only == 1 ]]; then
   stage fw-tests fw_tests_stage
   stage fw-reproduce fw_reproduce_stage
   stage source-audit source_audit_stage
-  for name in private build symbols pins test package-test host1011 host1021 preview; do report skip "$name" '--firmware-only'; done
+  for name in private build symbols pins test package-test host1021 preview; do report skip "$name" '--firmware-only'; done
   active=finish
   report finish PASS "$started" 0 ''
   if [[ -n $tree_zip_arg ]]; then
@@ -409,18 +389,16 @@ stage symbols symbols_stage
 stage pins pins_stage
 stage fw-layout fw_layout_stage
 if [[ $only_build == 1 ]]; then
-  for name in test package-test host1011 host1021 source-audit preview; do report skip "$name" '--only-build'; done
+  for name in test package-test host1021 source-audit preview; do report skip "$name" '--only-build'; done
 else
   if [[ $skip_tests == 1 ]]; then
     report skip test '--skip-tests'
     report skip package-test '--skip-tests'
-    report skip host1011 '--skip-tests'
     report skip host1021 '--skip-tests'
   else
     stage test test_stage
     stage package-test package_test_stage
-    if [[ -n "$TURBO_APP1011" ]]; then stage host1011 host1011_stage; else report skip host1011 'TURBO_APP1011 not set'; fi
-    if [[ -n "${TURBO_APP1021:-}" ]]; then stage host1021 host1021_stage; else report skip host1021 'TURBO_APP1021 not set'; fi
+    stage host1021 host1021_stage
   fi
   stage source-audit source_audit_stage
   if [[ $preview == 1 ]]; then stage preview preview_stage; else report skip preview 'not requested'; fi

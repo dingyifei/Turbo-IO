@@ -8,7 +8,7 @@ from pathlib import Path
 FIXTURES = (
     'unavailable', 'missing-key', 'auto-on', 'ready-download', 'download-open',
     'stale-version', 'ready-authorize', 'authorized', 'installing', 'failed',
-    '1011-directory',
+    'full-directory',
 )
 STEMS = ('hub', 'hub-dev', 'more', 'lifelog') + tuple(f'ota-{name}' for name in FIXTURES)
 EXPECTED_OTA = {
@@ -21,7 +21,7 @@ EXPECTED_OTA = {
     'authorized': (3, True),
     'installing': (3, False),
     'failed': (3, True),
-    '1011-directory': (2, True),
+    'full-directory': (2, True),
 }
 
 
@@ -158,7 +158,7 @@ def check(out):
                 secondary = buttons.get('ota-secondary')
                 if not secondary or secondary.get('hidden'):
                     failures.append(f'{name}: revoke button not visible')
-            if fixture == '1011-directory':
+            if fixture == 'full-directory':
                 secondary = buttons.get('ota-secondary')
                 if not secondary or secondary.get('hidden') or secondary.get('enabled') is not True:
                     failures.append(f'{name}: continue button not visible and enabled')

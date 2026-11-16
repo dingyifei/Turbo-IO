@@ -71,12 +71,3 @@ NSDictionary *TIOProtocolDefaultSubtitle(void){
     // different firmware: the fresh preview ACK is mandatory every session.
     return @{@"config":@{@"font_size":@2,@"content_width":@100,@"max_lines":@5,@"position":@"center",@"is_display":@YES,@"straight_view":@"original"}};
 }
-NSDictionary *TIOProtocolDefaultTeleprompter(NSDictionary *i){
-    if(![i[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]||![i[@"CFBundleShortVersionString"] isEqual:@"1.0.5"]||![[i[@"CFBundleVersion"] description] isEqual:@"201"]||!TIOHostExpectedUUID(i))return nil;
-    // 2026-09-18: captured prepare/start keys, layout and four successful
-    // official sample receipts on Strix 1.0.4.12. Fresh DID/size/checksum and
-    // zero cursor are generated per send; do not copy a sample session.
-    NSDictionary *p=@{@"action":@1,@"did":@"template",@"total":@1,@"scroll":@2,@"speed":@120,@"countdown":@3,@"gear":@3,@"depth":@1,@"size":@18,@"width":@492,@"leading":@4,@"pageOffset":@0,@"highLightOffset":@0};
-    NSMutableDictionary *s=[p mutableCopy];s[@"checksum"]=@"00000000";s[@"code"]=@1;
-    return TIOProtocolSanitize(@"tele-auto",@{@"prepare":p,@"start":s,@"fileKeys":@[@"deviceId",@"taskId",@"filePath"]});
-}

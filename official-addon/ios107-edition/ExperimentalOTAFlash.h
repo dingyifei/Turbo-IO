@@ -12,7 +12,7 @@ BOOL TIOOTAFlashBuild(void);
 NSUInteger TIOOTAScopedSenderCount(void);
 BOOL TIOOTAFlashProtected(void);
 BOOL TIOOTAFlashBlockCall(id call);
-// Download-only 1.0.11/259 host: TIOOTAFlashBlockCall delegates to
+// Download-only 1.0.21/1 host: TIOOTAFlashBlockCall delegates to
 // TIOOTADownloadOnlyBlockCall there, whatever TIO_* flags the build has.
 FOUNDATION_EXPORT NSString *const TIOOTADownloadOnlyGuardMarker;
 BOOL TIOOTADownloadOnlyHost(void);
@@ -41,16 +41,16 @@ BOOL TIOOTAFlashBlockCallSnapshot(id call, NSDictionary *_Nullable *_Nullable te
 // TIOOTAFlashStatus (refusedFrames, lastRefusedFrame). Never changes a verdict; never throws.
 void TIOOTAFlashNoteRefused(id call);
 BOOL TIOPhoneOTAReadAllowed(NSData *data);
-// Full 1.0.11 host (profile ios1011, C15) and full 1.0.21 host (ios1021, C20): TMG flashing is disarmed until armed.
+// Full 1.0.21 host (profile ios1021, C20 onward): TMG flashing is disarmed until armed.
 // TIOOTAFlashBlockCall delegates to TIOOTADisarmedBlockCall there while disarmed,
-// whatever TIO_* flags the build has; armed, it takes the 1.0.7 gate path. Only business-9
+// whatever TIO_* flags the build has; armed, it takes the gate path. Only business-9
 // frames read the arm record, and not once a transfer has started (gate stage 2).
 FOUNDATION_EXPORT NSString *const TIOOTAArmGuardMarker;
-// Full 1.0.21 host (profile ios1021, C20): the same disarm rules, its own arm record. Its load info
+// Full 1.0.21 host (profile ios1021): the same disarm rules, its own arm record. Its load info
 // carries this marker next to TIOOTAArmGuardMarker, and the 1021-full packager requires both strings.
 FOUNDATION_EXPORT NSString *const TIOOTAArm1021GuardMarker;
-// YES on the full 1.0.11 and 1.0.21 hosts: the pinned image with its own profile marker, or
-// either of a full host's Info.plist markers alone. NO on the download-only and the 1.0.7 hosts.
+// YES on the full 1.0.21 host: the pinned image with its profile marker, or either of its
+// Info.plist markers alone. NO on the download-only host and on any other build.
 BOOL TIOOTAArmRequired(void);
 // While disarmed: business 9 passes only the empty reads 1, 2, 11 and the size query 3 for the bundled ZIP.
 BOOL TIOOTADisarmedReadAllowed(NSData *data);

@@ -1,4 +1,4 @@
-// Wire log on, guard unchanged. Included by the guard sweeps (Host1011GuardTests.m and
+// Wire log on, guard unchanged. Included by the guard sweeps (DownloadOnlyGuardTests.m and
 // StockTeleprompterSendTests.m) only when test.py builds them with -DTIO_WIRE_LOG=1.
 // Every TIOOTAFlashBlockCall(call) in the including file then runs the hook's own
 // TIOMethodHookGuardStage (MethodHookStages.h: wire log wrap, guard with its @try, D5

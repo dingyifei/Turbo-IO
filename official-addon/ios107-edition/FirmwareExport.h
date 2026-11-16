@@ -40,9 +40,9 @@ FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportScan(NSURL *home);
 // "1.0.5.5" from Strix_OS_1.0.5.5, Strix_OS_1.0.5.5.zip or StrixOS-1.0.5.5-...; nil otherwise.
 FOUNDATION_EXPORT NSString *_Nullable TIOFirmwareExportVersion(NSString *name);
 // Name of the Turbo IO candidate ZIP with this SHA-256 (any case), or nil.
-// Covers TMG2 and every ZIP pin firmware-pins.json ever held (TMG3 to TMG10,
+// Covers TMG2 and every ZIP pin the firmware-pins files ever held (TMG3 to TMG10,
 // superseded ones included) plus the compiled-in FirmwarePins.h pin. A match
-// is a Turbo candidate (likely left in ota/ by 1.0.7), never stock firmware.
+// is a Turbo candidate (likely left in ota/ by an earlier flash), never stock firmware.
 FOUNDATION_EXPORT NSString *_Nullable TIOFirmwareExportTurboCandidate(NSString *sha256);
 
 // Streams the file in 1 MiB chunks. Keys: sha256, md5 (lowercase hex), bytes.

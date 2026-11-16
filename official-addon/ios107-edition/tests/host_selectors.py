@@ -6,8 +6,8 @@ Usage: python3 -I tests/host_selectors.py <edition dir> <Runner.app> [<Runner.ap
 For each app: each listed method must exist in the named image with exactly the
 listed encoding, and that encoding must satisfy the check the addon itself makes
 before hooking or calling (the Signature()/CheckedSetter() predicates, copied below
-as `accept`). The table was read from 1.0.7 (230) and confirmed equal on 1.0.11
-(259); a host build where any row differs fails here, and the addon's own runtime
+as `accept`). test.py runs it on the stock 1.0.21 (1) app, the one supported
+host; a host build where any row differs fails here, and the addon's own runtime
 check would leave that hook off. Each selector must also still appear in the
 addon source file named in the row, so a hook added or renamed there without a
 row here fails too.

@@ -65,12 +65,12 @@ NSDictionary *TIOOTAWizardSnapshot(NSDictionary *inputs) {
     BOOL canDownload = package == TIOOTACheckOK && downloadSource == TIOOTACheckOK &&
         protect == TIOOTACheckOK && stage == 0;
     BOOL canContinue = canDownload && autoUpdate == TIOOTACheckOK;
-    // Full 1.0.11 host: flashing stays disarmed until the explicit arm step (TIOOTAFlashArm).
+    // Full host: flashing stays disarmed until the explicit arm step (TIOOTAFlashArm).
     BOOL armRequired = [flash[@"armRequired"] boolValue], armed = armRequired && [flash[@"armed"] boolValue];
     TIOOTACheck arm = !armRequired || armed ? TIOOTACheckOK : TIOOTACheckAction;
     BOOL canAuthorize = canContinue && version == TIOOTACheckOK && directory == TIOOTACheckOK && arm == TIOOTACheckOK && stage == 0;
-    // On the full 1.0.11 host the stock firmware page offers an update only while the loopback feed serves one,
-    // that is while the download window is open. A stock OTA folder left by an earlier 1.0.7 flash passes the
+    // On the full host the stock firmware page offers an update only while the loopback feed serves one,
+    // that is while the download window is open. A stock OTA folder left by an earlier flash passes the
     // directory check but does not make the page offer anything, so step 2 is never skipped there.
     BOOL downloadRequired = armRequired;
     NSInteger suggestedStep = stage >= 1 ? 3 : !canContinue ? 1 : downloadRequired || directory != TIOOTACheckOK ? 2 : 3;
@@ -127,7 +127,7 @@ NSString *TIOOTAFormatClock(NSInteger seconds) {
 
 NSArray<NSString *> *TIOOTAWizardFixtureNames(void) {
     return @[@"unavailable", @"missing-key", @"auto-on", @"ready-download", @"download-open",
-             @"stale-version", @"ready-authorize", @"authorized", @"installing", @"failed", @"1011-directory"];
+             @"stale-version", @"ready-authorize", @"authorized", @"installing", @"failed", @"full-directory"];
 }
 
 NSDictionary *TIOOTAWizardFixture(NSString *name) {
@@ -141,8 +141,8 @@ NSDictionary *TIOOTAWizardFixture(NSString *name) {
     BOOL authorized = [name isEqualToString:@"authorized"];
     BOOL installing = [name isEqualToString:@"installing"];
     BOOL failed = [name isEqualToString:@"failed"];
-    // Full 1.0.11 host, disarmed, with a stock OTA folder from an earlier 1.0.7 flash already in the container.
-    BOOL fullHostDirectory = [name isEqualToString:@"1011-directory"];
+    // Full host, disarmed, with a stock OTA folder from an earlier flash already in the container.
+    BOOL fullHostDirectory = [name isEqualToString:@"full-directory"];
     NSInteger stage = authorized ? 1 : installing ? 2 : failed ? 3 : 0;
     BOOL directoryReady = staleVersion || readyAuthorize || fullHostDirectory || stage >= 1;
     BOOL recentVersion = readyAuthorize || stage >= 1;

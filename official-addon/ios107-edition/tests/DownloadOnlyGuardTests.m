@@ -1,8 +1,8 @@
-// Download-only 1.0.11/259 host: the business-9 guard is the only thing standing
+// Download-only 1.0.21/1 host (C19 onward): the business-9 guard is the only thing standing
 // between the stock app and an OTA session. Runs the unchanged phone policy
 // (ExperimentalOTAFlash.m / ExperimentalOTAFeed.m, adapted by test.py exactly like
-// tmg4-wizard) against 1.0.11 host info. No device, network or signing.
-// Optional argv: <1.0.11 Runner> <1.0.11 Info.plist> also checks the real image.
+// tmg4-wizard) against 1.0.21 host info. No device, network or signing.
+// Optional argv: <1.0.21 Runner> <1.0.21 Info.plist> also checks the real image.
 //
 // G1: test.py builds this file in several TIO_* flag sets (all of
 // TIO_OTA_FLASH_ENABLED / TIO_DISPLAY_FLASH / TIO_DISPLAY_PHONE, partial sets, and
@@ -11,6 +11,7 @@
 #import "TMG4WizardHost.h"
 #import "HostCompatibility.h"
 #import "OTAHost.h"
+#import "FullHostFixture.h"
 #import "ExperimentalOTAFlash.h"
 #import "ExperimentalOTAFeed.h"
 #import "ExperimentalOTAGuard.h"
@@ -142,7 +143,7 @@ static void OnlyVersionQueryPasses(void){
 }
 static void Refused(void){
     NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e));assert(e);
-    assert([e.localizedDescription isEqual:TIOText(@"1.0.7 OTA 专用宿主或路由标记不匹配，未授权。")]);
+    assert([e.localizedDescription isEqual:TIOText(@"OTA 专用宿主或路由标记不匹配，未授权。")]);
     NSDictionary *s=TIOOTAFlashStatus();assert([s[@"stage"] intValue]==0);assert(![s[@"authorized"] boolValue]);assert(![s[@"started"] boolValue]);
 }
 // G3: the panel's Auto Update reading agrees with the authorization check's parser.
@@ -152,19 +153,12 @@ static void AutoUpdateAgrees(void){
         @{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@YES},@{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@"false"},@{@"other":@YES}];
     for(NSDictionary *p in cases)assert((TIOAutoUpdateReadingFor(p)==TIOAutoUpdateReadingOff)==TIOOTAAutoUpdateDisabled(p));
 }
-// Built with -DTIO_TEST_HOST_1021=1 the same test runs on the download-only 1.0.21/1 host (C19), whose
-// packager marker is also "ios1011-download"; test.py requires its sweep to equal the 1.0.11 one.
-#if TIO_TEST_HOST_1021
+// The download-only host: the 1.0.21/1 image with the packager's marker "ios1011-download".
+// test.py compares the sweep with its pinned digest.
 #define TDH_NAME "1.0.21"
 #define TDH_VERSION @"1.0.21"
 #define TDH_BUILD @"1"
 #define TDH_UUID @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"
-#else
-#define TDH_NAME "1.0.11"
-#define TDH_VERSION @"1.0.11"
-#define TDH_BUILD @"259"
-#define TDH_UUID @"22724C97-2EF9-388D-8E6A-6E051855A555"
-#endif
 int main(int argc,char **argv){@autoreleasepool{
     assert(argc==1||argc==3);
     Home=[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
@@ -177,16 +171,18 @@ int main(int argc,char **argv){@autoreleasepool{
         runner=[NSData dataWithContentsOfFile:@(argv[1]) options:NSDataReadingMappedIfSafe error:nil];assert(runner.length>4096);
         const struct mach_header *h=runner.bytes;
         assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(TIOHostDownloadOnlyImageMatches(h,real));
-        assert(!TIOHostImageMatches(h,real));assert(!TIOHostExpectedUUID(real));
-        NSMutableDictionary *as107=[real mutableCopy];as107[@"CFBundleShortVersionString"]=@"1.0.7";as107[@"CFBundleVersion"]=@"230";assert(!TIOHostProfileFor(h,as107));
+        assert(!TIOHostFullImageMatches(h,real));assert(!TIOHostFullExpectedUUID(real));
+        // The same image under another version and build (an older RayNeo AI release, say) has no profile at all.
+        NSMutableDictionary *other=[real mutableCopy];other[@"CFBundleShortVersionString"]=@"1.0.7";other[@"CFBundleVersion"]=@"230";assert(!TIOHostProfileFor(h,other));
         real[@"TIOHostProfile"]=@"ios1011-download";d=real; // what the packager adds
         Image=h;
     }
     Host=d;Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     assert(TIOOTADownloadOnlyHost());
-    // (b) never the 1.0.7 OTA host, even with a stale 1.0.7 routing marker.
-    assert(!TIOOTA107HostMatches(Host));
-    NSMutableDictionary *stale=[d mutableCopy];stale[@"TIOExperimentalOTAQueryRouting"]=@"ios107-tmg2-loopback-flash-gated";assert(!TIOOTA107HostMatches(stale));
+    // (b) never an OTA host, even with a stale routing marker (the retired 1.0.7 one, or the full host's own).
+    assert(!TIOOTAHostMatches(Host));
+    NSMutableDictionary *stale=[d mutableCopy];stale[@"TIOExperimentalOTAQueryRouting"]=@"ios107-tmg2-loopback-flash-gated";assert(!TIOOTAHostMatches(stale));
+    {NSMutableDictionary *routed=[d mutableCopy];routed[@"TIOExperimentalOTAQueryRouting"]=TIO_OTA_1021_ROUTING_MARKER;assert(!TIOOTAHostMatches(routed));}
     // (d) the flash path is off; whether it is compiled in depends on the flags, the refusal does not.
 #if TIO_OTA_FLASH_ENABLED && TIO_DISPLAY_FLASH
     assert(TIOOTAFlashBuild());
@@ -199,7 +195,7 @@ int main(int argc,char **argv){@autoreleasepool{
     NSDictionary *feed=TIOExperimentalOTAFeedStatus();
     assert(![feed[@"running"] boolValue]);assert(![feed[@"bootstrapEligible"] boolValue]);assert([feed[@"startAttempts"] intValue]==0);
     // Without the flash build the feed returns before its host check and records no reason.
-    assert([feed[@"reason"] isEqual:TIOOTAFlashBuild()?TIOText(@"1.0.7 实验来源宿主版本/UUID/标记不匹配"):@""]);
+    assert([feed[@"reason"] isEqual:TIOOTAFlashBuild()?TIOText(@"实验来源宿主版本/UUID/标记不匹配"):@""]);
     NSError *e=nil;assert(!TIOBeginExperimentalOTAPreparation(&e));assert(e);
     // (a) before and after the transport hook is ready.
     NSString *sweep=Sweep();
@@ -219,28 +215,18 @@ int main(int argc,char **argv){@autoreleasepool{
     Image=pinned;OnlyVersionQueryPasses();assert([Sweep() isEqual:sweep]);Host=d;
     assert(!Allowed(Frame(4,@{@"Mode":@4},nil),@"fixture-peer"));OnlyVersionQueryPasses();
     AutoUpdateAgrees();
-    // Control: the harness does discriminate. The 1.0.7 host takes the unchanged
-    // legacy branch: with the flash build only the empty reads 1, 2 and 11 pass an
-    // unarmed gate (the phone-only build reads the same three); without it the
-    // legacy path guards nothing (as before G1).
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.7",@"CFBundleVersion":@"230",@"TIOExperimentalOTAQueryRouting":@"ios107-tmg2-loopback-flash-gated"};
-    Image=FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B");
-    assert(TIOOTA107HostMatches(Host));assert(!TIOOTADownloadOnlyHost());assert(![Sweep() isEqual:sweep]);
+    // Control: the harness does discriminate. The full host's markers on the same image select the
+    // disarmed full host, not the download-only refusal: in every flag set the empty reads 1, 2 and 11
+    // pass as well (no frame here carries the exact size query), so the sweep differs.
+    Host=TFHFullInfo();
+    assert(!TIOOTADownloadOnlyHost()&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());assert(![Sweep() isEqual:sweep]);
     for(NSUInteger t=0;t<256;t++)for(id json in Bodies()){
-        id j=json==NSNull.null?nil:json;(void)j;
-#if TIO_OTA_FLASH_ENABLED
-        assert(TIOOTAFlashProtected());
+        id j=json==NSNull.null?nil:json;
         assert(Allowed(Frame(t,j,nil),@"fixture-peer")==((t==1||t==2||t==11)&&(!j||[j isEqual:@{}])));
-#else
-        assert(!TIOOTAFlashProtected());assert(Allowed(Frame(t,j,nil),@"fixture-peer"));
-#endif
     }
-#if TIO_OTA_FLASH_ENABLED
-    // G4 deliberately makes the guarded 1.0.7 path stricter too: wide ids are malformed there as well,
-    // while a plain non-9 byte still passes untouched.
+    // G4 holds there too: wide ids are malformed, while a plain non-9 byte still passes untouched.
     for(id business in WideIds())for(NSData *payload in WidePayloads())assert(TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":business,@"deviceId":@"fixture-peer",@"payload":payload}}));
     assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"payload":Frame(4,@{@"Mode":@4},nil)}}));
-#endif
     Host=d;Image=pinned;assert(!Allowed(Frame(2,nil,nil),@"fixture-peer"));
     NSLog(@"PASS: " TDH_NAME " download-only guard: %lu frame shapes, only the empty version query passes; type 4 Mode 1-4 refused; feed not started; authorization refused; flash build %s; sweep=%@%s",
         (unsigned long)Checked,TIOOTAFlashBuild()?"on":"off",Digest(sweep),argc==3?"; real " TDH_NAME " Runner profile":"");

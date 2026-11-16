@@ -14,6 +14,3 @@ NSDictionary *TIOProtocolTemplate(NSString *kind,NSString *device);
 BOOL TIOProtocolSaveTemplate(NSString *kind,NSString *device,NSDictionary *value);
 NSDictionary *TIOProtocolSanitize(NSString *kind,NSDictionary *value);
 NSDictionary *TIOProtocolDefaultSubtitle(void);
-// Built-in auto-scroll layout from the 1.0.5(201) official sample; never a
-// connection, transfer or playback receipt. Caller still needs live ACKs.
-NSDictionary *TIOProtocolDefaultTeleprompter(NSDictionary *hostInfo);

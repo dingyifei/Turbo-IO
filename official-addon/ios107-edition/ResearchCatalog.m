@@ -88,14 +88,16 @@ static NSString *FirmwareCode(void) {
     return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : TIO_FW_NAME;
 }
 
-// The firmware export row exists only on the 1.0.11 and 1.0.21 hosts. On a download-only
-// host it and the language row are the whole hub, plus the wire log row when the
+// The firmware export row exists only on the 1.0.21 host. On the download-only host
+// it and the language row are the whole hub, plus the wire log row when the
 // build has it (TIO_WIRE_LOG=1): the recorder is passive and only reads the channel.
-// The full 1.0.11 and 1.0.21 hosts ("ios1011", "ios1021") get every row, with the export row
-// moved under Developer. Everything else is the full 1.0.7 hub without the export row.
-static BOOL RowOnHost(NSString *key, BOOL downloadOnly, BOOL full1011) {
+// The full host ("ios1021") gets every row, with the export row moved under Developer.
+// Everything else (no profile: the UI preview, the Mac tests, or an app that is not the
+// supported host) is the base hub without the export row; on such an app the feature
+// hooks stay off anyway, because they require the full host's pinned image.
+static BOOL RowOnHost(NSString *key, BOOL downloadOnly, BOOL fullHost) {
     BOOL exportRow = [key isEqualToString:@"firmwareExport"];
-    if (full1011) return YES;
+    if (fullHost) return YES;
     if (!downloadOnly) return !exportRow;
     if (exportRow || [key isEqualToString:@"language"]) return YES;
 #if TIO_WIRE_LOG
@@ -108,12 +110,12 @@ NSArray<NSDictionary *> *TIOHubCatalog(void) {return TIOHubCatalogForProfile(nil
 
 NSArray<NSDictionary *> *TIOHubCatalogForProfile(NSString *profile) {
     BOOL downloadOnly = [profile isEqualToString:@"ios1011-download"];
-    BOOL full1011 = [profile isEqualToString:@"ios1011"] || [profile isEqualToString:@"ios1021"];
+    BOOL fullHost = [profile isEqualToString:@"ios1021"];
     NSMutableArray<NSDictionary *> *catalog = [NSMutableArray arrayWithCapacity:sizeof(Rows)/sizeof(Rows[0])];
     for (NSUInteger index = 0; index < sizeof(Rows)/sizeof(Rows[0]); index++) {
         const TIOHubRowDefinition *row = &Rows[index];
-        if (!RowOnHost(row->key, downloadOnly, full1011)) continue;
-        TIOHubSection section = full1011 && [row->key isEqualToString:@"firmwareExport"] ? TIOHubSectionDeveloper : row->section;
+        if (!RowOnHost(row->key, downloadOnly, fullHost)) continue;
+        TIOHubSection section = fullHost && [row->key isEqualToString:@"firmwareExport"] ? TIOHubSectionDeveloper : row->section;
         NSString *code = [row->key isEqualToString:@"experimentalOTA"] ? FirmwareCode() : row->code;
         [catalog addObject:@{@"key":row->key,
 #if TIO_APPLE_AI

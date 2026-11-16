@@ -3,9 +3,6 @@ from pathlib import Path
 import argparse, fnmatch, json, os, re, shutil, subprocess, tempfile, zipfile
 P=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,help='the release ZIP under test (required unless --firmware-only)')
-parser.add_argument('--app107',type=Path)
-parser.add_argument('--patched-app',type=Path)
-parser.add_argument('--app1011',type=Path,help='stock 1.0.11/259 Runner.app (download-only host checks)')
 parser.add_argument('--app1021',type=Path,help='stock 1.0.21/1 Runner.app (download-only C19 and full C20 host checks)')
 parser.add_argument('--only',help='comma-separated test groups')
 parser.add_argument('--release',help='phone release configuration from releases.json (cN; default: the only release, when there is exactly one); --firmware must be its ZIP')
@@ -343,58 +340,37 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'NSBundle.mainBundle.infoDictionary':'TMG4HostInfo()',
         'NSUserDefaults.standardUserDefaults.dictionaryRepresentation':'TMG4Prefs()',
         # The arm record store: an in-memory dictionary, never the Mac's preferences
-        # (ios1011-arm-store runs the real CFPreferences calls on a throwaway suite).
+        # (ios1021-arm-store runs the real CFPreferences calls on a throwaway suite).
         'CFPreferencesCopyValue(':'TMG4ArmCopyValue(','CFPreferencesSetValue(':'TMG4ArmSetValue(','CFPreferencesSynchronize(':'TMG4ArmSynchronize('}
     seen.add('tmg4-wizard')
     if only is None or 'tmg4-wizard' in only:
-        adapted=adapted_policy('tmg4-wizard-policy.m','ExperimentalOTAFlash.m',flash_seams)
+        # The armed full 1.0.21 host (tests/FullHostFixture.h): the main image seam as in the guard groups.
+        adapted=adapted_policy('tmg4-wizard-policy.m','ExperimentalOTAFlash.m',{**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'})
         run('tmg4-wizard-build',flags+[P/'tests/TMG4WizardTests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard'])
         for version in release_versions:
             run('tmg4-wizard-'+version[len('Strix OS '):],[out/'tmg4-wizard',root/'candidate',root,version])
         groups.append('tmg4-wizard');print('tmg4-wizard: PASS')
     else:skip('tmg4-wizard','not selected by --only')
-    # Full 1.0.11 host (ios1011, C15), armed: the same unchanged policy and gate on the
-    # real candidate, plus the arm step around it (main image seam as in ios1011-guard).
-    seen.add('tmg4-wizard-1011')
-    if only is None or 'tmg4-wizard-1011' in only:
-        adapted=adapted_policy('tmg4-wizard-1011-policy.m','ExperimentalOTAFlash.m',{**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'})
-        run('tmg4-wizard-1011-build',flags+[P/'tests/TMG4Wizard1011Tests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard-1011'])
-        for version in release_versions:
-            run('tmg4-wizard-1011-'+version[len('Strix OS '):],[out/'tmg4-wizard-1011',root/'candidate',root,version])
-        groups.append('tmg4-wizard-1011');print('tmg4-wizard-1011: PASS')
-    else:skip('tmg4-wizard-1011','not selected by --only')
-    # Full 1.0.21 host (ios1021, C20), armed: the same test file and the same unchanged policy, with the
-    # 1.0.21 host identity (tests/FullHostFixture.h, -DTIO_TEST_HOST_1021=1).
+    # Full 1.0.21 host (ios1021, C20 onward), armed: the same unchanged policy and gate on the
+    # real candidate, plus the arm step around it (tests/FullHostFixture.h; main image seam as in the guard groups).
     seen.add('tmg4-wizard-1021')
     if only is None or 'tmg4-wizard-1021' in only:
         adapted=adapted_policy('tmg4-wizard-1021-policy.m','ExperimentalOTAFlash.m',{**flash_seams,'TIOHostMainImage()':'TMG4MainImage()'})
-        run('tmg4-wizard-1021-build',flags+[P/'tests/TMG4Wizard1011Tests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-DTIO_TEST_HOST_1021=1','-o',out/'tmg4-wizard-1021'])
+        run('tmg4-wizard-1021-build',flags+[P/'tests/TMG4WizardArmTests.m',P/'OTAWizardModel.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'tmg4-wizard-1021'])
         for version in release_versions:
             run('tmg4-wizard-1021-'+version[len('Strix OS '):],[out/'tmg4-wizard-1021',root/'candidate',root,version])
             if 'PASS full 1.0.21 wizard' not in (out/('tmg4-wizard-1021-'+version[len('Strix OS '):]+'.log')).read_text():raise RuntimeError('tmg4-wizard-1021 did not run on the 1.0.21 host')
         groups.append('tmg4-wizard-1021');print('tmg4-wizard-1021: PASS')
     else:skip('tmg4-wizard-1021','not selected by --only')
-    # Full 1.0.11 host: the arm record comes only from the addon suite's persistent domain. The real
+    # Full 1.0.21 host: the arm record comes only from the addon suite's persistent domain. The real
     # CFPreferences calls run against a throwaway suite (removed afterwards); a launch argument, the
     # argument domain and a registered default must not arm.
-    seen.add('ios1011-arm-store')
-    if only is None or 'ios1011-arm-store' in only:
-        store_seams={k:v for k,v in flash_seams.items() if not k.startswith('CFPreferences')}
-        store_seams.update({'TIOHostMainImage()':'TMG4MainImage()','return @"io.turboio.official-private-addon";':'NSString *TMG4ArmSuite(void);return TMG4ArmSuite();'})
-        adapted=adapted_policy('ios1011-arm-store-policy.m','ExperimentalOTAFlash.m',store_seams)
-        run('ios1011-arm-store-build',flags+[P/'tests/Host1011ArmStoreTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'ios1011-arm-store'])
-        try:run('ios1011-arm-store',[out/'ios1011-arm-store'])
-        finally:
-            for leftover in (Path.home()/'Library/Preferences').glob('io.turboio.test-armstore.*.plist'):leftover.unlink()
-        if 'PASS' not in (out/'ios1011-arm-store.log').read_text() or 'child: launch argument record ignored' not in (out/'ios1011-arm-store.log').read_text():raise RuntimeError('ios1011-arm-store did not report PASS')
-        groups.append('ios1011-arm-store');print('ios1011-arm-store: PASS')
-    else:skip('ios1011-arm-store','not selected by --only')
     seen.add('ios1021-arm-store')
     if only is None or 'ios1021-arm-store' in only:
         store_seams={k:v for k,v in flash_seams.items() if not k.startswith('CFPreferences')}
         store_seams.update({'TIOHostMainImage()':'TMG4MainImage()','return @"io.turboio.official-private-addon";':'NSString *TMG4ArmSuite(void);return TMG4ArmSuite();'})
         adapted=adapted_policy('ios1021-arm-store-policy.m','ExperimentalOTAFlash.m',store_seams)
-        run('ios1021-arm-store-build',flags+[P/'tests/Host1011ArmStoreTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-DTIO_TEST_HOST_1021=1','-o',out/'ios1021-arm-store'])
+        run('ios1021-arm-store-build',flags+[P/'tests/FullHostArmStoreTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-o',out/'ios1021-arm-store'])
         try:run('ios1021-arm-store',[out/'ios1021-arm-store'])
         finally:
             for leftover in (Path.home()/'Library/Preferences').glob('io.turboio.test-armstore.*.plist'):leftover.unlink()
@@ -402,12 +378,12 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         if 'PASS: 1.0.21 arm record' not in log or 'child: launch argument record ignored' not in log:raise RuntimeError('ios1021-arm-store did not report PASS')
         groups.append('ios1021-arm-store');print('ios1021-arm-store: PASS')
     else:skip('ios1021-arm-store','not selected by --only')
-    # Download-only 1.0.11/259 host: the same unchanged flash policy and feed, with 1.0.11 host info.
-    # G1: the refusal must not depend on build flags. The same test is built with the
-    # full flash flag set and with none of them; every build must print the same sweep.
-    # name: (defines, extra sources, flash build expected on the 1.0.11 host)
+    # The guard groups: the same unchanged flash policy and feed with fake host info. G1: the refusal
+    # must not depend on build flags. Each test is built in every flag set below; every build must print
+    # the same sweep, and that sweep must equal the group's pinned digest.
+    # name: (defines, extra sources, flash build expected on the download-only host)
     phone_sources=[P/'DisplayPhoneTransport.m',P/'DisplayDiagnostics.m',P/'display_client.c',P/'display_carrier.c',P/'display_runtime.c']
-    host1011_configs={
+    guard_configs={
         'full':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,True),
         'flash':(['-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1'],[],True),
         'phone':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_OTA_FLASH_ENABLED=1'],phone_sources,False),
@@ -416,112 +392,79 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         'wire-full':(['-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_DIAGNOSTICS=1','-DTIO_DISPLAY_FLASH=1','-DTIO_OTA_FLASH_ENABLED=1','-DTIO_WIRE_LOG=1'],phone_sources+[P/'WireLog.m'],True),
         'wire-noflags':(['-DTIO_WIRE_LOG=1'],[P/'WireLog.m'],False),
     }
-    # flash_on: per flag set, whether the flash path is compiled in on the tested host (default: the download-only host's).
-    # host_defines: extra -D flags for every flag set (-DTIO_TEST_HOST_1021=1 runs the same file on the 1.0.21 host).
-    def host1011_guard(name,argv,test_file='tests/Host1011GuardTests.m',extra_seams=None,flash_on_for=None,host_defines=()):
+    # The pinned sweep digests. They hash only the allow/refuse verdicts (no host names), and were the
+    # 1.0.11 groups' digests when C19 and C20 were checked against them; a change here is a change in
+    # what the phone lets through and needs the owner's review.
+    GUARD_SWEEPS={
+        'download-only':'3f0768f86139352f3eb36673f9eb043a745b8aec721b45a1236fd21ccf119956',
+        'full-guard':'dcfa63fb841521a143e97f22585e91037e3469b6a74ce12f883ac1e6528bf29b',
+        'full-edge':'313c70c11235d8d4652b65358c57d24b78896753aa490aca374b9b45eccd28c0',
+        'stock-teleprompter':'3015ec9140ef4b2dfc2c0cfd31b789edede310ea38917c9247c6bcca58e968e7',
+    }
+    # The armed full host's business-9 sweep per flag set with a flash path (it equalled the 1.0.7 host's
+    # sweep until that host was removed; the phone-only set has no display flash, so its sweep differs).
+    ARMED_SWEEPS={
+        'full':'dcfa63fb841521a143e97f22585e91037e3469b6a74ce12f883ac1e6528bf29b',
+        'flash':'dcfa63fb841521a143e97f22585e91037e3469b6a74ce12f883ac1e6528bf29b',
+        'phone':'6f4c02dfbbcd0dc585a225f2b8836d0d4f08d4bc9cf7b49d5fbc2270e40ada44',
+        'wire-full':'dcfa63fb841521a143e97f22585e91037e3469b6a74ce12f883ac1e6528bf29b',
+    }
+    # flash_on_for: per flag set, whether the flash path is compiled in on the tested host (default: the download-only host's).
+    # host_named: the log must name the 1.0.21 host (the teleprompter test prints no host name).
+    def guard_group(name,argv,want,test_file='tests/DownloadOnlyGuardTests.m',extra_seams=None,flash_on_for=None,host_named=True,armed=False):
         seams={**flash_seams,'TIOHostMainImage()':'TMG4MainImage()',**(extra_seams or {})}
         flash=adapted_policy(name+'-policy.m','ExperimentalOTAFlash.m',seams)
         feed=adapted_policy(name+'-feed.m','ExperimentalOTAFeed.m',{'TIOOTAHostProfile(bundle.infoDictionary)':'TIOOTAHostProfile(TMG4HostInfo())',
             'TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)':'TIOHostFullImageMatches(TMG4MainImage(),TMG4HostInfo())'})
         sweeps={}
-        for config,(defines,sources,flash_on) in host1011_configs.items():
+        for config,(defines,sources,flash_on) in guard_configs.items():
             for flag in ('TIO_OTA_FLASH_ENABLED','TIO_DISPLAY_FLASH','TIO_DISPLAY_PHONE'):
                 present=any(d.startswith('-D'+flag+'=') for d in defines)
-                if config=='full' and not present or config=='noflags' and present:raise RuntimeError('ios1011 flag set '+config+': '+flag)
+                if config=='full' and not present or config=='noflags' and present:raise RuntimeError('guard flag set '+config+': '+flag)
             binary=name+'-'+config
-            run(binary+'-build',flags+[P/test_file,P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',P/'DownloadOnlySafety.m',flash,feed,*sources,'-lz',*defines,*host_defines,'-o',out/binary])
+            run(binary+'-build',flags+[P/test_file,P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',P/'DownloadOnlySafety.m',flash,feed,*sources,'-lz',*defines,'-o',out/binary])
             run(binary,[out/binary,*argv])
             log=(out/(binary+'.log')).read_text()
             if 'PASS' not in log:raise RuntimeError(binary+' did not report PASS')
-            sweeps[config]=re.search(r'sweep=([0-9a-f]{64})',log).group(1)
+            sweeps[config]=re.search(r'(?<!armed )sweep=([0-9a-f]{64})',log).group(1)
             if ('flash build on' in log)!=(flash_on if flash_on_for is None else flash_on_for[config]):raise RuntimeError(binary+': unexpected flash build state')
             if ('wirelog harness: ' in log)!=('-DTIO_WIRE_LOG=1' in defines):raise RuntimeError(binary+': wire log harness state does not match the build')
-            if ('-DTIO_TEST_HOST_1021=1' in host_defines)!=(' 1.0.21 ' in log):raise RuntimeError(binary+': the log does not name the host the build is for')
+            if host_named and ' 1.0.21 ' not in log:raise RuntimeError(binary+': the log does not name the 1.0.21 host')
+            if armed:
+                got=re.findall(r'armed sweep=([0-9a-f]{64})',log)
+                if got!=([ARMED_SWEEPS[config]] if config in ARMED_SWEEPS else []):raise RuntimeError(binary+': armed sweep '+repr(got)+' differs from its pin')
         if len(set(sweeps.values()))!=1:raise RuntimeError(name+': refusal differs between flag sets '+repr(sweeps))
-        print(name+': same refusal in flag sets '+', '.join(sweeps)+' (sweep '+next(iter(sweeps.values()))[:16]+')')
-        return next(iter(sweeps.values()))
-    guard_sweeps={}
-    seen.add('ios1011-guard')
-    if only is None or 'ios1011-guard' in only:
-        guard_sweeps['ios1011-guard']=host1011_guard('ios1011-guard',[])
-        groups.append('ios1011-guard');print('ios1011-guard: PASS')
-    else:skip('ios1011-guard','not selected by --only')
-    # Download-only 1.0.21/1 host (C19): the same test on 1.0.21 host info must give the 1.0.11 download-only
-    # sweep, bit for bit, in every flag set: C20 leaves the download-only build's refusal as it was.
+        sweep=next(iter(sweeps.values()))
+        if sweep!=want:raise RuntimeError(name+': sweep '+sweep[:16]+' differs from the pinned '+want[:16])
+        print(name+': same refusal in flag sets '+', '.join(sweeps)+', equal to the pin (sweep '+sweep[:16]+')')
+        return sweep
+    # Download-only 1.0.21/1 host (C19 onward): the business-9 refusal, flag-independent.
     seen.add('ios1021-download-guard')
     if only is None or 'ios1021-download-guard' in only:
-        sweep1021=host1011_guard('ios1021-download-guard',[],host_defines=['-DTIO_TEST_HOST_1021=1'])
-        sweep1011=guard_sweeps.get('ios1011-guard') or host1011_guard('ios1011-guard-reference',[])
-        if sweep1021!=sweep1011:raise RuntimeError('ios1021-download-guard: the 1.0.21 download-only refusal differs from the 1.0.11 one')
-        groups.append('ios1021-download-guard');print('ios1021-download-guard: PASS (sweep equals the 1.0.11 download-only sweep)')
+        guard_group('ios1021-download-guard',[],GUARD_SWEEPS['download-only'])
+        groups.append('ios1021-download-guard');print('ios1021-download-guard: PASS')
     else:skip('ios1021-download-guard','not selected by --only')
-    # D5: the stock teleprompter sendFile allow-list, same unchanged policy and the same four flag sets.
+    # D5: the stock teleprompter sendFile allow-list, same unchanged policy and the same flag sets.
     seen.add('stock-teleprompter')
     if only is None or 'stock-teleprompter' in only:
         # R3: the test sets the OTA gate stage through this seam.
         stage_seam={'static NSUInteger GateStage(void){return ':'NSUInteger TMG4StageOverride(void);\nstatic NSUInteger GateStage(void){if(TMG4StageOverride()!=NSUIntegerMax)return TMG4StageOverride();return '}
-        host1011_guard('stock-teleprompter',[],'tests/StockTeleprompterSendTests.m',stage_seam)
+        guard_group('stock-teleprompter',[],GUARD_SWEEPS['stock-teleprompter'],'tests/StockTeleprompterSendTests.m',stage_seam,host_named=False)
         groups.append('stock-teleprompter');print('stock-teleprompter: PASS')
     else:skip('stock-teleprompter','not selected by --only')
-    # Full 1.0.11 host (ios1011, C15): disarmed by default in every flag set (same sweep), armed equals
-    # the 1.0.7 rule where a flash path exists. The full host is an OTA host, so the phone-only set
-    # (TIO_OTA_FLASH_ENABLED without TIO_DISPLAY_FLASH) has the flash path there.
-    seen.add('ios1011-full-guard')
-    if only is None or 'ios1011-full-guard' in only:
-        full_flash={config:'-DTIO_OTA_FLASH_ENABLED=1' in defines for config,(defines,_s,_f) in host1011_configs.items()}
-        guard_sweeps['ios1011-full-guard']=host1011_guard('ios1011-full-guard',[args.app1011/'Runner',args.app1011/'Info.plist'] if args.app1011 else [],'tests/Host1011FullGuardTests.m',None,full_flash)
-        groups.append('ios1011-full-guard');print('ios1011-full-guard: PASS')
-    else:skip('ios1011-full-guard','not selected by --only')
-    # Full 1.0.11 host edge cases (profile marker near misses, raw-JSON size queries, frame, payload
-    # and businessId shapes, arm record and store near misses): same six flag sets, one digest.
-    # Known gaps print as XFAIL and abort as XPASS once fixed.
-    seen.add('ios1011-full-edge')
-    if only is None or 'ios1011-full-edge' in only:
-        full_flash={config:'-DTIO_OTA_FLASH_ENABLED=1' in defines for config,(defines,_s,_f) in host1011_configs.items()}
-        guard_sweeps['ios1011-full-edge']=host1011_guard('ios1011-full-edge',[],'tests/Host1011FullEdgeTests.m',None,full_flash)
-        groups.append('ios1011-full-edge');print('ios1011-full-edge: PASS')
-    else:skip('ios1011-full-edge','not selected by --only')
-    # Full 1.0.21 host (ios1021, C20): the same full-host guard and edge tests, built with the 1.0.21 host
-    # identity (tests/FullHostFixture.h): disarmed in every flag set with one digest, the other host's markers
-    # and arm record never select or arm it, armed equals the 1.0.7 rule. With --app1021, the real Runner too.
-    # Each digest must equal the 1.0.11 group of the same name (run here as a reference when not selected):
-    # the 1.0.21 full host makes every refusal the 1.0.11 full host makes, and no other.
-    for name,test_file,real,ref in (('ios1021-full-guard','tests/Host1011FullGuardTests.m',True,'ios1011-full-guard'),('ios1021-full-edge','tests/Host1011FullEdgeTests.m',False,'ios1011-full-edge')):
+    # Full 1.0.21 host (ios1021, C20 onward): disarmed by default in every flag set (one pinned sweep);
+    # armed, where a flash path exists, the business-9 sweep equals its pin per flag set. The full host is
+    # an OTA host, so the phone-only set (TIO_OTA_FLASH_ENABLED without TIO_DISPLAY_FLASH) has the flash
+    # path there. With --app1021 the guard test checks the real Runner too. The edge test covers profile
+    # marker near misses, raw-JSON size queries, frame, payload and businessId shapes, and arm record and
+    # store near misses; known gaps print as XFAIL and abort as XPASS once fixed.
+    for name,test_file,real,want in (('ios1021-full-guard','tests/FullHostGuardTests.m',True,'full-guard'),('ios1021-full-edge','tests/FullHostEdgeTests.m',False,'full-edge')):
         seen.add(name)
         if only is None or name in only:
-            full_flash={config:'-DTIO_OTA_FLASH_ENABLED=1' in defines for config,(defines,_s,_f) in host1011_configs.items()}
-            sweep1021=host1011_guard(name,[args.app1021/'Runner',args.app1021/'Info.plist'] if real and args.app1021 else [],test_file,None,full_flash,['-DTIO_TEST_HOST_1021=1'])
-            sweep1011=guard_sweeps.get(ref) or host1011_guard(ref+'-reference',[args.app1011/'Runner',args.app1011/'Info.plist'] if real and args.app1011 else [],test_file,None,full_flash)
-            if sweep1021!=sweep1011:raise RuntimeError(name+': the 1.0.21 full-host refusal differs from '+ref+' ('+sweep1021[:16]+' vs '+sweep1011[:16]+')')
-            groups.append(name);print(name+': PASS (sweep equals '+ref+')')
+            full_flash={config:'-DTIO_OTA_FLASH_ENABLED=1' in defines for config,(defines,_s,_f) in guard_configs.items()}
+            guard_group(name,[args.app1021/'Runner',args.app1021/'Info.plist'] if real and args.app1021 else [],GUARD_SWEEPS[want],test_file,None,full_flash,armed=real)
+            groups.append(name);print(name+': PASS')
         else:skip(name,'not selected by --only')
-    seen.add('ios1011-host')
-    if (only is None or 'ios1011-host' in only) and args.app1011:
-        import hashlib, plistlib
-        app=args.app1011
-        info=plistlib.loads((app/'Info.plist').read_bytes())
-        assert (info.get('CFBundleIdentifier'),info.get('CFBundleShortVersionString'),str(info.get('CFBundleVersion')),info.get('CFBundleExecutable'))==('com.rayneo.venus.pub','1.0.11','259','Runner'),'1.0.11 Info.plist identity'
-        assert not [k for k in info if k.startswith('TIO')] and 'UISupportedDevices' not in info,'stock 1.0.11 Info.plist expected'
-        pins={'Runner':'09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95',
-            'Frameworks/App.framework/App':'0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be',
-            'Frameworks/RayneoNet.framework/RayneoNet':'20afa03444ef7a755002d4fb2e57bacc8e1a363844692e0cbd995b76bc0a2e83',
-            'Frameworks/Flutter.framework/Flutter':'a8ba610db6f1f93b251225d0767638001bacb930e681eaeb1d168f7c33851621'}
-        for rel,want in pins.items():
-            got=hashlib.sha256((app/rel).read_bytes()).hexdigest()
-            if got!=want:raise RuntimeError('1.0.11 pin mismatch: '+rel)
-        uuid=subprocess.run(['xcrun','dwarfdump','--uuid',app/'Runner'],capture_output=True,text=True,check=True).stdout.split()
-        assert uuid[1]=='22724C97-2EF9-388D-8E6A-6E051855A555' and uuid[2]=='(arm64)','1.0.11 Runner UUID'
-        image=(app/'Frameworks/App.framework/App').read_bytes()
-        for route,offset in [(b'/xrlauncherapi/v1/signApi/gray/upgrade',39886000),(b'/xrlauncherhwapi/v1/signApi/gray/upgrade',30868352)]:
-            if image.count(route)!=1 or image.find(route)!=offset:raise RuntimeError('1.0.11 route record moved: '+route.decode())
-        # The packager pins and the native header must name the same host.
-        package=(P/'package.mjs').read_text();header=(P/'HostCompatibility.h').read_text();compat=(P/'host-compatibility.mjs').read_text()
-        for want in pins.values():assert want in package,'package.mjs pin missing'
-        assert '"1.0.11"]&&[build isEqual:@"259"])return @"22724C97-2EF9-388D-8E6A-6E051855A555"' in header
-        assert "version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555'" in compat
-        host1011_guard('ios1011-host',[app/'Runner',app/'Info.plist'])
-        groups.append('ios1011-host');print('ios1011-host: PASS')
-    else:skip('ios1011-host','needs --app1011' if not args.app1011 else 'not selected by --only')
     # The stock 1.0.21/1 app: the same pins as package.mjs (ios1021-download and ios1021 share them), the
     # Runner UUID, the route records at the 1.0.21 offsets, and the download-only guard on the real Runner.
     seen.add('ios1021-host')
@@ -548,8 +491,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
         header=(P/'HostCompatibility.h').read_text();compat=(P/'host-compatibility.mjs').read_text()
         assert '"1.0.21"]&&[build isEqual:@"1"])return @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"' in header
         assert "version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5'" in compat
-        sweep=host1011_guard('ios1021-host',[app/'Runner',app/'Info.plist'],host_defines=['-DTIO_TEST_HOST_1021=1'])
-        if guard_sweeps.get('ios1011-guard') and sweep!=guard_sweeps['ios1011-guard']:raise RuntimeError('ios1021-host: the download-only refusal on the real 1.0.21 Runner differs from the 1.0.11 one')
+        guard_group('ios1021-host',[app/'Runner',app/'Info.plist'],GUARD_SWEEPS['download-only'])
         groups.append('ios1021-host');print('ios1021-host: PASS')
     else:skip('ios1021-host','needs --app1021' if not args.app1021 else 'not selected by --only')
 
@@ -560,24 +502,6 @@ for name,files in [('camera-link',['CameraLink.m','CameraProfiles.c']),('camera-
 test('ota-guard',['ExperimentalOTAGuardTests.m', 'ExperimentalOTAGuard.m'],argv=[],extra=['-fmodules'])
 test('phone-ota-gate',['PhoneOTAGateTests.m', 'ExperimentalOTA.m', 'ExperimentalOTAFlash.m', 'ExperimentalOTAGuard.m', 'ExperimentalOTAFeed.m', 'DisplayPhoneTransport.m', 'DisplayDiagnostics.m', 'display_client.c', 'display_carrier.c', 'display_runtime.c'],argv=[],extra=['-fmodules', '-lz', '-DTIO_DISPLAY_PHONE=1', '-DTIO_DISPLAY_DIAGNOSTICS=1', '-DTIO_DISPLAY_FLASH=1', '-DTIO_OTA_FLASH_ENABLED=1', '-DTIO_OTA_FEED_ARMING_ENABLED=1'])
 test('image-upload-transport',['ImageUploadTransportTests.m', 'ImageUploadTransport.m', 'ImageUpload.m', 'ExperimentalOTA.m', 'ExperimentalOTAFlash.m', 'ExperimentalOTAGuard.m', 'ExperimentalOTAFeed.m'],argv=[],extra=['-fmodules', '-lz', '-DTIO_IMAGE_RX_LAB=1', '-DTIO_IMAGE_RX_WIDE=1'])
-if args.app107 and args.patched_app:
-    test('ota-host',['OTAHostTests.m'],[args.app107/'Frameworks/App.framework/App',args.patched_app/'Frameworks/App.framework/App'])
-else:
-    skip('ota-host','needs --app107/--patched-app')
-# Full 1.0.11 host: patch-route.mjs (profile ios1011) on the stock App must give the pinned
-# output, and OTAHost.h must accept it only for ios1011, at the 1.0.11 offsets.
-seen.add('ota-host-1011')
-if (only is None or 'ota-host-1011' in only) and args.app1011:
-    import hashlib
-    route_out=out/'ota-host-1011-route'
-    shutil.rmtree(route_out,ignore_errors=True)
-    run('ota-host-1011-patch',['node',P/'patch-route.mjs',args.app1011/'Frameworks/App.framework/App',route_out,'ios1011'])
-    if hashlib.sha256((route_out/'App').read_bytes()).hexdigest()!='592d48d0e42869f11def2dde99a3a6960d4da7b83b99df47d228311dfc3b8ba6':raise RuntimeError('1.0.11 route output does not match its pin')
-    report=json.loads((route_out/'report.json').read_text())
-    assert report['profile']=='ios1011' and [c['offset'] for c in report['changes']]==[39886000,30868352] and report['deviceIO'] is False
-    test('ota-host-1011',['OTAHost1011Tests.m'],[args.app1011/'Frameworks/App.framework/App',route_out/'App',args.patched_app/'Frameworks/App.framework/App' if args.patched_app else '-'])
-else:
-    skip('ota-host-1011','needs --app1011' if not args.app1011 else 'not selected by --only')
 # Full 1.0.21 host: patch-route.mjs (profile ios1021) on the stock App must give the pinned output, an
 # input one byte different must be refused before anything is written, and OTAHost.h must accept the
 # output only for ios1021, at the 1.0.21 offsets.
@@ -597,25 +521,17 @@ if (only is None or 'ota-host-1021' in only) and args.app1021:
     r=subprocess.run(['node',str(P/'patch-route.mjs'),str(near),str(refused_out),'ios1021'],capture_output=True,text=True)
     (out/'ota-host-1021-near.log').write_text(r.stdout+r.stderr)
     if r.returncode==0 or 'Wrong host image: requires pinned 1.0.21/1' not in r.stderr or refused_out.exists():raise RuntimeError('patch-route.mjs ios1021 accepted an input one byte off the pin')
-    # The 1.0.11 stock App under the 1.0.21 profile is refused the same way.
-    if args.app1011:
-        r=subprocess.run(['node',str(P/'patch-route.mjs'),str(args.app1011/'Frameworks/App.framework/App'),str(refused_out),'ios1021'],capture_output=True,text=True)
-        if r.returncode==0 or refused_out.exists():raise RuntimeError('patch-route.mjs ios1021 accepted the 1.0.11 App')
     near.unlink()
-    other='-'
-    if args.app1011:
-        other_out=out/'ota-host-1021-route-1011';shutil.rmtree(other_out,ignore_errors=True)
-        run('ota-host-1021-patch-1011',['node',P/'patch-route.mjs',args.app1011/'Frameworks/App.framework/App',other_out,'ios1011']);other=other_out/'App'
-    test('ota-host-1021',['OTAHost1021Tests.m'],[stock_app,route_out/'App',other])
+    test('ota-host-1021',['OTAHost1021Tests.m'],[stock_app,route_out/'App'])
 else:
     skip('ota-host-1021','needs --app1021' if not args.app1021 else 'not selected by --only')
 # Every host method the addon hooks or calls, with its exact type encoding, in each stock host given.
 seen.add('host-selectors')
-selector_apps=[a for a in (args.app107,args.app1011,args.app1021) if a]
+selector_apps=[a for a in (args.app1021,) if a]
 if (only is None or 'host-selectors' in only) and selector_apps:
     run('host-selectors',['python3','-I',P/'tests/host_selectors.py',P,*selector_apps])
     groups.append('host-selectors');print('host-selectors: PASS')
-else:skip('host-selectors','needs --app107, --app1011 or --app1021' if not selector_apps else 'not selected by --only')
+else:skip('host-selectors','needs --app1021' if not selector_apps else 'not selected by --only')
 
 # WP0 step 7: previously orphaned tests.
 test('core',['Tests.m', 'Core.m'],argv=[],extra=['-fmodules', '-Wno-unused-parameter'])
@@ -624,7 +540,7 @@ test('todo-tool-flow',['TodoToolFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],e
 test('web-search-flow',['WebSearchFlowTests.m', 'Core.m', 'WebSearch.m'],argv=[],extra=['-fmodules'])
 test('web-search',['WebSearchTests.m', 'WebSearch.m', 'Core.m'],argv=[],extra=['-fmodules'])
 test('research-catalog',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1'])
-# A wire log build: the recorder row also shows on the 1.0.11 download-only host.
+# A wire log build: the recorder row also shows on the download-only host.
 test('research-catalog-wire',['ResearchCatalogTests.m','ResearchCatalog.m'],[],['-framework','AppKit','-DTIO_MAPKIT_ENABLED=1','-DTIO_IMAGE_RX_LAB=1','-DTIO_DISPLAY_PHONE=1','-DTIO_DISPLAY_FLASH=1','-DTIO_WIRE_LOG=1'])
 test('todo-protocol',['TodoProtocolTests.m', 'TodoProtocol.m'],argv=[],extra=['-fmodules'])
 restart_dir=out/'protocol-restart-dir'

@@ -58,29 +58,13 @@ export function validateReleaseAddon(addon,p){
   return true;
 }
 const digest=b=>createHash('sha256').update(b).digest('hex');
-// One row per accepted host input. Exact pins only; a row never widens another.
+// One row per accepted host input: the stock RayNeo AI 1.0.21/1 app, as a download-only build or as the full build.
+// Exact pins only; a row never widens another. Any other host is unknown and refused.
 export const HOST_PROFILES=Object.freeze({
-  // Full host: route patch, bundled TMG candidate, flash marker. Behaviour unchanged.
-  ios107:Object.freeze({name:'ios107',version:'1.0.7',build:'230',uuid:'410defdbf93739eaacf2f616abff9d0b',hostError:'requires_original_ios107_230',
-    acceptedPairs:Object.freeze([
-      ['c416d939c90745b170027171844e3275faf5e502306746176375dee5837aadcf','fd83c578708e929d732d06a97c2b8e3dd4dd665d0ec72ea16420fcbcca4bae3e'],
-      ['765715adebb3b6132a1870d9b500e861e028cdaecc2f6485296a428c1812e0b3','041dc97ad3a864ac322e92a49d3b1ebbd466d371dc427591b0b82c8c56b5090d'],
-    ]),routePatch:true,routeProfile:'ios107',firmware:true,routingMarker:'ios107-tmg2-loopback-flash-gated',packagingRevision:'APP107-OTA-PUBLIC-SOURCE-01'}),
-  // Download-only: stock App.framework, no route patch, no TMG ZIP, no flash marker.
-  // The stale Apple signature of the decrypted input is stripped before embedding.
-  'ios1011-download':Object.freeze({name:'ios1011-download',version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555',hostError:'requires_original_ios1011_259',
-    acceptedPairs:Object.freeze([
-      ['09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95','0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be'],
-    ]),
-    frameworks:Object.freeze({'RayneoNet.framework/RayneoNet':'20afa03444ef7a755002d4fb2e57bacc8e1a363844692e0cbd995b76bc0a2e83','Flutter.framework/Flutter':'a8ba610db6f1f93b251225d0767638001bacb930e681eaeb1d168f7c33851621'}),
-    // Stock route records, recorded for checks only; never patched in this profile.
-    routes:Object.freeze([['/xrlauncherapi/v1/signApi/gray/upgrade',39886000],['/xrlauncherhwapi/v1/signApi/gray/upgrade',30868352]]),
-    sourceIPASHA256:'e097f1f86cbb91b4d95e242b3c3de7c363d6abd38b7ece4408989c40d7cae19f',
-    routePatch:false,firmware:false,stripStaleSignature:true}),
-  // Download-only 1.0.21/1 (C19): same safety model as the 1.0.11 download-only row. Stock
-  // App.framework, no route patch, no TMG ZIP, no flash marker. The two route records are
-  // the stock Dart strings at their 1.0.21 offsets, recorded for checks only. Flashing on
-  // this host needs a wire-log capture and the owner's approval first.
+  // Download-only 1.0.21/1 (C19): stock App.framework, no route patch, no TMG ZIP, no flash
+  // marker. The stale Apple signature of the decrypted input is stripped before embedding.
+  // The two route records are the stock Dart strings at their 1.0.21 offsets, recorded for
+  // checks only; never patched in this profile.
   'ios1021-download':Object.freeze({name:'ios1021-download',version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5',hostError:'requires_original_ios1021_1',
     acceptedPairs:Object.freeze([
       ['9a226b80d3e32b1ec496f45cd51d46bdf5251650225cec99824d9a897f1dd1f2','0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273'],
@@ -90,23 +74,10 @@ export const HOST_PROFILES=Object.freeze({
     sourceIPASHA256:'7cecd8847944e118c24beba8d9ae7cb5d42387047e8570feb184dca7f60b8f4a',
     // The addon's download-only guard keys on this one runtime marker (ExperimentalOTAFlash.m).
     routePatch:false,firmware:false,stripStaleSignature:true,runtimeMarker:'ios1011-download',packagingRevision:'APP1021-DOWNLOAD-ONLY-01'}),
-  // Full 1.0.11 (C15): the same pinned input as the download-only row, with the route
-  // patch at the 1.0.11 offsets (pinned output), the bundled TMG candidate, the
-  // host-profile marker that selects the full addon profile and the 1.0.11 routing
-  // marker (OTAHost.h TIO_OTA_1011_ROUTING_MARKER). No device-model list. TMG flashing
-  // stays disarmed on the phone until the owner arms it there.
-  ios1011:Object.freeze({name:'ios1011',version:'1.0.11',build:'259',uuid:'22724c972ef9388d8e6a6e051855a555',hostError:'requires_original_ios1011_259',
-    acceptedPairs:Object.freeze([
-      ['09598f8b1b03cc55f8ea7fd983e886e7b8c5b561016f06000c3111a57578ad95','0688e01c2541e9e4b6bfadf16a87075b6ba4e5fca78f627d2ca1488cf81354be'],
-    ]),
-    frameworks:Object.freeze({'RayneoNet.framework/RayneoNet':'20afa03444ef7a755002d4fb2e57bacc8e1a363844692e0cbd995b76bc0a2e83','Flutter.framework/Flutter':'a8ba610db6f1f93b251225d0767638001bacb930e681eaeb1d168f7c33851621'}),
-    sourceIPASHA256:'e097f1f86cbb91b4d95e242b3c3de7c363d6abd38b7ece4408989c40d7cae19f',
-    routePatch:true,routeProfile:'ios1011',firmware:true,stripStaleSignature:true,noProduct:true,hostProfileMarker:'ios1011',
-    routingMarker:'ios1011-tmg-loopback-flash-gated-arm-required',packagingRevision:'APP1011-OTA-FULL-01',fullHost:'1011-full'}),
   // Full 1.0.21 (C20): the pinned input of the download-only 1.0.21 row (same Runner, App, frameworks and source
   // IPA), with the route patch at the 1.0.21 offsets (pinned output), the bundled TMG candidate of a release built
   // for this host (releases.json hosts ["1021-full"]), its own host-profile marker and routing marker (OTAHost.h
-  // TIO_OTA_1021_ROUTING_MARKER). Same arm model as ios1011: TMG flashing stays disarmed until the owner arms it.
+  // TIO_OTA_1021_ROUTING_MARKER). TMG flashing stays disarmed until the owner arms it on the phone.
   ios1021:Object.freeze({name:'ios1021',version:'1.0.21',build:'1',uuid:'74da0780dcf0384f9e841ac12f56cdf5',hostError:'requires_original_ios1021_1',
     acceptedPairs:Object.freeze([
       ['9a226b80d3e32b1ec496f45cd51d46bdf5251650225cec99824d9a897f1dd1f2','0a78cf75acdaf7b9d999cf27edd4ba7424640811e77cd309fc4c27fcb8c49273'],
@@ -117,20 +88,20 @@ export const HOST_PROFILES=Object.freeze({
     routingMarker:'ios1021-tmg-loopback-flash-gated-arm-required',packagingRevision:'APP1021-OTA-FULL-01',fullHost:'1021-full'}),
 });
 // The packager host name (turbo-package.sh --host, releases.json hosts) of each profile that bundles a release.
-export const RELEASE_HOST_NAMES=Object.freeze({ios107:'107',ios1011:'1011-full',ios1021:'1021-full'});
-// The hosts a release is built for (releases.json). A release ZIP is bundled only for one of them; every release
-// is built only for 1021-full, so the 1.0.7 and full 1.0.11 profiles have no release to bundle.
+export const RELEASE_HOST_NAMES=Object.freeze({ios1021:'1021-full'});
+// The hosts a release is built for (releases.json). A release ZIP is bundled only for one of them.
 export function releaseHosts(name=soleRelease()){
   const releases=releasesJSON();
   if(!Object.hasOwn(releases,name)||!Array.isArray(releases[name].hosts)||releases[name].hosts.some(h=>typeof h!=='string'))throw Error('unknown_release');
   return releases[name].hosts;
 }
-export function hostProfile(name='ios107'){
+// The profile must be named; there is no default host.
+export function hostProfile(name){
   if(!Object.hasOwn(HOST_PROFILES,name))throw Error('unknown_host_profile');
   return HOST_PROFILES[name];
 }
 // frameworks: {'RayneoNet.framework/RayneoNet':Buffer,...}, required when the profile pins them.
-export function validateHost(info,runner,appImage,profileName='ios107',frameworks={}){
+export function validateHost(info,runner,appImage,profileName,frameworks={}){
   const p=hostProfile(profileName);
   if(info.CFBundleIdentifier!=='com.rayneo.venus.pub'||info.CFBundleShortVersionString!==p.version||String(info.CFBundleVersion)!==p.build||Object.keys(info).some(k=>k.startsWith('TIO')))throw Error(p.hostError);
   const h=inspectMachO(runner);
@@ -139,7 +110,7 @@ export function validateHost(info,runner,appImage,profileName='ios107',framework
 }
 // Download-only profile: App.framework/App must be the stock bytes, with each stock
 // route record present exactly once at its recorded offset (i.e. not patched).
-export function verifyStockApp(appImage,profileName='ios1011-download'){
+export function verifyStockApp(appImage,profileName){
   const p=hostProfile(profileName);
   if(p.routePatch||!Buffer.isBuffer(appImage)||!p.acceptedPairs.some(([,a])=>digest(appImage)===a))throw Error('download_only_app_changed');
   for(const [route,offset] of p.routes){const b=Buffer.from(route);if(appImage.indexOf(b)!==offset||appImage.indexOf(b,offset+1)!==-1)throw Error('download_only_route_mismatch');}
@@ -161,7 +132,7 @@ function strippedForCompare(bytes){
   return output;
 }
 // After signing, App.framework/App carries a new signature. Everything else must equal stock.
-export function verifySignedStockApp(signed,stock,profileName='ios1011-download'){
+export function verifySignedStockApp(signed,stock,profileName){
   verifyStockApp(stock,profileName);
   if(!strippedForCompare(signed).equals(strippedForCompare(stock)))throw Error('download_only_app_changed_after_signing');
   for(const [route,offset] of hostProfile(profileName).routes){const b=Buffer.from(route);if(signed.indexOf(b)!==offset||signed.indexOf(b,offset+1)!==-1)throw Error('download_only_route_mismatch');}
@@ -170,7 +141,7 @@ export function verifySignedStockApp(signed,stock,profileName='ios1011-download'
 // G1/G2 gate for the download-only host: the built addon must carry the
 // flag-independent business-9 refusal, the hook target check and the panel's
 // safety model. Missing any of them fails closed before anything is signed.
-export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=IOS1011-DOWNLOAD-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed';
+export const DOWNLOAD_ONLY_GUARD_MARKER='ota guard=DOWNLOAD-ONLY-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed';
 export const DOWNLOAD_ONLY_GUARD_SYMBOLS=Object.freeze(['_TIOOTAFlashBlockCall','_TIOOTADownloadOnlyHost','_TIOOTADownloadOnlyBlockCall','_TIOOTADownloadOnlyGuardMarker','_TIOInstallGlassesChannelHook','_TIOGlassesChannelHookFailure','_TIOChannelHookTargetFailure','_TIODownloadOnlyGuardActiveFor','_TIOFirmwareExportSafetyModel','_TIOHostDownloadOnlyGuardActive','_TIOStockTeleprompterSendAllowed']);
 export function validateDownloadOnlyAddon(symbols,addon){
   const names=new Set(String(symbols).split('\n').map(l=>l.trim().split(/\s+/).pop()));
@@ -178,9 +149,9 @@ export function validateDownloadOnlyAddon(symbols,addon){
   if(!Buffer.isBuffer(addon)||!addon.includes(Buffer.from(DOWNLOAD_ONLY_GUARD_MARKER)))throw Error('download_only_guard_missing:marker');
   return true;
 }
-// C15 gate for the full 1.0.11 host: the addon must carry the flag-independent disarm
-// guard and the arm step, and also the download-only guard, which takes over if the
-// profile marker is ever missing. Fails closed before anything is signed.
+// The arm check from C15, which the full 1.0.21 host gate builds on: the addon must carry the flag-independent
+// disarm guard and the arm step, and also the download-only guard, which takes over if the profile marker is ever
+// missing. Fails closed before anything is signed.
 export const FULL_1011_ARM_MARKER='ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install';
 export const FULL_1011_ARM_SYMBOLS=Object.freeze(['_TIOOTAArmRequired','_TIOOTADisarmedBlockCall','_TIOOTADisarmedReadAllowed','_TIOOTAArmGuardMarker','_TIOOTAFlashArm','_TIOOTAFlashDisarm','_TIOOTAFlashArmed','_TIOOTAFlashArmStatus','_TIOFirmwareExportSafetyModelFull']);
 export function validateFull1011Addon(symbols,addon){
@@ -190,8 +161,8 @@ export function validateFull1011Addon(symbols,addon){
   if(!addon.includes(Buffer.from(FULL_1011_ARM_MARKER)))throw Error('full_1011_arm_guard_missing:marker');
   return true;
 }
-// C20 gate for the full 1.0.21 host: everything the full 1.0.11 host needs (the same disarm guard and arm step,
-// shared code), plus the addon's 1.0.21 arm marker (ExperimentalOTAFlash.m TIOOTAArm1021GuardMarker), so an addon
+// C20 gate for the full 1.0.21 host: the arm check above (the disarm guard and the arm step), plus the addon's
+// 1.0.21 arm marker (ExperimentalOTAFlash.m TIOOTAArm1021GuardMarker), so an addon
 // built before C20, which would never arm or flash on 1.0.21, is refused before signing.
 export const FULL_1021_ARM_MARKER='ota guard=IOS1021-FULL-DISARM-01; flag-independent; the IOS1011-FULL-DISARM-01 rules on the full 1.0.21 host; arm record otaFlashArmRecord.ios1021';
 export const FULL_1021_ARM_SYMBOLS=Object.freeze(['_TIOOTAArm1021GuardMarker','_TIOExperimentalOTAMemberCount']);
@@ -202,27 +173,26 @@ export function validateFull1021Addon(symbols,addon){
   if(!addon.includes(Buffer.from(FULL_1021_ARM_MARKER)))throw Error('full_1021_arm_guard_missing:marker');
   return true;
 }
-// The full-host addon check for a profile: ios1011 or ios1021; any other profile has none.
+// The full-host addon check for a profile: ios1021 is the only full host; any other profile has none.
 export function validateFullHostAddon(hostName,symbols,addon){
-  if(hostName==='ios1011')return validateFull1011Addon(symbols,addon);
   if(hostName==='ios1021')return validateFull1021Addon(symbols,addon);
   throw Error('not_a_full_host');
 }
 export function validateOptions(o) {
-  const host=hostProfile(o.host??'ios107');
+  if(o.host===undefined)throw Error('host_required');
+  const host=hostProfile(o.host);
   if(o.release!==undefined&&!host.fullHost)throw Error('release_requires_full_host');
   for(const k of ['app','addon','profile','out'])if(typeof o[k]!=='string'||!path.isAbsolute(o[k]))throw Error('absolute_paths_required');
   if(!o.app.endsWith('.app')||o.out.endsWith('.app'))throw Error('use_app_input_and_new_output_directory');
   if(!/^[a-f0-9]{40}$/i.test(o.identity||'')||!/^[a-z0-9-]{8,80}$/i.test(o.device||''))throw Error('explicit_identity_and_device_required');
   if(!/^[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z0-9.-]+$/.test(o.bundle||''))throw Error('invalid_bundle');
-  if(o.product&&!/^iPhone\d+,\d+$/.test(o.product))throw Error('invalid_explicit_product');
   if(fs.existsSync(o.out))throw Error('output_must_not_exist');
   if(!host.firmware){
     // Download-only: nothing to flash, no TMG candidate, no device-model injection.
     if(o.bundle!=='com.rayneo.venus.pub'||o.firmware!==undefined||o['experimental-ota']!==undefined||o.product!==undefined)throw Error('download_only_host_takes_no_firmware_or_product');
     return;
   }
-  if(host.noProduct&&o.product!==undefined)throw Error('full_1011_host_takes_no_product');
+  if(host.noProduct&&o.product!==undefined)throw Error('full_host_takes_no_product');
   // The release (the only one when none is named) must be built for this host.
   if(!releaseHosts(o.release).includes(RELEASE_HOST_NAMES[host.name]))throw Error('release_not_built_for_host');
   const release=releasePins(o.release);
@@ -281,25 +251,24 @@ export function entitlementsFor(p,o) {
 }
 function run(program,args,options={}){return exec(program,args,{stdio:['pipe','pipe','pipe'],...options});}
 function main(){
-  if(process.argv.includes('--help'))console.log('iOS 1.0.7/230 APP107: no release in releases.json is built for this host, so it is refused. Installation never grants flash permission; manual one-shot authorization is required.');
   if(process.argv.includes('--help'))console.log('Optional Apple AI: --apple-ai-dylib /absolute/TurboAppleAI.dylib (requires TIO_APPLE_AI=1 addon)');
   if(process.argv.includes('--help'))console.log('Optional local translation: --translation-module-dir /absolute/module --translation-models /absolute/models (requires TIO_LOCAL_TRANSLATION=1 addon; see official-addon/ios107-edition/local-translation/README.md)');
-  if(process.argv.includes('--help'))console.log('Download-only 1.0.11/259: --host ios1011-download, no --firmware and no --product. App.framework stays stock; no OTA flashing.');
+  if(process.argv.includes('--help'))console.log('Download-only 1.0.21/1 (C19): --host ios1021-download, no --firmware, no --release and no --product. App.framework stays stock; no OTA flashing.');
   if(process.argv.includes('--help'))console.log('Full 1.0.21/1 (C21): --host ios1021 [--release cN] with --firmware, no --product: a release whose releases.json hosts list 1021-full (without --release, the only release). Route patch at the 1.0.21 offsets; TMG flashing disarmed until armed on the phone; needs an addon built for that release.');
-  if(process.argv.includes('--help'))console.log('Full 1.0.11/259: --host ios1011. No release in releases.json is built for this host, so it is refused.');
+  if(process.argv.includes('--help'))console.log('--host is required: ios1021-download or ios1021. Installation never grants flash permission.');
   if(process.argv.includes('--help')){console.log('node official-addon/ios107-edition/package.mjs --host ios1021 --app /absolute/Runner.app --addon /absolute/TurboIOPrivateAddon.dylib --profile /absolute/profile.mobileprovision --identity CERTIFICATE_SHA1 --device YOUR_DEVICE_ID --out /absolute/new-private-output --bundle com.rayneo.venus.pub --firmware /absolute/exact-release-CANDIDATE-NOT-APPROVED.zip [--release cN]');return;}
   const o={bundle:'com.rayneo.venus.pub'};const args=process.argv.slice(2);
   if(args.length%2)throw Error('expected_named_arguments');
   const seen=new Set();for(let i=0;i<args.length;i+=2){const k=args[i].slice(2);if(!args[i].startsWith('--')||!['app','addon','profile','identity','device','out','bundle','product','experimental-ota','firmware','translation-module-dir','translation-models','apple-ai-dylib','host','release'].includes(k)||seen.has(k))throw Error('unknown_or_duplicate_argument');seen.add(k);o[k]=args[i+1];}
   validateOptions(o);
-  const host=hostProfile(o.host??'ios107');
+  const host=hostProfile(o.host);
   const symbols=run('/usr/bin/nm',['-g',o.addon],{encoding:'utf8',maxBuffer:64*1024*1024});
   // FOCUS has a dynamic optional entry even without the translation module.
   validateTranslationPair(!o['translation-module-dir']&&!o['translation-models']?symbols.replaceAll('_TIOOpenLocalTranslation',''):symbols,o);
   const translationResources=prepareTranslationResources(o);
   const appleAI=prepareAppleAI(o['apple-ai-dylib'],symbols);
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
-  if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=APP107-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
+  if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=TMG-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
   // Only a firmware host bundles a release; a download-only build reads no release pins.
   const release=host.firmware?releasePins(o.release):undefined;
@@ -331,7 +300,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
     verifyStockApp(fs.readFileSync(path.join(app,'Frameworks/App.framework/App')),host.name);
     const plist=path.join(app,'Info.plist');
     run('plutil',['-insert','TIOHostProfile','-string',host.runtimeMarker??host.name,plist]);
-    run('plutil',['-insert','TIOPackagingRevision','-string',host.packagingRevision??'APP1011-DOWNLOAD-ONLY-01',plist]);
+    run('plutil',['-insert','TIOPackagingRevision','-string',host.packagingRevision,plist]);
   }else{
     // Exact inspected data records only (each host's own offsets); no instruction/header edits or OTA grant.
     const image=path.join(app,'Frameworks/App.framework/App');
@@ -349,10 +318,9 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   }
   const locationUsage=locationUsageFor(symbols);
   if(locationUsage){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(!info.NSLocationWhenInUseUsageDescription)run('plutil',['-insert','NSLocationWhenInUseUsageDescription','-string',locationUsage,plist]);}
-  if(o.product){const plist=path.join(app,'Info.plist');const info=JSON.parse(run('plutil',['-convert','json','-o','-',plist],{encoding:'utf8'}));if(Array.isArray(info.UISupportedDevices)&&!info.UISupportedDevices.includes(o.product))run('plutil',['-insert','UISupportedDevices.0','-string',o.product,plist]);}
   if(host.fullHost){
-    // Full 1.0.11 or 1.0.21: both of this host's markers, the ZIP, the patched App (its pinned output) and no device-model list.
-    const tag=host.name==='ios1011'?'full_1011':'full_1021';
+    // Full 1.0.21: both of this host's markers, the ZIP, the patched App (its pinned output) and no device-model list.
+    const tag='full_host';
     const plist=JSON.parse(run('plutil',['-convert','json','-o','-',path.join(app,'Info.plist')],{encoding:'utf8'}));
     if(plist.TIOHostProfile!==host.hostProfileMarker||plist.TIOExperimentalOTAQueryRouting!==host.routingMarker||plist.TIOExperimentalOTABuild!==release.name||plist.UISupportedDevices!==undefined||!fs.existsSync(path.join(app,CANDIDATE_RESOURCE)))throw Error(tag+'_bundle_mismatch');
     if(!routeProfile(host.routeProfile).outputSHA||digest(fs.readFileSync(path.join(app,'Frameworks/App.framework/App')))!==routeProfile(host.routeProfile).outputSHA)throw Error(tag+'_route_output_mismatch');
@@ -378,7 +346,7 @@ print(json.dumps({'entitlements':p['Entitlements'],'expires':p['ExpirationDate']
   const names=run('/usr/bin/unzip',['-Z1',ipa],{encoding:'utf8',maxBuffer:256*1024*1024}).split('\n');if(names.some(n=>n.split('/').some(x=>x==='__MACOSX'||x.startsWith('._'))))throw Error('unexpected_archive_metadata');
   if(privateArchiveNames(names).length)throw Error('archive_contains_private_file');
   const preparation=JSON.parse(fs.readFileSync(path.join(app,'TurboIOPrivatePreparation.json'),'utf8'));
-  const report=host.fullHost?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,release:release.release,firmwareName:release.name,firmwareSHA256:release.zipSHA256,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,flashArmed:false,firmwareResourceOnly:false,firmwareBundled:true,routePatched:true,routePatchedSHA256:routeProfile(host.routeProfile).outputSHA,postSigningRouteVerified:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:`Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching App.framework and re-signing it for the full ${host.version} build.`,captureBeforeArming:`The ${host.version} OTA sequence is known only from a static read; confirm it with a wire log capture before arming TMG flashing.`,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:!host.routePatch?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:false,flashAuthorized:false,firmwareBundled:false,routePatched:false,appFrameworkStockBeforeSigning:true,appFrameworkStockExceptSignature:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:'Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching and re-signing it for this download-only build.',ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:'1.0.7 (230)',signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,firmwareResourceOnly:false,postSigningRouteVerified:true,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']};
+  const report=host.fullHost?{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,release:release.release,firmwareName:release.name,firmwareSHA256:release.zipSHA256,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:true,flashAuthorized:false,flashArmed:false,firmwareResourceOnly:false,firmwareBundled:true,routePatched:true,routePatchedSHA256:routeProfile(host.routeProfile).outputSHA,postSigningRouteVerified:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:`Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching App.framework and re-signing it for the full ${host.version} build.`,captureBeforeArming:`The ${host.version} OTA sequence is known only from a static read; confirm it with a wire log capture before arming TMG flashing.`,ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']}:{appleAIModule:!!appleAI,status:'SIGNED_NOT_DEVICE_ACCEPTED',host:`${host.version} (${host.build})`,hostProfile:host.name,signatureVerified:true,officialSourceUploaded:false,privateBootstrapIncluded:false,experimentalOTA:false,flashAuthorized:false,firmwareBundled:false,routePatched:false,appFrameworkStockBeforeSigning:true,appFrameworkStockExceptSignature:true,staleSignatureRemoved:preparation.staleSignatureRemoved===true,originalRunnerSHA256:preparation.originalExecutableSHA256,unsignedRunnerSHA256:preparation.unsignedExecutableSHA256,preparedRunnerSHA256:preparation.preparedExecutableSHA256,sourceIPASHA256:host.sourceIPASHA256,sourceNote:'Third-party decrypted IPA; SHA-256 pinned at intake, not re-hashed here. The owner approved patching and re-signing it for this download-only build.',ipaSHA256:createHash('sha256').update(fs.readFileSync(ipa)).digest('hex'),pushEntitled:!!entitlement['aps-environment'],appleSignInEntitled:!!entitlement['com.apple.developer.applesignin']};
   fs.writeFileSync(path.join(destination,'report.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});console.log(JSON.stringify(report,null,2));
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){try{main();}catch(e){const known=/^[a-z_]+$/.test(e.message);console.error(known?e.message:'Local packaging failed. Check compatible source, profile and signing identity. No subprocess output or credentials are printed.');process.exitCode=1;}}

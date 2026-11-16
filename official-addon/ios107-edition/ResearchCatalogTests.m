@@ -101,9 +101,9 @@ int main(void) {
         assert(![keys containsObject:@"appleAI"]);
 #endif
         CheckTitles(catalog, 28);
-        // Full host: no firmware export row. Download-only 1.0.11 host: export and language only, never the TMG wizard.
+        // No host profile (preview, Mac tests, an unknown app): the base hub, no firmware export row. Download-only host: export and language only, never the TMG wizard.
         assert(![keys containsObject:@"firmwareExport"]);
-        assert([TIOHubCatalogForProfile(@"ios107") isEqual:catalog] && [TIOHubCatalogForProfile(@"other") isEqual:catalog]);
+        assert([TIOHubCatalogForProfile(nil) isEqual:catalog] && [TIOHubCatalogForProfile(@"ios107") isEqual:catalog] && [TIOHubCatalogForProfile(@"other") isEqual:catalog]);
         NSArray<NSDictionary *> *download = TIOHubCatalogForProfile(@"ios1011-download");
 #if TIO_WIRE_LOG
         // A wire log build also shows the passive recorder row on the download-only host, and on the full host.
@@ -129,23 +129,23 @@ int main(void) {
 #endif
         for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert(TIOHubSectionsForProfile(parent, @"ios1011-download").count == 0);
         CheckTitles(download, 28);
-        // Full 1.0.11 host: every 1.0.7 row (the TMG wizard included) plus the export row, under Developer.
-        NSArray<NSDictionary *> *full1011 = TIOHubCatalogForProfile(@"ios1011");
-        assert(full1011.count == catalog.count + 1);
-        NSMutableArray *withoutExport = [full1011 mutableCopy];
-        NSDictionary *fullExport = RowForKey(full1011, @"firmwareExport");
+        // Full 1.0.21 host: every base row (the TMG wizard included) plus the export row, under Developer.
+        NSArray<NSDictionary *> *fullHost = TIOHubCatalogForProfile(@"ios1021");
+        assert(fullHost.count == catalog.count + 1);
+        NSMutableArray *withoutExport = [fullHost mutableCopy];
+        NSDictionary *fullExport = RowForKey(fullHost, @"firmwareExport");
         assert(fullExport && [fullExport[@"section"] integerValue] == TIOHubSectionDeveloper && ![fullExport[@"parent"] length] && ![fullExport[@"code"] length]);
         [withoutExport removeObject:fullExport];
         assert([withoutExport isEqual:catalog]);
-        assert(RowForKey(full1011, @"experimentalOTA") && RowForKey(full1011, @"watchRemote") && RowForKey(full1011, @"mode"));
-        NSArray<NSDictionary *> *fullRoot = TIOHubSectionsForProfile(@"", @"ios1011");
+        assert(RowForKey(fullHost, @"experimentalOTA") && RowForKey(fullHost, @"watchRemote") && RowForKey(fullHost, @"mode"));
+        NSArray<NSDictionary *> *fullRoot = TIOHubSectionsForProfile(@"", @"ios1021");
         CheckSectionOrder(fullRoot, @"");
         assert([fullRoot.lastObject[@"section"] integerValue] == TIOHubSectionDeveloper && [[fullRoot.lastObject[@"rows"] valueForKey:@"key"] containsObject:@"firmwareExport"]);
         assert(![[fullRoot.firstObject[@"rows"] valueForKey:@"key"] containsObject:@"firmwareExport"]);
-        for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert([TIOHubSectionsForProfile(parent, @"ios1011") isEqual:TIOHubSectionsForProfile(parent, @"ios107")]);
-        CheckTitles(full1011, 28);
-        // Near-miss profile names get the 1.0.7 hub, never the export row or the download-only hub.
-        for (NSString *near in @[@"ios1011-full",@"IOS1011",@"ios1011 ",@"ios10111"]) assert([TIOHubCatalogForProfile(near) isEqual:catalog]);
+        for (NSString *parent in @[@"assistantMore",@"lifelog"]) assert([TIOHubSectionsForProfile(parent, @"ios1021") isEqual:TIOHubSectionsForProfile(parent, @"other")]);
+        CheckTitles(fullHost, 28);
+        // Near-miss and retired profile names get the base hub, never the export row or the download-only hub.
+        for (NSString *near in @[@"ios1021-full",@"IOS1021",@"ios1021 ",@"ios10211",@"ios1011"]) assert([TIOHubCatalogForProfile(near) isEqual:catalog]);
         NSString *englishLanguageTitle = language[@"title"];
         TIOSetUILanguageOverride(@"zh");
         NSArray<NSDictionary *> *chineseCatalog = TIOHubCatalog();

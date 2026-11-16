@@ -1,13 +1,13 @@
-// Full 1.0.11 host (ios1011, C15) and, built with -DTIO_TEST_HOST_1021=1, the full 1.0.21 host
-// (ios1021, C20; tests/FullHostFixture.h): where the arm record is read from. Runs the unchanged
-// phone policy (ExperimentalOTAFlash.m, adapted by test.py like tmg4-wizard-1011) with the
+// Full 1.0.21 host (ios1021, C20 onward; tests/FullHostFixture.h): where the arm record is read
+// from. Runs the unchanged phone policy (ExperimentalOTAFlash.m, adapted by test.py like
+// tmg4-wizard-1021) with the
 // REAL CFPreferences calls, only the suite name swapped for a throwaway one, so the Mac's
 // preferences for the addon's own suite are never touched. The throwaway suite is removed
 // at the end. No device, network or signing.
 //
 // The record must come from the suite's persistent domain only. NSUserDefaults'
 // -initWithSuiteName: also searches NSArgumentDomain, so a launch argument
-// -otaFlashArmRecord.ios1011 '<dict>...</dict>' (an XML plist gives real NSNumbers) would
+// -otaFlashArmRecord.ios1021 '<dict>...</dict>' (an XML plist gives real NSNumbers) would
 // arm without the wizard. This test launches itself with that argument and requires the
 // child to stay disarmed, and does the same with an in-process argument domain.
 #import "TMG4WizardHost.h"
@@ -70,7 +70,7 @@ int main(int argc,char **argv){@autoreleasepool{
     Image=FakeImage(TFH_UUID);Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     Home=NSTemporaryDirectory();TIOOTARecordTransportHookReady();assert(TIOOTAFlashBuild()&&TIOOTAFlashProtected());
     if(argc==4&&!strcmp(argv[1],"child")){
-        // Launched with -otaFlashArmRecord.ios1011 <XML dict>: the suite view has a valid record, the guard must not.
+        // Launched with -otaFlashArmRecord.ios1021 <XML dict>: the suite view has a valid record, the guard must not.
         Suite=@(getenv("TIO_ARMSTORE_SUITE"));assert([Suite hasPrefix:@"io.turboio.test-armstore."]);NSDictionary *seen=SuiteView();
         assert([seen isEqual:Good()]&&[seen[@"v"] isKindOfClass:NSNumber.class]);assert(!Persistent());
         Disarmed("a launch argument");
@@ -83,7 +83,7 @@ int main(int argc,char **argv){@autoreleasepool{
     NSString *xml=[[NSString alloc]initWithData:[NSPropertyListSerialization dataWithPropertyList:good format:NSPropertyListXMLFormat_v1_0 options:0 error:nil] encoding:NSUTF8StringEncoding];
     NSRange open=[xml rangeOfString:@"<dict>"],close=[xml rangeOfString:@"</dict>" options:NSBackwardsSearch];
     NSString *dict=[xml substringWithRange:NSMakeRange(open.location,NSMaxRange(close)-open.location)];
-    // <self> child -otaFlashArmRecord.ios1011 <dict>; the throwaway suite name travels in the environment.
+    // <self> child -otaFlashArmRecord.ios1021 <dict>; the throwaway suite name travels in the environment.
     char *spawnArgs[]={argv[0],"child",(char *)[@"-" stringByAppendingString:ArmKey].UTF8String,(char *)dict.UTF8String,NULL};
     setenv("TIO_ARMSTORE_SUITE",Suite.UTF8String,1);
     pid_t pid;int status=0;

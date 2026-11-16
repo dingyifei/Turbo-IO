@@ -489,7 +489,7 @@ static NSString *ShortStatus(NSString *value) {
     if ([self.snapshot[@"phase"] integerValue]==TIOOTAPhaseUnavailable) return 1;
     if (self.step==1) return 5;
     if (self.step==2) return 3;
-    // The full 1.0.11 host adds the arm row (index 2) to the install step.
+    // The full host adds the arm row (index 2) to the install step.
     return ([self.snapshot[@"stage"] integerValue]>=1?4:3)+([self.snapshot[@"armRequired"] boolValue]?1:0);
 }
 
@@ -606,7 +606,7 @@ static NSString *ShortStatus(NSString *value) {
         }
     } else {
         if ([s[@"armRequired"] boolValue] && row==2) {
-            // Full 1.0.11 host: TMG flashing stays disarmed until armed here. Disarm is refused while a transfer runs.
+            // Full host: TMG flashing stays disarmed until armed here. Disarm is refused while a transfer runs.
             BOOL armed=[s[@"armed"] boolValue];NSInteger stage=[s[@"stage"] integerValue];
             title=TIOText(@"ota.check.arm");state=[s[@"arm"] integerValue];
             detail=TIOText(armed?@"ota.arm.on":@"ota.arm.off");
@@ -743,7 +743,7 @@ static NSString *ShortStatus(NSString *value) {
     }
 }
 
-// Full 1.0.11 host only: one explicit, confirmed step, kept in the addon's own preferences.
+// Full host only: one explicit, confirmed step, kept in the addon's own preferences.
 - (void)armFlashing {
     TIOConfirm(self,TIOText(@"ota.arm.confirm.title"),TIOText(@"ota.arm.confirm.message"),TIOText(@"ota.arm.confirm.action"),YES,^{
         [self runAction:^BOOL(NSError **error){return Arm(error);} completion:^(BOOL ok,NSError *error){

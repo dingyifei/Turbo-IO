@@ -1,4 +1,4 @@
-// G2 and G3 for the download-only 1.0.11/259 host, on the pure model the export
+// G2 and G3 for the download-only 1.0.21/1 host, on the pure model the export
 // panel and Addon.m use (DownloadOnlySafety.m). No UIKit, device or network.
 // G2: a hook install that cannot resolve its targets leaves the guard inactive
 //     and the panel unsafe, whatever Auto Update says.
@@ -139,7 +139,7 @@ int main(void){@autoreleasepool{
     // Read only: the model never changes the preferences it is given.
     NSMutableDictionary *prefs=[@{@"a_ota_firmware_auto_update":@YES} mutableCopy];NSDictionary *before=[prefs copy];
     TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,prefs);assert([prefs isEqual:before]);
-    // Full 1.0.11 host (C15): the guard row is the arm state. Disarmed is green only once a stock call has
+    // Full host (C15 onward): the guard row is the arm state. Disarmed is green only once a stock call has
     // passed the hook (amber "waiting" before that, as on the download-only host), armed amber, no arm guard red.
     NSDictionary *disarmed=TIOFirmwareExportSafetyModelFull(YES,YES,NO,off);
     assert([disarmed[@"guardLevel"] isEqual:@"ok"]&&[disarmed[@"guardKey"] isEqual:@"fwexport.guard.disarmed"]&&[disarmed[@"safe"] boolValue]&&!disarmed[@"bannerKey"]);

@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
-// Pure safety state for the download-only 1.0.11/259 host. Foundation and the
+// Pure safety state for the download-only 1.0.21/1 host. Foundation and the
 // Objective-C runtime only, so the host tests link it without UIKit or Addon.m.
 NS_ASSUME_NONNULL_BEGIN
 
@@ -58,7 +58,7 @@ FOUNDATION_EXPORT NSString *TIOAutoUpdateReadingName(TIOAutoUpdateReading state)
 // The panel never writes the host's preferences; it only reads them.
 FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModel(NSString *_Nullable profile, BOOL hookInstalled, BOOL transportHookReady, BOOL stockTrafficSeen, NSDictionary *_Nullable preferences);
 
-// The same panel model on the full 1.0.11 and 1.0.21 hosts (ios1011 C15, ios1021 C20), where the
+// The same panel model on the full 1.0.21 host (ios1021), where the
 // guard is the arm state rather than the download-only refusal. guardActive is
 // armGuardReady (the transport hook ready and the arm requirement in force).
 //   "ok"     disarmed and a stock rayneonet call has passed the hook in this launch:

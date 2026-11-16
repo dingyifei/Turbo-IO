@@ -73,7 +73,7 @@ export function stripCodeSignature(bytes) {
 
 function prepare() {
   const [sourceArg,outArg,addonArg,bundle,mode]=process.argv.slice(2);
-  // --strip-stale-signature is for the 1.0.11 input (both profiles), which still carries an invalid Apple signature.
+  // --strip-stale-signature is for the 1.0.21 input (both profiles), which still carries an invalid Apple signature.
   const strip=process.argv.length===7&&mode==='--strip-stale-signature';
   if(!sourceArg||!outArg||!addonArg||!bundle||(process.argv.length!==6&&!strip))throw Error('Usage: node macho-embed.mjs /absolute/Runner.app /absolute/new/Runner.app /absolute/embedded/TurboIOPrivateAddon.dylib your.bundle.id [--strip-stale-signature]');
   if(![sourceArg,outArg,addonArg].every(path.isAbsolute)||![sourceArg,outArg].every(x=>x.endsWith('.app')))throw Error('Use absolute app and addon paths');

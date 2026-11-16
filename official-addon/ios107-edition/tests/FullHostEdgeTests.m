@@ -1,9 +1,8 @@
-// Edge cases for the full 1.0.11/259 host (profile ios1011, C15) and, built with
-// -DTIO_TEST_HOST_1021=1, the full 1.0.21/1 host (ios1021, C20; tests/FullHostFixture.h) that
-// tests/Host1011FullGuardTests.m does not already cover: the profile marker's near
+// Edge cases for the full 1.0.21/1 host (profile ios1021, C20 onward; tests/FullHostFixture.h)
+// that tests/FullHostGuardTests.m does not already cover: the profile marker's near
 // misses, raw-JSON size queries, frame and payload shapes, businessId types, and arm
 // record and store near misses. Runs the unchanged phone policy (ExperimentalOTAFlash.m,
-// adapted by test.py exactly like ios1011-full-guard) in the same six TIO_* flag sets;
+// adapted by test.py exactly like ios1021-full-guard) in the same six TIO_* flag sets;
 // every case's verdict goes into sweep=, which must be the same in every set.
 // No device, network or signing.
 //
@@ -111,13 +110,13 @@ static NSString *Show(id v){
     return [[s stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"] stringByReplacingOccurrencesOfString:@"\0" withString:@"\\0"];
 }
 
-// --- Profile: this host's profile ("ios1011" or "ios1021") only for the pinned image AND the exact NSString marker.
+// --- Profile: this host's profile ("ios1021") only for the pinned image AND the exact NSString marker.
 static void ProfileCases(void){
     NSArray *misses=TFHMarkerMisses();
     for(id marker in misses)for(NSNumber *routing in @[@YES,@NO]){
         Host=With(Full,@"TIOHostProfile",marker);if(!routing.boolValue)Host=With(Host,@"TIOExperimentalOTAQueryRouting",nil);Image=Pinned;
         NSString *n=[NSString stringWithFormat:@"marker %@ routing %@",Show(marker),routing];
-        Check("profile",[n stringByAppendingString:@" -> ios1011-download"],[TIOHostProfileFor(Image,Host) isEqual:@"ios1011-download"],YES);
+        Check("profile",[n stringByAppendingString:@" -> ios1021-download"],[TIOHostProfileFor(Image,Host) isEqual:@"ios1011-download"],YES);
         Check("profile",[n stringByAppendingString:@" not an OTA host"],TIOOTAHostProfile(Host)!=nil,NO);
         Check("profile",[n stringByAppendingString:@" download-only guard"],TIOOTADownloadOnlyHost(),YES);
         Check("profile",[n stringByAppendingString:@" arm not required"],TIOOTAArmRequired(),NO);
@@ -136,10 +135,10 @@ static void ProfileCases(void){
     Host=With(Full,@"TIOHostProfile",[NSMutableString stringWithString:TFH_PROFILE]);
     Check("profile",@"NSMutableString marker -> full profile",[TIOHostProfileFor(Pinned,Host) isEqual:TFH_PROFILE],YES);
     Check("profile",@"NSMutableString marker arm required",TIOOTAArmRequired(),YES);
-    // Exact marker on anything but the pinned image (the other full host's image included): never the full profile, and still disarmed.
+    // Exact marker on anything but the pinned image: never the full profile, and still disarmed.
     struct {NSString *name;const struct mach_header *image;} images[]={
-        {@"1.0.7 image",FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B")},{@"other image",FakeImage(@"00000000-0000-0000-0000-000000000001")},
-        {@"other full host's image",FakeImage([TFH_UUID isEqual:@"22724C97-2EF9-388D-8E6A-6E051855A555"]?@"74DA0780-DCF0-384F-9E84-1AC12F56CDF5":@"22724C97-2EF9-388D-8E6A-6E051855A555")},{@"no image",NULL}};
+        {@"another image",FakeImage(@"00000000-0000-0000-0000-000000000002")},{@"other image",FakeImage(@"00000000-0000-0000-0000-000000000001")},
+        {@"a third image",FakeImage(@"00000000-0000-0000-0000-000000000003")},{@"no image",NULL}};
     for(size_t i=0;i<sizeof images/sizeof *images;i++){
         Host=Full;Image=images[i].image;NSString *n=images[i].name;
         Check("profile",[n stringByAppendingString:@" not the full profile"],[TIOHostProfileFor(Image,Host) isEqual:TFH_PROFILE],NO);
@@ -150,10 +149,10 @@ static void ProfileCases(void){
         Check("profile",[n stringByAppendingString:@" read passes"],Allowed(Read1()),YES);
     }
     // Info near misses with the exact marker: the profile or the OTA host check fails, arm is refused, disarmed reads stay.
-    // The other full host's version and build (with this host's markers) and its routing marker are near misses too.
+    // A neighbouring version and build (with this host's markers) and a near-miss routing marker are near misses too.
     NSArray *infos=@[@[@"CFBundleVersion",@(TFH_BUILD.integerValue)],@[@"CFBundleVersion",[TFH_BUILD stringByAppendingString:@" "]],@[@"CFBundleShortVersionString",[TFH_VERSION stringByAppendingString:@" "]],
         @[@"CFBundleShortVersionString",[TFH_VERSION stringByAppendingString:@".0"]],@[@"CFBundleIdentifier",@"com.rayneo.venus"],@[@"TIOExperimentalOTAQueryRouting",[TFH_ROUTING uppercaseString]],
-        @[@"TIOExperimentalOTAQueryRouting",TFH_OTHER_ROUTING],@[@"CFBundleShortVersionString",[TFH_VERSION isEqual:@"1.0.11"]?@"1.0.21":@"1.0.11"],@[@"CFBundleVersion",[TFH_BUILD isEqual:@"259"]?@"1":@"259"]];
+        @[@"TIOExperimentalOTAQueryRouting",TFH_NEAR_ROUTING],@[@"CFBundleShortVersionString",TFH_NEAR_VERSION],@[@"CFBundleVersion",TFH_NEAR_BUILD]];
     for(NSArray *kv in infos){
         Host=With(Full,kv[0],kv[1]);Image=Pinned;NSString *n=[NSString stringWithFormat:@"%@=%@",kv[0],Show(kv[1])];
         Check("profile",[n stringByAppendingString:@" not the full OTA host"],TFH_HOST_MATCHES(Host),NO);
@@ -165,19 +164,19 @@ static void ProfileCases(void){
         Check("profile",[n stringByAppendingString:@" read passes"],Allowed(Read1()),YES);
         [TMG4ArmStore() removeAllObjects];
     }
-    // The 1.0.7 OTA host (its version, build, routing marker and image) carrying this host's profile marker and a
-    // valid record for this host: the 1.0.7 host check passes, but the arm-for-transfer check is this full host's
-    // exact one, so the record never arms a transfer there, and arming is refused.
+    // Another app (its own version, build, a stale routing marker and its own image) carrying this host's profile
+    // marker and a valid record for this host: the arm-for-transfer check is this full host's exact one, so the
+    // record never arms a transfer there, and arming is refused.
     {
-        Host=With(With(With(Full,@"CFBundleShortVersionString",@"1.0.7"),@"CFBundleVersion",@"230"),@"TIOExperimentalOTAQueryRouting",@"ios107-tmg2-loopback-flash-gated");
-        Image=FakeImage(@"410DEFDB-F937-39EA-ACF2-F616ABFF9D0B");
-        assert(TIOOTA107HostMatches(Host)&&TIOHostFullImageMatches(Image,Host));
-        Check("profile",@"1.0.7 host with this profile marker: arm required",TIOOTAArmRequired(),YES);
-        Check("profile",@"1.0.7 host with this profile marker: arm refused",TIOOTAFlashArm(NULL),NO);
+        Host=With(With(With(Full,@"CFBundleShortVersionString",TFH_NEAR_VERSION),@"CFBundleVersion",TFH_NEAR_BUILD),@"TIOExperimentalOTAQueryRouting",@"ios107-tmg2-loopback-flash-gated");
+        Image=FakeImage(@"00000000-0000-0000-0000-000000000004");
+        assert(!TIOOTAHostMatches(Host)&&!TIOHostFullImageMatches(Image,Host));
+        Check("profile",@"another app with this profile marker: arm required",TIOOTAArmRequired(),YES);
+        Check("profile",@"another app with this profile marker: arm refused",TIOOTAFlashArm(NULL),NO);
         TMG4ArmStore()[ArmKey]=@{@"v":@1,@"host":TFH_PROFILE,@"install":InstallID(),@"armedAt":@1};
-        Check("profile",@"1.0.7 host with this profile marker, valid record: not armed for transfer",[TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue],NO);
-        Check("profile",@"1.0.7 host with this profile marker, valid record: Mode 2 refused",Allowed(Start2()),NO);
-        Check("profile",@"1.0.7 host with this profile marker, valid record: read passes",Allowed(Read1()),YES);
+        Check("profile",@"another app with this profile marker, valid record: not armed for transfer",[TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue],NO);
+        Check("profile",@"another app with this profile marker, valid record: Mode 2 refused",Allowed(Start2()),NO);
+        Check("profile",@"another app with this profile marker, valid record: read passes",Allowed(Read1()),YES);
         [TMG4ArmStore() removeAllObjects];
     }
     Host=Full;Image=Pinned;
@@ -350,8 +349,8 @@ static void RecordCases(void){
     armed(@"record as JSON data",[NSJSONSerialization dataWithJSONObject:good options:0 error:nil],NO);
     armed(@"record as @YES",@YES,NO);armed(@"record as @1",@1,NO);
     // Wrong key or wrong store: never armed.
-    for(NSString *key in @[@"otaFlashArmRecord.IOS" TFH_D,@"otaFlashArmRecord.ios" TFH_D " ",@" otaFlashArmRecord.ios" TFH_D,@"otaFlashArmRecord",@"otaFlashArmRecord.ios107",
-            @"otaFlashArmRecord.ios" TFH_D "-download",@"OTAFlashArmRecord.ios" TFH_D,@"otaFlashArmRecord.ios" TFH_D ".v2",@"otaFlashArmRecord_ios" TFH_D,@"otaFlashArmed",TFH_OTHER_ARM_KEY]){
+    for(NSString *key in @[@"otaFlashArmRecord.IOS" TFH_D,@"otaFlashArmRecord.ios" TFH_D " ",@" otaFlashArmRecord.ios" TFH_D,@"otaFlashArmRecord",@"otaFlashArmRecord.ios1020",
+            @"otaFlashArmRecord.ios" TFH_D "-download",@"OTAFlashArmRecord.ios" TFH_D,@"otaFlashArmRecord.ios" TFH_D ".v2",@"otaFlashArmRecord_ios" TFH_D,@"otaFlashArmed",TFH_RETIRED_ARM_KEY]){
         [store removeAllObjects];store[key]=good;
         Check("record",[NSString stringWithFormat:@"good record under %@",key],TIOOTAFlashArmed(),NO);
         Check("record",[NSString stringWithFormat:@"good record under %@: Mode 2 refused",key],Allowed(Start2()),NO);
@@ -374,8 +373,8 @@ static void RecordCases(void){
         Check("record",[NSString stringWithFormat:@"disarm removes %@",[r isKindOfClass:NSDictionary.class]?@"a record":Show(r)],TIOOTAFlashDisarm()&&!store[ArmKey],YES);
     }
     // Disarm touches only the arm key.
-    store[@"otaFlashArmRecord.IOS" TFH_D]=good;store[TFH_OTHER_ARM_KEY]=good;store[ArmKey]=good;
-    Check("record",@"disarm leaves other keys",TIOOTAFlashDisarm()&&!store[ArmKey]&&store[@"otaFlashArmRecord.IOS" TFH_D]&&store[TFH_OTHER_ARM_KEY],YES);
+    store[@"otaFlashArmRecord.IOS" TFH_D]=good;store[TFH_RETIRED_ARM_KEY]=good;store[ArmKey]=good;
+    Check("record",@"disarm leaves other keys",TIOOTAFlashDisarm()&&!store[ArmKey]&&store[@"otaFlashArmRecord.IOS" TFH_D]&&store[TFH_RETIRED_ARM_KEY],YES);
     [store removeAllObjects];
 }
 
