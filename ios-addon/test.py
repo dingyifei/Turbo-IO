@@ -34,7 +34,7 @@ for file,entry in manifest.items():
         continue
     raise SystemExit('invalid manifest entry: '+file)
 
-ROOT=P.parents[1]
+ROOT=P.parent
 FW=ROOT/'firmware'   # the single firmware tree; released candidates are the fw/tmgN tags, not folders
 def show_stock_zip(base=None):
     # The one resolver of stock ZIP paths: build.py --show stock-zip (the tree's base, or --base).

@@ -153,7 +153,7 @@ test('package does not ship decorative art',()=>{assert.ok(!fs.readFileSync(new 
 // WP7 opt-in wrapper contract: no signing, packaging, or device operations.
 import {execFileSync as appleExec} from 'node:child_process';
 test('Apple AI wrapper leaves flag-off package argv unchanged',()=>{
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const wrapper=fs.readFileSync(new URL('../scripts/turbo-package.sh',import.meta.url),'utf8');
  assert.match(wrapper,/apple_args=\(\)/);
  assert.match(wrapper,/if \[\[ -n "\$apple_ai_out" \]\]/);
  // The Apple AI flag set feeds the one fresh addon build every package run makes.
@@ -350,7 +350,7 @@ test('real 1.0.21 input: unsigned preparation leaves App.framework byte-identica
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 test('wrappers: --host is required and is 1021 or 1021-full; --host 1021 packages without firmware or product; the gate has no 1.0.11 stage',()=>{
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const wrapper=fs.readFileSync(new URL('../scripts/turbo-package.sh',import.meta.url),'utf8');
  assert.match(wrapper,/\nhost=''\n/);
  assert.match(wrapper,/\[\[ -n \$host \]\] \|\| \{ echo 'PACKAGE FAIL: --host is required[^\n]*exit 2; \}/);
  assert.match(wrapper,/1021\|1021-full\) host=\$2; shift 2 ;;/);
@@ -365,7 +365,7 @@ test('wrappers: --host is required and is 1021 or 1021-full; --host 1021 package
  assert.match(wrapper,/\nrequired=\(TURBO_PROFILE TURBO_SIGN_ID TURBO_DEVICE TURBO_APP1021\)\n/);
  // The 1.0.7 and 1.0.11 inputs are never read.
  assert.doesNotMatch(wrapper,/TURBO_APP107|TURBO_PATCHED_APP|TURBO_APP1011|TURBO_PRODUCT|TURBO_FIRMWARE/);
- const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ const gate=fs.readFileSync(new URL('../scripts/turbo-gate.sh',import.meta.url),'utf8');
  assert.doesNotMatch(gate,/host1011|TURBO_APP107|TURBO_PATCHED_APP|TURBO_APP1011|TURBO_PRODUCT|TURBO_FIRMWARE|IOS107_TEST|IOS1011_TEST|--app107|--patched-app|--app1011/);
  // One test stage: the full test.py run for the first release (C21), the release groups alone for any other; the
  // real 1.0.21 app is required there, in the node tests and in the 1.0.21 package stage.
@@ -515,8 +515,8 @@ test('MethodHook order: hop, stock evidence, wire log, guard, prior method',()=>
 });
 // A package run builds the addon itself (both hosts), so a stale build/mapkit dylib is never packaged.
 test('turbo-package.sh builds the addon fresh with the requested flags before signing',()=>{
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- const gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ const wrapper=fs.readFileSync(new URL('../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const gate=fs.readFileSync(new URL('../scripts/turbo-gate.sh',import.meta.url),'utf8');
  const pos=s=>{const i=wrapper.indexOf(s);assert.ok(i>0,s);return i;};
  const scrub=pos('for name in $(compgen -e); do [[ $name != TIO_* ]] || unset "$name"; done');
  const remove=pos('rm -f "$ADDON"\n[[ ! -e "$ADDON" ]] ||');
@@ -557,7 +557,7 @@ test('turbo-package.sh builds the addon fresh with the requested flags before si
  assert.match(gate,/\n  bash "\$REPO\/scripts\/wirelog-absent\.sh" "\$addon"\n/);
  assert.match(addonCheck,/bash "\$REPO\/scripts\/wirelog-absent\.sh" "\$ADDON"/);
  // No piped nm check anywhere in the scripts: under pipefail a match reads as nm's SIGPIPE.
- for(const text of [wrapper,gate,fs.readFileSync(new URL('../../scripts/wirelog-absent.sh',import.meta.url),'utf8')])assert.doesNotMatch(text.split('\n').filter(l=>!/^\s*#/.test(l)).join('\n'),/\bnm [^\n|]*\|\s*grep/);
+ for(const text of [wrapper,gate,fs.readFileSync(new URL('../scripts/wirelog-absent.sh',import.meta.url),'utf8')])assert.doesNotMatch(text.split('\n').filter(l=>!/^\s*#/.test(l)).join('\n'),/\bnm [^\n|]*\|\s*grep/);
 });
 // The leak check must really fire. A dylib with the real recorder (WireLog.m built with TIO_WIRE_LOG=1) and
 // enough other symbols that nm is still writing when grep matches: the check fails on it and passes without
@@ -573,7 +573,7 @@ test('wirelog-absent.sh fails on a TIO_WIRE_LOG=1 build',()=>{
   const cc=(out,extra)=>{const r=spawnSync('xcrun',['clang','-dynamiclib','-O0','-fobjc-arc','-framework','Foundation','-o',out,filler,...extra],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);};
   cc(wire,['-DTIO_WIRE_LOG=1','-I',packageTestDirectory,path.join(packageTestDirectory,'WireLog.m')]);
   cc(plain,[]);
-  const check=f=>spawnSync('bash',[path.join(packageTestDirectory,'../../scripts/wirelog-absent.sh'),f],{encoding:'utf8'});
+  const check=f=>spawnSync('bash',[path.join(packageTestDirectory,'../scripts/wirelog-absent.sh'),f],{encoding:'utf8'});
   const hit=check(wire);assert.equal(hit.status,1,hit.stdout+hit.stderr);assert.match(hit.stderr,/Unexpected wire log symbol/);
   const clean=check(plain);assert.equal(clean.status,0,clean.stderr);
   const piped=spawnSync('bash',['-c','set -o pipefail; if nm "$1" | grep -q WireLog; then exit 0; else exit 1; fi','x',wire]);
@@ -619,7 +619,7 @@ test('download-only addon gate: guard symbols and marker are required',()=>{
  assert.match(s,/if\(!host\.routePatch\)validateDownloadOnlyAddon\(symbols,fs\.readFileSync\(o\.addon\)\);/);
  assert.ok(s.indexOf('validateDownloadOnlyAddon(symbols,')<s.indexOf("fs.mkdirSync(destination"));
  // The wrapper and the gate check the same names before anything is packaged.
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8'),gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ const wrapper=fs.readFileSync(new URL('../scripts/turbo-package.sh',import.meta.url),'utf8'),gate=fs.readFileSync(new URL('../scripts/turbo-gate.sh',import.meta.url),'utf8');
  for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS)assert.ok(wrapper.includes(name),name);
  for(const name of packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS.filter(n=>!['_TIOOTAFlashBlockCall','_TIOInstallGlassesChannelHook'].includes(n)))assert.ok(gate.includes(name),name);
  assert.ok(wrapper.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER)&&gate.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
@@ -667,7 +667,7 @@ test('full host gate check: the download-only guard and the full-host gate are r
  assert.equal(packaging.FULL_1011_ARM_SYMBOLS,undefined);assert.equal(packaging.FULL_1021_ARM_SYMBOLS,undefined);assert.equal(packaging.validateFull1011Addon,undefined);
  // The native marker is the packager's string; the wrapper and the gate check the same names and marker.
  assert.ok(fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8').includes('TIOOTAFullHostGuardMarker=@"'+packaging.FULL_HOST_GUARD_MARKER+'"'));
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8'),gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ const wrapper=fs.readFileSync(new URL('../scripts/turbo-package.sh',import.meta.url),'utf8'),gate=fs.readFileSync(new URL('../scripts/turbo-gate.sh',import.meta.url),'utf8');
  for(const n of packaging.FULL_HOST_GUARD_SYMBOLS){assert.ok(wrapper.includes(n),n);assert.ok(gate.includes(n),n);}
  assert.ok(wrapper.includes(packaging.FULL_HOST_GUARD_MARKER)&&gate.includes(packaging.FULL_HOST_GUARD_MARKER));
  assert.doesNotMatch(wrapper,/ARM-0|DISARM|full_1011_guard|_TIOOTAFlashArm|_TIOOTAArm/);assert.doesNotMatch(gate,/ARM-0|DISARM|_TIOOTAFlashArm|_TIOOTAArm|_TIOExperimentalOTAMemberCount/);
@@ -688,7 +688,7 @@ test('packager source: the full host build patches its own offsets, writes its p
  assert.match(s,/if\(host\.routePatch\)verifyRoute\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\),host\.routeProfile\);/);
 });
 test('wrappers: --host 1021-full packages the full build with the release ZIP and without product',()=>{
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
+ const wrapper=fs.readFileSync(new URL('../scripts/turbo-package.sh',import.meta.url),'utf8');
  const branch=wrapper.slice(wrapper.indexOf('\nelse\n# The full 1.0.21 host'),wrapper.indexOf('\nfi\nactive=timings'));
  assert.ok(branch.length>0);
  assert.match(branch,/full_profile=ios1021\n/);

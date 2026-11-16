@@ -25,9 +25,9 @@ Always use the phone build and the firmware as a pair.
 | Glasses must report | Strix OS 1.0.5.12 or 1.0.6.11 |
 | Build identity after the flash | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
 
-TMG12 was flashed on 2026-11-15 and passed the owner's first check (tags `app/c20` and `fw/tmg12`). No full device checklist has been run yet. The pin is the `c20` entry in [releases.json](official-addon/ios107-edition/releases.json).
+TMG12 was flashed on 2026-11-15 and passed the owner's first check (tags `app/c20` and `fw/tmg12`). No full device checklist has been run yet. The pin is the `c20` entry in [releases.json](ios-addon/releases.json).
 
-To flash it, follow [OTA.md](official-addon/ios107-edition/OTA.md). Flash only this ZIP, and only if its SHA-256 matches the line above.
+To flash it, follow [OTA.md](ios-addon/OTA.md). Flash only this ZIP, and only if its SHA-256 matches the line above.
 
 ### Earlier releases
 
@@ -60,7 +60,7 @@ You need your own decrypted copy of RayNeo AI 1.0.21 (1), your own signing setup
 1. Run the quick check: `bash scripts/turbo-gate.sh --only-build`
 2. Run the full check: `bash scripts/turbo-gate.sh`
 3. Build and sign C20: `bash scripts/turbo-package.sh --host 1021-full --release c20 <label>`
-4. Install the IPA over the existing app yourself. Then flash with [OTA.md](official-addon/ios107-edition/OTA.md).
+4. Install the IPA over the existing app yourself. Then flash with [OTA.md](ios-addon/OTA.md).
 
 The stock app inputs this project has published (1.0.7 and older) are listed in [official-apps](official-apps/README.md). They contain no Turbo IO code.
 
@@ -85,16 +85,16 @@ At the end, report what passed, what failed and what was not run. A passing buil
 
 ## Where to go next
 
-- [OTA.md](official-addon/ios107-edition/OTA.md): flash the current pair, and what to do if the gate refuses.
+- [OTA.md](ios-addon/OTA.md): flash the current pair, and what to do if the gate refuses.
 - [firmware/README.md](firmware/README.md): the firmware tree, its build and the record of each release.
-- [Addon README](official-addon/ios107-edition/README.md): the phone addon, its build and its test groups.
+- [Addon README](ios-addon/README.md): the phone addon, its build and its test groups.
 - [docs/README.md](docs/README.md): the index of all other docs, including the developer SDK and the design system.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `official-addon/ios107-edition/` | The iOS addon: build, packaging, tests and the flash guide |
+| `ios-addon/` | The iOS addon: build, packaging, tests and the flash guide |
 | `firmware/` | The patched glasses firmware, one tree; the release label is in `firmware/RELEASE` |
 | `firmware-research/` | Stock Strix OS 1.0.5.5 and 1.0.5.12 ZIPs used by the firmware tests and by rebuilds of earlier releases, and older research notes |
 | `official-apps/` | Index and checksums of the published stock app inputs |

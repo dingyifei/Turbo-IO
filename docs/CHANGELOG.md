@@ -56,11 +56,11 @@
 
 本轮保留矢量小地图、两/三排菜单配置及现有扩展模块，**只更新手机，不修改眼镜固件**。沿用已安装的 TMG2，无需为了手机升级再次刷机。8 个关键 native 类的 110 个既有方法签名与 Flutter 桥接检查通过；没有把旧版地址直接套到新版。
 
-**OTA 已开放：2026-10-19 在 iPhone 17 Pro Max / 1.0.7（230）上实刷原样 TMG2 成功。** 官方日志确认传输 100%、安装成功、重连版本匹配；刷后已重启手机 App，恢复授权 0。公开代码新增 1.0.7 专用查询路由与宿主校验，不套用 1.0.6 偏移。打包即包含升级通道，但不会自动授权或刷写；请按[新版教程](../official-addon/ios107-edition/OTA.md)操作，刷后完成收尾。本轮复用校验一致的官方缓存，不宣称重新网络下载或全部机型验收。手机锁屏导航问题仍保留；Dots 仍未完成。
+**OTA 已开放：2026-10-19 在 iPhone 17 Pro Max / 1.0.7（230）上实刷原样 TMG2 成功。** 官方日志确认传输 100%、安装成功、重连版本匹配；刷后已重启手机 App，恢复授权 0。公开代码新增 1.0.7 专用查询路由与宿主校验，不套用 1.0.6 偏移。打包即包含升级通道，但不会自动授权或刷写；请按[新版教程](../ios-addon/OTA.md)操作，刷后完成收尾。本轮复用校验一致的官方缓存，不宣称重新网络下载或全部机型验收。手机锁屏导航问题仍保留；Dots 仍未完成。
 
 公开源码、构建及测试，不公开个人签名 IPA、Cookie、Key、私人服务地址、设备备份或微信读书网页正文适配。[原厂 1.0.7 砸壳／去签名输入](../official-apps/ios/1.0.7/README.md)已单独归档，未合并 Turbo IO，需自行合法使用与签名；历史原厂 1.0.6 输入不能用于 1.0.7 打包。
 
-**[1.0.7 源码 / 构建与版本对比](../official-addon/ios107-edition/README.md) · [APP107 OTA 预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [现有 TMG2 固件（git 标签 `fw/tmg2`，下载见 Release）](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [当前眼镜固件源码 `firmware/`](../firmware/README.md)**
+**[1.0.7 源码 / 构建与版本对比](../ios-addon/README.md) · [APP107 OTA 预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [现有 TMG2 固件（git 标签 `fw/tmg2`，下载见 Release）](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [当前眼镜固件源码 `firmware/`](../firmware/README.md)**
 
 <a id="remote-camera"></a>
 
@@ -72,7 +72,7 @@
 
 手机端捕获、压缩、传输及测试代码，眼镜端原生页面和控制协议均已公开。**已发布的 TMG2 固件包含此功能，已有 TMG2 不必另刷 TCM1。** 本次补充独立功能说明，不生成或替换固件；当前列出的配套手机实现为 iOS，不代表 Android 已同步适配。
 
-**[iOS 1.0.7 手机源码](../official-addon/ios107-edition/camera-v1) · iOS 1.0.6 手机源码（已归档，见提交 `27ad86e` 的 `official-addon/navs3-edition/camera-v1`） · [眼镜原生源码](../firmware/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](../official-addon/ios107-edition/OTA.md)**
+**[iOS 1.0.7 手机源码](../ios-addon/camera-v1) · iOS 1.0.6 手机源码（已归档，见提交 `27ad86e` 的 `official-addon/navs3-edition/camera-v1`） · [眼镜原生源码](../firmware/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](../ios-addon/OTA.md)**
 
 <a id="navs3-update"></a>
 
@@ -230,7 +230,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 公开 **Apple 本地翻译、Hy-MT2 文字翻译和 Parakeet 英语离线 ASR**，支持手机/系统可用的蓝牙麦克风、快速预译、原文与译文同步眼镜。运行在 iPhone，**无需服务 Key、无需刷眼镜固件**；是独立字幕入口，不是全面替换官方翻译所有功能。iOS 26+ 可选构建，首次需自行准备模型与系统语言包，不提供签名 IPA 或权重包。
 
-[下载、构建、签名与使用教程](../official-addon/ios107-edition/local-translation/README.md) · [模型及第三方许可证](../official-addon/ios107-edition/local-translation/THIRD_PARTY.md) · [验证与限制](../official-addon/ios107-edition/local-translation/VALIDATION.md)。英语识别不是多语言 ASR；眼镜专有前方/四周定向收音尚未接入，前台采集、20分钟保护，无自动云端兜底。公开源码已编译并做离线测试，完整公开包与镜片仍需使用者验收。
+[下载、构建、签名与使用教程](../ios-addon/local-translation/README.md) · [模型及第三方许可证](../ios-addon/local-translation/THIRD_PARTY.md) · [验证与限制](../ios-addon/local-translation/VALIDATION.md)。英语识别不是多语言 ASR；眼镜专有前方/四周定向收音尚未接入，前台采集、20分钟保护，无自动云端兜底。公开源码已编译并做离线测试，完整公开包与镜片仍需使用者验收。
 
 <a id="weread-research"></a>
 

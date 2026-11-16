@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 # never installs to a device
 REPO=$(cd "$(dirname "$0")/.." && pwd)
-ED=$REPO/official-addon/ios107-edition
+ED=$REPO/ios-addon
 TURBO_INPUTS=${TURBO_INPUTS:-"$HOME/projects/personal/turboio-inputs"}
 apple_ai_out=''
 apple_args=()
@@ -11,7 +11,7 @@ apple_args=()
 # --host 1021: the download-only 1.0.21/1 build (C19): stock App.framework, no firmware, no flashing.
 # --host 1021-full: the full 1.0.21/1 build from TURBO_APP1021: route patch at the 1.0.21 offsets, the TMG ZIP of a
 # release built for this host, no device-model list; every TMG transfer frame needs one authorization on the phone.
-# --release cN (with --host 1021-full): build release cN of official-addon/ios107-edition/releases.json: the addon is
+# --release cN (with --host 1021-full): build release cN of ios-addon/releases.json: the addon is
 # compiled with TIO_RELEASE=cN (that release's FirmwarePins.h block) and bundles that release's ZIP, found under
 # $TURBO_INPUTS at the path releases.json names and refused unless its size and SHA-256 match. The release's hosts
 # (releases.json) must list the --host given. Without --release the build is the only release in releases.json

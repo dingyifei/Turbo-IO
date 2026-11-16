@@ -20,7 +20,7 @@ Flash only this ZIP. Its SHA-256 must match the line above and the `c20` entry i
 
 TMG12 changes only the launcher file `nuttx_ap.bin`. The other 15 payload files, the installer among them, are stock 1.0.6.11.
 
-Earlier releases are recorded in the git tags `fw/tmgN` (firmware) and `app/cN` (phone builds), and in [firmware/README.md](../../firmware/README.md). The flash steps that came with each older release are in this file's git history.
+Earlier releases are recorded in the git tags `fw/tmgN` (firmware) and `app/cN` (phone builds), and in [firmware/README.md](../firmware/README.md). The flash steps that came with each older release are in this file's git history.
 
 ## Before you start
 
@@ -84,7 +84,7 @@ This cannot flash stock firmware by mistake. Authorization needs all 17 files to
 1. Close and reopen the RayNeo app, then disarm (steps 15 and 16 above).
 2. RayNeo › Glasses › Software version shows Strix OS 1.0.6.11. If it shows another version, stop and tell the developer.
 3. Turbo › Developer (expand it) › Glasses runtime, row "Firmware and build", shows the build identity `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55`.
-4. Check the glasses features. There is no TMG12 device checklist in [firmware/README.md](../../firmware/README.md) yet. Until there is one, use the TMG11 owner check there (IMU, fold, knob, Sensors screen, sensor log) and the TMG12 section's list of changes (14-item carousel, Turbo Nav tile, new Light line). TMG12 starts with the default tile order; the TMG11 order is not carried over.
+4. Check the glasses features. There is no TMG12 device checklist in [firmware/README.md](../firmware/README.md) yet. Until there is one, use the TMG11 owner check there (IMU, fold, knob, Sensors screen, sensor log) and the TMG12 section's list of changes (14-item carousel, Turbo Nav tile, new Light line). TMG12 starts with the default tile order; the TMG11 order is not carried over.
 
 ## Going back
 

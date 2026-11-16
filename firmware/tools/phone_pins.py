@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the phone's firmware pins for every release configuration from the exact release ZIPs.
 
-Input: official-addon/ios107-edition/releases.json (one entry per phone release, named cN: the stock base its
+Input: ios-addon/releases.json (one entry per phone release, named cN: the stock base its
 packages are built on (1.0.6.11, the only base a phone release may have), its hosts, which must be exactly
 ["1021-full"], the 1.0.21 full host, and its packages: a list of {label, zip {input, bytes, sha256}, acceptCurrent},
 the ZIP's path under $TURBO_INPUTS with its size and SHA-256 and the glasses versions that package may be flashed
@@ -48,7 +48,7 @@ import zipfile
 
 FW = Path(__file__).resolve().parents[1]
 ROOT = FW.parent
-ED = ROOT/'official-addon'/'ios107-edition'
+ED = ROOT/'ios-addon'
 RELEASE_NAME = re.compile(r'c[0-9]+')
 VERSION = re.compile(r'([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)')
 # The one host name (turbo-package.sh --host) a release may list: the 1.0.21 full host.

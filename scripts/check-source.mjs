@@ -39,7 +39,7 @@ export function audit(root){
       if(digest!==reviewedScreenshots.get(relative))findings.push({file:relative,rule:'screenshot-needs-privacy-review'});
       return;
     }
-    if(/\.(?:ipa|apk|hap|har|app|dex|jar|jks|keystore|a|o|dylib|so|p12|p7b|cer|pem|key|mobileprovision|wav|ogg|pcm|mp3|m4a|png|jpg|zip|log|jsonl)$/i.test(p)&&relative!=='official-addon/ios107-edition/i18n/strings.jsonl')findings.push({file:relative,rule:'non-source-artifact'});
+    if(/\.(?:ipa|apk|hap|har|app|dex|jar|jks|keystore|a|o|dylib|so|p12|p7b|cer|pem|key|mobileprovision|wav|ogg|pcm|mp3|m4a|png|jpg|zip|log|jsonl)$/i.test(p)&&relative!=='ios-addon/i18n/strings.jsonl')findings.push({file:relative,rule:'non-source-artifact'});
     if(s.size>2*1024*1024){findings.push({file:relative,rule:'oversize-review'});return;}
     const b=fs.readFileSync(p);if(b.includes(0)){findings.push({file:relative,rule:'binary-content'});return;}
     b.toString('utf8').split('\n').forEach((line,i)=>{for(const [rule,re]of rules){

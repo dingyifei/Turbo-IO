@@ -40,7 +40,7 @@ Each tagged build is an annotated `app/cN` tag. The tag message gives the build 
 | `app/c12` | RayNeo AI 1.0.7 (230) | TMG8 (`fw/tmg8`) | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` |
 | `app/c11` | RayNeo AI 1.0.7 (230) | TMG7 (`fw/tmg7`) | `6b06d0dd3124ac1f86c91e0879908f9bfe129a2051cf0b619d5b0b664bc3c0aa` |
 
-The other release configurations in [releases.json](releases.json) have no tag: `default` (C14 on 1.0.7 and C15 on 1.0.11, both TMG9) and `c17` (rolls TMG10 back to TMG9). Older notes are in git history and in [docs/CHANGELOG.md](../../docs/CHANGELOG.md). To go back from TMG12, follow [Going back](OTA.md#going-back) in OTA.md.
+The other release configurations in [releases.json](releases.json) have no tag: `default` (C14 on 1.0.7 and C15 on 1.0.11, both TMG9) and `c17` (rolls TMG10 back to TMG9). Older notes are in git history and in [docs/CHANGELOG.md](../docs/CHANGELOG.md). To go back from TMG12, follow [Going back](OTA.md#going-back) in OTA.md.
 
 ## Inputs
 
@@ -166,4 +166,4 @@ The optional translation module and its models are described in [local-translati
 
 ## License
 
-The source is under the [PolyForm Noncommercial License 1.0.0](../../LICENSE). Third-party licenses are unchanged.
+The source is under the [PolyForm Noncommercial License 1.0.0](../LICENSE). Third-party licenses are unchanged.

@@ -5,7 +5,7 @@ Base: `main` at 659fd67. All paths are repo-relative. Line numbers refer to that
 
 ## 1. Why and what this plan promises
 
-`official-addon/ios107-edition/Addon.m` is 890 lines and 71,155 bytes. Most lines are dense one-liners (many over 200 columns), and the file mixes a dozen unrelated jobs that share a handful of file-scope statics. Every feature that touches the hub, the voice takeover or the entry button lands here, so it is the highest-conflict file in the edition and nothing tests it directly: `test.py` has no `Addon*Tests.m`, and `Addon.m` is only exercised by the device build, the symbol audit and the simulator preview.
+`ios-addon/Addon.m` is 890 lines and 71,155 bytes. Most lines are dense one-liners (many over 200 columns), and the file mixes a dozen unrelated jobs that share a handful of file-scope statics. Every feature that touches the hub, the voice takeover or the entry button lands here, so it is the highest-conflict file in the edition and nothing tests it directly: `test.py` has no `Addon*Tests.m`, and `Addon.m` is only exercised by the device build, the symbol audit and the simulator preview.
 
 Promises of this plan:
 
@@ -49,13 +49,13 @@ Observed coupling, which drives the move order: `Prefs` is read by nearly every 
 ### Re-deriving the map
 
 ```
-grep -nE '^(@interface|@implementation|@end|static |#if|#endif|#else|__attribute__)' official-addon/ios107-edition/Addon.m
-grep -nE '^- \(' official-addon/ios107-edition/Addon.m
+grep -nE '^(@interface|@implementation|@end|static |#if|#endif|#else|__attribute__)' ios-addon/Addon.m
+grep -nE '^- \(' ios-addon/Addon.m
 ```
 
 ## 3. Build layout and naming rules the new files must follow
 
-From `official-addon/ios107-edition/build.sh`:
+From `ios-addon/build.sh`:
 
 - Sources are one flat list handed to one `xcrun --sdk iphoneos clang -dynamiclib` call, ending with `Addon.m \` and then `-o "$output"`. New `.m` files are added as extra lines immediately before `Addon.m \`, after `music.c \` and the `-framework` lines that follow it. `Addon.m` stays last so its constructor remains the last initializer in link order.
 - No target-specific file list exists for the core: only the `nav_options`, `image_options` and `apple_options` arrays are conditional. The new files are unconditional (the `#if` blocks stay inside them), so the three arrays are not touched.
@@ -88,7 +88,7 @@ Why categories on `TIOPanel` rather than free functions for the hub: `TIOPanel` 
 
 Common gate for every step (all must pass before the commit):
 
-1. `python3 official-addon/ios107-edition/test.py ...` (as run by the gate's `test` stage; includes the manifest check and `tio-design-literals`).
+1. `python3 ios-addon/test.py ...` (as run by the gate's `test` stage; includes the manifest check and `tio-design-literals`).
 2. `scripts/turbo-gate.sh --preview`: stages `private`, `build`, `symbols`, `test`, `package-test`, `source-audit`, `preview`.
 3. The step-specific safety nets from section 6.
 4. The surface diff (S1 below) shows no change, or only the explicitly expected additions listed in the step.

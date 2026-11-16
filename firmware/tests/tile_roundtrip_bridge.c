@@ -1,4 +1,4 @@
-/* The firmware half of official-addon/ios107-edition/tests/tile_roundtrip.py (14-item model, compiled with the tree's
+/* The firmware half of ios-addon/tests/tile_roundtrip.py (14-item model, compiled with the tree's
  * base flags). It runs the real controller bodies of remote_native.c through native_remote_test.c's host stubs and the
  * firmware tile_config.c codec; it is never linked with the phone's tile_config.c (13 items).
  *   tile-roundtrip                         TTL encode -> native handler -> durable mock A/B -> TTA decode, then a reboot

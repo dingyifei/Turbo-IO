@@ -19,7 +19,7 @@ The owner installed C20 and flashed TMG12 on 2026-11-15. The glasses report Stri
 | Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |
 | Route patch output SHA-256 | `cd8be91e82bdbc1c98b5dda4fa0d358b91a2187ea4571200760fac0c53cb7852` |
 
-The pins are in the `c20` entry of [releases.json](releases.json) and in [firmware-pins-c20.json](firmware-pins-c20.json). The firmware release label is in [firmware/RELEASE](../../firmware/RELEASE). The firmware build record is in the TMG12 section of [firmware/README.md](../../firmware/README.md).
+The pins are in the `c20` entry of [releases.json](releases.json) and in [firmware-pins-c20.json](firmware-pins-c20.json). The firmware release label is in [firmware/RELEASE](../firmware/RELEASE). The firmware build record is in the TMG12 section of [firmware/README.md](../firmware/README.md).
 
 The packager writes `TIOHostProfile = ios1021` into Info.plist. That key is the only thing that separates C20 from the download-only 1.0.21 build (C19); a 1.0.21 app without it is treated as download-only. Flashing is disarmed by default, and the arm record is stored under `otaFlashArmRecord.ios1021`.
 
@@ -35,7 +35,7 @@ Follow [OTA.md](OTA.md): "Flash TMG12", then "After the flash". If the phone ref
 
 ## Earlier releases
 
-Each release has annotated tags: `app/cN` for the phone build, `fw/tmgN` for the firmware. The tag message gives the build commit, the IPA or ZIP hash and the device status. Flash steps for older releases are in the git history of [OTA.md](OTA.md). Notes up to late October are in [docs/CHANGELOG.md](../../docs/CHANGELOG.md), which is frozen.
+Each release has annotated tags: `app/cN` for the phone build, `fw/tmgN` for the firmware. The tag message gives the build commit, the IPA or ZIP hash and the device status. Flash steps for older releases are in the git history of [OTA.md](OTA.md). Notes up to late October are in [docs/CHANGELOG.md](../docs/CHANGELOG.md), which is frozen.
 
 | Phone | Host | Firmware | Stock base | ZIP SHA-256 | Tags |
 |---|---|---|---|---|---|

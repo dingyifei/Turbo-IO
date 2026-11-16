@@ -225,19 +225,19 @@ class ToolTests(unittest.TestCase):
         self.git('restore','--source=HEAD','--staged','--worktree','Owned.m');self.put('removed/new.h','new\n');self.assertTrue(self.tool.frozen(ref))
 
     def test_nested_edition_git_scope_and_frozen(self):
-        self.put('official-addon/ios107-edition/i18n/scope.json',json.dumps(self.scope))
-        self.put('official-addon/ios107-edition/i18n/strings.jsonl','')
-        self.put('official-addon/ios107-edition/Main.m',self.fn('@"甲";'))
-        ref=self.baseline('official-addon/ios107-edition/Owned.m','original\n')
-        tool=t.Tool(self.root/'official-addon/ios107-edition')
+        self.put('ios-addon/i18n/scope.json',json.dumps(self.scope))
+        self.put('ios-addon/i18n/strings.jsonl','')
+        self.put('ios-addon/Main.m',self.fn('@"甲";'))
+        ref=self.baseline('ios-addon/Owned.m','original\n')
+        tool=t.Tool(self.root/'ios-addon')
         self.assertIn('Main.m',tool.baseline_paths(ref))
         self.assertEqual(tool.unwrap_diff(ref,scope=True),[])
-        self.put('official-addon/ios107-edition/Main.m',self.fn('@"乙";'))
+        self.put('ios-addon/Main.m',self.fn('@"乙";'))
         self.assertTrue(tool.unwrap_diff(ref,scope=True))
         self.assertEqual(tool.frozen(ref),[])
-        self.put('official-addon/ios107-edition/Owned.m','changed\n')
+        self.put('ios-addon/Owned.m','changed\n')
         self.assertTrue(tool.frozen(ref))
-        self.put('official-addon/ios107-edition/removed/new.h','new\n')
+        self.put('ios-addon/removed/new.h','new\n')
         self.assertTrue(any('new frozen' in x for x in tool.frozen(ref)))
 
     def test_cli_pipeline(self):

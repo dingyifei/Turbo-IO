@@ -12,12 +12,12 @@
 The phone's own codec and link (tests/TileRoundTripTests.m, MenuLayout.m) are not run here: they stay with the
 1.0.5.12-pair phone track.
 
-  python3 -I official-addon/ios107-edition/tests/tile_roundtrip.py <fresh output folder>
+  python3 -I ios-addon/tests/tile_roundtrip.py <fresh output folder>
 """
 from pathlib import Path
 import importlib.util,re,subprocess,sys
 P=Path(__file__).resolve().parents[1]
-FW=P.parents[1]/'firmware'
+FW=P.parent/'firmware'
 TOKEN,CLIENT=77,5   # the firmware host stub issues nonce 77; the frame must carry it to reach the version check alone
 OLD_PHONE=r'''#include "tile_config.h"
 #include <stdio.h>

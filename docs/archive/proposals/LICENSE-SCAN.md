@@ -16,11 +16,11 @@ Scan date: 2026-10-29. Source: `main` at 659fd67, read-only. This document recom
 | Opus source | `core-probe/Vendor/opus-1.5.2/` | BSD-3-Clause style | `COPYING` | OK |
 | Opus prebuilt | `core-probe/Vendor/opus-ios/libopus.a` | Opus (BSD) | none | Gap |
 | Binary frameworks | `core-probe/Frameworks/*.framework` | mixed, see section 5 | none (7 of 7) | Gap |
-| Local translation models | `official-addon/ios107-edition/local-translation/licenses/` | Apache-2.0, MIT and others | six files | OK as far as present |
+| Local translation models | `ios-addon/local-translation/licenses/` | Apache-2.0, MIT and others | six files | OK as far as present |
 | Firmware research | `firmware-research/` | mixed: original code plus vendor material | none at that level; prose in `THIRD_PARTY_NOTICES.md` | Needs per-item review |
 | Package manifests | `dashboard-service/pyproject.toml`, `rayneo-*/Package.swift` | no license field | n/a | Gap |
 
-Verified in this scan: the only `LICENSE`, `COPYING` or `NOTICE` files tracked outside `official-addon/ios107-edition/local-translation/licenses/` are `LICENSE` and `NOTICE` at the root, `skills/turbo-io/LICENSE` and `NOTICE`, `third-party/ZIPFoundation/LICENSE`, `official-addon/tar2-airplay/LICENSE`, `core-probe/Vendor/opus-1.5.2/COPYING` and `core-probe/Vendor/py-webrtcvad-2.0.10/LICENSE`. `DEPENDENCIES.json` is a hash manifest of 95 third-party files with the stated purpose "not covered by the project license"; it records no license names.
+Verified in this scan: the only `LICENSE`, `COPYING` or `NOTICE` files tracked outside `ios-addon/local-translation/licenses/` are `LICENSE` and `NOTICE` at the root, `skills/turbo-io/LICENSE` and `NOTICE`, `third-party/ZIPFoundation/LICENSE`, `official-addon/tar2-airplay/LICENSE`, `core-probe/Vendor/opus-1.5.2/COPYING` and `core-probe/Vendor/py-webrtcvad-2.0.10/LICENSE`. `DEPENDENCIES.json` is a hash manifest of 95 third-party files with the stated purpose "not covered by the project license"; it records no license names.
 
 ## 2. Root license and the GPL-3.0 subtree
 
@@ -59,7 +59,7 @@ Whichever option is chosen, do not distribute a merged or signed IPA that contai
 | ZIPFoundation 0.9.20 | `third-party/ZIPFoundation/` | `LICENSE` is MIT, "Copyright (c) 2017-2025 Thomas Zoechling" | Keep the file. `THIRD_PARTY_NOTICES.md` records that the manifest was edited to drop test targets; modified Package.swift is allowed under MIT but should say so in a header. |
 | py-webrtcvad 2.0.10 | `core-probe/Vendor/py-webrtcvad-2.0.10/` | `LICENSE` is MIT, "Copyright (c) 2016 John Wiseman" | The package bundles Google WebRTC VAD C sources, whose own license (BSD-3-Clause, to-be-verified upstream) is not shown by this file. Check for the WebRTC license text inside the vendored tree and add it to the notices if missing. |
 | Opus 1.5.2 source | `core-probe/Vendor/opus-1.5.2/` | `COPYING` begins "Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic, Jean-Marc Valin, ..." (BSD-3-Clause style with patent-related notes) | Complete tree retained as the notices state. |
-| Local translation model licenses | `official-addon/ios107-edition/local-translation/licenses/` | `fastcluster-LICENSE.md`, `FluidAudio-Apache-2.0.txt`, `JapaneseG2P-LICENSE.md`, `llama-MIT.txt`, `NemoTextProcessing-LICENSE.md`, `vbx-LICENSE.md` | Not part of the task list but good practice. Not verified here: whether model weights themselves (if any are fetched) have separate terms. |
+| Local translation model licenses | `ios-addon/local-translation/licenses/` | `fastcluster-LICENSE.md`, `FluidAudio-Apache-2.0.txt`, `JapaneseG2P-LICENSE.md`, `llama-MIT.txt`, `NemoTextProcessing-LICENSE.md`, `vbx-LICENSE.md` | Not part of the task list but good practice. Not verified here: whether model weights themselves (if any are fetched) have separate terms. |
 
 ## 4. Prebuilt `core-probe/Vendor/opus-ios/libopus.a`
 
@@ -119,7 +119,7 @@ Recommendations: add `firmware-research/LICENSING.md` that classifies the conten
 - `THIRD_PARTY_NOTICES.md` is accurate but is a prose log ordered by date, and does not list the version and license of each shipped component in a table. A generated table (name, version, license, path, source) would be easier to audit.
 - `DEPENDENCIES.json` says its files are "not covered by the project license", which is a good statement, but it does not add the license identifier. Adding a `license` and `source` field per entry would let CI assert that no entry is missing a license.
 - A removed NetEase client adapted from Beans Music (MIT) is preserved in commit `27ad86e`; ensure the MIT notice is present there (not verified).
-- The OSM test extracts under `official-addon/ios107-edition/tests/maps` are ODbL 1.0; notices say attribution is kept per fixture (not re-verified here).
+- The OSM test extracts under `ios-addon/tests/maps` are ODbL 1.0; notices say attribution is kept per fixture (not re-verified here).
 - AMap and HarmonyOS SDKs are downloaded at build and carry their own terms, as stated.
 - `NOTICE` says "Turbo IO contributors" with no individual name. Consider whether the copyright line should name a legal person to make relicensing and enforcement simpler.
 

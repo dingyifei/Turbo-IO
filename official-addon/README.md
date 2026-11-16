@@ -4,7 +4,7 @@ V2 extends the compatible official RayNeo app with phone-side tools, glasses pro
 
 | Directory | Purpose |
 | --- | --- |
-| [ios107-edition](ios107-edition/README.md) | Active addon: build.sh, package.mjs, test.py, tests/ and local-translation/. |
+| [ios-addon](../ios-addon/README.md) | Active addon: build.sh, package.mjs, test.py, tests/ and local-translation/. |
 | research/ | app-runtime-v1 and dashboard-editor-v1, plus the menu8 and navigation headers they include; compiled by the dashboard-service tests. |
 
 The tracked root PrivateBootstrap parser and its tests remain for compatibility; ios107 builds receive ignored parser copies from the private external backup. No private configuration belongs in the source release.
@@ -12,7 +12,7 @@ The tracked root PrivateBootstrap parser and its tests remain for compatibility;
 <a id="1-兼容性门槛"></a>
 ## Compatibility
 
-The current port requires the exact 1.0.7 (230) host described in [ios107-edition](ios107-edition/README.md). Historical V2 compatibility and installation instructions are kept in commit `27ad86e`: `git show 27ad86e:official-addon/README.md`.
+The current port requires the exact 1.0.7 (230) host described in [ios-addon](../ios-addon/README.md). Historical V2 compatibility and installation instructions are kept in commit `27ad86e`: `git show 27ad86e:official-addon/README.md`.
 
 ## Archived
 
@@ -26,7 +26,7 @@ git checkout 27ad86e -- official-addon/navs3-edition
 <a id="本地合并签名安装"></a>
 ## Build and test
 
-From ios107-edition, after preparing compatible external inputs and ignored parser copies:
+From ios-addon, after preparing compatible external inputs and ignored parser copies:
 
 ```sh
 TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub

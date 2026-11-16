@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 # never installs to a device
 REPO=$(cd "$(dirname "$0")/.." && pwd)
-ED=$REPO/official-addon/ios107-edition
+ED=$REPO/ios-addon
 TURBO_INPUTS=${TURBO_INPUTS:-"$HOME/projects/personal/turboio-inputs"}
 export TURBO_INPUTS   # phone_pins_test.py reads release ZIPs that test.py does not pass
 preview=0

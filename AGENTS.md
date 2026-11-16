@@ -14,7 +14,7 @@ This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It co
    - Approval for one release or action doesn't extend to the next.
 2. **Target only the owner's iPhone.** It is set as `TURBO_DEVICE` in the private `package.env`, which lives outside the repo. Never pick another device from `devicectl`, and never write a device ID into the repo.
 3. **Install over the existing app (`com.rayneo.venus.pub`). Never delete it.** Deleting it wipes the pairing and the OTA gate state.
-4. **RayNeo Auto Update and AI updates stay off.** The one exception is the documented on→off toggle that the OTA flash gate needs (see `official-addon/ios107-edition/OTA.md`).
+4. **RayNeo Auto Update and AI updates stay off.** The one exception is the documented on→off toggle that the OTA flash gate needs (see `ios-addon/OTA.md`).
 5. **Flash only pinned release ZIPs whose SHA-256 matches the release record.** Roll back only to the documented phone + firmware pairs.
    - Never use a superseded ZIP.
    - Never relax a version, hash or authorization check to get past it.
@@ -42,7 +42,7 @@ Follow [docs/porting-flow.md](docs/porting-flow.md): present the whole plan to t
 
 | Path | Contents |
 |---|---|
-| `official-addon/ios107-edition/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.7, with its build, packaging, tests and the OTA flash guide |
+| `ios-addon/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.7, with its build, packaging, tests and the OTA flash guide |
 | `firmware/` | The patched glasses firmware, as one tree. Each release is an annotated `fw/tmgN` tag, the release label is in `firmware/RELEASE`, and `firmware/baseline/` holds the few inputs carried over from older releases. |
 | `firmware-research/` | Stock firmware ZIPs that the firmware build and the gate read (`strix-1.0.5.5/stock`, `strix-1.0.5.12/stock`), plus the old TMIG1 1.0.5.5 research tree. |
 | `scripts/` | Gate, packaging and source audit |
@@ -56,7 +56,7 @@ Build inputs live outside the repo: the stock app, signing configuration and fir
 - `bash scripts/turbo-gate.sh` runs the full check: addon build, symbol checks, `test.py` against the pinned firmware, the node tests, and the source audit.
 - `bash scripts/turbo-gate.sh --only-build` is the quick check for each commit.
 - `bash scripts/turbo-gate.sh --preview` adds the preview screenshot matrix and takes about 15 minutes. Run it once on the final commit before handing off, not after every commit.
-- `python3 official-addon/ios107-edition/test.py --firmware <release zip> --tree-firmware <tree zip> [--release default|c16|c17] --app107 <Runner.app> --patched-app <Runner.app>` runs the test groups directly.
+- `python3 ios-addon/test.py --firmware <release zip> --tree-firmware <tree zip> [--release default|c16|c17] --app107 <Runner.app> --patched-app <Runner.app>` runs the test groups directly.
   - `--firmware` is the ZIP of the phone release under test (`releases.json`; the default release is ZIP9), and `--release` picks that release's pins, stock base and wizard versions.
   - `--tree-firmware` is the ZIP built from the current `firmware/` tree, which the tree audit checks on its own stock base (today ZIP10). It defaults to `--firmware`, which fails whenever the two differ.
   - The gate fills in these paths from `package.env` and `releases.json` (release ZIPs under `$TURBO_INPUTS`), and runs C16 and C17 on their OTA groups with `--release` and `--only`.

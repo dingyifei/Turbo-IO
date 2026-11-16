@@ -40,14 +40,14 @@ test('hash-pinned exception rejects changed bytes, and unpinned media stays reje
 });
 
 test('allows only the exact ios107 translation source table',()=>{
-  const table='official-addon/ios107-edition/i18n/strings.jsonl';
+  const table='ios-addon/i18n/strings.jsonl';
   fixture({[table]:'{"key":"fixture","en":"Fixture","zh":"Fixture"}\n'},r=>assert.deepEqual(r.findings,[]));
-  for(const name of ['official-addon/ios107-edition/i18n/other.jsonl','strings.jsonl','elsewhere/strings.jsonl']){
+  for(const name of ['ios-addon/i18n/other.jsonl','strings.jsonl','elsewhere/strings.jsonl']){
     fixture({[name]:'{}'},r=>assert.ok(r.findings.some(f=>f.rule==='non-source-artifact')));
   }
 });
 test('translation table exemption retains credential and binary-content checks',()=>{
-  const table='official-addon/ios107-edition/i18n/strings.jsonl';
+  const table='ios-addon/i18n/strings.jsonl';
   fixture({[table]:'sk-'+'z'.repeat(24)},r=>assert.ok(r.findings.some(f=>f.rule==='api-key')));
   fixture({[table]:Buffer.from([0])},r=>assert.ok(r.findings.some(f=>f.rule==='binary-content')));
 });

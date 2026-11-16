@@ -37,7 +37,7 @@ unzip RayNeo_AI_1.0.7_230_decrypted_unsigned_original.ipa -d /absolute/new-input
 
 ## 合并 Turbo IO
 
-使用最新版 [APP107 / iOS 1.0.7 集成目录](../../../official-addon/ios107-edition/README.md)。打包器精确接受原始签名保留版或本 Release 去签名版的 Runner + App.framework **配对哈希**；不接受混搭、其他版本或未知重签输入，没有放宽固件校验和单次刷写门禁。
+使用最新版 [APP107 / iOS 1.0.7 集成目录](../../../ios-addon/README.md)。打包器精确接受原始签名保留版或本 Release 去签名版的 Runner + App.framework **配对哈希**；不接受混搭、其他版本或未知重签输入，没有放宽固件校验和单次刷写门禁。
 
 你仍须使用自己的合法证书、描述文件与设备授权完成合并签名；解压或去签名都不等于签名。官方登录、推送等权限需独立核验。1.0.6 输入不能替代此版本。
 

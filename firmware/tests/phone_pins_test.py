@@ -7,7 +7,7 @@ pinned by a release: today it is C21's ZIP. $TURBO_INPUTS must be set: the stock
 from pathlib import Path
 import contextlib,copy,hashlib,importlib.util,io,json,os,shutil,subprocess,sys,tempfile,zipfile
 FW=Path(__file__).resolve().parents[1]
-ED=FW.parent/'official-addon'/'ios107-edition'
+ED=FW.parent/'ios-addon'
 CORES=('nuttx_ap.bin','nuttx_apc1.bin','nuttx_bth.bin')
 def load(path,name):
     spec=importlib.util.spec_from_file_location(name,path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module

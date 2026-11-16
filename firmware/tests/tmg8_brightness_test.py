@@ -113,7 +113,7 @@ def main():
                     sys.exit('FAIL metric %dx%d %s: C %r lens_metrics.py %r' % (w, h, k, got[k], theirs[k]))
     print('PASS metric: C equals the brute-force reference on %d images%s' % (len(cases), ' and lens_metrics.py' if tool else ' (lens_metrics.py not found next to this checkout: reference only)'))
     # The phone's lens preview applies the same art cap on the same band edges as app_view.h.
-    ui = (REPO / 'official-addon/ios107-edition/AppUI.m').read_text()
+    ui = (REPO / 'ios-addon/AppUI.m').read_text()
     m = re.search(r'static BOOL TAPInBandB\(CGRect r\)\{return r\.origin\.y>=(\d+)&&CGRectGetMaxY\(r\)<=(\d+);\}', ui)
     hdr = (FW / 'src/app-runtime-v1/app_view.h').read_text()
     probe = a.out / 'probe.c'

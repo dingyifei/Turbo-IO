@@ -4,11 +4,11 @@ The source for the patched Strix OS firmware of the RayNeo iO glasses. The build
 
 There is one tree. The release label is the single line in [`RELEASE`](RELEASE). `build.py` names the ZIP from it and `tools/phone_pins.py` names the phone pins from it. Each released firmware is an annotated git tag `fw/tmgN`. Run `git show fw/tmgN` to see its ZIP hash and paired phone build. Release history lives in those tags, in git history and in [docs/CHANGELOG.md](../docs/CHANGELOG.md).
 
-Agents never flash. The owner flashes, with the steps in [OTA.md](../official-addon/ios107-edition/OTA.md).
+Agents never flash. The owner flashes, with the steps in [OTA.md](../ios-addon/OTA.md).
 
 ## Current release: TMG12
 
-TMG12 is on the owner's glasses: flashed from C20 on 2026-11-15, with the update confirmed after the first boot, and the owner's first check passed. It is tagged `fw/tmg12`. No full TMG12 device checklist has been run yet. The ZIP keeps its pinned file name, `CANDIDATE-NOT-APPROVED` included. The phone build that flashes it is C20 (release `c20` in [releases.json](../official-addon/ios107-edition/releases.json)).
+TMG12 is on the owner's glasses: flashed from C20 on 2026-11-15, with the update confirmed after the first boot, and the owner's first check passed. It is tagged `fw/tmg12`. No full TMG12 device checklist has been run yet. The ZIP keeps its pinned file name, `CANDIDATE-NOT-APPROVED` included. The phone build that flashes it is C20 (release `c20` in [releases.json](../ios-addon/releases.json)).
 
 TMG12 is TMG11 ported to stock Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)).
 
@@ -85,7 +85,7 @@ There is no full TMG12 checklist yet. Until there is one, check at least the fol
 
 For comparison, the TMG11 owner check on 2026-11-12 found: IMU ST; fold reads "open" when unfolded (the Hall sensor is on the right hinge); the knob counts negative counter-clockwise, about 1,200 counts per turn. The C18 sensor log named the ST IMU (LSM6DSO32 driver, WHO_AM_I 0x6b), the MMC5603NJ magnetometer (ID 0x10), the W1161 light sensor (ID 0xe6) and the Mixo OTS knob (ID 0xB1).
 
-To go back, see [Going back](../official-addon/ios107-edition/OTA.md#going-back) in OTA.md.
+To go back, see [Going back](../ios-addon/OTA.md#going-back) in OTA.md.
 
 ## Build
 
@@ -130,11 +130,11 @@ Do this only for a new release. It ends the TMG12 identity carry-over (see above
    It writes `$D/repin/build-inputs.pinned.json`.
 3. Review the diff, then copy that file over `firmware/build-inputs.json`.
 4. Run a plain build again. It must pass with the new pins.
-5. Copy the ZIP to `$TURBO_INPUTS/<folder>/`. Add or update its entry in `official-addon/ios107-edition/releases.json`: `firmware`, `stockBase`, `zip.input` (relative to `$TURBO_INPUTS`), `zip.bytes`, `zip.sha256`, `acceptCurrent` and `hosts`. Paste the size and hash from command output.
+5. Copy the ZIP to `$TURBO_INPUTS/<folder>/`. Add or update its entry in `ios-addon/releases.json`: `firmware`, `stockBase`, `zip.input` (relative to `$TURBO_INPUTS`), `zip.bytes`, `zip.sha256`, `acceptCurrent` and `hosts`. Paste the size and hash from command output.
 6. Regenerate and check the phone pins (`FirmwarePins.h` and `firmware-pins*.json`):
    ```sh
-   python3 -I "$FW/tools/phone_pins.py" --write "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"
-   python3 -I "$FW/tools/phone_pins.py" --check "$R/official-addon/ios107-edition" --inputs "$TURBO_INPUTS"
+   python3 -I "$FW/tools/phone_pins.py" --write "$R/ios-addon" --inputs "$TURBO_INPUTS"
+   python3 -I "$FW/tools/phone_pins.py" --check "$R/ios-addon" --inputs "$TURBO_INPUTS"
    ```
    `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c20`).
 
@@ -142,7 +142,7 @@ Do this only for a new release. It ends the TMG12 identity carry-over (see above
 
 ## Gate
 
-Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. It needs no phone build, no `package.env` and no `releases.json` entry, and writes its report to `official-addon/ios107-edition/build/gate-firmware/`. It cannot be combined with `--preview`, `--only-build` or `--skip-tests`. Its stages, in order:
+Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. It needs no phone build, no `package.env` and no `releases.json` entry, and writes its report to `ios-addon/build/gate-firmware/`. It cannot be combined with `--preview`, `--only-build` or `--skip-tests`. Its stages, in order:
 
 1. `fw-rebase`: `rebase_apply.py --check`.
 2. `fw-layout`: the stock-layout proof, `tools/check_layout.py` (no raw stock offset in built code) and its self-test, the host drivers, the independent rebase check, `stock_abi_test`, `stock_base_test`, `tools/check_kept.py`, `tools/check_cjk.py`, the stock name and grid label tests, and the tile model.
