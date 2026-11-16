@@ -361,7 +361,7 @@ fw_tests_stage() {
 # C18's firmware is the newest released fw/tmgN tag. The tree itself may no longer build that ZIP (build.py's identity
 # moves with every edit), so the tag is exported and rebuilt with its own build.py and pins, which require its ZIP.
 fw_reproduce_stage() {
-  local tag base dir zips=() file
+  local tag base dir stock zips=() file
   tag=$(git -C "$REPO" tag --merged HEAD --list 'fw/tmg*' --sort=-version:refname | head -n 1) || return 1
   [[ -n $tag ]] || { echo 'no fw/tmgN tag is merged into HEAD' >&2; return 1; }
   base=$(git -C "$REPO" show "$tag":firmware/build-inputs.json | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["stockBase"])') || return 1
@@ -369,8 +369,16 @@ fw_reproduce_stage() {
   dir=$GATE/reproduce
   rm -rf "$dir" || return 1
   mkdir -p "$dir" || return 1
-  git -C "$REPO" archive "$tag" firmware "firmware-research/strix-$base/stock" | tar -x -C "$dir" || return 1
-  python3 -I "$dir/firmware/build.py" --stock "$dir/firmware-research/strix-$base/stock/Strix-OS-$base-original.zip" --llvm-bin "$TC" --out "$dir/out" || return 1
+  if git -C "$REPO" cat-file -e "$tag:firmware-research/strix-$base/stock" 2>/dev/null; then
+    git -C "$REPO" archive "$tag" firmware "firmware-research/strix-$base/stock" | tar -x -C "$dir" || return 1
+    stock=$dir/firmware-research/strix-$base/stock/Strix-OS-$base-original.zip
+  else
+    # The tag's base keeps its stock ZIP outside the repo (1.0.6.11): the tag's own build.py names it.
+    git -C "$REPO" archive "$tag" firmware | tar -x -C "$dir" || return 1
+    stock=$(python3 -I "$dir/firmware/build.py" --show stock-zip --inputs "$TURBO_INPUTS") || return 1
+  fi
+  [[ -f $stock ]] || { echo "stock ZIP for $tag not found" >&2; return 1; }
+  python3 -I "$dir/firmware/build.py" --stock "$stock" --llvm-bin "$TC" --out "$dir/out" || return 1
   for file in "$dir"/out/StrixOS-*.zip; do [[ -f $file ]] && zips+=("$file"); done
   [[ ${#zips[@]} == 1 ]] || { echo "expected exactly one StrixOS-*.zip in $dir/out" >&2; return 1; }
   printf 'tag %s\nzip %s\n' "$tag" "$(basename "${zips[0]}")"
