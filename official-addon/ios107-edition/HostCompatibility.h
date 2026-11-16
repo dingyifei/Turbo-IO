@@ -5,7 +5,7 @@
 
 // The one supported host: RayNeo AI 1.0.21/1. The same image serves two profiles, told
 // apart only by the packager's Info.plist marker TIOHostProfile (both IPAs share the Runner UUID):
-//   "ios1021"           the full build: features on, TMG flashing disarmed until armed;
+//   "ios1021"           the full build: features on, every TMG transfer frame through the flash gate;
 //   anything else, missing included: "ios1011-download", the refusing download-only guard.
 // On the download-only profile the addon installs only the rayneonet channel hook,
 // which carries the OTA transfer guard. Exact version, build and UUID; no ranges.

@@ -21,7 +21,7 @@ static void CheckFixtures(void) {
     NSArray<NSNumber *> *authorize = @[@NO,@NO,@NO,@NO,@NO,@NO,@YES,@NO,@NO,@NO,@NO];
     NSArray<NSString *> *hubKeys = @[@"ota.hub.unavailable",@"ota.hub.ready",@"ota.hub.ready",
         @"ota.hub.ready",@"ota.hub.download",@"ota.hub.ready",@"ota.hub.ready",
-        @"ota.hub.authorized",@"ota.hub.installing",@"ota.hub.failed",@"ota.hub.disarmed"];
+        @"ota.hub.authorized",@"ota.hub.installing",@"ota.hub.failed",@"ota.hub.ready"];
     assert([TIOOTAWizardFixtureNames() isEqualToArray:names]);
     for (NSUInteger i = 0; i < names.count; i++) {
         NSDictionary *inputs = TIOOTAWizardFixture(names[i]);
@@ -41,10 +41,9 @@ static void CheckFixtures(void) {
     NSDictionary *open = TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"download-open"));
     assert([open[@"downloadArmed"] boolValue] && [open[@"downloadSecondsLeft"] integerValue] == 600);
     NSDictionary *stale = TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"stale-version"));
-    assert([stale[@"version"] integerValue] == TIOOTACheckAction);
-    assert([stale[@"versionSecondsLeft"] integerValue] == 0);
+    assert([stale[@"version"] integerValue] == TIOOTACheckAction && !stale[@"versionAge"] && !stale[@"versionSecondsLeft"]);
     NSDictionary *ready = TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"ready-authorize"));
-    assert([ready[@"versionAge"] integerValue] == 30 && [ready[@"versionSecondsLeft"] integerValue] == 90);
+    assert([ready[@"version"] integerValue] == TIOOTACheckOK && !ready[@"versionAge"]);
     assert([TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"installing"))[@"validatedSlices"] integerValue] == 120);
     assert([TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"failed"))[@"failure"] isEqualToString:@"unexpected slice"]);
     assert(TIOOTAWizardFixture(@"no-such-fixture").count == 0);
@@ -73,16 +72,13 @@ static void CheckAutoUpdate(void) {
 
 static void CheckGateMismatchesAndBoundaries(void) {
     NSDictionary *base = TIOOTAWizardFixture(@"ready-authorize");
-    NSDictionary *snapshot = TIOOTAWizardSnapshot(Changed(base, @"flash", @"versionReadAge", @120));
-    assert([snapshot[@"version"] integerValue] == TIOOTACheckOK);
-    assert([snapshot[@"versionSecondsLeft"] integerValue] == 0);
-    NSDictionary *stale = Changed(Changed(base, @"flash", @"versionReadAge", @121),
-        @"flash", @"recentTargetVersionRead", @NO);
+    // The version check follows the gate's recentTargetVersionRead bit alone; an age, if any, means nothing.
+    NSDictionary *snapshot = TIOOTAWizardSnapshot(Changed(base, @"flash", @"versionReadAge", @100000));
+    assert([snapshot[@"version"] integerValue] == TIOOTACheckOK && [snapshot[@"canAuthorize"] boolValue]);
+    NSDictionary *stale = Changed(base, @"flash", @"recentTargetVersionRead", @NO);
     snapshot = TIOOTAWizardSnapshot(stale);
     assert([snapshot[@"version"] integerValue] == TIOOTACheckAction);
     assert(![snapshot[@"canAuthorize"] boolValue]);
-    snapshot = TIOOTAWizardSnapshot(Changed(base, @"flash", @"versionReadAge", nil));
-    assert([snapshot[@"versionAge"] integerValue] == -1 && [snapshot[@"versionSecondsLeft"] integerValue] == 0);
 
     // The preference snapshot wins over a stale summary bit in flash status.
     NSMutableDictionary *missing = [TIOOTAWizardFixture(@"missing-key") mutableCopy];
@@ -126,12 +122,11 @@ static void CheckButtons(NSDictionary *snapshot, NSString *primary, NSString *ac
     assert(secondaryAction ? [b[@"secondaryAction"] isEqualToString:secondaryAction] : b[@"secondaryAction"] == nil);
 }
 
-// Step 2 with and without the arm step. Without it (the model's plain case) a stock OTA folder already on disk
-// skips the download step (the stock page installs from disk). On the full host (arm required) the stock page
-// offers an update only while the download window is open, so a leftover folder must not skip step 2 or hide
-// "Open download".
+// Step 2 on and off the full host. Off it (the model's plain case) a stock OTA folder already on disk skips the
+// download step (the stock page installs from disk). On the full host the stock page offers an update only while
+// the download window is open, so a leftover folder must not skip step 2 or hide "Open download".
 static void CheckDownloadStep(void) {
-    // No arm step: unchanged.
+    // Not the full host: unchanged.
     NSDictionary *ready = TIOOTAWizardFixture(@"ready-authorize");
     NSDictionary *snapshot = TIOOTAWizardSnapshot(ready);
     assert(![snapshot[@"downloadRequired"] boolValue] && [snapshot[@"suggestedStep"] integerValue] == 3);
@@ -143,13 +138,10 @@ static void CheckDownloadStep(void) {
     noPackage[@"packageOK"] = @NO;
     CheckButtons(TIOOTAWizardSnapshot(noPackage), @"ota.download.open", @"open", NO, nil, nil);
 
-    // Full host (arm required), directory present: stay on step 2 with "Open download" primary.
-    NSDictionary *full = Changed(ready, @"flash", @"armRequired", @YES);
+    // Full host, directory present: stay on step 2 with "Open download" primary; authorization is not held back.
+    NSDictionary *full = Changed(ready, @"flash", @"fullHost", @YES);
     snapshot = TIOOTAWizardSnapshot(full);
     assert([snapshot[@"downloadRequired"] boolValue] && [snapshot[@"directory"] integerValue] == TIOOTACheckOK);
-    assert([snapshot[@"suggestedStep"] integerValue] == 2);
-    CheckButtons(snapshot, @"ota.download.open", @"open", YES, @"ota.continue", @"continue");
-    snapshot = TIOOTAWizardSnapshot(Changed(full, @"flash", @"armed", @YES));
     assert([snapshot[@"suggestedStep"] integerValue] == 2 && [snapshot[@"canAuthorize"] boolValue]);
     CheckButtons(snapshot, @"ota.download.open", @"open", YES, @"ota.continue", @"continue");
     CheckButtons(TIOOTAWizardSnapshot(TIOOTAWizardFixture(@"full-directory")), @"ota.download.open", @"open", YES, @"ota.continue", @"continue");
@@ -177,37 +169,29 @@ static void CheckDownloadStep(void) {
         assert([TIOOTAWizardSnapshot(Changed(full, @"flash", @"stage", @(stage)))[@"suggestedStep"] integerValue] == 3);
 }
 
-// Full host: the arm step is one more required check before authorization, and only there.
-static void CheckArm(void) {
+// Full host: no step beyond the shared checks. Authorization needs the same checks on and off it, and the
+// snapshot carries no arm state.
+static void CheckFullHost(void) {
     NSDictionary *base = TIOOTAWizardFixture(@"ready-authorize");
-    NSDictionary *snapshot = TIOOTAWizardSnapshot(base);
-    assert([snapshot[@"arm"] integerValue] == TIOOTACheckOK && ![snapshot[@"armRequired"] boolValue] && [snapshot[@"canAuthorize"] boolValue]);
-    NSDictionary *disarmed = Changed(base, @"flash", @"armRequired", @YES);
-    snapshot = TIOOTAWizardSnapshot(disarmed);
-    assert([snapshot[@"arm"] integerValue] == TIOOTACheckAction && ![snapshot[@"armed"] boolValue]);
-    assert(![snapshot[@"canAuthorize"] boolValue] && [snapshot[@"canDownload"] boolValue] && [snapshot[@"canContinueFromCheck"] boolValue]);
-    assert([TIOOTAWizardHubStatusKey(snapshot) isEqualToString:@"ota.hub.disarmed"]);
-    assert([TIOOTAWizardHubStatusKey(TIOOTAWizardSnapshot(Changed(disarmed, @"feed", @"armed", @YES))) isEqualToString:@"ota.hub.download"]);
-    snapshot = TIOOTAWizardSnapshot(Changed(disarmed, @"flash", @"armed", @YES));
-    assert([snapshot[@"arm"] integerValue] == TIOOTACheckOK && [snapshot[@"armed"] boolValue] && [snapshot[@"canAuthorize"] boolValue]);
-    assert([TIOOTAWizardHubStatusKey(snapshot) isEqualToString:@"ota.hub.ready"]);
-    // An "armed" bit without the requirement means nothing; a non-boolean value is not armed.
-    snapshot = TIOOTAWizardSnapshot(Changed(base, @"flash", @"armed", @YES));
-    assert(![snapshot[@"armed"] boolValue] && [snapshot[@"canAuthorize"] boolValue]);
-    snapshot = TIOOTAWizardSnapshot(Changed(disarmed, @"flash", @"armed", @NO));
-    assert(![snapshot[@"canAuthorize"] boolValue]);
-    // Armed does not lift any other check.
-    snapshot = TIOOTAWizardSnapshot(Changed(Changed(disarmed, @"flash", @"armed", @YES), @"flash", @"recentTargetVersionRead", @NO));
-    assert(![snapshot[@"canAuthorize"] boolValue]);
-    NSMutableDictionary *autoOn = [Changed(disarmed, @"flash", @"armed", @YES) mutableCopy];
-    autoOn[@"prefs"] = @{@"flutter.fixture_ota_firmware_auto_update":(__bridge id)kCFBooleanTrue};
-    assert(![TIOOTAWizardSnapshot(autoOn)[@"canAuthorize"] boolValue]);
+    NSDictionary *full = Changed(base, @"flash", @"fullHost", @YES);
+    for (NSDictionary *inputs in @[base, full]) {
+        NSDictionary *snapshot = TIOOTAWizardSnapshot(inputs);
+        assert([snapshot[@"canAuthorize"] boolValue] && !snapshot[@"arm"] && !snapshot[@"armRequired"] && !snapshot[@"armed"]);
+        assert([TIOOTAWizardHubStatusKey(snapshot) isEqualToString:@"ota.hub.ready"]);
+        assert([TIOOTAWizardHubStatusKey(TIOOTAWizardSnapshot(Changed(inputs, @"feed", @"armed", @YES))) isEqualToString:@"ota.hub.download"]);
+        assert(![TIOOTAWizardSnapshot(Changed(inputs, @"flash", @"recentTargetVersionRead", @NO))[@"canAuthorize"] boolValue]);
+        NSMutableDictionary *autoOn = [inputs mutableCopy];
+        autoOn[@"prefs"] = @{@"flutter.fixture_ota_firmware_auto_update":(__bridge id)kCFBooleanTrue};
+        assert(![TIOOTAWizardSnapshot(autoOn)[@"canAuthorize"] boolValue]);
+    }
+    // A stale arm bit left in a status dictionary changes nothing.
+    assert([TIOOTAWizardSnapshot(Changed(full, @"flash", @"armed", @NO))[@"canAuthorize"] boolValue]);
 }
 
 int main(void) {
     @autoreleasepool {
         CheckFixtures();
-        CheckArm();
+        CheckFullHost();
         CheckDownloadStep();
         CheckAutoUpdate();
         CheckGateMismatchesAndBoundaries();

@@ -59,27 +59,20 @@ NSDictionary *TIOOTAWizardSnapshot(NSDictionary *inputs) {
     TIOOTACheck directory = source[@"directoryOK"] == nil ? TIOOTACheckPending :
         [source[@"directoryOK"] boolValue] ? TIOOTACheckOK : TIOOTACheckFail;
 
-    NSNumber *ageNumber = Number(flash[@"versionReadAge"], @(-1));
-    double age = ageNumber.doubleValue;
-    double secondsLeft = age < 0 ? 0 : MAX(0, 120 - age);
     BOOL canDownload = package == TIOOTACheckOK && downloadSource == TIOOTACheckOK &&
         protect == TIOOTACheckOK && stage == 0;
     BOOL canContinue = canDownload && autoUpdate == TIOOTACheckOK;
-    // Full host: flashing stays disarmed until the explicit arm step (TIOOTAFlashArm).
-    BOOL armRequired = [flash[@"armRequired"] boolValue], armed = armRequired && [flash[@"armed"] boolValue];
-    TIOOTACheck arm = !armRequired || armed ? TIOOTACheckOK : TIOOTACheckAction;
-    BOOL canAuthorize = canContinue && version == TIOOTACheckOK && directory == TIOOTACheckOK && arm == TIOOTACheckOK && stage == 0;
+    BOOL canAuthorize = canContinue && version == TIOOTACheckOK && directory == TIOOTACheckOK && stage == 0;
     // On the full host the stock firmware page offers an update only while the loopback feed serves one,
     // that is while the download window is open. A stock OTA folder left by an earlier flash passes the
     // directory check but does not make the page offer anything, so step 2 is never skipped there.
-    BOOL downloadRequired = armRequired;
+    BOOL downloadRequired = [flash[@"fullHost"] boolValue];
     NSInteger suggestedStep = stage >= 1 ? 3 : !canContinue ? 1 : downloadRequired || directory != TIOOTACheckOK ? 2 : 3;
     return @{
         @"package": @(package), @"source": @(downloadSource), @"protect": @(protect),
         @"autoUpdate": @(autoUpdate), @"version": @(version), @"directory": @(directory),
-        @"arm": @(arm), @"armRequired": @(armRequired), @"armed": @(armed), @"downloadRequired": @(downloadRequired),
+        @"downloadRequired": @(downloadRequired),
         @"autoUpdateState": @(autoState), @"autoUpdateFixable": @(TIOOTAAutoUpdateFixable(prefs)),
-        @"versionAge": ageNumber, @"versionSecondsLeft": @(secondsLeft),
         @"downloadArmed": @([feed[@"armed"] boolValue]),
         @"downloadSecondsLeft": Number(feed[@"remainingSeconds"], @0),
         @"phase": @(phase), @"stage": Number(flash[@"stage"], @0),
@@ -97,8 +90,7 @@ NSString *TIOOTAWizardHubStatusKey(NSDictionary *snapshot) {
         case TIOOTAPhaseInstalling: return @"ota.hub.installing";
         case TIOOTAPhaseAuthorized: return @"ota.hub.authorized";
         default:
-            if ([snapshot[@"downloadArmed"] boolValue]) return @"ota.hub.download";
-            return [snapshot[@"armRequired"] boolValue] && ![snapshot[@"armed"] boolValue] ? @"ota.hub.disarmed" : @"ota.hub.ready";
+            return [snapshot[@"downloadArmed"] boolValue] ? @"ota.hub.download" : @"ota.hub.ready";
     }
 }
 
@@ -141,18 +133,17 @@ NSDictionary *TIOOTAWizardFixture(NSString *name) {
     BOOL authorized = [name isEqualToString:@"authorized"];
     BOOL installing = [name isEqualToString:@"installing"];
     BOOL failed = [name isEqualToString:@"failed"];
-    // Full host, disarmed, with a stock OTA folder from an earlier flash already in the container.
+    // Full host, with a stock OTA folder from an earlier flash already in the container.
     BOOL fullHostDirectory = [name isEqualToString:@"full-directory"];
     NSInteger stage = authorized ? 1 : installing ? 2 : failed ? 3 : 0;
     BOOL directoryReady = staleVersion || readyAuthorize || fullHostDirectory || stage >= 1;
     BOOL recentVersion = readyAuthorize || stage >= 1;
-    NSNumber *age = staleVersion ? @300 : recentVersion ? @30 : @(-1);
     NSDictionary *prefs = missingKey || unavailable ? @{} :
         @{@"flutter.fixture_ota_firmware_auto_update":autoOn ? (__bridge id)kCFBooleanTrue : (__bridge id)kCFBooleanFalse};
     NSDictionary *flash = @{@"flashBuild":@(!unavailable), @"stage":@(stage),
-        @"recentTargetVersionRead":@(recentVersion), @"versionReadAge":age,
+        @"recentTargetVersionRead":@(recentVersion),
         @"validatedSlices":@(installing ? 120 : 0), @"failure":failed ? @"unexpected slice" : @"",
-        @"armRequired":@(fullHostDirectory), @"armed":@NO};
+        @"fullHost":@(fullHostDirectory)};
     NSDictionary *feed = @{@"bootstrapEligible":@(!unavailable), @"running":@(!unavailable),
         @"healthPassed":@(!unavailable), @"armed":@(downloadOpen),
         @"remainingSeconds":@(downloadOpen ? 600 : 0)};

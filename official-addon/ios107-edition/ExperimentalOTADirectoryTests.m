@@ -7,8 +7,8 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert(argc==3);NSFileManager *fm=NSFileManager.defaultManager;
     NSURL *candidate=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]] isDirectory:YES];
     NSURL *original=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[2]] isDirectory:YES];NSError *error=nil;
-    NSDictionary *good=TIOCheckExperimentalOTADirectory(candidate,&error);assert(good&&!error);assert([good[@"checkedMembers"] unsignedIntegerValue]==TIO_FW_MEMBER_PINS.count&&TIOExperimentalOTAMemberCount()==TIO_FW_MEMBER_PINS.count);assert(![good[@"transferSessionBound"] boolValue]);assert(![good[@"flashAuthorized"] boolValue]);assert([good[@"candidate"] isEqual:[@"Turbo Menu " stringByAppendingString:TIO_FW_NAME]]);
-    assert([fm fileExistsAtPath:original.path]);assert(!TIOCheckExperimentalOTADirectory(original,&error));
+    NSDictionary *good=TIOCheckOfficialOTADirectory(candidate,&error);assert(good&&!error);assert([good[@"checkedMembers"] unsignedIntegerValue]==TIO_FW_MEMBER_PINS.count&&TIOExperimentalOTAMemberCount()==TIO_FW_MEMBER_PINS.count);assert(![good[@"transferSessionBound"] boolValue]);assert(![good[@"flashAuthorized"] boolValue]);assert([good[@"candidate"] isEqual:[@"Turbo Menu " stringByAppendingString:TIO_FW_NAME]]);
+    assert([fm fileExistsAtPath:original.path]);assert(!TIOCheckOfficialOTADirectory(original,&error));
     NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[@"tio-ota-directory-" stringByAppendingString:NSUUID.UUID.UUIDString]] isDirectory:YES];
     assert([fm createDirectoryAtURL:root withIntermediateDirectories:NO attributes:@{NSFilePosixPermissions:@0700} error:nil]);
     for(int scenario=0;scenario<7;scenario++){
@@ -21,10 +21,13 @@ int main(int argc,const char **argv){@autoreleasepool{
         if(scenario==4)assert([[NSData data] writeToURL:[folder URLByAppendingPathComponent:@"unexpected"] atomically:NO]);
         if(scenario==5){assert([fm removeItemAtURL:target error:nil]);assert([fm createDirectoryAtURL:target withIntermediateDirectories:NO attributes:nil error:nil]);}
         if(scenario==6){assert(link(target.path.fileSystemRepresentation,[root URLByAppendingPathComponent:@"hardlink"].path.fileSystemRepresentation)==0);}
-        assert(!TIOCheckExperimentalOTADirectory(folder,&error));
+        // An extra file beside the members, or a member with a second hard link, holds the pinned bytes: the folder
+        // passes, because only the pinned members are read (once, into memory) and sent.
+        if(scenario==4||scenario==6){error=nil;assert(TIOCheckOfficialOTADirectory(folder,&error)&&!error);continue;}
+        assert(!TIOCheckOfficialOTADirectory(folder,&error));
     }
-    NSURL *linkURL=[root URLByAppendingPathComponent:@"linked-directory"];assert([fm createSymbolicLinkAtURL:linkURL withDestinationURL:candidate error:nil]);assert(!TIOCheckExperimentalOTADirectory(linkURL,&error));
+    NSURL *linkURL=[root URLByAppendingPathComponent:@"linked-directory"];assert([fm createSymbolicLinkAtURL:linkURL withDestinationURL:candidate error:nil]);assert(!TIOCheckOfficialOTADirectory(linkURL,&error));
     // Only this test-owned UUID directory is removed; original/candidate untouched.
     assert([fm removeItemAtURL:root error:nil]);
-    NSLog(@"PASS: exact %lu-member candidate snapshot; original cache, mutation, missing/extra file, symlink, FIFO, directory and hardlink rejected; no writes to official cache, no transfer authorization",(unsigned long)TIO_FW_MEMBER_PINS.count);
+    NSLog(@"PASS: exact %lu-member candidate snapshot; original cache, mutation, missing file, symlink, FIFO and directory rejected, extra file and hardlink accepted; no writes to official cache, no transfer authorization",(unsigned long)TIO_FW_MEMBER_PINS.count);
 }return 0;}

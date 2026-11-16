@@ -1,35 +1,20 @@
 #import <Foundation/Foundation.h>
 
-// The TMG flash path runs ONLY on the inspected host whose packager wrote that host's
-// own routing marker. Old markers or restored preferences never opt another build
-// into OTA.
-//
-// 1.0.21/1 full profile (ios1021, C20 onward): its own routing marker plus the packager's
-// TIOHostProfile marker. Matching this does NOT allow a transfer by itself: the guard also
-// needs the explicit arm step (TIOOTAFlashArmed) and the main image check
-// (TIOHostFullImageMatches); see ExperimentalOTAFlash.m.
-#define TIO_OTA_1021_ROUTING_MARKER @"ios1021-tmg-loopback-flash-gated-arm-required"
+// The TMG flash path runs ONLY on the exact full host: RayNeo AI 1.0.21/1 with the packager's
+// TIOHostProfile marker "ios1021". Matching this does NOT allow a transfer by itself:
+// TIOOTAFlashAuthorize also checks the pinned main image (TIOHostFullImageMatches) and the
+// other conditions; see ExperimentalOTAFlash.m.
 static inline BOOL TIOOTA1021HostMatches(NSDictionary *info) {
     return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"] &&
         [info[@"CFBundleShortVersionString"] isEqual:@"1.0.21"] &&
         [info[@"CFBundleVersion"] isEqual:@"1"] &&
-        [info[@"TIOHostProfile"] isEqual:@"ios1021"] &&
-        [info[@"TIOExperimentalOTAQueryRouting"] isEqual:TIO_OTA_1021_ROUTING_MARKER];
+        [info[@"TIOHostProfile"] isEqual:@"ios1021"];
 }
 // "ios1021" or nil.
 static inline NSString *TIOOTAHostProfile(NSDictionary *info) {
     return TIOOTA1021HostMatches(info)?@"ios1021":nil;
 }
 static inline BOOL TIOOTAHostMatches(NSDictionary *info) {return TIOOTAHostProfile(info)!=nil;}
-// The full host that needs the arm step (ios1021). The arm guard, the arm record and the
-// host checks of ExperimentalOTAFlash.m take this name.
-static inline BOOL TIOOTAArmHostName(id name) {
-    return [name isKindOfClass:NSString.class]&&[name isEqualToString:@"ios1021"];
-}
-// The exact OTA host check for the named full host; NO for any other name.
-static inline BOOL TIOOTAArmHostMatches(NSString *name,NSDictionary *info) {
-    return [name isEqual:@"ios1021"]&&TIOOTA1021HostMatches(info);
-}
 
 // The two patched Dart string records of the host's App.framework/App: the replacement
 // strings and cached hashes, at the host's offsets. patch-route.mjs ROUTE_PROFILES holds the same table.

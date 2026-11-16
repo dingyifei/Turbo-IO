@@ -6,10 +6,11 @@ int main(void){@autoreleasepool{
  for(unsigned type=1;type<=20;type++){
   uint8_t p[]={8,1,16,type,26,2,'{','}'};
   NSData *data=[NSData dataWithBytes:p length:sizeof p];
-  assert(TIOPhoneOTAReadAllowed(data)==(type==1||type==2||type==11));
+  // The flash gate at stage 0 (no authorization): only the empty version, battery and idle reads pass.
+  assert([[TIOOTAFlashGate new] allows:data device:@"test" uptime:1]==(type==1||type==2||type==11));
  }
- assert(!TIOPhoneOTAReadAllowed([NSData data]));
- uint8_t bad[]={8,1,16,1,34,1,1};assert(!TIOPhoneOTAReadAllowed([NSData dataWithBytes:bad length:sizeof bad]));
+ assert(![[TIOOTAFlashGate new] allows:[NSData data] device:@"test" uptime:1]);
+ uint8_t bad[]={8,1,16,1,34,1,1};assert(![[TIOOTAFlashGate new] allows:[NSData dataWithBytes:bad length:sizeof bad] device:@"test" uptime:1]);
  NSURL *root=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];
  __block BOOL entered=NO;
  TDPPhoneTransport *t=[[TDPPhoneTransport alloc]initWithRoot:root device:@"test" currentDevice:^{return @"test";} call:^BOOL(NSString *m,NSDictionary *a,void(^cb)(id)){

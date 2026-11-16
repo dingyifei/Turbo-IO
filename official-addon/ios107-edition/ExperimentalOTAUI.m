@@ -19,8 +19,6 @@ static void (^CloseDownload)(void);
 static BOOL (^Authorize)(NSError **);
 static BOOL (^Revoke)(void);
 static BOOL (^DisableAuto)(void);
-static BOOL (^Arm)(NSError **);
-static BOOL (^Disarm)(void);
 static BOOL (^VerifyPackage)(NSError **);
 static BOOL (^ImportPackage)(NSURL *,NSError **);
 static BOOL (^CheckDirectory)(NSError **);
@@ -119,8 +117,6 @@ static NSString *ShortStatus(NSString *value) {
     Authorize=^BOOL(NSError **error){ return TIOOTAFlashAuthorize(error); };
     Revoke=^BOOL{ return TIOOTAFlashCancel(); };
     DisableAuto=^BOOL{ return TIOOTAFlashDisableAutoUpdate(); };
-    Arm=^BOOL(NSError **error){ return TIOOTAFlashArm(error); };
-    Disarm=^BOOL{ return TIOOTAFlashDisarm(); };
     VerifyPackage=^BOOL(NSError **error){
         NSURL *file=[StoreDirectory() URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];
         if ([NSFileManager.defaultManager fileExistsAtPath:file.path]) return TIOReadExperimentalOTA(file,error)!=nil;
@@ -360,9 +356,6 @@ static NSString *ShortStatus(NSString *value) {
 
 - (NSInteger)maxReachable {
     if ([self.snapshot[@"stage"] integerValue]>=1) return 3;
-    // Armed: the Install step stays reachable whatever the checks and the folder say, so Disarm is always at hand
-    // (after a flash the host may clear the folder). Authorizing is unchanged: it still needs canAuthorize.
-    if ([self.snapshot[@"armed"] boolValue]) return 3;
     if (![self.snapshot[@"canContinueFromCheck"] boolValue]) return 1;
     return [self.snapshot[@"directory"] integerValue]==TIOOTACheckOK?3:2;
 }
@@ -489,8 +482,7 @@ static NSString *ShortStatus(NSString *value) {
     if ([self.snapshot[@"phase"] integerValue]==TIOOTAPhaseUnavailable) return 1;
     if (self.step==1) return 5;
     if (self.step==2) return 3;
-    // The full host adds the arm row (index 2) to the install step.
-    return ([self.snapshot[@"stage"] integerValue]>=1?4:3)+([self.snapshot[@"armRequired"] boolValue]?1:0);
+    return [self.snapshot[@"stage"] integerValue]>=1?4:3;
 }
 
 - (NSInteger)numberOfSectionsInTableView:(__unused UITableView *)tableView { return 1; }
@@ -605,18 +597,6 @@ static NSString *ShortStatus(NSString *value) {
             detail=[self directoryStatus];cell.accessibilityIdentifier=@"ota-download-directory";
         }
     } else {
-        if ([s[@"armRequired"] boolValue] && row==2) {
-            // Full host: TMG flashing stays disarmed until armed here. Disarm is refused while a transfer runs.
-            BOOL armed=[s[@"armed"] boolValue];NSInteger stage=[s[@"stage"] integerValue];
-            title=TIOText(@"ota.check.arm");state=[s[@"arm"] integerValue];
-            detail=TIOText(armed?@"ota.arm.on":@"ota.arm.off");
-            if (!self.actionBusy && armed && stage!=2) cell.accessoryView=[self fixButton:TIOText(@"ota.disarm.action") identifier:@"ota-disarm" tag:5];
-            else if (!self.actionBusy && !armed && stage==0) cell.accessoryView=[self fixButton:TIOText(@"ota.arm.action") identifier:@"ota-arm" tag:4];
-            cell.accessibilityIdentifier=@"ota-install-arm";
-            [self finishCell:cell title:title detail:detail state:state];
-            return;
-        }
-        if ([s[@"armRequired"] boolValue] && row>2) row--;
         if (row==0) {
             title=TIOText(@"ota.check.version");state=[s[@"version"] integerValue];
             detail=[self versionStatus];
@@ -671,7 +651,7 @@ static NSString *ShortStatus(NSString *value) {
 - (NSString *)versionStatus {
     NSDictionary *s=self.snapshot;
     if ([s[@"version"] integerValue]!=TIOOTACheckOK) return TIOText(@"ota.version.stale");
-    return TIOFormat(@"ota.version.fresh",(long)[s[@"versionAge"] integerValue],(long)[s[@"versionSecondsLeft"] integerValue]);
+    return TIOText(@"ota.version.fresh");
 }
 
 - (NSString *)directoryStatus {
@@ -732,24 +712,7 @@ static NSString *ShortStatus(NSString *value) {
         [self fixAutoUpdate];
     } else if (sender.tag==3) {
         [self openVersionInstructions];
-    } else if (sender.tag==4) {
-        [self armFlashing];
-    } else if (sender.tag==5) {
-        [self runAction:^BOOL(__unused NSError **error){return Disarm();} completion:^(BOOL ok,__unused NSError *error){
-            // Stage 2 is a started (or completed) transfer, stage 3 a failed one: neither can be
-            // cancelled in this launch, so after stage 3 the owner restarts the app to disarm.
-            if (!ok) TIONotice(self,TIOText([self.snapshot[@"stage"] integerValue]==3?@"ota.disarm.failedEnded":@"ota.disarm.failed"),nil);
-        }];
     }
-}
-
-// Full host only: one explicit, confirmed step, kept in the addon's own preferences.
-- (void)armFlashing {
-    TIOConfirm(self,TIOText(@"ota.arm.confirm.title"),TIOText(@"ota.arm.confirm.message"),TIOText(@"ota.arm.confirm.action"),YES,^{
-        [self runAction:^BOOL(NSError **error){return Arm(error);} completion:^(BOOL ok,NSError *error){
-            if (!ok) TIONotice(self,TIOText(@"ota.arm.failed"),error.localizedDescription);
-        }];
-    });
 }
 
 - (void)fixAutoUpdate {
@@ -859,8 +822,6 @@ void TIOOTAWizardUseFixture(NSString *name) {
     Authorize=^BOOL(__unused NSError **error){return YES;};
     Revoke=^BOOL{return YES;};
     DisableAuto=^BOOL{return YES;};
-    Arm=^BOOL(__unused NSError **error){return YES;};
-    Disarm=^BOOL{return YES;};
     VerifyPackage=^BOOL(__unused NSError **error){return YES;};
     ImportPackage=^BOOL(__unused NSURL *source,__unused NSError **error){return YES;};
     CheckDirectory=^BOOL(__unused NSError **error){return YES;};

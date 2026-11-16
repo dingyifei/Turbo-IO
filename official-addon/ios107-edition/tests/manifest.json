@@ -201,22 +201,17 @@
     "tests/DownloadOnlyGuardTests.m": {
       "status": "run",
       "group": "ios1021-download-guard",
-      "note": "Download-only 1.0.21/1 host (ios1021-download, C19 onward): every business-9 frame but the empty version query is refused, built in six TIO_* flag sets (full, flash, phone, none, and full and none with the wire log recording every guard call through tests/WireLogGuardHarness.h) that must print the same sweep digest, equal to the digest pinned in test.py. The full host's markers on the same image are the control (the disarmed full host, whose sweep differs). With --app1021 it also runs as ios1021-host against the real 1.0.21 Runner."
+      "note": "Download-only 1.0.21/1 host (ios1021-download, C19 onward): every business-9 frame but the empty version query is refused, built in five TIO_* flag sets (full, flash, none, and full and none with the wire log recording every guard call through tests/WireLogGuardHarness.h) that must print the same sweep digest, equal to the digest pinned in test.py. The full host's marker on the same image is the control (the full host's gate at stage 0, whose sweep differs). With --app1021 it also runs as ios1021-host against the real 1.0.21 Runner."
     },
     "tests/FullHostGuardTests.m": {
       "status": "run",
       "group": "ios1021-full-guard",
-      "note": "Full 1.0.21/1 host (ios1021, C20 onward; tests/FullHostFixture.h): TMG flashing disarmed by default, only the empty reads 1, 2, 11 and the exact size query pass business 9, in the same six TIO_* flag sets as ios1021-download-guard with one sweep digest, equal to its pin; malformed or foreign arm records (the retired otaFlashArmRecord.ios1011 key included) count as disarmed; armed (flash builds only) the business-9 sweep must equal the per-flag-set pin in test.py; disarm restores the refusal. With --app1021 it also checks the real Runner."
-    },
-    "tests/FullHostArmStoreTests.m": {
-      "status": "run",
-      "group": "ios1021-arm-store",
-      "note": "Full 1.0.21 host: the arm record is read only from the addon suite's persistent domain, with the real CFPreferences calls on a throwaway suite (removed afterwards). A launch argument -otaFlashArmRecord.ios1021 <XML dict> in a child process, an in-process argument domain and a registered default must not arm; arm and disarm round-trip through the persistent domain."
+      "note": "Full 1.0.21/1 host (ios1021, C20 onward; tests/FullHostFixture.h): every business-9 frame goes through the one flash gate; at stage 0 only the empty reads 1, 2, 11 and the exact size query pass, in the same five TIO_* flag sets as ios1021-download-guard with one sweep digest, equal to its pin. Near-miss full hosts (another build, version, bundle or image) take the same gate and are refused authorization at the host check, which runs once, in TIOOTAFlashAuthorize. With --app1021 it also checks the real Runner."
     },
     "tests/FullHostEdgeTests.m": {
       "status": "run",
       "group": "ios1021-full-edge",
-      "note": "Full 1.0.21/1 host (ios1021) edge cases beyond ios1021-full-guard: TIOHostProfile near misses fall to ios1021-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, arm record field types, near-miss keys (the retired otaFlashArmRecord.ios1011 key included) and the standard defaults never arm, disarm removes any record. Duplicate or escaped OtaSize keys in the raw size query are refused; v must be the integer 1 and armedAt a plain number. Same six TIO_* flag sets, one sweep digest, equal to its pin. Known gaps would print as XFAIL (none at present) and abort as XPASS once fixed."
+      "note": "Full 1.0.21/1 host (ios1021) edge cases beyond ios1021-full-guard: TIOHostProfile near misses fall to ios1021-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, and a record left by the retired arm step (never read). Duplicate or escaped OtaSize keys follow NSJSONSerialization: a body that decodes to exactly {OtaSize:<ZIP bytes>} passes. Same five TIO_* flag sets, one sweep digest, equal to its pin. Known gaps would print as XFAIL (none at present) and abort as XPASS once fixed."
     },
     "tests/LanguageFlagTests.m": {
       "status": "run",
@@ -313,12 +308,7 @@
     "tests/TMG4WizardTests.m": {
       "status": "run",
       "group": "tmg4-wizard",
-      "note": "The real OTA wizard and gate on the armed full 1.0.21 host (tests/FullHostFixture.h) and the real candidate files."
-    },
-    "tests/TMG4WizardArmTests.m": {
-      "status": "run",
-      "group": "tmg4-wizard-1021",
-      "note": "Full 1.0.21 host, armed: the unchanged wizard and gate on the real candidate (Auto Update toggle, one authorization, forced-page Mode 4 refused, Mode 2 starts, all slices); a started transfer no longer reads the arm record (removed or junk record mid-transfer); disarm revokes at stage 1, also when called off the main thread (it runs on main), and is refused with the record kept at stage 2 and after a failed transfer (stage 3). Member counts come from the pins."
+      "note": "The real OTA wizard and gate on the full 1.0.21 host (tests/FullHostFixture.h) and the real candidate files: one authorization, the version read kept until a disconnect call or a later reply, the host checked once at authorization, all slices, and stages 2 and 3 not cancellable."
     },
     "tests/TileRoundTripTests.m": {
       "status": "run",
@@ -371,10 +361,10 @@
       "group": "ota-host-1021",
       "note": "Full 1.0.21 host (ios1021, C20 onward): the ios1021 host marker is exact, near misses and the retired 1.0.11 and 1.0.7 markers are refused; patch-route.mjs ios1021 on the stock 1.0.21 App gives the pinned output, refuses an input one byte off its pin, and the output is accepted only for ios1021 at the 1.0.21 offsets. Needs --app1021."
     },
-    "tests/MemberCountTests.m": {
+    "tests/FlashSequenceTests.m": {
       "status": "run",
-      "group": "member-count",
-      "note": "Member and manifest-row counts follow the member pins: the release's own ZIP with FirmwarePins.h (C21 on 1.0.6.11: 17 members, 16 rows), the stock 1.0.6.11 ZIP with fixture pins made by test.py (17 members, 16 rows, amap_rtos_sdk with a loadable/libs/ BurnPath kept flat in the folder), and a fixture whose pin names a path (refused flat and in the subfolder). Missing, extra, subfolder-entry and BurnPath-placed members refused. Neither releases.json nor FirmwarePins.h is touched."
+      "group": "flash-sequence-1021",
+      "note": "Replays the 1.0.21 flash sequence recorded on 2026-11-15 (tests/flash-sequence-1021.json: frame order, JSON shapes, file order and slice size) through the real guard and gate on the full 1.0.21 host, with the slices cut from the --firmware ZIP: every frame allowed, stage 2 reached, 313 slices and 15,741,262 bytes. Eleven mutations are each refused: no authorization, Mode other than 2, a wrong OtaVersion, a changed manifest, a slice before the manifest, a flipped slice byte, an unpinned name, a slice past the end of its file, another device, an authorization older than 15 minutes, and a second type 4 after the start (then stage 3)."
     }
   }
 }

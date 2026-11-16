@@ -4,7 +4,7 @@
 // exactly like ios1021-download-guard) against fake app containers in a temp directory.
 // No device, network or signing.
 //
-// test.py builds this file in the same six TIO_* flag sets as ios1021-download-guard (two with the wire log)
+// test.py builds this file in the same five TIO_* flag sets as ios1021-download-guard (two with the wire log)
 // and requires the same sweep= digest from each: the allow-list depends on no flag.
 #import "TMG4WizardHost.h"
 #import "HostCompatibility.h"
@@ -368,9 +368,9 @@ static void HostCases(BOOL downloadOnly){
             [Bits appendString:TIOOTAFlashBlockCallSnapshot(call,&snap)?@"1":@"0"];assert(TIOOTAFlashBlockCall(call)&&TIOOTADownloadOnlyBlockCall(call)&&snap==nil);}
         StageOverride=NSUIntegerMax;
     }else{
-        // The full host (disarmed; its file-call rule is the same armed or not, in every flag set):
+        // The full host (its file-call rule is the same in every flag set):
         // the shape passes at stage 0, everything else is refused.
-        assert(!TIOOTADownloadOnlyHost());assert(TIOOTAHostMatches(Host)&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());
+        assert(!TIOOTADownloadOnlyHost());assert(TIOOTAHostMatches(Host)&&TIOOTAFullHost());
         assert([TIOOTAFlashStatus()[@"stage"] intValue]==0);
         assert(!TIOOTAFlashBlockCall(call));assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendFile",@"arguments":Args(doc,Upper)}));
         for(NSDictionary *c in refusedCalls)assert(TIOOTAFlashBlockCall(c));
@@ -430,7 +430,7 @@ int main(void){@autoreleasepool{
     Image=FakeImage(TFH_UUID);
     HostCases(YES);TIOOTARecordTransportHookReady();HostCases(YES);
     BOOL flashBuild=TIOOTAFlashBuild(); // what test.py checks per flag set, as for ios1021-download-guard
-    // The full 1.0.21 host, disarmed.
+    // The full 1.0.21 host, at stage 0.
     Host=TFHFullInfo();
     NSString *sweep=[Bits copy];
     HostCases(NO);

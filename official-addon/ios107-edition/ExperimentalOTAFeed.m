@@ -246,8 +246,8 @@ void TIOStartExperimentalOTAFeedIfMarked(void){
         LaunchID=NSUUID.UUID.UUIDString;
         NSBundle *bundle=NSBundle.mainBundle;
         if(!TIOOTAFlashBuild())return;
-        // The full host (ios1021), with its own routing marker, pinned image and route offsets.
-        // On a full host the feed runs while TMG flashing is disarmed: answering the stock update check is not a transfer.
+        // The full host (ios1021), with its own profile marker, pinned image and route offsets.
+        // On a full host the feed runs before any flash authorization: answering the stock update check is not a transfer.
         NSString *profile=TIOOTAHostProfile(bundle.infoDictionary);
         if(!profile||!TIOHostFullImageMatches(TIOHostMainImage(),bundle.infoDictionary)){BootstrapFailure=TIOText(@"实验来源宿主版本/UUID/标记不匹配");TIORefreshExperimentalOTAReport();return;}
         NSString *file=[bundle.bundlePath stringByAppendingPathComponent:@"Frameworks/App.framework/App"];

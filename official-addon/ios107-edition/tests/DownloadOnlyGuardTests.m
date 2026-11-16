@@ -143,7 +143,7 @@ static void OnlyVersionQueryPasses(void){
 }
 static void Refused(void){
     NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e));assert(e);
-    assert([e.localizedDescription isEqual:TIOText(@"OTA 专用宿主或路由标记不匹配，未授权。")]);
+    assert([e.localizedDescription isEqual:TIOText(@"ota.authorize.host")]);
     NSDictionary *s=TIOOTAFlashStatus();assert([s[@"stage"] intValue]==0);assert(![s[@"authorized"] boolValue]);assert(![s[@"started"] boolValue]);
 }
 // G3: the panel's Auto Update reading agrees with the authorization check's parser.
@@ -179,10 +179,9 @@ int main(int argc,char **argv){@autoreleasepool{
     }
     Host=d;Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     assert(TIOOTADownloadOnlyHost());
-    // (b) never an OTA host, even with a stale routing marker (the retired 1.0.7 one, or the full host's own).
-    assert(!TIOOTAHostMatches(Host));
+    // (b) never an OTA host, even with a stale routing key left by a retired build.
+    assert(!TIOOTAHostMatches(Host)&&!TIOOTAFullHost());
     NSMutableDictionary *stale=[d mutableCopy];stale[@"TIOExperimentalOTAQueryRouting"]=@"ios107-tmg2-loopback-flash-gated";assert(!TIOOTAHostMatches(stale));
-    {NSMutableDictionary *routed=[d mutableCopy];routed[@"TIOExperimentalOTAQueryRouting"]=TIO_OTA_1021_ROUTING_MARKER;assert(!TIOOTAHostMatches(routed));}
     // (d) the flash path is off; whether it is compiled in depends on the flags, the refusal does not.
 #if TIO_OTA_FLASH_ENABLED && TIO_DISPLAY_FLASH
     assert(TIOOTAFlashBuild());
@@ -216,10 +215,10 @@ int main(int argc,char **argv){@autoreleasepool{
     assert(!Allowed(Frame(4,@{@"Mode":@4},nil),@"fixture-peer"));OnlyVersionQueryPasses();
     AutoUpdateAgrees();
     // Control: the harness does discriminate. The full host's markers on the same image select the
-    // disarmed full host, not the download-only refusal: in every flag set the empty reads 1, 2 and 11
-    // pass as well (no frame here carries the exact size query), so the sweep differs.
+    // full host's flash gate at stage 0, not the download-only refusal: in every flag set the empty reads 1, 2
+    // and 11 pass as well (no frame here carries the exact size query), so the sweep differs.
     Host=TFHFullInfo();
-    assert(!TIOOTADownloadOnlyHost()&&TIOOTAArmRequired()&&!TIOOTAFlashArmed());assert(![Sweep() isEqual:sweep]);
+    assert(!TIOOTADownloadOnlyHost()&&TIOOTAFullHost()&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);assert(![Sweep() isEqual:sweep]);
     for(NSUInteger t=0;t<256;t++)for(id json in Bodies()){
         id j=json==NSNull.null?nil:json;
         assert(Allowed(Frame(t,j,nil),@"fixture-peer")==((t==1||t==2||t==11)&&(!j||[j isEqual:@{}])));

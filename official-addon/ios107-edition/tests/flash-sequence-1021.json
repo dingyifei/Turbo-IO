@@ -1,0 +1,345 @@
+{
+ "statement": "sequence seen on 2026-11-15 with RayNeo AI 1.0.21 (1)",
+ "note": "Business-9 frames of the TMG12 flash, summarized from the wire log: tx is phone to glasses, rx is glasses to phone. The type 6 frame carries the pinned OtaFileInfo.json (its size and SHA-256 are given). Type 7 slices are summarized per file, in the order sent: each slice starts where the previous one ended and carries sliceBytes bytes, except the last. Progress frames (rx type 8) are left out. No device ids, payload bytes or raw log lines.",
+ "host": "RayNeo AI 1.0.21 (1)",
+ "businessId": 9,
+ "sliceBytes": 51200,
+ "totalSlices": 313,
+ "totalSliceBytes": 15741262,
+ "steps": [
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.5.12",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.5.12",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.5.12",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.5.12",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.5.12",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 3,
+   "json": {
+    "OtaSize": 9549211
+   }
+  },
+  {
+   "d": "rx",
+   "type": 3,
+   "json": {
+    "Result": true
+   }
+  },
+  {
+   "d": "tx",
+   "type": 4,
+   "json": {
+    "Mode": 2
+   }
+  },
+  {
+   "d": "rx",
+   "type": 4,
+   "json": {
+    "Result": true
+   }
+  },
+  {
+   "d": "rx",
+   "type": 5,
+   "json": null
+  },
+  {
+   "d": "tx",
+   "type": 5,
+   "json": {
+    "OtaVersion": "Strix OS 1.0.6.11"
+   }
+  },
+  {
+   "d": "rx",
+   "type": 6,
+   "json": {
+    "OtaVersion": "Strix OS 1.0.6.11"
+   }
+  },
+  {
+   "d": "tx",
+   "type": 6,
+   "json": "pinned OtaFileInfo.json",
+   "jsonBytes": 2886,
+   "jsonSha256": "5d174ed0ecb3dd15806c22af49e88956775bdddfea7e5c9233e32a235cc4837c"
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "nuttx_audio.bin",
+   "bytes": 1461920,
+   "slices": 29,
+   "first": 51200,
+   "last": 28320
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "bt_controller.bin",
+   "bytes": 632384,
+   "slices": 13,
+   "first": 51200,
+   "last": 17984
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "nuttx_ap.bin",
+   "bytes": 8132360,
+   "slices": 159,
+   "first": 51200,
+   "last": 42760
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "images.bin",
+   "bytes": 390937,
+   "slices": 8,
+   "first": 51200,
+   "last": 32537
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "lotties.bin",
+   "bytes": 661305,
+   "slices": 13,
+   "first": 51200,
+   "last": 46905
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "nuttx_bth.bin",
+   "bytes": 1250856,
+   "slices": 25,
+   "first": 51200,
+   "last": 22056
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "nuttx_apc1.bin",
+   "bytes": 1442112,
+   "slices": 29,
+   "first": 51200,
+   "last": 8512
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "nuttx_ota.bin",
+   "bytes": 536384,
+   "slices": 11,
+   "first": 51200,
+   "last": 24384
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "smf.json",
+   "bytes": 23556,
+   "slices": 1,
+   "first": 23556,
+   "last": 23556
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "pil_algo_vad_demo.dll",
+   "bytes": 433900,
+   "slices": 9,
+   "first": 51200,
+   "last": 24300
+  },
+  {
+   "d": "tx",
+   "type": 7,
+   "name": "amap_rtos_sdk",
+   "bytes": 775548,
+   "slices": 16,
+   "first": 51200,
+   "last": 7548
+  },
+  {
+   "d": "rx",
+   "type": 9,
+   "json": null
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.6.11",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.6.11",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  },
+  {
+   "d": "tx",
+   "type": 1
+  },
+  {
+   "d": "rx",
+   "type": 1,
+   "json": {
+    "OsVersion": "Strix OS 1.0.6.11",
+    "OtaValidationStateCode": 4294967295,
+    "OtaValidationState": "idle",
+    "OtaValidationConfirmed": true,
+    "PackageInfoVersions": [
+     1,
+     2
+    ],
+    "PackageTypes": [
+     "files",
+     "zip"
+    ]
+   }
+  }
+ ]
+}

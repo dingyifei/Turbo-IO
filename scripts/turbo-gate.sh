@@ -163,17 +163,12 @@ symbols_stage() {
     grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing download-only guard symbol $name" >&2; return 1; }
   done
   grep -aFq 'ota guard=DOWNLOAD-ONLY-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$addon" || { echo 'Missing download-only guard marker' >&2; return 1; }
-  # C15: the flag-independent disarm guard and the arm step (the full host's arm check) are in every build too.
-  for name in _TIOOTAArmRequired _TIOOTADisarmedBlockCall _TIOOTADisarmedReadAllowed _TIOOTAArmGuardMarker \
-    _TIOOTAFlashArm _TIOOTAFlashDisarm _TIOOTAFlashArmed _TIOOTAFlashArmStatus _TIOFirmwareExportSafetyModelFull; do
-    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing arm guard symbol $name" >&2; return 1; }
+  # The flag-independent full-host gate (every business-9 frame through the one gate on the full host) is in every build too.
+  for name in _TIOOTAFullHost _TIOOTAFullHostGuardMarker _TIOOTAFlashBlockCallSnapshot _TIOOTAFlashAuthorize \
+    _TIOOTAFlashNoteRefused _TIOFirmwareExportSafetyModelFull; do
+    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing full host gate symbol $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$addon" || { echo 'Missing arm guard marker' >&2; return 1; }
-  # C20: the full 1.0.21 host's arm marker and the pin-derived member count are in every build too.
-  for name in _TIOOTAArm1021GuardMarker _TIOExperimentalOTAMemberCount _TIOOTAFlashNoteRefused; do
-    grep -Eq " $name\$" "$GATE/symbols.txt" || { echo "Missing 1.0.21 full host symbol $name" >&2; return 1; }
-  done
-  grep -aFq 'ota guard=IOS1021-FULL-DISARM-01; flag-independent; the IOS1011-FULL-DISARM-01 rules on the full 1.0.21 host' "$addon" || { echo 'Missing 1.0.21 arm guard marker' >&2; return 1; }
+  grep -aFq 'ota guard=FULL-HOST-GATE-01; flag-independent; business 9 transfer frames refused without one confirmation; reads and the exact size query pass' "$addon" || { echo 'Missing full host gate marker' >&2; return 1; }
 }
 # Release configurations (releases.json). The phone pins of every release are generated from the release ZIPs,
 # found under $TURBO_INPUTS at the paths releases.json names and checked by size and SHA-256.
@@ -225,9 +220,9 @@ first_release_zip() {
   name=$(first_release) || return 1
   python3 -I "$PINS" --resolve "$name" --inputs "$TURBO_INPUTS"
 }
-# The release groups of test.py: pins, archive, directory, member counts, gate, feed, wizard and full-host groups,
-# compiled with the release's TIO_RELEASE define against its own ZIP and stock base.
-RELEASE_GROUPS=pins,archive,directory,member-count,flash,feed,feed-restart,wizard,tmg4-wizard,tmg4-wizard-1021,ios1021-arm-store,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
+# The release groups of test.py: pins, archive, directory, gate, the recorded 1.0.21 flash sequence, feed, wizard and
+# full-host groups, compiled with the release's TIO_RELEASE define against its own ZIP and stock base.
+RELEASE_GROUPS=pins,archive,directory,flash,flash-sequence-1021,feed,feed-restart,wizard,tmg4-wizard,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
 # One full test.py run for the first release (it includes every release group and the real 1.0.21 app's groups), then
 # the release groups alone for each other release, so no group runs twice for the same release. With one release
 # (C21) that is the full run only.

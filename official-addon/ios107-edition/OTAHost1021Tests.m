@@ -14,20 +14,19 @@ static void Mutations(NSString *file,NSString *profile){
 }
 int main(int argc,char **argv){@autoreleasepool{
     assert(argc==3);Tmp=[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
-    NSDictionary *full=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.21",@"CFBundleVersion":@"1",@"TIOHostProfile":@"ios1021",@"TIOExperimentalOTAQueryRouting":TIO_OTA_1021_ROUTING_MARKER};
+    NSDictionary *full=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.21",@"CFBundleVersion":@"1",@"TIOHostProfile":@"ios1021"};
     assert(TIOOTA1021HostMatches(full)&&[TIOOTAHostProfile(full) isEqual:@"ios1021"]&&TIOOTAHostMatches(full));
-    assert(TIOOTAArmHostMatches(@"ios1021",full)&&TIOOTAArmHostName(@"ios1021"));
-    // Only "ios1021" is an arm host name; the retired full-host names (ios1011, ios107) and the download-only profile are not.
-    for(id name in @[@"ios1011",@"ios107",@"ios1021-download",@"ios1011-download",@"IOS1021",@"ios1021 ",@"",@1021,NSNull.null])assert(!TIOOTAArmHostName(name)&&!TIOOTAArmHostMatches(name,full));
+    // A routing key left by a retired build changes nothing: the profile marker decides.
+    for(id routing in @[@"ios107-tmg2-loopback-flash-gated",@"ios1021-tmg-loopback-flash-gated-arm-required",@1]){
+        NSMutableDictionary *stale=[full mutableCopy];stale[@"TIOExperimentalOTAQueryRouting"]=routing;assert([TIOOTAHostProfile(stale) isEqual:@"ios1021"]);
+    }
     for(NSString *key in full){
         NSMutableDictionary *bad=[full mutableCopy];[bad removeObjectForKey:key];assert(!TIOOTAHostProfile(bad));
         bad[key]=@"invalid";assert(!TIOOTAHostProfile(bad));
     }
-    // Near misses of each marker, version and build (the retired 1.0.11 and 1.0.7 markers included) are no OTA host;
+    // Near misses of the marker, version and build (the retired 1.0.11 and 1.0.7 markers included) are no OTA host;
     // the download-only marker never opts in at all.
-    for(NSArray *kv in @[@[@"TIOExperimentalOTAQueryRouting",@"ios107-tmg2-loopback-flash-gated"],@[@"TIOExperimentalOTAQueryRouting",@"ios1011-tmg-loopback-flash-gated-arm-required"],
-            @[@"TIOExperimentalOTAQueryRouting",[TIO_OTA_1021_ROUTING_MARKER uppercaseString]],
-            @[@"TIOHostProfile",@"ios1011"],@[@"TIOHostProfile",@"ios1021-download"],@[@"TIOHostProfile",@"ios107"],@[@"TIOHostProfile",@1],
+    for(NSArray *kv in @[@[@"TIOHostProfile",@"ios1011"],@[@"TIOHostProfile",@"ios1021-download"],@[@"TIOHostProfile",@"ios107"],@[@"TIOHostProfile",@1],
             @[@"CFBundleVersion",@"259"],@[@"CFBundleVersion",@1],@[@"CFBundleShortVersionString",@"1.0.11"],@[@"CFBundleShortVersionString",@"1.0.22"]]){
         NSMutableDictionary *bad=[full mutableCopy];bad[kv[0]]=kv[1];assert(!TIOOTAHostProfile(bad));
     }

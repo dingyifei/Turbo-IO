@@ -49,23 +49,19 @@ test('unknown original image bytes and private markers rejected',()=>{
 });
 test('phone gates require exact host, healthy source and inspected new offsets',()=>{
  const s=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
- // The full host passes only through TIOOTAHostMatches.
- assert.match(s,/if\(!TIOOTAHostMatches\(NSBundle.mainBundle.infoDictionary\)\)\s*return !TIOOTAIsEmptyVersionQuery\(data\)/);
- assert.match(s,/BOOL TIOOTAFlashAuthorize[\s\S]*?TIOOTAHostMatches[\s\S]*?return NO;/);
- assert.doesNotMatch(s,/TIOOTA107HostMatches/);
- // C15: the full host is refused while disarmed, before the flash-build early return, and authorization checks the arm.
- const snapshot=s.slice(s.indexOf('BOOL TIOOTAFlashBlockCallSnapshot('));
- // Only business-9 frames read the arm record; once a transfer has started (stage 2) it is not read again.
- const armBlock="if(TIOOTAArmRequired()){";
- const nonOta="if(!Business9Call(call)){ObserveDisconnect(Get(call,@\"method\"));return DisarmedBlock(call,teleprompter);}";
- const armed='if(!(GateStage()==2?ArmTransferHost():ArmedForTransfer()))return DisarmedBlock(call,teleprompter);';
- assert.ok(snapshot.indexOf('if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(')<snapshot.indexOf(armBlock));
- assert.ok(snapshot.indexOf(armBlock)<snapshot.indexOf(nonOta)&&snapshot.indexOf(nonOta)<snapshot.indexOf(armed));
- assert.ok(snapshot.indexOf(armed)<snapshot.indexOf('if(!TIOOTAFlashBuild())return NO;'));
- assert.match(s,/static BOOL ArmedForTransfer\(void\)\{return TIOOTAFlashArmed\(\)&&ArmTransferHost\(\);\}/);
- // The addon image's LC_UUID is read once.
- assert.match(s,/static NSString \*ArmInstallID\(void\)\{\n    static NSString \*uuid;static dispatch_once_t once;dispatch_once\(&once,\^\{uuid=ArmImageUUID\(\);\}\);return uuid;\n\}/);
- assert.match(s,/BOOL TIOOTAFlashAuthorize[^\n]*\n[^\n]*TIOOTAHostMatches[^\n]*\n\s*if\(TIOOTAArmRequired\(\)&&!ArmedForTransfer\(\)\)\{Error\(/);
+ // The full host takes the one flash gate in every build: the download-only refusal first, then the full-host
+ // check, then the flash-build return for any other app, where a flash build passes only the empty version query.
+ const snapshot=s.slice(s.indexOf('BOOL TIOOTAFlashBlockCallSnapshot('),s.indexOf('BOOL TIOOTAFlashAuthorize('));
+ assert.ok(snapshot.indexOf('if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(')>0);
+ assert.ok(snapshot.indexOf('if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(')<snapshot.indexOf('BOOL full=TIOOTAFullHost();'));
+ assert.ok(snapshot.indexOf('BOOL full=TIOOTAFullHost();')<snapshot.indexOf('if(!full&&!TIOOTAFlashBuild())return NO;'));
+ assert.match(snapshot,/if\(!full\)return !TIOOTAIsEmptyVersionQuery\(data\);\n\s*return !\[Current\(\) allows:data device:args\[@"deviceId"\] uptime:NSProcessInfo\.processInfo\.systemUptime\];/);
+ // No per-frame host check: the exact host and its pinned image are checked once, first thing in TIOOTAFlashAuthorize.
+ assert.doesNotMatch(snapshot,/TIOOTA1021HostMatches|TIOHostFullImageMatches|TIOOTAHostMatches/);
+ assert.match(s,/BOOL TIOOTAFlashAuthorize\(NSError \*\*error\)\{\n[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*if\(!TIOOTA1021HostMatches\(info\)\|\|!TIOHostFullImageMatches\(TIOHostMainImage\(\),info\)\)\{Error\(error,TIOText\(@"ota\.authorize\.host"\)\);return NO;\}/);
+ // No arm step, no routing marker and no raw-JSON key check remain.
+ assert.doesNotMatch(s,/FlashArm|Disarm|ArmRequired|QueryRouting|ROUTING_MARKER|RawJSON/);
+ assert.doesNotMatch(fs.readFileSync(new URL('./OTAHost.h',import.meta.url),'utf8'),/QueryRouting|ROUTING_MARKER|ArmHost/);
  assert.match(s,/bootstrapEligible[\s\S]*?healthPassed/);
  assert.match(fs.readFileSync(new URL('./ExperimentalOTAFeed.m',import.meta.url),'utf8'),/TIOOTAHostProfile\(bundle\.infoDictionary\)[\s\S]*?TIOHostFullImageMatches\(TIOHostMainImage\(\),bundle\.infoDictionary\)[\s\S]*?TIOOTARouteFileMatches\(file,profile\)/);
  assert.equal(fs.existsSync(new URL('./patch-ios106-route.mjs',import.meta.url)),false);
@@ -363,25 +359,26 @@ test('wrappers: --host is required and is 1021 or 1021-full; --host 1021 package
 test('full host: the export panel passes the hook state and stock traffic to the guard row model',()=>{
  const ui=fs.readFileSync(new URL('./FirmwareExportUI.m',import.meta.url),'utf8');
  const model=ui.slice(ui.indexOf('static NSDictionary *SafetyModel(void){'),ui.indexOf('NSString *TIOFirmwareExportHubStatus(void){'));
- const full=model.slice(model.indexOf('if(TIOOTAArmHostName(TIOHostProfile())){'),model.indexOf('\n    }\n'));
- assert.ok(model.indexOf('if(TIOOTAArmHostName(TIOHostProfile())){')>0);
+ const full=model.slice(model.indexOf('if([TIOHostProfile() isEqual:TIO_HOST_PROFILE_1021_FULL]){'),model.indexOf('\n    }\n'));
+ assert.ok(model.indexOf('if([TIOHostProfile() isEqual:TIO_HOST_PROFILE_1021_FULL]){')>0);
  assert.equal([...model.matchAll(/TIOFirmwareExportSafetyModelFull\(/g)].length,1);
- assert.match(full,/return TIOFirmwareExportSafetyModelFull\(TIOGlassesChannelHookInstalled\(\)&&\[TIOOTAGuardStatus\(\)\[@"transportHookReady"\] boolValue\]&&\[arm\[@"armRequired"\] boolValue\],\s*TIOGlassesChannelStockTrafficSeen\(\),\[arm\[@"armed"\] boolValue\],NSUserDefaults\.standardUserDefaults\.dictionaryRepresentation\);/);
- assert.match(fs.readFileSync(new URL('./DownloadOnlySafety.h',import.meta.url),'utf8'),/TIOFirmwareExportSafetyModelFull\(BOOL armGuardReady, BOOL stockTrafficSeen, BOOL armed, NSDictionary \*_Nullable preferences\);/);
+ assert.match(full,/return TIOFirmwareExportSafetyModelFull\(TIOGlassesChannelHookInstalled\(\)&&\[TIOOTAGuardStatus\(\)\[@"transportHookReady"\] boolValue\]&&TIOOTAFullHost\(\),\s*TIOGlassesChannelStockTrafficSeen\(\),\[TIOOTAFlashStatus\(\)\[@"authorized"\] boolValue\],NSUserDefaults\.standardUserDefaults\.dictionaryRepresentation\);/);
+ assert.match(fs.readFileSync(new URL('./DownloadOnlySafety.h',import.meta.url),'utf8'),/TIOFirmwareExportSafetyModelFull\(BOOL gateReady, BOOL stockTrafficSeen, BOOL authorized, NSDictionary \*_Nullable preferences\);/);
 });
-// The full host's arm guard lives in the same rayneonet hook. Load must install it
-// whenever the arm step applies, not only when the voice/AlwaysOn signatures match, and the
+// The full host's flash gate lives in the same rayneonet hook. Load must install it
+// on the full host, not only when the voice/AlwaysOn signatures match, and the
 // install must be idempotent (the valid path may already have installed it).
-test('full host: Load installs the guard hook whenever the arm step applies',()=>{
+test('full host: Load installs the gate hook on the full host',()=>{
  const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
  const addon=src('Addon.m'),load=addon.slice(addon.indexOf('static void Load(void)'));
  const valid=load.indexOf('if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}');
- const arm=load.indexOf('\n            if(TIOOTAArmRequired())TIOInstallGlassesChannelHook();\n');
- assert.ok(valid>0&&arm>valid,'arm-required hook install missing or before the feature hooks');
+ const full=load.indexOf('\n            if(TIOOTAFullHost())TIOInstallGlassesChannelHook();\n');
+ assert.ok(valid>0&&full>valid,'full-host hook install missing or before the feature hooks');
  // Unconditional on the feature checks: the line is not part of an if/else chain on valid.
- const between=load.slice(valid,arm);assert.doesNotMatch(between.split('\n').slice(-1)[0],/else/);
- assert.ok(arm<load.indexOf('TCCameraReportLoaded();'),'the hook must be installed before setup reports loaded');
- assert.match(load,/if\(TIOOTAArmRequired\(\)&&!TIOGlassesChannelHookInstalled\(\)\)\[loadInfo appendFormat:@"ARM GUARD NOT ACTIVE:/);
+ const between=load.slice(valid,full);assert.doesNotMatch(between.split('\n').slice(-1)[0],/else/);
+ assert.ok(full<load.indexOf('TCCameraReportLoaded();'),'the hook must be installed before setup reports loaded');
+ assert.match(load,/if\(TIOOTAFullHost\(\)\)\[loadInfo appendFormat:@"fullHost=1\\n%@\\n",TIOOTAFullHostGuardMarker\];/);
+ assert.match(load,/if\(TIOOTAFullHost\(\)&&!TIOGlassesChannelHookInstalled\(\)\)\[loadInfo appendFormat:@"FLASH GATE NOT ACTIVE:/);
  const hook=src('GlassesChannelHook.m');
  assert.match(hook,/BOOL TIOInstallGlassesChannelHook\(void\)\{if\(Installed\)return YES;/);
  assert.match(hook,/Installed=YES;InstallFailure=nil;TIOOTARecordTransportHookReady\(\);/);
@@ -571,22 +568,18 @@ test('wirelog-absent.sh fails on a TIO_WIRE_LOG=1 build',()=>{
 test('download-only refusal comes first in TIOOTAFlashBlockCall and depends on no flag',()=>{
  const flash=fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8');
  const body=flash.slice(flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
- // C15: the full host's disarmed refusal comes next, also before any flag-dependent code.
- // Inside the arm block nothing reads a build flag before the disarmed refusal (comments aside).
- const head=body.slice(0,body.indexOf('    if(!TIOOTAFlashBuild())return NO;')).replace(/\n\s*\/\/[^\n]*/g,'');
- assert.equal(head,'BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){\n    if(teleprompter)*teleprompter=nil;\n    if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);\n    if(TIOOTAArmRequired()){\n        if(!Business9Call(call)){ObserveDisconnect(Get(call,@"method"));return DisarmedBlock(call,teleprompter);}\n        if(!(GateStage()==2?ArmTransferHost():ArmedForTransfer()))return DisarmedBlock(call,teleprompter);\n    }\n');
- for(const f of ['static void ObserveDisconnect(','static BOOL Business9Call(']){const fn=flash.slice(flash.indexOf(f),flash.indexOf('\n}\n',flash.indexOf(f)));assert.ok(fn.length>0);assert.doesNotMatch(fn,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild/);}
+ // Next the full host's gate, chosen before any flag-dependent code: nothing above the full-host branch reads a build flag.
+ const head=body.slice(0,body.indexOf('    if(!full&&!TIOOTAFlashBuild())return NO;')).replace(/\n\s*\/\/[^\n]*/g,'');
+ assert.equal(head,'BOOL TIOOTAFlashBlockCallSnapshot(id call,NSDictionary **teleprompter){\n    if(teleprompter)*teleprompter=nil;\n    if(TIOOTADownloadOnlyHost())return DownloadOnlyBlock(call,teleprompter);\n    BOOL full=TIOOTAFullHost();\n');
+ for(const f of ['static void ObserveDisconnect(','static BOOL Business9Call(','BOOL TIOOTAFullHost(void){']){const fn=flash.slice(flash.indexOf(f),flash.indexOf('\n}\n',flash.indexOf(f)));assert.ok(fn.length>0,f);assert.doesNotMatch(fn,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild/);}
  assert.match(flash,/\nBOOL TIOOTAFlashBlockCall\(id call\)\{return TIOOTAFlashBlockCallSnapshot\(call,NULL\);\}\n/);
  assert.match(flash,/\nBOOL TIOOTADownloadOnlyBlockCall\(id call\)\{return DownloadOnlyBlock\(call,NULL\);\}\n/);
- const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('// Full 1.0.21 host (ios1021, C20 onward)'));
+ const pure=flash.slice(flash.indexOf('NSString *const TIOOTADownloadOnlyGuardMarker'),flash.indexOf('// Full 1.0.21 host (profile ios1021)'));
  assert.ok(pure.length>0);assert.doesNotMatch(pure,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_|TIOOTAFlashBuild|ScopedFileSenders/);
  assert.ok(pure.includes(packaging.DOWNLOAD_ONLY_GUARD_MARKER));
- // The disarm region compiles in every build: no preprocessor branch. Only arming and the armed
- // check read TIOOTAFlashBuild (an armed transfer needs the flash path); the business-9 refusal never does.
- const arm=flash.slice(flash.indexOf('// Full 1.0.21 host (ios1021, C20 onward)'),flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
- assert.ok(arm.includes(packaging.FULL_1011_ARM_MARKER));assert.doesNotMatch(arm,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_/);
- const disarmed=arm.slice(arm.indexOf('static BOOL DisarmedBlock('),arm.indexOf('BOOL TIOOTADisarmedBlockCall('));
- assert.ok(disarmed.length>0);assert.doesNotMatch(disarmed,/TIOOTAFlashBuild|Current\(\)|AutoUpdate/);
+ // The full-host region compiles in every build: no preprocessor branch, and it carries the packager's marker.
+ const fullRegion=flash.slice(flash.indexOf('NSString *const TIOOTAFullHostGuardMarker'),flash.indexOf('BOOL TIOOTAFlashBlockCallSnapshot(id call,'));
+ assert.ok(fullRegion.includes('TIOOTAFullHostGuardMarker=@"'+packaging.FULL_HOST_GUARD_MARKER+'"'));assert.doesNotMatch(fullRegion,/#if|TIO_[A-Z_]+_ENABLED|TIO_DISPLAY_/);
  // test.py builds the guard test with and without the flash/phone flags and compares the sweep.
  const py=fs.readFileSync(new URL('./test.py',import.meta.url),'utf8');
  assert.match(py,/'noflags':\(\[\],\[\],False\)/);assert.match(py,/refusal differs between flag sets/);
@@ -642,21 +635,28 @@ test('export panel reads Auto Update without writing preferences',()=>{
  assert.match(ui,/self\.tableView\.tableHeaderView=box;/);
 });
 import {ROUTE_PROFILES,routeProfile} from './patch-route.mjs';
-// The arm check from C15 (validateFull1011Addon), which the full 1.0.21 gate builds on: the download-only guard,
-// the disarm guard and the arm step are all required.
-test('arm check: the download-only guard, the disarm guard and the arm step are required',()=>{
- const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_1011_ARM_SYMBOLS];
- const symbols=names.map(n=>'0000000000000000 T '+n).join('\n'),addon=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_1011_ARM_MARKER+'\0');
- assert.ok(packaging.validateFull1011Addon(symbols,addon));
- for(const n of names)assert.throws(()=>packaging.validateFull1011Addon(symbols.split('\n').filter(l=>!l.endsWith(' '+n)).join('\n'),addon),/guard_missing/,n);
- assert.throws(()=>packaging.validateFull1011Addon(symbols,Buffer.from(packaging.DOWNLOAD_ONLY_GUARD_MARKER)),/full_1011_arm_guard_missing:marker/);
- assert.throws(()=>packaging.validateFull1011Addon(symbols,Buffer.from(packaging.FULL_1011_ARM_MARKER)),/download_only_guard_missing:marker/);
- // The native marker starts with the packager's string; the wrapper checks the same names and marker.
- assert.ok(fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8').includes('TIOOTAArmGuardMarker=@"'+packaging.FULL_1011_ARM_MARKER));
- const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8');
- for(const n of packaging.FULL_1011_ARM_SYMBOLS)assert.ok(wrapper.includes(n),n);assert.ok(wrapper.includes(packaging.FULL_1011_ARM_MARKER));
+// The full host gate check (validateFull1021Addon): the download-only guard and the flag-independent full-host gate
+// (its marker and the functions it names) are both required, in the packager and in the wrapper.
+test('full host gate check: the download-only guard and the full-host gate are required',()=>{
+ const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_HOST_GUARD_SYMBOLS];
+ const symbols=names.map(n=>'0000000000000000 T '+n).join('\n'),addon=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_HOST_GUARD_MARKER+'\0');
+ assert.ok(packaging.validateFull1021Addon(symbols,addon));assert.ok(packaging.validateFullHostAddon('ios1021',symbols,addon));
+ for(const n of names)assert.throws(()=>packaging.validateFull1021Addon(symbols.split('\n').filter(l=>!l.endsWith(' '+n)).join('\n'),addon),/guard_missing/,n);
+ assert.throws(()=>packaging.validateFull1021Addon(symbols,Buffer.from(packaging.DOWNLOAD_ONLY_GUARD_MARKER)),/full_host_guard_missing:marker/);
+ assert.throws(()=>packaging.validateFull1021Addon(symbols,Buffer.from(packaging.FULL_HOST_GUARD_MARKER)),/download_only_guard_missing:marker/);
+ // An addon from C20 (the arm markers, no full-host gate marker) is refused.
+ const c20=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0ota guard=FULL-DISARM-01; flag-independent\0ota guard=FULL1021-ARM-01\0');
+ assert.throws(()=>packaging.validateFull1021Addon(symbols,c20),/full_host_guard_missing:marker/);
+ for(const h of ['ios107','ios1011','ios1011-download','ios1021-download','IOS1021','',undefined])assert.throws(()=>packaging.validateFullHostAddon(h,symbols,addon),/not_a_full_host/);
+ assert.equal(packaging.FULL_1011_ARM_SYMBOLS,undefined);assert.equal(packaging.FULL_1021_ARM_SYMBOLS,undefined);assert.equal(packaging.validateFull1011Addon,undefined);
+ // The native marker is the packager's string; the wrapper and the gate check the same names and marker.
+ assert.ok(fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8').includes('TIOOTAFullHostGuardMarker=@"'+packaging.FULL_HOST_GUARD_MARKER+'"'));
+ const wrapper=fs.readFileSync(new URL('../../scripts/turbo-package.sh',import.meta.url),'utf8'),gate=fs.readFileSync(new URL('../../scripts/turbo-gate.sh',import.meta.url),'utf8');
+ for(const n of packaging.FULL_HOST_GUARD_SYMBOLS){assert.ok(wrapper.includes(n),n);assert.ok(gate.includes(n),n);}
+ assert.ok(wrapper.includes(packaging.FULL_HOST_GUARD_MARKER)&&gate.includes(packaging.FULL_HOST_GUARD_MARKER));
+ assert.doesNotMatch(wrapper,/ARM-0|DISARM|full_1011_guard|_TIOOTAFlashArm|_TIOOTAArm/);assert.doesNotMatch(gate,/ARM-0|DISARM|_TIOOTAFlashArm|_TIOOTAArm|_TIOExperimentalOTAMemberCount/);
 });
-test('packager source: the full host build patches its own offsets, writes both of its markers and checks its pinned output',()=>{
+test('packager source: the full host build patches its own offsets, writes its profile marker and checks its pinned output',()=>{
  const s=fs.readFileSync(new URL('./package.mjs',import.meta.url),'utf8');
  assert.match(s,/if\(host\.fullHost\)validateFullHostAddon\(host\.name,symbols,fs\.readFileSync\(o\.addon\)\);/);
  assert.ok(s.indexOf('validateFullHostAddon(host.name,symbols,')<s.indexOf('fs.mkdirSync(destination'));
@@ -665,8 +665,9 @@ test('packager source: the full host build patches its own offsets, writes both 
  for(const h of Object.values(HOST_PROFILES))assert.equal(!!h.fullHost,h.routePatch===true,h.name);
  assert.match(s,/patchOTARoute\(fs\.readFileSync\(image\),host\.routeProfile\)\.output/);
  assert.match(s,/if\(host\.hostProfileMarker\)run\('plutil',\['-insert','TIOHostProfile','-string',host\.hostProfileMarker,plist\]\);/);
- assert.match(s,/run\('plutil',\['-insert','TIOExperimentalOTAQueryRouting','-string',host\.routingMarker,plist\]\);/);
- assert.match(s,/plist\.TIOHostProfile!==host\.hostProfileMarker\|\|plist\.TIOExperimentalOTAQueryRouting!==host\.routingMarker\|\|plist\.TIOExperimentalOTABuild!==release\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
+ assert.doesNotMatch(s,/TIOExperimentalOTAQueryRouting|routingMarker|flashArmed|captureBeforeArming/);
+ assert.match(s,/wireLogCapture:`Capture a wire log during every flash\./);
+ assert.match(s,/plist\.TIOHostProfile!==host\.hostProfileMarker\|\|plist\.TIOExperimentalOTABuild!==release\.name\|\|plist\.UISupportedDevices!==undefined\|\|!fs\.existsSync\(path\.join\(app,CANDIDATE_RESOURCE\)\)/);
  assert.match(s,/if\(!routeProfile\(host\.routeProfile\)\.outputSHA\|\|digest\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\)\)!==routeProfile\(host\.routeProfile\)\.outputSHA\)throw Error\(tag\+'_route_output_mismatch'\)/);
  assert.match(s,/if\(host\.routePatch\)verifyRoute\(fs\.readFileSync\(path\.join\(app,'Frameworks\/App\.framework\/App'\)\),host\.routeProfile\);/);
 });
@@ -677,7 +678,7 @@ test('wrappers: --host 1021-full packages the full build with the release ZIP an
  assert.match(branch,/full_profile=ios1021\n/);
  assert.match(branch,/run_logged full-1021-guard full_1021_guard "\$ADDON"/);
  assert.match(branch,/--host "\$full_profile" --app "\$TURBO_APP1021"/);assert.match(branch,/--firmware "\$firmware" --release "\$release"/);
- assert.match(branch,/assert profile=='ios1021', 'unknown full host profile'\nrouting='ios1021-tmg-loopback-flash-gated-arm-required'/);
+ assert.match(branch,/assert profile=='ios1021', 'unknown full host profile'\n/);assert.doesNotMatch(branch,/routing/);
  // Without --release the build is the only release in releases.json (several: --release required). The full host
  // takes the release's checked ZIP from releases.json, only when releases.json lists that host for the release; the
  // download-only host refuses an explicit --release.
@@ -687,16 +688,15 @@ test('wrappers: --host 1021-full packages the full build with the release ZIP an
  assert.match(wrapper,/sys\.argv\[3\] in r\["hosts"\]/);
  assert.match(wrapper,/\[\[ \$host != 1021-full \]\] \|\| run_logged full-1021-guard full_1021_guard "\$ADDON"/);
  assert.match(wrapper,/\[\[ \$host != 1021 \]\] \|\| run_logged download-only-guard download_only_guard "\$ADDON"/);
- assert.match(wrapper,/full_1021_guard\(\) \{\n  local symbols name\n  full_1011_guard "\$1"/);
- assert.match(wrapper,/full_1011_guard\(\) \{\n  local symbols name\n  download_only_guard "\$1"/);
- for(const n of packaging.FULL_1021_ARM_SYMBOLS)assert.ok(wrapper.includes(n),n);assert.ok(wrapper.includes(packaging.FULL_1021_ARM_MARKER));
+ assert.match(wrapper,/full_1021_guard\(\) \{\n  local symbols name\n  download_only_guard "\$1" \|\| return 1\n/);
+ for(const n of packaging.FULL_HOST_GUARD_SYMBOLS)assert.ok(wrapper.includes(n),n);assert.ok(wrapper.includes(packaging.FULL_HOST_GUARD_MARKER));
  assert.match(wrapper,/\nbuild_flags\+=\(TIO_RELEASE="\$release"\)\n/);
  assert.match(branch,/'firmware-pins-'\+sys\.argv\[2\]\+'\.json'/);
  assert.match(branch,/report\['release'\]==sys\.argv\[2\]/);
  assert.match(branch,/ipa\.read\('Payload\/Runner\.app\/TurboWeReadCandidate\.zip'\)/);assert.match(branch,/bundled ZIP in the signed IPA is not the release ZIP/);
  assert.doesNotMatch(branch,/--product|TURBO_APP107|TURBO_APP1011|ios1011'|ios1011-download|ios1021-download/);
- assert.match(branch,/report\['hostProfile'\]==profile and report\['flashAuthorized'\] is False and report\['flashArmed'\] is False/);
- assert.match(branch,/info\.get\('TIOHostProfile'\)==profile/);assert.match(branch,/info\.get\('TIOExperimentalOTAQueryRouting'\)==routing/);
+ assert.match(branch,/report\['hostProfile'\]==profile and report\['flashAuthorized'\] is False, 'unexpected host profile or flash authorization'/);
+ assert.match(branch,/info\.get\('TIOHostProfile'\)==profile/);
  assert.match(branch,/'UISupportedDevices' not in info/);
 });
 
@@ -737,7 +737,7 @@ test('full 1.0.21 profile: the C19 pins, its own route profile and markers, and 
  assert.equal(f.routePatch,true);assert.equal(f.routeProfile,'ios1021');assert.equal(f.firmware,true);assert.equal(f.stripStaleSignature,true);assert.equal(f.noProduct,true);
  assert.equal(f.hostProfileMarker,'ios1021');assert.equal(f.packagingRevision,'APP1021-OTA-FULL-01');assert.equal(f.fullHost,'1021-full');assert.equal(f.runtimeMarker,undefined);
  const otaHost=fs.readFileSync(new URL('./OTAHost.h',import.meta.url),'utf8');
- assert.equal(otaHost.match(/#define TIO_OTA_1021_ROUTING_MARKER @"([^"]+)"/)[1],f.routingMarker);
+ assert.equal(f.routingMarker,undefined);assert.doesNotMatch(otaHost,/ROUTING_MARKER/);
  assert.match(fs.readFileSync(new URL('./HostCompatibility.h',import.meta.url),'utf8'),/#define TIO_HOST_PROFILE_1021_FULL @"ios1021"/);
  const r=routeProfile('ios1021');
  assert.deepEqual([...r.offsets],d.routes.map(([,o])=>o));assert.deepEqual([...r.inputs],[d.acceptedPairs[0][1]]);
@@ -765,19 +765,7 @@ test('full 1.0.21 profile: the C19 pins, its own route profile and markers, and 
   for(const removed of ['ios1011','ios107'])assert.throws(()=>m.validateOptions({...base,host:removed,release:n}),/unknown_host_profile/,n);
  }
 });
-test('full 1.0.21 addon gate: the arm check plus the 1.0.21 arm marker',()=>{
- const names=[...packaging.DOWNLOAD_ONLY_GUARD_SYMBOLS,...packaging.FULL_1011_ARM_SYMBOLS,...packaging.FULL_1021_ARM_SYMBOLS];
- const symbols=names.map(n=>'0000000000000000 T '+n).join('\n');
- const addon=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_1011_ARM_MARKER+'\0'+packaging.FULL_1021_ARM_MARKER+'\0');
- assert.ok(packaging.validateFull1021Addon(symbols,addon));assert.ok(packaging.validateFullHostAddon('ios1021',symbols,addon));
- for(const n of names)assert.throws(()=>packaging.validateFull1021Addon(symbols.split('\n').filter(l=>!l.endsWith(' '+n)).join('\n'),addon),/guard_missing/,n);
- // An addon from before C20 (the arm check's guards only) is refused for 1.0.21; the arm check alone accepts it.
- const pre=Buffer.from('x\0'+packaging.DOWNLOAD_ONLY_GUARD_MARKER+'\0'+packaging.FULL_1011_ARM_MARKER+'\0');
- assert.throws(()=>packaging.validateFull1021Addon(symbols,pre),/full_1021_arm_guard_missing:marker/);assert.ok(packaging.validateFull1011Addon(symbols,pre));
- for(const h of ['ios107','ios1011','ios1011-download','ios1021-download','IOS1021','',undefined])assert.throws(()=>packaging.validateFullHostAddon(h,symbols,addon),/not_a_full_host/);
- assert.ok(fs.readFileSync(new URL('./ExperimentalOTAFlash.m',import.meta.url),'utf8').includes('TIOOTAArm1021GuardMarker=@"'+packaging.FULL_1021_ARM_MARKER+'"'));
-});
-test('real addon build carries the full 1.0.21 arm guard',t=>{
+test('real addon build carries the full 1.0.21 host gate',t=>{
  const addon=path.join(packageTestDirectory,'build/mapkit/TurboIOPrivateAddon.dylib');if(!fs.existsSync(addon))return t.skip('build the embedded addon first');
  assert.ok(packaging.validateFull1021Addon(runFixtureCommand('/usr/bin/nm',['-g',addon],{encoding:'utf8',maxBuffer:64*1024*1024}),fs.readFileSync(addon)));
 });

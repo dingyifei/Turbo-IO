@@ -914,12 +914,11 @@ __attribute__((constructor)) static void Load(void) {
             if(valid){TIOInstallGlassesChannelHook();TIOInstallTodoRuntime();}
             // Download-only host: no feature hooks, only the rayneonet channel hook so
             // TIOOTAFlashBlockCall refuses every OTA frame but the empty version query.
-            // TIOOTAHostMatches stays false there.
             else if(downloadOnly)TIOInstallGlassesChannelHook();
-            // Full host: the same hook carries the arm guard (TIOOTAFlashBlockCall), so it is
-            // installed whenever the arm step applies, whatever the voice and AlwaysOn signature checks
-            // said. TIOInstallGlassesChannelHook returns at once if the hook is already in place.
-            if(TIOOTAArmRequired())TIOInstallGlassesChannelHook();
+            // Full host: the same hook carries the flash gate (TIOOTAFlashBlockCall), so it is
+            // installed on the full host whatever the voice and AlwaysOn signature checks said.
+            // TIOInstallGlassesChannelHook returns at once if the hook is already in place.
+            if(TIOOTAFullHost())TIOInstallGlassesChannelHook();
 #if TIO_IMAGE_RX_LAB
             if(!downloadOnly)TIOClenchLabInstallRecovery();
 #endif
@@ -933,15 +932,15 @@ __attribute__((constructor)) static void Load(void) {
 #endif
 #endif
             [loadInfo appendFormat:@"hostProfile=%@; transportHook=%d; downloadOnlyGuard=%d; stockTraffic=%d\n%@\n",TIOHostProfile()?:@"none",TIOGlassesChannelHookInstalled(),TIOHostDownloadOnlyGuardActive(),TIOGlassesChannelStockTrafficSeen(),TIOOTADownloadOnlyGuardMarker];
-            // Full 1.0.21 host: TMG flashing stays disarmed until armed in the wizard; say which.
-            if(TIOOTAArmRequired()){NSDictionary *arm=TIOOTAFlashArmStatus();[loadInfo appendFormat:@"armRequired=1; armed=%d; armedForTransfer=%d\n%@\n",[arm[@"armed"] boolValue],[arm[@"armedForTransfer"] boolValue],TIOOTAArmGuardMarker];if([arm[@"armHost"] isEqual:@"ios1021"])[loadInfo appendFormat:@"%@\n",TIOOTAArm1021GuardMarker];}
+            // Full 1.0.21 host: every OTA frame goes through the flash gate; transfer frames need one authorization.
+            if(TIOOTAFullHost())[loadInfo appendFormat:@"fullHost=1\n%@\n",TIOOTAFullHostGuardMarker];
             // The hook appends "stockTraffic=1; first stock call ..." to this file when a stock rayneonet call first passes it.
             // The image and the packager's marker should agree; say so when only one selects the download-only host.
             NSString *imageProfile=TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary),*markerProfile=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];
             if(downloadOnly&&!([imageProfile isEqual:@"ios1011-download"]&&[markerProfile isEqual:@"ios1011-download"]))[loadInfo appendFormat:@"HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only\n",imageProfile?:@"none",[markerProfile isKindOfClass:NSString.class]?markerProfile:@"none"];
             // A failed hook on the download-only host leaves the stock OTA path unguarded: say so.
             if(downloadOnly&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
-            if(TIOOTAArmRequired()&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"ARM GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
+            if(TIOOTAFullHost()&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"FLASH GATE NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
             [loadInfo appendFormat:@"bundle=%@; version=%@; build=%@\n",NSBundle.mainBundle.bundleIdentifier,[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"]];
             for(uint32_t i=0;i<_dyld_image_count();i++){const char *name=_dyld_get_image_name(i);if(name&&[[NSString stringWithUTF8String:name].lastPathComponent isEqual:@"Runner"]){const struct mach_header *h=_dyld_get_image_header(i);[loadInfo appendFormat:@"Runner image index=%u magic=%x\n",i,h->magic];}}
             for(NSString *sel in @[@"onAsrResult:isFinish:sessionId:",@"onNlpResult:",@"onResponseComplete",@"onAlwaysOnResponse:"]){Method m=class_getInstanceMethod([sel isEqual:@"onAlwaysOnResponse:"]?ao:voice,NSSelectorFromString(sel));[loadInfo appendFormat:@"%@ %s\n",sel,m?method_getTypeEncoding(m):"missing"];}

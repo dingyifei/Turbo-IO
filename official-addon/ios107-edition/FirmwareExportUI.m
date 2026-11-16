@@ -22,12 +22,11 @@ static NSURL *Home(void){return [NSURL fileURLWithPath:NSHomeDirectory() isDirec
 // flag-independent. Auto Update is read from RayNeo's preferences, never written.
 static BOOL Guarded(void){return TIOHostDownloadOnlyGuardActive();}
 static NSDictionary *SafetyModel(void){
-    // Full 1.0.21 host: the guard row shows the arm state; the arm guard runs in the same transport
-    // hook, and green needs a stock rayneonet call through it in this launch, as on the download-only host.
-    if(TIOOTAArmHostName(TIOHostProfile())){
-        NSDictionary *arm=TIOOTAFlashArmStatus();
-        return TIOFirmwareExportSafetyModelFull(TIOGlassesChannelHookInstalled()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue]&&[arm[@"armRequired"] boolValue],
-            TIOGlassesChannelStockTrafficSeen(),[arm[@"armed"] boolValue],NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
+    // Full 1.0.21 host: the guard row shows whether the flash gate holds a flash authorization; the gate runs in
+    // the same transport hook, and green needs a stock rayneonet call through it in this launch, as on the download-only host.
+    if([TIOHostProfile() isEqual:TIO_HOST_PROFILE_1021_FULL]){
+        return TIOFirmwareExportSafetyModelFull(TIOGlassesChannelHookInstalled()&&[TIOOTAGuardStatus()[@"transportHookReady"] boolValue]&&TIOOTAFullHost(),
+            TIOGlassesChannelStockTrafficSeen(),[TIOOTAFlashStatus()[@"authorized"] boolValue],NSUserDefaults.standardUserDefaults.dictionaryRepresentation);
     }
     // Guarded() also checks the refusal's own host test; it has the last word on the guard row.
     // Green needs runtime evidence too: a stock rayneonet call has passed the hook in this launch.
@@ -37,9 +36,9 @@ NSString *TIOFirmwareExportHubStatus(void){
     NSDictionary *m=SafetyModel();
     if(![m[@"guardActive"] boolValue])return TIOText(@"hub.status.firmwareExport.unguarded");
     if([m[@"autoUpdate"] isEqual:@"on"])return TIOText(@"hub.status.firmwareExport.autoOn");
-    if([m[@"armed"] boolValue])return TIOText(@"hub.status.firmwareExport.armed");
+    if([m[@"authorized"] boolValue])return TIOText(@"hub.status.firmwareExport.authorized");
     if([m[@"guardLevel"] isEqual:@"warn"])return TIOText(@"hub.status.firmwareExport.waiting");
-    if(m[@"armed"])return TIOText(@"hub.status.firmwareExport.disarmed");
+    if(m[@"authorized"])return TIOText(@"hub.status.firmwareExport.locked");
     return TIOText(@"hub.status.firmwareExport.guarded");
 }
 static UIColor *LevelColor(NSString *level){
@@ -174,14 +173,14 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
             c.accessibilityIdentifier=[@"fwexport-auto-" stringByAppendingString:m[@"autoUpdate"]];
         }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"ok"]){
             // Green: guard installed and a stock rayneonet call has passed the hook in this launch
-            // (full 1.0.21 host: flashing disarmed). The model names the row's strings.
+            // (full 1.0.21 host: no flash authorization open). The model names the row's strings.
             NSDictionary *m=self.safety?:SafetyModel();
             c.textLabel.text=TIOText(m[@"guardKey"]);c.detailTextLabel.text=TIOText(m[@"guardDetail"]);
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusOk);c.imageView.image=[UIImage systemImageNamed:@"checkmark.shield.fill"];c.imageView.tintColor=TIODesignColor(TIODesignColorStatusOk);
             c.accessibilityIdentifier=[m[@"guardKey"] stringByReplacingOccurrencesOfString:@"." withString:@"-"];
         }else if([(self.safety?:SafetyModel())[@"guardLevel"] isEqual:@"warn"]){
             // Amber: the hook is installed, but nothing yet shows the stock path goes through it
-            // (full 1.0.21 host: flashing armed on this install).
+            // (full 1.0.21 host: a flash authorization is open).
             NSDictionary *m=self.safety?:SafetyModel();
             c.textLabel.text=TIOText(m[@"guardKey"]);c.detailTextLabel.text=TIOText(m[@"guardDetail"]);
             c.textLabel.textColor=TIODesignColor(TIODesignColorStatusWarn);c.textLabel.font=TIODesignFontWeight(TIODesignTextStyleHeadline,UIFontWeightBold);

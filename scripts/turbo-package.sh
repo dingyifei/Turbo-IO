@@ -10,7 +10,7 @@ apple_args=()
 # --host is required; there is no default host. Both hosts are built from the stock 1.0.21/1 app in TURBO_APP1021.
 # --host 1021: the download-only 1.0.21/1 build (C19): stock App.framework, no firmware, no flashing.
 # --host 1021-full: the full 1.0.21/1 build from TURBO_APP1021: route patch at the 1.0.21 offsets, the TMG ZIP of a
-# release built for this host, no device-model list; TMG flashing disarmed until armed on the phone.
+# release built for this host, no device-model list; every TMG transfer frame needs one authorization on the phone.
 # --release cN (with --host 1021-full): build release cN of official-addon/ios107-edition/releases.json: the addon is
 # compiled with TIO_RELEASE=cN (that release's FirmwarePins.h block) and bundles that release's ZIP, found under
 # $TURBO_INPUTS at the path releases.json names and refused unless its size and SHA-256 match. The release's hosts
@@ -193,27 +193,17 @@ download_only_guard() {
   done
   grep -aFq 'ota guard=DOWNLOAD-ONLY-GUARD-03; flag-independent; businessId above 255 refused; stock teleprompter sendFile allow-listed' "$1" || { echo 'missing download-only guard marker' >&2; return 1; }
 }
-# The arm check from C15, which full_1021_guard builds on: the disarm guard and the arm step (and the
-# download-only guard, which takes over if the profile marker is ever missing).
-full_1011_guard() {
-  local symbols name
-  download_only_guard "$1"
-  symbols=$(nm -g "$1")
-  for name in _TIOOTAArmRequired _TIOOTADisarmedBlockCall _TIOOTADisarmedReadAllowed _TIOOTAArmGuardMarker \
-    _TIOOTAFlashArm _TIOOTAFlashDisarm _TIOOTAFlashArmed _TIOOTAFlashArmStatus _TIOFirmwareExportSafetyModelFull; do
-    grep -Eq " $name\$" <<<"$symbols" || { echo "missing $name" >&2; return 1; }
-  done
-  grep -aFq 'ota guard=IOS1011-FULL-DISARM-01; flag-independent; disarmed until armed on this install' "$1" || { echo 'missing arm guard marker' >&2; return 1; }
-}
-# C20: the full 1.0.21 build needs the arm check above plus the addon's 1.0.21 arm marker and pin-derived member count, so an addon from before C20 is refused.
+# The full 1.0.21 build needs the flag-independent full-host gate (its marker and the functions it names) and the
+# download-only guard, which takes over if the profile marker is ever missing.
 full_1021_guard() {
   local symbols name
-  full_1011_guard "$1"
+  download_only_guard "$1" || return 1
   symbols=$(nm -g "$1")
-  for name in _TIOOTAArm1021GuardMarker _TIOExperimentalOTAMemberCount; do
+  for name in _TIOOTAFullHost _TIOOTAFullHostGuardMarker _TIOOTAFlashBlockCallSnapshot _TIOOTAFlashAuthorize \
+    _TIOOTAFlashNoteRefused _TIOFirmwareExportSafetyModelFull; do
     grep -Eq " $name\$" <<<"$symbols" || { echo "missing $name" >&2; return 1; }
   done
-  grep -aFq 'ota guard=IOS1021-FULL-DISARM-01; flag-independent; the IOS1011-FULL-DISARM-01 rules on the full 1.0.21 host; arm record otaFlashArmRecord.ios1021' "$1" || { echo 'missing 1.0.21 arm guard marker' >&2; return 1; }
+  grep -aFq 'ota guard=FULL-HOST-GATE-01; flag-independent; business 9 transfer frames refused without one confirmation; reads and the exact size query pass' "$1" || { echo 'missing full host gate marker' >&2; return 1; }
 }
 if [[ $build_only == 1 ]]; then
   [[ $host != 1021 ]] || run_logged download-only-guard download_only_guard "$ADDON"
@@ -256,7 +246,7 @@ assert report['firmwareBundled'] is False and report['routePatched'] is False an
 app=out/'Payload/Runner.app'
 info=plistlib.loads((app/'Info.plist').read_bytes())
 assert info.get('TIOHostProfile')=='ios1011-download', 'missing host profile marker'
-for key in ('TIOExperimentalOTAQueryRouting','TIOExperimentalOTABuild','UISupportedDevices'):
+for key in ('TIOExperimentalOTABuild','UISupportedDevices'):
     assert key not in info, 'unexpected '+key
 assert not (app/'TurboWeReadCandidate.zip').exists(), 'unexpected firmware resource'
 digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
@@ -266,7 +256,7 @@ PY
 else
 # The full 1.0.21 host (C21): its own package.mjs profile, guard and markers.
 full_profile=ios1021
-# C20: fail closed unless the addon carries this host's guards (package.mjs repeats this check).
+# Fail closed unless the addon carries this host's gate and guard (package.mjs repeats this check).
 run_logged full-1021-guard full_1021_guard "$ADDON"
 # Route patch (pinned output) and the ZIP; no device-model list, so no product argument.
 run_logged addon-unchanged addon_unchanged
@@ -280,16 +270,14 @@ import hashlib,json,pathlib,plistlib,sys,zipfile
 out=pathlib.Path(sys.argv[1])
 profile=sys.argv[4]
 assert profile=='ios1021', 'unknown full host profile'
-routing='ios1021-tmg-loopback-flash-gated-arm-required'
 with (out/'report.json').open() as stream: report=json.load(stream)
 assert report['status']=='SIGNED_NOT_DEVICE_ACCEPTED', 'unexpected package status'
 assert report['release']==sys.argv[2], 'unexpected release'
-assert report['hostProfile']==profile and report['flashAuthorized'] is False and report['flashArmed'] is False, 'unexpected host profile, flash authorization or arm state'
+assert report['hostProfile']==profile and report['flashAuthorized'] is False, 'unexpected host profile or flash authorization'
 assert report['routePatched'] is True and report['firmwareBundled'] is True, 'full host build lacks its route patch or ZIP'
 app=out/'Payload/Runner.app'
 info=plistlib.loads((app/'Info.plist').read_bytes())
 assert info.get('TIOHostProfile')==profile, 'missing full host profile marker'
-assert info.get('TIOExperimentalOTAQueryRouting')==routing, 'missing routing marker'
 assert 'UISupportedDevices' not in info, 'unexpected UISupportedDevices'
 assert (app/'TurboWeReadCandidate.zip').exists(), 'missing firmware resource'
 # The ZIP inside the signed IPA is the selected release's ZIP, byte for byte.

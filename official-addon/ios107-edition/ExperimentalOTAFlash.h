@@ -40,36 +40,17 @@ BOOL TIOOTAFlashBlockCallSnapshot(id call, NSDictionary *_Nullable *_Nullable te
 // Dry-run bookkeeping after a refusal: records the refused business-9 frame's shape for
 // TIOOTAFlashStatus (refusedFrames, lastRefusedFrame). Never changes a verdict; never throws.
 void TIOOTAFlashNoteRefused(id call);
-BOOL TIOPhoneOTAReadAllowed(NSData *data);
-// Full 1.0.21 host (profile ios1021, C20 onward): TMG flashing is disarmed until armed.
-// TIOOTAFlashBlockCall delegates to TIOOTADisarmedBlockCall there while disarmed,
-// whatever TIO_* flags the build has; armed, it takes the gate path. Only business-9
-// frames read the arm record, and not once a transfer has started (gate stage 2).
-FOUNDATION_EXPORT NSString *const TIOOTAArmGuardMarker;
-// Full 1.0.21 host (profile ios1021): the same disarm rules, its own arm record. Its load info
-// carries this marker next to TIOOTAArmGuardMarker, and the 1021-full packager requires both strings.
-FOUNDATION_EXPORT NSString *const TIOOTAArm1021GuardMarker;
-// YES on the full 1.0.21 host: the pinned image with its profile marker, or either of its
-// Info.plist markers alone. NO on the download-only host and on any other build.
-BOOL TIOOTAArmRequired(void);
-// While disarmed: business 9 passes only the empty reads 1, 2, 11 and the size query 3 for the bundled ZIP.
-BOOL TIOOTADisarmedReadAllowed(NSData *data);
-// YES when the frame's raw JSON text has no backslash and names the quoted key exactly once
-// (NSJSONSerialization silently keeps one value of a repeated key).
-BOOL TIOOTARawJSONNamesKeyOnce(NSData *data,NSString *key);
-BOOL TIOOTADisarmedBlockCall(id call);
-// The arm record (addon prefs, bound to this addon image). Arm needs the full host, its
-// routing marker, the pinned image and transfer protection; it authorizes nothing by itself.
-BOOL TIOOTAFlashArmed(void);
-BOOL TIOOTAFlashArm(NSError **error);
-// Runs on the main thread (hops there synchronously from any other thread), like the guard.
-// Refused (NO), record kept, whenever the gate refuses to cancel (stage 2, a started or
-// completed transfer, or stage 3, a failed one; either lasts until the app restarts);
-// otherwise revokes a stage 1 grant and clears the record.
-BOOL TIOOTAFlashDisarm(void);
-// armRequired, armed, armedForTransfer (armed plus flash build, host marker and image), armedAt.
-NSDictionary *TIOOTAFlashArmStatus(void);
+// Full 1.0.21 host (profile ios1021): TIOOTAFlashBlockCall sends every business-9 frame through
+// the one gate there, whatever TIO_* flags the build has. At stage 0 the gate passes only the empty
+// reads 1, 2, 11 and the size query 3 for the bundled ZIP; types 4 to 7 need TIOOTAFlashAuthorize.
+// The 1021-full packager requires this marker in the addon.
+FOUNDATION_EXPORT NSString *const TIOOTAFullHostGuardMarker;
+// YES on the full 1.0.21 host: the pinned image with its profile marker, or the profile marker alone.
+// NO on the download-only host and on any other build.
+BOOL TIOOTAFullHost(void);
 void TIOOTAFlashObserveEvent(NSDictionary *event);
+// Stage 1 for 15 minutes: needs the exact full host and its pinned image, the feed, the hook protection,
+// the interlocks, Auto Update read as off, an accepted version read, and every pinned member in the folder.
 BOOL TIOOTAFlashAuthorize(NSError **error);
 BOOL TIOOTAFlashCancel(void);
 NSDictionary *TIOOTAFlashStatus(void);

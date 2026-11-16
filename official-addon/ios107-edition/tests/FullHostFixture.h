@@ -9,19 +9,13 @@
 #define TFH_BUILD @"1"
 #define TFH_NEXT_BUILD @"2"
 #define TFH_PROFILE @"ios1021"
-#define TFH_ROUTING TIO_OTA_1021_ROUTING_MARKER
 #define TFH_UUID @"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"
-#define TFH_ARM_KEY @"otaFlashArmRecord.ios1021"
 #define TFH_HOST_MATCHES TIOOTA1021HostMatches
-// Values that must never select or arm this host: neighbouring profile names, a near-miss routing
-// marker, the retired arm record key of the 1.0.11 full host (C15-C18 phones may still hold a record
-// under it), and app versions and image UUIDs that are not this host's.
+// Values that must never select this host: a neighbouring profile name and app versions that are not this host's.
 #define TFH_NEAR_PROFILE @"ios1022"
-#define TFH_NEAR_ROUTING @"ios1022-tmg-loopback-flash-gated-arm-required"
-#define TFH_RETIRED_ARM_KEY @"otaFlashArmRecord.ios1011"
 #define TFH_NEAR_VERSION @"1.0.20"
 #define TFH_NEAR_BUILD @"0"
-// Near misses of this host's profile marker (and arm record host): case, padding, a NUL, an O for a 0,
+// Near misses of this host's profile marker: case, padding, a NUL, an O for a 0,
 // full-width, a zero-width space, suffixes, a prefix, other types, and neighbouring and retired names.
 static inline NSArray *TFHMarkerMisses(void){
     return @[@"IOS" TFH_D,@"Ios" TFH_D,@"ios" TFH_D " ",@" ios" TFH_D,@"ios" TFH_D "\n",[TFH_PROFILE stringByAppendingFormat:@"%C",(unichar)0],
@@ -29,9 +23,7 @@ static inline NSArray *TFHMarkerMisses(void){
         @"ios" TFH_D "-full",@"ios" TFH_D "0",[TFH_PROFILE substringToIndex:6],@"",@"ios1020",TFH_NEAR_PROFILE,@"ios1021-download",@"ios1011",
         NSNull.null,@TFH_N,@YES,@[TFH_PROFILE],@{TFH_PROFILE:@YES},[TFH_PROFILE dataUsingEncoding:NSUTF8StringEncoding],[NSURL URLWithString:TFH_PROFILE]];
 }
-// The arm refusal for a build that is not the full host (ExperimentalOTAFlash.m TIOOTAFlashArm).
-#define TFH_ARM_REFUSED @"只有完整版 1.0.21 宿主需要并允许启用 TMG 刷写；未启用。"
 static inline NSDictionary *TFHFullInfo(void){
     return @{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":TFH_VERSION,@"CFBundleVersion":TFH_BUILD,
-        @"TIOHostProfile":TFH_PROFILE,@"TIOExperimentalOTAQueryRouting":TFH_ROUTING};
+        @"TIOHostProfile":TFH_PROFILE};
 }

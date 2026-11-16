@@ -1,7 +1,7 @@
-// The real OTA wizard and gate on the armed full 1.0.21 host (tests/FullHostFixture.h), on the real
-// candidate files: the version read, its two-minute window, the accepted versions, the folder check,
-// Auto Update, the idle and health checks, one authorization, the peer, and every slice.
-// tests/TMG4WizardArmTests.m runs the arm step itself around the same gate. No device I/O.
+// The real OTA wizard and gate on the full 1.0.21 host (tests/FullHostFixture.h), on the real
+// candidate files: the version read (kept until a disconnect call or a later reply replaces it), the
+// accepted versions, the folder check, Auto Update, the idle and health checks, one authorization,
+// the peer, every slice, and the stages that cannot be cancelled. No device I/O.
 #import "TMG4WizardHost.h"
 #import "FullHostFixture.h"
 #import "OTAWizardModel.h"
@@ -36,20 +36,20 @@ static NSData *Frame(unsigned type,id json,NSData *binary){NSMutableData *d=[NSM
 static void Observe(NSString *version,BOOL confirmed,NSString *peer){TIOOTAFlashObserveEvent(@{@"eventType":@"messageReceived",@"message":@{@"businessId":@9,@"deviceId":peer,@"payload":Frame(1,@{@"OsVersion":version,@"OtaValidationConfirmed":@(confirmed)},nil)}});}
 static BOOL Send(unsigned type,id json,NSData *binary,NSString *peer){return !TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@9,@"deviceId":peer,@"payload":Frame(type,json,binary)}});}
 static NSDictionary *Snapshot(BOOL directory){return TIOOTAWizardSnapshot(@{@"flash":TIOOTAFlashStatus(),@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"prefs":Prefs?:@{},@"packageOK":@YES,@"directoryOK":@(directory)});}
-// Folder collision: the official folder holds other bytes of the same name (RayNeo's own download of the
+// Folder collision: the official folder holds other bytes of the same names (RayNeo's own download of the
 // target version, here the stock ZIP of the release's base, argv[2]/stock). Authorization is refused with the
-// folder message, nothing is modified, and putting the release back makes it pass again.
+// member message, nothing is modified, and putting the release back makes it pass again.
 static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSError **)){
     NSFileManager *fm=NSFileManager.defaultManager;NSString *aside=[directory stringByAppendingString:@".release"];
     assert([fm moveItemAtPath:directory toPath:aside error:nil]&&[fm copyItemAtPath:stock toPath:directory error:nil]);
     NSError *e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
-    NSString *want=[NSString stringWithFormat:TIOText(@"ota.directory.foreign"),[@"ota/" stringByAppendingString:TRPFolder],TIO_FW_NAME,@""];
-    assert([e.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
+    NSString *tail=[NSString stringWithFormat:TIOText(@"ota.identity.payloadMismatch"),@"",TIO_FW_NAME];
+    assert([e.localizedDescription hasSuffix:tail]);
     NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
     NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==TIO_FW_MEMBER_PINS.count&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
     for(NSString *name in before)assert([[NSData dataWithContentsOfFile:[directory stringByAppendingPathComponent:name]] isEqual:[NSData dataWithContentsOfFile:[stock stringByAppendingPathComponent:name]]]);
-    // A partial download (a member missing, a member cut short, or an empty folder) is not called foreign:
-    // it keeps the incomplete-download message, and it is refused just the same.
+    // A partial download (a member missing, a member cut short, an empty folder) or one with an extra file:
+    // refused just the same, with the member message, and the authorization and the folder check agree.
     for(NSString *damage in @[@"missing",@"truncated",@"empty",@"extra"]){
         assert([fm removeItemAtPath:directory error:nil]&&[fm copyItemAtPath:stock toPath:directory error:nil]);
         NSString *victim=[directory stringByAppendingPathComponent:@"smf.json"];
@@ -58,24 +58,26 @@ static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSErro
         if([damage isEqual:@"empty"])for(NSString *n in [fm contentsOfDirectoryAtPath:directory error:nil])assert([fm removeItemAtPath:[directory stringByAppendingPathComponent:n] error:nil]);
         if([damage isEqual:@"extra"])assert([[NSData dataWithBytes:"x" length:1] writeToFile:[directory stringByAppendingPathComponent:@"fota_1.bin"] atomically:NO]);
         e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
-        assert(e&&![e.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
-        direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct));
-        NSError *plain=nil;assert(!TIOCheckExperimentalOTADirectory([NSURL fileURLWithPath:directory],&plain)&&[direct.localizedDescription isEqual:plain.localizedDescription]);
+        assert(e&&[e.localizedDescription hasSuffix:tail]);
+        direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
     }
-    // A missing folder: refused, with the ordinary message.
-    assert([fm removeItemAtPath:directory error:nil]);direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&direct&&![direct.localizedDescription hasPrefix:[want substringToIndex:want.length-3]]);
+    // A missing folder: refused, with the folder message.
+    assert([fm removeItemAtPath:directory error:nil]);direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&direct&&![direct.localizedDescription hasSuffix:tail]);
     assert([fm moveItemAtPath:aside toPath:directory error:nil]);
     assert(TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
+    // The release with an extra file beside it passes: only the pinned members are read and sent.
+    NSString *extra=[directory stringByAppendingPathComponent:@"fota_1.bin"];
+    assert([[NSData dataWithBytes:"x" length:1] writeToFile:extra atomically:NO]&&TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
+    assert([fm removeItemAtPath:extra error:nil]);
 }
 static void Refused(void){NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e)&&e&&[TIOOTAFlashStatus()[@"stage"]intValue]==0);}
 int main(int argc,char **argv){@autoreleasepool{
  assert(argc==4);NSString *version=@(argv[3]);assert([TRPAccepted() containsObject:version]&&[TIO_FW_ACCEPTED_OS_VERSIONS isEqual:TRPAccepted()]&&[TIO_FW_OTA_FOLDER isEqual:TRPFolder]);
  Home=[@(argv[2])stringByAppendingPathComponent:NSUUID.UUID.UUIDString];NSString *directory=[Home stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TRPFolder]];NSFileManager *fm=NSFileManager.defaultManager;
  assert([fm createDirectoryAtPath:[directory stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil]);assert([fm copyItemAtPath:@(argv[1]) toPath:directory error:nil]);
- Host=TFHFullInfo();Image=FakeImage(TFH_UUID);[TMG4ArmStore() removeAllObjects];
+ Host=TFHFullInfo();Image=FakeImage(TFH_UUID);
  Prefs=@{@"fixture_ota_firmware_auto_update":@NO};TIOOTARecordTransportHookReady();assert(TIOOTAFlashBuild()&&TIOOTAFlashProtected());assert(TIOOTAScopedSenderCount()==0);
- // Armed first: every check below is the gate's own (the arm step is tests/TMG4WizardArmTests.m).
- assert(TIOOTAArmRequired()&&TIOOTAFlashArm(nil)&&[TIOOTAFlashArmStatus()[@"armedForTransfer"] boolValue]);
+ assert(TIOOTAFullHost()&&[TIOOTAFlashStatus()[@"fullHost"] boolValue]&&[Snapshot(NO)[@"downloadRequired"] boolValue]);
  // No TTL/TLG/TDG or nav reply/capability has been provided. The real business-9
  // observer and authorization policy must still permit the old installed OS.
  assert([Snapshot(NO)[@"canDownload"]boolValue]);assert(![Snapshot(NO)[@"canAuthorize"]boolValue]);Refused();
@@ -91,14 +93,27 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(!TIOOTAFlashBlockCall(@{@"method":@"rayneonet_sendMessage",@"arguments":@{@"businessId":@255,@"deviceId":@"fixture-peer",@"payload":Frame(4,@{@"Mode":@4},nil)}}));
  assert(Send(1,nil,nil,@"fixture-peer"));
  Observe(version,YES,@"fixture-peer");assert([TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]);assert([Snapshot(YES)[@"canAuthorize"]boolValue]);
- Now+=120;assert([Snapshot(YES)[@"canAuthorize"]boolValue]);Now+=.001;assert(![Snapshot(YES)[@"canAuthorize"]boolValue]);Refused();Observe(version,YES,@"fixture-peer");
+ // The read has no time limit: an hour later it still counts. A disconnect call clears it, and so does any later
+ // version reply that is not accepted.
+ Now+=3600;assert([Snapshot(YES)[@"canAuthorize"]boolValue]);
+ for(NSString *method in @[@"rayneonet_disconnect",@"rayneonet_unbindDevice",@"rayneonet_unpair"]){
+  TIOOTAFlashBlockCall(@{@"method":method,@"arguments":@{}});assert(![TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]&&![Snapshot(YES)[@"canAuthorize"]boolValue]);Refused();
+  Observe(version,YES,@"fixture-peer");assert([Snapshot(YES)[@"canAuthorize"]boolValue]);
+ }
  Observe(version,NO,@"fixture-peer");Refused();Observe(@"Strix OS 1.0.3.15",YES,@"fixture-peer");Refused();
  for(NSString *other in TRPKnown())if(![TRPAccepted() containsObject:other]){Observe(other,YES,@"fixture-peer");assert(![TIOOTAFlashStatus()[@"recentTargetVersionRead"]boolValue]);Refused();}
  Observe(version,YES,@"fixture-peer");
  Collide(directory,[@(argv[2]) stringByAppendingPathComponent:@"stock"],^BOOL(NSError **e){return TIOOTAFlashAuthorize(e);});
  Prefs=@{};Refused();Prefs=@{@"fixture_ota_firmware_auto_update":@YES};Refused();Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
  Idle=NO;Refused();Idle=YES;Healthy=NO;Refused();Healthy=YES;
- NSDictionary *validHost=Host;Host=@{};Refused();Host=validHost;
+ // The host is checked once, here: another build, a missing marker or another image refuses authorization.
+ NSDictionary *validHost=Host;Host=@{};Refused();
+ for(NSArray *kv in @[@[@"CFBundleVersion",TFH_NEXT_BUILD],@[@"TIOHostProfile",TFH_NEAR_PROFILE],@[@"CFBundleShortVersionString",TFH_NEAR_VERSION]]){
+  NSMutableDictionary *m=[validHost mutableCopy];m[kv[0]]=kv[1];Host=m;NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e));
+  assert([e.localizedDescription isEqual:TIOText(@"ota.authorize.host")]||[kv[0] isEqual:@"TIOHostProfile"]);assert([TIOOTAFlashStatus()[@"stage"]intValue]==0);
+ }
+ Host=validHost;const struct mach_header *pinned=Image;Image=FakeImage(@"00000000-0000-0000-0000-000000000001");
+ {NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e)&&[e.localizedDescription isEqual:TIOText(@"ota.authorize.host")]);}Image=pinned;
  NSString *ap=[directory stringByAppendingPathComponent:@"nuttx_ap.bin"];NSMutableData *bytes=[[NSData dataWithContentsOfFile:ap]mutableCopy];NSData *original=[bytes copy];((uint8_t *)bytes.mutableBytes)[50]^=1;assert([bytes writeToFile:ap atomically:YES]);Refused();assert([original writeToFile:ap atomically:YES]);
  // One explicit confirmation boundary invokes the existing authorizer once.
  // Stage1 then makes the wizard's authorize action unavailable; no new UI or
@@ -112,5 +127,12 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(Send(5,@{@"OtaVersion":TRPTarget},nil,@"fixture-peer"));assert(Send(6,manifest,nil,@"fixture-peer"));unsigned slices=0;NSUInteger total=0;
  for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)],@"fixture-peer"));slices++;total+=n;}}
  assert(slices==TIO_FW_PAYLOAD_SLICES&&total==TIO_FW_PAYLOAD_BYTES);assert([TIOOTAFlashStatus()[@"validatedSlices"]unsignedIntegerValue]==slices);
- [fm removeItemAtPath:Home error:nil];[TMG4ArmStore() removeAllObjects];printf("PASS real OTA wizard/gate on the armed full " TFH_NAME " host from %s: fresh validated business9, exact candidate and all slices, one authorization transition, no feature caps, stale/hash/peer/idle refusals; deviceIO=false\n",version.UTF8String);
+ // Stage 2 cannot be cancelled, not even by a disconnect call; an unexpected frame moves it to stage 3, which
+ // lasts until the app restarts: no cancel, no new authorization, every transfer frame refused, reads still pass.
+ assert(!TIOOTAFlashCancel());TIOOTAFlashBlockCall(@{@"method":@"rayneonet_disconnect",@"arguments":@{}});assert([TIOOTAFlashStatus()[@"stage"]intValue]==2);
+ Observe(version,YES,@"fixture-peer");
+ assert(!Send(4,@{@"Mode":@2},nil,@"fixture-peer"));assert([TIOOTAFlashStatus()[@"stage"]intValue]==3);
+ assert(!TIOOTAFlashCancel()&&!TIOOTAFlashAuthorize(nil)&&[TIOOTAFlashStatus()[@"stage"]intValue]==3);
+ assert(!Send(6,manifest,nil,@"fixture-peer")&&Send(1,nil,nil,@"fixture-peer")&&Send(3,@{@"OtaSize":@(TIO_FW_ZIP_BYTES)},nil,@"fixture-peer"));
+ [fm removeItemAtPath:Home error:nil];printf("PASS real OTA wizard/gate on the full " TFH_NAME " host from %s: validated business9 read, exact candidate and all slices, one authorization transition, no feature caps, host/hash/peer/idle refusals, stages 2 and 3 not cancellable; deviceIO=false\n",version.UTF8String);
 }return 0;}

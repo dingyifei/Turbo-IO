@@ -67,26 +67,26 @@ NSDictionary *TIOFirmwareExportSafetyModel(NSString *profile,BOOL hookInstalled,
     else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
     return m;
 }
-NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady,BOOL stockTrafficSeen,BOOL armed,NSDictionary *preferences){
+NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL gateReady,BOOL stockTrafficSeen,BOOL authorized,NSDictionary *preferences){
     // Green needs runtime evidence, as on the download-only host: a stock rayneonet call has passed
-    // the hook in this launch. Until then a disarmed guard is amber (fwexport.guard.waiting).
-    NSString *guardLevel=!armGuardReady?@"danger":armed||!stockTrafficSeen?@"warn":@"ok";
-    NSString *guardKey=!armGuardReady?@"fwexport.guard.off":armed?@"fwexport.guard.armed":!stockTrafficSeen?@"fwexport.guard.waiting":@"fwexport.guard.disarmed";
+    // the hook in this launch. Until then a locked gate is amber (fwexport.guard.waiting).
+    NSString *guardLevel=!gateReady?@"danger":authorized||!stockTrafficSeen?@"warn":@"ok";
+    NSString *guardKey=!gateReady?@"fwexport.guard.off":authorized?@"fwexport.guard.authorized":!stockTrafficSeen?@"fwexport.guard.waiting":@"fwexport.guard.locked";
     TIOAutoUpdateReading autoUpdate=TIOAutoUpdateReadingFor(preferences);
     NSString *autoLevel=autoUpdate==TIOAutoUpdateReadingOff?@"ok":autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"danger";
     NSString *level=[guardLevel isEqual:@"danger"]||autoUpdate==TIOAutoUpdateReadingOn?@"danger":
         [guardLevel isEqual:@"warn"]||autoUpdate==TIOAutoUpdateReadingMissing?@"warn":@"ok";
     NSMutableDictionary *m=[@{
-        @"guardActive":@(armGuardReady),@"stockTrafficSeen":@(stockTrafficSeen),@"armed":@(armGuardReady&&armed),@"guardLevel":guardLevel,
+        @"guardActive":@(gateReady),@"stockTrafficSeen":@(stockTrafficSeen),@"authorized":@(gateReady&&authorized),@"guardLevel":guardLevel,
         @"guardKey":guardKey,@"guardDetail":[guardKey stringByAppendingString:@".detail"],
         @"autoUpdate":TIOAutoUpdateReadingName(autoUpdate),@"autoLevel":autoLevel,
         @"autoKey":[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)],
         @"autoDetail":[[@"fwexport.auto." stringByAppendingString:TIOAutoUpdateReadingName(autoUpdate)] stringByAppendingString:@".detail"],
         @"safe":@([guardLevel isEqual:@"ok"]&&autoUpdate==TIOAutoUpdateReadingOff),@"level":level,
     } mutableCopy];
-    if(!armGuardReady)m[@"bannerKey"]=@"fwexport.banner.unguarded";
+    if(!gateReady)m[@"bannerKey"]=@"fwexport.banner.unguarded";
     else if(autoUpdate==TIOAutoUpdateReadingOn)m[@"bannerKey"]=@"fwexport.banner.autoOn";
-    else if(armed)m[@"bannerKey"]=@"fwexport.banner.armed";
+    else if(authorized)m[@"bannerKey"]=@"fwexport.banner.authorized";
     else if(!stockTrafficSeen)m[@"bannerKey"]=@"fwexport.banner.noTraffic";
     else if(autoUpdate==TIOAutoUpdateReadingMissing)m[@"bannerKey"]=@"fwexport.banner.autoMissing";
     return m;

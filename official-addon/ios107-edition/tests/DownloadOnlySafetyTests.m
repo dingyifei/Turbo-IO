@@ -139,33 +139,33 @@ int main(void){@autoreleasepool{
     // Read only: the model never changes the preferences it is given.
     NSMutableDictionary *prefs=[@{@"a_ota_firmware_auto_update":@YES} mutableCopy];NSDictionary *before=[prefs copy];
     TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,prefs);assert([prefs isEqual:before]);
-    // Full host (C15 onward): the guard row is the arm state. Disarmed is green only once a stock call has
-    // passed the hook (amber "waiting" before that, as on the download-only host), armed amber, no arm guard red.
-    NSDictionary *disarmed=TIOFirmwareExportSafetyModelFull(YES,YES,NO,off);
-    assert([disarmed[@"guardLevel"] isEqual:@"ok"]&&[disarmed[@"guardKey"] isEqual:@"fwexport.guard.disarmed"]&&[disarmed[@"safe"] boolValue]&&!disarmed[@"bannerKey"]);
-    assert([disarmed[@"armed"] isEqual:@NO]&&[disarmed[@"guardActive"] isEqual:@YES]&&[disarmed[@"level"] isEqual:@"ok"]);Localized(disarmed);
+    // Full host: the guard row is the flash gate. Locked (no flash authorization open) is green only once a stock call has
+    // passed the hook (amber "waiting" before that, as on the download-only host), an open authorization amber, no gate red.
+    NSDictionary *locked=TIOFirmwareExportSafetyModelFull(YES,YES,NO,off);
+    assert([locked[@"guardLevel"] isEqual:@"ok"]&&[locked[@"guardKey"] isEqual:@"fwexport.guard.locked"]&&[locked[@"safe"] boolValue]&&!locked[@"bannerKey"]);
+    assert([locked[@"authorized"] isEqual:@NO]&&[locked[@"guardActive"] isEqual:@YES]&&[locked[@"level"] isEqual:@"ok"]);Localized(locked);
     NSDictionary *quiet=TIOFirmwareExportSafetyModelFull(YES,NO,NO,off);
     assert([quiet[@"guardLevel"] isEqual:@"warn"]&&[quiet[@"guardKey"] isEqual:@"fwexport.guard.waiting"]&&![quiet[@"safe"] boolValue]);
-    assert([quiet[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]&&[quiet[@"armed"] isEqual:@NO]&&[quiet[@"level"] isEqual:@"warn"]&&[quiet[@"stockTrafficSeen"] isEqual:@NO]);Localized(quiet);
+    assert([quiet[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]&&[quiet[@"authorized"] isEqual:@NO]&&[quiet[@"level"] isEqual:@"warn"]&&[quiet[@"stockTrafficSeen"] isEqual:@NO]);Localized(quiet);
     assert([TIOFirmwareExportSafetyModelFull(YES,NO,NO,@{})[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]);
     assert([TIOFirmwareExportSafetyModelFull(YES,NO,NO,@{@"a_ota_firmware_auto_update":@YES})[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
     for(int seen=0;seen<2;seen++){
-        NSDictionary *armed=TIOFirmwareExportSafetyModelFull(YES,seen,YES,off);
-        assert([armed[@"guardLevel"] isEqual:@"warn"]&&[armed[@"guardKey"] isEqual:@"fwexport.guard.armed"]&&![armed[@"safe"] boolValue]);
-        assert([armed[@"bannerKey"] isEqual:@"fwexport.banner.armed"]&&[armed[@"armed"] isEqual:@YES]&&[armed[@"level"] isEqual:@"warn"]);Localized(armed);
+        NSDictionary *authorized=TIOFirmwareExportSafetyModelFull(YES,seen,YES,off);
+        assert([authorized[@"guardLevel"] isEqual:@"warn"]&&[authorized[@"guardKey"] isEqual:@"fwexport.guard.authorized"]&&![authorized[@"safe"] boolValue]);
+        assert([authorized[@"bannerKey"] isEqual:@"fwexport.banner.authorized"]&&[authorized[@"authorized"] isEqual:@YES]&&[authorized[@"level"] isEqual:@"warn"]);Localized(authorized);
         assert([TIOFirmwareExportSafetyModelFull(YES,seen,YES,@{@"a_ota_firmware_auto_update":@YES})[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
-        assert([TIOFirmwareExportSafetyModelFull(YES,seen,YES,@{})[@"bannerKey"] isEqual:@"fwexport.banner.armed"]);
+        assert([TIOFirmwareExportSafetyModelFull(YES,seen,YES,@{})[@"bannerKey"] isEqual:@"fwexport.banner.authorized"]);
     }
     assert([TIOFirmwareExportSafetyModelFull(YES,YES,NO,@{})[@"bannerKey"] isEqual:@"fwexport.banner.autoMissing"]);
     for(NSDictionary *p in @[off,@{},@{@"a_ota_firmware_auto_update":@YES}])for(int a=0;a<2;a++)for(int seen=0;seen<2;seen++){
-        // No arm guard in force: red, never armed, whatever the stored arm record or the traffic says.
+        // No gate in force: red, never authorized, whatever the gate stage or the traffic says.
         NSDictionary *m=TIOFirmwareExportSafetyModelFull(NO,seen,a,p);Localized(m);
-        assert([m[@"guardKey"] isEqual:@"fwexport.guard.off"]&&[m[@"bannerKey"] isEqual:@"fwexport.banner.unguarded"]&&[m[@"level"] isEqual:@"danger"]&&[m[@"armed"] isEqual:@NO]&&![m[@"safe"] boolValue]);
+        assert([m[@"guardKey"] isEqual:@"fwexport.guard.off"]&&[m[@"bannerKey"] isEqual:@"fwexport.banner.unguarded"]&&[m[@"level"] isEqual:@"danger"]&&[m[@"authorized"] isEqual:@NO]&&![m[@"safe"] boolValue]);
     }
-    for(NSString *k in @[@"fwexport.host.full",@"hub.status.firmwareExport.armed",@"hub.status.firmwareExport.disarmed"]){
+    for(NSString *k in @[@"fwexport.host.full",@"hub.status.firmwareExport.authorized",@"hub.status.firmwareExport.locked"]){
         assert(![TIOTextForLanguage(k,TIOLangEnglish) isEqual:k]&&![TIOTextForLanguage(k,TIOLangChinese) isEqual:k]);
     }
-    // The download-only model never carries an arm state.
-    assert(!TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,off)[@"armed"]);
-    NSLog(@"PASS: download-only safety: %zu hook target failures leave the guard off and the panel unsafe; guard row ok/warn/danger on stock traffic; Auto Update off/on/missing with worst key wins; read only; full 1.0.11 guard row shows the arm state",sizeof bad/sizeof *bad);
+    // The download-only model never carries a flash authorization state.
+    assert(!TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,off)[@"authorized"]);
+    NSLog(@"PASS: download-only safety: %zu hook target failures leave the guard off and the panel unsafe; guard row ok/warn/danger on stock traffic; Auto Update off/on/missing with worst key wins; read only; full 1.0.21 guard row shows the flash gate state",sizeof bad/sizeof *bad);
 }return 0;}

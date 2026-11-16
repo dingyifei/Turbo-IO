@@ -58,15 +58,15 @@ FOUNDATION_EXPORT NSString *TIOAutoUpdateReadingName(TIOAutoUpdateReading state)
 // The panel never writes the host's preferences; it only reads them.
 FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModel(NSString *_Nullable profile, BOOL hookInstalled, BOOL transportHookReady, BOOL stockTrafficSeen, NSDictionary *_Nullable preferences);
 
-// The same panel model on the full 1.0.21 host (ios1021), where the
-// guard is the arm state rather than the download-only refusal. guardActive is
-// armGuardReady (the transport hook ready and the arm requirement in force).
-//   "ok"     disarmed and a stock rayneonet call has passed the hook in this launch:
-//            every OTA transfer frame is refused (fwexport.guard.disarmed)
-//   "warn"   armed on this install: the TMG wizard gate decides (fwexport.guard.armed);
-//            or disarmed with no stock call seen yet (fwexport.guard.waiting)
-//   "danger" the arm guard is not in force (fwexport.guard.off)
-// Banner order: unguarded, Auto Update on, armed, no stock traffic, Auto Update not recorded.
-FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL armGuardReady, BOOL stockTrafficSeen, BOOL armed, NSDictionary *_Nullable preferences);
+// The same panel model on the full 1.0.21 host (ios1021), where the guard is the
+// flash gate rather than the download-only refusal. guardActive is gateReady (the
+// transport hook ready on the full host).
+//   "ok"     no flash authorization open and a stock rayneonet call has passed the hook in
+//            this launch: every OTA transfer frame is refused (fwexport.guard.locked)
+//   "warn"   a flash authorization is open: the TMG wizard gate decides (fwexport.guard.authorized);
+//            or no stock call seen yet (fwexport.guard.waiting)
+//   "danger" the gate is not in force (fwexport.guard.off)
+// Banner order: unguarded, Auto Update on, authorized, no stock traffic, Auto Update not recorded.
+FOUNDATION_EXPORT NSDictionary *TIOFirmwareExportSafetyModelFull(BOOL gateReady, BOOL stockTrafficSeen, BOOL authorized, NSDictionary *_Nullable preferences);
 
 NS_ASSUME_NONNULL_END
