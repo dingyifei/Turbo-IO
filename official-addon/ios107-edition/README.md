@@ -17,7 +17,7 @@ You build, sign and install the app yourself. No signed IPA is published. Agents
 | ZIP SHA-256 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
 | Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |
 
-TMG flashing stays disarmed on each install until you arm it in the wizard. C20 has not been checked on a device yet. [OTA.md](OTA.md) lists what is still unconfirmed.
+TMG flashing stays disarmed on each install until you arm it in the wizard. C20 flashed TMG12 on 2026-11-15 and passed the owner's first check. [OTA.md](OTA.md) lists what is still unconfirmed.
 
 The packager accepts only this stock 1.0.21 (1) input:
 

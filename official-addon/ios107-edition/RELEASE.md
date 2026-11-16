@@ -4,7 +4,7 @@ These are unofficial, high-risk builds. Flash only if you are a developer and ac
 
 ## Current release: C20 + TMG12
 
-Neither half has run on a device yet. Every check so far is offline or in the emulator. There is no `app/c20` or `fw/tmg12` tag yet.
+The owner installed C20 and flashed TMG12 on 2026-11-15. The glasses report Strix OS 1.0.6.11 with the update confirmed, and the owner's first check passed. Tags: `app/c20` and `fw/tmg12`. No full device checklist has been run yet.
 
 | | |
 |---|---|

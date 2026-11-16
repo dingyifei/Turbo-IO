@@ -25,7 +25,7 @@ Always use the phone build and the firmware as a pair.
 | Glasses must report | Strix OS 1.0.5.12 or 1.0.6.11 |
 | Build identity after the flash | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
 
-TMG12 is a candidate. It has not run on glasses yet; every check so far is offline or in the emulator. The pin is the `c20` entry in [releases.json](official-addon/ios107-edition/releases.json).
+TMG12 was flashed on 2026-11-15 and passed the owner's first check (tags `app/c20` and `fw/tmg12`). No full device checklist has been run yet. The pin is the `c20` entry in [releases.json](official-addon/ios107-edition/releases.json).
 
 To flash it, follow [OTA.md](official-addon/ios107-edition/OTA.md). Flash only this ZIP, and only if its SHA-256 matches the line above.
 

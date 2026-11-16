@@ -8,7 +8,7 @@ Agents never flash. The owner flashes, with the steps in [OTA.md](../official-ad
 
 ## Current release: TMG12
 
-**CANDIDATE-NOT-APPROVED.** TMG12 has not run on glasses. Every check so far is offline or in the emulator. There is no `fw/tmg12` tag yet. The phone build that flashes it is C20 (release `c20` in [releases.json](../official-addon/ios107-edition/releases.json)).
+TMG12 is on the owner's glasses: flashed from C20 on 2026-11-15, with the update confirmed after the first boot, and the owner's first check passed. It is tagged `fw/tmg12`. No full TMG12 device checklist has been run yet. The ZIP keeps its pinned file name, `CANDIDATE-NOT-APPROVED` included. The phone build that flashes it is C20 (release `c20` in [releases.json](../official-addon/ios107-edition/releases.json)).
 
 TMG12 is TMG11 ported to stock Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)).
 
@@ -149,7 +149,7 @@ Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. 
 3. `fw-build`: a plain build of the tree, then `tests/sensors_light_off_link_test.py`. With `--tree-zip ZIP` it compiles only and uses the given ZIP.
 4. `fw-audit`: `build.py --audit` of the tree ZIP.
 5. `fw-tests`: `test.py --firmware-only`.
-6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD (today `fw/tmg11`) with that tag's own `build.py` and pins.
+6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD (today `fw/tmg12`) with that tag's own `build.py` and pins.
 7. `source-audit`.
 
 A pass ends with `GATE PASS (firmware-only, plain build)`. Run it without `--tree-zip`.
