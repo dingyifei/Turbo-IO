@@ -101,15 +101,18 @@ Both are same-version flashes. The 1.0.6.11 installer compares no version, so it
 
 C18 cannot help. It accepts only glasses on 1.0.5.12.
 
+## Confirmed by the 2026-11-15 flash
+
+- C20 installed TMG12 over the phone link from 1.0.5.12. The glasses came back on Strix OS 1.0.6.11 and confirmed the update after the first boot.
+- RayNeo 1.0.21's update check and install requests matched what the gate expects (wire log).
+- RayNeo 1.0.21 unpacked the ZIP flat into `ota/Strix_OS_1.0.6.11`: the gate's folder check passed.
+- The owner's first check of the glasses and the phone passed.
+
 ## Not yet confirmed on a device
 
-- TMG12 has never run on glasses. Every check so far is offline or in the emulator.
-- The install of a 17-file 1.0.6.11 package over the phone link, and the glasses' confirm after the first boot.
-- That RayNeo 1.0.21's update check and install requests match what the gate expects.
-- That RayNeo 1.0.21 unpacks the ZIP flat into `ota/Strix_OS_1.0.6.11` instead of installing from the ZIP.
 - That RayNeo 1.0.21 downloads again when the folder already holds other files.
 - A same-version or stock flash on 1.0.6.11.
-- The C20 phone features on RayNeo AI 1.0.21.
+- A full TMG12 device checklist and the full set of C20 phone features.
 
 ## Why official updates are redirected
 
