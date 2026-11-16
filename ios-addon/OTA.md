@@ -46,7 +46,7 @@ The steps are the same for both packages. The first attempt is also the dry run.
    - If any other row fails, stop. Do not continue.
 7. **Download** step: tap **Open download for 15 min**. Then tap **Go to RayNeo**.
 8. In RayNeo › Glasses › Software version, tap Download. RayNeo offers "Turbo Menu TMG12 PRIVATE EXPERIMENT", or "Stock 1.0.6.11" if you picked stock. Wait for "Ready to install". Do not tap Start install yet. Go back to Turbo.
-9. "Downloaded package" shows a check mark and reads "All 16 files match" the package you picked.
+9. "Downloaded package" shows a check mark and reads "Every file matches TMG12", or "Every file matches Stock 1.0.6.11" with the stock package picked.
    - If it shows a red cross and a line that starts with a file name and "is missing from the…" (cut short on screen), see [Folder already in use](#folder-already-in-use-文件夹已被占用).
    - If the 15 minutes run out first, open the download window again and repeat step 8.
 10. Tap **Install** in the step bar at the top. "Glasses version read" must read "Read · <package> accepts it". If it reads "Read it on the RayNeo firmware page", tap **Fix**, then **Go to RayNeo** in the dialog. Open RayNeo › Glasses › Software version so it reads the glasses, then come back. The read has no time limit. It is cleared when the glasses disconnect or the app restarts. Each new report replaces it, and a report counts only if it names Strix OS 1.0.5.12 or 1.0.6.11 with the last update confirmed.
