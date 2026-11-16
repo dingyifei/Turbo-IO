@@ -54,8 +54,6 @@
       "HomeTabBridge.m",
       "Brightness.m",
       "LocalTranslationEntry.m",
-      "WatchRemoteAddon.m",
-      "WatchGlobalBridge.m",
       "camera-v1/CameraUI.m",
       "camera-v1/CameraLink.m",
       "camera-v1/CameraCapture.m",

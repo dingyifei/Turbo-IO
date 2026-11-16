@@ -22,7 +22,6 @@ static const TIOHubRowDefinition Rows[] = {
     {@"focus", @"timer", TIOHubSectionGlasses, @"", @""},
     {@"menuLayout", @"square.grid.3x3", TIOHubSectionGlasses, @"", @""},
     {@"brightness", @"sun.max", TIOHubSectionGlasses, @"", @""},
-    {@"watchRemote", @"applewatch", TIOHubSectionGlasses, @"", @"TGR1"},
     {@"developerApps", @"square.stack.3d.up", TIOHubSectionGlasses, @"", @"TAP1"},
     {@"dashboardEditor", @"rectangle.3.group", TIOHubSectionGlasses, @"", @"TCE1"},
     {@"language", @"textformat", TIOHubSectionGlasses, @"", @""},
@@ -109,7 +108,7 @@ static BOOL RowOnHost(NSString *key, BOOL downloadOnly, BOOL fullHost) {
 NSArray<NSDictionary *> *TIOHubCatalog(void) {return TIOHubCatalogForProfile(nil);}
 
 NSArray<NSDictionary *> *TIOHubCatalogForProfile(NSString *profile) {
-    BOOL downloadOnly = [profile isEqualToString:@"ios1011-download"];
+    BOOL downloadOnly = [profile isEqualToString:@"ios1021-download"];
     BOOL fullHost = [profile isEqualToString:@"ios1021"];
     NSMutableArray<NSDictionary *> *catalog = [NSMutableArray arrayWithCapacity:sizeof(Rows)/sizeof(Rows[0])];
     for (NSUInteger index = 0; index < sizeof(Rows)/sizeof(Rows[0]); index++) {

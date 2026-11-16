@@ -108,7 +108,7 @@ static void ProfileCases(void){
     for(id marker in misses){
         Host=With(Full,@"TIOHostProfile",marker);Image=Pinned;
         NSString *n=[NSString stringWithFormat:@"marker %@",Show(marker)];
-        Check("profile",[n stringByAppendingString:@" -> ios1021-download"],[TIOHostProfileFor(Image,Host) isEqual:@"ios1011-download"],YES);
+        Check("profile",[n stringByAppendingString:@" -> ios1021-download"],[TIOHostProfileFor(Image,Host) isEqual:@"ios1021-download"],YES);
         Check("profile",[n stringByAppendingString:@" not an OTA host"],TIOOTAHostProfile(Host)!=nil,NO);
         Check("profile",[n stringByAppendingString:@" download-only guard"],TIOOTADownloadOnlyHost(),YES);
         Check("profile",[n stringByAppendingString:@" not the full host"],TIOOTAFullHost(),NO);

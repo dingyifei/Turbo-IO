@@ -260,7 +260,7 @@ assert report['hostProfile']=='ios1021-download' and report['flashAuthorized'] i
 assert report['firmwareBundled'] is False and report['routePatched'] is False and report['experimentalOTA'] is False, 'download-only build carries OTA material'
 app=out/'Payload/Runner.app'
 info=plistlib.loads((app/'Info.plist').read_bytes())
-assert info.get('TIOHostProfile')=='ios1011-download', 'missing host profile marker'
+assert info.get('TIOHostProfile')=='ios1021-download', 'missing host profile marker'
 for key in ('TIOExperimentalOTABuild','UISupportedDevices'):
     assert key not in info, 'unexpected '+key
 assert not (app/'TurboWeReadCandidate.zip').exists() and not (app/'TurboStockFirmware.zip').exists(), 'unexpected firmware resource'

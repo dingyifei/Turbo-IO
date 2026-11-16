@@ -22,7 +22,6 @@ FOUNDATION_EXPORT void TMMusicPauseForVoice(void);
 - (void)showOnGlasses;
 - (void)hideGlasses;
 - (void)refreshNow;
-- (BOOL)watchRemoteAvailable;
 // Glasses test bench fixture (ds3 p2). Shows a made-up song on the glasses' music page through the normal TMU1 bridge. While it is up
 // the Spotify poll is off and the glasses' play/pause keys act on the demo song only. Only an OTA firmware stage blocks it (NO, status set).
 @property(nonatomic,readonly) BOOL benchActive;

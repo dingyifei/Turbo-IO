@@ -252,7 +252,7 @@ test('host profile table: the two 1.0.21 rows only; ios1021-download has no rout
   frameworks:{'RayneoNet.framework/RayneoNet':'d8befe5f3144d21e4725bc27791c55954a210ee11e5738c197dbb1c18350bfa3','Flutter.framework/Flutter':'4c16499adee04bf904f7795f98e983b9fb593fb93b607ca7941761c2949f0e9a'},
   routes:[['/xrlauncherapi/v1/signApi/gray/upgrade',46796656],['/xrlauncherhwapi/v1/signApi/gray/upgrade',37435136]],
   sourceIPASHA256:'7cecd8847944e118c24beba8d9ae7cb5d42387047e8570feb184dca7f60b8f4a',
-  routePatch:false,firmware:false,stripStaleSignature:true,runtimeMarker:'ios1011-download',packagingRevision:'APP1021-DOWNLOAD-ONLY-01'});
+  routePatch:false,firmware:false,stripStaleSignature:true,runtimeMarker:'ios1021-download',packagingRevision:'APP1021-DOWNLOAD-ONLY-01'});
  const n=HOST_PROFILES['ios1021-download'];
  assert.equal(n.routeProfile,undefined);assert.equal(n.fullHost,undefined);
  // The packager pin, the JS host matrix and the native header name the same UUID.
@@ -407,11 +407,11 @@ test('full host: Load installs the gate hook on the full host',()=>{
 test('download-only host: Load installs only the guard hook and sends nothing on its own',()=>{
  const src=f=>fs.readFileSync(new URL('./'+f,import.meta.url),'utf8');
  const addon=src('Addon.m'),load=addon.slice(addon.indexOf('static void Load(void)'));
- assert.match(load,/BOOL downloadOnly=\[TIOHostProfile\(\) isEqual:@"ios1011-download"\];/);
+ assert.match(load,/BOOL downloadOnly=\[TIOHostProfile\(\) isEqual:@"ios1021-download"\];/);
  // The profile uses the refusal's own host test (image OR packager marker) before the image-only
  // lookup, so Load installs the hook and the hub hides the full catalog whenever the refusal applies.
  const profile=addon.match(/NSString \*TIOHostProfile\(void\) \{([\s\S]*?)\n\}/);assert.ok(profile);
- assert.ok(profile[1].indexOf('if(TIOOTADownloadOnlyHost())return @"ios1011-download";')>0);
+ assert.ok(profile[1].indexOf('if(TIOOTADownloadOnlyHost())return @"ios1021-download";')>0);
  assert.ok(profile[1].indexOf('if(TIOOTADownloadOnlyHost())')<profile[1].indexOf('TIOHostProfileFor(MainImage()'));
  assert.match(load,/HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only/);
  assert.match(load,/if\(valid\)\{TIOInstallGlassesChannelHook\(\);TIOInstallTodoRuntime\(\);\}\n(?:\s*\/\/[^\n]*\n)*\s*else if\(downloadOnly\)TIOInstallGlassesChannelHook\(\);/);
@@ -419,9 +419,6 @@ test('download-only host: Load installs only the guard hook and sends nothing on
  // No addon-originated glasses frames on the download-only host.
  assert.equal([...addon.matchAll(/TIOLanguageFlagStart\(\)/g)].length,1);assert.match(load,/if\(!downloadOnly\)TIOLanguageFlagStart\(\);/);
  assert.equal([...addon.matchAll(/TIOClenchLabInstallRecovery\(\)/g)].length,1);assert.match(load,/if\(!downloadOnly\)TIOClenchLabInstallRecovery\(\);/);
- const watch=src('WatchRemoteAddon.m'),ctor=watch.slice(watch.indexOf('static void TIOWatchLoad(void)'));
- assert.ok(ctor.indexOf('if([TIOHostProfile() isEqual:@"ios1011-download"])return;')>=0);
- assert.ok(ctor.indexOf('if([TIOHostProfile() isEqual:@"ios1011-download"])return;')<ctor.indexOf('activate]'));
  // The guard row is green only when every part of the safety net is present. The
  // refusal is flag-independent (G1), so the predicate no longer asks for TIOOTAFlashBuild().
  const guard=addon.match(/BOOL TIOHostDownloadOnlyGuardActive\(void\) \{([\s\S]*?)\n\}/);assert.ok(guard);

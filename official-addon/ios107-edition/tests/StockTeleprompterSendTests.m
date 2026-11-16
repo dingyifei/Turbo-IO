@@ -426,7 +426,7 @@ int main(void){@autoreleasepool{
     PureCases(@(real));
     EdgeCases(Home);
     // 1.0.21 download-only host.
-    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.21",@"CFBundleVersion":@"1",@"TIOHostProfile":@"ios1011-download"};
+    Host=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":@"1.0.21",@"CFBundleVersion":@"1",@"TIOHostProfile":@"ios1021-download"};
     Image=FakeImage(TFH_UUID);
     HostCases(YES);TIOOTARecordTransportHookReady();HostCases(YES);
     BOOL flashBuild=TIOOTAFlashBuild(); // what test.py checks per flag set, as for ios1021-download-guard

@@ -177,7 +177,7 @@ enum {SectionPreview,SectionLayout,SectionTiles,SectionGlasses,SectionNotes,Sect
  if(p.section==SectionLayout){c.selectionStyle=UITableViewCellSelectionStyleNone;c.textLabel.text=nil;c.detailTextLabel.text=nil;[self embed:self.segmentsHost in:c top:TIOSpace2 bottom:TIOSpace2];return c;}
  if(p.section==SectionTiles){c.textLabel.text=TIOText(@"tmg4.tiles.title");c.detailTextLabel.text=TIOText(@"tmg4.tiles.instructions");c.accessoryType=UITableViewCellAccessoryDisclosureIndicator;c.accessibilityIdentifier=@"layout-tiles";}
  else if(p.section==SectionGlasses){c.textLabel.text=self.link.busy?TIOText(@"正在与眼镜通信…"):TIOText(@"读取眼镜布局");c.detailTextLabel.text=self.link.note;c.imageView.image=[UIImage systemImageNamed:@"arrow.clockwise"];c.accessibilityIdentifier=@"layout-read";c.userInteractionEnabled=!self.link.busy;}
- else{c.textLabel.text=TIOText(@"只调整菜单排版");c.detailTextLabel.text=TIOText(@"入口顺序、实体按键和 Apple Watch 遥控不变。眼镜保存后重启仍生效；首次升级默认三排。切换不会退出当前应用或唤醒屏幕，回菜单后查看。旧固件必须先更新 TMG4；无能力回执不会发送修改。");c.selectionStyle=UITableViewCellSelectionStyleNone;c.userInteractionEnabled=NO;}
+ else{c.textLabel.text=TIOText(@"只调整菜单排版");c.detailTextLabel.text=TIOText(@"入口顺序和实体按键不变。眼镜保存后重启仍生效；首次升级默认三排。切换不会退出当前应用或唤醒屏幕，回菜单后查看。旧固件必须先更新 TMG4；无能力回执不会发送修改。");c.selectionStyle=UITableViewCellSelectionStyleNone;c.userInteractionEnabled=NO;}
  return c;
 }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p{

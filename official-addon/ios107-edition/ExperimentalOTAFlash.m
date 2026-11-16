@@ -349,7 +349,7 @@ NSString *const TIOOTADownloadOnlyGuardMarker=@"ota guard=DOWNLOAD-ONLY-GUARD-03
 BOOL TIOOTADownloadOnlyHost(void){
     NSDictionary *info=NSBundle.mainBundle.infoDictionary;
     // The packager's marker alone also counts: refusing more is the safe side.
-    return [TIOHostProfileFor(TIOHostMainImage(),info) isEqual:@"ios1011-download"]||[info[@"TIOHostProfile"] isEqual:@"ios1011-download"];
+    return [TIOHostProfileFor(TIOHostMainImage(),info) isEqual:@"ios1021-download"]||[info[@"TIOHostProfile"] isEqual:@"ios1021-download"];
 }
 // teleprompter (may be NULL) receives the checked snapshot when the call passes as the stock teleprompter send.
 static BOOL DownloadOnlyBlock(id call,NSDictionary **teleprompter){

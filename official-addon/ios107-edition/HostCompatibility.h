@@ -6,7 +6,7 @@
 // The one supported host: RayNeo AI 1.0.21/1. The same image serves two profiles, told
 // apart only by the packager's Info.plist marker TIOHostProfile (both IPAs share the Runner UUID):
 //   "ios1021"           the full build: features on, every TMG transfer frame through the flash gate;
-//   anything else, missing included: "ios1011-download", the refusing download-only guard.
+//   anything else, missing included: "ios1021-download", the refusing download-only guard.
 // On the download-only profile the addon installs only the rayneonet channel hook,
 // which carries the OTA transfer guard. Exact version, build and UUID; no ranges.
 // Any other app version, older RayNeo AI releases included, matches nothing here: no
@@ -52,10 +52,11 @@ static inline BOOL TIOHostFullImageMatches(const struct mach_header *h,NSDiction
 static inline BOOL TIOHostDownloadOnlyImageMatches(const struct mach_header *h,NSDictionary *info) {
     return [info[@"CFBundleIdentifier"] isEqual:@"com.rayneo.venus.pub"]&&TIOHostImageUUIDIs(h,TIOHostDownloadOnlyUUID(info));
 }
-// The download-only runtime profile: the 1.0.21/1 image without its full-profile marker. The string
-// keeps its C15-era spelling: the packager writes it as the Info.plist marker and other modules compare it.
-#define TIO_HOST_PROFILE_DOWNLOAD_ONLY @"ios1011-download"
-// For the 1.0.21/1 image: "ios1021" with its full-profile marker, "ios1011-download" otherwise
+// The download-only runtime profile: the 1.0.21/1 image without its full-profile marker. The packager
+// writes the same string as the Info.plist marker and other modules compare it. The C15-era spelling
+// "ios1011-download" is retired: as a marker it is just another non-full marker (download-only).
+#define TIO_HOST_PROFILE_DOWNLOAD_ONLY @"ios1021-download"
+// For the 1.0.21/1 image: "ios1021" with its full-profile marker, "ios1021-download" otherwise
 // (missing or unknown marker); nil for anything else (an unknown app or version, older RayNeo AI
 // releases included, or a build that is not the RayNeo app, such as a preview).
 static inline NSString *TIOHostProfileFor(const struct mach_header *h,NSDictionary *info) {

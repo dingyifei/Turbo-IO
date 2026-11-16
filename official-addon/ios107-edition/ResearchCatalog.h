@@ -12,7 +12,7 @@ typedef NS_ENUM(NSInteger, TIOHubSection) {
 FOUNDATION_EXPORT NSArray<NSDictionary *> *TIOHubCatalog(void);
 FOUNDATION_EXPORT NSArray<NSDictionary *> *TIOHubSections(NSString *parent);
 // Rows for a host profile (TIOHostProfile()). The download-only profile
-// "ios1011-download" gets only the stock firmware export and the language row:
+// "ios1021-download" gets only the stock firmware export and the language row:
 // no TMG flash wizard and no feature panels. The full profile "ios1021"
 // gets TIOHubCatalog() plus the firmware export row under Developer. Any other
 // value gets TIOHubCatalog().

@@ -5,7 +5,6 @@
 #import "DisplayPhoneUI.h"
 #import "AppBridge.h"
 #import "TodoRuntime.h"
-#import "WatchGlobalBridge.h"
 #import "MenuLayout.h"
 #import "LanguageFlag.h"
 #import "MusicPlayer.h"
@@ -59,7 +58,6 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
  CheckPeer();
  if(TIOLanguageFlagConsume(e))return YES;
  if(TIOMenuLayoutConsume(e))return YES;
- if(TIOWatchGlobalConsume(e))return YES;
  if(TDDiagnosticsConsume(e))return YES;
  if(TFFocusConsume(e))return YES;
  if(TMMusicConsume(e))return YES;
@@ -69,7 +67,7 @@ BOOL TDPPhoneConsumeEvent(NSDictionary *e){
 BOOL TDPPhoneRouteReply(NSDictionary *event,void(^completion)(BOOL)){
  if(![event isKindOfClass:NSDictionary.class]||![event[@"eventType"] isEqual:@"messageReceived"])return NO;
  NSDictionary *m=event[@"message"];if(![m isKindOfClass:NSDictionary.class]||![m[@"businessId"] isEqual:@15]||![m[@"payload"] isKindOfClass:NSData.class])return NO;
- NSData *data=m[@"payload"];TDPReply r;if(!TIOLanguageFlagIsReply(event)&&!TIOMenuLayoutIsReply(event)&&!TIOWatchGlobalIsReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
+ NSData *data=m[@"payload"];TDPReply r;if(!TIOLanguageFlagIsReply(event)&&!TIOMenuLayoutIsReply(event)&&!TFDecodeReply(event)&&!TDPhoneReply(event)&&!TMMusicReply(event,NULL)&&!TNVDecodeReply(event,NULL)&&!tdp_carrier_decode(15,data.bytes,data.length,&r))return NO;
  NSDictionary *snapshot=[event copy];void(^work)(void)=^{completion(TDPPhoneConsumeEvent(snapshot));};
  if(NSThread.isMainThread)work();else dispatch_async(dispatch_get_main_queue(),work);return YES;
 }

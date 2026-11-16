@@ -162,7 +162,7 @@ static NSString *Stamp(NSDate *date){NSDateFormatter *f=[NSDateFormatter new];f.
     if(ip.section==SectionStatus){
         if(ip.row==0){
             NSString *profile=TIOHostProfile();
-            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1011-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1021"]?TIOText(@"fwexport.host.full"):TIOText(@"fwexport.host.unknown"));
+            c.textLabel.text=Fmt(@"fwexport.host",[profile isEqual:@"ios1021-download"]?TIOText(@"fwexport.host.download"):[profile isEqual:@"ios1021"]?TIOText(@"fwexport.host.full"):TIOText(@"fwexport.host.unknown"));
             c.detailTextLabel.text=profile?:@"none";c.accessibilityIdentifier=@"fwexport-host";
         }else if(ip.row==2){
             // G3: read only. Red when on, amber when not recorded, green when explicitly off.

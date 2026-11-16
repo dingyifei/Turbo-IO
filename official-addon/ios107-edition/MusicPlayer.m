@@ -328,7 +328,6 @@ static TMPlayer *Live;   // set once the player exists; the navigation pump asks
 #endif
 
 - (BOOL)consume:(NSDictionary *)e{return [_bridge consume:e];}
-- (BOOL)watchRemoteAvailable{return _glasses&&_state&&_bridge.active&&!_bridge.busy;}
 - (BOOL)otaIdle{return !_bridge.busy&&!_bridge.active;}
 - (BOOL)fileInFlight{return _bridge.fileInFlight;}
 - (BOOL)fileWaiting{return _bridge.waiting;}

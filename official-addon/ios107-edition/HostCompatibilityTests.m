@@ -11,7 +11,7 @@ int main(void){@autoreleasepool{
     assert(!TIOHostDownloadOnlyUUID(@{}));assert(!TIOHostProfileFor(NULL,n));assert(!TIOHostProfileFor(NULL,@{}));
     [[[NSUUID alloc]initWithUUIDString:@"74DA0780-DCF0-384F-9E84-1AC12F56CDF5"] getUUIDBytes:image.c.uuid];
     assert(TIOHostDownloadOnlyImageMatches((const void *)&image,n));
-    assert([TIOHostProfileFor((const void *)&image,n) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches((const void *)&image,n));
+    assert([TIOHostProfileFor((const void *)&image,n) isEqual:@"ios1021-download"]);assert(!TIOHostFullImageMatches((const void *)&image,n));
     // The image checks: one UUID bit, a bad command size or a dylib header all fail.
     image.c.uuid[0]^=1;assert(!TIOHostDownloadOnlyImageMatches((const void *)&image,n));assert(!TIOHostProfileFor((const void *)&image,n));image.c.uuid[0]^=1;
     image.c.cmdsize=8;assert(!TIOHostDownloadOnlyImageMatches((const void *)&image,n));image.c.cmdsize=sizeof(image.c);
@@ -19,10 +19,11 @@ int main(void){@autoreleasepool{
     NSMutableDictionary *other=[n mutableCopy];other[@"CFBundleIdentifier"]=@"example.other";
     assert(!TIOHostDownloadOnlyImageMatches((const void *)&image,other));assert(!TIOHostProfileFor((const void *)&image,other));
     other=[n mutableCopy];other[@"CFBundleVersion"]=@"2";assert(!TIOHostProfileFor((const void *)&image,other));
-    // A missing or unknown marker is the download-only profile (retired profile names included).
+    // A missing or unknown marker is the download-only profile (retired profile names, the old
+    // download-only spelling "ios1011-download" included).
     for(id marker in @[@"ios1011",@"ios1021-download",@"ios1011-download",@"IOS1021",@"ios1021 ",@"ios1021-full",@"",@"ios107",@1021,@[@"ios1021"],NSNull.null]){
         NSMutableDictionary *m=[n mutableCopy];m[@"TIOHostProfile"]=marker;
-        assert([TIOHostProfileFor((const void *)&image,m) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches((const void *)&image,m));assert(!TIOHostFullExpectedUUID(m));
+        assert([TIOHostProfileFor((const void *)&image,m) isEqual:@"ios1021-download"]);assert(!TIOHostFullImageMatches((const void *)&image,m));assert(!TIOHostFullExpectedUUID(m));
     }
     NSMutableDictionary *marked=[n mutableCopy];marked[@"TIOHostProfile"]=@"ios1021";
     assert([TIOHostProfileFor((const void *)&image,marked) isEqual:@"ios1021"]);assert(TIOHostFullImageMatches((const void *)&image,marked));

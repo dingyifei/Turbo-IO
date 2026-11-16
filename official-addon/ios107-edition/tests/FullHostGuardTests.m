@@ -181,12 +181,12 @@ int main(int argc,char **argv){@autoreleasepool{
         NSData *runner=[NSData dataWithContentsOfFile:@(argv[1]) options:NSDataReadingMappedIfSafe error:nil];assert(runner.length>4096);
         const struct mach_header *h=runner.bytes;
         // The stock plist is the download-only profile; the packager's profile marker makes it the full one.
-        assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);
+        assert([TIOHostProfileFor(h,real) isEqual:@"ios1021-download"]);
         // Near-miss and retired markers leave it download-only.
         real[@"TIOHostProfile"]=TFH_NEAR_PROFILE;
-        assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches(h,real));
+        assert([TIOHostProfileFor(h,real) isEqual:@"ios1021-download"]);assert(!TIOHostFullImageMatches(h,real));
         real[@"TIOHostProfile"]=@"ios1011";
-        assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(!TIOHostFullImageMatches(h,real));
+        assert([TIOHostProfileFor(h,real) isEqual:@"ios1021-download"]);assert(!TIOHostFullImageMatches(h,real));
         real[@"TIOHostProfile"]=TFH_PROFILE;
         assert([TIOHostProfileFor(h,real) isEqual:TFH_PROFILE]);assert(TIOHostFullImageMatches(h,real));
         full=real;Image=h;
@@ -222,7 +222,7 @@ int main(int argc,char **argv){@autoreleasepool{
     // The marker-less image is the download-only host (so is this image with a near-miss profile
     // marker): only the version query passes.
     NSMutableDictionary *unmarked=[full mutableCopy];[unmarked removeObjectForKey:@"TIOHostProfile"];
-    for(NSDictionary *h in @[unmarked,({NSMutableDictionary *m=[full mutableCopy];m[@"TIOHostProfile"]=@"ios1011-download";m;}),
+    for(NSDictionary *h in @[unmarked,({NSMutableDictionary *m=[full mutableCopy];m[@"TIOHostProfile"]=@"ios1021-download";m;}),
         ({NSMutableDictionary *m=[unmarked mutableCopy];m[@"TIOHostProfile"]=TFH_NEAR_PROFILE;m;})]){
         Host=h;assert(TIOOTADownloadOnlyHost()&&!TIOOTAFullHost());
         assert(Allowed(Frame(1,nil,nil),@"fixture-peer"));assert(!Allowed(Frame(2,nil,nil),@"fixture-peer"));assert(!Allowed(Frame(3,@{@"OtaSize":@(TIO_FW_ZIP_BYTES)},nil),@"fixture-peer"));

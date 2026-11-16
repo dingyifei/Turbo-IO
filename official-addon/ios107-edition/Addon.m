@@ -46,7 +46,6 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "ExperimentalOTAGuard.h"
 #import "Brightness.h"
 #import "MenuLayoutUI.h"
-#import "WatchRemoteAddon.h"
 #import "HomeTabBridge.h"
 #import "KnowledgeUI.h"
 #import "KnowledgeClient.h"
@@ -707,7 +706,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 #endif
     UIViewController *screen=nil;
     // The download-only host never shows the TMG flash wizard, even if a stale route asks for it.
-    if ([key isEqual:@"experimentalOTA"] && [TIOHostProfile() isEqual:@"ios1011-download"]) {TIONotice(self,TIOText(@"hub.row.experimentalOTA"),TIOText(@"fwexport.wizard.blocked"));return;}
+    if ([key isEqual:@"experimentalOTA"] && [TIOHostProfile() isEqual:@"ios1021-download"]) {TIONotice(self,TIOText(@"hub.row.experimentalOTA"),TIOText(@"fwexport.wizard.blocked"));return;}
     if ([key isEqual:@"firmwareExport"]) screen=TIOFirmwareExportController();
     else if ([key isEqual:@"experimentalOTA"]) screen=TIOExperimentalOTAController();
 #if TIO_MAPKIT_ENABLED
@@ -717,7 +716,6 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"focus"]) screen=TIOFocusController();
     else if ([key isEqual:@"menuLayout"]) screen=TIOMenuLayoutController();
     else if ([key isEqual:@"brightness"]) screen=TIOBrightnessController();
-    else if ([key isEqual:@"watchRemote"]) screen=TIOWatchRemoteController();
     else if ([key isEqual:@"developerApps"]) screen=TAPAppsController();
     else if ([key isEqual:@"dashboardEditor"]) {
         TCEAIConfigure(^NSDictionary *{NSString *e=[Prefs stringForKey:@"endpoint"]?:@"";return @{@"endpoint":e,@"model":[Prefs stringForKey:@"model"]?:@"",@"key":ReadKey(e)?:@"",@"disableThinking":@([Prefs boolForKey:@"deepseekDisableThinking"])};});
@@ -850,7 +848,7 @@ NSString *TIOHostProfile(void) {
     // Same test as the refusal (TIOOTADownloadOnlyHost): the pinned 1.0.21 image without its full
     // marker OR the packager's download-only TIOHostProfile marker. Load, the hub catalog, the guard
     // row and the refusal must never disagree about the download-only host.
-    if(TIOOTADownloadOnlyHost())return @"ios1011-download";
+    if(TIOOTADownloadOnlyHost())return @"ios1021-download";
     return TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary);
 }
 // The download-only host's only protection against an OTA session is the
@@ -878,8 +876,8 @@ __attribute__((constructor)) static void Load(void) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOCaptionRunFixedProbeIfRequested();});
             Prefs=[[NSUserDefaults alloc]initWithSuiteName:Domain];
             // The download-only host sends no addon-originated frame:
-            // no language-flag push, no clench-lab restore, no watch remote.
-            BOOL downloadOnly=[TIOHostProfile() isEqual:@"ios1011-download"];
+            // no language-flag push, no clench-lab restore.
+            BOOL downloadOnly=[TIOHostProfile() isEqual:@"ios1021-download"];
             if(!downloadOnly)TIOLanguageFlagStart();
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
             [Prefs registerDefaults:@{@"appleFallback":@YES,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
@@ -937,7 +935,7 @@ __attribute__((constructor)) static void Load(void) {
             // The hook appends "stockTraffic=1; first stock call ..." to this file when a stock rayneonet call first passes it.
             // The image and the packager's marker should agree; say so when only one selects the download-only host.
             NSString *imageProfile=TIOHostProfileFor(MainImage(),NSBundle.mainBundle.infoDictionary),*markerProfile=NSBundle.mainBundle.infoDictionary[@"TIOHostProfile"];
-            if(downloadOnly&&!([imageProfile isEqual:@"ios1011-download"]&&[markerProfile isEqual:@"ios1011-download"]))[loadInfo appendFormat:@"HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only\n",imageProfile?:@"none",[markerProfile isKindOfClass:NSString.class]?markerProfile:@"none"];
+            if(downloadOnly&&!([imageProfile isEqual:@"ios1021-download"]&&[markerProfile isEqual:@"ios1021-download"]))[loadInfo appendFormat:@"HOST PROFILE MISMATCH: image=%@; marker=%@; treated as download-only\n",imageProfile?:@"none",[markerProfile isKindOfClass:NSString.class]?markerProfile:@"none"];
             // A failed hook on the download-only host leaves the stock OTA path unguarded: say so.
             if(downloadOnly&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"DOWNLOAD-ONLY GUARD NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];
             if(TIOOTAFullHost()&&!TIOGlassesChannelHookInstalled())[loadInfo appendFormat:@"FLASH GATE NOT ACTIVE: rayneonet hook install failed (%@); do not open the firmware page\n",TIOGlassesChannelHookFailure()];

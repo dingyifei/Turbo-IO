@@ -140,11 +140,6 @@ xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk_path" -miphoneos-version-
   -framework UniformTypeIdentifiers \
   -framework CoreLocation \
   -framework AVFAudio \
-  -framework WatchConnectivity \
-  WatchRemoteGate.m \
-  WatchGlobalBridge.m \
-  remote.c \
-  WatchRemoteAddon.m \
   LocalTranslationEntry.m \
   ExperimentalOTA.m \
   ExperimentalOTAGuard.m \

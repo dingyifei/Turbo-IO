@@ -19,9 +19,9 @@ static Class Fake(NSString *name,NSString *selector,const char *types){
 static NSDictionary *AfterInstall(Class bridge,Class engine,NSDictionary *prefs,NSString **failure){
     NSString *why=TIOChannelHookTargetFailure(bridge,engine);if(failure)*failure=why;
     BOOL installed=why==nil;
-    assert(TIODownloadOnlyGuardActiveFor(@"ios1011-download",installed,installed)==installed);
+    assert(TIODownloadOnlyGuardActiveFor(@"ios1021-download",installed,installed)==installed);
     // Stock traffic seen, so the guard level comes from the install alone here.
-    return TIOFirmwareExportSafetyModel(@"ios1011-download",installed,installed,YES,prefs);
+    return TIOFirmwareExportSafetyModel(@"ios1021-download",installed,installed,YES,prefs);
 }
 static void Localized(NSDictionary *m){
     for(NSString *k in @[@"guardKey",@"guardDetail",@"autoKey",@"autoDetail",@"bannerKey"]){
@@ -57,37 +57,37 @@ int main(void){@autoreleasepool{
     NSDictionary *ok=AfterInstall(bridge,engine,off,NULL);
     assert([ok[@"guardActive"] boolValue]&&[ok[@"safe"] boolValue]&&[ok[@"level"] isEqual:@"ok"]&&!ok[@"bannerKey"]);Localized(ok);
     // The guard needs all three parts; no profile but the download-only one counts.
-    for(NSString *profile in @[@"ios107",@"",@"ios1011"])assert(!TIODownloadOnlyGuardActiveFor(profile,YES,YES));
+    for(NSString *profile in @[@"ios107",@"",@"ios1011",@"ios1011-download"])assert(!TIODownloadOnlyGuardActiveFor(profile,YES,YES));
     assert(!TIODownloadOnlyGuardActiveFor(nil,YES,YES));
-    assert(!TIODownloadOnlyGuardActiveFor(@"ios1011-download",YES,NO));assert(!TIODownloadOnlyGuardActiveFor(@"ios1011-download",NO,YES));
-    assert(![TIOFirmwareExportSafetyModel(@"ios1011-download",YES,NO,YES,off)[@"safe"] boolValue]);
+    assert(!TIODownloadOnlyGuardActiveFor(@"ios1021-download",YES,NO));assert(!TIODownloadOnlyGuardActiveFor(@"ios1021-download",NO,YES));
+    assert(![TIOFirmwareExportSafetyModel(@"ios1021-download",YES,NO,YES,off)[@"safe"] boolValue]);
     assert(![TIOFirmwareExportSafetyModel(nil,YES,YES,YES,off)[@"safe"] boolValue]);
 
     // G2 runtime evidence: the guard row's three states.
     // ok: hook installed, transport ready and a stock rayneonet call seen.
-    assert([TIODownloadOnlyGuardLevelFor(@"ios1011-download",YES,YES,YES) isEqual:@"ok"]);
+    assert([TIODownloadOnlyGuardLevelFor(@"ios1021-download",YES,YES,YES) isEqual:@"ok"]);
     assert([ok[@"guardLevel"] isEqual:@"ok"]&&[ok[@"stockTrafficSeen"] boolValue]&&[ok[@"guardKey"] isEqual:@"fwexport.guard.on"]&&[ok[@"guardDetail"] isEqual:@"fwexport.guard.on.detail"]);
     assert([TIOTextForLanguage(ok[@"guardKey"],TIOLangEnglish) isEqual:@"OTA transfer blocked (stock calls seen)"]);
     assert([TIOTextForLanguage(ok[@"guardKey"],TIOLangChinese) containsString:@"已看到官方调用"]);
     // warn: installed and ready, but no stock call has passed the hook yet. Amber, never safe,
     // whatever Auto Update says; the no-traffic banner shows unless Auto Update is ON.
-    assert([TIODownloadOnlyGuardLevelFor(@"ios1011-download",YES,YES,NO) isEqual:@"warn"]);
-    NSDictionary *waiting=TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,NO,off);
+    assert([TIODownloadOnlyGuardLevelFor(@"ios1021-download",YES,YES,NO) isEqual:@"warn"]);
+    NSDictionary *waiting=TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,NO,off);
     assert([waiting[@"guardActive"] boolValue]&&![waiting[@"stockTrafficSeen"] boolValue]&&![waiting[@"safe"] boolValue]);
     assert([waiting[@"guardLevel"] isEqual:@"warn"]&&[waiting[@"level"] isEqual:@"warn"]);
     assert([waiting[@"guardKey"] isEqual:@"fwexport.guard.waiting"]&&[waiting[@"guardDetail"] isEqual:@"fwexport.guard.waiting.detail"]);
     assert([waiting[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]);Localized(waiting);
     assert([TIOTextForLanguage(waiting[@"guardKey"],TIOLangEnglish) isEqual:@"Guard installed, no stock traffic seen yet: connect the glasses and wait until the row turns green before opening the firmware page"]);
     assert([TIOTextForLanguage(waiting[@"guardKey"],TIOLangChinese) containsString:@"尚未看到官方调用"]);
-    NSDictionary *waitingMissing=TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,NO,@{});
+    NSDictionary *waitingMissing=TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,NO,@{});
     assert([waitingMissing[@"level"] isEqual:@"warn"]&&[waitingMissing[@"bannerKey"] isEqual:@"fwexport.banner.noTraffic"]&&![waitingMissing[@"safe"] boolValue]);
-    NSDictionary *waitingOn=TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,NO,@{@"a_ota_firmware_auto_update":@YES});
+    NSDictionary *waitingOn=TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,NO,@{@"a_ota_firmware_auto_update":@YES});
     assert([waitingOn[@"guardLevel"] isEqual:@"warn"]&&[waitingOn[@"level"] isEqual:@"danger"]&&[waitingOn[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);
     // danger: as before. Stock traffic seen does not rescue a missing guard.
     for(NSArray *a in @[@[@NO,@NO],@[@YES,@NO],@[@NO,@YES]])for(NSNumber *seen in @[@NO,@YES]){
         BOOL installed=[a[0] boolValue],ready=[a[1] boolValue];
-        assert([TIODownloadOnlyGuardLevelFor(@"ios1011-download",installed,ready,seen.boolValue) isEqual:@"danger"]);
-        NSDictionary *m=TIOFirmwareExportSafetyModel(@"ios1011-download",installed,ready,seen.boolValue,off);
+        assert([TIODownloadOnlyGuardLevelFor(@"ios1021-download",installed,ready,seen.boolValue) isEqual:@"danger"]);
+        NSDictionary *m=TIOFirmwareExportSafetyModel(@"ios1021-download",installed,ready,seen.boolValue,off);
         assert([m[@"guardLevel"] isEqual:@"danger"]&&[m[@"level"] isEqual:@"danger"]&&![m[@"safe"] boolValue]);
         assert([m[@"guardKey"] isEqual:@"fwexport.guard.off"]&&[m[@"bannerKey"] isEqual:@"fwexport.banner.unguarded"]);
     }
@@ -122,23 +122,23 @@ int main(void){@autoreleasepool{
     assert(TIOAutoUpdateReadingFor(nil)==TIOAutoUpdateReadingMissing);
     assert([TIOAutoUpdateReadingName(TIOAutoUpdateReadingOff) isEqual:@"off"]&&[TIOAutoUpdateReadingName(TIOAutoUpdateReadingMissing) isEqual:@"missing"]&&[TIOAutoUpdateReadingName(TIOAutoUpdateReadingOn) isEqual:@"on"]);
     // Panel rows and banner with the guard on.
-    NSDictionary *on=TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,@{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@YES});
+    NSDictionary *on=TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,YES,@{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@YES});
     assert([on[@"autoUpdate"] isEqual:@"on"]&&[on[@"autoLevel"] isEqual:@"danger"]&&[on[@"level"] isEqual:@"danger"]&&![on[@"safe"] boolValue]);
     assert([on[@"autoKey"] isEqual:@"fwexport.auto.on"]&&[on[@"bannerKey"] isEqual:@"fwexport.banner.autoOn"]);Localized(on);
     assert([TIOTextForLanguage(on[@"autoKey"],TIOLangEnglish) isEqual:@"Auto Update is ON: turn it off in the firmware page before anything else"]);
-    NSDictionary *missing=TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,@{});
+    NSDictionary *missing=TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,YES,@{});
     assert([missing[@"autoUpdate"] isEqual:@"missing"]&&[missing[@"autoLevel"] isEqual:@"warn"]&&[missing[@"level"] isEqual:@"warn"]&&![missing[@"safe"] boolValue]);
     assert([missing[@"autoKey"] isEqual:@"fwexport.auto.missing"]&&[missing[@"bannerKey"] isEqual:@"fwexport.banner.autoMissing"]);Localized(missing);
     assert([TIOTextForLanguage(missing[@"autoDetail"],TIOLangEnglish) containsString:@"treats missing as off"]);
     assert([ok[@"autoKey"] isEqual:@"fwexport.auto.off"]&&[ok[@"autoLevel"] isEqual:@"ok"]);
     // Guard off outranks every Auto Update state in the banner and the level.
     for(NSDictionary *p in @[off,@{},@{@"a_ota_firmware_auto_update":@YES}]){
-        NSDictionary *m=TIOFirmwareExportSafetyModel(@"ios1011-download",NO,NO,YES,p);
+        NSDictionary *m=TIOFirmwareExportSafetyModel(@"ios1021-download",NO,NO,YES,p);
         assert([m[@"bannerKey"] isEqual:@"fwexport.banner.unguarded"]&&[m[@"level"] isEqual:@"danger"]);
     }
     // Read only: the model never changes the preferences it is given.
     NSMutableDictionary *prefs=[@{@"a_ota_firmware_auto_update":@YES} mutableCopy];NSDictionary *before=[prefs copy];
-    TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,prefs);assert([prefs isEqual:before]);
+    TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,YES,prefs);assert([prefs isEqual:before]);
     // Full host: the guard row is the flash gate. Locked (no flash authorization open) is green only once a stock call has
     // passed the hook (amber "waiting" before that, as on the download-only host), an open authorization amber, no gate red.
     NSDictionary *locked=TIOFirmwareExportSafetyModelFull(YES,YES,NO,off);
@@ -166,6 +166,6 @@ int main(void){@autoreleasepool{
         assert(![TIOTextForLanguage(k,TIOLangEnglish) isEqual:k]&&![TIOTextForLanguage(k,TIOLangChinese) isEqual:k]);
     }
     // The download-only model never carries a flash authorization state.
-    assert(!TIOFirmwareExportSafetyModel(@"ios1011-download",YES,YES,YES,off)[@"authorized"]);
+    assert(!TIOFirmwareExportSafetyModel(@"ios1021-download",YES,YES,YES,off)[@"authorized"]);
     NSLog(@"PASS: download-only safety: %zu hook target failures leave the guard off and the panel unsafe; guard row ok/warn/danger on stock traffic; Auto Update off/on/missing with worst key wins; read only; full 1.0.21 guard row shows the flash gate state",sizeof bad/sizeof *bad);
 }return 0;}

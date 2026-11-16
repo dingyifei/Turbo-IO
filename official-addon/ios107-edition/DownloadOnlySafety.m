@@ -14,7 +14,7 @@ NSString *TIOChannelHookTargetFailure(Class bridge,Class engine){
     return nil;
 }
 BOOL TIODownloadOnlyGuardActiveFor(NSString *profile,BOOL hookInstalled,BOOL transportHookReady){
-    return [profile isEqual:@"ios1011-download"]&&hookInstalled&&transportHookReady;
+    return [profile isEqual:@"ios1021-download"]&&hookInstalled&&transportHookReady;
 }
 static NSString *Unprivate(NSString *p){return [p hasPrefix:@"/private/"]?[p substringFromIndex:8]:p;}
 BOOL TIOChannelResultImageIsStock(NSString *imagePath,NSString *addonImagePath,NSString *bundlePath){

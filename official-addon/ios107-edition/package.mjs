@@ -92,7 +92,7 @@ export const HOST_PROFILES=Object.freeze({
     routes:Object.freeze([['/xrlauncherapi/v1/signApi/gray/upgrade',46796656],['/xrlauncherhwapi/v1/signApi/gray/upgrade',37435136]]),
     sourceIPASHA256:'7cecd8847944e118c24beba8d9ae7cb5d42387047e8570feb184dca7f60b8f4a',
     // The addon's download-only guard keys on this one runtime marker (ExperimentalOTAFlash.m).
-    routePatch:false,firmware:false,stripStaleSignature:true,runtimeMarker:'ios1011-download',packagingRevision:'APP1021-DOWNLOAD-ONLY-01'}),
+    routePatch:false,firmware:false,stripStaleSignature:true,runtimeMarker:'ios1021-download',packagingRevision:'APP1021-DOWNLOAD-ONLY-01'}),
   // Full 1.0.21 (C20): the pinned input of the download-only 1.0.21 row (same Runner, App, frameworks and source
   // IPA), with the route patch at the 1.0.21 offsets (pinned output), the bundled TMG candidate of a release built
   // for this host (releases.json hosts ["1021-full"]) and its own host-profile marker (OTAHost.h TIOOTA1021HostMatches).

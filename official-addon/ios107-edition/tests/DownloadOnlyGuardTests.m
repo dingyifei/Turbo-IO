@@ -153,7 +153,7 @@ static void AutoUpdateAgrees(void){
         @{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@YES},@{@"a_ota_firmware_auto_update":@NO,@"b_ota_firmware_auto_update":@"false"},@{@"other":@YES}];
     for(NSDictionary *p in cases)assert((TIOAutoUpdateReadingFor(p)==TIOAutoUpdateReadingOff)==TIOOTAAutoUpdateDisabled(p));
 }
-// The download-only host: the 1.0.21/1 image with the packager's marker "ios1011-download".
+// The download-only host: the 1.0.21/1 image with the packager's marker "ios1021-download".
 // test.py compares the sweep with its pinned digest.
 #define TDH_NAME "1.0.21"
 #define TDH_VERSION @"1.0.21"
@@ -162,7 +162,7 @@ static void AutoUpdateAgrees(void){
 int main(int argc,char **argv){@autoreleasepool{
     assert(argc==1||argc==3);
     Home=[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
-    NSDictionary *d=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":TDH_VERSION,@"CFBundleVersion":TDH_BUILD,@"TIOHostProfile":@"ios1011-download"};
+    NSDictionary *d=@{@"CFBundleIdentifier":@"com.rayneo.venus.pub",@"CFBundleShortVersionString":TDH_VERSION,@"CFBundleVersion":TDH_BUILD,@"TIOHostProfile":@"ios1021-download"};
     Image=FakeImage(TDH_UUID);
     NSData *runner=nil;
     if(argc==3){
@@ -170,11 +170,11 @@ int main(int argc,char **argv){@autoreleasepool{
         assert([real[@"CFBundleShortVersionString"] isEqual:TDH_VERSION]&&[real[@"CFBundleVersion"] isEqual:TDH_BUILD]);
         runner=[NSData dataWithContentsOfFile:@(argv[1]) options:NSDataReadingMappedIfSafe error:nil];assert(runner.length>4096);
         const struct mach_header *h=runner.bytes;
-        assert([TIOHostProfileFor(h,real) isEqual:@"ios1011-download"]);assert(TIOHostDownloadOnlyImageMatches(h,real));
+        assert([TIOHostProfileFor(h,real) isEqual:@"ios1021-download"]);assert(TIOHostDownloadOnlyImageMatches(h,real));
         assert(!TIOHostFullImageMatches(h,real));assert(!TIOHostFullExpectedUUID(real));
         // The same image under another version and build (an older RayNeo AI release, say) has no profile at all.
         NSMutableDictionary *other=[real mutableCopy];other[@"CFBundleShortVersionString"]=@"1.0.7";other[@"CFBundleVersion"]=@"230";assert(!TIOHostProfileFor(h,other));
-        real[@"TIOHostProfile"]=@"ios1011-download";d=real; // what the packager adds
+        real[@"TIOHostProfile"]=@"ios1021-download";d=real; // what the packager adds
         Image=h;
     }
     Host=d;Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
