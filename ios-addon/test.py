@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse, fnmatch, json, os, re, shutil, subprocess, tempfile, zipfile
 P=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser();parser.add_argument('--firmware',type=Path,help='the release ZIP under test (required unless --firmware-only)')
-parser.add_argument('--app1021',type=Path,help='stock 1.0.21/1 Runner.app (download-only C19 and full C20 host checks)')
+parser.add_argument('--app1021',type=Path,help='stock 1.0.21/1 Runner.app (download-only and full host checks)')
 parser.add_argument('--only',help='comma-separated test groups')
 parser.add_argument('--release',help='phone release configuration from releases.json (cN; default: the only release, when there is exactly one); --firmware must be its ZIP')
 parser.add_argument('--out',type=Path,help='log and binary directory (default build/tests)')

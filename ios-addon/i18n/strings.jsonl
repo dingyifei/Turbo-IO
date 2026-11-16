@@ -649,7 +649,7 @@
 {"key":"ota.download.closed","en":"Closed","zh":"已关闭"}
 {"key":"ota.download.failed","en":"Download not opened","zh":"未开放下载"}
 {"key":"ota.download.how","en":"1. Go to RayNeo › Software version.\n2. Tap Download.\n3. Stop at “Ready to install” and come back.","zh":"1. 前往 RayNeo › 软件版本。\n2. 点“下载”。\n3. 出现“软件就绪”后停下并返回。"}
-{"key":"ota.download.ok","en":"All 16 files match %@","zh":"16 个文件均与 %@ 一致"}
+{"key":"ota.download.ok","en":"Every file matches %@","zh":"所有文件均与 %@ 一致"}
 {"key":"ota.download.open","en":"Open download for 15 min","zh":"开放下载 15 分钟"}
 {"key":"ota.download.stop","en":"Close download source","zh":"关闭下载源"}
 {"key":"ota.download.verify","en":"Downloaded package","zh":"已下载的固件包"}
@@ -673,7 +673,7 @@
 {"key":"ota.identity.notAuthorized","en":"%@ test flash is not authorized; start command not sent. First confirm %@ risk on the firmware page.","zh":"%@ 试刷尚未授权；开始指令未发送。请先在固件页完成 %@ 风险确认。"}
 {"key":"ota.identity.payloadMismatch","en":"%@ is missing from the folder or does not match %@; not sent.","zh":"%@ 在文件夹中缺失或与 %@ 不一致；未发送。"}
 {"key":"ota.identity.sizeMismatch","en":"File size mismatch. Only the fixed %@ experimental ZIP is accepted; not saved or sent.","zh":"文件大小不符。只接受固定 %@ 实验 ZIP，未保存、未发送。"}
-{"key":"ota.info.body","en":"Turbo serves a verified %@ package to RayNeo's own updater on this phone. Only the AP image differs from stock Strix OS 1.0.5.5; a full update still writes the other stock partitions. Nothing is sent to the glasses until you authorize. Back up first. Recovery is not guaranteed.","zh":"Turbo 在本机向 RayNeo 自带的升级流程提供已校验的 %@ 固件包。只有 AP 镜像与原厂 Strix OS 1.0.5.5 不同，完整升级仍会写入其他原厂分区。授权前不会向眼镜发送任何内容。请先备份，不保证可恢复。"}
+{"key":"ota.info.body","en":"Turbo serves a verified %1$@ package to RayNeo's own updater on this phone. Only the AP image differs from stock Strix OS %2$@; a full update still writes the other stock partitions. Nothing is sent to the glasses until you authorize. Back up first. Recovery is not guaranteed.","zh":"Turbo 在本机向 RayNeo 自带的升级流程提供已校验的 %1$@ 固件包。只有 AP 镜像与原厂 Strix OS %2$@ 不同，完整升级仍会写入其他原厂分区。授权前不会向眼镜发送任何内容。请先备份，不保证可恢复。"}
 {"key":"ota.info.title","en":"About firmware install","zh":"关于固件安装"}
 {"key":"ota.install.after","en":"When the glasses restart, close and reopen RayNeo.","zh":"眼镜重启后，请关闭并重新打开 RayNeo。"}
 {"key":"ota.install.authorize","en":"Authorize install","zh":"授权安装"}
