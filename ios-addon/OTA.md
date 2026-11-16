@@ -23,7 +23,7 @@ Flash only these two ZIPs. Each SHA-256 must match the line above and the `c21` 
 
 TMG12 is TMG11 ported to stock Strix OS 1.0.6.11. It changes only the launcher file `nuttx_ap.bin`; the other 15 payload files, the installer among them, are stock 1.0.6.11. The stock package is every official 1.0.6.11 file, unchanged. The two ZIPs differ only in `nuttx_ap.bin` and `OtaFileInfo.json`.
 
-The glasses already run TMG12: C20 flashed it on 2026-11-15. C21 has not been installed yet.
+The glasses already run TMG12: C20 flashed it on 2026-11-15. C21 was installed on 2026-11-16 (tag `app/c21`) and has not flashed anything yet.
 
 Earlier releases are recorded in the git tags `fw/tmgN` (firmware) and `app/cN` (phone builds), and in [firmware/README.md](../firmware/README.md). The flash steps that came with each older release are in this file's git history.
 
@@ -110,7 +110,7 @@ Both are same-version flashes. The 1.0.6.11 installer compares no version, so it
 
 ## Not yet confirmed on a device
 
-- C21 on the phone: the package picker, one-confirmation authorization and the version read without a time limit.
+- A flash from C21: the package picker, one-confirmation authorization and the version read without a time limit.
 - A stock or same-version flash on 1.0.6.11. The stock flash in the recorded file order is 310 slices, 15,576,146 bytes (computed, not flashed).
 - That RayNeo 1.0.21 downloads again when the folder holds the other package.
 - A full TMG12 device checklist and the full set of phone features.

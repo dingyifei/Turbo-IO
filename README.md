@@ -25,7 +25,7 @@ Always use the phone build and the firmware as a pair. C21 carries two packages,
 | Glasses must report | Strix OS 1.0.5.12 or 1.0.6.11 |
 | Build identity after a TMG12 flash | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
 
-TMG12 was flashed from C20 on 2026-11-15 and passed the owner's first check (tags `app/c20` and `fw/tmg12`). C21 is not installed yet. No full device checklist has been run yet. The pins are the `c21` entry in [releases.json](ios-addon/releases.json).
+TMG12 was flashed from C20 on 2026-11-15 and passed the owner's first check (tags `app/c20` and `fw/tmg12`). C21 was installed on 2026-11-16 (tag `app/c21`) and has not flashed anything yet. No full device checklist has been run yet. The pins are the `c21` entry in [releases.json](ios-addon/releases.json).
 
 To flash, follow [OTA.md](ios-addon/OTA.md). Flash only these ZIPs, and only if the SHA-256 matches the line above.
 

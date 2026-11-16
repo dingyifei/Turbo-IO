@@ -4,7 +4,7 @@ These are unofficial, high-risk builds. Flash only if you are a developer and ac
 
 ## Current release: C21 + TMG12
 
-C21 is not installed yet. The glasses run TMG12, flashed from C20 on 2026-11-15 (tags `app/c20` and `fw/tmg12`); the glasses report Strix OS 1.0.6.11 with the update confirmed, and the owner's first check passed. No full device checklist has been run yet.
+C21 was installed on 2026-11-16 and is tagged `app/c21`; it has not flashed anything yet. The glasses run TMG12, flashed from C20 on 2026-11-15 (tags `app/c20` and `fw/tmg12`); the glasses report Strix OS 1.0.6.11 with the update confirmed, and the owner's first check passed. No full device checklist has been run yet.
 
 C21 carries two packages and the wizard picks one: TMG12, selected at every launch, and stock Strix OS 1.0.6.11, the way back.
 

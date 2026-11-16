@@ -16,7 +16,7 @@ You build, sign and install the app yourself. No signed IPA is published. Agents
 | Stock ZIP | `Strix-OS-1.0.6.11-members-canonical.zip`, 9,447,267 bytes, SHA-256 `5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e` |
 | Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |
 
-The wizard picks the package. One confirmation, Authorize, allows one transfer; there is no arming step. C21 has not been installed yet. The glasses run TMG12, flashed from C20 on 2026-11-15. [OTA.md](OTA.md) lists what is still unconfirmed.
+The wizard picks the package. One confirmation, Authorize, allows one transfer; there is no arming step. C21 was installed on 2026-11-16 (tag `app/c21`) and has not flashed anything yet. The glasses run TMG12, flashed from C20 on 2026-11-15. [OTA.md](OTA.md) lists what is still unconfirmed.
 
 The addon knows only RayNeo AI 1.0.21 (1). An older RayNeo app (1.0.2 to 1.0.11) gets no profile, no features and no flashing, and the packager refuses to build for it. The download-only build (`--host 1021`, profile `ios1021-download`) carries no firmware and cannot flash.
 
