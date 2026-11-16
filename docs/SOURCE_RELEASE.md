@@ -15,7 +15,7 @@
 node scripts/export-source.mjs /absolute/new/turbo-io-source
 ```
 
-目标必须是工作区外不存在的新目录；脚本不覆盖旧目录、不删除原件、不创建Git仓库、不上传、不打IPA或ZIP。遇到扫描发现时保留候选供检查，退出失败；不要因此公开。按用户确认，附带7个framework、Opus静态库/头文件/许可、VAD编译源码/许可、恢复接口声明源码，以及 ZIPFoundation 0.9.20 的运行时源码、资源和许可；逐文件哈希写入DEPENDENCIES.json，不携带旧生成模块/构建目录。ZIPFoundation 使用本地 Swift Package，不再联网下载；只移除了不随包分发的上游测试 target。Opus 静态库重新构建时映射了源码路径，不携带维护者的本机目录。
+目标必须是工作区外不存在的新目录；脚本不覆盖旧目录、不删除原件、不创建Git仓库、不上传、不打IPA或ZIP。遇到扫描发现时保留候选供检查，退出失败；不要因此公开。V1 客户端及其厂商 framework、Opus、VAD 与 ZIPFoundation 依赖已在 cleanup(2) 从源码树删除，`DEPENDENCIES.json` 随之删除；它们保留在 git 历史中。
 
 候选目录检查：
 
@@ -23,7 +23,7 @@ node scripts/export-source.mjs /absolute/new/turbo-io-source
 node scripts/check-source.mjs /absolute/new/turbo-io-source
 ```
 
-扫描只输出路径/行号/规则，不打印命中的秘密内容。7个明确的framework和Opus静态库属于允许的二进制依赖，以DEPENDENCIES.json的哈希清单记录，不冒充已完成二进制内部秘密/许可审计。模式匹配不能保证不存在秘密，应再做人工代码/依赖清单检查及独立秘密扫描；已暴露的服务凭据需要由所有者在服务端轮换，删除源码文本不等于令牌失效。
+扫描只输出路径/行号/规则，不打印命中的秘密内容。模式匹配不能保证不存在秘密，应再做人工代码/依赖清单检查及独立秘密扫描；已暴露的服务凭据需要由所有者在服务端轮换，删除源码文本不等于令牌失效。
 
 安装 Gitleaks 后还可运行 `gitleaks dir . --redact=100`，提交后运行 `gitleaks git . --redact=100`。仓库规则继承默认检测，仅排除两个精确的 UserDefaults 存储键名误报，不排除整份源码或整个依赖目录。公开版使用中性的 `io.turboio` 标识前缀；不发布维护者私有 Git 历史或本机提交邮箱。
 

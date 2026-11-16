@@ -1,5 +1,7 @@
 # 更新记录
 
+> **已冻结（2026-11-15，cleanup(6)）：** 本文件不再更新。cleanup(1)–(6) 删除了其中提到的 Android、鸿蒙、V1、Apple Watch、TVP2/TAR2、Strix OS 1.0.4.12 研究树与大部分截图；指向这些已删除文件的链接与图片已改为纯文本或移除，原文件保留在 git 历史中（例如 `git show 5b6c63d:<路径>`）。
+
 2026-09-22 至 2026-10-23 的更新说明与历史验收记录，从[项目首页](../README.md)移出，正文保持原样，只修正了链接，并把“上方”这类指向首页内容的说法改成了链接。之后的固件版本见 [`firmware/`](../firmware/README.md) 和 `fw/tmgN` 标签。
 
 <a id="updates"></a>
@@ -42,7 +44,7 @@
 
 **双缓冲内存不增加：239424字节；AP为7,435,336字节，仅增加1024字节。** 旧TVP1视频兼容保留，其余14个新版原厂载荷不变；公开源码重建所得AP与ZIP与实测候选逐字节一致。新高清需刷TVP2，不能只装手机插件；完整OTA和恢复风险依旧存在，非开发者请保留原厂固件。
 
-**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](TVP2_TAR2.md) · [固件源码与重建](../firmware-research/strix-1.0.5.5-tvp2/README.md) · [原创高清模块](../official-addon/tar2-display/README.md) · [GPLv3 AirPlay接收SDK](../official-addon/tar2-airplay/README.md)**
+**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](archive/TVP2_TAR2.md) · 固件源码与重建 · 原创高清模块 · GPLv3 AirPlay接收SDK**
 
 不发布个人签名/合并IPA、视频素材、配对密钥、Cookie或账号。`tar2-airplay`是经维护者确认的GPLv3局部许可例外，其余目录非商业许可不变；本次未发布Android AirPlay接收器。Mentra OS商店应用完整兼容仍在继续适配，不在本次投屏实测结论内。
 
@@ -76,9 +78,9 @@
 
 ### 2026-10-19 · 矢量小地图：从选择起终点，到眼镜原生绘制
 
-![Turbo IO NAVS3 矢量导航与 TMG2 两排三排菜单横版设计效果图](screenshots/navs3-tmg2-hero-20261019.png)
 
-*imagegen 生成的设计示意，非实机截图；地图与地名为说明性展示，不代表实际路线或显示精度。实验预发布，锁屏导航问题仍待解决。[图片生成说明](screenshots/navs3-tmg2-hero-20261019.md)。*
+
+*imagegen 生成的设计示意，非实机截图；地图与地名为说明性展示，不代表实际路线或显示精度。实验预发布，锁屏导航问题仍待解决。图片生成说明。*
 
 **选择起点与目的地，直接开始模拟导航或真实导航。** 手机用高德规划与定位，获取经授权的 OSM 周边道路并完成坐标转换，眼镜用有界矢量场景绘制道路、路线、车标、路名与比例尺，不再连续传整屏截图。时间栏稳定显示，不再与“导航常亮”轮换。
 
@@ -97,7 +99,7 @@
 
 ### 2026-10-14 · 新版本适配预发布：底层再迁移，体验再延续
 
-![Turbo IO TMIG1 新版本适配预发布：iPhone 17 Pro Max 实测，保留情境英语](screenshots/tmig1-prerelease-hero-20261014.png)
+
 
 *imagegen 横版宣传设计，不是实机截图。版本号为本轮固定适配对象，不表示未来版本自动兼容。*
 
@@ -121,7 +123,7 @@
 
 修复开启官方「全天智记」后，导航、音乐、读书、番茄、滴滴和小应用可能无法从眼镜菜单进入的问题。**不关闭智记、不重写原厂录音，只调整六个扩展的共存判断；相对 TGR1 的 AP 增加 192 字节。** 原厂前台占用与助手活动检查保留，不包含 TBL1 亮度实验补丁。
 
-**[源码、复现与刷写说明](../firmware-research/strix-1.0.4.12/lifelog-coexist/README.md) · [下载 TLC1 固件 / SHA-256 / 审计](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
+**源码、复现与刷写说明 · [下载 TLC1 固件 / SHA-256 / 审计](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
 
 用户已确认智记开启时其他应用可进入，并在升级保护收尾说明后确认本轮音乐显示正常；持续采集、音频共存、反复抬头和长期稳定性仍需测试。**确认眼镜升级完成、自然回首页后，必须彻底退出重开手机雷鸟 App，结束本次进程内升级保护，否则音乐等内容可能无法同步。升级未完成或状态不明时不可强停。**
 
@@ -131,13 +133,13 @@
 
 ### 2026-09-29 · Apple Watch 遥控：表冠、手势与屏幕操作
 
-![Turbo IO Apple Watch 遥控：表冠、手势与屏幕操作，实验源码公开](screenshots/apple-watch-update-wide-20260929.png)
+
 
 *imagegen 生成的横版概念图，不是实机截图；示意界面不代表已完成全局输入验收。*
 
-把 Watch 作为眼镜的输入端：经配对 iPhone 的雷鸟插件中转，支持表冠上一项/下一项、屏幕确认/返回、两套手势映射，以及 10 分钟或始终开启的手机授权。[源码、构建与接入](../watch-remote/README.md) · [TGR1 协议与验收边界](../watch-remote/GLOBAL_REMOTE.md)
+把 Watch 作为眼镜的输入端：经配对 iPhone 的雷鸟插件中转，支持表冠上一项/下一项、屏幕确认/返回、两套手势映射，以及 10 分钟或始终开启的手机授权。源码、构建与接入 · TGR1 协议与验收边界
 
-**[下载 TGR1 实验 OTA / SHA-256 / 审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tgr1) · [兼容条件、校验与风险](../watch-remote/FIRMWARE_RELEASE.md)**
+**[下载 TGR1 实验 OTA / SHA-256 / 审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tgr1) · 兼容条件、校验与风险**
 
 **实验源码与固件，不是稳定遥控交付。** TGR1 虽已有用户刷入完成反馈，但“翻页翻不了”仍未闭环；本次上传的是原样归档包，没有重新编译或新真机验收。全局输入需要配套 TGR1，原厂固件与已发布 TAP1/FOCUS-04 不自动支持；旧版公开 APK 的固定候选门禁也不能直接导入本包。不发布私人 IPA、签名材料或个人配置；始终开启也不保证 Watch/手机后台可达。非开发者请勿刷，回滚不保证救砖。
 
@@ -145,9 +147,9 @@
 
 ### 2026-09-27 · Android 1.0.5 完整插件与实验 OTA
 
-![Turbo IO Android 1.0.5 更新：六类功能、配套实验固件与刷后释放保护说明](screenshots/android-release-update-wide-20260927.png)
 
-**[下载完整 APK / TAP1-TEST-01 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · [完整安装与刷机教程](../android-addon/docs/INSTALL_AND_FLASH.md) · [公开范围与源码构建](../android-addon/README.md)**
+
+**[下载完整 APK / TAP1-TEST-01 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · 完整安装与刷机教程 · 公开范围与源码构建**
 
 *横版更新说明由 imagegen 生成，不是实机截图，也不能代替完整教程。公开 APK 不含微信读书网页正文适配或私人配置；公开派生包尚未再次实机刷写。眼镜自然重启后，必须按教程只读回查并解除结果保护；更新未结束或状态不明时不能释放。*
 
@@ -155,7 +157,7 @@
 
 ### 2026-09-26 · BIG STEP：从内置功能，走向开发者生态
 
-![Turbo IO Big Step：从功能到生态，仪表盘 SDK、原生小应用 SDK 与 20 个灵感模板](screenshots/developer-ecosystem-big-step-20260926.png)
+
 
 *AI 生成的开发者生态效果示意，不是镜片实拍；图中数据与界面为示例，音乐模板不播放音频。开放的是开发接口与有界组件能力，不是无限系统权限。配套 TAP1 实验固件于 09-27 单独发布，见顶部下载入口。*
 
@@ -191,7 +193,6 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 <details>
 <summary>查看应用广场界面</summary>
 
-<img src="screenshots/app-gallery-20260926.png" width="320" alt="应用广场：我的应用、应用广场、开发指南，模拟器中的真实代码界面" />
 
 隔离模拟器运行截图，不是镜片实拍，也不代表已连接上游 MCP。
 </details>
@@ -205,21 +206,20 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 3. **新增原生番茄时钟应用**：眼镜第十二项菜单，手机双向控制，短按暂停/继续、长按停止；息屏继续计时、到时空闲提醒，避免长期亮屏打扰。
 4. **Turbo IO 插件 UI 焕新**：首页眼镜动效、音乐/微信读书/导航/番茄卡片，整理内页与设置；只改自己的插件，不重做官方 App。
 
-**[FOCUS-04 固件与构建校验](../firmware-research/strix-1.0.4.12/native-navigation/focus/README.md)** · **配套手机构建和使用（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
+**FOCUS-04 固件与构建校验** · **配套手机构建和使用（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
 
 基于 Strix OS 1.0.4.12，仅 AP 内容变化，其他 13 个固件负载不变；AP **9,558,216 字节**，低于 9,600,000 字节限制。2026-09-25 用户实刷并确认此版正常；仍是试验用品，不代表全场景稳定、不会变砖或可保证救砖。配套宿主为雷鸟 AI **iOS 1.0.5（201）**，不可与旧包/门禁混用。
 
-![Turbo IO 中秋焕新：全新 UI、四项菜单与微信读书、网易云音乐、原生番茄时钟](screenshots/midautumn-update-wide-20260925.png)
 
-[完整更新长海报](screenshots/midautumn-update-20260925.png)。界面效果示意，不是镜片实拍；微信读书公开版正文需自行合法导入。
+
+完整更新长海报。界面效果示意，不是镜片实拍；微信读书公开版正文需自行合法导入。
 
 <details>
 <summary>查看首页、番茄时钟与音乐单独效果图</summary>
 
-<img src="screenshots/focus-home-ui-20260925.png" width="300" alt="Turbo IO 新首页模拟器界面" />
 
-![番茄时钟设计效果](screenshots/focus-design-20260925.png)
-![网易云音乐界面设计效果](screenshots/music-design-20260925.png)
+
+
 
 首页为模拟环境界面；番茄与音乐为设计效果，不作为实机像素一致性或完整验收证据。
 </details>
@@ -236,11 +236,11 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 ### 2026-09-24 · 微信读书研究：四本书架与原生阅读页
 
-**新增第十一项“微信读书”研究菜单：四本封面书架、原生文本窗口与手动/自动滚动。** 已公开[原创 AP / 手机模块、构建与协议说明](../firmware-research/strix-1.0.4.12/native-navigation/weread/README.md)，以及 [TWR1 实刷实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1)。源码重建 AP 与实刷版本一致，仅 AP 改变，其他13个负载不变。**旧 TWR1 的长按返回问题在 09-25 FOCUS-04 中加入修复，旧 Release 不变。非开发者请勿刷，不保证回滚或救砖。**
+**新增第十一项“微信读书”研究菜单：四本封面书架、原生文本窗口与手动/自动滚动。** 已公开原创 AP / 手机模块、构建与协议说明，以及 [TWR1 实刷实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1)。源码重建 AP 与实刷版本一致，仅 AP 改变，其他13个负载不变。**旧 TWR1 的长按返回问题在 09-25 FOCUS-04 中加入修复，旧 Release 不变。非开发者请勿刷，不保证回滚或救砖。**
 
-手机模块公开书架/统计、封面处理、TXT/EPUB 导入及阅读传输，**不含网页正文适配、Cookie、Key 或私用 IPA，也尚未接入主仓库默认构建及 TWR1 OTA 打包入口**；没有自己的匹配手机集成时先别刷。这不是“下载源码就能直接读取所有微信读书正文”的声明。书架/统计参考 [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading)，网页阅读可自行研究 AGPL 项目 [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin)。[架构思路与许可范围](history/WEREAD_RESEARCH.md)
+手机模块公开书架/统计、封面处理、TXT/EPUB 导入及阅读传输，**不含网页正文适配、Cookie、Key 或私用 IPA，也尚未接入主仓库默认构建及 TWR1 OTA 打包入口**；没有自己的匹配手机集成时先别刷。这不是“下载源码就能直接读取所有微信读书正文”的声明。书架/统计参考 [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading)，网页阅读可自行研究 AGPL 项目 [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin)。[架构思路与许可范围](archive/history/WEREAD_RESEARCH.md)
 
-![微信读书界面效果示意：菜单入口、同步提示、四本书架与阅读页](screenshots/weread-ui-concept.jpg)
+
 
 上述集成限制针对历史 TWR1；09-25 新增的 FOCUS-04 可选集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）已提供匹配的构建与 TFP1 打包入口。网页正文适配仍未公开，本机 TXT/EPUB 导入范围不变。
 
@@ -257,7 +257,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 - **旧 TMU1 已知问题：轻碰旋钮可能误切歌。09-25 FOCUS-04 已加入输入过滤与去抖，旧 Release 不变。** 扫码登录可能报“环境异常”，本次用未登录可播放歌曲验收，不绕过风控、会员或版权限制。
 - 适配 **雷鸟 AI iOS 1.0.5（201）+ Strix OS 1.0.4.12**，Android / HarmonyOS 暂未接入此音乐播放器。
 
-**[完整教程：构建、签名、试刷、播放与协议](../firmware-research/strix-1.0.4.12/native-navigation/music/README.md)** · **[下载 TMU1 实测固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**。发布源码、精确实测固件及校验工具，不提供合并 IPA、个人签名、Key、账号或 Cookie。
+**完整教程：构建、签名、试刷、播放与协议** · **[下载 TMU1 实测固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**。发布源码、精确实测固件及校验工具，不提供合并 IPA、个人签名、Key、账号或 Cookie。
 
 > **试验用品，仅供开发者非商业学习研究，非开发者请勿刷！** 仅 AP 内容改变、其他13项保持原厂字节，清单更新 AP Size/MD5；不代表 OTA 只写 AP，也不保证不会变砖。断电、中断、错误固件可能导致无法启动或失去 OTA，原厂回滚不是救砖保证。实测通过不等于生产稳定版。普通 SDK/App 开发无需刷固件。
 
@@ -281,13 +281,13 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 - **眼镜端原生绘制**：内置转向图标、文字与路线示意图。手机只发导航数据，单次完整快照最多 **328 B**，减少旧传图方案的带宽负担；这不是无延迟保证。
 - **高德提供路线，眼镜呈现指引**：手机支持步行、骑行、驾车的规划/导航入口；路线示意图不是高德完整地图底图，也不是路口实景。
 - **显示与退出管理**：实现了停止/实体返回收尾、无有效更新约60秒息屏、按键唤醒及可选常亮；各分支仍需扩大验收，不承诺绝不熄屏。
-- **后台导航已修复立即退出问题**：配套 iPhone Air 版收到用户正常反馈；真实导航按授权使用后台定位，模拟后台仅短时测试。见[后台行为与限制](history/NAVIGATION_BACKGROUND.md)。
+- **后台导航已修复立即退出问题**：配套 iPhone Air 版收到用户正常反馈；真实导航按授权使用后台定位，模拟后台仅短时测试。见[后台行为与限制](archive/history/NAVIGATION_BACKGROUND.md)。
 
 这里的“应用级别”指**集成在固件 application 内、拥有独立菜单和交互的原生应用页面**，不再借用旧测试界面；并不是已经开放 Android 式 APK 安装、任意第三方 App 加载或整个系统 UI 替换。
 
 **实机进展（2026-09-22）**：Turbo Display 完整图和局部更新已有镜片反馈；TNV1 已刷入并进入独立导航页，手机发起导航及后台修复获用户初步正常反馈。新增应用不等于生产稳定版，长期运行、全部模式、低电量和异常恢复仍需专项验证。
 
-**TNV1 匹配版本已公开：** [下载高风险固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · [完整源码、构建与手机合并](../firmware-research/strix-1.0.4.12/native-navigation/BUILD.md) · [升级、导航与传图测试说明](../firmware-research/strix-1.0.4.12/native-navigation/USAGE.md)。此包保留 **Turbo Display 测试工具**并新增**独立原生导航应用**，含配套 iOS 1.0.5（201）源码与后台修复；仅 AP 内容变化，另13项不变。使用自己的配置和签名，不提供合并后 IPA。旧 R3 Release 不含这两项，不能混用。**非开发者请勿刷；实机成功不代表不会变砖或保证救砖。**
+**TNV1 匹配版本已公开：** [下载高风险固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · 完整源码、构建与手机合并 · 升级、导航与传图测试说明。此包保留 **Turbo Display 测试工具**并新增**独立原生导航应用**，含配套 iOS 1.0.5（201）源码与后台修复；仅 AP 内容变化，另13项不变。使用自己的配置和签名，不提供合并后 IPA。旧 R3 Release 不含这两项，不能混用。**非开发者请勿刷；实机成功不代表不会变砖或保证救砖。**
 
 <a id="animation-test"></a>
 
@@ -295,7 +295,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第八项 Turbo Display，内置 12 帧素材、在眼镜端定时绘制，手机无需逐帧传输。2026-09-22 研究机已刷入，用户确认动画播放，30 秒结束计数 1799 次提交；这是约 60 次/秒的**提交计数**，不是物理面板 60 FPS 的测量，也未证明长期热稳定或全部情形无丢帧。它不是 GIF 上传器或面向普通用户的动画 App。
 
-[查看素材预览、实测边界、AP 校验值与离线重建](../firmware-research/strix-1.0.4.12/native-navigation/animation/README.md) · [ANIM60 高风险实验固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-anim60)。ANIM60 与 TNV1 是不同固件候选，不能混用升级授权或手机端门禁；公开源码目前不提供 ANIM60 专用手机 OTA 操作入口。**普通 SDK/App 开发不需要刷固件。**
+查看素材预览、实测边界、AP 校验值与离线重建 · [ANIM60 高风险实验固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-anim60)。ANIM60 与 TNV1 是不同固件候选，不能混用升级授权或手机端门禁；公开源码目前不提供 ANIM60 专用手机 OTA 操作入口。**普通 SDK/App 开发不需要刷固件。**
 
 > **仅限开发者的非商业学习研究，有风险，不是日常导航产品。** 不在驾驶、骑行或过马路时操作/测试；可能出现断连、延迟、旧指引或熄屏。使用自定义固件还可能无法启动或失去 OTA，原厂回滚不是救砖保证。普通 SDK/App 开发不需要刷固件。
 
@@ -306,9 +306,9 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 2026-09-21，基于 **Strix OS 1.0.4.12** 的 Turbo Photo R3 获得用户真机确认：更新后显示自定义图片，图片页可退出并再次进入。仅 AP 负载改变，另 13 项不变；不等于完整 OTA 只写 AP。**不保证回滚或救砖**：掉电、意外中断、版本不匹配、错误代码/资源都可能导致无法启动或失去 OTA。不能宣传“几乎刷不死”。
 
-**为什么只改 application（`nuttx_ap.bin`）？** 菜单、页面和 PNG 显示的目标代码位于 AP；先把改动限制在这里，保留其余原厂组件，减少变量与额外风险，验证眼镜应用/UI 扩展能力，而非重写系统。AP 不是隔离沙盒，错误仍可能导致整机无法启动；“只改 AP”不是不会变砖的保证。[设计取舍](../firmware-research/strix-1.0.4.12/docs/PROCESS.md)
+**为什么只改 application（`nuttx_ap.bin`）？** 菜单、页面和 PNG 显示的目标代码位于 AP；先把改动限制在这里，保留其余原厂组件，减少变量与额外风险，验证眼镜应用/UI 扩展能力，而非重写系统。AP 不是隔离沙盒，错误仍可能导致整机无法启动；“只改 AP”不是不会变砖的保证。设计取舍
 
-**[研究过程、源码、已知问题与离线测试](../firmware-research/strix-1.0.4.12/README.md)** · **[实验固件 Pre-release 与校验值](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-turbophoto-r3)**。普通 SDK/App 开发不需要刷这个固件。R3 只验证嵌入图片页，不含后续 TDP1 传图和 TNV1 导航；它不是通用眼镜 App 安装系统，长期稳定性和故障恢复未验。
+**研究过程、源码、已知问题与离线测试** · **[实验固件 Pre-release 与校验值](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-turbophoto-r3)**。普通 SDK/App 开发不需要刷这个固件。R3 只验证嵌入图片页，不含后续 TDP1 传图和 TNV1 导航；它不是通用眼镜 App 安装系统，长期稳定性和故障恢复未验。
 
 </details>
 
@@ -341,8 +341,8 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 | --- | --- | --- |
 | **原厂 Strix OS** | 官方菜单和功能；手机扩展可利用已有文字/字幕等通道，但没有我们的原生新菜单、TCE1图形编辑运行时或TAP1四槽应用 | 普通用户首选。保留官方 App / 固件；原厂有限卡片不等于新仪表盘 SDK |
 | **FOCUS-04 / TFP1**（历史实验版） | 四项同屏菜单、原生番茄；包含音乐/阅读交互等修复。**不包含后来的 TCE1/TAP1 运行时** | FOCUS-04 iOS 集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）与该 Release 固定固件；不是 Android GUARD-07 的升级候选 |
-| **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | [GUARD-07 APK + 同一 Release 的精确 ZIP](../android-addon/docs/INSTALL_AND_FLASH.md)；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
-| **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | [固件研究索引](../firmware-research/strix-1.0.4.12/README.md)。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
+| **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | GUARD-07 APK + 同一 Release 的精确 ZIP；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
+| **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | 固件研究索引。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
 
 **不是固件越新就可以随便升级。** FOCUS-04 与 TAP1-TEST-01 均基于 Strix OS 1.0.4.12，系统版本数字可能不变；必须核对 Release 名、SHA-256、宿主和门禁，不只看“1.0.4.12”。所有自定义固件均是高风险实验包，不保证回滚或救砖。
 
@@ -383,7 +383,7 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 
 **默认原厂固件与自定义固件是两条路线：** 原厂固件下的有限卡片/通知模板不等于自由替换系统 UI；自定义 AP 路线已发展到 Turbo Display 和独立导航应用，但需要匹配固件与手机实现，不能直接套到四端。Claude Code、Hermes、WorkBuddy、OpenClaw 也不能仅凭下拉选项视作已接通。
 
-详细证据与使用限制：[iOS V1](v1-sdk.md#能力与边界) · [iOS V2](../official-addon/docs/VALIDATION.md) · [Android 当前发行](../android-addon/README.md) · [鸿蒙历史验收](../harmony-sdk/VALIDATION.md)。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
+详细证据与使用限制：[iOS V1](archive/v1/v1-sdk.md#能力与边界) · iOS V2 · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
 
 ## 版本与历史进展
 
@@ -392,14 +392,14 @@ ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第�
 <details>
 <summary>展开 iOS / Android / HarmonyOS 版本记录</summary>
 
-- **iOS 1.0.5（201）+ Strix OS 1.0.4.12**：新增新版宿主的精确版本 / Build / UUID 适配，保留 1.0.4 和 1.0.2。非越狱 iPhone Air 私用研究版已安装并确认扩展加载；用户完成官方固件升级后反馈「一切正常」，目前未报告升级引入的功能异常。该反馈不是全部功能、长期后台或其他平台的全量回归结论。[兼容性、升级步骤与验收边界](../official-addon/docs/COMPATIBILITY_105.md)
+- **iOS 1.0.5（201）+ Strix OS 1.0.4.12**：新增新版宿主的精确版本 / Build / UUID 适配，保留 1.0.4 和 1.0.2。非越狱 iPhone Air 私用研究版已安装并确认扩展加载；用户完成官方固件升级后反馈「一切正常」，目前未报告升级引入的功能异常。该反馈不是全部功能、长期后台或其他平台的全量回归结论。兼容性、升级步骤与验收边界
 
-- **原生鸿蒙源码首次公开 · WORKBENCH 14**：独立 BLE 连接/初始化、自有语音模型已在 Mate X5 验证；模拟天气、待办和自定义卡片下发通过。高德原生 POI 搜索、步行算路、模拟导航回调及眼镜显示本轮通过。243 项本机测试通过；**手机地图底图目前白屏，骑行/驾车真机与实际外场导航尚未验收**。录音/提词器仍有未修复问题，系统通知转发未实现。[安装与使用](../harmony-sdk/README.md) · [逐项验收状态](../harmony-sdk/VALIDATION.md)
+- **原生鸿蒙源码首次公开 · WORKBENCH 14**：独立 BLE 连接/初始化、自有语音模型已在 Mate X5 验证；模拟天气、待办和自定义卡片下发通过。高德原生 POI 搜索、步行算路、模拟导航回调及眼镜显示本轮通过。243 项本机测试通过；**手机地图底图目前白屏，骑行/驾车真机与实际外场导航尚未验收**。录音/提词器仍有未修复问题，系统通知转发未实现。安装与使用 · 逐项验收状态
 
 - **Android 源码新增公开**：兼容官方 Android 1.0.4（195），**非 Root 设备已由用户实机验证可用**。模型/搜索/录音导出和路线文字已有研究机用户确认。模拟导航支持暂停、1/2/4/8倍速，自动测试通过，新增模拟镜片效果待验收。仍只提供源码，需自行编译签名，不是预打包成品。
-- **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。[兼容性与预览](../official-addon/docs/COMPATIBILITY_104.md)
-- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](history/NAVIGATION_BACKGROUND.md) · [iOS 导航](history/NAVIGATION.md) · [Android 导航](../android-addon/docs/ANDROID_104_HISTORY.md#5-导航怎么用)
+- **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。兼容性与预览
+- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](archive/history/NAVIGATION_BACKGROUND.md) · [iOS 导航](archive/history/NAVIGATION.md) · Android 导航
 
 </details>
 
-模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限[首页列出的原厂砸壳 IPA](../README.md#ios-原厂砸壳-ipa-下载)，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 [Android文档](../android-addon/docs/ANDROID_104_HISTORY.md#2-兼容与安装边界)。
+模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限[首页列出的原厂砸壳 IPA](../README.md#ios-原厂砸壳-ipa-下载)，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 Android文档。

@@ -95,7 +95,8 @@ not a sandbox for hostile native-code vulnerabilities in libopus.
 
 **Voice, business 13 type 3:** one Opus packet in protobuf field 4, decoded at
 16 kHz mono with the same 10–120 ms packet-duration constraints as
-`core-probe/Sources/NativeVoiceVAD.c` and the existing assistant audio parser.
+the V1 `core-probe/Sources/NativeVoiceVAD.c` (removed
+in cleanup(2), still in git history) and the existing assistant audio parser.
 This is a source-supported **baseline decode profile**, not proof of the
 physical sensor mix. Its channel is named `voice-mono-unassigned`, never
 “air” or “VPU”.

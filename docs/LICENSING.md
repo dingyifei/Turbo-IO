@@ -22,7 +22,7 @@ Turbo IO 面向个人学习、互操作研究、实验与非商业爱好项目�
 
 ### TAR2 AirPlay接收模块的局部例外（2026-10-23）
 
-维护者明确授权 `official-addon/tar2-airplay/` 单独采用 **GPL-3.0-or-later**，包括该接收模块需要的原创高清编码/传输副本，许可证原文位于该目录LICENSE。根目录的非商业条款不叠加到该GPL目录，不限制GPL原本授予的权利；不改变其他目录许可，也不替第三方组件重新许可。`official-addon/tar2-display/` 和固件中的原创副本仍按其现有根许可提供。不要将不同目录的许可混为一谈。
+`official-addon/tar2-airplay/`（维护者于 2026-10-23 明确授权单独采用 **GPL-3.0-or-later** 的接收模块）与 `official-addon/tar2-display/` 已在 cleanup(3) 从源码树删除。历史版本中这两个目录的许可说明保持不变：GPL 目录不受根目录非商业条款限制，`tar2-display/` 和固件中的原创副本仍按根许可提供。
 
 UxPlay、libplist、OpenSSL依赖分别保留GPL、LGPL和Apache许可及来源。发布独立源码不等于取得任意闭源宿主/厂商SDK组合后二进制的再分发授权；需要自行审查组合关系并满足所有许可证。本次没有公开个人合并IPA或预签名接收App。
 

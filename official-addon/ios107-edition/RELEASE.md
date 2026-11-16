@@ -1,38 +1,55 @@
-# Turbo IO · iOS 1.0.7（230）APP107 OTA 开放
+# Turbo IO releases
 
-2026-10-19：**iPhone 17 Pro Max 已通过雷鸟 1.0.7 官方升级流程实刷 TMG2 成功。** 功能使用也已获用户实测正常反馈。现公开专用升级适配，不再整项禁用 OTA。
+These are unofficial, high-risk builds. Flash only if you are a developer and accept that recovery is not guaranteed. No merged or personally signed IPA is published.
 
-- 新增 1.0.7 精确宿主、UUID、查询数据记录和签名后路由校验，不沿用旧版偏移。
-- 打包默认加入固定 TMG2 升级通道，保留默认锁定、15 分钟只下载、单次授权、实际目录/清单/分片校验。
-- 原样沿用 TMG2，没有重新生成固件；已装 TMG2 的用户无需重复刷写。
-- 公开版编译、14 组离线回归、7 项打包测试、OTA 宿主与篡改检查、本地签名打包检查通过。
-- 实刷官方传输 100%、安装 succeeded、重连版本匹配；成功后重启手机 App，授权归零。
+## Current release: C20 + TMG12
 
-## 获取与使用
+Neither half has run on a device yet. Every check so far is offline or in the emulator. There is no `app/c20` or `fw/tmg12` tag yet.
 
-- [最新源码与构建](https://github.com/Turbo1123/Turbo-IO/tree/main/official-addon/ios107-edition)
-- [1.0.7 专用刷机教程：包含刷后解除保护](https://github.com/Turbo1123/Turbo-IO/blob/main/official-addon/ios107-edition/OTA.md)
-- [原样 TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)
-- [首页更新日志](https://github.com/Turbo1123/Turbo-IO#ios107-update)
+| | |
+|---|---|
+| Phone build | C20: RayNeo AI 1.0.21 (1), full host (`--host 1021-full`; Info.plist `TIOHostProfile` `ios1021`) |
+| Firmware | TMG12: TMG11 ported to stock Strix OS 1.0.6.11 |
+| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip` |
+| ZIP size | 9,549,211 bytes |
+| ZIP SHA-256 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
+| AP (`nuttx_ap.bin`) | 8,132,360 bytes, SHA-256 `6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50` |
+| Build identity (status `build`) | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
+| Package | 17 files: 16 payloads and `OtaFileInfo.json` |
+| Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |
+| Route patch output SHA-256 | `cd8be91e82bdbc1c98b5dda4fa0d358b91a2187ea4571200760fac0c53cb7852` |
 
-旧的 APP107 禁用 OTA 构建需要重新合并、签名；仅更新文档不会改变已装 App。源码快照随本 Release 提供，审计 JSON 单独附上。**不提供合并或个人签名 IPA。** [原厂 1.0.7 去签名 IPA](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.7-230)另行归档，使用最新主分支打包器接受其精确哈希；原厂输入、第三方 SDK、签名和服务配置须自行合法使用。
+The pins are in the `c20` entry of [releases.json](releases.json) and in [firmware-pins-c20.json](firmware-pins-c20.json). The firmware release label is in [firmware/RELEASE](../../firmware/RELEASE). The firmware build record is in the TMG12 section of [firmware/README.md](../../firmware/README.md).
 
-本轮实刷使用逐字节校验一致的官方缓存，没有另做网络重新下载实测。公开脱敏派生包单独编译和本地签名验证，不是私用实测 IPA 的原样公开；不宣称所有机型、账号、功能或后台场景均验收通过。手机锁屏导航问题仍保留。
+The packager writes `TIOHostProfile = ios1021` into Info.plist. That key is the only thing that separates C20 from the download-only 1.0.21 build (C19); a 1.0.21 app without it is treated as download-only. Flashing is disarmed by default, and the arm record is stored under `otaFlashArmRecord.ios1021`.
 
-不含个人 Cookie、Key、签名材料、私用日志、手机备份、智记内容或微信读书网页正文适配。原创源码沿用仓库许可证，第三方权利不变。
+### Build
 
-**非官方高风险实验预发布。非开发者请勿刷；不保证稳定、回滚或救砖。刷后必须按教程完成收尾，不混用其他版本的候选和授权。**
+1. Set `TURBO_APP1021` in `$TURBO_INPUTS/package.env`.
+2. Run the gate: `bash scripts/turbo-gate.sh`. It runs the 1.0.21 host checks only when `TURBO_APP1021` is set.
+3. Package: `bash scripts/turbo-package.sh --host 1021-full --release c20 <label>`. It writes `TurboIO-local-only.ipa` to a new directory and installs nothing. It refuses the ZIP unless the size and SHA-256 match `releases.json`.
 
-## 宿主 `ios1011-download`（RayNeo AI 1.0.11/259）：未打包，未发布
+### Flash
 
-源码现在认识第二个宿主 `ios1011-download`，按精确的版本、构建号和 Runner UUID `22724C97-2EF9-388D-8E6A-6E051855A555` 识别。它是仅下载构建：`App.framework/App` 与原厂 1.0.11 逐字节一致（不改升级路由，不内置 TMG ZIP，不写 OTA 路由键，不注入 `UISupportedDevices`），让原厂 App 从雷鸟服务器下载最新的官方固件，再由扩展的“导出官方固件”面板只读列出、计算哈希（SHA-256 和 MD5）并分享。在这个宿主上扩展只安装 rayneonet 通道钩子，不主动向眼镜发送任何帧；钩子装好后，业务 9 中除空的版本查询以外的帧一律拒绝，OTA 会话无法开始。面板里只有导出面板和语言两项，没有 TMG 刷机向导。TMG 刷机仍然只在 1.0.7 构建上进行。在反编译回答问题 Q1 之前不打包；机主流程和回滚方法（把 C13 覆盖安装回去）见改写前的 OTA.md（`git show 4fb3775:official-addon/ios107-edition/OTA.md`）。
+Follow [OTA.md](OTA.md): "Flash TMG12", then "After the flash". If the phone refuses, read "If the gate refuses".
 
-## 宿主 `ios1011`（完整版 RayNeo AI 1.0.11/259，C15）：未打包，未发布
+## Earlier releases
 
-C15 把 Turbo IO 的全部功能移植到 1.0.11 上，与仅下载构建用同一个固定哈希的输入，只靠打包器写进 Info.plist 的 `TIOHostProfile = ios1011` 区分；没有这个值的 1.0.11 一律按仅下载处理。升级路由补丁换成 1.0.11 的偏移（输出 SHA-256 `592d48d0e42869f11def2dde99a3a6960d4da7b83b99df47d228311dfc3b8ba6`），内置 TMG9 ZIP，使用 1.0.11 自己的路由标记，不写 `UISupportedDevices`。
+Each release has annotated tags: `app/cN` for the phone build, `fw/tmgN` for the firmware. The tag message gives the build commit, the IPA or ZIP hash and the device status. Flash steps for older releases are in the git history of [OTA.md](OTA.md). Notes up to late October are in [docs/CHANGELOG.md](../../docs/CHANGELOG.md), which is frozen.
 
-**TMG 刷写默认未启用。** 未启用时业务 9 只放行版本、电量、空闲和精确的空间查询，开始安装（任何 Mode）和传输帧一律拒绝，不依赖编译开关和自动更新开关。机主在向导里明确启用（有确认弹窗，记录绑定扩展库内容的 UUID；回滚到 C13 之前先停用）之后，才走 1.0.7 的同一套刷写门槛（只接受 `{Mode:2}`）；传输开始前可以随时停用。1.0.11 的升级顺序目前只来自静态反编译，启用之前必须先用带通信记录的构建抓一次包确认。宿主方法的类型编码已离线对照 1.0.7，全部一致；设备上的功能和刷写都还没有验证。说明见改写前的 OTA.md（`git show 4fb3775:official-addon/ios107-edition/OTA.md`），检查清单见 [C15-CHECKLIST.md](C15-CHECKLIST.md)。
+| Phone | Host | Firmware | Stock base | ZIP SHA-256 | Tags |
+|---|---|---|---|---|---|
+| C18 | 1.0.11 (259) full | TMG11 | 1.0.5.12 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` | `app/c18`, `fw/tmg11` |
+| C17 | 1.0.11 (259) full | TMG9 (rollback from TMG10) | 1.0.5.5 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` | none |
+| C16 | 1.0.11 (259) full | TMG10 | 1.0.5.12 | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` | `app/c16`, `fw/tmg10` |
+| C14, C15 | 1.0.7 (230); 1.0.11 (259) full | TMG9 | 1.0.5.5 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` | none |
+| C13 | 1.0.7 (230) | TMG9 | 1.0.5.5 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` | `app/c13`, `fw/tmg9` |
+| C12 | 1.0.7 (230) | TMG8 | 1.0.5.5 | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` | `app/c12`, `fw/tmg8` |
 
-## 宿主 `ios1021`（完整版 RayNeo AI 1.0.21/1，C20）：未打包，未发布
+C14 and C15 are the `default` entry in `releases.json`; C16, C17 and C18 have their own entries. C11 is tagged `app/c11` (paired with `fw/tmg7`). Firmware TMG2 to TMG7 are tagged `fw/tmg2` to `fw/tmg7`.
 
-C20 把 C15 的完整版移植到 1.0.21 上，用来把眼镜刷到 TMG12（原厂底座 Strix OS 1.0.6.11）。它与 C19 仅下载构建用同一个固定哈希的 1.0.21 输入，只靠打包器写进 Info.plist 的 `TIOHostProfile = ios1021` 区分；没有这个值的 1.0.21 一律按仅下载处理，C19 的行为不变。升级路由补丁换成 1.0.21 的偏移（输出 SHA-256 `cd8be91e82bdbc1c98b5dda4fa0d358b91a2187ea4571200760fac0c53cb7852`），使用 1.0.21 自己的路由标记和启用记录键 `otaFlashArmRecord.ios1021`。刷写门槛与 C15 相同，默认未启用；文件数和清单行数改为从成员校验值算出（TMG12 是 17 个文件、16 行）。打包命令 `--host 1021-full --release c20`，`c20` 要等负责人写进 `releases.json` 之后才能用。只做了主机离线检查，设备上的功能、演练和刷写都没有做过。刷写步骤和要读的字段见 [OTA.md](OTA.md) 的 “Flash TMG12” 和 “If the gate refuses” 两节。
+Never flash the superseded TMG9 ZIP built before review round 1 (the `fw/tmg9` tag message names it). For TMG9, use only the ZIP in the table.
+
+## Not included
+
+No personal cookies, keys, signing material, private logs or phone backups. Original source follows the repository license. Third-party rights are unchanged.

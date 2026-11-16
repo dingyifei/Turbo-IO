@@ -5,10 +5,7 @@ V2 extends the compatible official RayNeo app with phone-side tools, glasses pro
 | Directory | Purpose |
 | --- | --- |
 | [ios107-edition](ios107-edition/README.md) | Active addon: build.sh, package.mjs, test.py, tests/ and local-translation/. |
-| [knowledge-bridge](knowledge-bridge/README.md) | Optional local knowledge server. |
-| research/ | Shared phone/glasses reference modules, also consumed by android-addon and dashboard-service. |
-| tar2-airplay/ and tar2-display/ | Separately licensed display SDKs; see [third-party notices](../THIRD_PARTY_NOTICES.md). |
-| docs/ | Historical V2 documentation. |
+| research/ | app-runtime-v1 and dashboard-editor-v1, plus the menu8 and navigation headers they include; compiled by the dashboard-service tests. |
 
 The tracked root PrivateBootstrap parser and its tests remain for compatibility; ios107 builds receive ignored parser copies from the private external backup. No private configuration belongs in the source release.
 
@@ -19,7 +16,7 @@ The current port requires the exact 1.0.7 (230) host described in [ios107-editio
 
 ## Archived
 
-navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. A small navs3 README pointer remains so older firmware documentation keeps a valid link.
+navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. cleanup(3) then removed the navs3 README pointer, knowledge-bridge/, tar2-airplay/, tar2-display/, docs/ and the research modules nothing builds any more (focus, music, weread, most of navigation); they are in git history.
 
 ```sh
 git show 27ad86e:official-addon/navs3-edition/README.md

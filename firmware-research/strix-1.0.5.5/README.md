@@ -2,7 +2,7 @@
 
 2026-10-14 · **非官方、实验性预发布。小白不要刷，日常使用请保留原厂固件。**
 
-![Turbo IO 新版本适配预发布：iPhone 17 Pro Max 实测，App 1.0.6 / Strix OS 1.0.5.5](../../docs/screenshots/tmig1-prerelease-hero-20261014.png)
+
 
 *imagegen 宣传设计示意，不是实机截图。Dots 开发中，尚未完成，不是本次已交付功能。*
 
