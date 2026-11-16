@@ -15,7 +15,8 @@ apple_args=()
 # compiled with TIO_RELEASE=cN (that release's FirmwarePins.h block) and bundles that release's ZIP, found under
 # $TURBO_INPUTS at the path releases.json names and refused unless its size and SHA-256 match. The release's hosts
 # (releases.json) must list the --host given. Without --release the build is the only release in releases.json
-# (C21 today); with several releases, --release is required.
+# (C21 today); with several releases, --release is required. A release that lists a stock package (releases.json
+# packages, STOCK-<base>) bundles that ZIP too, resolved and checked the same way (phone_pins.py --package).
 # --wire-log: build the addon with the passive channel recorder (TIO_WIRE_LOG=1).
 # --build-only: build and check the addon as a package run would, then stop before
 # anything touches the signing identity or writes a package.
@@ -116,6 +117,9 @@ for name in "${required[@]}"; do
   [[ -n ${!name:-} ]] || { printf 'PACKAGE FAIL: package.env must set %s\n' "$name" >&2; exit 1; }
 done
 firmware=''
+stock_label=''
+stock_firmware=''
+stock_args=()
 # Without --release, the build is the only release in releases.json; with several, --release is required.
 # Every addon carries one release block (FirmwarePins.h), the download-only builds too, so the name is always known.
 explicit_release=$release
@@ -136,6 +140,14 @@ if [[ $host == 1021 ]]; then
 else
   release_built_for "$release" "$host" || { echo "PACKAGE FAIL: release $release is not built for --host $host (releases.json hosts)" >&2; exit 2; }
   firmware=$(python3 -I "$REPO/firmware/tools/phone_pins.py" --resolve "$release" --inputs "$TURBO_INPUTS") || { echo "PACKAGE FAIL: no checked ZIP for release $release" >&2; exit 1; }
+  # The release's stock package, when it lists one: its label, then its checked ZIP.
+  stock_label=$(python3 -I -c 'import json,sys
+r=json.load(open(sys.argv[1]))["releases"][sys.argv[2]]
+print(next((p["label"] for p in r["packages"][1:] if p["label"]=="STOCK-"+r["stockBase"]),""))' "$ED/releases.json" "$release") || { echo "PACKAGE FAIL: cannot read the packages of release $release" >&2; exit 1; }
+  if [[ -n $stock_label ]]; then
+    stock_firmware=$(python3 -I "$REPO/firmware/tools/phone_pins.py" --resolve "$release" --package "$stock_label" --inputs "$TURBO_INPUTS") || { echo "PACKAGE FAIL: no checked ZIP for package $stock_label of release $release" >&2; exit 1; }
+    stock_args=(--stock-firmware "$stock_firmware")
+  fi
 fi
 # Every package run builds the addon itself, for both hosts, so a dylib left over
 # from an earlier build (other flags, other commit) is never packaged. The flag
@@ -166,6 +178,8 @@ addon_check() {
   local want=$release
   [[ $(grep -a -o 'ota release=[a-z0-9]*; ' "$ADDON" | sort -u) == "ota release=$want; " ]] || { echo "addon is not release $want" >&2; return 1; }
   grep -a -o "ota release=$want; [^\"]*target Strix OS [0-9.]*" "$ADDON" | head -n 1 >&2
+  # A release with a stock package names it in the same marker.
+  [[ -z $stock_label ]] || grep -aFq "; package=$stock_label; zip=" "$ADDON" || { echo "addon does not carry package $stock_label" >&2; return 1; }
   shasum -a 256 "$ADDON" | cut -d' ' -f1
 }
 run_logged addon-check addon_check
@@ -217,6 +231,7 @@ if [[ $host == 1021 ]]; then
   [[ -f "$TURBO_PROFILE" && -d "$TURBO_APP1021" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 else
   [[ -f "$TURBO_PROFILE" && -f "$firmware" && -d "$TURBO_APP1021" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
+  [[ -z $stock_label || -f "$stock_firmware" ]] || { echo 'PACKAGE FAIL: missing configured input' >&2; exit 1; }
 fi
 OUT=$TURBO_INPUTS/signed-$(date +%Y%m%d-%H%M)-$label
 [[ ! -e "$OUT" && ! -L "$OUT" ]] || { echo 'PACKAGE FAIL: output already exists' >&2; exit 1; }
@@ -248,7 +263,7 @@ info=plistlib.loads((app/'Info.plist').read_bytes())
 assert info.get('TIOHostProfile')=='ios1011-download', 'missing host profile marker'
 for key in ('TIOExperimentalOTABuild','UISupportedDevices'):
     assert key not in info, 'unexpected '+key
-assert not (app/'TurboWeReadCandidate.zip').exists(), 'unexpected firmware resource'
+assert not (app/'TurboWeReadCandidate.zip').exists() and not (app/'TurboStockFirmware.zip').exists(), 'unexpected firmware resource'
 digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
 assert report['ipaSHA256']==digest, 'IPA digest mismatch'
 print(digest)
@@ -262,7 +277,7 @@ run_logged full-1021-guard full_1021_guard "$ADDON"
 run_logged addon-unchanged addon_unchanged
 run_logged package node "$ED/package.mjs" --host "$full_profile" --app "$TURBO_APP1021" --addon "$ADDON" \
   --profile "$TURBO_PROFILE" --identity "$TURBO_SIGN_ID" --device "$TURBO_DEVICE" \
-  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$firmware" --release "$release" ${apple_args[@]+"${apple_args[@]}"}
+  --out "$OUT" --bundle com.rayneo.venus.pub --firmware "$firmware" --release "$release" ${stock_args[@]+"${stock_args[@]}"} ${apple_args[@]+"${apple_args[@]}"}
 run_logged codesign codesign --verify --deep --strict "$OUT/Payload/Runner.app"
 run_logged unzip unzip -tq "$OUT/TurboIO-local-only.ipa"
 run_logged report python3 - "$OUT" "$release" "$ED" "$full_profile" <<'PY'
@@ -285,6 +300,15 @@ pins=json.loads((pathlib.Path(sys.argv[3])/('firmware-pins-'+sys.argv[2]+'.json'
 with zipfile.ZipFile(out/'TurboIO-local-only.ipa') as ipa: bundled=ipa.read('Payload/Runner.app/TurboWeReadCandidate.zip')
 assert len(bundled)==pins['zipBytes'] and hashlib.sha256(bundled).hexdigest()==pins['zipSHA256'], 'bundled ZIP in the signed IPA is not the release ZIP'
 assert report['firmwareSHA256']==pins['zipSHA256'], 'report names another ZIP'
+# Every package of the release is in the signed IPA under its resource name, byte for byte, and the report lists them.
+entries=pins['packages']
+assert entries[0]['resource']=='TurboWeReadCandidate.zip' and entries[0]['zipSHA256']==pins['zipSHA256'], 'first package is not the release ZIP'
+with zipfile.ZipFile(out/'TurboIO-local-only.ipa') as ipa:
+    for entry in entries:
+        bundled=ipa.read('Payload/Runner.app/'+entry['resource'])
+        assert len(bundled)==entry['zipBytes'] and hashlib.sha256(bundled).hexdigest()==entry['zipSHA256'], 'bundled ZIP in the signed IPA is not package '+entry['name']
+    assert len(entries)>1 or 'Payload/Runner.app/TurboStockFirmware.zip' not in ipa.namelist(), 'unexpected stock resource'
+assert [(e['name'],e['zipSHA256']) for e in report['packages']]==[(e['name'],e['zipSHA256']) for e in entries], 'report lists other packages'
 assert report['postSigningRouteVerified'] is True, 'route records not verified after signing'
 digest=hashlib.sha256((out/'TurboIO-local-only.ipa').read_bytes()).hexdigest()
 assert report['ipaSHA256']==digest, 'IPA digest mismatch'

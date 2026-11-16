@@ -3,7 +3,12 @@
 NSDictionary *TIOOTAFrame(NSData *data);
 BOOL TIOOTAAutoUpdateDisabled(NSDictionary *preferences);
 @interface TIOOTAFlashGate:NSObject
+// Stage 0 to 1. Captures the package selected at this moment (TIOOTASelectedPackage): its members read from the
+// folder against its member pins, its manifest, its ZIP size (type 3) and its OtaVersion (type 5). From stage 1 on,
+// every frame is compared with that capture only.
 - (BOOL)prepareDirectory:(NSURL *)directory device:(NSString *)device uptime:(NSTimeInterval)now error:(NSError **)error;
+// The same, refused unless the package at index is still the selected one at the moment of the capture.
+- (BOOL)prepareDirectory:(NSURL *)directory package:(NSUInteger)index device:(NSString *)device uptime:(NSTimeInterval)now error:(NSError **)error;
 - (BOOL)allows:(NSData *)payload device:(NSString *)device uptime:(NSTimeInterval)now;
 - (NSDictionary *)status;
 - (BOOL)cancel;
@@ -48,10 +53,35 @@ FOUNDATION_EXPORT NSString *const TIOOTAFullHostGuardMarker;
 // YES on the full 1.0.21 host: the pinned image with its profile marker, or the profile marker alone.
 // NO on the download-only host and on any other build.
 BOOL TIOOTAFullHost(void);
+// Stores the device and the reported OsVersion of the last type-1 reply, only when the last update is confirmed and
+// at least one package accepts that version; every type-1 reply and every disconnect call clears the previous read.
 void TIOOTAFlashObserveEvent(NSDictionary *event);
 // Stage 1 for 15 minutes: needs the exact full host and its pinned image, the feed, the hook protection,
-// the interlocks, Auto Update read as off, an accepted version read, and every pinned member in the folder.
+// the interlocks, Auto Update read as off, a version read that the selected package accepts, and every member
+// of the selected package in the folder.
 BOOL TIOOTAFlashAuthorize(NSError **error);
+// The package the owner picked in the wizard: one in-memory selection for the process, the first package (the
+// default) at every launch; nothing is stored. TIOOTASelectPackage is the only way it changes. It is refused once a
+// transfer has started (stage 2 or 3); at stage 0 or 1 it cancels a stage-1 authorization, and the feed's download
+// window and every cached check made for the previous selection are dropped (TIOOTASelectionGeneration counts the
+// changes). Nothing else switches it: not the folder's contents, not a version read, not a feed request.
+NSUInteger TIOOTASelectedPackageIndex(void);
+NSDictionary *TIOOTASelectedPackage(void);
+NSUInteger TIOOTASelectionGeneration(void);
+BOOL TIOOTASelectPackage(NSUInteger index, NSError **error);
+// The selected package's fields, for messages and tests (sizes as unsigned int, like the old literal pins). The gate
+// never reads these: it reads the selected package at stage 0 and its capture from stage 1 on.
+#define TIO_FW_NAME ((NSString *)TIOOTASelectedPackage()[@"name"])
+#define TIO_FW_ZIP_BYTES ((unsigned int)[TIOOTASelectedPackage()[@"zipBytes"] unsignedIntegerValue])
+#define TIO_FW_ZIP_SHA256 ((NSString *)TIOOTASelectedPackage()[@"zipSHA256"])
+#define TIO_FW_AP_BYTES ((unsigned int)[TIOOTASelectedPackage()[@"apBytes"] unsignedIntegerValue])
+#define TIO_FW_AP_MD5 ((NSString *)TIOOTASelectedPackage()[@"apMD5"])
+#define TIO_FW_PAYLOAD_BYTES ((unsigned int)[TIOOTASelectedPackage()[@"payloadBytes"] unsignedIntegerValue])
+#define TIO_FW_PAYLOAD_SLICES ((unsigned int)[TIOOTASelectedPackage()[@"payloadSlices"] unsignedIntegerValue])
+#define TIO_FW_MEMBER_PINS ((NSDictionary *)TIOOTASelectedPackage()[@"memberPins"])
+#define TIO_FW_ACCEPTED_OS_VERSIONS ((NSArray *)TIOOTASelectedPackage()[@"acceptOsVersions"])
+#define TIO_FW_ACCEPTED_QUERY_CODES ((NSArray *)TIOOTASelectedPackage()[@"acceptQueryCodes"])
+#define TIO_FW_ACCEPTED_VERSIONS_TEXT ((NSString *)TIOOTASelectedPackage()[@"acceptVersionsText"])
 BOOL TIOOTAFlashCancel(void);
 NSDictionary *TIOOTAFlashStatus(void);
 BOOL TIOOTAFlashDisableAutoUpdate(void);

@@ -19,22 +19,32 @@ static void (^CloseDownload)(void);
 static BOOL (^Authorize)(NSError **);
 static BOOL (^Revoke)(void);
 static BOOL (^DisableAuto)(void);
-static BOOL (^VerifyPackage)(NSError **);
-static BOOL (^ImportPackage)(NSURL *,NSError **);
-static BOOL (^CheckDirectory)(NSError **);
+static BOOL (^VerifyPackage)(NSDictionary *,NSError **);
+static BOOL (^ImportPackage)(NSURL *,NSDictionary *,NSError **);
+static BOOL (^CheckDirectory)(NSDictionary *,NSError **);
+// The package picker: the selection itself lives in ExperimentalOTAFlash.m (TIOOTASelectPackage); these read and
+// change it, and the generation tells a check that finished after a change that its result is stale.
+static NSUInteger (^SelectedIndex)(void);
+static NSUInteger (^SelectionGeneration)(void);
+static BOOL (^SelectPackage)(NSUInteger,NSError **);
 static BOOL FixtureMode;
 
 static NSURL *StoreDirectory(void) {
     return [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/ExperimentalOTA"] isDirectory:YES];
 }
 
+static NSDictionary *SelectedPackage(void) { return TIOOTAPackageAt(SelectedIndex()); }
+
+// The selected package's name: "Stock <base>" for the stock package, else the TMG label.
 static NSString *FirmwareName(void) {
+    NSDictionary *package=SelectedPackage();
+    if (![package[@"kind"] isEqual:@"TMG"]) return TIOOTAPackageDisplayName(package);
     id candidate=[NSBundle.mainBundle objectForInfoDictionaryKey:@"TIOExperimentalOTABuild"];
     if ([candidate isKindOfClass:NSString.class]) {
         NSRegularExpression *pattern=[NSRegularExpression regularExpressionWithPattern:@"^TMG[0-9]+$" options:0 error:NULL];
-        if ([pattern numberOfMatchesInString:candidate options:0 range:NSMakeRange(0,[candidate length])]==1) return candidate;
+        if ([pattern numberOfMatchesInString:candidate options:0 range:NSMakeRange(0,[candidate length])]==1&&[candidate isEqual:package[@"name"]]) return candidate;
     }
-    return TIO_FW_NAME;
+    return TIOOTAPackageDisplayName(package);
 }
 
 static NSString *StepName(NSInteger step) {
@@ -101,6 +111,7 @@ static NSString *ShortStatus(NSString *value) {
 @property(nonatomic) NSUInteger renderedRows;
 @property(nonatomic) TIOOTAPhase renderedPhase;
 @property(nonatomic) NSInteger renderedStep;
+@property(nonatomic) UISegmentedControl *packagePicker;
 - (void)refreshSnapshot;
 - (void)startPackageVerification;
 - (void)startDirectoryCheck;
@@ -117,21 +128,31 @@ static NSString *ShortStatus(NSString *value) {
     Authorize=^BOOL(NSError **error){ return TIOOTAFlashAuthorize(error); };
     Revoke=^BOOL{ return TIOOTAFlashCancel(); };
     DisableAuto=^BOOL{ return TIOOTAFlashDisableAutoUpdate(); };
-    VerifyPackage=^BOOL(NSError **error){
-        NSURL *file=[StoreDirectory() URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];
-        if ([NSFileManager.defaultManager fileExistsAtPath:file.path]) return TIOReadExperimentalOTA(file,error)!=nil;
-        for (NSString *name in @[@"TurboFirmwareCandidate",@"TurboWeReadCandidate",@"TurboMusicCandidate"]) {
-            NSURL *bundled=[NSBundle.mainBundle URLForResource:name withExtension:@"zip"];
-            if (bundled) return TIOImportExperimentalOTA(bundled,StoreDirectory(),error)!=nil;
-        }
+    // The package's own ZIP in the store (named by its SHA-256), or its fixed bundle resource copied there; each is
+    // checked against that package's pins before use.
+    VerifyPackage=^BOOL(NSDictionary *package,NSError **error){
+        NSURL *file=[StoreDirectory() URLByAppendingPathComponent:TIOOTAPackageArchiveName(package)];
+        if ([NSFileManager.defaultManager fileExistsAtPath:file.path]) return TIOReadExperimentalOTA(file,package,error)!=nil;
+        NSString *resource=package[@"resource"];
+        NSURL *bundled=resource.length?[NSBundle.mainBundle URLForResource:resource.stringByDeletingPathExtension withExtension:resource.pathExtension]:nil;
+        if (bundled) return TIOImportExperimentalOTA(bundled,StoreDirectory(),package,error)!=nil;
         if (error) *error=[NSError errorWithDomain:@"TIOOTAWizard" code:404 userInfo:nil];
         return NO;
     };
-    ImportPackage=^BOOL(NSURL *source,NSError **error){ return TIOImportExperimentalOTA(source,StoreDirectory(),error)!=nil; };
-    CheckDirectory=^BOOL(NSError **error){
+    ImportPackage=^BOOL(NSURL *source,NSDictionary *package,NSError **error){ return TIOImportExperimentalOTA(source,StoreDirectory(),package,error)!=nil; };
+    CheckDirectory=^BOOL(NSDictionary *package,NSError **error){
         NSURL *directory=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];
-        return TIOCheckOfficialOTADirectory(directory,error)!=nil;
+        return TIOCheckOfficialOTADirectory(directory,package,error)!=nil;
     };
+    SelectedIndex=^NSUInteger{ return TIOOTASelectedPackageIndex(); };
+    SelectionGeneration=^NSUInteger{ return TIOOTASelectionGeneration(); };
+    SelectPackage=^BOOL(NSUInteger index,NSError **error){ return TIOOTASelectPackage(index,error); };
+}
+
+static NSString *InfoBody(void) {
+    NSDictionary *package=SelectedPackage();
+    if ([package[@"kind"] isEqual:@"STOCK"]) return TIOFormat(@"ota.info.bodyStock",TIO_FW_BASE);
+    return TIOFormat(@"ota.info.body",FirmwareName(),TIO_FW_BASE);
 }
 
 - (void)viewDidLoad {
@@ -139,7 +160,7 @@ static NSString *ShortStatus(NSString *value) {
     self.title=TIOText(@"ota.title");
     self.view.backgroundColor=TIODesignColor(TIODesignColorBg);
     self.navigationItem.largeTitleDisplayMode=UINavigationItemLargeTitleDisplayModeAlways;
-    TIOAttachInfo(self,TIOText(@"ota.info.title"),TIOFormat(@"ota.info.body",FirmwareName(),TIO_FW_BASE));
+    TIOAttachInfo(self,TIOText(@"ota.info.title"),InfoBody());
     [self buildTable];
     [self buildActionBar];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(didBecomeActive)
@@ -480,7 +501,7 @@ static NSString *ShortStatus(NSString *value) {
 
 - (NSUInteger)rowCount {
     if ([self.snapshot[@"phase"] integerValue]==TIOOTAPhaseUnavailable) return 1;
-    if (self.step==1) return 5;
+    if (self.step==1) return 6;
     if (self.step==2) return 3;
     return [self.snapshot[@"stage"] integerValue]>=1?4:3;
 }
@@ -551,6 +572,16 @@ static NSString *ShortStatus(NSString *value) {
         detail=@"";
         cell.imageView.image=[UIImage systemImageNamed:@"info.circle"];
     } else if (self.step==1) {
+        if (row==0) {
+            // The package picker: the first package at every launch; disabled once a transfer has started.
+            NSDictionary *package=SelectedPackage();
+            cell.textLabel.text=TIOText(@"ota.package.pick");
+            cell.detailTextLabel.text=[package[@"kind"] isEqual:@"STOCK"]?TIOFormat(@"ota.package.stockDetail",TIO_FW_BASE):TIOFormat(@"ota.package.tmgDetail",FirmwareName());
+            cell.accessoryView=[self pickerForStage:[s[@"stage"] integerValue]];
+            cell.accessibilityIdentifier=@"ota-package-picker-row";
+            return;
+        }
+        row--;
         if (row==0) {
             title=TIOFormat(@"ota.check.package",FirmwareName());
             state=[s[@"package"] integerValue];
@@ -651,7 +682,47 @@ static NSString *ShortStatus(NSString *value) {
 - (NSString *)versionStatus {
     NSDictionary *s=self.snapshot;
     if ([s[@"version"] integerValue]!=TIOOTACheckOK) return TIOText(@"ota.version.stale");
-    return TIOText(@"ota.version.fresh");
+    // The read counts only when the selected package accepts the version it reported (TIOOTAFlashStatus).
+    return TIOFormat(@"ota.version.accepted",FirmwareName());
+}
+
+// One segmented control, kept across the 1 s refreshes so a touch or VoiceOver focus is not lost.
+- (UISegmentedControl *)pickerForStage:(NSInteger)stage {
+    if (!self.packagePicker) {
+        NSMutableArray *names=[NSMutableArray array];
+        for (NSUInteger i=0;i<TIOOTAPackageCount();i++) [names addObject:TIOOTAPackageDisplayName(TIOOTAPackageAt(i))];
+        UISegmentedControl *picker=[[UISegmentedControl alloc] initWithItems:names];
+        picker.accessibilityIdentifier=@"ota-package-picker";
+        picker.accessibilityLabel=TIOText(@"ota.package.pick");
+        [picker addTarget:self action:@selector(packageChanged:) forControlEvents:UIControlEventValueChanged];
+        [picker sizeToFit];
+        self.packagePicker=picker;
+    }
+    self.packagePicker.selectedSegmentIndex=(NSInteger)SelectedIndex();
+    self.packagePicker.enabled=stage<2&&!self.actionBusy;
+    return self.packagePicker;
+}
+
+// A change of package: refused once a transfer has started; otherwise the gate has cancelled a stage-1 authorization
+// and the feed's window closes. Every check made for the previous package is dropped and the wizard returns to Check.
+- (void)packageChanged:(UISegmentedControl *)picker {
+    NSUInteger index=(NSUInteger)MAX(0,picker.selectedSegmentIndex);
+    if (self.actionBusy || index==SelectedIndex()) { picker.selectedSegmentIndex=(NSInteger)SelectedIndex();return; }
+    NSError *error=nil;
+    if (!SelectPackage(index,&error)) {
+        picker.selectedSegmentIndex=(NSInteger)SelectedIndex();
+        [self refreshSnapshot];
+        TIONotice(self,TIOText(@"ota.package.notChanged"),error.localizedDescription);
+        return;
+    }
+    CloseDownload();
+    self.packageOK=nil;self.packageError=nil;self.packageMissing=NO;
+    self.directoryOK=nil;self.directoryError=nil;
+    self.step=1;self.choseStep=YES;
+    TIOAttachInfo(self,TIOText(@"ota.info.title"),InfoBody());
+    RefreshReport();
+    [self refreshSnapshot];
+    [self runChecksIfNeeded];
 }
 
 - (NSString *)directoryStatus {
@@ -665,10 +736,14 @@ static NSString *ShortStatus(NSString *value) {
     if (FixtureMode || self.packageBusy || self.actionBusy) return;
     self.packageBusy=YES;self.packageOK=nil;self.packageError=nil;self.packageMissing=NO;
     [self refreshSnapshot];
+    // The package selected now; a result that arrives after a change of selection is dropped and the check runs again.
+    NSDictionary *package=SelectedPackage();NSUInteger generation=SelectionGeneration();
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
-        NSError *error=nil;BOOL ok=VerifyPackage(&error);
+        NSError *error=nil;BOOL ok=VerifyPackage(package,&error);
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.packageBusy=NO;self.packageOK=@(ok);self.packageError=error;
+            self.packageBusy=NO;
+            if (generation!=SelectionGeneration()) { [self refreshSnapshot];[self runChecksIfNeeded];return; }
+            self.packageOK=@(ok);self.packageError=error;
             self.packageMissing=!ok && [error.domain isEqual:@"TIOOTAWizard"] && error.code==404;
             [self refreshSnapshot];
         });
@@ -679,10 +754,15 @@ static NSString *ShortStatus(NSString *value) {
     if (FixtureMode || self.directoryBusy || self.actionBusy) return;
     self.directoryBusy=YES;self.directoryOK=nil;self.directoryError=nil;
     [self refreshSnapshot];
+    // The folder is checked against the package selected now (a folder holding the other package fails with the
+    // member mismatch message); a result that arrives after a change of selection is dropped.
+    NSDictionary *package=SelectedPackage();NSUInteger generation=SelectionGeneration();
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
-        NSError *error=nil;BOOL ok=CheckDirectory(&error);
+        NSError *error=nil;BOOL ok=CheckDirectory(package,&error);
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.directoryBusy=NO;self.directoryOK=@(ok);self.directoryError=error;
+            self.directoryBusy=NO;
+            if (generation!=SelectionGeneration()) { [self refreshSnapshot];return; }
+            self.directoryOK=@(ok);self.directoryError=error;
             [self refreshSnapshot];
         });
     });
@@ -795,12 +875,15 @@ static NSString *ShortStatus(NSString *value) {
     NSURL *source=urls.firstObject;
     self.packageBusy=YES;self.packageOK=nil;self.packageError=nil;
     [self refreshSnapshot];
+    NSDictionary *package=SelectedPackage();NSUInteger generation=SelectionGeneration();
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
         BOOL access=[source startAccessingSecurityScopedResource];
-        NSError *error=nil;BOOL ok=ImportPackage(source,&error);
+        NSError *error=nil;BOOL ok=ImportPackage(source,package,&error);
         if (access) [source stopAccessingSecurityScopedResource];
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.packageBusy=NO;self.packageError=error;
+            self.packageBusy=NO;
+            if (generation!=SelectionGeneration()) { [self refreshSnapshot];[self runChecksIfNeeded];return; }
+            self.packageError=error;
             if (ok) [self startPackageVerification];
             else {self.packageOK=@NO;self.packageMissing=NO;[self refreshSnapshot];}
         });
@@ -822,8 +905,13 @@ void TIOOTAWizardUseFixture(NSString *name) {
     Authorize=^BOOL(__unused NSError **error){return YES;};
     Revoke=^BOOL{return YES;};
     DisableAuto=^BOOL{return YES;};
-    VerifyPackage=^BOOL(__unused NSError **error){return YES;};
-    ImportPackage=^BOOL(__unused NSURL *source,__unused NSError **error){return YES;};
-    CheckDirectory=^BOOL(__unused NSError **error){return YES;};
+    VerifyPackage=^BOOL(__unused NSDictionary *package,__unused NSError **error){return YES;};
+    ImportPackage=^BOOL(__unused NSURL *source,__unused NSDictionary *package,__unused NSError **error){return YES;};
+    CheckDirectory=^BOOL(__unused NSDictionary *package,__unused NSError **error){return YES;};
+    // The preview keeps its own selection; the gate's is never touched.
+    static NSUInteger fixtureIndex,fixtureGeneration;fixtureIndex=0;
+    SelectedIndex=^NSUInteger{return fixtureIndex;};
+    SelectionGeneration=^NSUInteger{return fixtureGeneration;};
+    SelectPackage=^BOOL(NSUInteger index,__unused NSError **error){if(!TIOOTAPackageAt(index))return NO;if(index!=fixtureIndex){fixtureIndex=index;fixtureGeneration++;}return YES;};
 }
 #endif

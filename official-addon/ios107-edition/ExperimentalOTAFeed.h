@@ -6,7 +6,11 @@
 @interface TIOExperimentalOTAFeed : NSObject
 @property(nonatomic,readonly) uint16_t port;
 - (BOOL)startOnPort:(uint16_t)port error:(NSError **)error;
+// Opens the download window for the selected package (TIOOTASelectedPackage): the ZIP must be that package's exact
+// bytes. A later change of selection closes the window.
 - (BOOL)armArchive:(NSURL *)archive lifetime:(NSTimeInterval)seconds error:(NSError **)error;
+// The same for a given package, opened only if the selection generation is still the one given.
+- (BOOL)armArchive:(NSURL *)archive package:(NSDictionary *)package generation:(NSUInteger)generation lifetime:(NSTimeInterval)seconds error:(NSError **)error;
 - (void)disarm;
 - (void)stop;
 - (NSDictionary *)status;

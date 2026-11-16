@@ -75,7 +75,7 @@ NSString *TIOFirmwareExportTurboCandidate(NSString *sha256){
             @"97657db0d8835b9c43f692cd095e5ca44743d35c7e9ad8473bf29dafdb8ccdd2":@"TMG10",
             @"4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c":@"TMG10",
         } mutableCopy];
-        d[TIO_FW_ZIP_SHA256.lowercaseString]=TIO_FW_NAME;known=d;
+        d[TIO_FW_DEFAULT_ZIP_SHA256.lowercaseString]=TIO_FW_DEFAULT_NAME;known=d;
     });
     return [sha256 isKindOfClass:NSString.class]?known[sha256.lowercaseString]:nil;
 }

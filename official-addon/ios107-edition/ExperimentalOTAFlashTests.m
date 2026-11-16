@@ -10,10 +10,10 @@ static TIOOTAFlashGate *Ready(NSURL *dir){TIOOTAFlashGate *g=[TIOOTAFlashGate ne
 int main(int argc,const char **argv){@autoreleasepool{
     assert(argc==3);NSURL *dir=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];
     NSURL *previous=[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[2]]];
-    assert(!TIOCopyExperimentalOTAPayloads(previous,nil));
+    assert(!TIOCopyExperimentalOTAPayloads(previous,TIOOTASelectedPackage(),nil));
     assert(TIOOTAAutoUpdateDisabled(@{@"test_ota_firmware_auto_update":@"false"}));assert(TIOOTAAutoUpdateDisabled(@{@"test_ota_firmware_auto_update":@NO}));
     for(id v in @[@"true",@YES,@0,@1,@"unknown",NSNull.null])assert(!TIOOTAAutoUpdateDisabled(@{@"test_ota_firmware_auto_update":v}));assert(!TIOOTAAutoUpdateDisabled(@{}));assert(!TIOOTAAutoUpdateDisabled(@{@"one_ota_firmware_auto_update":@"false",@"two_ota_firmware_auto_update":@"true"}));
-    NSDictionary *files=TIOCopyExperimentalOTAPayloads(dir,nil);assert(files.count==TIO_FW_MEMBER_PINS.count);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
+    NSDictionary *files=TIOCopyExperimentalOTAPayloads(dir,TIOOTASelectedPackage(),nil);assert(files.count==TIO_FW_MEMBER_PINS.count);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
     for(NSDictionary *row in manifest)if([row[@"Name"] isEqual:@"nuttx_ap.bin"]){assert([row[@"Md5"] isEqual:TIO_FW_AP_MD5]);assert([row[@"Size"] unsignedIntegerValue]==TIO_FW_AP_BYTES);}
     NSData *start=F(4,@{@"Mode":@2},nil),*version=F(5,@{@"OtaVersion":Target},nil),*info=F(6,manifest,nil);
     TIOOTAFlashGate *g=[TIOOTAFlashGate new];assert(![g allows:start device:@"TEST_DEVICE" uptime:10]);assert(![g allows:info device:@"TEST_DEVICE" uptime:10]);

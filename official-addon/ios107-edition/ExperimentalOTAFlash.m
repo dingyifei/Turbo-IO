@@ -209,18 +209,51 @@ NSDictionary *TIOOTAFrame(NSData *data){
     if(![obj isKindOfClass:NSDictionary.class]&&![obj isKindOfClass:NSArray.class])return nil;
     return @{@"type":@(type),@"json":obj,@"binary":binary};
 }
+// The package selection (TIOOTASelectPackage). Its own lock is held only around these two numbers and nothing is
+// called inside it, so the gate, the feed and the wizard can read it while holding their own locks.
+static NSUInteger SelectedPackage,SelectionGeneration;
+static NSObject *SelectionLock(void){static NSObject *lock;static dispatch_once_t once;dispatch_once(&once,^{lock=[NSObject new];});return lock;}
+NSUInteger TIOOTASelectedPackageIndex(void){@synchronized(SelectionLock()){return SelectedPackage;}}
+NSUInteger TIOOTASelectionGeneration(void){@synchronized(SelectionLock()){return SelectionGeneration;}}
+NSDictionary *TIOOTASelectedPackage(void){return TIOOTAPackageAt(TIOOTASelectedPackageIndex());}
+@interface TIOOTAFlashGate()
+- (BOOL)selectPackage:(NSUInteger)index error:(NSError **)error;
+@end
 @implementation TIOOTAFlashGate{
-    NSDictionary<NSString *,NSData *> *_files;NSArray *_manifest;NSString *_device,*_failure;
-    NSTimeInterval _deadline;NSUInteger _stage,_slices,_bytes;BOOL _versionSent,_manifestSent;
+    // The capture made at authorization (stage 1) from the package selected then: its members, manifest, name,
+    // OtaVersion and ZIP size. Cleared only by a cancel, which is refused once a transfer has started.
+    NSDictionary<NSString *,NSData *> *_files;NSArray *_manifest;NSString *_device,*_failure,*_package,*_otaVersion;
+    NSTimeInterval _deadline;NSUInteger _stage,_slices,_bytes,_zipBytes;BOOL _versionSent,_manifestSent;
 }
 - (BOOL)prepareDirectory:(NSURL *)directory device:(NSString *)device uptime:(NSTimeInterval)now error:(NSError **)error{
+    @synchronized(self){return [self prepareDirectory:directory package:TIOOTASelectedPackageIndex() device:device uptime:now error:error];}
+}
+- (BOOL)prepareDirectory:(NSURL *)directory package:(NSUInteger)index device:(NSString *)device uptime:(NSTimeInterval)now error:(NSError **)error{
     @synchronized(self){
         if(_stage||![device isKindOfClass:NSString.class]||!device.length||device.length>200||!isfinite(now)||now<0){Error(error,TIOText(@"当前不是可授权状态或没有有效设备；未开放。"));return NO;}
-        // Every pinned member, read once and checked by size and SHA-256 (FirmwarePins.h); the slices are compared with these bytes.
-        NSDictionary *files=TIOCopyExperimentalOTAPayloads(directory,error);if(!files)return NO;
+        // The package selected at this moment, which must be the one the caller checked. On the app's gate a change of
+        // selection takes this gate's lock (selectPackage:), so it cannot happen between this check and the capture.
+        NSDictionary *package=TIOOTAPackageAt(index);
+        if(!package||index!=TIOOTASelectedPackageIndex()){Error(error,TIOText(@"ota.package.changed"));return NO;}
+        // Every member the package pins, read once and checked by size and SHA-256 (FirmwarePins.h); the slices are compared with these bytes.
+        NSDictionary *files=TIOCopyExperimentalOTAPayloads(directory,package,error);if(!files)return NO;
         id manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
-        if(![manifest isKindOfClass:NSArray.class]){Error(error,[NSString stringWithFormat:TIOText(@"ota.identity.payloadMismatch"),@"OtaFileInfo.json",TIO_FW_NAME]);return NO;}
-        _files=files;_manifest=manifest;_device=[device copy];_deadline=now+900;_stage=1;_failure=nil;return YES;
+        if(![manifest isKindOfClass:NSArray.class]){Error(error,[NSString stringWithFormat:TIOText(@"ota.identity.payloadMismatch"),@"OtaFileInfo.json",TIOOTAPackageDisplayName(package)]);return NO;}
+        _files=files;_manifest=manifest;_package=[package[@"name"] copy];_otaVersion=[package[@"otaVersion"] copy];_zipBytes=[package[@"zipBytes"] unsignedIntegerValue];
+        _device=[device copy];_deadline=now+900;_stage=1;_failure=nil;return YES;
+    }
+}
+// The one place the selection changes (TIOOTASelectPackage calls it on the app's gate). Under this gate's lock, so it
+// and the gate's own transitions never interleave: refused at stage 2 or 3 (nothing changes, the capture stays);
+// otherwise a stage-1 authorization is cancelled first, and the generation counter moves on.
+- (BOOL)selectPackage:(NSUInteger)index error:(NSError **)error{
+    @synchronized(self){
+        if(!TIOOTAPackageAt(index)){Error(error,TIOText(@"ota.package.unknown"));return NO;}
+        if(_stage>=2){Error(error,TIOText(@"ota.package.locked"));return NO;}
+        if(index==TIOOTASelectedPackageIndex())return YES;
+        [self cancel];
+        @synchronized(SelectionLock()){SelectedPackage=index;SelectionGeneration++;}
+        return YES;
     }
 }
 - (BOOL)allows:(NSData *)payload device:(NSString *)device uptime:(NSTimeInterval)now{
@@ -233,13 +266,15 @@ NSDictionary *TIOOTAFrame(NSData *data){
         // recovery loop can establish that no glasses transfer is active.
         if((t==1||t==2||t==11)&&empty)return YES;
         NSUInteger n=0;
-        if(t==3&&dict&&[j count]==1&&Number(j[@"OtaSize"],&n)&&n==TIO_FW_ZIP_BYTES&&!binary.length)return YES;
-        if(!_stage){if(t==4)_failure=[NSString stringWithFormat:TIOText(@"ota.identity.notAuthorized"),TIO_FW_NAME,TIO_FW_NAME];return NO;}
+        // The size query: at stage 0 for the selected package's ZIP, from stage 1 on for the captured package's only.
+        NSUInteger size=_stage?_zipBytes:[TIOOTASelectedPackage()[@"zipBytes"] unsignedIntegerValue];
+        if(t==3&&dict&&[j count]==1&&Number(j[@"OtaSize"],&n)&&size&&n==size&&!binary.length)return YES;
+        if(!_stage){if(t==4){NSString *name=TIOOTAPackageDisplayName(TIOOTASelectedPackage());_failure=[NSString stringWithFormat:TIOText(@"ota.identity.notAuthorized"),name,name];}return NO;}
         if(_stage==3||!isfinite(now)||now<0)return NO;
         if(_stage==1&&now>=_deadline){[self cancel];return NO;}
         BOOL ok=[device isEqual:_device];
         if(t==4)ok=ok&&_stage==1&&dict&&[j count]==1&&Number(j[@"Mode"],&n)&&n==2&&!binary.length;
-        else if(t==5)ok=ok&&_stage==2&&dict&&[j isEqual:@{@"OtaVersion":TIO_FW_OTA_VERSION}]&&!binary.length;
+        else if(t==5)ok=ok&&_stage==2&&dict&&_otaVersion.length&&[j isEqual:@{@"OtaVersion":_otaVersion}]&&!binary.length;
         else if(t==6)ok=ok&&_stage==2&&_versionSent&&[j isKindOfClass:NSArray.class]&&[j isEqual:_manifest]&&!binary.length;
         else if(t==7){
             NSUInteger start=0,size=0;NSString *name=dict?j[@"Name"]:nil;NSData *file=[name isKindOfClass:NSString.class]?_files[name]:nil;
@@ -251,8 +286,8 @@ NSDictionary *TIOOTAFrame(NSData *data){
         if(t==4)_stage=2;if(t==5)_versionSent=YES;if(t==6)_manifestSent=YES;return YES;
     }
 }
-- (BOOL)cancel{@synchronized(self){if(_stage>=2)return NO;_stage=0;_files=nil;_manifest=nil;_device=nil;_deadline=0;return YES;}}
-- (NSDictionary *)status{@synchronized(self){return @{@"stage":@(_stage),@"authorized":@(_stage==1||_stage==2),@"started":@(_stage>=2),@"versionMatched":@(_versionSent),@"manifestMatched":@(_manifestSent),@"validatedSlices":@(_slices),@"validatedSliceBytes":@(_bytes),@"failure":_failure?:@"",@"runtimeValidated":@NO};}}
+- (BOOL)cancel{@synchronized(self){if(_stage>=2)return NO;_stage=0;_files=nil;_manifest=nil;_device=nil;_package=nil;_otaVersion=nil;_zipBytes=0;_deadline=0;return YES;}}
+- (NSDictionary *)status{@synchronized(self){return @{@"stage":@(_stage),@"authorized":@(_stage==1||_stage==2),@"started":@(_stage>=2),@"package":_package?:@"",@"versionMatched":@(_versionSent),@"manifestMatched":@(_manifestSent),@"validatedSlices":@(_slices),@"validatedSliceBytes":@(_bytes),@"failure":_failure?:@"",@"runtimeValidated":@NO};}}
 @end
 BOOL TIOOTAFlashBuild(void){
 #if TARGET_OS_IPHONE && TIO_OTA_FLASH_ENABLED
@@ -267,8 +302,9 @@ BOOL TIOOTAFlashBuild(void){
     return NO;
 #endif
 }
-// The device of the last accepted version read; cleared by a disconnect, unbind or unpair call and by every new type-1 reply.
-static TIOOTAFlashGate *Gate;static NSString *ObservedDevice;
+// The device and the reported OsVersion of the last accepted version read; cleared by a disconnect, unbind or unpair
+// call and by every new type-1 reply.
+static TIOOTAFlashGate *Gate;static NSString *ObservedDevice,*ObservedVersion;
 BOOL TIOOTAAutoUpdateDisabled(NSDictionary *preferences){
     if(![preferences isKindOfClass:NSDictionary.class])return NO;
     NSUInteger found=0;
@@ -279,6 +315,13 @@ BOOL TIOOTAAutoUpdateDisabled(NSDictionary *preferences){
     return found>0;
 }
 static TIOOTAFlashGate *Current(void){@synchronized(NSProcessInfo.processInfo){if(!Gate)Gate=[TIOOTAFlashGate new];return Gate;}}
+BOOL TIOOTASelectPackage(NSUInteger index,NSError **error){return [Current() selectPackage:index error:error];}
+// YES when at least one package of the release accepts this OsVersion (what a type-1 reply may store).
+static BOOL AnyPackageAccepts(id version){
+    if(![version isKindOfClass:NSString.class])return NO;
+    for(NSUInteger i=0;i<TIOOTAPackageCount();i++)if([TIOOTAPackageAt(i)[@"acceptOsVersions"] containsObject:version])return YES;
+    return NO;
+}
 // The flash session stage the file guard reads (test.py's stock-teleprompter group substitutes this seam).
 static NSUInteger GateStage(void){return [[Current() status][@"stage"] unsignedIntegerValue];}
 BOOL TIOOTAFlashProtected(void){
@@ -357,7 +400,7 @@ static BOOL Business9Call(id call){
 // A disconnect, unbind or unpair call forgets the version read and revokes a stage 1 grant.
 static void ObserveDisconnect(id method){
     if(![method isKindOfClass:NSString.class])return;
-    if([[method lowercaseString] containsString:@"disconnect"]||[[method lowercaseString] containsString:@"unbind"]||[[method lowercaseString] containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;}[Current() cancel];}
+    if([[method lowercaseString] containsString:@"disconnect"]||[[method lowercaseString] containsString:@"unbind"]||[[method lowercaseString] containsString:@"unpair"]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedVersion=nil;}[Current() cancel];}
 }
 // The last refused business-9 frame, for a dry run on a new host (preparation-status.json,
 // flashGate.lastRefusedFrame): its type, the names of its JSON keys, the Mode (type 4), OtaSize (type 3)
@@ -408,10 +451,12 @@ void TIOOTAFlashObserveEvent(NSDictionary *event){
     if(!TIOOTAFlashBuild()||![event[@"eventType"] isEqual:@"messageReceived"])return;
     NSDictionary *m=event[@"message"];NSUInteger business=0;if(![m isKindOfClass:NSDictionary.class]||!Business(m[@"businessId"],&business)||business!=9)return;
     NSDictionary *f=TIOOTAFrame(m[@"payload"]);id j=f[@"json"];
-    // Every type-1 reply replaces the last read: it counts only when it names an accepted version and a confirmed last update.
-    if([f[@"type"] isEqual:@1]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;}}
-    if([f[@"type"] isEqual:@1]&&[j isKindOfClass:NSDictionary.class]&&[TIO_FW_ACCEPTED_OS_VERSIONS containsObject:j[@"OsVersion"]]&&[j[@"OtaValidationConfirmed"] isEqual:@YES]&&[m[@"deviceId"] isKindOfClass:NSString.class]){
-        @synchronized(NSProcessInfo.processInfo){ObservedDevice=[m[@"deviceId"] copy];}
+    // Every type-1 reply replaces the last read: it counts only when it names a version that at least one package
+    // accepts and a confirmed last update. Authorization then checks that version against the selected package.
+    if([f[@"type"] isEqual:@1]){@synchronized(NSProcessInfo.processInfo){ObservedDevice=nil;ObservedVersion=nil;}}
+    if([f[@"type"] isEqual:@1]&&[j isKindOfClass:NSDictionary.class]&&AnyPackageAccepts(j[@"OsVersion"])&&[j[@"OtaValidationConfirmed"] isEqual:@YES]&&[m[@"deviceId"] isKindOfClass:NSString.class]){
+        NSString *version=[[NSString alloc] initWithString:j[@"OsVersion"]];
+        @synchronized(NSProcessInfo.processInfo){ObservedDevice=[m[@"deviceId"] copy];ObservedVersion=version;}
     }
 }
 BOOL TIOOTAFlashAuthorize(NSError **error){
@@ -430,11 +475,16 @@ BOOL TIOOTAFlashAuthorize(NSError **error){
 #endif
     if(!TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation)){Error(error,TIOText(@"请先在官方眼镜软件版本页关闭自动更新；未读到明确关闭状态，不授予试刷权限。"));return NO;}
     // The last accepted version read, however old: a disconnect call or any later type-1 reply clears or replaces it.
-    NSString *device;@synchronized(NSProcessInfo.processInfo){device=ObservedDevice;}
-    if(!device.length){Error(error,[NSString stringWithFormat:TIOText(@"ota.version.recheck"),TIO_FW_ACCEPTED_VERSIONS_TEXT]);return NO;}
+    // The version it reported must be one the selected package accepts; the gate then captures that same package.
+    NSString *device,*version;@synchronized(NSProcessInfo.processInfo){device=ObservedDevice;version=ObservedVersion;}
+    NSUInteger index=TIOOTASelectedPackageIndex();NSDictionary *package=TIOOTAPackageAt(index);
+    if(!package){Error(error,TIOText(@"ota.package.unknown"));return NO;}
+    if(!device.length||!version.length||![package[@"acceptOsVersions"] containsObject:version]){Error(error,[NSString stringWithFormat:TIOText(@"ota.version.recheck"),package[@"acceptVersionsText"]]);return NO;}
     NSURL *dir=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];
-    return [Current() prepareDirectory:dir device:device uptime:NSProcessInfo.processInfo.systemUptime error:error];
+    return [Current() prepareDirectory:dir package:index device:device uptime:NSProcessInfo.processInfo.systemUptime error:error];
 }
 BOOL TIOOTAFlashCancel(void){return [Current() cancel];}
 NSDictionary *TIOOTAFlashStatus(void){NSMutableDictionary *s=[[Current() status] mutableCopy];s[@"flashBuild"]=@(TIOOTAFlashBuild());s[@"fullHost"]=@(TIOOTAFullHost());
-    @synchronized(NSProcessInfo.processInfo){s[@"refusedFrames"]=@(RefusedFrames);if(LastRefused)s[@"lastRefusedFrame"]=LastRefused;}s[@"automaticUpdateDisabled"]=@(TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation));@synchronized(NSProcessInfo.processInfo){s[@"recentTargetVersionRead"]=@(ObservedDevice.length>0);}return s;}
+    @synchronized(NSProcessInfo.processInfo){s[@"refusedFrames"]=@(RefusedFrames);if(LastRefused)s[@"lastRefusedFrame"]=LastRefused;}s[@"automaticUpdateDisabled"]=@(TIOOTAAutoUpdateDisabled(NSUserDefaults.standardUserDefaults.dictionaryRepresentation));NSUInteger index=TIOOTASelectedPackageIndex();NSDictionary *package=TIOOTAPackageAt(index);s[@"selectedPackageIndex"]=@(index);s[@"selectedPackage"]=package[@"name"]?:@"";
+    // A version read counts for the wizard only when the selected package accepts the version it reported.
+    @synchronized(NSProcessInfo.processInfo){s[@"recentTargetVersionRead"]=@(ObservedDevice.length>0&&ObservedVersion.length>0&&[package[@"acceptOsVersions"] containsObject:ObservedVersion]);}return s;}

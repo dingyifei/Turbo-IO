@@ -45,7 +45,7 @@ static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSErro
     NSError *e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
     NSString *tail=[NSString stringWithFormat:TIOText(@"ota.identity.payloadMismatch"),@"",TIO_FW_NAME];
     assert([e.localizedDescription hasSuffix:tail]);
-    NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
+    NSError *direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
     NSArray *before=[fm contentsOfDirectoryAtPath:directory error:nil];assert(before.count==TIO_FW_MEMBER_PINS.count&&[[fm contentsOfDirectoryAtPath:stock error:nil] isEqual:before]);
     for(NSString *name in before)assert([[NSData dataWithContentsOfFile:[directory stringByAppendingPathComponent:name]] isEqual:[NSData dataWithContentsOfFile:[stock stringByAppendingPathComponent:name]]]);
     // A partial download (a member missing, a member cut short, an empty folder) or one with an extra file:
@@ -59,15 +59,15 @@ static void Collide(NSString *directory,NSString *stock,BOOL (^authorize)(NSErro
         if([damage isEqual:@"extra"])assert([[NSData dataWithBytes:"x" length:1] writeToFile:[directory stringByAppendingPathComponent:@"fota_1.bin"] atomically:NO]);
         e=nil;assert(!authorize(&e)&&[TIOOTAFlashStatus()[@"stage"] intValue]==0);
         assert(e&&[e.localizedDescription hasSuffix:tail]);
-        direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
+        direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),&direct)&&[direct.localizedDescription isEqual:e.localizedDescription]);
     }
     // A missing folder: refused, with the folder message.
-    assert([fm removeItemAtPath:directory error:nil]);direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],&direct)&&direct&&![direct.localizedDescription hasSuffix:tail]);
+    assert([fm removeItemAtPath:directory error:nil]);direct=nil;assert(!TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),&direct)&&direct&&![direct.localizedDescription hasSuffix:tail]);
     assert([fm moveItemAtPath:aside toPath:directory error:nil]);
-    assert(TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
+    assert(TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),nil));
     // The release with an extra file beside it passes: only the pinned members are read and sent.
     NSString *extra=[directory stringByAppendingPathComponent:@"fota_1.bin"];
-    assert([[NSData dataWithBytes:"x" length:1] writeToFile:extra atomically:NO]&&TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],nil));
+    assert([[NSData dataWithBytes:"x" length:1] writeToFile:extra atomically:NO]&&TIOCheckOfficialOTADirectory([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),nil));
     assert([fm removeItemAtPath:extra error:nil]);
 }
 static void Refused(void){NSError *e=nil;assert(!TIOOTAFlashAuthorize(&e)&&e&&[TIOOTAFlashStatus()[@"stage"]intValue]==0);}
@@ -123,7 +123,7 @@ int main(int argc,char **argv){@autoreleasepool{
  assert(!Send(4,@{@"Mode":@2},nil,@"other-peer"));assert(TIOOTAFlashCancel());
  Observe(version,YES,@"other-peer");assert(TIOOTAFlashAuthorize(nil));assert(!Send(4,@{@"Mode":@2},nil,@"fixture-peer"));assert(TIOOTAFlashCancel());Observe(version,YES,@"fixture-peer");assert(TIOOTAFlashAuthorize(nil));
  assert(Send(4,@{@"Mode":@2},nil,@"fixture-peer"));assert([Snapshot(YES)[@"phase"]intValue]==TIOOTAPhaseInstalling);assert(!TIOOTAFlashCancel());
- NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==TIO_FW_MEMBER_PINS.count);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
+ NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),nil);assert(files.count==TIO_FW_MEMBER_PINS.count);NSArray *manifest=[NSJSONSerialization JSONObjectWithData:files[@"OtaFileInfo.json"] options:0 error:nil];
  assert(Send(5,@{@"OtaVersion":TRPTarget},nil,@"fixture-peer"));assert(Send(6,manifest,nil,@"fixture-peer"));unsigned slices=0;NSUInteger total=0;
  for(NSDictionary *row in manifest){NSData *file=files[row[@"Name"]];for(NSUInteger at=0;at<file.length;at+=51200){NSUInteger n=MIN((NSUInteger)51200,file.length-at);assert(Send(7,@{@"Name":row[@"Name"],@"Start":@(at),@"Size":@(n)},[file subdataWithRange:NSMakeRange(at,n)],@"fixture-peer"));slices++;total+=n;}}
  assert(slices==TIO_FW_PAYLOAD_SLICES&&total==TIO_FW_PAYLOAD_BYTES);assert([TIOOTAFlashStatus()[@"validatedSlices"]unsignedIntegerValue]==slices);

@@ -361,6 +361,11 @@
       "group": "ota-host-1021",
       "note": "Full 1.0.21 host (ios1021, C20 onward): the ios1021 host marker is exact, near misses and the retired 1.0.11 and 1.0.7 markers are refused; patch-route.mjs ios1021 on the stock 1.0.21 App gives the pinned output, refuses an input one byte off its pin, and the output is accepted only for ios1021 at the 1.0.21 offsets. Needs --app1021."
     },
+    "tests/FlashPackagesTests.m": {
+      "status": "run",
+      "group": "flash-packages",
+      "note": "The release's two packages (TMG12 first, stock 1.0.6.11 second) through the real guard and gate on the full 1.0.21 host, with both real ZIPs unzipped: a new process selects TMG12; with stock selected the recorded 1.0.21 sequence replays with the stock size, manifest and slices and is allowed (slice totals computed by test.py from the stock ZIP); each package's authorization refuses the other's manifest and nuttx_ap.bin slice; type 3 with the other package's size is refused at stages 0, 1 and 2; a selection change at stage 1 cancels the authorization, and at stages 2 and 3 is refused with the capture unchanged; a capture for a package index that is not the selected one is refused as changed, each way; with a test-only package table (stock accepts only 1.0.6.11) a version the selected package does not accept refuses authorization."
+    },
     "tests/FlashSequenceTests.m": {
       "status": "run",
       "group": "flash-sequence-1021",

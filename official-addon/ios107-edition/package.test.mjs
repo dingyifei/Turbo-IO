@@ -10,7 +10,7 @@ const info={CFBundleIdentifier:'com.rayneo.venus.pub',CFBundleExecutable:'Runner
 const uuid1021='74da0780dcf0384f9e841ac12f56cdf5';
 const old107={info:{...info,CFBundleShortVersionString:'1.0.7',CFBundleVersion:'230'},uuid:'410defdbf93739eaacf2f616abff9d0b'};
 const old1011={info:{...info,CFBundleShortVersionString:'1.0.11',CFBundleVersion:'259'},uuid:'22724c972ef9388d8e6a6e051855a555'};
-const options={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios1021-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',firmware:'/example/TMG12.zip',host:'ios1021'};
+const options={app:'/example/Runner.app',addon:'/example/addon.dylib',profile:'/example/profile.mobileprovision',out:'/example/new-ios1021-package',identity:'A'.repeat(40),device:'TEST-DEVICE-01',bundle:'com.rayneo.venus.pub',firmware:'/example/TMG12.zip','stock-firmware':'/example/stock.zip',host:'ios1021'};
 test('exact version, build and UUID of the one inspected host; mismatches and old hosts rejected',()=>{
  assert.ok(inspectedHost(info,uuid1021));
  assert.equal(inspectedHost({...info,CFBundleVersion:'2'},uuid1021),null);
@@ -25,6 +25,9 @@ test('--host is required; the removed 1.0.7 and 1.0.11 hosts are unknown; other 
  for(const removed of ['ios107','ios1011','ios1011-download','1011','107',''])assert.throws(()=>validateOptions({...options,host:removed}),/unknown_host_profile/,removed);
  for(const flag of ['TMG11','TMG9','TMG8','TMG7','TMG6','TMG5','TMG4','TMG3','TMG2','TMIG1','enabled',''])assert.throws(()=>validateOptions({...options,'experimental-ota':flag}));
  assert.throws(()=>validateOptions({...options,firmware:undefined}));
+ // The release lists a stock package: its ZIP is required, as an absolute path.
+ assert.throws(()=>validateOptions({...options,'stock-firmware':undefined}),/stock_firmware_resource_required/);
+ assert.throws(()=>validateOptions({...options,'stock-firmware':'relative/stock.zip'}),/stock_firmware_resource_required/);
  assert.throws(()=>validateOptions({...options,bundle:'example.other'}));
 });
 test('entitlements restricted to existing profile grants',()=>{
@@ -75,6 +78,17 @@ test('exact firmware resource, not a flash authorization',async t=>{
  assert.throws(()=>validateResearchPair(sym,name,bad));
  assert.throws(()=>validateResearchPair('',name,b));
  assert.throws(()=>validateResearchPair(sym,'TMG9',b));
+});
+// The stock package (the gate passes the release's checked stock ZIP): accepted only as the stock package, and the
+// TMG ZIP or a changed stock ZIP is refused before bundling.
+test('stock package ZIP verified before bundling; a wrong second ZIP refused',async t=>{
+ const p=process.env.TIO_TEST_STOCK_ZIP;if(!p)return t.skip('set TIO_TEST_STOCK_ZIP');
+ const m=await import('./package.mjs');const c21=m.releasePins();const b=fs.readFileSync(p);
+ assert.ok(m.validateStockPackage(b,c21));
+ const bad=Buffer.from(b);bad[bad.length-1]^=1;assert.throws(()=>m.validateStockPackage(bad,c21),/stock_firmware_identity_mismatch/);
+ assert.throws(()=>m.validateStockPackage(b.subarray(1),c21),/stock_firmware_identity_mismatch/);
+ assert.throws(()=>validateResearchPair('_TIOMenuLayoutController OBJC_CLASS_$_TIORoadMap',c21.name,b),/navs3_firmware_identity_mismatch/);
+ const tmg=process.env.TIO_TEST_RELEASE_ZIP;if(tmg)assert.throws(()=>m.validateStockPackage(fs.readFileSync(tmg),c21),/stock_firmware_identity_mismatch/);
 });
 import {usageDescriptions,applyUsageDescriptions} from './package.mjs';
 import path from 'node:path';
@@ -181,11 +195,16 @@ test('packaging is self-contained',()=>{
  assert.doesNotMatch(source,/from ['"]\.\.\//);
  assert.doesNotMatch(source,/['"]\.\.\//);
  assert.ok(!source.includes('focusEdition'));
+ // The wizard reads each package's ZIP from the bundle by its fixed resource name (FirmwarePins.h, phone_pins.py),
+ // which is the name the packager writes it under.
  const ui=fs.readFileSync(new URL('./ExperimentalOTAUI.m',import.meta.url),'utf8');
- const loop=ui.match(/for \(NSString \*name in @\[([^\]]+)\]\)/);assert.ok(loop);
- const names=[...loop[1].matchAll(/@"(Turbo[A-Za-z]*Candidate)"/g)].map(m=>m[1]);
- assert.ok(names.includes(leakGuard.CANDIDATE_RESOURCE.replace('.zip','')));
+ assert.match(ui,/NSString \*resource=package\[@"resource"\];/);assert.doesNotMatch(ui,/@"Turbo[A-Za-z]*Candidate"/);
+ const pins=JSON.parse(fs.readFileSync(new URL('./firmware-pins-c21.json',import.meta.url),'utf8'));
+ assert.deepEqual(pins.packages.map(e=>e.resource),[leakGuard.CANDIDATE_RESOURCE,leakGuard.STOCK_RESOURCE]);
+ assert.equal(leakGuard.STOCK_RESOURCE,'TurboStockFirmware.zip');
  assert.equal([...source.matchAll(/fs\.writeFileSync\(path\.join\(app,CANDIDATE_RESOURCE\),firmware/g)].length,1);
+ assert.equal([...source.matchAll(/fs\.writeFileSync\(path\.join\(app,STOCK_RESOURCE\),stockFirmware,\{flag:'wx'\}\)/g)].length,1);
+ assert.ok(source.indexOf('validateStockPackage(stockFirmware,release)')<source.indexOf('fs.mkdirSync(destination'),'the stock ZIP is verified before anything is bundled');
  assert.doesNotMatch(source,/path\.join\(app,["\x27][^"\x27]*Candidate\.zip/);
 });
 
@@ -714,16 +733,25 @@ test('releases: the only release C21, its pins, the addon release marker and the
  // No firmware-pins.json any more, and no pins file for a removed release.
  for(const f of ['firmware-pins.json','firmware-pins-c16.json','firmware-pins-c17.json','firmware-pins-c18.json','firmware-pins-c20.json'])assert.equal(fs.existsSync(new URL('./'+f,import.meta.url)),false,f);
  for(const bad of ['c99','c20','C21','default','default ','../c21','',null,1])assert.throws(()=>m.releasePins(bad),/unknown_release/);
- const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+'Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11\0y');
+ // Two packages: TMG12 (the default) and stock 1.0.6.11, each with its resource name; the marker lists both.
+ assert.deepEqual(m.releasePackages(c21).map(e=>[e.name,e.kind,e.resource,e.zipBytes,e.zipSHA256]),[
+  ['TMG12','TMG','TurboWeReadCandidate.zip',9549211,'3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373'],
+  ['STOCK-1.0.6.11','STOCK','TurboStockFirmware.zip',9447267,'5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e']]);
+ for(const broken of [{...c21,packages:[]},{...c21,packages:[c21.packages[1],c21.packages[0]]},{...c21,packages:[{...c21.packages[0],zipSHA256:'0'.repeat(64)},c21.packages[1]]},{...c21,packages:[c21.packages[0],{...c21.packages[1],resource:'TurboWeReadCandidate.zip'}]},{...c21,packages:[c21.packages[0],{...c21.packages[1],name:'STOCK-1.0.5.12'}]}])assert.throws(()=>m.releasePackages(broken),/release_packages_invalid/);
+ const tail='Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11';
+ const addon=r=>Buffer.from('x\0'+m.releaseMarker(r)+tail+m.packageMarker(c21.packages[1])+tail+'\0y');
  assert.ok(m.validateReleaseAddon(addon(c21),c21));
+ assert.throws(()=>m.validateReleaseAddon(Buffer.from('x\0'+m.releaseMarker(c21)+tail+'\0y'),c21),/addon_release_mismatch/);
+ assert.throws(()=>m.validateReleaseAddon(Buffer.from('x\0'+m.releaseMarker(c21)+tail+m.packageMarker({...c21.packages[1],zipSHA256:'0'.repeat(64)})+tail+'\0y'),c21),/addon_release_mismatch/);
  const other={...c21,release:'c22'};
  assert.throws(()=>m.validateReleaseAddon(addon(other),c21),/addon_release_mismatch/);
  assert.throws(()=>m.validateReleaseAddon(addon({...c21,zipSHA256:'0'.repeat(64)}),c21),/addon_release_mismatch/);
  assert.throws(()=>m.validateReleaseAddon(Buffer.from('ota release=c20; firmware=TMG12; zip='+c21.zipSHA256),c21),/addon_release_mismatch/);
  assert.throws(()=>m.validateResearchPair(['_TIOMenuLayoutController','OBJC_CLASS_$_TIORoadMap'].join(' '),'TMG12',Buffer.alloc(c21.zipBytes),c21),/navs3_firmware_identity_mismatch/);
- const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip'};
+ const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip','stock-firmware':'/a/s.zip'};
  assert.throws(()=>m.validateOptions({...base,release:'c21'}),/host_required/);
  assert.throws(()=>m.validateOptions({...base,host:'ios1021-download',firmware:undefined,release:'c21'}),/release_requires_full_host/);
+ assert.throws(()=>m.validateOptions({...base,host:'ios1021-download',firmware:undefined,'stock-firmware':'/a/s.zip'}),/download_only_host_takes_no_firmware_or_product/);
  m.validateOptions({...base,host:'ios1021',release:'c21'});m.validateOptions({...base,host:'ios1021'});
  assert.throws(()=>m.validateOptions({...base,host:'ios1021',release:'c99'}),/unknown_release/);
 });
@@ -752,7 +780,7 @@ test('full 1.0.21 profile: the C19 pins, its own route profile and markers, and 
  assert.deepEqual(m.RELEASE_HOST_NAMES,{ios1021:'1021-full'});
  assert.deepEqual(m.releaseHosts(),['1021-full']);assert.deepEqual(m.releaseHosts('c21'),['1021-full']);
  for(const bad of ['c99','c20','__proto__','',' default','default'])assert.throws(()=>m.releaseHosts(bad),/unknown_release/);
- const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-1021-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip',host:'ios1021'};
+ const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-1021-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip','stock-firmware':'/a/s.zip',host:'ios1021'};
  m.validateOptions(base);m.validateOptions({...base,'experimental-ota':'TMG12'});
  assert.throws(()=>m.validateOptions({...base,'experimental-ota':'TMG11'}),/only_exact_tmg12_supported/);
  for(const n of ['c16','c17','c18','c20','c99'])assert.throws(()=>m.validateOptions({...base,release:n}),/unknown_release/,n);

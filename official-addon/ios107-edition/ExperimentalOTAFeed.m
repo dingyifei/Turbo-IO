@@ -24,11 +24,12 @@
 #endif
 static NSError *FeedError(NSString *message){return [NSError errorWithDomain:@"TurboIO.OTAFeed" code:1 userInfo:@{NSLocalizedDescriptionKey:message}];}
 static NSArray<NSString *> *QueryPaths(void){return @[@"/g/xxxxxxxA78p2M",@"/g/xxxxxxxxxxCCXhB"];}
-static NSString *QueryKind(NSString *target){
+// codes: the accepted current-version query codes of the selected package.
+static NSString *QueryKind(NSString *target,NSArray *codes){
     NSURLComponents *u=[NSURLComponents componentsWithString:[@"http://127.0.0.1" stringByAppendingString:[target stringByReplacingOccurrencesOfString:@"+" withString:@"%20"]]];
     NSMutableDictionary *params=[NSMutableDictionary new];
     for(NSURLQueryItem *item in u.queryItems){if(params[item.name])return @"invalid";params[item.name]=item.value?:@"";}
-    if([params[@"packageType"] isEqual:@"firmware"]&&[params[@"packageName"] isEqual:@"strix OS"]&&[params[@"glassesType"] isEqual:@"S3"]&&[params[@"deviceType"] isEqual:@"iOS"]&&[TIO_FW_ACCEPTED_QUERY_CODES containsObject:params[@"versionCode"]])return @"firmware";
+    if([params[@"packageType"] isEqual:@"firmware"]&&[params[@"packageName"] isEqual:@"strix OS"]&&[params[@"glassesType"] isEqual:@"S3"]&&[params[@"deviceType"] isEqual:@"iOS"]&&[codes isKindOfClass:NSArray.class]&&params[@"versionCode"]&&[codes containsObject:params[@"versionCode"]])return @"firmware";
     if([params[@"packageType"] isEqual:@"app"])return @"app";
     return @"unknown";
 }
@@ -45,6 +46,10 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
     uint16_t _port;
     NSData *_archive;
     NSString *_token, *_md5;
+    // The package the window serves and the selection generation it was opened under: a later change of selection
+    // (TIOOTASelectPackage) closes the window, even when the first package is picked again.
+    NSDictionary *_package;
+    NSUInteger _generation;
     NSString *_healthNonce;
     NSTimeInterval _deadline;
     NSUInteger _queries, _downloads, _rejected;
@@ -80,17 +85,21 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
     }
 }
 - (BOOL)armArchive:(NSURL *)url lifetime:(NSTimeInterval)seconds error:(NSError **)error{
+    NSUInteger generation=TIOOTASelectionGeneration();
+    return [self armArchive:url package:TIOOTASelectedPackage() generation:generation lifetime:seconds error:error];
+}
+- (BOOL)armArchive:(NSURL *)url package:(NSDictionary *)package generation:(NSUInteger)generation lifetime:(NSTimeInterval)seconds error:(NSError **)error{
 #if !TIO_OTA_FEED_ARMING_ENABLED
-    (void)url;(void)seconds;if(error)*error=FeedError(TIOText(@"刷机门禁尚未开放：需先验收官方入口与同版本缓存。"));return NO;
+    (void)url;(void)package;(void)generation;(void)seconds;if(error)*error=FeedError(TIOText(@"刷机门禁尚未开放：需先验收官方入口与同版本缓存。"));return NO;
 #else
 #if TARGET_OS_IPHONE
     if(!TIOOTAFlashProtected()){if(error)*error=FeedError(TIOText(@"未确认发送保护，拒绝提供实验包。"));return NO;}
 #endif
     if(!isfinite(seconds)||seconds<=0||seconds>900){if(error)*error=FeedError(TIOText(@"授权有效期必须在 0 至 900 秒之间。"));return NO;}
-    if(!TIOReadExperimentalOTA(url,error))return NO;
-    // Keep the verified exact bytes, so a later disk change cannot alter a reply.
+    if(!TIOReadExperimentalOTA(url,package,error))return NO;
+    // Keep the verified exact bytes, so a later disk change cannot alter a reply; checked against this package's pin.
     NSData *data=[NSData dataWithContentsOfURL:url options:0 error:error];
-    if(!data||!TIOCheckExperimentalOTA(data,error))return NO;
+    if(!data||!TIOCheckExperimentalOTA(data,package,error))return NO;
     unsigned char bytes[CC_MD5_DIGEST_LENGTH];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -98,12 +107,15 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
 #pragma clang diagnostic pop
     NSMutableString *digest=[NSMutableString new];for(NSUInteger i=0;i<sizeof(bytes);i++)[digest appendFormat:@"%02x",bytes[i]];
     @synchronized(self){if(!_listener){if(error)*error=FeedError(TIOText(@"本机服务未启动。"));return NO;}
-        _archive=data;_md5=digest;_token=[NSUUID.UUID.UUIDString stringByReplacingOccurrencesOfString:@"-" withString:@""];
+        // The selection changed while the ZIP was being checked: nothing is served for the old one.
+        if(generation!=TIOOTASelectionGeneration()){if(error)*error=FeedError(TIOText(@"ota.package.changed"));return NO;}
+        _archive=data;_md5=digest;_package=package;_generation=generation;_token=[NSUUID.UUID.UUIDString stringByReplacingOccurrencesOfString:@"-" withString:@""];
         _deadline=NSProcessInfo.processInfo.systemUptime+seconds;return YES;}
 #endif
 }
-- (void)expireLocked{if(_archive&&NSProcessInfo.processInfo.systemUptime>=_deadline){_archive=nil;_token=nil;_md5=nil;_deadline=0;}}
-- (void)disarm{@synchronized(self){_archive=nil;_token=nil;_md5=nil;_deadline=0;}}
+// The window closes after its lifetime, and at once when the package selection has changed since it opened.
+- (void)expireLocked{if(_archive&&(NSProcessInfo.processInfo.systemUptime>=_deadline||_generation!=TIOOTASelectionGeneration())){_archive=nil;_token=nil;_md5=nil;_package=nil;_deadline=0;}}
+- (void)disarm{@synchronized(self){_archive=nil;_token=nil;_md5=nil;_package=nil;_deadline=0;}}
 - (void)stop{@synchronized(self){[self disarm];if(_listener){dispatch_source_cancel(_listener);_listener=nil;}_listenerFD=-1;_port=0;}}
 - (void)dealloc{if(_listener)dispatch_source_cancel(_listener);}
 - (BOOL)checkHealth{
@@ -128,7 +140,7 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
     // Never use that platform-dependent flag to restart/disarm a live source.
     // Lifecycle ownership is local; real availability is the HTTP health probe.
     BOOL live=_listener!=nil&&_listenerFD>=0;
-    return @{@"running":@(live),@"port":@(_port),@"armed":@(_archive!=nil),@"remainingSeconds":@(_archive?MAX(0,ceil(_deadline-NSProcessInfo.processInfo.systemUptime)):0),@"queryCount":@(_queries),@"firmwareQueries":@(_firmwareQueries),@"appQueries":@(_appQueries),@"unknownQueries":@(_unknownQueries),@"downloadRequests":@(_downloads),@"rejectedCount":@(_rejected),@"armingCompiledIn":@(TIO_OTA_FEED_ARMING_ENABLED),@"runtimeValidated":@NO};}}
+    return @{@"running":@(live),@"port":@(_port),@"armed":@(_archive!=nil),@"package":_archive?_package[@"name"]:@"",@"remainingSeconds":@(_archive?MAX(0,ceil(_deadline-NSProcessInfo.processInfo.systemUptime)):0),@"queryCount":@(_queries),@"firmwareQueries":@(_firmwareQueries),@"appQueries":@(_appQueries),@"unknownQueries":@(_unknownQueries),@"downloadRequests":@(_downloads),@"rejectedCount":@(_rejected),@"armingCompiledIn":@(TIO_OTA_FEED_ARMING_ENABLED),@"runtimeValidated":@NO};}}
 - (void)handleClient:(int)fd{
     // Headers and query may contain account/device identifiers. Never log or persist them.
     NSMutableData *request=[NSMutableData new];NSData *end=[@"\r\n\r\n" dataUsingEncoding:NSASCIIStringEncoding];NSTimeInterval until=NSProcessInfo.processInfo.systemUptime+2;
@@ -147,8 +159,16 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
         else if([target isEqual:@"/__tio_health"])response=@{@"alive":@YES,@"instance":_healthNonce};
         else if([QueryPaths() containsObject:[[target componentsSeparatedByString:@"?"] firstObject]]){
             _queries++;id data=NSNull.null;
-            NSString *kind=QueryKind(target);if([kind isEqual:@"firmware"])_firmwareQueries++;else if([kind isEqual:@"app"])_appQueries++;else _unknownQueries++;
-            if(_archive&&[kind isEqual:@"firmware"])data=@{@"taskName":[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",TIO_FW_NAME],@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":TIO_FW_FEED_VERSION_NAME,@"versionCode":@(TIO_FW_FEED_VERSION_CODE),@"upgradeType":@1,@"userScope":@0,@"updateDesc":[NSString stringWithFormat:@"PRIVATE EXPERIMENT: AP modified, other %lu payloads unchanged. Runtime unverified.",(unsigned long)(TIOExperimentalOTAMemberCount()-2)],@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/%@.zip",_port,_token,TIO_FW_OTA_FOLDER]};
+            // An open window serves its own package, which is the selected one (expireLocked closed it otherwise).
+            NSDictionary *package=_archive?_package:TIOOTASelectedPackage();
+            NSString *kind=QueryKind(target,package[@"acceptQueryCodes"]);if([kind isEqual:@"firmware"])_firmwareQueries++;else if([kind isEqual:@"app"])_appQueries++;else _unknownQueries++;
+            if(_archive&&[kind isEqual:@"firmware"]){
+                // The name and text RayNeo shows for the update: the stock package is named as plain stock firmware.
+                BOOL stock=[package[@"kind"] isEqual:@"STOCK"];
+                NSString *task=stock?[@"Stock " stringByAppendingString:TIO_FW_BASE]:[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",package[@"name"]];
+                NSString *desc=stock?[NSString stringWithFormat:@"Stock %@.",TIO_FW_BASE]:[NSString stringWithFormat:@"PRIVATE EXPERIMENT: AP modified, other %lu payloads unchanged. Runtime unverified.",(unsigned long)([package[@"memberPins"] count]-2)];
+                data=@{@"taskName":task,@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":TIO_FW_FEED_VERSION_NAME,@"versionCode":@(TIO_FW_FEED_VERSION_CODE),@"upgradeType":@1,@"userScope":@0,@"updateDesc":desc,@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/%@.zip",_port,_token,TIO_FW_OTA_FOLDER]};
+            }
             response=@{@"error_code":@1000,@"error_msg":@"success",@"data":data};
         }else if(_archive&&[target isEqual:[NSString stringWithFormat:@"/p/%@/%@.zip",_token,TIO_FW_OTA_FOLDER]]){
             body=_archive;mime=@"application/zip";extra=@{@"Accept-Ranges":@"bytes"};
@@ -210,10 +230,14 @@ BOOL TIOBeginExperimentalOTAPreparation(NSError **error){
     if([TIOOTAFlashStatus()[@"stage"] integerValue]!=0){if(error)*error=FeedError(TIOText(@"已有授权或升级会话，未重建下载来源；不要重启或重复授权。"));return NO;}
     if(!EnsureFeedListening()){if(error)*error=FeedError(BootstrapFailure?:TIOText(@"本机来源尚未启动，未开放下载。"));TIORefreshExperimentalOTAReport();return NO;}
     ScheduleHealthCheck();
+    // The selected package's own ZIP in the addon's store (the wizard copied it there from the bundle and checked it).
+    // The window is opened for this package and this selection generation only.
+    NSUInteger generation=TIOOTASelectionGeneration();NSDictionary *package=TIOOTASelectedPackage();
+    if(!package){if(error)*error=FeedError(TIOText(@"ota.package.unknown"));return NO;}
     NSURL *directory=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/TurboIOPrivateAddon/ExperimentalOTA"] isDirectory:YES];
-    NSURL *archive=[directory URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];
-    if(!TIOImportExperimentalOTA(archive,directory,error))return NO;
-    BOOL ok=SharedFeed&&[SharedFeed armArchive:archive lifetime:900 error:error];TIORefreshExperimentalOTAReport();return ok;
+    NSURL *archive=[directory URLByAppendingPathComponent:TIOOTAPackageArchiveName(package)];
+    if(!TIOImportExperimentalOTA(archive,directory,package,error))return NO;
+    BOOL ok=SharedFeed&&[SharedFeed armArchive:archive package:package generation:generation lifetime:900 error:error];TIORefreshExperimentalOTAReport();return ok;
 }
 void TIOCancelExperimentalOTAPreparation(void){[SharedFeed disarm];TIORefreshExperimentalOTAReport();}
 void TIORefreshExperimentalOTAReport(void){
@@ -227,10 +251,12 @@ void TIORefreshExperimentalOTAReport(void){
         if([fm createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&error]&&[directory setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:&error]){
             NSMutableDictionary *report=[@{@"build":@"OTA-PREPARE-02",@"timestamp":@(NSDate.date.timeIntervalSince1970),@"processIdentifier":@(NSProcessInfo.processInfo.processIdentifier),@"launchID":LaunchID?:@"",@"feed":TIOExperimentalOTAFeedStatus(),@"guard":TIOOTAGuardStatus(),@"flashAuthorized":@NO,@"transferSessionBound":@NO} mutableCopy];
             if(TIOOTAFlashBuild()){report[@"build"]=@"TMG-OTA-PHONE-01";report[@"flashGate"]=TIOOTAFlashStatus();report[@"flashAuthorized"]=report[@"flashGate"][@"authorized"];}
-            NSURL *zip=[directory URLByAppendingPathComponent:[TIOExperimentalOTASHA() stringByAppendingString:@".zip"]];error=nil;
-            report[@"archive"]=TIOReadExperimentalOTA(zip,&error)?:@{@"integrityPassed":@NO};
+            // The archive and the official folder are checked against the selected package.
+            NSDictionary *package=TIOOTASelectedPackage();report[@"selectedPackage"]=package[@"name"]?:@"";
+            NSURL *zip=[directory URLByAppendingPathComponent:TIOOTAPackageArchiveName(package)];error=nil;
+            report[@"archive"]=TIOReadExperimentalOTA(zip,package,&error)?:@{@"integrityPassed":@NO};
             NSURL *official=[NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]] isDirectory:YES];error=nil;
-            report[@"officialDirectory"]=TIOCheckOfficialOTADirectory(official,&error)?:@{@"integrityPassed":@NO,@"note":error.localizedDescription?:TIOText(@"尚未读取")};
+            report[@"officialDirectory"]=TIOCheckOfficialOTADirectory(official,package,&error)?:@{@"integrityPassed":@NO,@"note":error.localizedDescription?:TIOText(@"尚未读取")};
             NSURL *file=[directory URLByAppendingPathComponent:@"preparation-status.json"];
             NSData *data=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
             [data writeToURL:file options:NSDataWritingAtomic|NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication error:nil];

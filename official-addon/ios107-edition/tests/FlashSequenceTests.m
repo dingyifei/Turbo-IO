@@ -81,7 +81,7 @@ int main(int argc,char **argv){@autoreleasepool{
     NSString *directory=[Home stringByAppendingPathComponent:[@"Library/Application Support/ota/" stringByAppendingString:TIO_FW_OTA_FOLDER]];
     assert([fm createDirectoryAtPath:directory.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil]);
     assert([fm copyItemAtPath:@(argv[1]) toPath:directory error:nil]);
-    NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],nil);assert(files.count==TIO_FW_MEMBER_PINS.count);
+    NSDictionary *files=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:directory],TIOOTASelectedPackage(),nil);assert(files.count==TIO_FW_MEMBER_PINS.count);
     Host=TFHFullInfo();Image=FakeImage(TFH_UUID);Prefs=@{@"fixture_ota_firmware_auto_update":@NO};
     if([mode isEqual:@"unprotected"]){
         NSString *unprotected=TIOText(@"没有试刷构建与发送保护；未开放。");NSError *e=nil;

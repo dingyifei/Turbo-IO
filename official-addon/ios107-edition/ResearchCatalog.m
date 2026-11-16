@@ -82,10 +82,10 @@ static const TIOHubRowDefinition Rows[] = {
 
 static NSString *FirmwareCode(void) {
     id value = [NSBundle.mainBundle objectForInfoDictionaryKey:@"TIOExperimentalOTABuild"];
-    if (![value isKindOfClass:NSString.class]) return TIO_FW_NAME;
+    if (![value isKindOfClass:NSString.class]) return TIO_FW_DEFAULT_NAME;
     NSRegularExpression *pattern = [NSRegularExpression regularExpressionWithPattern:@"^TMG[0-9]+$" options:0 error:NULL];
     NSString *code = value;
-    return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : TIO_FW_NAME;
+    return [pattern firstMatchInString:code options:0 range:NSMakeRange(0, code.length)] ? code : TIO_FW_DEFAULT_NAME;
 }
 
 // The firmware export row exists only on the 1.0.21 host. On the download-only host

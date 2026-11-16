@@ -22,5 +22,53 @@
   "acceptQueryCodes": [
     "01.00.05.0012",
     "01.00.06.0011"
+  ],
+  "packages": [
+    {
+      "name": "TMG12",
+      "zipBytes": 9549211,
+      "zipSHA256": "3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373",
+      "apBytes": 8132360,
+      "apSHA256": "6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50",
+      "apMD5": "96eebf1467b53759e816f05057df506e",
+      "manifestBytes": 2886,
+      "manifestSHA256": "5d174ed0ecb3dd15806c22af49e88956775bdddfea7e5c9233e32a235cc4837c",
+      "payloadBytes": 18474970,
+      "payloadSlices": 369,
+      "kind": "TMG",
+      "resource": "TurboWeReadCandidate.zip",
+      "otaVersion": "Strix OS 1.0.6.11",
+      "acceptOsVersions": [
+        "Strix OS 1.0.5.12",
+        "Strix OS 1.0.6.11"
+      ],
+      "acceptQueryCodes": [
+        "01.00.05.0012",
+        "01.00.06.0011"
+      ]
+    },
+    {
+      "name": "STOCK-1.0.6.11",
+      "zipBytes": 9447267,
+      "zipSHA256": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",
+      "apBytes": 7967244,
+      "apSHA256": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
+      "apMD5": "94d28a6e1bb4df87e3e0cefc3549ee82",
+      "manifestBytes": 2901,
+      "manifestSHA256": "c5c09444e28bde6d13c9916aca17dd78b19e676854be4991b260e134d55f91a9",
+      "payloadBytes": 18309854,
+      "payloadSlices": 366,
+      "kind": "STOCK",
+      "resource": "TurboStockFirmware.zip",
+      "otaVersion": "Strix OS 1.0.6.11",
+      "acceptOsVersions": [
+        "Strix OS 1.0.5.12",
+        "Strix OS 1.0.6.11"
+      ],
+      "acceptQueryCodes": [
+        "01.00.05.0012",
+        "01.00.06.0011"
+      ]
+    }
   ]
 }

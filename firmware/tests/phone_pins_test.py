@@ -1,5 +1,6 @@
 """The phone pin generator (tools/phone_pins.py): version strings, release validation, the stock-base and tree checks,
-the emulator-only and superseded-ZIP refusals, rendering, and --check catching a changed or stale output.
+the two packages of a release (a TMG build first, the base's stock package second) and their label checks, the
+emulator-only and superseded-ZIP refusals, rendering, and --check catching a changed or stale output.
 Usage: phone_pins_test.py ZIP [ZIP ...] (release ZIPs in any order; a release ZIP not given is read from $TURBO_INPUTS
 at its releases.json path). The ZIP the tree builds (build-inputs.json archive) must be one of them, either given or
 pinned by a release: today it is C21's ZIP. $TURBO_INPUTS must be set: the stock 1.0.6.11 ZIP is read from there."""
@@ -74,18 +75,19 @@ def emu_planted(tool,why,releases_file,zips,name,plant=None):
         # is C21's ZIP), except where a plant makes the release that record or that label.
         tree=json.loads((FW/'build-inputs.json').read_text());tree['emuOnly']=True;tree['archive']={**tree['archive'],'sha256':'0'*64}
         (fw/'RELEASE').write_text('TMG99\n')
-        data=json.loads(Path(releases_file).read_text());spec=data['releases'][name]
+        # The copy's release keeps its first (TMG) package only; the plants change that package.
+        data=json.loads(Path(releases_file).read_text());rel=data['releases'][name];rel['packages']=rel['packages'][:1];spec=rel['packages'][0]
         source=zips[spec['zip']['sha256']]
-        if plant=='label':spec['firmware']='TMG99'
+        if plant=='label':spec['label']='TMG99'
         if plant=='record':tree['archive']={**tree['archive'],'sha256':spec['zip']['sha256'],'bytes':spec['zip']['bytes']}
         if plant=='name':spec['zip']['input']='tmg99/StrixOS-1.0.6.11-TurboIO-TMG99-EMU-ONLY-NOT-FOR-DEVICE.zip'
         inputs=tmp/'inputs'
         if plant in ('shape','cores'):
             raw=emu_stand_in(plant,source,load(FW/'build.py','phone_pins_plant_build_'+plant))   # the real tree's stock ZIP paths
-            spec['firmware']='TMG98';spec['zip']={'input':'tmg98/StrixOS-1.0.6.11-TurboIO-TMG98-CANDIDATE-NOT-APPROVED.zip',
+            spec['label']='TMG98';spec['zip']={'input':'tmg98/StrixOS-1.0.6.11-TurboIO-TMG98-CANDIDATE-NOT-APPROVED.zip',
                 'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
             (inputs/'tmg98').mkdir(parents=True);(inputs/spec['zip']['input']).write_bytes(raw)
-        data['releases']={name:spec}
+        data['releases']={name:rel}
         (fw/'build-inputs.json').write_text(json.dumps(tree));(tmp/'releases.json').write_text(json.dumps(data))
         target=inputs/spec['zip']['input']
         if not target.exists():target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target)
@@ -119,21 +121,27 @@ def main():
     pp=load(FW/'tools/phone_pins.py','phone_pins_under_test')
     zips={hashlib.sha256(Path(p).read_bytes()).hexdigest():Path(p) for p in sys.argv[1:]}
     releases=pp.load_releases(ED/'releases.json')
-    for spec in releases.values():
-        if spec['zip']['sha256'] not in zips:
-            p=Path(os.environ['TURBO_INPUTS'])/spec['zip']['input']
-            if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest()==spec['zip']['sha256']:zips[spec['zip']['sha256']]=p
+    for release in releases.values():
+        for spec in pp.packages(release):
+            if spec['zip']['sha256'] not in zips:
+                p=Path(os.environ['TURBO_INPUTS'])/spec['zip']['input']
+                if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest()==spec['zip']['sha256']:zips[spec['zip']['sha256']]=p
     def zip_of(spec):return zips[spec['zip']['sha256']]
     tree_inputs=json.loads((FW/'build-inputs.json').read_text());tree_label=pp.release_label()
     tree_zip=zips.get(tree_inputs['archive']['sha256'])
     if tree_zip is None:raise SystemExit('give the ZIP the tree builds (build-inputs.json archive) as an argument')
     build=pp.load_build()
     stock1611=build.stock_zip_path('1.0.6.11');stock10512=build.stock_zip_path('1.0.5.12');stock1055=build.stock_zip_path('1.0.5.5')
-    # The one release, written out by hand: C21, TMG12 on stock 1.0.6.11 (the tree's own ZIP), for the 1.0.21 full host.
+    # The one release, written out by hand: C21 on stock 1.0.6.11 for the 1.0.21 full host, with two packages: TMG12
+    # (the tree's own ZIP, the default) and stock 1.0.6.11 (the canonical stock ZIP, the same file build.py names).
     assert list(releases)==['c21'],list(releases)
-    c21=releases['c21'];c21_zip=zip_of(c21)
-    assert (c21['firmware'],c21['stockBase'],c21['hosts'],c21['acceptCurrent'])==('TMG12','1.0.6.11',['1021-full'],['1.0.5.12','1.0.6.11'])
+    release21=releases['c21'];c21=pp.package_spec(release21);stock21=pp.package_spec(release21,'STOCK-1.0.6.11');c21_zip=zip_of(c21)
+    assert [p['label'] for p in release21['packages']]==['TMG12','STOCK-1.0.6.11'] and [p['kind'] for p in pp.packages(release21)]==['TMG','STOCK']
+    assert (c21['firmware'],c21['stockBase'],release21['hosts'],c21['acceptCurrent'])==('TMG12','1.0.6.11',['1021-full'],['1.0.5.12','1.0.6.11'])
     assert (c21['zip']['bytes'],c21['zip']['sha256'])==(9549211,'3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373')
+    assert (stock21['stockBase'],stock21['acceptCurrent'])==('1.0.6.11',['1.0.5.12','1.0.6.11'])
+    assert (stock21['zip']['bytes'],stock21['zip']['sha256'])==(9447267,'5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e')
+    stock21_zip=zip_of(stock21);assert stock21_zip.read_bytes()==stock1611.read_bytes()
     assert c21_zip==tree_zip and (tree_label,tree_inputs['stockBase'])==('TMG12','1.0.6.11')
     # Version strings, written out by hand.
     assert pp.query_code('1.0.5.12')=='01.00.05.0012' and pp.query_code('1.0.5.5')=='01.00.05.0005' and pp.query_code('1.0.6.11')=='01.00.06.0011'
@@ -162,6 +170,34 @@ def main():
     # The tree's label must be carried by the tree's own ZIP.
     tree={'archive':{'sha256':'0'*64},'stockBase':c21['stockBase']}
     refused_with(lambda:pp.release_pins('c21',c21,c21_zip,build,tree,c21['firmware']),'c21 named as the tree release with another ZIP','is the tree label but this is not the ZIP')
+    # The stock package passes and yields the stock pins: every member, the AP and the manifest included, is the stock
+    # 1.0.6.11 ZIP's; same policy as the TMG package (both accept 1.0.5.12 and 1.0.6.11, both target 1.0.6.11).
+    spins,smembers,spolicy=pp.release_pins('c21',stock21,stock21_zip,build)
+    with zipfile.ZipFile(stock1611) as z:stock_rows=z.read('OtaFileInfo.json');stock_ap=z.read('nuttx_ap.bin')
+    assert spins['name']=='STOCK-1.0.6.11' and (spins['zipBytes'],spins['zipSHA256'])==(9447267,stock21['zip']['sha256'])
+    assert spins['apSHA256']==hashlib.sha256(stock_ap).hexdigest()!=pins['apSHA256'] and spins['manifestSHA256']==hashlib.sha256(stock_rows).hexdigest()
+    assert spolicy==policy and len(smembers)==17 and {n for n in members if n not in ('nuttx_ap.bin','OtaFileInfo.json')}=={n for n in smembers if smembers[n]==members[n]}
+    # Package labels: a TMG build is TMGn and the stock package is STOCK-<base>; any other label is refused.
+    assert pp.package_kind('TMG12','1.0.6.11')=='TMG' and pp.package_kind('STOCK-1.0.6.11','1.0.6.11')=='STOCK'
+    for label in ('STOCK-1.0.5.12','stock-1.0.6.11','STOCK','STOCK-','TMG','tmg12','TMG12a','RELEASE','',None,12):
+        refused_with(lambda:pp.package_kind(label,'1.0.6.11'),'package label '+repr(label),'unknown package label')
+        refused_with(lambda:pp.release_pins('c21',{**stock21,'firmware':label},stock21_zip,build),'a package labelled '+repr(label),'unknown package label')
+    # The stock package is the stock ZIP and nothing else: one changed member, a changed AP, or a reformatted manifest
+    # (same payloads, rows rewritten) under the STOCK label is refused, each by the stock comparison (pins rewritten to match).
+    with zipfile.ZipFile(stock21_zip) as z:simages=bytearray(z.read('images.bin'))
+    with zipfile.ZipFile(c21_zip) as z:c21_ap=z.read('nuttx_ap.bin')
+    simages[len(simages)//2]^=1
+    for what,raw,text in (('a changed images.bin',rewrite_zip(stock21_zip.read_bytes(),{'images.bin':bytes(simages)}),'images.bin is not the stock 1.0.6.11 member'),
+                          ('the TMG12 AP',rewrite_zip(stock21_zip.read_bytes(),{'nuttx_ap.bin':c21_ap}),'nuttx_ap.bin is not the stock 1.0.6.11 member'),
+                          ('a rewritten manifest',rewrite_zip(stock21_zip.read_bytes(),{}),'OtaFileInfo.json is not the stock 1.0.6.11 manifest')):
+        with tempfile.TemporaryDirectory(prefix='phone-pins-stock-') as tmp:
+            path=Path(tmp)/'stock.zip';path.write_bytes(raw)
+            changed={**stock21,'zip':{'input':'stock/x.zip','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}}
+            refused_with(lambda:pp.release_pins('c21',changed,path,build),'a STOCK package with '+what,text)
+    # The TMG ZIP under the STOCK label, and the stock ZIP under a TMG label, are refused.
+    refused_with(lambda:pp.release_pins('c21',{**stock21,'zip':c21['zip']},c21_zip,build),'the TMG12 ZIP under STOCK-1.0.6.11','nuttx_ap.bin is not the stock 1.0.6.11 member')
+    refused_with(lambda:pp.release_pins('c21',{**c21,'firmware':'TMG98','zip':stock21['zip']},stock21_zip,build),'the stock ZIP under a TMG label','carries the stock 1.0.6.11 AP')
+    refused_with(lambda:pp.release_pins('c21',{**c21,'zip':stock21['zip']},stock21_zip,build),'the stock ZIP under TMG12','carries the stock 1.0.6.11 AP')
     # Every member but AP must be the stock 1.0.6.11 member: one changed byte in images.bin (manifest rewritten to match,
     # so only the stock comparison can refuse it), under another label so the tree check does not decide it.
     with zipfile.ZipFile(c21_zip) as z:images=bytearray(z.read('images.bin'))
@@ -230,18 +266,39 @@ def main():
         with tempfile.NamedTemporaryFile('w',suffix='.json',delete=False) as f:json.dump(d,f)
         try:refused(lambda:pp.load_releases(f.name),why)
         finally:Path(f.name).unlink()
-    bad_releases(lambda d:d['releases']['c21']['zip'].update(input='/abs/zip'),'absolute ZIP path')
-    bad_releases(lambda d:d['releases']['c21']['zip'].update(input='../zip'),'parent ZIP path')
-    bad_releases(lambda d:d['releases']['c21']['zip'].update(sha256='X'*64),'malformed SHA-256')
+    for i in (0,1):
+        bad_releases(lambda d:d['releases']['c21']['packages'][i]['zip'].update(input='/abs/zip'),'absolute ZIP path')
+        bad_releases(lambda d:d['releases']['c21']['packages'][i]['zip'].update(input='../zip'),'parent ZIP path')
+        bad_releases(lambda d:d['releases']['c21']['packages'][i]['zip'].update(sha256='X'*64),'malformed SHA-256')
+    # The packages: one TMG build first, then at most the base's stock package; labels as above; distinct ZIPs; the
+    # single-package keys of the old schema are refused.
+    P=lambda d:d['releases']['c21']['packages']
+    bad_releases(lambda d:P(d).reverse(),'stock package first')
+    bad_releases(lambda d:P(d).pop(0),'stock package only')
+    bad_releases(lambda d:P(d).clear(),'no package')
+    bad_releases(lambda d:P(d).append(copy.deepcopy(P(d)[1])),'three packages')
+    bad_releases(lambda d:P(d).__setitem__(1,{**copy.deepcopy(P(d)[0]),'label':'TMG13'}),'two TMG packages')
+    bad_releases(lambda d:P(d)[1].update(label='STOCK-1.0.5.12'),'a stock package of another base')
+    bad_releases(lambda d:P(d)[1].update(label='RECOVERY'),'an unknown label')
+    bad_releases(lambda d:P(d)[1].update(zip=copy.deepcopy(P(d)[0]['zip'])),'two packages with one ZIP')
+    bad_releases(lambda d:d['releases']['c21'].update(packages=P(d)[0]),'packages not a list')
+    for old,value in (('firmware','TMG12'),('zip',{'input':'x.zip','bytes':1,'sha256':'0'*64}),('acceptCurrent',['1.0.5.12'])):
+        bad_releases(lambda d:d['releases']['c21'].update({old:value}),'the old top-level '+old)
+    # One package (TMG only) is still valid input.
+    one=copy.deepcopy(data);one['releases']['c21']['packages']=one['releases']['c21']['packages'][:1]
+    with tempfile.NamedTemporaryFile('w',suffix='.json',delete=False) as f:json.dump(one,f)
+    try:assert [p['firmware'] for p in pp.packages(pp.load_releases(f.name)['c21'])]==['TMG12']
+    finally:Path(f.name).unlink()
     # The only host a release may list is the 1.0.21 full host.
     for hosts in (['107'],['1011-full'],['107','1011-full'],['1021'],['1021-full','1011-full'],['1021-full','1021-full'],['1031-full'],[],'1021-full'):
         bad_releases(lambda d:d['releases']['c21'].update(hosts=hosts),'hosts '+repr(hosts))
     # The only stock base a release may have is 1.0.6.11.
     for base in ('1.0.5.12','1.0.5.5','1.0.6.12'):bad_releases(lambda d:d['releases']['c21'].update(stockBase=base),'stock base '+base)
-    bad_releases(lambda d:d['releases']['c21'].update(acceptCurrent=['1.0.5.12','1.0.5.12']),'duplicate accepted version')
-    bad_releases(lambda d:d['releases']['c21'].update(acceptCurrent=[]),'no accepted version')
-    bad_releases(lambda d:d['releases']['c21'].update(acceptCurrent=['1.0.6']),'malformed accepted version')
-    bad_releases(lambda d:d['releases']['c21'].update(firmware='tmg12'),'malformed firmware label')
+    for i in (0,1):
+        bad_releases(lambda d:P(d)[i].update(acceptCurrent=['1.0.5.12','1.0.5.12']),'duplicate accepted version')
+        bad_releases(lambda d:P(d)[i].update(acceptCurrent=[]),'no accepted version')
+        bad_releases(lambda d:P(d)[i].update(acceptCurrent=['1.0.6']),'malformed accepted version')
+    bad_releases(lambda d:P(d)[0].update(label='tmg12'),'malformed firmware label')
     bad_releases(lambda d:d.update(releases={}),'no release')
     bad_releases(lambda d:d.update(schema=2),'another schema')
     for name in ('default','C22','c','c22a','r22'):
@@ -251,22 +308,29 @@ def main():
     with tempfile.NamedTemporaryFile('w',suffix='.json',delete=False) as f:json.dump(two,f)
     try:assert list(pp.load_releases(f.name))==['c21','c22']
     finally:Path(f.name).unlink()
-    # Rendering. One release: one block, selected with no define (the header defines TIO_RELEASE_C21 itself), and its
-    # JSON is pins plus policy; there is no firmware-pins.json.
-    computed={'c21':(pins,members,policy)}
+    # Rendering. One release: one block, selected with no define (the header defines TIO_RELEASE_C21 itself). Its JSON is
+    # the default package's pins plus the policy at the top level, as before, and "packages" with both entries; there is
+    # no firmware-pins.json.
+    computed={'c21':[(pins,members,policy),(spins,smembers,spolicy)]}
     out=pp.render(releases,computed);header=out['FirmwarePins.h']
-    assert set(out)=={'FirmwarePins.h','firmware-pins-c21.json'} and json.loads(out['firmware-pins-c21.json'])=={**pins,**policy}
+    written=json.loads(out['firmware-pins-c21.json'])
+    assert set(out)=={'FirmwarePins.h','firmware-pins-c21.json'} and {k:v for k,v in written.items() if k!='packages'}=={**pins,**policy}
+    assert [e['name'] for e in written['packages']]==['TMG12','STOCK-1.0.6.11'] and [e['resource'] for e in written['packages']]==['TurboWeReadCandidate.zip','TurboStockFirmware.zip']
+    assert written['packages'][0]=={**pins,'kind':'TMG','resource':'TurboWeReadCandidate.zip','otaVersion':policy['otaVersion'],'acceptOsVersions':policy['acceptOsVersions'],'acceptQueryCodes':policy['acceptQueryCodes']}
+    assert written['packages'][1]=={**spins,'kind':'STOCK','resource':'TurboStockFirmware.zip','otaVersion':spolicy['otaVersion'],'acceptOsVersions':spolicy['acceptOsVersions'],'acceptQueryCodes':spolicy['acceptQueryCodes']}
     text=header.decode()
-    assert text.count('#define TIO_FW_ZIP_SHA256 ')==1 and '#define TIO_RELEASE_C21 1' in text and '#error' not in text
-    assert '#if defined(TIO_RELEASE_C21)' in text and '#define TIO_FW_RELEASE @"c21"' in text
-    assert '#define TIO_FW_OTA_VERSION @"Strix OS 1.0.6.11"' in text and '#define TIO_FW_OTA_FOLDER @"Strix_OS_1.0.6.11"' in text and '#define TIO_FW_NAME @"TMG12"' in text
-    assert '#define TIO_FW_RELEASE_MARKER "ota release=c21; firmware=TMG12; zip='+pins['zipSHA256']+'; accepts Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11"' in text
-    member_line=[line for line in text.splitlines() if line.startswith('#define TIO_FW_MEMBER_PINS ')]
-    assert len(member_line)==1 and member_line[0].count('@[@')==17
+    assert text.count('#define TIO_FW_DEFAULT_ZIP_SHA256 @"'+pins['zipSHA256']+'"')==1 and '#define TIO_FW_ZIP_SHA256 ' not in text and '#define TIO_RELEASE_C21 1' in text and '#error' not in text
+    assert '#if defined(TIO_RELEASE_C21)' in text and '#define TIO_FW_RELEASE @"c21"' in text and '#define TIO_FW_PACKAGE_COUNT 2u' in text
+    assert '#define TIO_FW_OTA_VERSION @"Strix OS 1.0.6.11"' in text and '#define TIO_FW_OTA_FOLDER @"Strix_OS_1.0.6.11"' in text and '#define TIO_FW_DEFAULT_NAME @"TMG12"' in text
+    assert '#define TIO_FW_RELEASE_MARKER "ota release=c21; firmware=TMG12; zip='+pins['zipSHA256']+'; accepts Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11; package=STOCK-1.0.6.11; zip='+spins['zipSHA256']+'; accepts Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11"' in text
+    package_line=[line for line in text.splitlines() if line.startswith('#define TIO_FW_PACKAGES ')]
+    assert len(package_line)==1 and package_line[0].count('@"memberPins":@{')==2 and package_line[0].index('@"name":@"TMG12"')<package_line[0].index('@"name":@"STOCK-1.0.6.11"')
+    for entry_members in (members,smembers):
+        for name,(size,digest) in entry_members.items():assert '@"%s":@[@%d,@"%s"]'%(name,size,digest) in package_line[0],name
     assert preprocess(header,[])[:2]==(0,'RELEASE_IS @"c21"') and preprocess(header,['-DTIO_RELEASE_C21=1'])[:2]==(0,'RELEASE_IS @"c21"')
     # Two releases: one block each in order, no define is a compile error, and so are two defines.
     two_releases={'c21':c21,'c22':{**copy.deepcopy(c21),'builds':'fixture'}}
-    out2=pp.render(two_releases,{'c21':(pins,members,{**policy,'release':'c21'}),'c22':(pins,members,{**policy,'release':'c22'})})
+    out2=pp.render(two_releases,{'c21':[(pins,members,{**policy,'release':'c21'})],'c22':[(pins,members,{**policy,'release':'c22'})]})
     text2=out2['FirmwarePins.h'].decode()
     assert set(out2)=={'FirmwarePins.h','firmware-pins-c21.json','firmware-pins-c22.json'}
     assert '#define TIO_RELEASE_' not in text2 and '#error "more than one TIO_RELEASE_<NAME> defined"' in text2 and '#error "several releases: define one TIO_RELEASE_<NAME>"' in text2
@@ -275,27 +339,46 @@ def main():
     for defines,why in (([],'several releases'),(['-DTIO_RELEASE_C21=1','-DTIO_RELEASE_C22=1'],'more than one')):
         code,_line,err=preprocess(out2['FirmwarePins.h'],defines)
         if code==0 or why not in err:raise SystemExit('two releases with '+repr(defines)+' did not fail with '+why+': '+err)
-    # --write, --resolve and --verify in a copy of the inputs; unknown release names are refused.
+    # --write, --resolve and --verify in a copy of the inputs; unknown release names and package labels are refused.
     with tempfile.TemporaryDirectory(prefix='phone-pins-c21-') as tmp:
         tmp=Path(tmp);inputs=tmp/'inputs'
         target=inputs/c21['zip']['input'];target.parent.mkdir(parents=True);shutil.copyfile(c21_zip,target)
+        stock_target=inputs/stock21['zip']['input'];stock_target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(stock21_zip,stock_target)
         out_dir=tmp/'out'
+        # --resolve prints the first package's path, and --package names the other one.
+        for argv,want in ((['--resolve','c21'],target),(['--resolve','c21','--package','STOCK-1.0.6.11'],stock_target),(['--resolve','c21','--package','TMG12'],target)):
+            printed=io.StringIO()
+            with contextlib.redirect_stdout(printed),contextlib.redirect_stderr(io.StringIO()):assert pp.main(['--inputs',str(inputs),*argv])==0,argv
+            assert printed.getvalue()==str(want)+'\n',(argv,printed.getvalue())
         with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
             assert pp.main(['--inputs',str(inputs),'--write',str(out_dir)])==0
-            assert pp.main(['--inputs',str(inputs),'--resolve','c21'])==0
             assert pp.main(['--verify','c21','--zip',str(target),'--dir',str(out_dir)])==0
+            assert pp.main(['--verify','c21','--package','STOCK-1.0.6.11','--zip',str(stock_target),'--dir',str(out_dir)])==0
+            # Each ZIP only as its own package; an unknown label, or --package without --resolve/--verify, is refused.
+            assert pp.main(['--verify','c21','--zip',str(stock_target),'--dir',str(out_dir)])==1
+            assert pp.main(['--verify','c21','--package','STOCK-1.0.6.11','--zip',str(target),'--dir',str(out_dir)])==1
+            for label in ('STOCK-1.0.5.12','TMG11','stock',''):
+                assert pp.main(['--inputs',str(inputs),'--resolve','c21','--package',label])==1,label
+                assert pp.main(['--verify','c21','--package',label,'--zip',str(stock_target),'--dir',str(out_dir)])==1,label
+            assert pp.main(['--inputs',str(inputs),'--package','STOCK-1.0.6.11','--write',str(tmp/'nowhere')])==1 and not (tmp/'nowhere').exists()
             for name in ('c99','c20','default','C21',''):
                 assert pp.main(['--inputs',str(inputs),'--resolve',name])==1,name
                 assert pp.main(['--verify',name,'--zip',str(target),'--dir',str(out_dir)])==1,name
-            # --verify of a changed JSON is refused.
-            changed=json.loads((out_dir/'firmware-pins-c21.json').read_text());changed['feedVersionCode']+=1
+            # --verify of a changed JSON is refused: a top-level value, or the stock package's entry.
+            original=(out_dir/'firmware-pins-c21.json').read_text()
+            changed=json.loads(original);changed['feedVersionCode']+=1
             (out_dir/'firmware-pins-c21.json').write_text(json.dumps(changed))
             assert pp.main(['--verify','c21','--zip',str(target),'--dir',str(out_dir)])==1
+            changed=json.loads(original);changed['packages'][1]['apMD5']='0'*32
+            (out_dir/'firmware-pins-c21.json').write_text(json.dumps(changed))
+            assert pp.main(['--verify','c21','--zip',str(target),'--dir',str(out_dir)])==0
+            assert pp.main(['--verify','c21','--package','STOCK-1.0.6.11','--zip',str(stock_target),'--dir',str(out_dir)])==1
         assert sorted(p.name for p in out_dir.iterdir())==['FirmwarePins.h','firmware-pins-c21.json']
     # --check: the committed files match; a changed byte or a stale release file (also the old firmware-pins.json) is caught.
     with tempfile.TemporaryDirectory(prefix='phone-pins-') as tmp:
         tmp=Path(tmp);inputs=tmp/'inputs'
         target=inputs/c21['zip']['input'];target.parent.mkdir(parents=True);shutil.copyfile(c21_zip,target)
+        stock_target=inputs/stock21['zip']['input'];stock_target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(stock21_zip,stock_target)
         with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
             assert pp.main(['--inputs',str(inputs),'--check',str(ED)])==0
             work=tmp/'out';assert pp.main(['--inputs',str(inputs),'--write',str(work)])==0
@@ -307,7 +390,11 @@ def main():
                 (work/stale).write_text('{}');assert pp.main(['--inputs',str(inputs),'--check',str(work)])==1,stale;(work/stale).unlink()
             assert pp.main(['--inputs',str(inputs),'--check',str(work)])==0
             # A release ZIP whose bytes differ from its pin is refused before anything is read from it.
+            sraw=stock_target.read_bytes();bad=bytearray(sraw);bad[100]^=1;stock_target.write_bytes(bad)
+            assert pp.main(['--inputs',str(inputs),'--check',str(ED)])==1 and pp.main(['--inputs',str(inputs),'--resolve','c21','--package','STOCK-1.0.6.11'])==1
+            assert pp.main(['--inputs',str(inputs),'--resolve','c21'])==0
+            stock_target.write_bytes(sraw)
             raw=bytearray(target.read_bytes());raw[100]^=1;target.write_bytes(raw)
             assert pp.main(['--inputs',str(inputs),'--check',str(ED)])==1 and pp.main(['--inputs',str(inputs),'--resolve','c21'])==1
-    print('PASS phone pins: version strings, C21 (TMG12 on 1.0.6.11, 1021-full) and its policy, ZIP size/SHA-256/base/stock-member/tree checks, emulator-only refusals in every mode (base mode on a fixture build.py), superseded TMG12 candidates refused by pin, releases.json validation (cN names, 1021-full only, 1.0.6.11 only), one block per release with the single release chosen without a define and several releases needing one, --check catches changed and stale outputs')
+    print('PASS phone pins: version strings, C21 (TMG12 on 1.0.6.11, 1021-full) and its policy, its two packages (TMG12 default, STOCK-1.0.6.11 equal to the stock ZIP in every member and the manifest; a changed stock member, AP or manifest, the TMG ZIP under the STOCK label, the stock ZIP under a TMG label and unknown labels refused; --resolve/--verify --package), ZIP size/SHA-256/base/stock-member/tree checks, emulator-only refusals in every mode (base mode on a fixture build.py), superseded TMG12 candidates refused by pin, releases.json validation (cN names, 1021-full only, 1.0.6.11 only), one block per release with the single release chosen without a define and several releases needing one, --check catches changed and stale outputs')
 if __name__=='__main__':main()

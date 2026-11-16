@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Generate the phone's firmware pins for every release configuration from the exact release ZIPs.
 
-Input: official-addon/ios107-edition/releases.json (one entry per phone release, named cN: the firmware label, the
-stock base the ZIP is built on (1.0.6.11, the only base a phone release may have), the ZIP's path under $TURBO_INPUTS
-with its size and SHA-256, the accepted current glasses versions, and its hosts, which must be exactly ["1021-full"],
-the 1.0.21 full host). For each release this reads the ZIP, checks its manifest, its pinned identity, that every non-AP member
-is byte-for-byte the member of the stock ZIP of its base, and that AP, APC1 and BTH all report that base (build.py's
-core_identity). The release whose firmware is the tree's label (../RELEASE) must also be the ZIP in
-../build-inputs.json, on the same stock base. An emulator-only build is never a phone release: a base whose
+Input: official-addon/ios107-edition/releases.json (one entry per phone release, named cN: the stock base its
+packages are built on (1.0.6.11, the only base a phone release may have), its hosts, which must be exactly
+["1021-full"], the 1.0.21 full host, and its packages: a list of {label, zip {input, bytes, sha256}, acceptCurrent},
+the ZIP's path under $TURBO_INPUTS with its size and SHA-256 and the glasses versions that package may be flashed
+over). The first package is the default the phone selects at every launch and must be a TMG build; a second one, if
+listed, must be labelled STOCK-<base>. Any other label is refused.
+For every package this reads the ZIP, checks its manifest, its pinned identity, and that AP, APC1 and BTH all report
+the base (build.py's core_identity). A TMG package's non-AP members must be byte-for-byte the members of the stock ZIP
+of its base and its AP must differ from the stock AP; the TMG package whose label is the tree's label (../RELEASE)
+must also be the ZIP in ../build-inputs.json, on the same stock base. A STOCK-<base> package must equal the base's
+stock ZIP in every member, the AP and the manifest included: it is the stock package and nothing else. An emulator-only build is never a phone release: a base whose
 phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP name are all refused, in every mode
 (--resolve included) before the ZIP is read and before anything is written. Every mode, --resolve included, also
 refuses a ZIP whose own package shape or cores (AP, APC1, BTH) are not on its stock base, so an older emulator-only
@@ -18,8 +22,12 @@ ZIP that is a valid build on a base that has since become a phone release base (
 Output (--write DIR / --check DIR):
   FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME>. With no define, the
                           only release is chosen when releases.json has exactly one; with several, no define is a
-                          compile error.
-  firmware-pins-<n>.json  each release's pins with its version policy (there is no firmware-pins.json)
+                          compile error. A block holds the release-wide values (TIO_FW_RELEASE, the marker, the base,
+                          the type-5 OtaVersion, the folder and the feed's versionName/versionCode) and TIO_FW_PACKAGES,
+                          one entry per package in order: its ZIP size and SHA-256, AP and manifest pins, payload
+                          totals, member pins, accepted versions and query codes, OtaVersion and bundle resource name.
+  firmware-pins-<n>.json  the default package's pins with the release's policy at the top level, as before, and
+                          "packages", every package's entry (there is no firmware-pins.json)
 
 Every version literal of the phone's OTA path comes from these macros: the accepted current OsVersion, the feed's
 query classifier, the type-5 OtaVersion, the official folder name, the feed's versionName/versionCode/download name,
@@ -47,6 +55,10 @@ VERSION = re.compile(r'([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)')
 HOSTS = ('1021-full',)
 # The one stock base a phone release may be built on. The firmware tree's own stock-base knowledge stays in build.py.
 RELEASE_BASES = ('1.0.6.11',)
+TMG_LABEL = re.compile(r'TMG[0-9]+')
+# The fixed name each kind of package has inside the app bundle (package.mjs bundles it there, the addon reads it
+# back); the TMG name is the one the bundled release ZIP has always had.
+PACKAGE_RESOURCES = {'TMG': 'TurboWeReadCandidate.zip', 'STOCK': 'TurboStockFirmware.zip'}
 # ZIPs that must never become a phone release, by SHA-256: the emulator-only TMG12 candidates 1 to 3 on stock
 # 1.0.6.11, which the TMG12 release (candidate 4's bytes) replaced. Their own bytes are a valid 1.0.6.11 build, so
 # once 1.0.6.11 became a phone release base only this list refuses them under a label other than the tree's.
@@ -159,6 +171,15 @@ def load_build(root=FW):
     return module
 
 
+def package_kind(label, base):
+    """TMG for a TMG build, STOCK for the base's stock package (label STOCK-<base>); any other label is refused."""
+    if isinstance(label, str) and TMG_LABEL.fullmatch(label):
+        return 'TMG'
+    if label == 'STOCK-' + base:
+        return 'STOCK'
+    raise ValueError('unknown package label ' + repr(label) + ': a package is TMGn or STOCK-' + base)
+
+
 def load_releases(path):
     data = json.loads(Path(path).read_text())
     if data.get('schema') != 1 or not isinstance(data.get('releases'), dict) or not data['releases']:
@@ -166,23 +187,56 @@ def load_releases(path):
     for name, spec in data['releases'].items():
         if not RELEASE_NAME.fullmatch(name):
             raise ValueError('release name must be cN: ' + name)
-        if not re.fullmatch(r'TMG[0-9]+', spec.get('firmware', '')):
-            raise ValueError(name + ': firmware must be a TMG label')
+        if not isinstance(spec, dict):
+            raise ValueError(name + ': a release is an object')
         version_parts(spec.get('stockBase'))
         if spec['stockBase'] not in RELEASE_BASES:
             raise ValueError(name + ': a phone release is built only on stock ' + ' or '.join(RELEASE_BASES))
-        zip_spec = spec.get('zip', {})
-        if (not isinstance(zip_spec.get('input'), str) or zip_spec['input'].startswith(('/', '~')) or '..' in zip_spec['input']
-                or type(zip_spec.get('bytes')) is not int or not re.fullmatch(r'[0-9a-f]{64}', zip_spec.get('sha256', ''))):
-            raise ValueError(name + ': zip needs a relative input path, bytes and sha256')
-        accept = spec.get('acceptCurrent')
-        if not isinstance(accept, list) or not accept or len(set(accept)) != len(accept):
-            raise ValueError(name + ': acceptCurrent must list distinct versions')
-        for version in accept:
-            version_parts(version)
+        # The release's ZIP and versions live in its packages; the single-package keys of the old schema are refused.
+        for old in ('firmware', 'zip', 'acceptCurrent'):
+            if old in spec:
+                raise ValueError(name + ': ' + old + ' belongs to a package now (packages)')
+        packages = spec.get('packages')
+        if not isinstance(packages, list) or not 1 <= len(packages) <= 2:
+            raise ValueError(name + ': packages must list one TMG package and at most one STOCK package')
+        kinds = []
+        for package in packages:
+            if not isinstance(package, dict):
+                raise ValueError(name + ': a package is an object')
+            kinds.append(package_kind(package.get('label'), spec['stockBase']))
+            zip_spec = package.get('zip', {})
+            if (not isinstance(zip_spec, dict) or not isinstance(zip_spec.get('input'), str) or zip_spec['input'].startswith(('/', '~'))
+                    or '..' in zip_spec['input'] or type(zip_spec.get('bytes')) is not int
+                    or not re.fullmatch(r'[0-9a-f]{64}', zip_spec.get('sha256', ''))):
+                raise ValueError(name + ': ' + package['label'] + ': zip needs a relative input path, bytes and sha256')
+            accept = package.get('acceptCurrent')
+            if not isinstance(accept, list) or not accept or len(set(accept)) != len(accept):
+                raise ValueError(name + ': ' + package['label'] + ': acceptCurrent must list distinct versions')
+            for version in accept:
+                version_parts(version)
+        # The first package is the default the phone selects at launch: always the TMG build. A second one is the stock package.
+        if kinds[0] != 'TMG' or kinds[1:] not in ([], ['STOCK']):
+            raise ValueError(name + ': the first package must be a TMG build and a second one must be STOCK-' + spec['stockBase'])
+        if len({p['zip']['sha256'] for p in packages}) != len(packages):
+            raise ValueError(name + ': two packages share one ZIP')
         if spec.get('hosts') != list(HOSTS):
             raise ValueError(name + ': hosts must be exactly ' + json.dumps(list(HOSTS)))
     return data['releases']
+
+
+def packages(spec):
+    """Each package of a release as the checks below read it: its label (as firmware), the release's stock base, its
+    ZIP and accepted versions, and its kind (TMG or STOCK)."""
+    return [{'firmware': p['label'], 'stockBase': spec['stockBase'], 'zip': p['zip'], 'acceptCurrent': p['acceptCurrent'],
+             'kind': package_kind(p['label'], spec['stockBase'])} for p in spec['packages']]
+
+
+def package_spec(spec, label=None):
+    """The package of a release with that label; with no label, the first (the default)."""
+    found = [p for p in packages(spec) if label is None or p['firmware'] == label]
+    if not found:
+        raise ValueError('no package ' + repr(label) + ' in this release')
+    return found[0]
 
 
 def refuse_emulator_only(name, spec, build=None, tree_spec=None, tree_label=None):
@@ -231,8 +285,10 @@ def resolve(spec, inputs, name='release', build=None, tree_spec=None, tree_label
 
 
 def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=None):
-    """Everything the phone compiles in for one release, derived from its ZIP and checked against its stock base."""
+    """Everything the phone compiles in for one package of a release (spec: one entry of packages()), derived from
+    its ZIP and checked against its stock base."""
     base = spec['stockBase']
+    kind = package_kind(spec['firmware'], base)
     build = build or load_build()
     tree_spec = tree_spec if tree_spec is not None else json.loads((FW/'build-inputs.json').read_text())
     tree_label = tree_label or release_label()
@@ -241,16 +297,25 @@ def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=Non
     if len(raw) != spec['zip']['bytes'] or sha256(raw) != spec['zip']['sha256']:
         raise ValueError(name + ': ZIP does not match releases.json')
     manifest_data, payloads = refuse_other_base(name, raw, base, build)
-    _stock_manifest, stock_payloads = read_archive(stock_zip(base).read_bytes(), base)
+    stock_raw = stock_zip(base).read_bytes()
+    # For a STOCK package the stock ZIP must be the one build-inputs.json records for the tree's base, so the package is not only compared with itself.
+    if kind == 'STOCK' and tree_spec.get('stockBase') == base and sha256(stock_raw) != tree_spec.get('stockZIP'):
+        raise ValueError(name + ': the stock ' + base + ' ZIP is not the one recorded in build-inputs.json')
+    stock_manifest, stock_payloads = read_archive(stock_raw, base)
     if set(stock_payloads) != set(payloads):
         raise ValueError(name + ': member names differ from stock ' + base)
     for member, data in payloads.items():
-        if member != 'nuttx_ap.bin' and data != stock_payloads[member]:
+        if (member != 'nuttx_ap.bin' or kind == 'STOCK') and data != stock_payloads[member]:
             raise ValueError(name + ': ' + member + ' is not the stock ' + base + ' member')
+    if kind == 'STOCK' and manifest_data != stock_manifest:
+        raise ValueError(name + ': OtaFileInfo.json is not the stock ' + base + ' manifest')
+    # A TMG package carries its own AP: the stock package under a TMG label is refused.
+    if kind == 'TMG' and payloads['nuttx_ap.bin'] == stock_payloads['nuttx_ap.bin']:
+        raise ValueError(name + ': ' + spec['firmware'] + ' carries the stock ' + base + ' AP; a TMG package must be a TMG build')
     # Never mix cores, and the base in releases.json is the one the ZIP's own cores report.
     if build.core_identity(payloads, base) != build.core_identity(stock_payloads, base):
         raise ValueError(name + ': cores differ from stock ' + base)
-    if spec['firmware'] == tree_label and (spec['zip']['sha256'] != tree_spec['archive']['sha256'] or base != tree_spec['stockBase']):
+    if kind == 'TMG' and spec['firmware'] == tree_label and (spec['zip']['sha256'] != tree_spec['archive']['sha256'] or base != tree_spec['stockBase']):
         raise ValueError(name + ': ' + tree_label + ' is the tree label but this is not the ZIP in build-inputs.json')
     pins = pins_for(archive, spec['firmware'], base)
     members = {member: [len(data), sha256(data)] for member, data in payloads.items()}
@@ -270,6 +335,20 @@ def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=Non
     return pins, members, policy
 
 
+def package_entry(pins, policy):
+    """One package as firmware-pins-<n>.json "packages" records it: its pins, kind, bundle resource, type-5 OtaVersion
+    and accepted versions (the release-wide values stay at the top level)."""
+    kind = package_kind(pins['name'], policy['stockBase'])
+    return {**pins, 'kind': kind, 'resource': PACKAGE_RESOURCES[kind], 'otaVersion': policy['otaVersion'],
+            'acceptOsVersions': policy['acceptOsVersions'], 'acceptQueryCodes': policy['acceptQueryCodes']}
+
+
+def release_json(computed):
+    """firmware-pins-<n>.json: the default package's pins and the release policy at the top level, and every package."""
+    pins, _members, policy = computed[0]
+    return {**pins, **policy, 'packages': [package_entry(p, q) for p, _m, q in computed]}
+
+
 def objc(value):
     if isinstance(value, bool):
         raise TypeError('no booleans')
@@ -284,21 +363,22 @@ def objc(value):
     raise TypeError(type(value))
 
 
-def block(name, pins, members, policy):
-    fields = [
-        ('NAME', 'name'), ('ZIP_BYTES', 'zipBytes'), ('ZIP_SHA256', 'zipSHA256'),
-        ('AP_BYTES', 'apBytes'), ('AP_SHA256', 'apSHA256'), ('AP_MD5', 'apMD5'),
-        ('MANIFEST_BYTES', 'manifestBytes'), ('MANIFEST_SHA256', 'manifestSHA256'),
-        ('PAYLOAD_BYTES', 'payloadBytes'), ('PAYLOAD_SLICES', 'payloadSlices'),
-    ]
-    lines = []
-    for macro, key in fields:
-        value = pins[key]
-        literal = f'{value}u' if isinstance(value, int) else '@' + json.dumps(value)
-        lines.append(f'#define TIO_FW_{macro} {literal}')
+def block(name, computed):
+    """One release's lines of FirmwarePins.h; computed is [(pins, members, policy)] per package, the default first."""
+    pins, _members, policy = computed[0]
+    # The first package's part keeps the marker's old shape; each other package follows as "; package=<label>; ...".
     marker = 'ota release=%s; firmware=%s; zip=%s; accepts %s; target %s' % (
         name, pins['name'], pins['zipSHA256'], ', '.join(policy['acceptOsVersions']), policy['otaVersion'])
-    lines += [
+    for other, _m, other_policy in computed[1:]:
+        marker += '; package=%s; zip=%s; accepts %s; target %s' % (
+            other['name'], other['zipSHA256'], ', '.join(other_policy['acceptOsVersions']), other_policy['otaVersion'])
+    entries = []
+    for p, members, q in computed:
+        entry = package_entry(p, q)
+        entry['acceptVersionsText'] = ' / '.join(v[len('Strix OS '):] for v in q['acceptOsVersions'])
+        entry['memberPins'] = members
+        entries.append(entry)
+    return [
         '#define TIO_FW_RELEASE @' + json.dumps(name),
         '#define TIO_FW_RELEASE_MARKER ' + json.dumps(marker),
         '#define TIO_FW_BASE @' + json.dumps(policy['stockBase']),
@@ -306,12 +386,12 @@ def block(name, pins, members, policy):
         '#define TIO_FW_OTA_FOLDER @' + json.dumps(policy['folder']),
         '#define TIO_FW_FEED_VERSION_NAME @' + json.dumps(policy['feedVersionName']),
         '#define TIO_FW_FEED_VERSION_CODE %d' % policy['feedVersionCode'],
-        '#define TIO_FW_ACCEPTED_OS_VERSIONS ' + objc(policy['acceptOsVersions']),
-        '#define TIO_FW_ACCEPTED_QUERY_CODES ' + objc(policy['acceptQueryCodes']),
-        '#define TIO_FW_ACCEPTED_VERSIONS_TEXT @' + json.dumps(' / '.join(v[len('Strix OS '):] for v in policy['acceptOsVersions'])),
-        '#define TIO_FW_MEMBER_PINS ' + objc(members),
+        # The default package (the first), for the uses outside the flash path: the firmware export and the hub.
+        '#define TIO_FW_DEFAULT_NAME @' + json.dumps(pins['name']),
+        '#define TIO_FW_DEFAULT_ZIP_SHA256 @' + json.dumps(pins['zipSHA256']),
+        '#define TIO_FW_PACKAGE_COUNT %du' % len(entries),
+        '#define TIO_FW_PACKAGES ' + objc(entries),
     ]
-    return lines
 
 
 def render(releases, computed):
@@ -334,19 +414,20 @@ def render(releases, computed):
     lines.append('#endif')
     for i, name in enumerate(names):
         lines.append(('#if' if i == 0 else '#elif') + ' ' + defined[i])
-        lines += block(name, *computed[name])
+        lines += block(name, computed[name])
     lines.append('#endif')
     lines.extend(['#endif', ''])
     outputs = {'FirmwarePins.h': '\n'.join(lines).encode('utf-8')}
     for name in names:
-        pins, _members, policy = computed[name]
-        outputs['firmware-pins-%s.json' % name] = (json.dumps({**pins, **policy}, indent=2) + '\n').encode('utf-8')
+        outputs['firmware-pins-%s.json' % name] = (json.dumps(release_json(computed[name]), indent=2) + '\n').encode('utf-8')
     return outputs
 
 
 def compute_all(releases, inputs):
+    """Per release, [(pins, members, policy)] for every package in order, each ZIP resolved and checked."""
     build = load_build()
-    return {name: release_pins(name, spec, resolve(spec, inputs, name, build), build) for name, spec in releases.items()}
+    return {name: [release_pins(name, p, resolve(p, inputs, name, build), build) for p in packages(spec)]
+            for name, spec in releases.items()}
 
 
 def main(argv=None):
@@ -356,9 +437,10 @@ def main(argv=None):
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--write', type=Path, metavar='DIR')
     mode.add_argument('--check', type=Path, metavar='DIR')
-    mode.add_argument('--resolve', metavar='RELEASE', help='print the checked path of that release ZIP')
+    mode.add_argument('--resolve', metavar='RELEASE', help="print the checked path of that release's ZIP (the first package, or --package)")
     mode.add_argument('--tree-release', action='store_true', help="print the release whose ZIP is the tree's build")
-    mode.add_argument('--verify', metavar='RELEASE', help='check --zip is that release and matches its firmware-pins JSON in --dir')
+    mode.add_argument('--verify', metavar='RELEASE', help='check --zip is that release (the first package, or --package) and matches its firmware-pins JSON in --dir')
+    parser.add_argument('--package', metavar='LABEL', help='with --resolve or --verify: the package of the release with this label (for example STOCK-1.0.6.11)')
     parser.add_argument('--zip', type=Path)
     parser.add_argument('--dir', type=Path, default=ED)
     args = parser.parse_args(argv)
@@ -367,9 +449,11 @@ def main(argv=None):
             tree = json.loads((FW/'build-inputs.json').read_text())
             if load_build().emu_only(tree):
                 raise ValueError('--tree-release: emuOnly tree has no phone release')
+        if args.package is not None and args.resolve is None and args.verify is None:
+            raise ValueError('--package goes with --resolve or --verify')
         releases = load_releases(args.releases)
         if args.tree_release:
-            found = [n for n, s in releases.items() if s['firmware'] == release_label() and s['zip']['sha256'] == tree['archive']['sha256']]
+            found = [n for n, s in releases.items() if package_spec(s)['firmware'] == release_label() and package_spec(s)['zip']['sha256'] == tree['archive']['sha256']]
             if not found:
                 raise ValueError('no release carries the tree build ' + release_label())
             print(found[0])
@@ -377,14 +461,21 @@ def main(argv=None):
         if args.resolve is not None:
             if args.inputs is None or args.resolve not in releases:
                 raise ValueError('--resolve needs --inputs and a known release')
-            print(resolve(releases[args.resolve], args.inputs, args.resolve))
+            print(resolve(package_spec(releases[args.resolve], args.package), args.inputs, args.resolve))
             return 0
         if args.verify is not None:
             if args.zip is None or args.verify not in releases:
                 raise ValueError('--verify needs --zip and a known release')
-            pins, _members, policy = release_pins(args.verify, releases[args.verify], args.zip)
+            spec = releases[args.verify]
+            index = [p['firmware'] for p in packages(spec)].index(package_spec(spec, args.package)['firmware'])
+            pins, _members, policy = release_pins(args.verify, packages(spec)[index], args.zip)
             name = 'firmware-pins-%s.json' % args.verify
-            if json.loads((args.dir/name).read_text()) != {**pins, **policy}:
+            recorded = json.loads((args.dir/name).read_text())
+            entries = recorded.get('packages') if isinstance(recorded, dict) else None
+            top = {k: v for k, v in recorded.items() if k != 'packages'} if isinstance(recorded, dict) else None
+            # The package's own entry, and for the default package also the top level, must be what the ZIP gives.
+            if (not isinstance(entries, list) or len(entries) != len(spec['packages']) or entries[index] != package_entry(pins, policy)
+                    or (index == 0 and top != {**pins, **policy})):
                 print('PHONEPINS_MISMATCH: ' + name, file=sys.stderr)
                 return 1
             print('PHONEPINS_RELEASE_OK ' + args.verify)
