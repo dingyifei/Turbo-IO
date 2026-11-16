@@ -30,7 +30,7 @@ Careful work, with an independent review, goes only where a mistake can brick th
 - the path from boot to Bluetooth advertising;
 - the menu's arming check and its fall-back to stock behaviour;
 - the build reproducing byte for byte;
-- the phone's flash gate and arming logic.
+- the phone's flash gate.
 
 Everything else gets one pass and the gates.
 

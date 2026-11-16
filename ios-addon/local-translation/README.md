@@ -42,22 +42,22 @@ python3 ios-addon/local-translation/build.py \
   --llama ios-addon/local-translation/work/llama.cpp \
   --fluid ios-addon/local-translation/work/FluidAudio \
   --out ios-addon/local-translation/work/module
-TIO_LOCAL_TRANSLATION=1 bash official-addon/build.sh embedded
+TIO_LOCAL_TRANSLATION=1 bash ios-addon/build.sh embedded
 python3 ios-addon/local-translation/test.py
 ```
 
-第一个命令生成 `module/TurboCaptionTranslation.dylib` 和依赖资源，不使用开发者证书。第二个生成 `official-addon/build/local-translation/TurboIOPrivateAddon.dylib`，增加「TurboIO → 资料 → Apple / Hy-MT2 本地翻译」入口。默认构建不带此入口；旧 iOS 不加载26+模块。也可与既有导航/音乐构建开关组合，但仍须遵守各自固件门禁，不因此授权刷机。
+第一个命令生成 `module/TurboCaptionTranslation.dylib` 和依赖资源，不使用开发者证书。第二个生成 `ios-addon/build/local-translation/TurboIOPrivateAddon.dylib`，增加「TurboIO → 资料 → Apple / Hy-MT2 本地翻译」入口。默认构建不带此入口；旧 iOS 不加载26+模块。也可与既有导航/音乐构建开关组合，但仍须遵守各自固件门禁，不因此授权刷机。
 
 Hy-MT 使用固定 STQ CPU/ARM NEON 内核，不是 Metal/ANE 后端。默认线程数最多6，可选至8但不超过设备核心数，保留温控/低电量降档、取消、15秒单次超时、1024 token上下文、384 token输出上限与退出释放。
 
 ## 3. 自行签名打包
 
-遵循[宿主版本与签名说明](../../official-addon/README.md)。需要合法取得且通过仓库校验的未加密 thin-arm64 `Runner.app`；本文不提供解密操作。已测试私用前身宿主为官方 iOS 1.0.5（201），设备为 iPhone Air；其他版本不能直接外推。
+遵循[宿主版本与签名说明](../README.md)。需要合法取得且通过仓库校验的未加密 thin-arm64 `Runner.app`；本文不提供解密操作。已测试私用前身宿主为官方 iOS 1.0.5（201），设备为 iPhone Air；其他版本不能直接外推。
 
 ```sh
-node official-addon/package.mjs \
+node ios-addon/package.mjs \
   --app /absolute/Runner.app \
-  --addon /absolute/Turbo-IO/official-addon/build/local-translation/TurboIOPrivateAddon.dylib \
+  --addon /absolute/Turbo-IO/ios-addon/build/local-translation/TurboIOPrivateAddon.dylib \
   --translation-module-dir /absolute/Turbo-IO/ios-addon/local-translation/work/module \
   --translation-models /absolute/Turbo-IO/ios-addon/local-translation/work/models \
   --profile /absolute/your.mobileprovision \

@@ -1,22 +1,19 @@
-# Official iOS addon sources
+# official-addon (leftovers)
 
-V2 extends the compatible official RayNeo app with phone-side tools, glasses protocols and local diagnostics. The active port targets RayNeo AI 1.0.7 (230).
+The active iOS addon moved to [ios-addon/](../ios-addon/README.md) in C21. It targets RayNeo AI 1.0.21 (1). Build, test and package it from there.
 
-| Directory | Purpose |
+What stays here:
+
+| Path | Purpose |
 | --- | --- |
-| [ios-addon](../ios-addon/README.md) | Active addon: build.sh, package.mjs, test.py, tests/ and local-translation/. |
 | research/ | app-runtime-v1 and dashboard-editor-v1, plus the menu8 and navigation headers they include; compiled by the dashboard-service tests. |
-
-The tracked root PrivateBootstrap parser and its tests remain for compatibility; ios107 builds receive ignored parser copies from the private external backup. No private configuration belongs in the source release.
+| `Core.h` | Header kept for the research sources. The addon has its own copy. |
+| `PrivateBootstrap.h/.m`, `PrivateBootstrapTests.m` | The tracked root parser and its tests, kept for compatibility. Builds use ignored private copies. No private configuration belongs in the source release. |
 
 <a id="1-兼容性门槛"></a>
-## Compatibility
-
-The current port requires the exact 1.0.7 (230) host described in [ios-addon](../ios-addon/README.md). Historical V2 compatibility and installation instructions are kept in commit `27ad86e`: `git show 27ad86e:official-addon/README.md`.
-
 ## Archived
 
-navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. cleanup(3) then removed the navs3 README pointer, knowledge-bridge/, tar2-airplay/, tar2-display/, docs/ and the research modules nothing builds any more (focus, music, weread, most of navigation); they are in git history.
+navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. cleanup(3) then removed knowledge-bridge/, tar2-airplay/, tar2-display/, docs/ and the research modules nothing builds any more (focus, music, weread, most of navigation). The 1.0.7 and 1.0.11 host code left with C21. All of it is in git history.
 
 ```sh
 git show 27ad86e:official-addon/navs3-edition/README.md
@@ -24,16 +21,5 @@ git checkout 27ad86e -- official-addon/navs3-edition
 ```
 
 <a id="本地合并签名安装"></a>
-## Build and test
-
-From ios-addon, after preparing compatible external inputs and ignored parser copies:
-
-```sh
-TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub
-python3 test.py --firmware /absolute/StrixOS-1.0.5.5-TurboIO-TMGn-CANDIDATE-NOT-APPROVED.zip --app107 /absolute/Runner.app --patched-app /absolute/Runner.app
-node --test package.test.mjs local-translation/package-resources.test.mjs
-```
-
-Use the firmware ZIP paired with the phone build (the current one is set in the private `package.env`; running `bash scripts/turbo-gate.sh` from the repo root fills these paths in). These commands do not install or communicate with hardware. Signing is a separate local checkpoint; see the active addon README.
 
 Original code uses [PolyForm Noncommercial 1.0.0](../LICENSE); third-party code retains its own terms.

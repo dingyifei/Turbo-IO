@@ -113,7 +113,7 @@
 - 自定义只改新版 AP，其他 **14 个负载与新版原厂逐字节一致**；完整 OTA 仍会安装它们。AP **7,373,064 字节**，低于 9.6 MB 保守预算；体积不是 RAM 或安全保证。
 - **归档官方原始 1.0.5.5 ZIP**：不重封装、无自定义修改，附来源和校验；不是救砖保证，TMIG1 固定门禁不能把它当自定义包刷入。
 
-**[下载 TMIG1 / 校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · [底层迁移、复现与刷写教程](../firmware-research/strix-1.0.5.5/README.md) · 1.0.6 插件构建（已归档，见提交 `27ad86e` 的 `official-addon/tmig1-edition/README.md`） · [原版 1.0.5.5](../firmware-research/strix-1.0.5.5/stock/README.md)**
+**[下载 TMIG1 / 校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · 底层迁移、复现与刷写教程（已删除，见 `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`） · 1.0.6 插件构建（已归档，见提交 `27ad86e` 的 `official-addon/tmig1-edition/README.md`） · [原版 1.0.5.5](../firmware-research/strix-1.0.5.5/stock/README.md)**
 
 **非官方实验预发布，小白不要刷。** 掉电、中断、错包和代码缺陷可能造成无法启动或设备损坏，不保证稳定、回滚或救砖。旧 Android APK / iOS 候选不能混用，未发布新版 Android 1.0.6 APK。不含任何个人 Key、Cookie、Apple 开发者账号、签名材料或合并 IPA。
 
