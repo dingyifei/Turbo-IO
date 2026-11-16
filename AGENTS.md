@@ -4,7 +4,7 @@ Guidance for coding agents (Claude Code, Codex and others) working in this repos
 
 ## What this repo is
 
-This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It contains an iOS addon that runs inside the RayNeo AI 1.0.7 app, and patched Strix OS firmware for the glasses. A bad firmware or app build can brick the glasses or break the owner's install, so the safety rules below are mandatory.
+This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It contains an iOS addon that runs inside the RayNeo AI 1.0.21 app, and patched Strix OS firmware for the glasses. A bad firmware or app build can brick the glasses or break the owner's install, so the safety rules below are mandatory.
 
 ## Safety rules
 
@@ -42,9 +42,10 @@ Follow [docs/porting-flow.md](docs/porting-flow.md): present the whole plan to t
 
 | Path | Contents |
 |---|---|
-| `ios-addon/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.7, with its build, packaging, tests and the OTA flash guide |
+| `ios-addon/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.21 (1), with its build, packaging, tests and the OTA flash guide |
+| `official-addon/` | Leftovers kept for other users: `research/` (compiled by the dashboard-service tests), its `Core.h`, and the tracked root `PrivateBootstrap` sources (builds use ignored private copies) |
 | `firmware/` | The patched glasses firmware, as one tree. Each release is an annotated `fw/tmgN` tag, the release label is in `firmware/RELEASE`, and `firmware/baseline/` holds the few inputs carried over from older releases. |
-| `firmware-research/` | Stock firmware ZIPs that the firmware build and the gate read (`strix-1.0.5.5/stock`, `strix-1.0.5.12/stock`), plus the old TMIG1 1.0.5.5 research tree. |
+| `firmware-research/` | Stock firmware ZIPs that the firmware build and the gate read (`strix-1.0.5.5/stock`, `strix-1.0.5.12/stock`). The stock 1.0.6.11 ZIP stays under `$TURBO_INPUTS`; `firmware/build.py --show stock-zip` prints its path. |
 | `scripts/` | Gate, packaging and source audit |
 | `tools/` | Offline analysis tools |
 | `docs/` | User and developer docs ([index](docs/README.md)). `docs/design-system/` is the UI spec. |
@@ -56,11 +57,11 @@ Build inputs live outside the repo: the stock app, signing configuration and fir
 - `bash scripts/turbo-gate.sh` runs the full check: addon build, symbol checks, `test.py` against the pinned firmware, the node tests, and the source audit.
 - `bash scripts/turbo-gate.sh --only-build` is the quick check for each commit.
 - `bash scripts/turbo-gate.sh --preview` adds the preview screenshot matrix and takes about 15 minutes. Run it once on the final commit before handing off, not after every commit.
-- `python3 ios-addon/test.py --firmware <release zip> --tree-firmware <tree zip> [--release default|c16|c17] --app107 <Runner.app> --patched-app <Runner.app>` runs the test groups directly.
-  - `--firmware` is the ZIP of the phone release under test (`releases.json`; the default release is ZIP9), and `--release` picks that release's pins, stock base and wizard versions.
-  - `--tree-firmware` is the ZIP built from the current `firmware/` tree, which the tree audit checks on its own stock base (today ZIP10). It defaults to `--firmware`, which fails whenever the two differ.
-  - The gate fills in these paths from `package.env` and `releases.json` (release ZIPs under `$TURBO_INPUTS`), and runs C16 and C17 on their OTA groups with `--release` and `--only`.
-- `bash scripts/turbo-package.sh <label>` builds and signs an IPA into a new directory. Run it only when the task asks for it. It never installs anything.
+- `python3 ios-addon/test.py --firmware <TMG zip> --stock-package <stock zip> --tree-firmware <tree zip> --app1021 <stock 1.0.21 Runner.app>` runs the test groups directly.
+  - `--firmware` is the TMG package of the phone release under test, and `--stock-package` its stock package (`releases.json`). `--release` defaults to the only release (today `c21`).
+  - `--tree-firmware` is the ZIP built from the current `firmware/` tree, for the tree audit. It defaults to `--firmware`.
+  - The gate fills in these paths from `package.env` and `releases.json` (release ZIPs under `$TURBO_INPUTS`).
+- `bash scripts/turbo-package.sh --host 1021-full <label>` builds and signs an IPA into a new directory (`--host 1021` builds the download-only app). Run it only when the task asks for it. It never installs anything.
 - For the firmware build, the ZIP audit and pin updates, see the firmware tree's README. A release build must reproduce the ZIP recorded for its tag byte for byte.
 
 Report failures and skipped checks plainly. Host tests and previews don't show that a build works on the glasses; only the owner's device check does.

@@ -46,4 +46,4 @@ node scripts/check-source.mjs /absolute/new/turbo-io-source
 
 ## 单独标注的固件研究附件
 
-首页另列[原厂 IPA 输入索引](../official-apps/ios/README.md)：1.0.6（218）是原厂砸壳、完全去签名输入，1.0.5（201）保留历史附件形态；均不含 Turbo IO，且不是个人预签名包。它们仅通过单独 Release 分发，不进入源码 Git 历史。仍不提供合并后 IPA。固件研究附件也单独列版本、风险和校验，[最新 TMIG1](../firmware-research/strix-1.0.5.5/README.md)与历史包不能混用。仅 AP 内容改变不意味着只刷 AP 或保证回滚；原厂版权不变。未公开个人 Key、账号、签名材料或原始设备日志。
+首页另列[原厂 IPA 输入索引](../official-apps/ios/README.md)：1.0.6（218）是原厂砸壳、完全去签名输入，1.0.5（201）保留历史附件形态；均不含 Turbo IO，且不是个人预签名包。它们仅通过单独 Release 分发，不进入源码 Git 历史。仍不提供合并后 IPA。固件研究附件也单独列版本、风险和校验，TMIG1（已删除，见 `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`）与历史包不能混用。仅 AP 内容改变不意味着只刷 AP 或保证回滚；原厂版权不变。未公开个人 Key、账号、签名材料或原始设备日志。
