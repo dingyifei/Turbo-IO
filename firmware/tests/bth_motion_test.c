@@ -49,12 +49,16 @@ int main(void){
  // Each trigger on its own: sigma above 0.05; drift from the previous window above 0.3 on one axis; and 0.3 exactly is not motion.
  now_us+=30000000;window(5,g,g,0.06f);run();assert(sends==3);
  now_us+=30000000;st.prev[0]=g[0];st.prev[1]=g[1];st.prev[2]=g[2]-0.31f;window(5,g,g,0.0f);run();assert(sends==4);
- now_us+=30000000;{float a[3]={1.0f,0,0},b[3]={1.25f,0,0};st.prev[0]=1.25f;st.prev[1]=0;st.prev[2]=0;window(5,a,b,0.05f);run();}assert(sends==4);
+ // Inside a window the per-axis bar is strict: 0.3 exactly is not motion, one float step above it is (sigma 0.05 = its bar).
+ now_us+=30000000;{float a[3]={0,0,9.8f},b[3]={0.3f,0,9.8f};st.prev[0]=b[0];st.prev[1]=b[1];st.prev[2]=b[2];window(5,a,b,0.05f);run();}assert(sends==4);
+ {float a[3]={0,0,9.8f},b[3]={nextafterf(0.3f,1.0f),0,9.8f};st.prev[0]=b[0];st.prev[1]=b[1];st.prev[2]=b[2];window(5,a,b,0.05f);run();}assert(sends==5);
+ // The same bar against the previous window (drift 0.3 exactly: not motion).
+ now_us+=30000000;{float c[3]={0.3f,0,9.8f};st.prev[0]=0;st.prev[1]=0;st.prev[2]=9.8f;window(5,c,c,0.0f);run();}assert(sends==5);
  // "on" again while on: prev primed again, so a stale prev never makes motion.
- now_us+=30000000;st.prev[0]=0;st.prev[1]=0;st.prev[2]=0;motion_on();window(5,g,g,0.0f);run();assert(sends==4);
+ now_us+=30000000;st.prev[0]=0;st.prev[1]=0;st.prev[2]=0;motion_on();window(5,g,g,0.0f);run();assert(sends==5);
  // A send that is not queued frees the message and keeps the last send time (retry on the next moving window).
- now_us+=30000000;send_ret=-1;uint64_t ls=st.last_send;window(5,g,tilt,0.0f);run();assert(sends==5&&frees==1&&st.last_send==ls);
- send_ret=0;now_us+=192000;window(5,tilt,g,0.0f);run();assert(sends==6&&frees==1);
+ now_us+=30000000;send_ret=-1;uint64_t ls=st.last_send;window(5,g,tilt,0.0f);run();assert(sends==6&&frees==1&&st.last_send==ls);
+ send_ret=0;now_us+=192000;window(5,tilt,g,0.0f);run();assert(sends==7&&frees==1);
  // clock_gettime failing, or an empty window: stock's result is returned and nothing else happens.
  int a0=allocs;clock_ret=-1;now_us+=60000000;window(5,g,tilt,1.0f);assert(run()==-1&&allocs==a0);clock_ret=0;
  window(0,g,tilt,1.0f);assert(run()==0&&allocs==a0);
