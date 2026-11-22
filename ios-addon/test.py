@@ -129,6 +129,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-menu-tiles',[FW/'tests/menu_tiles_test.c'],FW/'src')
     ctest('tmg4-menu-lang',[FW/'tests/menu_lang_test.c',FW/'src/global-remote-v1/lang_flag.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')
     ctest('tmg4-lang-store',[FW/'tests/lang_store_test.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')
+    ctest('tmg13-lock-core',[FW/'tests/lock_core_test.c',FW/'src/lock-v1/lock_core.c'],FW/'src')   # PIN lock state and start-up tables, delays, clock faults
     ctest('tmg4-text',[FW/'tests/tio_text_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
     ctest('tmg4-grid',[FW/'tests/focus_grid_test.c',FW/'src/focus-v1/focus_menu.c',FW/'src/common-v1/tio_text.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
     ctest('tmg12-tile-model',[FW/'tests/tile_model_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
