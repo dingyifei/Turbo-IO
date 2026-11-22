@@ -81,7 +81,9 @@ typedef struct {char path[64];uint8_t data[64];size_t n;bool exists;} File;
 static File files[2];static int writes;static bool write_fail;static int fail_bank=-1;static bool read_fail;static int err;
 typedef struct {File *f;size_t pos;bool w;} Handle;
 static File *lookup(const char *p){for(int i=0;i<2;i++)if(!strcmp(files[i].path,p))return &files[i];return NULL;}
-void *tap_fs_fopen(const char *p,const char *m){File *f=lookup(p);assert(f);if(m[0]=='r'&&read_fail){err=5;return NULL;}if(m[0]=='r'&&!f->exists){err=2;return NULL;}if(m[0]=='w'){if(write_fail||(fail_bank>=0&&f==&files[fail_bank]))return NULL;f->exists=true;f->n=0;writes++;}Handle *h=calloc(1,sizeof *h);h->f=f;h->w=m[0]=='w';return h;}
+static bool mounted=true,statfs_fail;
+void *tap_fs_fopen(const char *p,const char *m){File *f=lookup(p);assert(f);if(!mounted){err=2;return NULL;}   /* an unmounted path does not resolve */
+ if(m[0]=='r'&&read_fail){err=5;return NULL;}if(m[0]=='r'&&!f->exists){err=2;return NULL;}if(m[0]=='w'){if(write_fail||(fail_bank>=0&&f==&files[fail_bank]))return NULL;f->exists=true;f->n=0;writes++;}Handle *h=calloc(1,sizeof *h);h->f=f;h->w=m[0]=='w';return h;}
 size_t tap_fs_fread(void *b,size_t s,size_t n,void *hp){Handle *h=hp;size_t k=s*n,left=h->f->n-h->pos;if(k>left)k=left;memcpy(b,h->f->data+h->pos,k);h->pos+=k;return k/s;}
 size_t tap_fs_fwrite(const void *b,size_t s,size_t n,void *hp){Handle *h=hp;size_t k=s*n;assert(h->f->n+k<=sizeof h->f->data);memcpy(h->f->data+h->f->n,b,k);h->f->n+=k;return n;}
 int tap_fs_ferror(void *h){(void)h;return 0;}
@@ -89,8 +91,8 @@ int tap_fs_feof(void *hp){Handle *h=hp;return h->pos>=h->f->n;}
 int tap_fs_fflush(void *h){(void)h;return 0;}int tap_fs_fileno(void *h){(void)h;return 3;}int tap_fs_fsync(int fd){(void)fd;return 0;}
 int tap_fs_fclose(void *h){free(h);return 0;}
 int *tap_fs_errno(void){return &err;}
-static bool mounted=true;static int statfs_calls;
-int tap_fs_statfs(const char *p,void *buf){statfs_calls++;assert(!strcmp(p,"/mnt/nand_data"));if(!mounted){err=2;return -1;}uint32_t *w=buf;w[0]=0x0a732923u;w[2]=131072;w[4]=539;return 0;}
+static int statfs_calls;
+int tap_fs_statfs(const char *p,void *buf){statfs_calls++;assert(!strcmp(p,"/mnt/nand_data"));if(!mounted||statfs_fail){err=mounted?5:2;return -1;}uint32_t *w=buf;w[0]=0x0a732923u;w[2]=131072;w[4]=539;return 0;}
 static int logs;void native_log(unsigned a,unsigned b,unsigned c,unsigned d,const char *f,...){(void)a;(void)b;(void)c;(void)d;(void)f;logs++;}
 
 #include "../src/lock-v1/lock_anchor.c"
@@ -107,7 +109,7 @@ static void reset_world(bool keep_files){
  memset(display,0,sizeof display);void *p=screen_obj;memcpy(display+TIO_STOCK_DISPLAY_SCREEN,&p,sizeof p);p=sys_obj;memcpy(display+TIO_STOCK_DISPLAY_SYS,&p,sizeof p);
  if(!keep_files){memset(files,0,sizeof files);}
  strcpy(files[0].path,"/mnt/nand_data/turbo_lock_v1_0.cfg");strcpy(files[1].path,"/mnt/nand_data/turbo_lock_v1_1.cfg");
- writes=0;write_fail=false;fail_bank=-1;read_fail=false;mounted=true;
+ writes=0;write_fail=false;fail_bank=-1;read_fail=false;mounted=true;statfs_fail=false;
 }
 static uint8_t lv_data[0x14];   /* LVGL's indev data: persists between polls, key = the last key */
 /* Boot is the first keypad poll (an empty one here); a second poll finds the same state and boots nothing. */
@@ -261,6 +263,19 @@ int main(void){
  while(ms<PENDING_UNTIL_MS){ms+=1000;do_tick();}assert(!c->pending&&c->svc.lock.state==TLK_OFF&&screen);
  /* A phone message while Pending with storage now mounted settles first, then answers. */
  reset_world(true);mounted=false;c=boot();mounted=true;r=phone(TLK_OP_QUERY,0,NULL);assert(!c->pending&&(r.flags&TLK_F_LOCKED));
+ /* statfs fails on a mounted volume (littlefs walks the volume for its size): a good record is still taken at boot. */
+ memcpy(files,saved,sizeof files);reset_world(true);statfs_fail=true;c=boot();assert(!c->pending&&c->svc.lock.state==TLK_DARK&&c->svc.lock.rec.enabled);
+ /* ... and no file with statfs failing: Pending, then Off at the cap (the volume cannot be shown mounted). */
+ reset_world(false);statfs_fail=true;c=boot();assert(c->pending);while(ms<PENDING_UNTIL_MS){ms+=1000;do_tick();}assert(!c->pending&&c->svc.lock.state==TLK_OFF);
+ /* Pending, then storage appears with a good record while statfs still fails: locked at the next check. */
+ memcpy(files,saved,sizeof files);reset_world(true);mounted=false;c=boot();assert(c->pending);mounted=true;statfs_fail=true;ms+=1000;do_tick();assert(!c->pending&&c->svc.lock.state==TLK_DARK);
+ /* Off after the cap, storage mounts later, the phone sets a PIN: the write goes above the old record's generation. */
+ memcpy(files,saved,sizeof files);reset_world(true);mounted=false;c=boot();while(ms<PENDING_UNTIL_MS){ms+=1000;do_tick();}assert(c->svc.lock.state==TLK_OFF&&!c->svc.stored.generation);
+ mounted=true;{TLKRecord old;TLRStored ost;assert(tlr_load(&tlr_io,&old,&ost)==TLK_LOAD_GOOD);
+  TLKCommand q={0};q.pin[0]=9;q.pin[1]=9;q.pin[2]=9;q.pin[3]=9;r=op(TLK_OP_SET_PIN,&q);assert(r.result==TLK_R_OK&&c->svc.stored.generation==ost.generation+1);}
+ reset_world(true);c=boot();{const uint8_t P9[4]={9,9,9,9};assert(c->svc.lock.state==TLK_DARK);assert(key(TIO_STOCK_KEY_CONFIRM)==0);enter_pin(P9);assert(c->svc.lock.state==TLK_UNLOCKED);}
+ /* A Pending boot that settles Off does not switch the wake word on (stock does that at its next return to running). */
+ reset_world(false);mounted=false;c=boot();do_tick();assert(c->kws_off);int on0=kws_on;mounted=true;ms+=1000;do_tick();assert(c->svc.lock.state==TLK_OFF&&kws_on==on0&&!c->kws_off);
  /* No lock object (not started, or the anchor displaced): the assistant gates refuse in the first minute only. */
  reset_world(true);assert(!lock_anchor_any());ms=5000;assert(lock_refuse_can_wakeup()&&lock_refuse_open_recorder()&&!lock_refuse_screen(1,0));
  ms=PENDING_UNTIL_MS;assert(!lock_refuse_can_wakeup());

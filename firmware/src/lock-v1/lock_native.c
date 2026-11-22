@@ -61,7 +61,7 @@ typedef struct {
  volatile uint8_t lock_request;  /* set by the screen gate when the idle or fold time has passed; applied by the tick */
  volatile uint32_t gate_fold_s;  /* PMU seconds the screen gate first saw the panel go off while folded */
  /* UI thread only. */
- void *cover;TLKView view;bool view_open;uint8_t view_wait;
+ void *cover;TLKView view;bool view_open;uint32_t view_ms;
  bool kws_off;uint32_t kws_ms;
  int32_t wheel_acc;uint32_t wheel_ms;
  bool was_folded;
@@ -94,7 +94,7 @@ static void cover_drop(LockCtl *c){
 /* The cover: one black object on the sys layer with the top layer hidden, and the lock view created on it. The view's
  * root takes the cover's size, which LVGL applies at its next layout pass, so the view opens on a later call (the next
  * key, wheel step or 250 ms tick). Returns 1 ready, 0 waiting for the layout, -1 failed (the caller keeps the panel dark). */
-#define VIEW_WAIT_TRIES 8u
+#define VIEW_WAIT_MS 2000u
 static int cover_make(LockCtl *c){
  if(c->cover&&c->view_open)return 1;
  void *d=stream_display_next(NULL),*sys=d?slot(d,TIO_STOCK_DISPLAY_SYS):NULL;if(!sys){TR("[TurboLock] cover no sys d=%p",d);return -1;}
@@ -102,10 +102,10 @@ static int cover_make(LockCtl *c){
   void *o=tio_lv_obj_create_ex(sys,0);if(!o){TR("[TurboLock] cover create failed");return -1;}
   tio_lv_obj_set_size(o,TIO_PAGE_W,TIO_MENU_H);tio_lv_obj_set_style_bg_color(o,0,0);tio_lv_obj_set_style_bg_opa(o,255,0);
   tio_lv_obj_set_style_border_width(o,0,0);tio_lv_obj_set_style_radius(o,0,0);native_align(o,1,0,0);   /* no theme outline */
-  c->cover=o;c->view_wait=0;layers_hidden(true);
+  c->cover=o;c->view_ms=stream_tick();layers_hidden(true);
  }
  if(tio_lv_obj_get_width(c->cover)<TIO_PAGE_W||tio_lv_obj_get_height(c->cover)<TIO_MENU_H){
-  if(++c->view_wait>VIEW_WAIT_TRIES){TR("[TurboLock] cover never laid out");cover_drop(c);return -1;}
+  if((uint32_t)(stream_tick()-c->view_ms)>VIEW_WAIT_MS){TR("[TurboLock] cover never laid out");cover_drop(c);return -1;}
   return 0;
  }
  TNWidgets w=tn_lvgl_widgets();if(!tlv_open(&c->view,&w,NULL,c->cover)){TR("[TurboLock] view open failed");cover_drop(c);return -1;}
@@ -141,23 +141,36 @@ static LockCtl *ui(void){
  c=lock_anchor_find();if(c&&c->magic==LOCK_MAGIC)return c;
  c=lock_anchor_ui(tick);return c&&c->magic==LOCK_MAGIC?c:NULL;
 }
-static void persist(LockCtl *c){(void)tlk_service_persist(&c->svc,&tlr_io);}
+/* Before the first write of a boot that read no generation (no file, or Off after the Pending cap), take the stored
+ * generation if a record has appeared since, so the new record is written above it and wins at the next boot. */
+static void stored_refresh(LockCtl *c){
+ if(c->svc.stored.generation)return;TLKRecord r;TLRStored st;
+ if(tlr_load(&tlr_io,&r,&st)==TLK_LOAD_GOOD&&st.generation)c->svc.stored=st;
+}
+static void persist(LockCtl *c){if(c->svc.lock.dirty)stored_refresh(c);(void)tlk_service_persist(&c->svc,&tlr_io);}
 
 /* ---------------------------------------------------------------- boot record */
 static bool folded_now(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&nav_folded(i);}
 /* /mnt/nand_data is mounted when statfs on it reports the littlefs type with a nonzero size. Before the mount the path
  * does not resolve to that filesystem, and a record read there cannot tell "no file" from "not mounted yet". */
 static bool store_mounted(void){uint32_t w[16]={0};return !tap_fs_statfs(NAND_DATA,w)&&w[0]==LFS_MAGIC&&w[2]&&w[4];}
-/* Ends the Pending state (once per boot; it is never entered again): with storage mounted the record is read and the
- * normal start-up table applies (no file = Off, damaged = dark); never mounted within the first minute = Off (a stated
- * limit, docs/lock-design.md §7). Leaving Pending unlocked brings back the panel the Pending dark turned off. */
-static void settle(LockCtl *c,bool mounted,bool folded){
- c->pending=false;
- if(mounted)tlk_service_boot(&c->svc,&tlr_io);else tlk_boot(&c->svc.lock,TLK_LOAD_NONE,NULL);
- c->svc.motion_supported=false;   /* milestone 3 */
+/* Ends the Pending state (once per boot; it is never entered again) with the service read just now. Leaving Pending
+ * unlocked brings back the panel the Pending dark turned off; the wake word is left to stock (Pending turned it off,
+ * stock turns it on at its next return to running), so a user who keeps it off does not get it switched on. */
+static void adopt(LockCtl *c,const TLKService *n,bool mounted,bool folded){
+ c->pending=false;c->svc=*n;c->svc.motion_supported=false;   /* milestone 3 */
  if(folded)tlk_fold(&c->svc.lock,now_s());
  native_log(1,0,0,0,"[TurboLock] settle mounted=%u load=%u state=%u ms=%u",mounted,load_kind(&c->svc),c->svc.lock.state,stream_tick());
- if(!tlk_locked(&c->svc.lock)&&!folded){c->dark=0;cover_drop(c);nav_screen_on(true);}
+ if(!tlk_locked(&c->svc.lock)){c->kws_off=false;if(!folded){c->dark=0;cover_drop(c);nav_screen_on(true);}}
+}
+/* A Pending check. Mounted: the read settles the boot by the start-up table. statfs can also fail on a mounted volume
+ * (littlefs walks the whole volume to report its size), so the record is read anyway: a CRC-good record cannot come from
+ * an unmounted path and settles at once. At the cap (final) a good record locks and anything else is Off: storage never
+ * shown mounted within the first minute (the stated limit, docs/lock-design.md §7). */
+static void pending_check(LockCtl *c,bool folded,bool final){
+ bool mounted=store_mounted();TLKService n;tlk_service_boot(&n,&tlr_io);TLKLoad k=load_kind(&n);
+ if(mounted||k==TLK_LOAD_GOOD)adopt(c,&n,mounted,folded);
+ else if(final){tlk_boot(&n.lock,TLK_LOAD_NONE,NULL);n.stored=(TLRStored){0,1};adopt(c,&n,false,folded);}
 }
 
 /* ---------------------------------------------------------------- tick */
@@ -175,8 +188,8 @@ static void tick(void *timer){
  c->was_folded=folded;
  t->screen_on=focus_screen_on();
  if(c->pending){   /* storage not mounted at boot: check once a second; the first mounted read settles the boot */
-  if(ms>=PENDING_UNTIL_MS)settle(c,false,folded);
-  else if((uint32_t)(ms-c->load_ms)>=PENDING_EVERY_MS){c->load_ms=ms;if(store_mounted())settle(c,true,folded);}
+  if(ms>=PENDING_UNTIL_MS)pending_check(c,folded,true);
+  else if((uint32_t)(ms-c->load_ms)>=PENDING_EVERY_MS){c->load_ms=ms;pending_check(c,folded,false);}
   if(c->pending){sync(c,ms);return;}
  }
  if(c->lock_request){c->lock_request=0;if(!tlk_locked(t)&&t->state!=TLK_OFF)(void)tlk_phone_lock(t);}
@@ -185,15 +198,17 @@ static void tick(void *timer){
 }
 
 /* ---------------------------------------------------------------- boot */
-/* The lock starts at the first keypad or wheel poll (LVGL creates both input devices in its own init, lv_nuttx_init,
- * long before the launcher's first frame) or the first TLK: message, whichever comes first. All of them run on the
- * LVGL thread, so the timer, the cover and nav_force_off are called from the thread that owns them. ui() finds the
- * state again on every later call, so this runs once per boot. */
+/* The lock starts at the first of: the launcher's link-callback shim (before the first content frame), a launcher message,
+ * a keypad or wheel read, a TLK: message. All run on the launcher's LVGL thread (emulator trace: one thread id), so the
+ * timer, the cover and nav_force_off are called from the thread that owns them. ui() finds the state again on every
+ * later call, so this runs once per boot. */
 static LockCtl *lock_boot(void){
  LockCtl *c=stream_memalign(8,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=LOCK_MAGIC;
  bool mounted=store_mounted();
- if(mounted)tlk_service_boot(&c->svc,&tlr_io);
- else{c->pending=true;tlk_boot(&c->svc.lock,TLK_LOAD_DAMAGED,NULL);c->svc.lock.damaged=false;}   /* Pending: dark, no record */
+ tlk_service_boot(&c->svc,&tlr_io);
+ if(!mounted&&load_kind(&c->svc)!=TLK_LOAD_GOOD){   /* Pending: dark, no record (a good record is taken even if statfs failed) */
+  c->pending=true;tlk_boot(&c->svc.lock,TLK_LOAD_DAMAGED,NULL);c->svc.lock.damaged=false;c->svc.stored=(TLRStored){0,1};
+ }
  c->svc.motion_supported=false;   /* milestone 3 */
  c->load_ms=stream_tick();
  native_log(1,0,0,0,"[TurboLock] boot mounted=%u load=%u state=%u ms=%u",mounted,load_kind(&c->svc),c->svc.lock.state,c->load_ms);
@@ -326,7 +341,8 @@ bool lock_native_message(const uint8_t *data,unsigned bytes){
  uint8_t raw[32];if(!tlk_uncarrier(data,bytes,raw,false))return false;
  TLKCommand q;if(!tlk_decode(raw,sizeof raw,&q))return true;
  LockCtl *c=ui_or_boot();if(!c||c->magic!=LOCK_MAGIC)return true;
- if(c->pending){if(!store_mounted())return true;settle(c,true,folded_now());}   /* no record yet: no answer, the phone asks again */
+ if(c->pending){pending_check(c,folded_now(),false);if(c->pending)return true;}   /* no record yet: no answer, the phone asks again */
+ stored_refresh(c);
  uint8_t salt[TLK_SALT_LEN];uint32_t a=tap_random(),b=tap_random();memcpy(salt,&a,4);memcpy(salt+4,&b,4);
  uint32_t ms=stream_tick();TLKReply r;
  c->svc.lock.screen_on=focus_screen_on();
