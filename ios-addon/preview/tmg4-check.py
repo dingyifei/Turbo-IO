@@ -18,7 +18,9 @@ KNOB_STEP_SCREENS=('knob-tmg9','knob-tmg9-confirmed','knob-tmg9-failed','knob-tm
 TABLE_SCREENS=('tiles','runtime','knob')+KNOB_STEP_SCREENS
 # Screens whose navigation title is localized today; the others only assert the process language.
 BENCH_SCREENS=('push-testBench','bench-lyrics','bench-song','bench-card','bench-timer')
-LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')+KNOB_STEP_SCREENS+BENCH_SCREENS
+# The Glasses lock page with canned glasses (docs/lock-design.md §4): screen -> (phase, switch on, action row id or None, wrong tries).
+LOCK_SCREENS={'lock-off':('off',False,None,0),'lock-unlocked':('unlocked',True,'lock-lock-now',0),'lock-locked':('locked',True,'lock-unlock',0),'lock-wrong':('locked',True,'lock-unlock',3)}
+LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')+KNOB_STEP_SCREENS+BENCH_SCREENS+tuple(LOCK_SCREENS)
 # The menu layout screen with canned TMG8 glasses (carousel stored) and with older glasses (three rows, Carousel disabled).
 LAYOUT_SCREENS=('layout','layout-tmg7')
 SEGMENTS={'en':['Carousel','2 rows','3 rows'],'zh-Hans':['轮播','两排','三排']}
@@ -122,6 +124,21 @@ def check_bench(screen,report,lang,stem,size):
     assert (han(card['bench-note-tile']['status']) if lang=='zh-Hans' else not han(card['bench-note-tile']['status'])),'note language in '+str(stem)
     assert '30' in card['bench-note-tile']['status'] and ('Live view' in card['bench-note-camera']['status'] or '实时取景' in card['bench-note-camera']['status']),'on-screen notes in '+str(stem)
     assert not card['bench-note-route']['status'].strip()=='' ,'route note in '+str(stem)
+LOCK_WORDS={'en':{'off':'Off','unlocked':'Unlocked','locked':'Locked','wrong':'wrong tries since last unlock','footer':'can always unlock them'},
+    'zh-Hans':{'off':'关闭','unlocked':'已解锁','locked':'已锁定','wrong':'上次解锁后输错','footer':'始终可以解锁眼镜'}}
+def check_lock(screen,report,lang,stem):
+    phase,on,action,wrong=LOCK_SCREENS[screen];w=LOCK_WORDS[lang];tag=' in '+str(stem)
+    rows={r['id']:r for s in report['sections'] for r in s['rows']};text=' '.join(str(r[k]) for r in rows.values() for k in ('title','status'))+' '.join(s['footer'] for s in report['sections'])
+    assert 'lock.' not in text and 'hub.row.' not in text,'untranslated key'+tag
+    assert rows['lock-enable']['switchOn'] is on,'Lock with PIN switch'+tag
+    status=rows['lock-status']
+    if wrong:assert str(wrong) in status['title'] and w['wrong'] in status['title'] and status['status']==w[phase],'wrong-tries status'+tag+': '+status['title']
+    else:assert status['title']==w[phase],'status word'+tag+': '+status['title']
+    actions=[i for i in ('lock-unlock','lock-lock-now') if i in rows];assert actions==([action] if action else []),'action rows'+tag+': '+str(actions)
+    settings={'lock-fold','lock-idle','lock-worn','lock-change-pin'};assert (settings<=set(rows)) if on else not (settings&set(rows)),'settings rows follow the switch'+tag
+    if on:assert rows['lock-worn']['switchOn'] is False,'Stay unlocked while worn starts off'+tag
+    assert any(w['footer'] in s['footer'] for s in report['sections']),'footer'+tag
+    assert (han(text) if lang=='zh-Hans' else not han(text)),'page language'+tag
 def check_panel(screen,report,stem):
     assert report['controllerClass']==PANELS[screen],'not the real panel in '+str(stem)+': '+report['controllerClass']
     if screen in ('nav','nav-active'):
@@ -150,6 +167,7 @@ def check(root,screens):
             if screen in LAYOUT_SCREENS:check_layout(screen,report,lang,stem)
             if screen in PANELS:check_panel(screen,report,stem)
             if screen in BENCH_SCREENS:check_bench(screen,report,lang,stem,size)
+            if screen in LOCK_SCREENS:check_lock(screen,report,lang,stem)
             sha=hashlib.sha256(png.read_bytes()).hexdigest();shas[(lang,look,size)]=sha
             receipts.append({'screen':screen,'language':lang,'appearance':look,'contentSize':size,'sha256':sha,'sections':len(report['sections'])})
         for lang in LANGS:

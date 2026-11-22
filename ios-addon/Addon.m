@@ -46,6 +46,7 @@ extern BOOL TDPPhoneAutomaticIdle(void);
 #import "ExperimentalOTAGuard.h"
 #import "Brightness.h"
 #import "MenuLayoutUI.h"
+#import "GlassesLockUI.h"
 #import "HomeTabBridge.h"
 #import "KnowledgeUI.h"
 #import "KnowledgeClient.h"
@@ -502,6 +503,19 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {[super traitCollectionDidChange:previous];if(!self.page.length)[self updateCard];}
 - (void)refresh {
     self.sections=TIOHubSectionsForProfile(self.page,TIOHostProfile());
+    // The Glasses lock row is shown only while the connected glasses report the lock capability (TD_CAP_PIN_LOCK).
+    // Only a hub that has the row asks for the capability bits (never the download-only host).
+    if ([[self.sections valueForKeyPath:@"@unionOfArrays.rows.key"] containsObject:@"glassesLock"]) {
+        TIOGlassesLockHubRefresh();
+        if (!TIOGlassesLockHubVisible()) {
+            NSMutableArray *kept=[NSMutableArray new];
+            for (NSDictionary *group in self.sections) {
+                NSArray *rows=[group[@"rows"] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"key != %@",@"glassesLock"]];
+                if (rows.count) {NSMutableDictionary *copy=[group mutableCopy];copy[@"rows"]=rows;[kept addObject:copy];}
+            }
+            self.sections=kept;
+        }
+    }
     self.title=self.page.length ? ([self catalogRowForKey:self.page][@"title"] ?: TIOText(@"hub.title")) : TIOText(@"hub.title");
     if (!self.page.length) {
         NSMutableString *body=[TIOText(@"hub.info.body") mutableCopy];
@@ -572,6 +586,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
         NSString *code=TIOUILanguageOverride();
         status=TIOText([@"hub.status.language." stringByAppendingString:[@[@"auto",@"en",@"zh"] containsObject:code]?code:@"auto"]);
     } else if ([key isEqual:@"languageStatus"]) status=TIOLanguageFlagStatus()[@"state"];
+    else if ([key isEqual:@"glassesLock"]) status=TIOGlassesLockHubStatus();
     else if ([key isEqual:@"mode"]) {
         NSInteger mode=[Prefs integerForKey:@"mode"];
         NSString *kind=mode==1?@"test":mode==2?@"custom":@"official"; // WP7 adds mode 3.
@@ -715,6 +730,7 @@ static NSString *TIOHubBoundStatus(NSString *value) {
     else if ([key isEqual:@"camera"]) screen=TCCameraController();
     else if ([key isEqual:@"focus"]) screen=TIOFocusController();
     else if ([key isEqual:@"menuLayout"]) screen=TIOMenuLayoutController();
+    else if ([key isEqual:@"glassesLock"]) screen=TIOGlassesLockController();
     else if ([key isEqual:@"brightness"]) screen=TIOBrightnessController();
     else if ([key isEqual:@"developerApps"]) screen=TAPAppsController();
     else if ([key isEqual:@"dashboardEditor"]) {
@@ -879,6 +895,7 @@ __attribute__((constructor)) static void Load(void) {
             // no language-flag push, no clench-lab restore.
             BOOL downloadOnly=[TIOHostProfile() isEqual:@"ios1021-download"];
             if(!downloadOnly)TIOLanguageFlagStart();
+            if(!downloadOnly)TIOGlassesLockStart();
             if(![Prefs boolForKey:@"ttsCloudRemoved"]){BOOL removed=StoreKey(@"",@"");[Prefs removeObjectForKey:@"ttsEngine"];if(removed)[Prefs setBool:YES forKey:@"ttsCloudRemoved"];} // ttsCloudRemoved: cleanup of the deleted Alibaba TTS Keychain item (account "") and engine pref; retry failed deletion next launch
             [Prefs registerDefaults:@{@"appleFallback":@YES,@"voiceExitCommands":@YES,@"ttsEnabled":@YES,@"hubDeveloperExpanded":@NO}];
             TIOSetUserProfile([Prefs stringForKey:@"aboutMe"]);

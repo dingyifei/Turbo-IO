@@ -32,6 +32,49 @@
 {"key":"1 · 建立临时预览会话","en":"1 · Start temporary preview session"}
 {"key":"1 · 查询眼镜 SID","en":"1 · Query glasses SID"}
 {"key":"1 · 读取仪表盘基线","en":"1 · Read Dashboard baseline"}
+{"key":"hub.row.glassesLock","en":"Glasses lock","zh":"眼镜锁"}
+{"key":"lock.action.dismiss","en":"Dismiss","zh":"知道了"}
+{"key":"lock.action.lockNow","en":"Lock now","zh":"立即锁定"}
+{"key":"lock.action.unlock","en":"Unlock glasses","zh":"解锁眼镜"}
+{"key":"lock.damaged","en":"Lock record damaged. Unlock the glasses and set a new PIN.","zh":"锁定记录已损坏。请解锁眼镜并设置新 PIN。"}
+{"key":"lock.footer.main","en":"The phone paired with the glasses can always unlock them.","zh":"与眼镜配对的手机始终可以解锁眼镜。"}
+{"key":"lock.footer.worn","en":"Uses head motion. Works after this phone has connected to the glasses. When off, the glasses lock after the idle time even while worn.","zh":"使用头部动作。本手机连接眼镜后生效。关闭时，即使正在佩戴，眼镜也会在闲置时间后锁定。"}
+{"key":"lock.header.auto","en":"Lock automatically","zh":"自动锁定"}
+{"key":"lock.minutes","en":"%u min","zh":"%u 分钟"}
+{"key":"lock.note.blocked","en":"The glasses refused: an update is running or they are not connected.","zh":"眼镜拒绝了请求：正在升级或未连接。"}
+{"key":"lock.note.canceled","en":"Canceled. Nothing will be resent; read the glasses again.","zh":"已取消。不会补发；请重新读取眼镜。"}
+{"key":"lock.note.connect","en":"Connect the glasses, keep this app in front, and finish any update first.","zh":"请连接眼镜、保持 App 前台，并先结束升级。"}
+{"key":"lock.note.invalid","en":"The glasses rejected the request.","zh":"眼镜拒绝了这个请求。"}
+{"key":"lock.note.motionRefused","en":"These glasses cannot use head motion yet. The lock still works and uses the idle time.","zh":"这副眼镜暂不支持头部动作。锁定仍然有效，按闲置时间锁定。"}
+{"key":"lock.note.noReply","en":"The glasses did not answer, so the result is unknown. Pull down to read again.","zh":"眼镜没有回应，结果未知。下拉可重新读取。"}
+{"key":"lock.note.reading","en":"Reading the glasses…","zh":"正在读取眼镜…"}
+{"key":"lock.note.refused","en":"The glasses did not accept this now.","zh":"眼镜现在不接受这个操作。"}
+{"key":"lock.note.sending","en":"Waiting for the glasses…","zh":"正在等待眼镜…"}
+{"key":"lock.note.session","en":"The request expired. Try again.","zh":"请求已过期，请重试。"}
+{"key":"lock.note.storage","en":"The glasses could not save the setting. Try again.","zh":"眼镜无法保存设置，请重试。"}
+{"key":"lock.note.unavailable","en":"The glasses cannot answer right now. Try again.","zh":"眼镜暂时无法回应，请重试。"}
+{"key":"lock.note.unsupported","en":"These glasses do not have the lock. Update the glasses firmware first.","zh":"这副眼镜没有锁定功能，请先更新眼镜固件。"}
+{"key":"lock.off.action","en":"Turn off","zh":"关闭"}
+{"key":"lock.off.message","en":"The glasses will no longer ask for the PIN.","zh":"眼镜将不再要求输入 PIN。"}
+{"key":"lock.off.title","en":"Turn off the lock?","zh":"关闭锁定？"}
+{"key":"lock.pin.again","en":"Same 4 digits again","zh":"再次输入 4 位数字"}
+{"key":"lock.pin.field","en":"4 digits","zh":"4 位数字"}
+{"key":"lock.pin.message","en":"Enter a new 4-digit PIN twice. The old PIN is not needed.","zh":"输入两次新的 4 位 PIN，无需旧 PIN。"}
+{"key":"lock.pin.mismatch","en":"The two entries differ or are not 4 digits. Nothing was changed.","zh":"两次输入不一致或不是 4 位数字，未做更改。"}
+{"key":"lock.pin.set","en":"Set PIN","zh":"设置 PIN"}
+{"key":"lock.pin.title","en":"New PIN","zh":"新 PIN"}
+{"key":"lock.row.changePin","en":"Change PIN","zh":"更改 PIN"}
+{"key":"lock.row.enable","en":"Lock with PIN","zh":"使用 PIN 锁定"}
+{"key":"lock.row.fold","en":"After folded","zh":"折叠后"}
+{"key":"lock.row.idle","en":"When idle","zh":"闲置时"}
+{"key":"lock.row.worn","en":"Stay unlocked while worn","zh":"佩戴时保持解锁"}
+{"key":"lock.state.locked","en":"Locked","zh":"已锁定"}
+{"key":"lock.state.off","en":"Off","zh":"关闭"}
+{"key":"lock.state.unknown","en":"Not read yet. Tap to read the glasses.","zh":"尚未读取。轻点读取眼镜。"}
+{"key":"lock.state.unlocked","en":"Unlocked","zh":"已解锁"}
+{"key":"lock.worn.offAfterDrops","en":"Turned off: the glasses lost the connection twice right after head motion was switched on.","zh":"已关闭：开启头部动作后，眼镜连续两次断开连接。"}
+{"key":"lock.wrong.many","en":"%u wrong tries since last unlock","zh":"上次解锁后输错 %u 次"}
+{"key":"lock.wrong.one","en":"1 wrong try since last unlock","zh":"上次解锁后输错 1 次"}
 {"key":"实验来源宿主版本/UUID/标记不匹配","en":"Experimental source host version, UUID, or marker mismatch"}
 {"key":"实验查询路径或对象头不匹配，未启动服务","en":"Experimental query path or object header mismatch; service not started"}
 {"key":"10 分钟到期 · 本轮结束","en":"10-minute lease expired · Session ended"}

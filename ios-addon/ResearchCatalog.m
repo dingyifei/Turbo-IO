@@ -21,6 +21,7 @@ static const TIOHubRowDefinition Rows[] = {
     {@"camera", @"camera", TIOHubSectionGlasses, @"", @"TCM1"},
     {@"focus", @"timer", TIOHubSectionGlasses, @"", @""},
     {@"menuLayout", @"square.grid.3x3", TIOHubSectionGlasses, @"", @""},
+    {@"glassesLock", @"lock", TIOHubSectionGlasses, @"", @""},
     {@"brightness", @"sun.max", TIOHubSectionGlasses, @"", @""},
     {@"developerApps", @"square.stack.3d.up", TIOHubSectionGlasses, @"", @"TAP1"},
     {@"dashboardEditor", @"rectangle.3.group", TIOHubSectionGlasses, @"", @"TCE1"},

@@ -213,6 +213,10 @@
       "group": "ios1021-full-edge",
       "note": "Full 1.0.21/1 host (ios1021) edge cases beyond ios1021-full-guard: TIOHostProfile near misses fall to ios1021-download, raw-JSON size query spellings, read and transfer frame shapes, payload containers, businessId types and widths, and a record left by the retired arm step (never read). Duplicate or escaped OtaSize keys follow NSJSONSerialization: a body that decodes to exactly {OtaSize:<ZIP bytes>} passes. Same five TIO_* flag sets, one sweep digest, equal to its pin. Known gaps would print as XFAIL (none at present) and abort as XPASS once fixed."
     },
+    "tests/GlassesLockTests.m": {
+      "status": "run",
+      "group": "glasses-lock"
+    },
     "tests/LanguageFlagTests.m": {
       "status": "run",
       "group": "language-flag"

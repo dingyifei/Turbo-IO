@@ -4,6 +4,7 @@
 #import "TIOLanguage.h"
 #import "TIOConfirm.h"
 #import "MenuLayoutUI.h"
+#import "GlassesLockUI.h"
 #import "TDPhoneUI.h"
 #import "GlassesTestBenchUI.h"
 #import "ResearchUI.h"
@@ -429,6 +430,10 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
         } else if ([screen isEqual:@"layout"] || [screen isEqual:@"layout-tmg7"]) {
             // The real menu layout screen with canned glasses: layout = TMG8 glasses (carousel stored), layout-tmg7 = older glasses.
             UIViewController *page=TIOMenuLayoutPreviewController([screen isEqual:@"layout"]?@"tmg8":@"tmg7");
+            if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
+        } else if ([screen hasPrefix:@"lock-"]) {
+            // The real Glasses lock page with canned glasses: lock-off, lock-unlocked, lock-locked, lock-wrong (locked, 3 wrong tries).
+            UIViewController *page=TIOGlassesLockPreviewController([screen substringFromIndex:5]);
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"runtime"] || [screen isEqual:@"knob"] || [screen hasPrefix:@"knob-"]) {
             // knob-<fixture> is the knob screen with the knob step setting's canned glasses: tmg9, tmg9-confirmed, tmg9-failed, tmg8 (see TDPhonePreviewController).

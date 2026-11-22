@@ -197,7 +197,7 @@ if only is None or 'shared-sources' in only:
             print('shared-sources: skip removed phone copy '+phone.name);continue
         if phone.read_bytes()!=(FW/'src'/name).read_bytes():
             raise RuntimeError('shared source mismatch: '+name)
-    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h','diagnostics-v1/diagnostics.c','diagnostics-v1/diagnostics.h','diagnostics-v1/command.h','diagnostics-v1/knob_calibration.c','diagnostics-v1/knob_calibration.h']:
+    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h','diagnostics-v1/diagnostics.c','diagnostics-v1/diagnostics.h','diagnostics-v1/command.h','diagnostics-v1/knob_calibration.c','diagnostics-v1/knob_calibration.h','lock-v1/lock_codec.c','lock-v1/lock_codec.h']:
         phone=P/Path(name).name
         if not phone.is_file() or phone.read_bytes()!=(FW/'src'/name).read_bytes():
             raise RuntimeError('TMG4 shared source missing/mismatch: '+name)
@@ -235,6 +235,7 @@ test('tmg5-roads',['RoadMap.m','nav_runtime.c','tests/TMG5RoadFilterTests.m'])
 test('session',['NativeNavigationTests.m','NativeNavigation.m','TNVTransport.m','nav_runtime.c','tests/diagnostic_stub.m'])
 test('glasses-file',['tests/GlassesFileTransportTests.m','TIOGlassesFileTransport.m','tests/diagnostic_stub.m','tests/fixtures/wp8/LegacyFocusTransport.m','tests/fixtures/wp8/LegacyMusicTransport.m','tests/fixtures/wp8/LegacyTDTransport.m','focus.c','music.c','command.c','diagnostics.c'])
 test('menu-layout',['MenuLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
+test('glasses-lock',['tests/GlassesLockTests.m','GlassesLock.m','lock_codec.c'])   # TLK:/TKA: through the shared codec, token exchange, caps bit 11, MOTION_ON refused, page model
 test('menu-lens',['tests/MenuLensTests.m','MenuLens.m'],extra=['-framework','CoreGraphics'])
 test('tile-layout',['tests/TileLayoutTests.m','MenuLayout.m','menu_config.c','tile_config.c'])
 if only is None or 'tile-layout' in only:
