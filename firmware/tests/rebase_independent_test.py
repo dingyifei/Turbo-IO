@@ -202,7 +202,8 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
     addedCode={'tio_light_latest': 0x1062_c3d5,   # F5: stock's latest-light getter
                # TMG13 PIN lock: stock calls (SYMBOLS.md / HOOKS.md of the lock RE)
                'pmu_rtc_epoch': 0x1058_6a49, 'kws_enable': 0x1055_9b75,
-               'kws_disable': 0x1055_9be9, 'key_queue_flush': 0x1062_c5f1, 'ots_topic_read': 0x1062_0fcd},
+               'kws_disable': 0x1055_9be9, 'key_queue_flush': 0x1062_c5f1, 'ots_topic_read': 0x1062_0fcd,
+               'neck_send': 0x104e_892d},   # TMG14 head motion: neck_monitor_rpmsg_ap_send_to_bth
     addedRam={'tio_key_interceptors': 0x1975_46e4},   # TMG13: the key interceptor list head
     # TMG13 entry trampolines: role -> (old address, old before[, 'pointer']); each adds resume_<name> = old + 5 to the
     # old universe. ('pointer', arg): reached only through a stored function pointer (no BL caller), loaded into r<arg>
@@ -213,7 +214,9 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
                 'Entry trampoline screen_state': (0x1064_5d48, '2de9f041'),
                 'Entry trampoline factory_reset': (0x1058_6098, 'b0b582b0', 'pointer', 0),   # reset worker timer callback
                 'Entry trampoline key_read': (0x1080_a918, '002390b5', 'pointer', 1),
-                'Entry trampoline wheel_read': (0x1071_caf0, '2de9f04f', 'pointer', 1)},
+                'Entry trampoline wheel_read': (0x1071_caf0, '2de9f04f', 'pointer', 1),
+                # TMG14: the neck rx endpoint callback, passed to rpmsg_create_ept (through an ITCM veneer) on the stack
+                'Entry trampoline neck_rx': (0x104e_923c, 'b0b590b0', 'pointer', 'stack')},
     newTreeChanges=dict(pruneLink={'dots_getrandom', 'dots_stock_notify', 'ce_utc_time', 'ce_focus_manager',
                                    'ce_focus_enabled', 'ce_head_mode', 'ce_stock_head_notify_resume',
                                    'ce_stock_head_start_resume', 'ce_stock_head_stop_resume',
@@ -1497,6 +1500,50 @@ def old_abi(old_fw, key):
     return ranges
 
 
+def stack_call(img, q):
+    """('bl', target) of the first BL within 8 instructions after the 16-bit ldr rt,[pc,#] at q, when rt is stored to the
+    stack (str rt,[sp,#i]; str.w rt,[sp,#i]; strd with rt) before it; else None."""
+    rt, pc, stored = (img.h(q) >> 8) & 7, q + 2, False
+    for _ in range(8):
+        if not img.has(pc, 4):
+            return None
+        hw = img.h(pc)
+        if is32(hw):
+            b, h2 = branch(img, pc), img.h(pc + 2)
+            if b:
+                return b if stored and b[0] == 'bl' else None
+            stored |= (hw == 0xe9cd and rt in (h2 >> 12, (h2 >> 8) & 0xf)) or (hw == 0xf8cd and h2 >> 12 == rt)
+            pc += 4
+        else:
+            stored |= hw >> 11 == 0b10010 and (hw >> 8) & 7 == rt
+            pc += 2
+    return None
+
+
+def near_pair(d, old, q):
+    """The new address of old site q from the nearest neighbour within 8 bytes that site() pairs, when the bytes from the
+    neighbour to q (inclusive of q's halfword) are equal in both images and every pairing neighbour agrees; else None."""
+    answers = set()
+    for k in (-2, 2, -4, 4, -6, 6, -8, 8):
+        n = d.site(q + k)
+        if n is None:
+            continue
+        lo, hi = min(0, k), max(0, k) + 2
+        if not old.has(q + lo, hi - lo) or not d.new.has(n - k + lo, hi - lo) or \
+                old.raw[q + lo - FLASH:q + hi - FLASH] != d.new.raw[n - k + lo - FLASH:n - k + hi - FLASH]:
+            return None
+        answers.add(n - k)
+    return answers.pop() if len(answers) == 1 else None
+
+
+def itcm_veneer(img, at):
+    """The Thumb ITCM address of a flash veneer `ldr.w pc,[pc,#-0]; .word target` at at, else None."""
+    if not img.has(at, 8) or (img.h(at), img.h(at + 2)) != (0xf85f, 0xf000):
+        return None
+    word = img.w(at + 4)
+    return word if word & 1 and word < FLASH else None
+
+
 def added_entry(added_code, rows, d, old, added_ram=None, added_edits=None):
     """addedCode symbols and addedEdits sites have no old-tree row behind them, so each one's old value must be shown to be
     a function start: an old BL/B.W target with at least one paired caller (T1 or T2) naming the derived value. An
@@ -1517,6 +1564,15 @@ def added_entry(added_code, rows, d, old, added_ram=None, added_edits=None):
         found = [r for r in rows if r['kind'] == 'edit' and r['name'] == role]
         assert len(found) == 1, 'added edit %s: %d rows' % (role, len(found))
         r, why, ok = found[0], [], 0
+        if arg == 'stack':
+            # the pointer's load sits in a short ns-bind body that stock has twice, so its own windows hit both copies;
+            # a neighbour within 8 bytes that pairs uniquely, with the bytes between equal in both images, pairs it
+            for lit in old.word_sites(value | 1):
+                for q, sub in d.load_sites(lit):
+                    if not sub and q not in d.load_pairs and d.site(q) is None:
+                        nq = near_pair(d, old, q)
+                        if nq is not None:
+                            d.load_pairs[q] = nq
         votes = d.lit_votes(value | 1)
         if r['new'] is None and r['problems'] and all(x.startswith('unresolved') for x in r['problems']) and len(votes) == 1:
             # a stock rewrite left no signature: the one stored pointer (checked below to reach the slot setter) decides,
@@ -1535,6 +1591,19 @@ def added_entry(added_code, rows, d, old, added_ram=None, added_edits=None):
                 if nq is None or sub:
                     continue
                 new = d.new
+                if arg == 'stack':
+                    # the pointer is a stack argument: some ldr rt,[pc] whose rt goes to [sp] before the next bl, in both
+                    # images; that bl reaches the same consumer (by its signature, or both through an ITCM veneer)
+                    bo, bn = stack_call(old, q), stack_call(new, nq)
+                    vo, vn = (itcm_veneer(old, bo[1]), itcm_veneer(new, bn[1])) if bo and bn else (None, None)
+                    good = old.h(q) & 0xf800 == 0x4800 and new.h(nq) & 0xf800 == 0x4800 and bo and bn and \
+                        ((vo is not None and vn is not None) or d.sig(bo[1])[0] == bn[1])
+                    if not good:
+                        why.append('load %s/%s is not an ldr whose register is stored to the stack before a bl to one consumer' % (
+                            hex(q), hex(nq)))
+                    else:
+                        ok += 1
+                    continue
                 bo, bn = branch(old, q + 2), branch(new, nq + 2)
                 so = d.sig(bo[1])[0] if bo else None
                 if old.h(q) & 0xf800 != 0x4800 or (old.h(q) >> 8) & 7 != arg or new.h(nq) & 0xf800 != 0x4800 or \
@@ -1547,7 +1616,8 @@ def added_entry(added_code, rows, d, old, added_ram=None, added_edits=None):
         if why:
             r['problems'].append('added edit (pointer): ' + '; '.join(why))
         else:
-            r['methods']['entry'] = 'stored pointer: %d paired ldr r%d + bl to one consumer name %s' % (ok, arg, hex(r['new'] | 1))
+            r['methods']['entry'] = 'stored pointer: %d paired ldr %s + bl to one consumer name %s' % (
+                ok, 'and stack store' if arg == 'stack' else 'r%d' % arg, hex(r['new'] | 1))
     for kind, name, value in [('link', n, v) for n, v in added_code.items()] + \
             [('edit', role, v) for role, (v, _, *proof) in (added_edits or {}).items() if not proof]:
         found = [r for r in rows if r['kind'] == kind and r['name'] == name]

@@ -247,6 +247,19 @@
      ],
      "reason": "the instruction after the push is a pc-relative load whose offset moved (0xf8 became 0x108), so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1"
     },
+    "linkld resume_neck_rx": {
+     "old": "0x104e9241",
+     "new": "0x10662b69",
+     "bytes": [
+      96,
+      "2fd28377c4e07ba03d36dac324874e99e2f00ad4610260f6788e3649ba784ce7"
+     ],
+     "votes": [
+      "start",
+      "s edit Entry trampoline neck_rx 0x104e923c->0x10662b64, 4-byte T2 prefix equal"
+     ],
+     "reason": "stock 1.0.6.11 added the envelope checks (data, received length, payload length) right after push and sub sp, so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1"
+    },
     "abi-range 0x10686caa": {
      "old": "0x10686caa",
      "new": "0x106a4fd6",
@@ -305,6 +318,10 @@
      "tio_key_interceptors": {
       "old": "0x197546e4",
       "new": "0x197656dc"
+     },
+     "neck_send": {
+      "old": "0x104e892d",
+      "new": "0x10662255"
      }
     },
     "addEdits": {
@@ -360,6 +377,15 @@
       "kind": "bw",
       "target": "lock_hook_wheel_read",
       "entry": "pointer"
+     },
+     "Entry trampoline neck_rx": {
+      "old": "0x104e923c",
+      "new": "0x10662b64",
+      "before": "b0b590b0",
+      "kind": "bw",
+      "target": "lock_hook_neck_rx",
+      "entry": "pointer",
+      "arg": "stack"
      }
     },
     "correctComment": {
@@ -383,7 +409,7 @@
       "reason": "the derived address lies inside an unrelated sort routine; the comment names the helper that clears a 64-byte statfs buffer, calls statfs and returns the word at +8 times the 64-bit word at +32"
      }
     },
-    "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter (addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); TMG13 adds the PIN lock's stock calls, the key interceptor list head (RAM) and seven entry trampolines (addEdits)"
+    "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter (addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); TMG13 adds the PIN lock's stock calls, the key interceptor list head (RAM) and seven entry trampolines (addEdits); TMG14 adds the neck-monitor send and the neck rx callback's entry trampoline"
    }
   }
  },
@@ -15205,6 +15231,105 @@
    }
   },
   {
+   "symbol": "neck_send",
+   "old": "0x104e892d",
+   "new": "0x10662255",
+   "delta": 1546536,
+   "verdict": "shift",
+   "checks": [
+    "sig",
+    "call",
+    "body",
+    "align",
+    "edge2"
+   ],
+   "proof": {
+    "proposal": {
+     "verdict": "ADDED",
+     "source": "reviewed:addLinkld",
+     "row": 0
+    },
+    "window": "32 of 32 masked bytes equal at the proposal",
+    "prologue": true,
+    "new-sig": "1 hits of the 24-byte pattern built from the new image",
+    "sig": {
+     "hits": 1,
+     "at": [
+      "0x10662254"
+     ],
+     "state": "agree",
+     "answer": "0x10662254"
+    },
+    "edge": {
+     "state": "none",
+     "good": [],
+     "bad": [],
+     "branches": 2,
+     "window": "64 bytes"
+    },
+    "body": {
+     "tier": "T1",
+     "length": 42,
+     "oldHits": "1: 0x104e892c",
+     "newHits": "1: 0x10662254",
+     "evidence": "T1 42 bytes, old 1 new 1",
+     "state": "agree",
+     "answer": "0x10662254"
+    },
+    "align": {
+     "anchors": "0x104e8688->0x10661fb0 (fixed), 0x104e8984->0x106622ac (fixed)",
+     "block": 270,
+     "before": 234,
+     "after": 35,
+     "occurrences": "1 old, 1 new",
+     "evidence": "equal block of 270 tokens (234 before x, 35 after), once in each span; anchors 0x104e8688->0x10661fb0 (fixed), 0x104e8984->0x106622ac (fixed)",
+     "state": "agree",
+     "answer": "0x10662254"
+    },
+    "start": {
+     "how": "no accepted row in [x-0x40, x-2]",
+     "state": "none"
+    },
+    "entry": {
+     "anchors": "0x104e8688->0x10661fb0 (fixed), 0x104e8984->0x106622ac (fixed)",
+     "how": "x is inside an equal block",
+     "state": "none"
+    },
+    "veneer": {
+     "how": "not a veneer",
+     "state": "none"
+    },
+    "edge2": {
+     "state": "agree",
+     "walked": "64 of 64 bytes",
+     "good": [
+      "0x10646594->0x1050b798 (fixed)"
+     ],
+     "bad": [],
+     "evidence": "walked 64 bytes; good 0x10646594->0x1050b798 (fixed)"
+    },
+    "call": {
+     "votes": "1 of 1 paired votes for 0x10662254",
+     "paired": 1,
+     "sites": 3,
+     "tried": 3,
+     "grown": [
+      "site 0x104e8ad4: fwd: no window with one old hit; back 28: old 1 new 0, refused",
+      "site 0x104e8b7c: fwd: no window with one old hit; back 28: old 1 new 0, refused"
+     ],
+     "state": "agree",
+     "answer": "0x10662254"
+    },
+    "lit": {
+     "votes": "0 of 0 paired votes for no single address",
+     "paired": 0,
+     "sites": 0,
+     "tried": 0,
+     "state": "none"
+    }
+   }
+  },
+  {
    "symbol": "resume_can_wakeup",
    "old": "0x1055a48d",
    "new": "0x1057f039",
@@ -15936,6 +16061,114 @@
     "edge2": {
      "state": "none",
      "walked": "4 of 64 bytes",
+     "good": [],
+     "bad": []
+    },
+    "call": {
+     "votes": "0 of 0 paired votes for no single address",
+     "paired": 0,
+     "sites": 0,
+     "tried": 0,
+     "state": "none"
+    },
+    "lit": {
+     "votes": "0 of 0 paired votes for no single address",
+     "paired": 0,
+     "sites": 0,
+     "tried": 0,
+     "state": "none"
+    }
+   }
+  },
+  {
+   "symbol": "resume_neck_rx",
+   "old": "0x104e9241",
+   "new": "0x10662b69",
+   "delta": 1546536,
+   "verdict": "changed",
+   "checks": [
+    "start",
+    "reviewed-site"
+   ],
+   "proof": {
+    "proposal": {
+     "verdict": "ADDED",
+     "source": "reviewed:addEdits resume",
+     "row": 0
+    },
+    "window": "0 of 32 masked bytes equal at the proposal",
+    "prologue": false,
+    "new-sig": "1 hits of the 24-byte pattern built from the new image",
+    "pairRule": {
+     "agreeing": [
+      "start"
+     ],
+     "locating": [
+      "start"
+     ],
+     "holds": false
+    },
+    "reviewedSite": {
+     "entry": "linkld resume_neck_rx",
+     "old": "0x104e9241",
+     "new": "0x10662b69",
+     "bytes": [
+      96,
+      "2fd28377c4e07ba03d36dac324874e99e2f00ad4610260f6788e3649ba784ce7"
+     ],
+     "votes": [
+      "start",
+      "s edit Entry trampoline neck_rx 0x104e923c->0x10662b64, 4-byte T2 prefix equal"
+     ],
+     "reason": "stock 1.0.6.11 added the envelope checks (data, received length, payload length) right after push and sub sp, so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1",
+     "applies": true
+    },
+    "sig": {
+     "hits": 0,
+     "at": [],
+     "state": "none"
+    },
+    "edge": {
+     "state": "none",
+     "good": [],
+     "bad": [],
+     "branches": 0,
+     "window": "64 bytes"
+    },
+    "body": {
+     "tier": "T2",
+     "length": 294,
+     "oldHits": "1: 0x104e9240",
+     "newHits": "0: ",
+     "how": "no single answer",
+     "state": "none"
+    },
+    "align": {
+     "anchors": "0x104e923c->0x10662b64 (edit Entry trampoline neck_rx), 0x104e97b8->0x1066310c (fixed)",
+     "how": "x is in a changed run",
+     "state": "none"
+    },
+    "start": {
+     "s": "0x104e923c",
+     "s'": "0x10662b64",
+     "row": "edit Entry trampoline neck_rx",
+     "prefix": 4,
+     "evidence": "s edit Entry trampoline neck_rx 0x104e923c->0x10662b64, 4-byte T2 prefix equal",
+     "state": "agree",
+     "answer": "0x10662b68",
+     "anchorWithoutStart": "edit Entry trampoline neck_rx is accepted without start"
+    },
+    "entry": {
+     "how": "x is neither an old BL/B.W target nor an aligned code pointer",
+     "state": "none"
+    },
+    "veneer": {
+     "how": "not a veneer",
+     "state": "none"
+    },
+    "edge2": {
+     "state": "none",
+     "walked": "0 of 64 bytes",
      "good": [],
      "bad": []
     },
@@ -19568,6 +19801,115 @@
      "tried": 1,
      "state": "agree",
      "answer": "0x1078e645"
+    },
+    "before": "rule 1: the old before"
+   }
+  },
+  {
+   "role": "Entry trampoline neck_rx",
+   "kind": "bw",
+   "oldAddress": "0x104e923c",
+   "newAddress": "0x10662b64",
+   "oldOffset": "0x35923c",
+   "newOffset": "0x4d2b64",
+   "delta": 1546536,
+   "oldBefore": "b0b590b0",
+   "newBefore": "b0b590b0",
+   "oldPad": 0,
+   "newPad": 0,
+   "verdict": "changed",
+   "checks": [
+    "lit",
+    "align"
+   ],
+   "proof": {
+    "proposal": {
+     "verdict": "ADDED",
+     "source": "reviewed:addEdits",
+     "row": 0
+    },
+    "window": "4 of 32 masked bytes equal at the proposal",
+    "prologue": true,
+    "new-sig": "1 hits of the 24-byte pattern built from the new image",
+    "setter": {
+     "ok": true,
+     "sites": [
+      "0x104e8cb0->0x106625d8 ldr r2 then a stack store, bl 0x10803290->0x10825710 (veneers to ITCM 0x12a249->0x12a3d1)"
+     ]
+    },
+    "pairRule": {
+     "agreeing": [
+      "lit",
+      "align"
+     ],
+     "locating": [
+      "lit"
+     ],
+     "holds": true
+    },
+    "sig": {
+     "hits": 0,
+     "at": [],
+     "state": "none"
+    },
+    "edge": {
+     "state": "none",
+     "good": [],
+     "bad": [],
+     "branches": 0,
+     "window": "64 bytes"
+    },
+    "body": {
+     "tier": "T2",
+     "length": 298,
+     "oldHits": "1: 0x104e923c",
+     "newHits": "0: ",
+     "how": "no single answer",
+     "state": "none"
+    },
+    "align": {
+     "anchors": "0x104e8e3c->0x10662764 (fixed), 0x104e97b8->0x1066310c (fixed)",
+     "block": 367,
+     "before": 365,
+     "after": 1,
+     "occurrences": "1 old, 1 new",
+     "evidence": "equal block of 367 tokens (365 before x, 1 after), once in each span; anchors 0x104e8e3c->0x10662764 (fixed), 0x104e97b8->0x1066310c (fixed)",
+     "state": "agree",
+     "answer": "0x10662b64"
+    },
+    "start": {
+     "how": "no accepted row in [x-0x40, x-2]",
+     "state": "none"
+    },
+    "entry": {
+     "anchors": "0x104e8e3c->0x10662764 (fixed), 0x104e97b8->0x1066310c (fixed)",
+     "how": "x is inside an equal block",
+     "state": "none"
+    },
+    "veneer": {
+     "how": "not a veneer",
+     "state": "none"
+    },
+    "edge2": {
+     "state": "none",
+     "walked": "4 of 64 bytes",
+     "good": [],
+     "bad": []
+    },
+    "call": {
+     "votes": "0 of 0 paired votes for no single address",
+     "paired": 0,
+     "sites": 0,
+     "tried": 0,
+     "state": "none"
+    },
+    "lit": {
+     "votes": "1 of 1 paired votes for 0x10662b65",
+     "paired": 1,
+     "sites": 1,
+     "tried": 1,
+     "state": "agree",
+     "answer": "0x10662b65"
     },
     "before": "rule 1: the old before"
    }

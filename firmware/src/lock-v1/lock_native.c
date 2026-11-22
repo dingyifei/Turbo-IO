@@ -35,7 +35,8 @@ extern void tio_lv_obj_delete(void *),tio_lv_obj_set_size(void *,int,int),tio_lv
 extern void tio_lv_obj_set_style_border_width(void *,int32_t,uint32_t),tio_lv_obj_set_style_radius(void *,int32_t,uint32_t);
 extern void tio_lv_obj_set_style_bg_color(void *,uint32_t,uint32_t),tio_lv_obj_set_style_bg_opa(void *,uint8_t,uint32_t),native_align(void *,int,int,int);
 extern unsigned tio_lang_stored(void);
-#include "../lock_stock.h"   /* pmu_rtc_epoch, kws_enable/disable, key_queue_flush, ots_topic_read, the gate prototypes */
+#include "../lock_stock.h"   /* pmu_rtc_epoch, kws_enable/disable, key_queue_flush, ots_topic_read, neck_send, the gate prototypes */
+#include "lock_motion_wire.h"
 /* Entry trampolines of the two patched stock read callbacks. */
 extern void stock_key_read(void *,void *),stock_wheel_read(void *,void *);
 
@@ -69,6 +70,8 @@ typedef struct {
  bool kws_off;uint32_t kws_ms;
  int32_t wheel_acc;uint32_t wheel_ms;
  bool was_folded;
+ volatile uint32_t motion_rx;   /* "motion seen" messages counted by lock_motion_rx (RPMsg receive path, the only writer) */
+ uint32_t motion_seen;          /* motion_rx at the last tick */
  bool pending;      /* storage not mounted yet: the record is unknown, so dark and gated with no input (§7 boot) */
  uint32_t load_ms;  /* stream_tick of the last mount check */
  uint8_t tr_state;  /* the last state sync saw (trace builds) */
@@ -80,6 +83,23 @@ typedef struct {
 static TLKLoad load_kind(const TLKService *s){return s->lock.damaged?TLK_LOAD_DAMAGED:s->stored.generation?TLK_LOAD_GOOD:TLK_LOAD_NONE;}
 
 static uint32_t now_s(void){int64_t t=pmu_rtc_epoch();return t>=PMU_MIN&&t<PMU_MAX?(uint32_t)t:0;}
+
+/* ---------------------------------------------------------------- head motion (docs/lock-design.md §7) */
+/* One "motion seen" from the Bluetooth core, called by lock_hook_neck_rx (trampolines.S) in the RPMsg receive path:
+ * finds the state through the any-thread anchor and counts; the tick reads the count. Before the lock exists, or while
+ * the anchor is displaced, the message is dropped (the tick puts the anchor back). */
+void lock_motion_rx(void){LockCtl *c=lock_anchor_any();if(c&&c->magic==LOCK_MAGIC)c->motion_rx++;}
+/* "Motion on" to the Bluetooth core's hook, fire-and-forget: stock's neck envelope, a timed send that never waits for
+ * room, no ACK wait. Called for the phone's MOTION_ON (UI thread). The core's enable word is zero after every boot, so
+ * the phone sends this after each connection; a repeat is harmless. */
+static bool motion_start(void){
+ uint8_t *m=stream_memalign(8,TIO_NECK_MSG_BYTES);if(!m)return false;
+ memset(m,0,TIO_NECK_MSG_BYTES);
+ uint16_t type=TIO_MOTION_ON_TYPE;uint32_t w[3]={TIO_MOTION_ON_LEN,TIO_MOTION_ON_MAGIC,1};
+ memcpy(m,&type,2);memcpy(m+4,w,sizeof w);
+ if(neck_send(m,0)!=0){stream_free(m);TR("[TurboLock] motion on not queued");return false;}
+ TR("[TurboLock] motion on queued");return true;
+}
 
 /* ---------------------------------------------------------------- display */
 static void *slot(void *d,uint32_t off){void *p;memcpy(&p,(uint8_t *)d+off,sizeof p);return p;}
@@ -214,7 +234,7 @@ static bool store_mounted(void){uint32_t w[16]={0};return !tap_fs_statfs(NAND_DA
  * unlocked brings back the panel the Pending dark turned off; the wake word is left to stock (Pending turned it off,
  * stock turns it on at its next return to running), so a user who keeps it off does not get it switched on. */
 static void adopt(LockCtl *c,const TLKService *n,bool mounted,bool folded){
- c->pending=false;c->svc=*n;c->svc.motion_supported=false;   /* milestone 3 */
+ c->pending=false;c->svc=*n;c->svc.motion_supported=true;c->svc.motion_start=motion_start;
  if(folded)tlk_fold(&c->svc.lock,now_s());
  native_log(1,0,0,0,"[TurboLock] settle mounted=%u load=%u state=%u ms=%u",mounted,load_kind(&c->svc),c->svc.lock.state,stream_tick());
  if(!tlk_locked(&c->svc.lock)){c->kws_off=false;if(!folded){c->dark=0;cover_drop(c);nav_screen_on(true);}}
@@ -244,6 +264,8 @@ static void tick(void *timer){
   if(c->pending){sync(c,ms);return;}
  }
  if(c->lock_request){c->lock_request=0;if(!tlk_locked(t)&&t->state!=TLK_OFF)(void)tlk_phone_lock(t);}
+ uint32_t seen=c->motion_rx;
+ if(seen!=c->motion_seen){c->motion_seen=seen;TR("[TurboLock] motion seen=%u on=%u state=%u",seen,c->svc.motion_on,t->state);if(c->svc.motion_on)tlk_motion(t,s);}
  tlk_tick(t,s,ms);
  sync(c,ms);persist(c);
 }
@@ -260,7 +282,7 @@ static LockCtl *lock_boot(void){
  if(!mounted&&load_kind(&c->svc)!=TLK_LOAD_GOOD){   /* Pending: dark, no record (a good record is taken even if statfs failed) */
   c->pending=true;tlk_boot(&c->svc.lock,TLK_LOAD_DAMAGED,NULL);c->svc.lock.damaged=false;c->svc.stored=(TLRStored){0,1};
  }
- c->svc.motion_supported=false;   /* milestone 3 */
+ c->svc.motion_supported=true;c->svc.motion_start=motion_start;c->motion_seen=c->motion_rx;
  c->load_ms=stream_tick();
  native_log(1,0,0,0,"[TurboLock] boot mounted=%u load=%u state=%u ms=%u",mounted,load_kind(&c->svc),c->svc.lock.state,c->load_ms);
  c->timer=stream_timer_create(tick,LOCK_TICK_MS,c);

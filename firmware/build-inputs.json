@@ -318,11 +318,20 @@
       "kind": "bw",
       "target": "lock_hook_wheel_read",
       "pad": 0,
-      "after": "b6f130bb"
+      "after": "b6f1b3ba"
+    },
+    {
+      "offset": "0x4d2b64",
+      "address": "0x10662b64",
+      "before": "b0b590b0",
+      "role": "Entry trampoline neck_rx",
+      "kind": "bw",
+      "target": "lock_hook_neck_rx",
+      "pad": 0
     }
   ],
-  "editCount": 32,
-  "moduleBytes": 179772,
+  "editCount": 33,
+  "moduleBytes": 178556,
   "moduleVA": "0x10929204",
   "moduleSHA256": "b5028ccceb69a845e3710fd73f4af944f1e9f5483d2347978d1c230f87f679eb",
   "stockAP": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
@@ -609,5 +618,80 @@
       "path": "src/common-v1/coexist.S",
       "sha256": "4c2eee8e6e50f39dda1f74f0ababab981b47aab9c9d2435bf30a27990db98ab1"
     }
-  ]
+  ],
+  "bth": {
+    "moduleVA": "0x0c131620",
+    "sources": [
+      {
+        "path": "bth-v1/bth_motion.S",
+        "sha256": null
+      },
+      {
+        "path": "bth-v1/bth_motion.c",
+        "sha256": null
+      }
+    ],
+    "linkScriptSHA256": null,
+    "stockSymbols": {
+      "bth_clock_gettime": {
+        "address": "0x0c034711",
+        "bytes": "f0b585b0002900f0"
+      },
+      "bth_neck_alloc": {
+        "address": "0x0c04bbb9",
+        "bytes": "034610b50a460749"
+      },
+      "bth_free": {
+        "address": "0x0c04bbe1",
+        "bytes": "024b0146186800f0"
+      },
+      "bth_neck_send": {
+        "address": "0x0c0aac1d",
+        "bytes": "00b583b0019068b1"
+      },
+      "bth_rx_resume": {
+        "address": "0x0c0aa95d",
+        "bytes": "1dd8dfe802f0c21c"
+      },
+      "bth_rx_unsupported": {
+        "address": "0x0c0aa99b",
+        "bytes": "04205849a0f749f8"
+      },
+      "bth_rx_done": {
+        "address": "0x0c0aa9a5",
+        "bytes": "03b030bd204616f0"
+      }
+    },
+    "editCount": 3,
+    "edits": [
+      {
+        "offset": "0xaa958",
+        "address": "0x0c0aa958",
+        "before": "2278372a",
+        "role": "Neck rx switch trampoline",
+        "kind": "bw",
+        "target": "bth_rx_hook"
+      },
+      {
+        "offset": "0xbfe30",
+        "address": "0x0c0bfe30",
+        "before": "74f76efc",
+        "role": "Neck motion hook (clock_gettime call after the batch read)",
+        "kind": "bl",
+        "target": "bth_motion_hook"
+      },
+      {
+        "offset": "0x2a1fc",
+        "address": "0x0c02a1fc",
+        "before": "28e50423",
+        "role": "Hook state cleared at boot (.bss clear-end literal 0x2304e528 to 0x2304e540)",
+        "kind": "raw",
+        "after": "40e50423"
+      }
+    ],
+    "moduleBytes": null,
+    "moduleSHA256": null,
+    "BTHBytes": null,
+    "BTHSHA256": null
+  }
 }

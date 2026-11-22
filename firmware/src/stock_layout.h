@@ -89,6 +89,10 @@
 #define TIO_STOCK_SPEC_CHILD_CNT 0x2cu
 /* View manager: the state value while the carousel menu is open. */
 #define TIO_STOCK_MANAGER_MENU_OPEN 1u
+/* Neck-monitor RPMsg envelope (both directions to the Bluetooth core): the u16 message type (stock switches on its low
+   byte) and the u32 payload length after it; the payload follows the 8-byte header. */
+#define TIO_STOCK_NECK_MSG_TYPE 0x0u
+#define TIO_STOCK_NECK_MSG_LEN 0x4u
 
 /* LVGL global, draw units, display and layers. */
 /* LVGL global: the head of the draw-unit list. */

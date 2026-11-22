@@ -277,6 +277,8 @@ def classify(h1, h2, a):
             return 'cbranch', a + 4 + (off - (1 << 21) if s else off)
         if h1 == 0xe8df and h2 & 0xfff0 == 0xf000:
             return 'tbb', None
+        if h1 == 0xe8df and h2 & 0xfff0 == 0xf010:
+            return 'tbh', None
         if h1 & 0xfff0 == 0xe8d0 and h2 & 0xffe0 == 0xf000:
             return 'bad', 'a table branch the walker cannot follow'
         if h1 == 0xe8bd and h2 & 0x8000:
@@ -355,6 +357,19 @@ def tbb_table(img, a):
             return ent[:2 * e], e
 
 
+def tbh_table(img, a):
+    """The tbh table after the tbh at a: (entries, e). e is the smallest non-zero entry; the table is e halfwords."""
+    tab, ent = a + 4, []
+    while True:
+        if not img.inside(tab + 2 * len(ent), 2):
+            raise Fail('tbh table runs off the image')
+        ent.append(img.hw(tab + 2 * len(ent)))
+        nz = [x for x in ent if x]
+        if nz and len(ent) >= min(nz):
+            e = min(nz)
+            return ent[:e], e
+
+
 def walk(img, entry):
     """Instruction starts reached from entry by fall-through and every branch target (not calls). A path ends at an
     unconditional branch or a return; inside an IT block every instruction is conditional. Stays in entry+0x2000."""
@@ -381,6 +396,14 @@ def walk(img, entry):
                 if 0 in cases:
                     raise Fail('the tbb at entry%s has a zero case' % signed(a - entry))
                 work.extend(a + 4 + 2 * c for c in cases)
+                break
+            elif kind == 'tbh':
+                if cond:
+                    raise Fail('reaches a conditional tbh at entry%s' % signed(a - entry))
+                ent, e = tbh_table(img, a)
+                if 0 in ent:
+                    raise Fail('the tbh at entry%s has a zero case' % signed(a - entry))
+                work.extend(a + 4 + 2 * c for c in ent)
                 break
             elif kind in ('branch', 'cbranch'):
                 work.append(x)

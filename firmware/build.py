@@ -13,6 +13,12 @@ HERE = Path(__file__).resolve().parent
 FLASH = 0x10190000
 AP_CAP = 9_600_000          # the patched AP must stay below this (audit)
 PARTITION_END = 0x10b7fff8  # link.ld: __module_end < AP partition limit
+# The Bluetooth core (nuttx_bth.bin): its code view starts at 0x0c000000 (file offset 0), and the stock installer
+# (nuttx_ota.bin) refuses a BTH file longer than its partition, 0x180000 bytes (re/M3-STATIC.md Q1).
+BTH_CODE = 0x0c000000
+BTH_PART_CAP = 0x180000
+BTH_FLAGS = ['--target=arm-none-eabi','-mcpu=cortex-m33+nodsp','-mthumb','-mfloat-abi=hard','-mfpu=fpv5-sp-d16',
+             '-ffreestanding','-fno-builtin','-Os','-Wall','-Wextra','-Werror']
 # The stock bases this tree can be built on: the endpoints of the rebase tables in baseline/ (tools/rebase_apply.py
 # TABLES). Everything version-specific (archive name, audit baseline, -DTD_STOCK_* define, the SW_VER/BUILD_VER every
 # core must report) is derived from the base string; the hashes are pinned in build-inputs.json.
@@ -245,6 +251,117 @@ def safe_zip(path, expected, base):
     return files, rows
 
 
+def bth_link_symbols(root=None):
+    """The stock addresses bth-v1/bth_link.ld names: {symbol: address}, one 'name = 0x...;' line each."""
+    text = ((root or HERE)/'bth-v1'/'bth_link.ld').read_text()
+    rows = re.findall(r'^([A-Za-z_][A-Za-z0-9_]*) = (0x[0-9a-fA-F]+);', text, re.M)
+    out = {name: int(value, 16) for name, value in rows}
+    assert len(out) == len(rows), 'bth_link.ld names a symbol twice'
+    return out
+
+
+def bth_check_stock_symbols(stock_bth, bth):
+    """Every stock address of bth_link.ld is pinned in build-inputs.json bth.stockSymbols with the stock image's bytes
+    there, and nothing else is pinned: a mistyped address, or one on another stock BTH, fails here."""
+    pins, linked = bth['stockSymbols'], bth_link_symbols()
+    assert set(pins) == set(linked), 'pin mismatch: bth.stockSymbols names %s, bth_link.ld names %s' % (sorted(pins), sorted(linked))
+    for name, address in linked.items():
+        row = pins[name]
+        assert int(row['address'], 16) == address, 'pin mismatch: bth.stockSymbols %s address' % name
+        at = (address & ~1) - BTH_CODE
+        want = bytes.fromhex(row['bytes'])
+        assert len(want) >= 4 and 0 <= at and stock_bth[at:at+len(want)] == want, 'pin mismatch: bth.stockSymbols %s bytes' % name
+
+
+def bth_edit_bytes(e, symbols):
+    """The bytes one BTH edit writes: raw 'after', or a B.W/BL from the site to a module symbol."""
+    if e['kind'] == 'raw':
+        return bytes.fromhex(e['after'])
+    address = int(e['address'], 16)
+    target = symbols[e['target']]
+    new = branch(address, target, e['kind'] == 'bl')
+    assert decode(address, new) == (e['kind'], target & ~1)
+    return new
+
+
+def build_bth(stock_bth, bth, llvm, out, repin):
+    """The modified nuttx_bth.bin: stock minus its 8-byte trailer, the bth-v1 module, zero padding to 4 bytes, the
+    stock trailer, and the pinned edits. Every stock byte below the trailer is stock's except the edits."""
+    bth_check_stock_symbols(stock_bth, bth)
+    module_va = int(bth['moduleVA'], 16)
+    assert module_va == BTH_CODE + len(stock_bth) - 8, 'bth.moduleVA must be the stock BTH end minus its 8-byte trailer'
+    flags = [*BTH_FLAGS, '-I', str(HERE/'bth-v1'), '-I', str(HERE/'src'/'lock-v1')]
+    objects = []
+    for i, row in enumerate(bth['sources']):
+        p = HERE/row['path']
+        pin(row, 'sha256', sha(p.read_bytes()), repin)
+        obj = out/('bth-'+str(i)+'-'+p.stem+p.suffix.replace('.', '-')+'.o')
+        run([llvm/'clang', *flags, '-c', p, '-o', obj]); objects.append(obj)
+    script = HERE/'bth-v1'/'bth_link.ld'
+    pin(bth, 'linkScriptSHA256', sha(script.read_bytes()), repin)
+    elf = out/'bth-module.elf'
+    run([llvm/'ld.lld', '-T', script, '--defsym', 'BTH_MODULE_VA=0x%08x' % module_va, '--entry=bth_rx_hook', *objects, '-o', elf])
+    assert not run([llvm/'llvm-nm', '-u', elf]).strip(), 'Undefined BTH module symbols'
+    symbols = {}
+    for line in run([llvm/'llvm-nm', '--defined-only', '--format=posix', elf]).splitlines():
+        fields = line.split()
+        if len(fields) >= 3:
+            symbols[fields[0]] = int(fields[2], 16)
+    (out/'bth-symbols.json').write_text(json.dumps(symbols, indent=2)+'\n')
+    run([llvm/'llvm-objcopy', '-O', 'binary', '--only-section=.text', elf, out/'bth-module.bin'])
+    module = (out/'bth-module.bin').read_bytes()
+    assert symbols['__bth_module_start'] == module_va, 'pin mismatch: bth.moduleVA'
+    assert symbols['__bth_module_end'] - module_va == len(module) and len(module) % 4 == 0
+    pin(bth, 'moduleBytes', len(module), repin)
+    pin(bth, 'moduleSHA256', sha(module), repin)
+    image = bytearray(stock_bth[:-8]) + module
+    image += bytearray((-len(image)) % 4) + stock_bth[-8:]
+    assert isinstance(bth.get('editCount'), int) and bth['editCount'] == len(bth['edits']), 'pin mismatch: bth.editCount'
+    for e in bth['edits']:
+        offset, address = int(e['offset'], 16), int(e['address'], 16)
+        assert offset == address - BTH_CODE
+        old = bytes.fromhex(e['before'])
+        assert stock_bth[offset:offset+len(old)] == old, 'pin mismatch: bth edit %s before' % e['role']
+        new = bth_edit_bytes(e, symbols)
+        assert len(new) == len(old)
+        pin(e, 'after', new.hex(), repin)
+        image[offset:offset+len(new)] = new
+    assert len(image) <= BTH_PART_CAP, 'the BTH image is %d bytes, over the installer\'s %d byte partition' % (len(image), BTH_PART_CAP)
+    pin(bth, 'BTHBytes', len(image), repin)
+    pin(bth, 'BTHSHA256', sha(image), repin)
+    return bytes(image)
+
+
+def audit_bth(base, bth_image, bth):
+    """The modified BTH against its stock member: pinned size and hash, the installer's partition cap, the stock
+    header and trailer, only the pinned edits differ below the stock end, the pinned module, zero padding."""
+    assert len(bth_image) == bth['BTHBytes'] and sha(bth_image) == bth['BTHSHA256'], 'pin mismatch: BTHBytes/BTHSHA256'
+    assert len(bth_image) <= BTH_PART_CAP, 'the BTH image reaches the installer\'s %d byte partition cap' % BTH_PART_CAP
+    assert bth_image[:0x18] == base[:0x18] and bth_image[-8:] == base[-8:]
+    assert bth_image[:4] == b'\xff\xff\xff\xff', 'the installer requires ff ff ff ff at +0 (it stamps the boot magic)'
+    allowed = set()
+    for e in bth['edits']:
+        at = int(e['offset'], 16)
+        a, b = bytes.fromhex(e['before']), bytes.fromhex(e['after'])
+        assert len(a) == len(b) and base[at:at+len(a)] == a and bth_image[at:at+len(b)] == b
+        assert not allowed.intersection(range(at, at+len(b)))
+        allowed.update(range(at, at+len(b)))
+    assert bth['editCount'] == len(bth['edits'])
+    assert all(x == y or i in allowed for i, (x, y) in enumerate(zip(base[:-8], bth_image)))
+    at = int(bth['moduleVA'], 16) - BTH_CODE
+    assert at == len(base) - 8
+    assert sha(bth_image[at:at+bth['moduleBytes']]) == bth['moduleSHA256']
+    assert not any(bth_image[at+bth['moduleBytes']:-8])
+    return {'BTHBytes': len(bth_image), 'BTHSHA256': sha(bth_image), 'BTHMD5': sha(bth_image, 'md5'),
+            'bthModuleBytes': bth['moduleBytes'], 'bthPartitionHeadroom': BTH_PART_CAP - len(bth_image),
+            'bthWhitelistedPatches': len(bth['edits'])}
+
+
+def changed_payloads(spec):
+    """The members a build changes: always the AP; the Bluetooth core too when build-inputs.json has a bth block."""
+    return ['nuttx_ap.bin'] + (['nuttx_bth.bin'] if 'bth' in spec else [])
+
+
 def audit(stock_path, candidate_path, spec):
     stock_base_name = stock_base(spec)
     emu = emu_only(spec)
@@ -263,16 +380,20 @@ def audit(stock_path, candidate_path, spec):
     assert len(ap) == spec['APBytes'] and sha(ap) == spec['APSHA256']
     assert len(ap) < AP_CAP, 'patched AP reaches the %d byte cap' % AP_CAP
     assert [r['Name'] for r in before] == [r['Name'] for r in after]
+    changed = changed_payloads(spec)
     unchanged = 0
     for old, new in zip(before, after):
-        if old['Name'] == 'nuttx_ap.bin':
+        if old['Name'] in changed:
             assert {k:v for k,v in old.items() if k not in ('Size','Md5')} == {k:v for k,v in new.items() if k not in ('Size','Md5')}
+            assert files[new['Name']] != stock[old['Name']], old['Name'] + ' is listed as changed but is the stock member'
         else:
-            # Every non-AP member is the stock member of the same base, byte for byte.
+            # Every other member is the stock member of the same base, byte for byte (bt_controller.bin included:
+            # the AP pins its size and CRC in code).
             assert old == new and stock[old['Name']] == files[new['Name']]
             assert sha(files[new['Name']]) == spec['stockMembers'][new['Name']]
             unchanged += 1
-    assert unchanged == shape['unchangedPayloads']
+    assert unchanged == shape['unchangedPayloads'] - (len(changed) - 1)
+    bth_result = audit_bth(stock['nuttx_bth.bin'], files['nuttx_bth.bin'], spec['bth']) if 'bth' in spec else {}
     # Never mix cores: the stock and the candidate both carry one stock build in AP, APC1 and BTH.
     cores = core_identity(stock, stock_base_name)
     assert core_identity(files, stock_base_name) == cores
@@ -294,7 +415,7 @@ def audit(stock_path, candidate_path, spec):
     assert not any(ap[at+spec['moduleBytes']:-8])
     room = module_room(len(base), len(ap), int(spec['moduleVA'], 16), spec['moduleBytes'])
     assert room['moduleHeadroom'] > 0 and room['partitionHeadroom'] > 0, 'module does not fit'
-    return {'passed':True, 'baseline':stock_base_name,'stockCores':cores,'customChangedPayloads':['nuttx_ap.bin'],
+    return {'passed':True, 'baseline':stock_base_name,'stockCores':cores,'customChangedPayloads':changed,**bth_result,
         'unchangedNewStockPayloads':unchanged,'manifestPayloads':shape['manifestRows'],'archiveEntries':shape['archiveEntries'],**room,
         'APBytes':len(ap),'APSHA256':sha(ap),'APMD5':sha(ap,'md5'),
         'archiveSHA256':sha(candidate_path.read_bytes()),'archiveMD5':sha(candidate_path.read_bytes(),'md5'),
@@ -463,8 +584,11 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
     pin(spec,'APBytes',len(ap),repin)
     pin(spec,'APSHA256',sha(ap),repin)
     stock['nuttx_ap.bin'] = bytes(ap)
+    if 'bth' in spec:
+        stock['nuttx_bth.bin'] = build_bth(stock['nuttx_bth.bin'], spec['bth'], llvm, out, repin)
     for row in rows:
-        if row['Name'] == 'nuttx_ap.bin': row.update(Size=len(ap),Md5=sha(ap,'md5'))
+        if row['Name'] in changed_payloads(spec):
+            data = stock[row['Name']]; row.update(Size=len(data),Md5=sha(data,'md5'))
     stock['OtaFileInfo.json'] = (json.dumps(rows,indent=2)+'\n').encode()
     archive = out/archive_name(base=base_name, emu_only=emu)
     write_archive(archive, stock)

@@ -37,7 +37,8 @@
    "sha256=e53208940f83e75ba7f33d225f08dea63b3d885fcbb88fb477e5847f3b847d6d,len=24": 1,
    "sha256=be8cd9da1dfd9a0e1f8db3678d0e1cdad099b09532189c3ffc836720a74cb03e,len=41": 1,
    "sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31": 2,
-   "sha256=1803e82ea8c76b4719140429f4e9bdae08970d9117790e2e91bdbc65fd81a9d1,len=93": 1
+   "sha256=1803e82ea8c76b4719140429f4e9bdae08970d9117790e2e91bdbc65fd81a9d1,len=93": 1,
+   "sha256=d14347080cc7fbe053f2cc0a01b575bfd770c0223bda179775e653f1be12e091,len=47": 4
   }
  },
  "moduleMessageIds": [
@@ -3123,6 +3124,66 @@
    },
    "transform": "id",
    "why": "object deletion reads the parent's child count before taking one off"
+  },
+  {
+   "constant": "TIO_STOCK_NECK_MSG_TYPE",
+   "n": 1,
+   "where": "edit:lock_hook_neck_rx",
+   "at": 48,
+   "shape": "ldrb-imm5",
+   "regs": {
+    "rt": 2,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the neck rx callback switches on the low byte of the message type after its envelope checks"
+  },
+  {
+   "constant": "TIO_STOCK_NECK_MSG_TYPE",
+   "n": 2,
+   "where": "str:sha256=d14347080cc7fbe053f2cc0a01b575bfd770c0223bda179775e653f1be12e091,len=47#0",
+   "at": 80,
+   "function": {
+    "where": "str:sha256=d14347080cc7fbe053f2cc0a01b575bfd770c0223bda179775e653f1be12e091,len=47#0",
+    "at": -6
+   },
+   "shape": "strh-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the exercise expected-action sender stores its message type into the new envelope"
+  },
+  {
+   "constant": "TIO_STOCK_NECK_MSG_LEN",
+   "n": 1,
+   "where": "edit:lock_hook_neck_rx",
+   "at": 14,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 1
+   },
+   "transform": "id",
+   "why": "the neck rx callback reads the payload length to bound it by 0x400 and by the received length"
+  },
+  {
+   "constant": "TIO_STOCK_NECK_MSG_LEN",
+   "n": 2,
+   "where": "str:sha256=d14347080cc7fbe053f2cc0a01b575bfd770c0223bda179775e653f1be12e091,len=47#0",
+   "at": 88,
+   "function": {
+    "where": "str:sha256=d14347080cc7fbe053f2cc0a01b575bfd770c0223bda179775e653f1be12e091,len=47#0",
+    "at": -6
+   },
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the exercise expected-action sender stores its one-byte payload's length after the type"
   }
  ]
 }

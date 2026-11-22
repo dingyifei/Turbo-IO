@@ -1,7 +1,8 @@
 /* Host test for the PIN lock's stock bindings (src/lock-v1/lock_native.c) against a scripted model of the stock calls:
  * boot (no file / enabled / damaged), the keypad and wheel read hooks (consume-and-drop, pass-through, the keys that always
  * reach stock), the cross-thread gates (screen, assistant, microphone, recorder), the idle and fold locks through the
- * screen gate and the tick, the TLK: phone path, the factory-reset clear and the anchor's self-repair.
+ * screen gate and the tick, the TLK: phone path, the factory-reset clear, the anchor's self-repair and the head-motion
+ * messages to and from the Bluetooth core.
  * The model is what the static RE says the stock calls do (build/re/ notes); it is not hardware evidence. */
 #include <assert.h>
 #include <stdio.h>
@@ -78,6 +79,9 @@ int ots_topic_read(int fd,void *buf,size_t len){
 void stock_key_read(void *indev,void *data){(void)indev;stock_key_calls++;if(next_key){memcpy((uint8_t *)data+TIO_STOCK_INDEV_DATA_KEY,&next_key,4);((uint8_t *)data)[TIO_STOCK_INDEV_DATA_STATE]=1;next_key=0;}}
 void stock_wheel_read(void *indev,void *data){(void)indev;stock_wheel_calls++;memcpy((uint8_t *)data+TIO_STOCK_INDEV_DATA_ENC_DIFF,&next_diff,2);next_diff=0;topic_n=0;}
 void *volatile tio_key_interceptors;
+/* The neck tx queue: a queued message belongs to the tx thread, which sends and frees it. */
+static int neck_sends;static bool neck_fail;static uint8_t neck_last[16];
+int neck_send(void *msg,int32_t timeout){assert(timeout==0);neck_sends++;if(neck_fail)return -1;memcpy(neck_last,msg,16);free(msg);return 0;}
 /* Widgets for the PIN view. */
 static int view_texts;
 static bool w_idle(void *c){(void)c;return true;}
@@ -353,5 +357,19 @@ int main(void){
  /* The failure notice is unlocked: something over it changes nothing. */
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY);enter_pin(BAD);ms+=2000;do_tick();enter_pin(PIN);
  assert(c->svc.lock.state==TLK_NOTICE);kid_add(foreign_obj);ms+=100;do_tick();assert(c->svc.lock.state==TLK_NOTICE&&!c->dark);kid_remove(foreign_obj);
- puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank, first-press grace on the PIN screen, the phone's Unlocked lights the panel");
+ /* 14. Head motion: MOTION_ON sends "motion on" to the Bluetooth core (fire-and-forget, never waiting for queue room);
+  * a send that is not queued refuses the op; "motion seen" counts as use only while motion is on; before MOTION_ON
+  * (after every boot) it changes nothing. */
+ reset_world(false);c=boot();r=op(TLK_OP_SET_PIN,&pin);assert(r.result==TLK_R_OK&&(r.flags&TLK_F_MOTION_SUPPORTED)&&!(r.flags&TLK_F_MOTION));
+ lock_motion_rx();screen=false;do_tick();pmu+=299;assert(!lock_refuse_screen(1,2));pmu+=1;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);
+ r=unlock();assert(c->svc.lock.state==TLK_UNLOCKED);
+ neck_fail=true;neck_sends=0;r=op(TLK_OP_MOTION_ON,NULL);assert(r.result==TLK_R_REFUSED&&!(r.flags&TLK_F_MOTION)&&neck_sends==1&&!c->svc.motion_on);
+ neck_fail=false;r=op(TLK_OP_MOTION_ON,NULL);assert(r.result==TLK_R_OK&&(r.flags&TLK_F_MOTION)&&neck_sends==2&&c->svc.motion_on);
+ {uint16_t ty;uint32_t w[3];memcpy(&ty,neck_last,2);memcpy(w,neck_last+4,12);assert(ty==8&&neck_last[2]==0&&neck_last[3]==0&&w[0]==8&&w[1]==0x314f4d54u&&w[2]==1);}
+ screen=false;pmu+=200;lock_motion_rx();lock_motion_rx();do_tick();assert(c->svc.lock.state==TLK_UNLOCKED&&c->motion_seen==c->motion_rx);
+ pmu+=200;assert(!lock_refuse_screen(1,2));do_tick();pmu+=100;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);
+ lock_motion_rx();pmu+=1;do_tick();assert(c->svc.lock.state==TLK_DARK);   /* motion never unlocks */
+ r=op(TLK_OP_DISABLE,NULL);assert(r.result==TLK_R_OK&&c->svc.lock.state==TLK_OFF);neck_sends=0;r=op(TLK_OP_MOTION_ON,NULL);assert(r.result==TLK_R_REFUSED&&neck_sends==0);
+ tio_key_interceptors=NULL;lock_motion_rx();   /* no lock state found: dropped, no crash */
+ puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank, first-press grace on the PIN screen, the phone's Unlocked lights the panel, head motion (MOTION_ON sent fire-and-forget or refused, motion seen as use only while on)");
 }

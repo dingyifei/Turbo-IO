@@ -8,6 +8,7 @@ static int rd(void *ctx,unsigned b,uint8_t *p,size_t cap){Disk *d=ctx;(void)cap;
 static bool wr(void *ctx,unsigned b,const uint8_t *p,size_t n){Disk *d=ctx;if(d->fail)return false;memcpy(d->bytes[b],p,n);d->n[b]=(int)n;return true;}
 static const uint8_t SALT[8]={1,2,3,4,5,6,7,8};
 static uint32_t req=1;
+static int sends;static bool send_ok(void){sends++;return true;}static bool send_fails(void){sends++;return false;}
 static unsigned cmd(TLKService *s,const TLRIO *io,uint8_t op,uint32_t token,uint32_t client,uint32_t ms,TLKReply *r,const TLKCommand *extra,bool allowed){
  TLKCommand q={0};if(extra)q=*extra;q.op=op;q.token=token;q.client=client;q.request=req++;
  // Round-trip through the wire form, as the phone would send it.
@@ -55,8 +56,12 @@ int main(void){
  // SET_TIME, then the record survives a reboot.
  TLKCommand tm={.fold_min=1,.idle_min=240};tok=query(&s,&io,77,12000,&r);assert(cmd(&s,&io,TLK_OP_SET_TIME,tok,77,12100,&r,&tm,true)==TLK_R_OK&&r.fold_min==1&&r.idle_min==240);
  tlk_service_boot(&s,&io);assert(s.lock.state==TLK_DARK&&s.lock.rec.fold_min==1&&s.lock.rec.idle_min==240&&s.lock.rec.unacked==0);
- // MOTION_ON is refused until the Bluetooth-image hook exists (milestone 3).
+ // MOTION_ON: refused without the Bluetooth-core hook; with it, refused when "motion on" cannot be sent, else on.
  tok=query(&s,&io,77,13000,&r);assert(!(r.flags&TLK_F_MOTION_SUPPORTED));assert(cmd(&s,&io,TLK_OP_MOTION_ON,tok,77,13100,&r,NULL,true)==TLK_R_REFUSED&&!(r.flags&TLK_F_MOTION));
+ s.motion_supported=true;s.motion_start=send_fails;
+ tok=query(&s,&io,77,13200,&r);assert(r.flags&TLK_F_MOTION_SUPPORTED);assert(cmd(&s,&io,TLK_OP_MOTION_ON,tok,77,13300,&r,NULL,true)==TLK_R_REFUSED&&!(r.flags&TLK_F_MOTION)&&sends==1);
+ s.motion_start=send_ok;tok=query(&s,&io,77,13400,&r);assert(cmd(&s,&io,TLK_OP_MOTION_ON,tok,77,13500,&r,NULL,true)==TLK_R_OK&&(r.flags&TLK_F_MOTION)&&sends==2);
+ s.motion_on=false;s.motion_supported=false;s.motion_start=NULL;
  // Storage failure is reported; the next successful write catches up.
  d.fail=true;tok=query(&s,&io,77,14000,&r);assert(cmd(&s,&io,TLK_OP_SET_TIME,tok,77,14100,&r,&(TLKCommand){.fold_min=7,.idle_min=7},true)==TLK_R_STORAGE&&s.lock.dirty);
  d.fail=false;assert(tlk_service_persist(&s,&io)&&!s.lock.dirty);tlk_service_boot(&s,&io);assert(s.lock.rec.fold_min==7);

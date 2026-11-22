@@ -36,6 +36,19 @@ void lock_hook_wheel_read(void *indev, void *data);
 extern void stock_key_read(void *indev, void *data);
 extern void stock_wheel_read(void *indev, void *data);
 
+/* Neck-monitor link to the Bluetooth core (docs/lock-design.md §7, head motion).
+   neck_send: "neck_monitor_rpmsg_ap_send_to_bth": queues a stock neck message (malloc'd 0x408-byte envelope) for the
+   neck tx thread, which sends it and frees it. timeout -1 waits for room in the queue, any other value is a timed send;
+   0 = queued (the tx thread owns the message), -1 = not queued (RPMsg not initialised or the queue refused it; the
+   caller still owns and frees it). Stock's own callers wait for an ACK afterwards; the lock sends fire-and-forget.
+   The neck rx endpoint callback is entry-patched: lock_hook_neck_rx (trampolines.S) hands the Bluetooth core's
+   "motion seen" messages to lock_motion_rx (RPMsg receive path: no call that can wait) and passes every other
+   message to stock_neck_rx. */
+extern int neck_send(void *msg, int32_t timeout);
+void lock_motion_rx(void);
+int lock_hook_neck_rx(void *ept, void *data, size_t len, uint32_t src, void *priv);
+extern int stock_neck_rx(void *ept, void *data, size_t len, uint32_t src, void *priv);
+
 /* Entry-trampoline gates (trampolines.S). Return true to refuse the stock call. */
 bool lock_refuse_can_wakeup(void);
 bool lock_refuse_open_remote_audio(void);

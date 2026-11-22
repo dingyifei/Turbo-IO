@@ -149,6 +149,13 @@ b.w resume_key_read
 stock_wheel_read:
 .byte 0x2d,0xe9,0xf0,0x4f
 b.w resume_wheel_read
+.balign 2
+.global stock_neck_rx
+.type stock_neck_rx,%function
+.thumb_func
+stock_neck_rx:
+.byte 0xb0,0xb5,0x90,0xb0
+b.w resume_neck_rx
 
 .balign 2
 .global stream_register_shim
@@ -261,3 +268,29 @@ lock_hook_factory_reset:
  bl lock_on_factory_reset
  pop {r0-r4,lr}
  b.w stock_factory_reset
+
+@ The neck-monitor RPMsg endpoint callback (stock gap_10662b64, rpmsg ept cb (ept, data, len, src, priv), run in the
+@ RPMsg receive path of the Bluetooth-core link: no lock, no wait here). A "motion seen" message from the Bluetooth
+@ core's motion hook (type 0x0002, payload length 12, lock-v1/lock_motion_wire.h) is counted by lock_motion_rx (a
+@ few loads and one store, lock-v1/lock_native.c) and consumed (0, as stock returns for a handled type). Anything
+@ else goes to stock with r0-r3, lr and the stack argument untouched. Only r12 is used before the decision.
+.balign 2
+.global lock_hook_neck_rx
+.type lock_hook_neck_rx,%function
+.thumb_func
+lock_hook_neck_rx:
+ cbz r1, 1f
+ cmp r2, #20                @ 8-byte envelope header + 12-byte payload received
+ blo 1f
+ ldrh r12, [r1, #TIO_STOCK_NECK_MSG_TYPE]
+ cmp r12, #2                @ TIO_MOTION_SEEN_TYPE, the whole u16
+ bne 1f
+ ldr r12, [r1, #TIO_STOCK_NECK_MSG_LEN]
+ cmp r12, #12               @ TIO_MOTION_SEEN_LEN
+ bne 1f
+ push {r4, lr}
+ bl lock_motion_rx
+ movs r0, #0
+ pop {r4, pc}
+1:
+ b.w stock_neck_rx

@@ -778,6 +778,8 @@ REVIEWED_SITES = {
     ('1.0.6.11', 'edit', 'Entry trampoline wheel_read'): {'old': 0x1071caf0, 'new': 0x1078e644, 'bytes': (120, '2b41e7338293c71b8bbb507a168074f9786376fa8d5c224448cbf4981609bcd5'), 'votes': ('lit', '1 of 1 paired votes for 0x1078e645'), 'reason': 'the RayNeo wheel read callback, rewritten in stock 1.0.6.11 (it gained the step accumulator), so neither sig nor body finds it; it has no BL caller, and its one stored pointer, loaded into r1 and passed to the indev slot setter at the paired wheel-create site, names it (the addEdits pointer rule checks that site)'},
     ('1.0.6.11', 'linkld', 'resume_wheel_read'): {'old': 0x1071caf5, 'new': 0x1078e649, 'bytes': (116, '933d8461b21d8ae3704e9d094c306a3eb079ac8f97480be304e849fc6befe5ea'), 'votes': ('start', 's edit Entry trampoline wheel_read (reviewed entry) 0x1071caf0->0x1078e644, 4-byte T2 prefix equal'), 'reason': 'the instruction after the push (sub sp) changed with the rewrite, so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1'},
     ('1.0.6.11', 'linkld', 'resume_screen_state'): {'old': 0x10645d4d, 'new': 0x10655a61, 'bytes': (96, '34130bcfa8699bc7428682dfe555ece90c24e6b0efa4fa140b75716502020642'), 'votes': ('start', 's edit Entry trampoline screen_state 0x10645d48->0x10655a5c, 4-byte T2 prefix equal'), 'reason': 'the instruction after the push is a pc-relative load whose offset moved (0xf8 became 0x108), so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1'},
+    # TMG14 addition: the resume row of the neck rx trampoline (stock 1.0.6.11 added envelope checks after the sub sp).
+    ('1.0.6.11', 'linkld', 'resume_neck_rx'): {'old': 0x104e9241, 'new': 0x10662b69, 'bytes': (96, '2fd28377c4e07ba03d36dac324874e99e2f00ad4610260f6788e3649ba784ce7'), 'votes': ('start', 's edit Entry trampoline neck_rx 0x104e923c->0x10662b64, 4-byte T2 prefix equal'), 'reason': 'stock 1.0.6.11 added the envelope checks (data, received length, payload length) right after push and sub sp, so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1'},
     ('1.0.6.11', 'abi-range', '0x10686caa'): {'old': 0x10686caa, 'new': 0x106a4fd6, 'bytes': (18, '77ae3ae8ee8475e1f9525e348b6f8304daa4e0e81d6ca9b5366c1cea1ff908e5'), 'votes': ('align', 'equal block of 79 tokens (36 before x, 35 after), once in each span; anchors 0x10686c4a->0x106a4f76 (linkld resume_wheel), 0x10686db8->0x106a50e0 (linkld native_snap)'), 'reason': 'an 18-byte function with six old twins and no paired caller or pool word (its two pointer loads do not pair); body leaves one twin not ruled out, so only the positional align, edge and edge2 place it'},
 }
 # Reviewed departures of the NEW tree from the old tree's universe, keyed by `to` (decided in phase F4). Every row is still
@@ -799,7 +801,9 @@ REVIEWED_UNIVERSE_CHANGES = {
                       'kws_disable': {'old': '0x10559be9', 'new': '0x1057e7f1'},
                       'key_queue_flush': {'old': '0x1062c5f1', 'new': '0x1061c5b1'},
                       'ots_topic_read': {'old': '0x10620fcd', 'new': '0x1064d47d'},
-                      'tio_key_interceptors': {'old': '0x197546e4', 'new': '0x197656dc'}},
+                      'tio_key_interceptors': {'old': '0x197546e4', 'new': '0x197656dc'},
+                      # TMG14 head motion (re/M3-STATIC.md Q4): neck_monitor_rpmsg_ap_send_to_bth, the same code in both
+                      'neck_send': {'old': '0x104e892d', 'new': '0x10662255'}},
         # addEdits (TMG13 PIN lock): entry trampolines the old tree does not have. Each is derived and checked from its
         # old address like any edit row (rule 1 before: the old before, which has no BL/B.W, must be the new image's
         # bytes); its old address must be an old BL/B.W target with at least one paired caller naming the proposal
@@ -810,7 +814,9 @@ REVIEWED_UNIVERSE_CHANGES = {
         # (old address | 1) must agree with at least one paired vote, and every paired load site must be an LDR into the
         # argument register `arg` (default r1) followed directly by a BL whose old target's 24-byte masked pattern occurs
         # once in each image, the new hit being the new BL's target (one consumer in both images: the indev slot setter for
-        # the read callbacks, the LVGL timer constructor for the factory-reset worker; SETTER_BYTES).
+        # the read callbacks, the LVGL timer constructor for the factory-reset worker; SETTER_BYTES). arg 'stack' (TMG14,
+        # the neck rx callback, the cb argument of rpmsg_create_ept): the LDR may load any register, which must be stored
+        # to the stack before the next BL within STACK_PASS_INSNS instructions, and that BL is the consumer checked.
         'addEdits': {
             'Entry trampoline can_wakeup': {'old': '0x1055a488', 'new': '0x1057f034', 'before': '2de9f041', 'kind': 'bw',
                                             'target': 'lock_hook_can_wakeup'},
@@ -828,12 +834,16 @@ REVIEWED_UNIVERSE_CHANGES = {
                                           'target': 'lock_hook_key_read', 'entry': 'pointer'},
             'Entry trampoline wheel_read': {'old': '0x1071caf0', 'new': '0x1078e644', 'before': '2de9f04f', 'kind': 'bw',
                                             'target': 'lock_hook_wheel_read', 'entry': 'pointer'},
+            # TMG14 head motion: the neck-monitor RPMsg endpoint callback (receives the Bluetooth core's "motion seen").
+            # Its pointer is the cb argument of rpmsg_create_ept, passed on the stack (arg 'stack', SETTER_BYTES).
+            'Entry trampoline neck_rx': {'old': '0x104e923c', 'new': '0x10662b64', 'before': 'b0b590b0', 'kind': 'bw',
+                                         'target': 'lock_hook_neck_rx', 'entry': 'pointer', 'arg': 'stack'},
         },
         'reason': 'referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher '
                   'global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter '
                   '(addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); '
                   'TMG13 adds the PIN lock\'s stock calls, the key interceptor list head (RAM) and seven entry trampolines '
-                  '(addEdits)',
+                  '(addEdits); TMG14 adds the neck-monitor send and the neck rx callback\'s entry trampoline',
         # correctComment (phase F7 candidate 3): a code-comment value row whose old address was never the function the
         # comment names. The row is derived and checked from the old tree exactly as before and must still give
         # `derived`; only the table written takes `new`, which must hold the pinned bytes, start a function by its bytes
@@ -876,6 +886,7 @@ LOCATING_TEXT = ('lit, field, veneer, body, call with at least %d paired votes, 
 DISABLE_METHODS = NEW_COUNTING + ('grow', 'edge-lit', 'fixed', 'reviewed-site')  # --disable-method (acceptance only)
 SIG_BYTES, SITE_BYTES, EDGE_BYTES, WINDOW_BYTES, COPY_BYTES = 24, 16, 64, 32, 32
 SETTER_BYTES = 24  # addEdits entry 'pointer': masked pattern that must pair the pointer's consumer across the images
+STACK_PASS_INSNS = 8  # addEdits arg 'stack': instructions after the LDR within which the stack store and the BL must come
 MAX_VOTES, MAX_TRIES = 12, 48  # paired votes per method, old sites tried per method
 COPY_DESCRIPTOR = 0x408  # <3I src, end, dst> of the copy to 0x100000 (memcpy, memset, strcmp, strlen)
 TSV_COLUMNS = ('kind', 'name', 'addr_1012', 'final_verdict', 'new_address_1611', 'source')
@@ -1737,7 +1748,7 @@ def propose(args):
             assert role not in old_roles, role + ': addEdits names an edit the old tree already has'
             assert role.startswith('Entry trampoline ') and e['kind'] == 'bw', role + ': addEdits takes entry trampolines (bw) only'
             assert e.get('entry', 'call') in ('call', 'pointer'), role + ': addEdits entry proof must be call or pointer'
-            assert e.get('arg', 1) in (0, 1) and ('arg' not in e or e.get('entry') == 'pointer'), role + ': arg is r0 or r1, pointer entries only'
+            assert e.get('arg', 1) in (0, 1, 'stack') and ('arg' not in e or e.get('entry') == 'pointer'), role + ': arg is r0, r1 or stack, pointer entries only'
             oa, na, before = H(e['old']), H(e['new']), bytes.fromhex(e['before'])
             assert not oa & 1 and not na & 1 and len(before) == 4, role + ': addEdits needs even addresses and a 4-byte before'
             assert old[oa - FLASH: oa - FLASH + 4] == before, role + ': addEdits before is not the old image\'s bytes'
@@ -1829,10 +1840,40 @@ def propose(args):
         a, b = load_literal(old, site), load_literal(new, p)
         return b[3] if a and b and a[:2] == b[:2] else None
 
+    def itcm_veneer(image, at):
+        """The ITCM target of a flash veneer `ldr.w pc,[pc,#-0]; .word target` at at, else None."""
+        if not FLASH <= at <= FLASH + len(image) - 8:
+            return None
+        h1, h2, word = struct.unpack_from('<HHI', image, at - FLASH)
+        return word if (h1, h2) == (0xf85f, 0xf000) and word & 1 and word < FLASH else None
+
+    def stack_pass(image, site, size, rt):
+        """arg 'stack': the BL address after the LDR at site when, within STACK_PASS_INSNS instructions and before that BL,
+        the loaded register is stored to the outgoing-argument area (str rt,[sp,#i], str.w rt,[sp,#i] or strd with rt
+        as one of its two registers, sp based); else None."""
+        at, stored = site + size, False
+        for _ in range(STACK_PASS_INSNS):
+            if not FLASH <= at <= FLASH + len(image) - 4:
+                return None
+            h1, h2 = struct.unpack_from('<HH', image, at - FLASH)
+            if is32(h1):
+                if t4(h1, h2) and h2 & 0x4000:
+                    return at if stored else None
+                if (h1 == 0xe9cd and rt in ((h2 >> 12) & 0xf, (h2 >> 8) & 0xf)) or (h1 == 0xf8cd and h2 >> 12 == rt):
+                    stored = True
+                at += 4
+            else:
+                if (h1 & 0xf800) == 0x9000 and (h1 >> 8) & 7 == rt:
+                    stored = True
+                at += 2
+        return None
+
     def setter_check(sites, arg):
         """addEdits entry 'pointer': each old load site of the pointer, paired (16-byte window, else G), must be an LDR into r<arg>
         followed directly by a BL in both images whose old target's SETTER_BYTES masked pattern has exactly one hit in
-        each image, the new hit being the new BL's target. Returns {'ok', 'sites': [...]}."""
+        each image, the new hit being the new BL's target. arg 'stack' (a callback passed as a stack argument): the LDR
+        may load any register, which must be stored to the stack before the next BL (stack_pass), and that BL is the one
+        checked. Returns {'ok', 'sites': [...]}."""
         out, ok = [], bool(sites)
         for site in sites:
             q = pair(site)
@@ -1842,20 +1883,30 @@ def propose(args):
             why = None
             if q is None or not a or not b:
                 why = 'load site does not pair'
-            elif a[1] != arg or b[1] != arg:
+            elif arg != 'stack' and (a[1] != arg or b[1] != arg):
                 why = 'the load is not into r%d' % arg
+            elif arg == 'stack' and (a[1] != b[1] or stack_pass(old, site, a[0], a[1]) is None or stack_pass(new, q, b[0], b[1]) is None):
+                why = 'the loaded register is not stored to the stack before the next BL in both images'
             else:
-                bo, bn = site + a[0], q + b[0]
+                bo, bn = (site + a[0], q + b[0]) if arg != 'stack' else (stack_pass(old, site, a[0], a[1]), stack_pass(new, q, b[0], b[1]))
                 h1, h2 = struct.unpack_from('<HH', old, bo - FLASH)
                 g1, g2 = struct.unpack_from('<HH', new, bn - FLASH)
                 if not (t4(h1, h2) and h2 & 0x4000 and t4(g1, g2) and g2 & 0x4000):
                     why = 'no BL right after the load'
                 else:
                     to_old, to_new = t4_target(bo, h1, h2), t4_target(bn, g1, g2)
+                    vo, vn = itcm_veneer(old, to_old), itcm_veneer(new, to_new)
+                    if arg == 'stack' and vo is not None and vn is not None:
+                        # the consumer is an ITCM function behind a veneer (ldr.w pc,[pc,#-0]; word); every such veneer has
+                        # the same bytes, so the pattern cannot single it out: the paired load site in the same call decides
+                        out.append('%s->%s ldr r%s then a stack store, bl %s->%s (veneers to ITCM %s->%s)' % (
+                            hex(site), hex(q), a[1], hex(to_old), hex(to_new), hex(vo), hex(vn)))
+                        continue
                     if masked_hits(old, old, to_old, SETTER_BYTES) != [to_old] or masked_hits(new, old, to_old, SETTER_BYTES) != [to_new]:
                         why = 'the BL targets %s and %s are not one setter by a unique %d-byte pattern' % (hex(to_old), hex(to_new), SETTER_BYTES)
                     else:
-                        out.append('%s->%s ldr r%d then bl %s->%s' % (hex(site), hex(q), arg, hex(to_old), hex(to_new)))
+                        out.append('%s->%s ldr r%s then %sbl %s->%s' % (hex(site), hex(q), a[1] if arg == 'stack' else arg,
+                                                                      'a stack store, ' if arg == 'stack' else '', hex(to_old), hex(to_new)))
                         continue
             ok = False
             out.append('%s: %s' % (hex(site), why))

@@ -16,7 +16,7 @@ static unsigned apply(TLKService *s,const TLKCommand *q,uint32_t now_s,uint32_t 
  case TLK_OP_SET_TIME:return tlk_phone_set_time(t,q->fold_min,q->idle_min)?TLK_R_OK:TLK_R_REFUSED;
  case TLK_OP_DISABLE:return tlk_phone_disable(t)?TLK_R_OK:TLK_R_REFUSED;
  case TLK_OP_ACK_FAILURES:return tlk_phone_ack(t)?TLK_R_OK:TLK_R_REFUSED;
- case TLK_OP_MOTION_ON:if(!s->motion_supported||t->state==TLK_OFF)return TLK_R_REFUSED;s->motion_on=true;return TLK_R_OK;
+ case TLK_OP_MOTION_ON:if(!s->motion_supported||t->state==TLK_OFF||(s->motion_start&&!s->motion_start()))return TLK_R_REFUSED;s->motion_on=true;return TLK_R_OK;
  default:return TLK_R_INVALID;
  }
 }

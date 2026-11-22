@@ -129,6 +129,7 @@ kws_disable = 0x1057e7f1;
 key_queue_flush = 0x1061c5b1;
 ots_topic_read = 0x1064d47d;
 tio_key_interceptors = 0x197656dc;
+neck_send = 0x10662255;
 tio_launcher_global = 0x199595d4;
 nav_business_idle = 0x105a2f35;
 nav_connection = 0x1050e94d;
@@ -157,6 +158,7 @@ resume_screen_state = 0x10655a61;
 resume_factory_reset = 0x105aa8ed;
 resume_key_read = 0x1088f681;
 resume_wheel_read = 0x1078e649;
+resume_neck_rx = 0x10662b69;
 
 SECTIONS {
  . = 0x10929204;
