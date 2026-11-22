@@ -209,7 +209,7 @@ release_list() {
   [[ -n $names ]] || { echo 'releases.json lists no release' >&2; return 1; }
   printf '%s\n' "$names"
 }
-# The release the full test.py run tests (the first in releases.json; today C21, the only one) and its checked ZIP.
+# The release the full test.py run tests (the first in releases.json; today C22, the only one) and its checked ZIP.
 first_release() {
   local names
   names=$(release_list) || return 1
@@ -233,11 +233,11 @@ stock_package_zip() {
 }
 # The release groups of test.py: pins, archive, directory, gate, the recorded 1.0.21 flash sequence, feed, wizard and
 # full-host groups, compiled with the release's TIO_RELEASE define against its own ZIP and stock base.
-# flash-packages runs both packages of the release (TMG12 and stock 1.0.6.11) through the gate.
+# flash-packages runs both packages of the release (TMG13 and stock 1.0.6.11) through the gate.
 RELEASE_GROUPS=pins,archive,directory,flash,flash-sequence-1021,flash-packages,feed,feed-restart,wizard,tmg4-wizard,ios1021-full-guard,ios1021-full-edge,phone-ota-gate,firmware-export
 # One full test.py run for the first release (it includes every release group and the real 1.0.21 app's groups), then
 # the release groups alone for each other release, so no group runs twice for the same release. With one release
-# (C21) that is the full run only.
+# (C22) that is the full run only.
 test_stage() {
   require_app1021
   local tree name zip stock names first

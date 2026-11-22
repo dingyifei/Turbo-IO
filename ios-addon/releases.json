@@ -1,18 +1,18 @@
 {
   "schema": 1,
-  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins-<name>.json; --check runs in the gate. Every release is named cN, is built on stock 1.0.6.11 and is built only for the 1.0.21 full host (1021-full). With exactly one release, a build that names none (no TIO_RELEASE, no --release) is that release. A release lists its packages: the first is a TMG build and is selected at every launch; a second one, labelled STOCK-<base>, is the base's stock package, which the owner can pick in the flash wizard instead. C21 is the only release: it carries TMG12 and stock 1.0.6.11, flashes either from the 1.0.21 full host, and accepts glasses on 1.0.5.12 (TMG11) or 1.0.6.11 for both.",
+  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins-<name>.json; --check runs in the gate. Every release is named cN, is built on stock 1.0.6.11 and is built only for the 1.0.21 full host (1021-full). With exactly one release, a build that names none (no TIO_RELEASE, no --release) is that release. A release lists its packages: the first is a TMG build and is selected at every launch; a second one, labelled STOCK-<base>, is the base's stock package, which the owner can pick in the flash wizard instead. C22 is the only release: it carries TMG13 and stock 1.0.6.11, flashes either from the 1.0.21 full host, and accepts glasses on 1.0.5.12 (TMG11) or 1.0.6.11 for both.",
   "releases": {
-    "c21": {
-      "builds": "C21: flashes TMG12 (TMG11 ported to stock 1.0.6.11) or stock 1.0.6.11, picked in the wizard, from the 1.0.21 full host",
+    "c22": {
+      "builds": "C22: flashes TMG13 (the PIN lock on stock 1.0.6.11) or stock 1.0.6.11, picked in the wizard, from the 1.0.21 full host",
       "hosts": ["1021-full"],
       "stockBase": "1.0.6.11",
       "packages": [
         {
-          "label": "TMG12",
+          "label": "TMG13",
           "zip": {
-            "input": "tmg12/StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip",
-            "bytes": 9549211,
-            "sha256": "3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373"
+            "input": "tmg13/StrixOS-1.0.6.11-TurboIO-TMG13-CANDIDATE-NOT-APPROVED.zip",
+            "bytes": 9557730,
+            "sha256": "81eb560d9fc9f1a0ed8ec120385d2d09c366cece4a325f684ca9e4cadd2b744e"
           },
           "acceptCurrent": ["1.0.5.12", "1.0.6.11"]
         },

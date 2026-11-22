@@ -15,7 +15,7 @@ apple_args=()
 # compiled with TIO_RELEASE=cN (that release's FirmwarePins.h block) and bundles that release's ZIP, found under
 # $TURBO_INPUTS at the path releases.json names and refused unless its size and SHA-256 match. The release's hosts
 # (releases.json) must list the --host given. Without --release the build is the only release in releases.json
-# (C21 today); with several releases, --release is required. A release that lists a stock package (releases.json
+# (C22 today); with several releases, --release is required. A release that lists a stock package (releases.json
 # packages, STOCK-<base>) bundles that ZIP too, resolved and checked the same way (phone_pins.py --package).
 # --wire-log: build the addon with the passive channel recorder (TIO_WIRE_LOG=1).
 # --build-only: build and check the addon as a package run would, then stop before
@@ -269,7 +269,7 @@ assert report['ipaSHA256']==digest, 'IPA digest mismatch'
 print(digest)
 PY
 else
-# The full 1.0.21 host (C21): its own package.mjs profile, guard and markers.
+# The full 1.0.21 host (C22): its own package.mjs profile, guard and markers.
 full_profile=ios1021
 # Fail closed unless the addon carries this host's gate and guard (package.mjs repeats this check).
 run_logged full-1021-guard full_1021_guard "$ADDON"
