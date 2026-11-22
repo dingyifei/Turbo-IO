@@ -48,6 +48,7 @@ bool nav_bonded(void *p){return p!=NULL;}
 /* PIN lock: locked closes every remote gate; TLK: frames are not this test's concern. */
 static bool host_locked;bool lock_native_locked(void){return host_locked;}
 bool lock_native_message(const uint8_t *d,unsigned n){(void)d;(void)n;return false;}
+static int host_boots;void lock_boot_early(void){host_boots++;}
 bool nav_folded(void *p){(void)p;return false;}
 bool focus_screen_on(void){return awake;}
 bool fm_menu_plain(void *p){return p==app&&awake&&!detail_open;}

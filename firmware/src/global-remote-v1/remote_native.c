@@ -25,6 +25,7 @@ extern bool nav_bonded(void *),nav_folded(void *),focus_screen_on(void);
 extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *);
 extern const char *nav_top_app(void);
 extern bool lock_native_locked(void),lock_native_message(const uint8_t *,unsigned);
+extern void lock_boot_early(void);
 extern void nav_screen_on(bool),native_report_activity(void);
 extern void *tgr_indev_next(void *),*tgr_indev_group(void *),*tgr_indev_driver(void *);
 extern unsigned tgr_indev_type(void *);
@@ -157,6 +158,7 @@ static unsigned inject(unsigned op){
 void tgr_native_message(const TIONativeMessage *m){
  /* Preserve original handler + original payload disposal for EVERY message.
   * This function never takes ownership and never changes the message bytes. */
+ lock_boot_early();   /* PIN lock: a launcher message also starts the lock if the early call was skipped */
  if(!m||m->id!=TIO_STOCK_MESSAGE_RNLINK||m->bytes!=74||!m->data)return;
  if(lock_native_message(m->data,m->bytes))return;   /* TLK: (PIN lock) has its own gate and answers while locked */
  uint8_t raw[32];TMLCommand layout;

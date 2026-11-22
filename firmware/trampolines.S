@@ -155,6 +155,9 @@ b.w resume_wheel_read
 .type stream_register_shim,%function
 .thumb_func
 stream_register_shim:
+ push {r0,lr}
+ bl lock_boot_early   /* PIN lock: start before the launcher's first content frame (docs/lock-design.md §7 boot) */
+ pop.w {r0,lr}
  movs r4,#0
  ldr r0,=0x196dfaf4
  ldr r3,=tio_hook_file
