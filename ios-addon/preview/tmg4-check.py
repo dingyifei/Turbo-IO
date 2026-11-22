@@ -124,8 +124,8 @@ def check_bench(screen,report,lang,stem,size):
     assert (han(card['bench-note-tile']['status']) if lang=='zh-Hans' else not han(card['bench-note-tile']['status'])),'note language in '+str(stem)
     assert '30' in card['bench-note-tile']['status'] and ('Live view' in card['bench-note-camera']['status'] or '实时取景' in card['bench-note-camera']['status']),'on-screen notes in '+str(stem)
     assert not card['bench-note-route']['status'].strip()=='' ,'route note in '+str(stem)
-LOCK_WORDS={'en':{'off':'Off','unlocked':'Unlocked','locked':'Locked','wrong':'wrong tries since last unlock','footer':'can always unlock them'},
-    'zh-Hans':{'off':'关闭','unlocked':'已解锁','locked':'已锁定','wrong':'上次解锁后输错','footer':'始终可以解锁眼镜'}}
+LOCK_WORDS={'en':{'off':'Off','unlocked':'Unlocked','locked':'Locked','wrong':'wrong tries since last unlock','footer':'can always unlock them','idle':'lock after the idle time even while worn'},
+    'zh-Hans':{'off':'关闭','unlocked':'已解锁','locked':'已锁定','wrong':'上次解锁后输错','footer':'始终可以解锁眼镜','idle':'也会在闲置时间后锁定'}}
 def check_lock(screen,report,lang,stem):
     phase,on,action,wrong=LOCK_SCREENS[screen];w=LOCK_WORDS[lang];tag=' in '+str(stem)
     rows={r['id']:r for s in report['sections'] for r in s['rows']};text=' '.join(str(r[k]) for r in rows.values() for k in ('title','status'))+' '.join(s['footer'] for s in report['sections'])
@@ -135,8 +135,10 @@ def check_lock(screen,report,lang,stem):
     if wrong:assert str(wrong) in status['title'] and w['wrong'] in status['title'] and status['status']==w[phase],'wrong-tries status'+tag+': '+status['title']
     else:assert status['title']==w[phase],'status word'+tag+': '+status['title']
     actions=[i for i in ('lock-unlock','lock-lock-now') if i in rows];assert actions==([action] if action else []),'action rows'+tag+': '+str(actions)
-    settings={'lock-fold','lock-idle','lock-worn','lock-change-pin'};assert (settings<=set(rows)) if on else not (settings&set(rows)),'settings rows follow the switch'+tag
-    if on:assert rows['lock-worn']['switchOn'] is False,'Stay unlocked while worn starts off'+tag
+    settings={'lock-fold','lock-idle','lock-change-pin'};assert (settings<=set(rows)) if on else not (settings&set(rows)),'settings rows follow the switch'+tag
+    # The fixtures are firmware without the motion hook: no worn switch, and the idle footer says worn glasses lock.
+    assert 'lock-worn' not in rows,'no worn switch without motion support'+tag
+    if on:assert any(w['idle'] in s['footer'] for s in report['sections']),'idle footer without motion'+tag
     assert any(w['footer'] in s['footer'] for s in report['sections']),'footer'+tag
     assert (han(text) if lang=='zh-Hans' else not han(text)),'page language'+tag
 def check_panel(screen,report,stem):

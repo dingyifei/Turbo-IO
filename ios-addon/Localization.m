@@ -735,6 +735,7 @@ static const TIOStringRow Rows[]={
     {"lock.action.lockNow","Lock now","立即锁定"},
     {"lock.action.unlock","Unlock glasses","解锁眼镜"},
     {"lock.damaged","Lock record damaged. Unlock the glasses and set a new PIN.","锁定记录已损坏。请解锁眼镜并设置新 PIN。"},
+    {"lock.footer.idleNoMotion","These glasses count only knob and button use, so they lock after the idle time even while worn. Choose 240 min to lock mainly when folded.","这副眼镜只把旋钮和按键操作算作使用，所以即使正在佩戴，也会在闲置时间后锁定。选择 240 分钟可主要在折叠后锁定。"},
     {"lock.footer.main","The phone paired with the glasses can always unlock them.","与眼镜配对的手机始终可以解锁眼镜。"},
     {"lock.footer.worn","Uses head motion. Works after this phone has connected to the glasses. When off, the glasses lock after the idle time even while worn.","使用头部动作。本手机连接眼镜后生效。关闭时，即使正在佩戴，眼镜也会在闲置时间后锁定。"},
     {"lock.header.auto","Lock automatically","自动锁定"},

@@ -95,9 +95,13 @@ static NSString *Minutes(unsigned minutes){NSString *format=TIOText(@"lock.minut
  if(m.showUnlock)[layout addObject:@{@"rows":@[@(RowUnlock)]}];
  else if(m.showLockNow)[layout addObject:@{@"rows":@[@(RowLockNow)]}];
  if(m.lockOn){
-  [layout addObject:@{@"rows":@[@(RowFold),@(RowIdle)],@"header":TIOText(@"lock.header.auto")}];
-  NSString *worn=TIOText(@"lock.footer.worn");if(self.motion.offAfterDrops)worn=[NSString stringWithFormat:@"%@\n\n%@",TIOText(@"lock.worn.offAfterDrops"),worn];
-  [layout addObject:@{@"rows":@[@(RowWorn)],@"footer":worn}];
+  /* Firmware without the motion hook counts knob and key input only, so worn glasses lock at the idle time: say so under
+   * the idle setting and leave out the switch that could not work. */
+  if(m.motionSupported){
+   [layout addObject:@{@"rows":@[@(RowFold),@(RowIdle)],@"header":TIOText(@"lock.header.auto")}];
+   NSString *worn=TIOText(@"lock.footer.worn");if(self.motion.offAfterDrops)worn=[NSString stringWithFormat:@"%@\n\n%@",TIOText(@"lock.worn.offAfterDrops"),worn];
+   [layout addObject:@{@"rows":@[@(RowWorn)],@"footer":worn}];
+  }else [layout addObject:@{@"rows":@[@(RowFold),@(RowIdle)],@"header":TIOText(@"lock.header.auto"),@"footer":TIOText(@"lock.footer.idleNoMotion")}];
   [layout addObject:@{@"rows":@[@(RowChangePin)],@"footer":TIOText(@"lock.footer.main")}];
  }else if(self.link.known)[layout addObject:@{@"rows":@[],@"footer":TIOText(@"lock.footer.main")}];
  self.layout=layout;[self.tableView reloadData];
