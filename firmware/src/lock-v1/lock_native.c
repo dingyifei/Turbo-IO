@@ -22,7 +22,10 @@ extern void *stream_memalign(size_t,size_t),stream_free(void *),*stream_timer_cr
 extern uint32_t stream_tick(void),tap_random(void);
 extern int td_gettid(void);
 extern int32_t tio_lv_obj_get_width(void *),tio_lv_obj_get_height(void *);
-extern void *nav_monitors(void),*nav_input(void *),*nav_link(void *),*fm_system(void *);
+extern void *nav_monitors(void),*nav_input(void *),*nav_link(void *),*fm_system(void *),*fm_battery_monitor(void *);
+extern int64_t fm_local_time(void *);
+extern int fm_battery_level(void *);
+extern void menu_text_align(void *,int,uint32_t);
 extern unsigned tgr_ota_status(void *);
 extern bool nav_bonded(void *),nav_folded(void *),focus_screen_on(void);
 extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *),nav_force_off(void);
@@ -109,7 +112,18 @@ static int cover_make(LockCtl *c){
   return 0;
  }
  TNWidgets w=tn_lvgl_widgets();if(!tlv_open(&c->view,&w,NULL,c->cover)){TR("[TurboLock] view open failed");cover_drop(c);return -1;}
+ menu_text_align(c->view.labels[TLV_BATT],3,0);   /* battery right-aligned to the core edge, as on the launcher menu */
  c->view_open=true;return 1;
+}
+/* The cover must stay the last child of the sys layer, the one drawn on top. A child stock adds later (a call view, a
+ * toast, the assistant view) or one it brings to the front would draw over the lock screen; the caller then closes the
+ * lock screen and goes dark, and the next press opens it again on top. Unreadable counts as covered (fail closed). */
+static bool cover_last(const LockCtl *c){
+ void *d=stream_display_next(NULL),*sys=d?slot(d,TIO_STOCK_DISPLAY_SYS):NULL;if(!sys)return false;
+ void *sa=slot(sys,TIO_STOCK_OBJ_SPEC_ATTR);if(!sa)return false;
+ uint16_t n;memcpy(&n,(uint8_t *)sa+TIO_STOCK_SPEC_CHILD_CNT,sizeof n);
+ void **children=slot(sa,TIO_STOCK_SPEC_CHILDREN);if(!n||!children)return false;
+ void *last;memcpy(&last,&children[n-1u],sizeof last);return last==c->cover;
 }
 static void go_dark(LockCtl *c){c->dark=1;cover_drop(c);(void)nav_force_off();}
 
@@ -123,10 +137,21 @@ static void sync(LockCtl *c,uint32_t now_ms){
  else if(t->state==TLK_OFF||t->state==TLK_UNLOCKED){
   c->dark=0;cover_drop(c);
  }else{   /* a lock screen (PIN, wrong, waiting, use phone) or the failure notice */
+  if(c->cover&&tlk_locked(t)&&!cover_last(c)){   /* something drawn over the lock screen: close it, dark */
+   native_log(1,0,0,0,"[TurboLock] covered: lock screen closed state=%u ms=%u",t->state,now_ms);
+   tlk_close_screen(t);go_dark(c);return;
+  }
   int k=cover_make(c);
   if(k<0){t->state=tlk_locked(t)?TLK_DARK:t->state;go_dark(c);c->locked=tlk_locked(t)?1:0;return;}   /* backstop: dark */
   bool was=c->dark;c->dark=0;
-  if(k>0){TLVScene s;tlv_snapshot(&s,t,now_s(),now_ms);(void)tlv_draw(&c->view,&s,c->lang);}   /* else the black cover until the view opens */
+  if(k>0){
+   TLVScene s;tlv_snapshot(&s,t,now_s(),now_ms);
+   if(t->state==TLK_ENTRY){   /* band T: time and battery from the same stock getters as the launcher menu */
+    void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*bat=mon?fm_battery_monitor(mon):NULL;
+    s.local=sys?fm_local_time(sys):0;s.battery=bat?fm_battery_level(bat):-1;
+   }
+   (void)tlv_draw(&c->view,&s,c->lang);
+  }   /* else the black cover until the view opens */
   if(was||!focus_screen_on())nav_screen_on(true);
  }
  if(t->flush_input){t->flush_input=false;key_queue_flush();c->wheel_acc=0;}

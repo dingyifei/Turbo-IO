@@ -81,6 +81,12 @@
 #define TIO_STOCK_EVENT_DELETE 0x24u
 /* LVGL object flag: hidden (the stock menu's hide sets it on its root, its show clears it). */
 #define TIO_STOCK_OBJ_FLAG_HIDDEN 1u
+/* LVGL object: its special attributes (children list), NULL until the object has had a child. */
+#define TIO_STOCK_OBJ_SPEC_ATTR 0x8u
+/* LVGL special attributes: the children array, in creation order (the last child is drawn on top). */
+#define TIO_STOCK_SPEC_CHILDREN 0x0u
+/* LVGL special attributes: the child count (16 bits). */
+#define TIO_STOCK_SPEC_CHILD_CNT 0x2cu
 /* View manager: the state value while the carousel menu is open. */
 #define TIO_STOCK_MANAGER_MENU_OPEN 1u
 

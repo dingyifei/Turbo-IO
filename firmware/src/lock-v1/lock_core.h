@@ -57,6 +57,8 @@ bool tlk_locked(const TLK *);
 bool tlk_screen_allowed(const TLK *);           // may the display be on now
 bool tlk_screen_on_request(TLK *,uint32_t now_s); // runs the idle check, then answers tlk_screen_allowed
 void tlk_screen_off(TLK *);
+// Closes a lock screen to dark, dropping half-entered digits: at fold, and when something is drawn over the cover.
+void tlk_close_screen(TLK *);
 void tlk_fold(TLK *,uint32_t now_s);
 void tlk_unfold(TLK *,uint32_t now_s);
 // Knob/key input. Returns true when the lock consumed it (stock must not see it).

@@ -16,25 +16,33 @@ static void fill(char *d,const char *fmt,const char *arg){
 }
 static void num(char *d,unsigned n){char t[12];unsigned i=0;do{t[i++]=(char)('0'+n%10);n/=10;}while(n&&i<11);unsigned j=0;while(i)d[j++]=t[--i];d[j]=0;}
 static void clock_text(char *d,uint32_t s){unsigned m=s/60,x=s%60;char t[12];num(t,m);size_t n=strlen(t);memcpy(d,t,n);d[n++]=':';d[n++]=(char)('0'+x/10);d[n++]=(char)('0'+x%10);d[n]=0;}
+// The launcher menu's band T format (focus_menu.c fm_view_update): HH:MM and N%, or --:-- and --% when unknown.
+static void hhmm(char *d,int64_t local){
+ put(d,"--:--");if(local<946684800||local>4102444800LL)return;
+ unsigned secs=(unsigned)((uint64_t)local%86400),h=secs/3600,m=secs/60%60;d[0]=(char)('0'+h/10);d[1]=(char)('0'+h%10);d[3]=(char)('0'+m/10);d[4]=(char)('0'+m%10);
+}
+static void percent(char *d,int battery){if(battery<0||battery>100){put(d,"--%");return;}num(d,(unsigned)battery);size_t n=strlen(d);d[n]='%';d[n+1]=0;}
 static void tries(char *d,unsigned n,unsigned lang){char t[12];num(t,n);fill(d,n==1?tio_text(TT_LOCK_TRY_ONE,lang):tio_text(TT_LOCK_TRIES,lang),t);}
 
 void tlv_snapshot(TLVScene *s,TLK *t,uint32_t now_s,uint32_t now_ms){
  uint32_t left=t->state==TLK_WAITING?tlk_delay_left(t,now_s):0;
- *s=(TLVScene){.state=t->state,.slot=t->slot,.digit=t->digit,.notice=t->notice,.wrong=t->rec.wrong,.delay_left=left,.now_ms=now_ms};
+ *s=(TLVScene){.state=t->state,.slot=t->slot,.digit=t->digit,.notice=t->notice,.wrong=t->rec.wrong,.delay_left=left,.now_ms=now_ms,.local=0,.battery=-1};
 }
 
 static TIORect rect(unsigned i){
  const int x0=(TIO_PAGE_W-(TLK_PIN_LEN-1)*SLOT_PITCH-SLOT_W)/2;
  const int digit_y=TIO_PAGE_M1-TIO_LINE(TIO_FONT_HERO)/2;
  switch(i){
- case TLV_T:return (TIORect){TIO_CORE_X0,TIO_PAGE_T0,TIO_CORE_W,TIO_LINE(TIO_FONT_LABEL)};
+ case TLV_T:return (TIORect){TIO_CORE_X0+TLV_STATUS_W+4,TIO_PAGE_T0,TIO_CORE_W-2*(TLV_STATUS_W+4),TIO_LINE(TIO_FONT_LABEL)};   // the hint, between time and battery
+ case TLV_TIME:return (TIORect){TIO_CORE_X0,TIO_PAGE_T0,TLV_STATUS_W,TIO_LINE(TIO_FONT_LABEL)};
+ case TLV_BATT:return (TIORect){TIO_CORE_X1-TLV_STATUS_W,TIO_PAGE_T0,TLV_STATUS_W,TIO_LINE(TIO_FONT_LABEL)};   // right-aligned by the native side
  case TLV_M:return (TIORect){TIO_CORE_X0,TIO_PAGE_T1,TIO_CORE_W,TIO_LINE(TIO_FONT_BODY)};
  case TLV_B:return (TIORect){TIO_CORE_X0,TIO_PAGE_B1-TIO_LINE(TIO_FONT_PRIMARY),TIO_CORE_W,TIO_LINE(TIO_FONT_PRIMARY)};
  case TLV_CARET:return (TIORect){x0,digit_y+TIO_LINE(TIO_FONT_HERO),SLOT_W,TIO_LINE(TIO_FONT_BODY)};
  default:return (TIORect){x0+(int)(i-TLV_S0)*SLOT_PITCH,digit_y,SLOT_W,TIO_LINE(TIO_FONT_HERO)};
  }
 }
-static unsigned font(unsigned i){return i==TLV_T?TIO_FONT_LABEL:i==TLV_M||i==TLV_CARET?TIO_FONT_BODY:i==TLV_B?TIO_FONT_PRIMARY:TIO_FONT_HERO;}
+static unsigned font(unsigned i){return i==TLV_T||i==TLV_TIME||i==TLV_BATT?TIO_FONT_LABEL:i==TLV_M||i==TLV_CARET?TIO_FONT_BODY:i==TLV_B?TIO_FONT_PRIMARY:TIO_FONT_HERO;}
 
 bool tlv_open(TLKView *v,const TNWidgets *api,void *surface,void *parent){
  if(!v||!api||!api->root||!api->label||!api->place||!api->text_static)return false;
@@ -58,6 +66,7 @@ bool tlv_layout(TLKView *v,const TLVScene *s,unsigned lang){
  switch(s->state){
  case TLK_ENTRY:{
   if((uint32_t)(s->now_ms-v->entry_ms)<TLV_HINT_MS)put(v->text[b][TLV_T],tio_text(TT_LOCK_HINT,lang));colors[TLV_T]=TIO_LENS_MID;
+  hhmm(v->text[b][TLV_TIME],s->local);colors[TLV_TIME]=TIO_LENS_MID;percent(v->text[b][TLV_BATT],s->battery);colors[TLV_BATT]=TIO_LENS_MID;
   for(unsigned i=0;i<TLK_PIN_LEN;i++){
    char *d=v->text[b][TLV_S0+i];
    if(i<s->slot){put(d,"\xc2\xb7");colors[TLV_S0+i]=TIO_LENS_HIGH;}                // entered: a dot

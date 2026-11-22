@@ -18,7 +18,14 @@ static uint8_t last_reply[74];static uint32_t rnd=0x1234;
 static uint32_t next_key;static int16_t next_diff;
 static int32_t topic[32];static unsigned topic_n;
 static uint8_t wheel_ctx[16];
-static uint8_t display[0x300];static char cover_obj[4],screen_obj[4],sys_obj[4];static int covers,cover_deletes;
+static uint8_t display[0x300];static char cover_obj[4],screen_obj[4],foreign_obj[4];static int covers,cover_deletes;
+/* The sys layer with LVGL's children list (stock_layout.h): creation appends, deletion removes, the last is on top. */
+static uint8_t sys_obj[16],sys_spec[0x30];static void *sys_kids[8];
+static uint16_t kids_n(void){uint16_t n;memcpy(&n,sys_spec+TIO_STOCK_SPEC_CHILD_CNT,2);return n;}
+static void kids_set(uint16_t n){memcpy(sys_spec+TIO_STOCK_SPEC_CHILD_CNT,&n,2);}
+static void kid_add(void *o){uint16_t n=kids_n();assert(n<8);sys_kids[n]=o;kids_set((uint16_t)(n+1));}
+static void kid_remove(void *o){uint16_t n=kids_n(),j=0;for(uint16_t i=0;i<n;i++)if(sys_kids[i]!=o)sys_kids[j++]=sys_kids[i];kids_set(j);}
+static void sys_reset(void){memset(sys_obj,0,sizeof sys_obj);memset(sys_spec,0,sizeof sys_spec);void *p=sys_spec;memcpy(sys_obj+TIO_STOCK_OBJ_SPEC_ATTR,&p,sizeof p);p=sys_kids;memcpy(sys_spec+TIO_STOCK_SPEC_CHILDREN,&p,sizeof p);}
 uint32_t stream_tick(void){return ms;}
 uint32_t tap_random(void){return rnd+=0x9e3779b9u;}
 void *stream_memalign(size_t a,size_t n){void *p=NULL;if(posix_memalign(&p,a<sizeof(void*)?sizeof(void*):a,n))return NULL;return p;}
@@ -28,6 +35,11 @@ void *stream_timer_create(void (*cb)(void *),uint32_t period,void *user){(void)c
 void *stream_timer_next(void *t){(void)t;return NULL;}
 static char monitors,input,link_;void *nav_monitors(void){return &monitors;}void *nav_input(void *m){(void)m;return &input;}void *nav_link(void *m){(void)m;return &link_;}
 void *fm_system(void *m){(void)m;return &monitors;}
+static char battery_mon;static int64_t local_time;static int battery_level=-1;static int aligned_right;
+void *fm_battery_monitor(void *m){(void)m;return &battery_mon;}
+int64_t fm_local_time(void *s){assert(s==&monitors);return local_time;}
+int fm_battery_level(void *b){assert(b==&battery_mon);return battery_level;}
+void menu_text_align(void *o,int a,uint32_t f){(void)o;(void)f;if(a==3)aligned_right++;}
 unsigned tgr_ota_status(void *s){(void)s;return ota?1:0;}
 bool nav_bonded(void *l){(void)l;return bonded;}bool nav_folded(void *i){(void)i;return folded;}bool focus_screen_on(void){return screen;}
 int nav_connection(unsigned f){(void)f;return connected;}
@@ -36,8 +48,8 @@ int nav_force_off(void){force_off_calls++;screen=false;return 0;}
 void nav_screen_on(bool on){screen_on_calls++;screen=on;}
 void *tgr_indev_driver(void *indev){(void)indev;return wheel_ctx;}
 void *stream_display_next(void *d){return d?NULL:display;}
-void *tio_lv_obj_create_ex(void *parent,uint32_t f){(void)f;assert(parent==sys_obj);covers++;return cover_obj;}
-void tio_lv_obj_delete(void *o){assert(o==cover_obj);cover_deletes++;}
+void *tio_lv_obj_create_ex(void *parent,uint32_t f){(void)f;assert(parent==sys_obj);covers++;kid_add(cover_obj);return cover_obj;}
+void tio_lv_obj_delete(void *o){assert(o==cover_obj);cover_deletes++;kid_remove(o);}
 static int cover_w,cover_h,layout_lag;   /* LVGL applies a size at its next layout pass: layout_lag reads of 0 first */
 void tio_lv_obj_set_size(void *o,int w,int h){if(o==cover_obj){cover_w=w;cover_h=h;}}
 int32_t tio_lv_obj_get_width(void *o){assert(o==cover_obj);if(layout_lag){layout_lag--;return 0;}return cover_w;}
@@ -72,7 +84,9 @@ static char w_objs[32];static int w_n;
 static void *w_obj(void *c,void *p){(void)c;(void)p;return &w_objs[w_n++%32];}
 static void *w_label(void *c,void *p,unsigned f){(void)f;return w_obj(c,p);}
 static void w_place(void *c,void *o,int x,int y,int w,int h){(void)c;(void)o;(void)x;(void)y;(void)w;(void)h;}
-static void w_text(void *c,void *o,const char *s){(void)c;(void)o;(void)s;view_texts++;}
+static char w_txt[32][48];
+static void w_text(void *c,void *o,const char *s){(void)c;view_texts++;snprintf(w_txt[(char *)o-w_objs],48,"%s",s);}
+static const char *shown(void *label){return w_txt[(char *)label-w_objs];}
 static void w_destroy(void *c,void *o){(void)c;(void)o;}
 #include "../src/navigation-runtime-v1/nav_view.h"
 TNWidgets tn_lvgl_widgets(void){return (TNWidgets){.idle=w_idle,.root=w_obj,.label=w_label,.place=w_place,.text_static=w_text,.destroy=w_destroy};}
@@ -106,7 +120,7 @@ static void reset_world(bool keep_files){
  screen_on_calls=force_off_calls=kws_on=kws_off=flushes=stock_key_calls=stock_wheel_calls=replies=0;
  covers=cover_deletes=hidden_set=hidden_clear=0;topic_n=0;next_key=0;next_diff=0;
  memset(wheel_ctx,0,sizeof wheel_ctx);int fd=7;memcpy(wheel_ctx+TIO_STOCK_WHEEL_FD,&fd,4);
- memset(display,0,sizeof display);void *p=screen_obj;memcpy(display+TIO_STOCK_DISPLAY_SCREEN,&p,sizeof p);p=sys_obj;memcpy(display+TIO_STOCK_DISPLAY_SYS,&p,sizeof p);
+ sys_reset();local_time=0;battery_level=-1;memset(display,0,sizeof display);void *p=screen_obj;memcpy(display+TIO_STOCK_DISPLAY_SCREEN,&p,sizeof p);p=sys_obj;memcpy(display+TIO_STOCK_DISPLAY_SYS,&p,sizeof p);
  if(!keep_files){memset(files,0,sizeof files);}
  strcpy(files[0].path,"/mnt/nand_data/turbo_lock_v1_0.cfg");strcpy(files[1].path,"/mnt/nand_data/turbo_lock_v1_1.cfg");
  writes=0;write_fail=false;fail_bank=-1;read_fail=false;mounted=true;statfs_fail=false;
@@ -296,5 +310,26 @@ int main(void){
  fail_bank=1;lock_on_factory_reset();fail_bank=-1;assert(c->svc.lock.state==TLK_OFF&&!c->dark&&!c->locked);
  do_tick();reset_world(true);c=boot();assert(c->svc.lock.state==TLK_OFF);
  memcpy(files,saved,sizeof files);reset_world(true);c=boot();fail_bank=0;lock_on_factory_reset();fail_bank=-1;reset_world(true);c=boot();assert(c->svc.lock.state==TLK_OFF);
+ /* 19. Band T of the PIN screen: time and battery from stock's getters, battery right-aligned; unknown shows --:-- and --%. */
+ memcpy(files,saved,sizeof files);reset_world(true);c=boot();local_time=1800057600+3600*14+60*7;   /* 1800057600 is a midnight */battery_level=83;
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->view_open&&aligned_right>0);
+ assert(!strcmp(shown(c->view.labels[TLV_TIME]),"14:07")&&!strcmp(shown(c->view.labels[TLV_BATT]),"83%"));
+ battery_level=-1;local_time=0;ms+=100;do_tick();assert(!strcmp(shown(c->view.labels[TLV_TIME]),"--:--")&&!strcmp(shown(c->view.labels[TLV_BATT]),"--%"));
+ /* 20. Something stock adds to the sys layer over the PIN screen (a call view, a toast): the next sync closes the lock
+  *     screen, drops the half-entered digits and goes dark; the next press opens it again on top. */
+ ms+=100;assert(wheel(-400,1)==0&&key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.slot==1);
+ int fo20=force_off_calls,del=cover_deletes;kid_add(foreign_obj);ms+=100;do_tick();
+ assert(c->svc.lock.state==TLK_DARK&&c->dark&&!screen&&force_off_calls==fo20+1&&cover_deletes==del+1&&!c->cover&&c->locked&&lock_refuse_screen(1,1));
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->svc.lock.slot==0&&c->cover&&sys_kids[kids_n()-1]==cover_obj);
+ ms+=100;do_tick();assert(c->svc.lock.state==TLK_ENTRY&&!c->dark);   /* on top again: stays up */
+ /* Stock bringing an older child to the front counts the same. */
+ kid_remove(foreign_obj);kid_add(foreign_obj);ms+=100;do_tick();assert(c->svc.lock.state==TLK_DARK&&c->dark);
+ /* Unreadable children list: fail closed (dark). */
+ kid_remove(foreign_obj);ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY);
+ memset(sys_obj+TIO_STOCK_OBJ_SPEC_ATTR,0,sizeof(void *));ms+=100;do_tick();assert(c->svc.lock.state==TLK_DARK&&c->dark);
+ sys_reset();kids_set(0);
+ /* The failure notice is unlocked: something over it changes nothing. */
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY);enter_pin(BAD);ms+=2000;do_tick();enter_pin(PIN);
+ assert(c->svc.lock.state==TLK_NOTICE);kid_add(foreign_obj);ms+=100;do_tick();assert(c->svc.lock.state==TLK_NOTICE&&!c->dark);kid_remove(foreign_obj);
  puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank");
 }

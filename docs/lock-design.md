@@ -69,7 +69,7 @@ These follow from §2, §3 and §7 and are what `firmware/src/lock-v1/lock_core.
 
 All screens follow the glasses rules in `docs/design-system/README.md`: 540×180 page, primary content in band B, no boxes, focus shown by brightness and the caret, hints in band T for 3 s.
 
-**PIN entry.** Four slots centred in band B at `lens-hero`. Entered slots are dots at `lens-high`. The focused slot shows a digit at `lens-full` with the caret under it. Empty slots are short `lens-track` bars. The focused digit starts at 0 for every slot (never at the previous digit, which would leak it). Band T shows the time and battery at `lens-mid`, and the hint "Wheel: digit / Press: next" (ZH "转动：数字 · 按下：下一位"; the EN string stays ASCII) for 3 s.
+**PIN entry.** Four slots centred in band B at `lens-hero`. Entered slots are dots at `lens-high`. The focused slot shows a digit at `lens-full` with the caret under it. Empty slots are short `lens-track` bars. The focused digit starts at 0 for every slot (never at the previous digit, which would leak it). Band T shows the time (left) and battery (right) at `lens-mid`, as on the launcher menu, and between them the hint "Wheel: digit / Press: next" (ZH "转动：数字 · 按下：下一位"; the EN string stays ASCII) for 3 s.
 
 - Turn: change the digit, one step per `lens-wheel-detent`, wrapping 9 → 0.
 - Press: accept the digit and move on. The fourth press submits.
@@ -130,10 +130,10 @@ A new capability bit (`TD_CAP_PIN_LOCK`, bit 11) tells the phone the firmware ha
 ## 6. Hiding the display
 
 - Primary: while Locked, dark, the display is kept off by gating the screen-on requests (§7), so nothing has to be covered.
-- During PIN entry: an opaque full-page cover object on the system layer, with the top layer hidden, and the PIN view created on top of it. The active screen is not hidden (Block B1 hid it too): stock may load or delete screens while the cover is up, and a screen hidden by us and later replaced would stay black after unlock. Whenever the system layer gains a child while the cover is up, the cover and PIN view should be re-created so they stay last in z-order. **Not built yet:** this needs a child-count read of the system layer; until then the backstop below is the guard.
-- Backstop: if the cover cannot be created or is not the last child, force the display off (`nav_force_off`). A dark panel is always the failure state.
+- During PIN entry: an opaque full-page cover object on the system layer, with the top layer hidden, and the PIN view created on top of it. The active screen is not hidden (Block B1 hid it too): stock may load or delete screens while the cover is up, and a screen hidden by us and later replaced would stay black after unlock. The cover must stay the last child of the system layer, the one drawn on top. At every sync while a lock screen is up (each 250 ms tick, each key and knob step) the lock reads the system layer's children list. If the cover is not the last child (stock added a call view, a toast or the assistant view, or brought an older child to the front), or the list cannot be read, the lock screen is closed as a fold closes it: half-entered digits are dropped and the glasses go dark. The next press opens the PIN screen again, on top. The failure notice is shown while unlocked, so the check does not apply to it.
+- Backstop: if the cover cannot be created, force the display off (`nav_force_off`). A dark panel is always the failure state.
 
-Not yet shown: a toast, call or assistant view arriving during PIN entry. It goes on the owner's device checklist.
+Host-tested with a model of the children list; not yet shown in the emulator or on the device: a toast, call or assistant view arriving during PIN entry. It goes on the owner's device checklist.
 
 ## 6a. Nothing can be started while locked (from Block C, `b/REPORT-C.md`)
 

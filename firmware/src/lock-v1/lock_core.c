@@ -86,12 +86,12 @@ bool tlk_screen_on_request(TLK *t,uint32_t now_s){
  t->screen_on=tlk_screen_allowed(t);return t->screen_on;
 }
 void tlk_screen_off(TLK *t){t->screen_on=false;}
-/* Folding closes a lock screen: the half-entered digits are dropped and the glasses go dark (a wrong try already counted
- * stays counted, a running delay keeps its stored deadline). */
-void tlk_fold(TLK *t,uint32_t now_s){
- t->folded=true;t->folded_s=now_s;
- if(t->state==TLK_ENTRY||t->state==TLK_WRONG||t->state==TLK_WAITING||t->state==TLK_USE_PHONE)lock(t);
-}
+/* Closes a lock screen (PIN, wrong PIN, waiting, use phone): the half-entered digits are dropped and the glasses go dark
+ * (a wrong try already counted stays counted, a running delay keeps its stored deadline). Dark and unlocked states are
+ * left alone. */
+void tlk_close_screen(TLK *t){if(t->state==TLK_ENTRY||t->state==TLK_WRONG||t->state==TLK_WAITING||t->state==TLK_USE_PHONE)lock(t);}
+/* Folding closes a lock screen. */
+void tlk_fold(TLK *t,uint32_t now_s){t->folded=true;t->folded_s=now_s;tlk_close_screen(t);}
 void tlk_unfold(TLK *t,uint32_t now_s){
  bool was=t->folded;t->folded=false;
  if(was&&unlocked(t)&&elapsed(t->folded_s,now_s,t->rec.fold_min))lock(t);

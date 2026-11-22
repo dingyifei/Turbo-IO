@@ -3045,6 +3045,84 @@
    },
    "transform": "id",
    "why": "the wheel create stores the topic subscription result into its new driver ctx"
+  },
+  {
+   "constant": "TIO_STOCK_OBJ_SPEC_ATTR",
+   "n": 1,
+   "where": "call:link:tio_lv_obj_create_ex@0xc",
+   "at": 190,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 5
+   },
+   "transform": "id",
+   "why": "object creation reads the parent's special attributes to append the new child"
+  },
+  {
+   "constant": "TIO_STOCK_OBJ_SPEC_ATTR",
+   "n": 2,
+   "where": "call:link:tio_lv_obj_delete@0x38",
+   "at": 300,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 2,
+    "rn": 3
+   },
+   "transform": "id",
+   "why": "object deletion reads the parent's special attributes to remove the child"
+  },
+  {
+   "constant": "TIO_STOCK_SPEC_CHILDREN",
+   "n": 1,
+   "where": "call:link:tio_lv_obj_create_ex@0xc",
+   "at": 212,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 6
+   },
+   "transform": "id",
+   "why": "object creation loads the parent's children array to grow it by one"
+  },
+  {
+   "constant": "TIO_STOCK_SPEC_CHILDREN",
+   "n": 2,
+   "where": "call:link:tio_lv_obj_delete@0x38",
+   "at": 318,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 5
+   },
+   "transform": "id",
+   "why": "object deletion loads the parent's children array to shrink it"
+  },
+  {
+   "constant": "TIO_STOCK_SPEC_CHILD_CNT",
+   "n": 1,
+   "where": "call:link:tio_lv_obj_create_ex@0xc",
+   "at": 202,
+   "shape": "ldrh-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 2
+   },
+   "transform": "id",
+   "why": "object creation reads the parent's child count before adding one"
+  },
+  {
+   "constant": "TIO_STOCK_SPEC_CHILD_CNT",
+   "n": 2,
+   "where": "call:link:tio_lv_obj_delete@0x38",
+   "at": 302,
+   "shape": "ldrh-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 2
+   },
+   "transform": "id",
+   "why": "object deletion reads the parent's child count before taking one off"
   }
  ]
 }
