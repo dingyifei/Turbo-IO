@@ -43,6 +43,16 @@ static NSString *SHA256Hex(NSData *data){
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(data.bytes,(CC_LONG)data.length,digest);
     NSMutableString *hex=[NSMutableString new];for(NSUInteger i=0;i<sizeof(digest);i++)[hex appendFormat:@"%02x",digest[i]];return hex;
 }
+NSArray<NSString *> *TIOOTAChangedPayloads(NSDictionary *package){
+    NSDictionary *pins=package[@"memberPins"],*stock=nil;NSMutableArray *changed=[NSMutableArray array];
+    if(![pins isKindOfClass:NSDictionary.class]||[package[@"kind"] isEqual:@"STOCK"])return changed;
+    for(NSUInteger i=0;i<TIOOTAPackageCount();i++){NSDictionary *p=TIOOTAPackageAt(i);if([p[@"kind"] isEqual:@"STOCK"])stock=p[@"memberPins"];}
+    for(NSString *name in [pins.allKeys sortedArrayUsingSelector:@selector(compare:)]){
+        if([name isEqual:@"OtaFileInfo.json"])continue;
+        if(stock?![stock[name] isEqual:pins[name]]:[name isEqual:@"nuttx_ap.bin"])[changed addObject:name];   // no stock package: the AP is the TMG change
+    }
+    return changed;
+}
 NSDictionary *TIOCheckExperimentalOTA(NSData *data,NSDictionary *package,NSError **error){
     if(!PackageUsable(package))return Fail(error,TIOText(@"ota.package.unknown"));
     if(![data isKindOfClass:NSData.class]||data.length!=[package[@"zipBytes"] unsignedIntegerValue])return Fail(error,[NSString stringWithFormat:TIOText(@"ota.identity.sizeMismatch"),TIOOTAPackageDisplayName(package)]);
@@ -50,10 +60,10 @@ NSDictionary *TIOCheckExperimentalOTA(NSData *data,NSDictionary *package,NSError
     if(![hex isEqual:package[@"zipSHA256"]])return Fail(error,TIOText(@"SHA-256 不匹配。拒绝未知、旧版或已修改的包，未发送。"));
     // The exact archive has independently passed full ZIP/manifest/AP auditing
     // on Mac (phone_pins.py). This is exact-byte identity, not a generic ZIP manifest parser.
-    BOOL stock=[package[@"kind"] isEqual:@"STOCK"];NSUInteger members=[package[@"memberPins"] count];
+    BOOL stock=[package[@"kind"] isEqual:@"STOCK"];NSUInteger members=[package[@"memberPins"] count];NSArray *changed=TIOOTAChangedPayloads(package);
     return @{@"schema":@1,@"candidate":stock?TIOOTAPackageDisplayName(package):[@"Turbo Menu " stringByAppendingString:package[@"name"]],@"package":package[@"name"],@"baseFirmware":TIO_FW_BASE,
-             @"archiveSHA256":hex,@"archiveBytes":@(data.length),@"changedPayloads":stock?@[]:@[@"nuttx_ap.bin"],
-             @"unchangedPayloadCount":@(members-(stock?1:2)),@"integrityPassed":@YES,@"sent":@NO,
+             @"archiveSHA256":hex,@"archiveBytes":@(data.length),@"changedPayloads":changed,
+             @"unchangedPayloadCount":@(members-1-changed.count),@"integrityPassed":@YES,@"sent":@NO,
              @"runtimeValidated":@NO,@"officialDispatchConnected":@NO};
 }
 static NSData *Read(NSURL *source,NSDictionary *package,NSError **error){

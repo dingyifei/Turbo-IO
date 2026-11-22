@@ -26,15 +26,9 @@ static NSError *FeedError(NSString *message){return [NSError errorWithDomain:@"T
 // The update text for a TMG package: the members whose pins differ from the bundled stock package's (the AP, and in a
 // release that also patches the Bluetooth core, the BTH), and how many others are unchanged.
 static NSString *ModifiedDescription(NSDictionary *package){
-    NSDictionary *pins=package[@"memberPins"],*stock=nil;
-    for(NSUInteger i=0;i<TIOOTAPackageCount();i++){NSDictionary *p=TIOOTAPackageAt(i);if([p[@"kind"] isEqual:@"STOCK"])stock=p[@"memberPins"];}
-    NSMutableArray *changed=[NSMutableArray array];NSUInteger same=0;
-    for(NSString *name in [pins.allKeys sortedArrayUsingSelector:@selector(compare:)]){
-        if([name isEqual:@"OtaFileInfo.json"])continue;
-        if(stock&&[stock[name] isEqual:pins[name]]){same++;continue;}
-        if(!stock&&![name isEqual:@"nuttx_ap.bin"]){same++;continue;}   // no stock package to compare with: the AP is the TMG change
-        [changed addObject:[name isEqual:@"nuttx_ap.bin"]?@"AP":[name isEqual:@"nuttx_bth.bin"]?@"BTH":name];
-    }
+    NSArray<NSString *> *names=TIOOTAChangedPayloads(package);NSMutableArray *changed=[NSMutableArray array];
+    for(NSString *name in names)[changed addObject:[name isEqual:@"nuttx_ap.bin"]?@"AP":[name isEqual:@"nuttx_bth.bin"]?@"BTH":name];
+    NSUInteger same=[package[@"memberPins"] count]-1-names.count;   // the manifest is not a payload
     return [NSString stringWithFormat:@"PRIVATE EXPERIMENT: %@ modified, other %lu payloads unchanged. Runtime unverified.",[changed componentsJoinedByString:@" and "],(unsigned long)same];
 }
 static NSArray<NSString *> *QueryPaths(void){return @[@"/g/xxxxxxxA78p2M",@"/g/xxxxxxxxxxCCXhB"];}

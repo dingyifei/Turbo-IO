@@ -14,6 +14,9 @@ FOUNDATION_EXPORT NSString *TIOOTAPackageArchiveName(NSDictionary * _Nullable pa
 // member pin), held in memory; nil with one plain message when a member is missing or different.
 NSDictionary<NSString *,NSData *> * _Nullable TIOCopyExperimentalOTAPayloads(NSURL *directory,NSDictionary * _Nullable package,NSError **error);
 // The package's exact ZIP bytes (size and SHA-256). Integrity approval never means authorization to flash.
+// The payloads of a package whose pins differ from the bundled stock package's, sorted (the manifest excluded); with no
+// stock package, a TMG package's AP. Empty for the stock package itself.
+FOUNDATION_EXPORT NSArray<NSString *> *TIOOTAChangedPayloads(NSDictionary * _Nullable package);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOCheckExperimentalOTA(NSData *data, NSDictionary * _Nullable package, NSError **error);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOReadExperimentalOTA(NSURL *file, NSDictionary * _Nullable package, NSError **error);
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOImportExperimentalOTA(NSURL *source, NSURL *directory, NSDictionary * _Nullable package, NSError **error);

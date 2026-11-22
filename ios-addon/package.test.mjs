@@ -779,7 +779,7 @@ test('full 1.0.21 profile: the C19 pins, its own route profile and markers, and 
  for(const bad of ['c99','c20','c21','__proto__','',' default','default'])assert.throws(()=>m.releaseHosts(bad),/unknown_release/);
  const base={app:'/a/Runner.app',addon:'/a/x.dylib',profile:'/a/p',out:'/a/new-out-1021-'+Date.now(),identity:'a'.repeat(40),device:'device-1234',bundle:'com.rayneo.venus.pub',firmware:'/a/f.zip','stock-firmware':'/a/s.zip',host:'ios1021'};
  m.validateOptions(base);m.validateOptions({...base,'experimental-ota':'TMG14'});
- assert.throws(()=>m.validateOptions({...base,'experimental-ota':'TMG12'}),/only_exact_tmg13_supported/);
+ assert.throws(()=>m.validateOptions({...base,'experimental-ota':'TMG12'}),/only_exact_tmg14_supported/);
  for(const n of ['c16','c17','c18','c20','c21','c99'])assert.throws(()=>m.validateOptions({...base,release:n}),/unknown_release/,n);
  assert.throws(()=>m.validateOptions({...base,product:'iPhone17,1'}),/full_host_takes_no_product/);
  assert.throws(()=>m.validateOptions({...base,firmware:undefined}),/exact_host_and_firmware_resource_required/);
