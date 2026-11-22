@@ -44,11 +44,12 @@ int bth_motion_body(int clk,struct bth_timespec *ts,const uint8_t *caller_sp){
  volatile float *prev=(volatile float *)BTH_PREV;
  const float *first=(const float *)(batch+BATCH_FIRST),*last=(const float *)(batch+BATCH_LAST);
  if(ret!=0||*(const uint32_t *)(batch+BATCH_COUNT)==0)return ret;
+ /* prev is NaN after each "on" (bth_motion.S): every compare with it is false, so that window is judged on its own. */
  int moving=moved(last,first)||*(const float *)(batch+BATCH_SIGMA)>BAR_SIGMA||moved(last,prev);
  prev[0]=last[0];prev[1]=last[1];prev[2]=last[2];
  if(!moving)return ret;
  uint64_t now=(uint64_t)ts->sec*1000000ull+(uint64_t)(ts->nsec/1000);
- if(now-*last_send<RATE_US)return ret;
+ if(*last_send&&now-*last_send<RATE_US)return ret;   /* none sent yet: no wait (review finding 4) */
  struct motion_seen *m=bth_neck_alloc(TIO_NECK_MSG_BYTES,1);
  if(!m)return ret;
  m->type=TIO_MOTION_SEEN_TYPE;m->zero=0;m->len=TIO_MOTION_SEEN_LEN;m->us=now;m->sigma=*(const float *)(batch+BATCH_SIGMA);

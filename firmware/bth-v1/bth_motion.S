@@ -31,9 +31,18 @@ bth_rx_hook:
     bne     2f
     ldr     r3, [r4, #12]               @ on
     cmp     r3, #0
-    it      ne
-    movne   r3, #1
-    ldr     r1, =BTH_ENABLE
+    beq     3f
+    movs    r3, #1
+    @ "on": the previous-window sample is set to NaN, so the first window after it compares only inside itself (any
+    @ compare with NaN is false; review finding 1: a zero or stale sample made the first window count as motion).
+    ldr     r0, =BTH_PREV_NAN
+    ldr     r1, =BTH_PREV
+    str     r0, [r1]
+    ldr     r1, =BTH_PREV_1
+    str     r0, [r1]
+    ldr     r1, =BTH_PREV_2
+    str     r0, [r1]
+3:  ldr     r1, =BTH_ENABLE
     str     r3, [r1]                    @ the one store; no call, no wait (the rptun thread serves every endpoint)
     movs    r0, #0                      @ consumed, as stock returns for a handled type
     b.w     bth_rx_done                 @ 0x0c0aa9a4: add sp,#0xc; pop {r4,r5,pc}
