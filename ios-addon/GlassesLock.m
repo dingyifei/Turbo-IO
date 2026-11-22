@@ -46,7 +46,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
 
 @implementation TIOGlassesLockLink {
  NSString *(^_peerNow)(void);BOOL(^_allowed)(void);double(^_clock)(void);uint32_t(^_caps)(void);BOOL(^_send)(NSData *);
- NSString *_peer,*_note;BOOL _known;TLKReply _state;uint32_t _token,_client,_request;uint8_t _op;unsigned _lastOp,_lastResult;
+ NSString *_peer,*_note,*_silent;BOOL _known;TLKReply _state;uint32_t _token,_client,_request;uint8_t _op;unsigned _lastOp,_lastResult;
  double _tokenAt,_sentAt;NSUInteger _epoch;void(^_done)(void);
 }
 - (instancetype)initWithPeer:(NSString *(^)(void))peer allowed:(BOOL(^)(void))allowed clock:(double(^)(void))clock caps:(uint32_t(^)(void))caps send:(BOOL(^)(NSData *))send{
@@ -61,9 +61,13 @@ static NSString *ResultNote(unsigned op,unsigned result){
 - (BOOL)supported{
  NSString *peer=_peerNow();if(!peer.length||!_caps)return NO;uint32_t caps=_caps();
  if(TIOLockCapsSupported(caps)){[self remember:peer on:YES];return YES;}
- if(caps){[self remember:peer on:NO];return NO;}   /* a fresh sample without the bit: other firmware */
+ if(caps){[self remember:peer on:NO];_silent=[peer copy];return NO;}   /* a fresh sample without the bit: other firmware (not undecided either) */
  return [[_seen arrayForKey:@"lockPeers"]containsObject:peer];   /* no sample (stale, refused while locked) */
 }
+/* No caps sample and not remembered (first contact while the glasses are locked refuse the status read, device feedback
+ * F2-1): only a QUERY may go out, and a valid reply proves the lock (consume: remembers the peer). */
+- (BOOL)probing{NSString *peer=_peerNow();return peer.length&&_caps&&_caps()==0&&!self.supported;}
+- (BOOL)undecided{return self.probing&&![_silent isEqual:_peerNow()];}
 - (BOOL)known{return _known&&[_peer isEqual:_peerNow()];}
 - (TLKReply)state{return self.known?_state:(TLKReply){0};}
 - (TIOLockModel)model{TLKReply r=_state;return TIOLockModelFromReply(self.known?&r:NULL);}
@@ -80,7 +84,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
  NSAssert(NSThread.isMainThread,@"main only");
  if(self.busy){if(done)done();return;}
  if(!_allowed()||!_peer.length||![_peer isEqual:_peerNow()]){_token=0;[self refuse:TIOText(@"lock.note.connect") op:q.op done:done];return;}
- if(!self.supported){_token=0;[self refuse:TIOText(@"lock.note.unsupported") op:q.op done:done];return;}
+ if(!self.supported&&!(q.op==TLK_OP_QUERY&&self.probing)){_token=0;[self refuse:TIOText(@"lock.note.unsupported") op:q.op done:done];return;}
  /* The one place a TLK: record is encoded, and only a record the glasses' own decoder accepts leaves the phone. */
  uint8_t raw[32],wire[74];TLKCommand verify;tlk_encode(raw,&q);
  if(!tlk_decode(raw,32,&verify)){[self refuse:TIOText(@"lock.note.invalid") op:q.op done:done];return;}
@@ -90,7 +94,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
  BOOL sent=_send([NSData dataWithBytes:wire length:74]);if(_epoch!=epoch||!self.busy)return;
  if(!sent){_token=0;[self finish:TIOText(@"lock.note.noReply") result:TIOLockResultNotSent];return;}
  __weak typeof(self) weak=self;
- dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(TIOLockReplySeconds*NSEC_PER_SEC)),dispatch_get_main_queue(),^{typeof(self) s=weak;if(s&&s->_epoch==epoch&&s.busy){s->_token=0;[s finish:TIOText(@"lock.note.noReply") result:TIOLockResultNoReply];}});
+ dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(TIOLockReplySeconds*NSEC_PER_SEC)),dispatch_get_main_queue(),^{typeof(self) s=weak;if(s&&s->_epoch==epoch&&s.busy){s->_token=0;if(s->_op==TLK_OP_QUERY&&s.probing)s->_silent=[s->_peer copy];[s finish:TIOText(@"lock.note.noReply") result:TIOLockResultNoReply];}});
 }
 - (void)query:(void(^)(void))done{
  if(self.busy){if(done)done();return;}
@@ -99,7 +103,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
 }
 - (void)perform:(TLKCommand)q done:(void(^)(void))done{
  if(self.busy){if(done)done();return;}
- if(!self.supported){[self refuse:TIOText(@"lock.note.unsupported") op:q.op done:done];return;}
+ if(!self.supported&&!self.undecided){[self refuse:TIOText(@"lock.note.unsupported") op:q.op done:done];return;}
  if(!self.ready){__weak typeof(self) weak=self;[self query:^{typeof(self) s=weak;if(s.ready)[s perform:q done:done];else if(done)done();}];return;}
  q.request=Nonzero();q.client=_client;q.token=_token;_token=0;[self send:q done:done];
 }
@@ -117,7 +121,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
 }
 - (void)motionOn:(void(^)(void))done{
  if(self.busy){if(done)done();return;}
- if(!self.supported){[self refuse:TIOText(@"lock.note.unsupported") op:TLK_OP_MOTION_ON done:done];return;}
+ if(!self.supported&&!self.undecided){[self refuse:TIOText(@"lock.note.unsupported") op:TLK_OP_MOTION_ON done:done];return;}
  if(!self.ready){__weak typeof(self) weak=self;[self query:^{typeof(self) s=weak;if(s.ready)[s motionOn:done];else if(done)done();}];return;}
  /* The firmware answers "refused" until it carries the motion hook (milestone 3); a fresh QUERY that does not report
   * "motion supported" ends here, as refused, with nothing more sent. */
@@ -132,7 +136,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
  /* A QUERY that succeeded carries the token; nothing else ever does. */
  if((r.op==TLK_OP_QUERY&&r.result==TLK_R_OK&&!r.token)||(r.op!=TLK_OP_QUERY&&r.token)){[self finish:TIOText(@"lock.note.noReply") result:TIOLockResultNoReply];return YES;}
  /* Every reply carries the whole state, whatever the result. */
- _state=r;_known=YES;[self remember:_peer on:YES];
+ _state=r;_known=YES;_silent=nil;[self remember:_peer on:YES];
  if(r.op==TLK_OP_QUERY&&r.result==TLK_R_OK){_token=r.token;_tokenAt=now;}
  [self finish:ResultNote(r.op,r.result) result:r.result];return YES;
 }

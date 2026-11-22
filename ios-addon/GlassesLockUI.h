@@ -6,7 +6,7 @@ UIViewController *TIOGlassesLockController(void);
 BOOL TIOGlassesLockConsume(NSDictionary *event);
 /* Hub row: always shown (device feedback 5); the page explains when there are no glasses or they lack the lock. The
  * subtitle is the state of the last QUERY (nil before one). TIOGlassesLockHubVisible says whether the connected glasses
- * have the lock (live caps, or seen before). TIOGlassesLockHubRefresh asks for a status sample when no capability bits
+ * may have the lock (live caps, seen before, or not yet known: no sample and no unanswered QUERY). TIOGlassesLockHubRefresh asks for a status sample when no capability bits
  * are known, at most every TDGlassesCapsRefreshSeconds, and reloads the hub once it may have arrived. */
 BOOL TIOGlassesLockHubVisible(void);
 NSString *TIOGlassesLockHubStatus(void);

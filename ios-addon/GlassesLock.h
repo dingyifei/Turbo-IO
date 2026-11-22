@@ -33,10 +33,15 @@ extern const double TIOLockTokenUseSeconds; /* a QUERY token is used only this l
 @interface TIOGlassesLockLink:NSObject
 @property(nonatomic,readonly) BOOL busy;
 /* The connected glasses report TD_CAP_PIN_LOCK, or this phone has seen the lock on them before (seen). Without either
- * nothing is encoded or sent. The glasses refuse the diagnostics status read while locked, so the caps sample goes stale
+ * nothing but a first QUERY (undecided) is encoded or sent. The glasses refuse the diagnostics status read while locked, so the caps sample goes stale
  * exactly when Unlock is needed (device feedback 5): once seen, the TLK: QUERY answer is the live state. A fresh sample
  * without the bit (other firmware) forgets them again. */
 @property(nonatomic,readonly) BOOL supported;
+/* Connected glasses with no caps sample and not remembered (first contact while locked: the status read is refused).
+ * Only a QUERY is sent; a valid TKA: reply proves the lock and remembers the glasses. undecided stays YES until that
+ * QUERY goes unanswered or a fresh sample without the bit arrives, so the page and the hub treat them as possibly
+ * locked, not as lacking the lock. */
+@property(nonatomic,readonly) BOOL undecided;
 /* Where the glasses that have shown the lock are remembered (key "lockPeers"); nil: the live caps only. */
 @property(nonatomic,strong) NSUserDefaults *seen;
 /* Glasses are connected (a peer). */

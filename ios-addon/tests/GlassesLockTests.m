@@ -150,8 +150,8 @@ static void CapsWhileLocked(void){@autoreleasepool{
   * is never answered exactly when Unlock is needed. Caps sample stale or refused while locked: row shown, Unlock works. */
  NSString *suite=@"io.turboio.test.lock.seen";NSUserDefaults *d=[[NSUserDefaults alloc]initWithSuiteName:suite];[d removePersistentDomainForName:suite];
  Fixture *f=[Fixture new];f.link.seen=d;f->g.flags=TLK_F_ENABLED;
- /* Never seen and no sample: nothing is offered or sent (the page explains). */
- f.caps=0;assert(f.link.connected&&!f.link.supported);[f.link query:f.cb];assert(!f.wires.count);
+ /* Never seen and no sample: only a QUERY may go out (FirstContactLocked); a fresh sample without the bit sends nothing. */
+ f.caps=TD_CAPS_TMG9;assert(f.link.connected&&!f.link.supported&&!f.link.undecided);[f.link query:f.cb];assert(!f.wires.count);
  /* Seen once with the caps bit, then locked: the sample is stale (0) and every status read refused. */
  f.caps=TD_CAPS_TMG13;assert(f.link.supported);f.caps=0;f->g.flags=TLK_F_ENABLED|TLK_F_LOCKED;
  assert(f.link.supported);   /* the hub row's TIOGlassesLockHubVisible */
@@ -165,6 +165,34 @@ static void CapsWhileLocked(void){@autoreleasepool{
  f.caps=TD_CAPS_TMG9;assert(!f.link.supported);f.caps=0;assert(!f.link.supported);
  unsigned n=(unsigned)f.wires.count;[f.link unlock:f.cb];assert(f.wires.count==n&&[f.link.note isEqual:TIOText(@"lock.note.unsupported")]);
  f.peer=@"";assert(!f.link.connected&&!f.link.supported);
+ [d removePersistentDomainForName:suite];
+}}
+
+static void FirstContactLocked(void){@autoreleasepool{
+ /* Device feedback F2-1: the phone build has never seen these glasses unlocked (installed while they were locked), so there
+  * is no caps sample (the status read is refused while locked) and nothing remembered. The QUERY goes out; its reply
+  * proves the lock, the page shows Unlock, Unlock works, and the glasses are remembered. */
+ NSString *suite=@"io.turboio.test.lock.first";NSUserDefaults *d=[[NSUserDefaults alloc]initWithSuiteName:suite];[d removePersistentDomainForName:suite];
+ Fixture *f=[Fixture new];f.link.seen=d;f.caps=0;f->g.flags=TLK_F_ENABLED|TLK_F_LOCKED;
+ assert(f.link.connected&&!f.link.supported&&f.link.undecided);   /* hub row and page: possibly locked, not "Not available" */
+ [f.link query:f.cb];assert(f.wires.count==1&&f->g.last.op==TLK_OP_QUERY&&f.link.known&&f.link.model.showUnlock&&f.link.model.phase==TIOLockPhaseLocked);
+ assert(f.link.supported&&[[d arrayForKey:@"lockPeers"]containsObject:@"glasses-13"]);
+ [f.link unlock:f.cb];assert(f->g.last.op==TLK_OP_UNLOCK&&f.link.lastResult==TLK_R_OK&&f.link.model.phase==TIOLockPhaseUnlocked);
+ /* Unlock straight from the hub's first contact (no page visit first): QUERY, then UNLOCK with its token. */
+ Fixture *h=[Fixture new];h.peer=@"glasses-first-unlock";h.link.seen=d;h.caps=0;h->g.flags=TLK_F_ENABLED|TLK_F_LOCKED;
+ [h.link unlock:h.cb];assert(h.wires.count==2&&h->g.last.op==TLK_OP_UNLOCK&&h.link.lastResult==TLK_R_OK&&h.link.model.phase==TIOLockPhaseUnlocked);
+ /* Glasses without the lock (stock 1.0.6.11, TMG12) never answer: one QUERY, nothing else, then "Not available". */
+ Fixture *g=[Fixture new];g.peer=@"glasses-stock";g.link.seen=d;g.caps=0;g->g.mute=YES;
+ assert(g.link.undecided);[g.link unlock:g.cb];assert(g.wires.count==1&&g->g.commands==0);
+ assert(!memcmp((const uint8_t *)g.wires[0].bytes+6,"TLK:",4));uint8_t raw[32];TLKCommand q;assert(tlk_uncarrier(g.wires[0].bytes,74,raw,false)&&tlk_decode(raw,32,&q)&&q.op==TLK_OP_QUERY);
+ NSTimeInterval deadline=NSProcessInfo.processInfo.systemUptime+TIOLockReplySeconds+5;
+ while(g.link.busy&&NSProcessInfo.processInfo.systemUptime<deadline)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.02]];
+ assert(!g.link.busy&&g.link.lastResult==TIOLockResultNoReply&&!g.link.undecided&&!g.link.supported&&g.wires.count==1);
+ [g.link lockNow:g.cb];[g.link motionOn:g.cb];assert(g.wires.count==1&&[g.link.note isEqual:TIOText(@"lock.note.unsupported")]);
+ /* A later visit asks once more (the first QUERY may have been lost); an answer then settles it. */
+ g->g.mute=NO;g->g.flags=TLK_F_ENABLED;[g.link query:g.cb];assert(g.wires.count==2&&g.link.known&&g.link.supported&&g.link.model.phase==TIOLockPhaseUnlocked);
+ /* Other glasses are still undecided; a fresh sample without the bit ends it with nothing sent. */
+ g.peer=@"glasses-other-2";assert(g.link.undecided);g.caps=TD_CAPS_TMG9;assert(!g.link.undecided&&!g.link.supported);
  [d removePersistentDomainForName:suite];
 }}
 
@@ -226,7 +254,8 @@ int main(void){@autoreleasepool{
  Matching();
  Caps();
  CapsWhileLocked();
+ FirstContactLocked();
  Motion();
  Model();
- puts("GlassesLock phone PASS: shared codec records, query-then-change with a fresh token, exact reply matching, no resend, caps bit 11 gate, caps sample stale or refused while locked: row shown, Unlock works, MOTION_ON refused, early-drop counter, state to page model");
+ puts("GlassesLock phone PASS: shared codec records, query-then-change with a fresh token, exact reply matching, no resend, caps bit 11 gate, caps sample stale or refused while locked: row shown, Unlock works, first contact while locked: QUERY proves the lock, no answer: Not available, MOTION_ON refused, early-drop counter, state to page model");
 }return 0;}

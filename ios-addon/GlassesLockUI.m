@@ -24,7 +24,7 @@ static TIOLockMotion *Motion(void){
  dispatch_once(&once,^{motion=[[TIOLockMotion alloc]initWithDefaults:[[NSUserDefaults alloc]initWithSuiteName:@"org.turboio.addon.lock"] clock:^{return NSProcessInfo.processInfo.systemUptime;}];});return motion;
 }
 BOOL TIOGlassesLockConsume(NSDictionary *e){return [Link() consume:e];}
-BOOL TIOGlassesLockHubVisible(void){return Link().supported;}
+BOOL TIOGlassesLockHubVisible(void){TIOGlassesLockLink *l=Link();return l.supported||l.undecided;}
 NSString *TIOGlassesLockHubStatus(void){NSString *key=TIOLockPhaseTextId(Link().model.phase);return key?TIOText(key):nil;}
 void TIOGlassesLockHubRefresh(void){
  static double asked;double now=NSProcessInfo.processInfo.systemUptime;
@@ -93,7 +93,7 @@ static NSString *Minutes(unsigned minutes){NSString *format=TIOText(@"lock.minut
 - (void)rebuild{
  TIOLockModel m=self.link.model;NSMutableArray *layout=[NSMutableArray new];
  /* No glasses, or glasses without the lock (and none seen on them): the explanation page, no controls. */
- if(!self.link.known&&!self.link.supported){
+ if(!self.link.known&&!self.link.supported&&!self.link.undecided){
   NSString *why=TIOText(self.link.connected?@"lock.note.unsupported":@"lock.note.connect");
   [layout addObject:@{@"rows":@[],@"header":TIOText(@"lock.header.unavailable"),@"footer":[NSString stringWithFormat:@"%@\n\n%@",why,TIOText(@"lock.footer.main")]}];
   self.layout=layout;[self.tableView reloadData];return;
