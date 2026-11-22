@@ -61,6 +61,8 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert([feed armArchive:file lifetime:0.01 error:&error]);usleep(20000);assert(![feed.status[@"armed"] boolValue]);assert(Query(port,path)[@"data"]==NSNull.null);
     assert([feed armArchive:file lifetime:60 error:&error]);NSString *next=[NSURL URLWithString:Query(port,path)[@"data"][@"downloadUrl"]].path;assert(![next isEqual:download]);assert([Fetch(port,@"GET",download,@"")[@"code"] intValue]==404);
     assert([Query(port,path)[@"data"][@"taskName"] isEqual:@"Turbo Menu TMG13 PRIVATE EXPERIMENT"]&&[feed.status[@"package"] isEqual:@"TMG13"]);
+    // The update text names the members that differ from the bundled stock package.
+    assert([Query(port,path)[@"data"][@"updateDesc"] isEqual:@"PRIVATE EXPERIMENT: AP modified, other 15 payloads unchanged. Runtime unverified."]);
     // A change of selection closes the open window at once, even when the first package is picked again.
     assert(TIOOTASelectedPackageIndex()==0);NSUInteger generation=TIOOTASelectionGeneration();
     assert(TIOOTASelectPackage(1,&error)&&TIOOTASelectedPackageIndex()==1&&TIOOTASelectionGeneration()==generation+1);

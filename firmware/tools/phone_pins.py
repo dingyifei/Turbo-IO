@@ -9,7 +9,8 @@ over). The first package is the default the phone selects at every launch and mu
 listed, must be labelled STOCK-<base>. Any other label is refused.
 For every package this reads the ZIP, checks its manifest, its pinned identity, and that AP, APC1 and BTH all report
 the base (build.py's core_identity). A TMG package's non-AP members must be byte-for-byte the members of the stock ZIP
-of its base and its AP must differ from the stock AP; the TMG package whose label is the tree's label (../RELEASE)
+of its base (except nuttx_bth.bin in the package whose label is the tree's label, when build-inputs.json has a bth
+block: it must be the BTH image pinned there) and its AP must differ from the stock AP; the TMG package whose label is the tree's label (../RELEASE)
 must also be the ZIP in ../build-inputs.json, on the same stock base. A STOCK-<base> package must equal the base's
 stock ZIP in every member, the AP and the manifest included: it is the stock package and nothing else. An emulator-only build is never a phone release: a base whose
 phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP name are all refused, in every mode
@@ -304,8 +305,15 @@ def release_pins(name, spec, archive, build=None, tree_spec=None, tree_label=Non
     stock_manifest, stock_payloads = read_archive(stock_raw, base)
     if set(stock_payloads) != set(payloads):
         raise ValueError(name + ': member names differ from stock ' + base)
+    # A TMG package changes the AP; the tree's own package may also change the Bluetooth core (build-inputs.json bth),
+    # and then only to the BTH image the tree pins.
+    changed = set() if kind == 'STOCK' else {'nuttx_ap.bin'}
+    if kind == 'TMG' and spec['firmware'] == tree_label and 'bth' in tree_spec:
+        changed.add('nuttx_bth.bin')
+        if sha256(payloads['nuttx_bth.bin']) != tree_spec['bth']['BTHSHA256']:
+            raise ValueError(name + ': nuttx_bth.bin is not the BTH image build-inputs.json pins')
     for member, data in payloads.items():
-        if (member != 'nuttx_ap.bin' or kind == 'STOCK') and data != stock_payloads[member]:
+        if member not in changed and data != stock_payloads[member]:
             raise ValueError(name + ': ' + member + ' is not the stock ' + base + ' member')
     if kind == 'STOCK' and manifest_data != stock_manifest:
         raise ValueError(name + ': OtaFileInfo.json is not the stock ' + base + ' manifest')

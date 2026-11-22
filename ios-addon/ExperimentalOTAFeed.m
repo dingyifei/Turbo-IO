@@ -23,6 +23,20 @@
 #define TIO_OTA_FEED_ARMING_ENABLED 0
 #endif
 static NSError *FeedError(NSString *message){return [NSError errorWithDomain:@"TurboIO.OTAFeed" code:1 userInfo:@{NSLocalizedDescriptionKey:message}];}
+// The update text for a TMG package: the members whose pins differ from the bundled stock package's (the AP, and in a
+// release that also patches the Bluetooth core, the BTH), and how many others are unchanged.
+static NSString *ModifiedDescription(NSDictionary *package){
+    NSDictionary *pins=package[@"memberPins"],*stock=nil;
+    for(NSUInteger i=0;i<TIOOTAPackageCount();i++){NSDictionary *p=TIOOTAPackageAt(i);if([p[@"kind"] isEqual:@"STOCK"])stock=p[@"memberPins"];}
+    NSMutableArray *changed=[NSMutableArray array];NSUInteger same=0;
+    for(NSString *name in [pins.allKeys sortedArrayUsingSelector:@selector(compare:)]){
+        if([name isEqual:@"OtaFileInfo.json"])continue;
+        if(stock&&[stock[name] isEqual:pins[name]]){same++;continue;}
+        if(!stock&&![name isEqual:@"nuttx_ap.bin"]){same++;continue;}   // no stock package to compare with: the AP is the TMG change
+        [changed addObject:[name isEqual:@"nuttx_ap.bin"]?@"AP":[name isEqual:@"nuttx_bth.bin"]?@"BTH":name];
+    }
+    return [NSString stringWithFormat:@"PRIVATE EXPERIMENT: %@ modified, other %lu payloads unchanged. Runtime unverified.",[changed componentsJoinedByString:@" and "],(unsigned long)same];
+}
 static NSArray<NSString *> *QueryPaths(void){return @[@"/g/xxxxxxxA78p2M",@"/g/xxxxxxxxxxCCXhB"];}
 // codes: the accepted current-version query codes of the selected package.
 static NSString *QueryKind(NSString *target,NSArray *codes){
@@ -166,7 +180,7 @@ static void Reply(int fd,NSInteger status,NSData *body,NSString *mime,NSDictiona
                 // The name and text RayNeo shows for the update: the stock package is named as plain stock firmware.
                 BOOL stock=[package[@"kind"] isEqual:@"STOCK"];
                 NSString *task=stock?[@"Stock " stringByAppendingString:TIO_FW_BASE]:[NSString stringWithFormat:@"Turbo Menu %@ PRIVATE EXPERIMENT",package[@"name"]];
-                NSString *desc=stock?[NSString stringWithFormat:@"Stock %@.",TIO_FW_BASE]:[NSString stringWithFormat:@"PRIVATE EXPERIMENT: AP modified, other %lu payloads unchanged. Runtime unverified.",(unsigned long)([package[@"memberPins"] count]-2)];
+                NSString *desc=stock?[NSString stringWithFormat:@"Stock %@.",TIO_FW_BASE]:ModifiedDescription(package);
                 data=@{@"taskName":task,@"appName":@"Strix OS",@"packageName":@"Strix OS",@"versionName":TIO_FW_FEED_VERSION_NAME,@"versionCode":@(TIO_FW_FEED_VERSION_CODE),@"upgradeType":@1,@"userScope":@0,@"updateDesc":desc,@"appIcon":@"",@"apkSize":@(_archive.length),@"apkMd5":_md5,@"downloadUrl":[NSString stringWithFormat:@"http://127.0.0.1:%u/p/%@/%@.zip",_port,_token,TIO_FW_OTA_FOLDER]};
             }
             response=@{@"error_code":@1000,@"error_msg":@"success",@"data":data};
