@@ -172,6 +172,7 @@ Still to be shown in the emulator: carousel freeze with no backlog at unlock, ke
 
 - Fold and idle decisions compare PMU clock readings at unfold and at screen-on.
 - If a reading is missing, zero, or earlier than the stored one, treat the time as elapsed and lock. A clock fault never keeps the glasses unlocked.
+- A reading counts as valid only when it is a UTC time from 2024 to 2099. The PMU clock gets such a time from the phone's time sync. Before the first sync, or after the PMU clock has lost its time, fold and idle decisions fall under the rule above: every unfold and every screen-on request while unlocked locks (the panel turning on again after it went off counts), and a running wrong-entry delay cannot end on the glasses (the waiting screen says "Use phone"). Whether the PMU clock keeps its time through power-off and a flat battery is a device check. The emulator's clock starts at 2000 and its virtual phone sync keeps that base, so emulator timing tests use an EMU-only build with the floor set to 2000.
 - Until the device check passes, this is the weakest part of the design.
 
 **Idle (from Blocks D and E; owner decision 19:18).** "In use" is knob or key input, or head motion. Glasses that are worn stay unlocked; glasses lying still lock after the idle time.
