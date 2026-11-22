@@ -76,6 +76,9 @@ unsigned tio_knob_detent(void){
  unsigned d=tml_detent(&stored);return tml_detent_valid(d)?d:TML_DETENT_DEFAULT;
 }
 unsigned tio_lang(void){Control *c=find();return c?c->language.lang:TLG_EN;}
+/* The language for a page drawn before the launcher menu loaded the settings (the PIN lock at boot): the loaded value when
+ * there is one, else a read of the stored record with no side effects. */
+unsigned tio_lang_stored(void){Control *c=find();if(c&&c->settings_loaded)return c->language.lang;TLSStored st=tls_load(&tls_io);return st.lang==TLG_ZH?TLG_ZH:TLG_EN;}
 unsigned fm_menu_rows(void){Control *c=control();if(c&&!c->settings_loaded){
  c->menu.stored=tml_load(&tml_io);c->tiles.stored=tt_load(&tt_io);if(tlg_state_load(&c->language,&tls_io))fm_language_changed();c->tiles.loaded=true;c->settings_loaded=true;c->pending=true;
  }return c?c->menu.stored.rows:3;} /* 1 carousel, 2 or 3 grid rows; tml_load only returns those */

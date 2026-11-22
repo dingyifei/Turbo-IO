@@ -69,7 +69,10 @@ bool tlv_layout(TLKView *v,const TLVScene *s,unsigned lang){
  case TLK_WRONG:put(v->text[b][TLV_B],tio_text(TT_LOCK_WRONG,lang));colors[TLV_B]=TIO_LENS_FULL;break;
  case TLK_WAITING:   // band M: the wrong-try count; band B: the countdown
   tries(v->text[b][TLV_M],s->wrong,lang);colors[TLV_M]=TIO_LENS_HIGH;
-  clock_text(t,s->delay_left==UINT32_MAX?0:s->delay_left);fill(v->text[b][TLV_B],tio_text(TT_LOCK_TRY_AGAIN,lang),t);colors[TLV_B]=TIO_LENS_FULL;
+  // no valid clock: the delay cannot end on the glasses until the phone sets the time, so say how out instead of 0:00
+  if(s->delay_left==UINT32_MAX)put(v->text[b][TLV_B],tio_text(TT_LOCK_USE_PHONE,lang));
+  else{clock_text(t,s->delay_left);fill(v->text[b][TLV_B],tio_text(TT_LOCK_TRY_AGAIN,lang),t);}
+  colors[TLV_B]=TIO_LENS_FULL;
   break;
  case TLK_USE_PHONE:put(v->text[b][TLV_B],tio_text(TT_LOCK_USE_PHONE,lang));colors[TLV_B]=TIO_LENS_FULL;break;
  case TLK_NOTICE:    // band M: "since last unlock"; band B: the count

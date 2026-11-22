@@ -32,7 +32,7 @@ int main(void){
  s=(TLVScene){.state=TLK_WRONG,.now_ms=5000};tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_B),"Wrong PIN")&&!*L(TLV_S0)&&!*L(TLV_T));
  s=(TLVScene){.state=TLK_WAITING,.wrong=3,.delay_left=30,.now_ms=6000};tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_M),"3 wrong tries")&&!strcmp(L(TLV_B),"Try again in 0:30"));
  s.delay_left=900;tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_B),"Try again in 15:00"));
- s.delay_left=UINT32_MAX;tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_B),"Try again in 0:00"));
+ s.delay_left=UINT32_MAX;tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_B),"Use phone"));   /* no valid clock: the delay cannot end on the glasses */
  s=(TLVScene){.state=TLK_USE_PHONE};tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_B),"Use phone")&&!*L(TLV_M));
  s=(TLVScene){.state=TLK_NOTICE,.notice=1};tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_M),"since last unlock")&&!strcmp(L(TLV_B),"1 wrong try"));
  s.notice=12;tlv_draw(&v,&s,0);assert(!strcmp(L(TLV_B),"12 wrong tries"));

@@ -31,7 +31,7 @@ extern void *tio_lv_obj_create_ex(void *,uint32_t);
 extern void tio_lv_obj_delete(void *),tio_lv_obj_set_size(void *,int,int),tio_lv_obj_add_flag(void *,uint32_t),tio_lv_obj_remove_flag(void *,uint32_t);
 extern void tio_lv_obj_set_style_border_width(void *,int32_t,uint32_t),tio_lv_obj_set_style_radius(void *,int32_t,uint32_t);
 extern void tio_lv_obj_set_style_bg_color(void *,uint32_t,uint32_t),tio_lv_obj_set_style_bg_opa(void *,uint8_t,uint32_t),native_align(void *,int,int,int);
-extern unsigned tio_lang(void);
+extern unsigned tio_lang_stored(void);
 #include "../lock_stock.h"   /* pmu_rtc_epoch, kws_enable/disable, key_queue_flush, ots_topic_read, the gate prototypes */
 /* Entry trampolines of the two patched stock read callbacks. */
 extern void stock_key_read(void *,void *),stock_wheel_read(void *,void *);
@@ -61,7 +61,7 @@ typedef struct {
  volatile uint8_t lock_request;  /* set by the screen gate when the idle or fold time has passed; applied by the tick */
  volatile uint32_t gate_fold_s;  /* PMU seconds the screen gate first saw the panel go off while folded */
  /* UI thread only. */
- void *cover;TLKView view;bool view_open;uint32_t view_ms;
+ void *cover;TLKView view;bool view_open;uint32_t view_ms;uint8_t lang;
  bool kws_off;uint32_t kws_ms;
  int32_t wheel_acc;uint32_t wheel_ms;
  bool was_folded;
@@ -102,7 +102,7 @@ static int cover_make(LockCtl *c){
   void *o=tio_lv_obj_create_ex(sys,0);if(!o){TR("[TurboLock] cover create failed");return -1;}
   tio_lv_obj_set_size(o,TIO_PAGE_W,TIO_MENU_H);tio_lv_obj_set_style_bg_color(o,0,0);tio_lv_obj_set_style_bg_opa(o,255,0);
   tio_lv_obj_set_style_border_width(o,0,0);tio_lv_obj_set_style_radius(o,0,0);native_align(o,1,0,0);   /* no theme outline */
-  c->cover=o;c->view_ms=stream_tick();layers_hidden(true);
+  c->cover=o;c->view_ms=stream_tick();c->lang=(uint8_t)tio_lang_stored();layers_hidden(true);   /* language read once per cover */
  }
  if(tio_lv_obj_get_width(c->cover)<TIO_PAGE_W||tio_lv_obj_get_height(c->cover)<TIO_MENU_H){
   if((uint32_t)(stream_tick()-c->view_ms)>VIEW_WAIT_MS){TR("[TurboLock] cover never laid out");cover_drop(c);return -1;}
@@ -125,7 +125,7 @@ static void sync(LockCtl *c,uint32_t now_ms){
   int k=cover_make(c);
   if(k<0){t->state=tlk_locked(t)?TLK_DARK:t->state;go_dark(c);c->locked=tlk_locked(t)?1:0;return;}   /* backstop: dark */
   bool was=c->dark;c->dark=0;
-  if(k>0){TLVScene s;tlv_snapshot(&s,t,now_s(),now_ms);(void)tlv_draw(&c->view,&s,tio_lang());}   /* else the black cover until the view opens */
+  if(k>0){TLVScene s;tlv_snapshot(&s,t,now_s(),now_ms);(void)tlv_draw(&c->view,&s,c->lang);}   /* else the black cover until the view opens */
   if(was||!focus_screen_on())nav_screen_on(true);
  }
  if(t->flush_input){t->flush_input=false;key_queue_flush();c->wheel_acc=0;}

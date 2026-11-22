@@ -51,7 +51,7 @@ void tio_lv_obj_set_style_bg_opa(void *o,uint8_t a,uint32_t s){(void)o;(void)a;(
 void tio_lv_obj_set_style_border_width(void *o,int32_t v,uint32_t s){(void)o;(void)v;(void)s;}
 void tio_lv_obj_set_style_radius(void *o,int32_t v,uint32_t s){(void)o;(void)v;(void)s;}
 void native_align(void *o,int a,int x,int y){(void)o;(void)a;(void)x;(void)y;}
-unsigned tio_lang(void){return 0;}
+unsigned tio_lang_stored(void){return 0;}
 unsigned tio_knob_detent(void){return 400;}
 int64_t pmu_rtc_epoch(void){return pmu;}
 void kws_enable(void){kws_on++;}void kws_disable(void){kws_off++;}
