@@ -190,6 +190,17 @@ int main(void){
  r=op(TLK_OP_UNLOCK,NULL);folded=true;screen=false;assert(!lock_refuse_screen(0,3));pmu+=300;folded=false;do_tick();assert(c->svc.lock.state==TLK_DARK);
  /* Folded and unfolded within the delay: stays unlocked. */
  r=op(TLK_OP_UNLOCK,NULL);folded=true;screen=false;do_tick();pmu+=10;folded=false;screen=true;assert(!lock_refuse_screen(1,3));do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);
+ /* The unfold window: after a fold past the delay the lock is taken at the first UI-thread step after stock's unfold (a
+  * launcher message, which runs before stock's handler, or a key), not at the next tick; before that the wake gates refuse. */
+ r=op(TLK_OP_UNLOCK,NULL);folded=true;screen=false;do_tick();pmu+=300;folded=false;
+ assert(lock_refuse_can_wakeup()&&lock_refuse_open_recorder()&&lock_refuse_open_remote_audio()&&c->svc.lock.state==TLK_UNLOCKED);
+ lock_boot_early();assert(c->svc.lock.state==TLK_DARK&&c->dark&&!c->lock_request);
+ r=op(TLK_OP_UNLOCK,NULL);do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);   /* no stale lock request after the unlock */
+ folded=true;screen=false;do_tick();pmu+=300;folded=false;
+ assert(key(TIO_STOCK_KEY_CONFIRM)==0&&tlk_locked(&c->svc.lock));
+ r=op(TLK_OP_UNLOCK,NULL);do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);
+ /* Unlocked with the screen on past the idle time (reading): the wake gates do not refuse. */
+ screen=true;do_tick();pmu+=400;assert(!lock_refuse_can_wakeup());pmu-=400;
  /* 8. A clock fault never keeps the glasses unlocked. */
  screen=false;pmu=0;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);
  pmu=T0+5000;r=op(TLK_OP_UNLOCK,NULL);screen=false;pmu=(int64_t)1e12;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);

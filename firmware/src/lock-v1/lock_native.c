@@ -58,7 +58,7 @@ typedef struct {
  /* Bytes read from other threads. */
  volatile uint8_t dark;          /* the screen gate refuses "on" */
  volatile uint8_t locked;        /* the assistant and microphone gates refuse */
- volatile uint8_t lock_request;  /* set by the screen gate when the idle or fold time has passed; applied by the tick */
+ volatile uint8_t lock_request;  /* set by the screen and wake gates when the idle or fold time has passed; applied by the tick */
  volatile uint32_t gate_fold_s;  /* PMU seconds the screen gate first saw the panel go off while folded */
  /* UI thread only. */
  void *cover;TLKView view;bool view_open;uint32_t view_ms;uint8_t lang;
@@ -118,6 +118,7 @@ static void sync(LockCtl *c,uint32_t now_ms){
  TLK *t=&c->svc.lock;
  if(t->state!=c->tr_state){TR("[TurboLock] state %u->%u ms=%u dark=%u cover=%u",c->tr_state,t->state,now_ms,c->dark,c->cover!=NULL);c->tr_state=(uint8_t)t->state;}
  c->locked=tlk_locked(t)?1:0;
+ if(c->locked)c->lock_request=0;   /* a gate's request is met; never carried over an unlock */
  if(t->state==TLK_DARK){if(!c->dark)go_dark(c);}
  else if(t->state==TLK_OFF||t->state==TLK_UNLOCKED){
   c->dark=0;cover_drop(c);
@@ -151,6 +152,24 @@ static void persist(LockCtl *c){if(c->svc.lock.dirty)stored_refresh(c);(void)tlk
 
 /* ---------------------------------------------------------------- boot record */
 static bool folded_now(void){void *m=nav_monitors(),*i=m?nav_input(m):NULL;return i&&nav_folded(i);}
+/* The fold edge (UI thread). Run by the tick and also at every launcher message (ours runs before stock's handler, and the
+ * input monitor stores the hall state before it posts the hall message), at every key event and at every knob step, so
+ * the fold lock is taken before stock handles the unfold or the first input after it. Returns the fold state. */
+static bool fold_edge(LockCtl *c,uint32_t s){
+ TLK *t=&c->svc.lock;bool folded=folded_now();
+ if(folded&&!c->was_folded)tlk_fold(t,c->gate_fold_s?c->gate_fold_s:s);
+ else if(!folded&&c->was_folded)tlk_unfold(t,s);
+ else if(!folded&&c->gate_fold_s){tlk_fold(t,c->gate_fold_s);tlk_unfold(t,s);}   /* a fold only the gate saw (the tick slept through it) */
+ if(!folded)c->gate_fold_s=0;
+ c->was_folded=folded;
+ return folded;
+}
+/* fold_edge outside the tick: a lock it takes is applied at once (dark before the caller goes on). */
+static void fold_edge_now(LockCtl *c){
+ if(c->pending)return;   /* the Pending settle applies the fold state itself */
+ TLKState before=c->svc.lock.state;(void)fold_edge(c,now_s());
+ if(c->svc.lock.state!=before){uint32_t ms=stream_tick();sync(c,ms);persist(c);}
+}
 /* /mnt/nand_data is mounted when statfs on it reports the littlefs type with a nonzero size. Before the mount the path
  * does not resolve to that filesystem, and a record read there cannot tell "no file" from "not mounted yet". */
 static bool store_mounted(void){uint32_t w[16]={0};return !tap_fs_statfs(NAND_DATA,w)&&w[0]==LFS_MAGIC&&w[2]&&w[4];}
@@ -180,12 +199,7 @@ static void tick(void *timer){
   * (the gates on other threads cannot see the lock meanwhile) and put it back. */
  if(!lock_anchor_present(c)){TR("[TurboLock] anchor displaced locked=%u",c->locked);if(c->locked)go_dark(c);(void)lock_anchor_install(c);}
  TLK *t=&c->svc.lock;uint32_t ms=stream_tick(),s=now_s();
- bool folded=folded_now();
- if(folded&&!c->was_folded)tlk_fold(t,c->gate_fold_s?c->gate_fold_s:s);
- else if(!folded&&c->was_folded)tlk_unfold(t,s);
- else if(!folded&&c->gate_fold_s){tlk_fold(t,c->gate_fold_s);tlk_unfold(t,s);}   /* a fold only the gate saw (the tick slept through it) */
- if(!folded)c->gate_fold_s=0;
- c->was_folded=folded;
+ bool folded=fold_edge(c,s);
  t->screen_on=focus_screen_on();
  if(c->pending){   /* storage not mounted at boot: check once a second; the first mounted read settles the boot */
   if(ms>=PENDING_UNTIL_MS)pending_check(c,folded,true);
@@ -224,7 +238,7 @@ static LockCtl *ui_or_boot(void){LockCtl *c=ui();return c?c:lock_boot();}
 /* The early start: the launcher's link-callback registration (stream_register_shim, about 1.3 s before the first content
  * frame) and every launcher message. Both are on the launcher's UI thread, the one that polls the keypad (trace builds
  * log the thread id at each entry to show it). Idempotent: after the first call it only finds the state again. */
-void lock_boot_early(void){if(ui())return;TR("[TurboLock] early tid=%d ms=%u",td_gettid(),stream_tick());(void)lock_boot();}
+void lock_boot_early(void){LockCtl *c=ui();if(c){fold_edge_now(c);return;}TR("[TurboLock] early tid=%d ms=%u",td_gettid(),stream_tick());(void)lock_boot();}
 
 /* ---------------------------------------------------------------- input */
 static TLKInput key_input(uint32_t key){return key==TIO_STOCK_KEY_CONFIRM?TLK_IN_PRESS:key==TIO_STOCK_KEY_BACK?TLK_IN_BACK:TLK_IN_OTHER;}
@@ -243,6 +257,7 @@ void lock_hook_key_read(void *indev,void *data){
  if(!key){*(uint32_t *)(d+TIO_STOCK_INDEV_DATA_KEY)=prev;return;}
  if(key==KEY_FACTORY_CONFIRM||key==KEY_REBOND)return;
  if(c->pending){*(uint32_t *)(d+TIO_STOCK_INDEV_DATA_KEY)=0;d[TIO_STOCK_INDEV_DATA_STATE]=0;return;}   /* no record yet: nothing to enter */
+ fold_edge_now(c);
  TLK *t=&c->svc.lock;uint32_t ms=stream_tick();t->screen_on=focus_screen_on();
  bool consumed;
  if(key==KEY_RELEASED)consumed=tlk_locked(t)||t->state==TLK_NOTICE;
@@ -271,6 +286,7 @@ void lock_hook_wheel_read(void *indev,void *data){
  LockCtl *c=ui_or_boot();
  if(!c||c->svc.lock.state==TLK_OFF){stock_wheel_read(indev,data);return;}   /* first branch */
  TLK *t=&c->svc.lock;uint8_t *d=data;
+ if(t->state==TLK_UNLOCKED)fold_edge_now(c);   /* before stock sees the step */
  if(t->state==TLK_UNLOCKED){
   stock_wheel_read(indev,data);
   if(*(int16_t *)(d+TIO_STOCK_INDEV_DATA_ENC_DIFF)){
@@ -296,7 +312,19 @@ void lock_hook_wheel_read(void *indev,void *data){
 /* ---------------------------------------------------------------- gates read from other threads */
 /* No lock found (not started yet at boot, or the anchor displaced for one tick): refuse during the first minute of
  * uptime, the Pending window; after that a lock that never started must not keep the assistant off for good. */
-bool lock_refuse_can_wakeup(void){LockCtl *c=any();return c?c->locked:stream_tick()<PENDING_UNTIL_MS;}
+/* Unlocked, but the fold delay has passed since a fold not yet seen by the UI thread (between stock's unfold and our next
+ * fold edge), or the idle time has passed: the next UI-thread step locks. Read only (any thread). */
+static bool fold_passed(const LockCtl *c,const TLK *t,uint32_t s){
+ return t->folded?tlk_fold_due(t,s):(c->gate_fold_s&&!folded_now()&&(!s||s<c->gate_fold_s||s-c->gate_fold_s>=(uint32_t)t->rec.fold_min*60u));
+}
+bool lock_refuse_can_wakeup(void){
+ LockCtl *c=any();if(!c)return stream_tick()<PENDING_UNTIL_MS;
+ if(c->locked)return true;
+ const TLK *t=&c->svc.lock;if(t->state!=TLK_UNLOCKED&&t->state!=TLK_NOTICE)return false;
+ uint32_t s=now_s();
+ if(fold_passed(c,t,s)||tlk_idle_due(t,s)){c->lock_request=1;return true;}
+ return false;
+}
 bool lock_refuse_open_remote_audio(void){return lock_refuse_can_wakeup();}
 bool lock_refuse_open_recorder(void){return lock_refuse_can_wakeup();}
 /* screen_state_update(new_state, source), with the screen controller mutex held. It reads the lock's bytes, the PMU
@@ -312,8 +340,7 @@ bool lock_refuse_screen(uint32_t state,uint32_t source){
  if(c->dark){TR("[TurboLock] screen on refused (dark) src=%u",source);return true;}
  if(t->state!=TLK_UNLOCKED&&t->state!=TLK_NOTICE)return false;
  uint32_t s=now_s();
- bool fold=t->folded?tlk_fold_due(t,s):(c->gate_fold_s&&!folded_now()&&(!s||s<c->gate_fold_s||s-c->gate_fold_s>=(uint32_t)t->rec.fold_min*60u));
- if(tlk_idle_passed(t,s)||fold){c->lock_request=1;return true;}
+ if(tlk_idle_passed(t,s)||fold_passed(c,t,s)){c->lock_request=1;return true;}
  return false;
 }
 /* The stock factory-reset worker (patched entry, an LVGL timer callback; stock arms it only after its refusal checks
