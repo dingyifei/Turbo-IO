@@ -11,8 +11,8 @@
           "label": "TMG13",
           "zip": {
             "input": "tmg13/StrixOS-1.0.6.11-TurboIO-TMG13-CANDIDATE-NOT-APPROVED.zip",
-            "bytes": 9558353,
-            "sha256": "758ffb7868cb2e4ff2ddef6fd39216023fb4d87e97d3d40e523c55648de631fe"
+            "bytes": 9558782,
+            "sha256": "d0505fc6ca1bed5098f72c89e15eab2a1f1bbbf90b312a6040ff3941ecd7e44d"
           },
           "acceptCurrent": ["1.0.5.12", "1.0.6.11"]
         },

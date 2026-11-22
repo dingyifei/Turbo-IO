@@ -144,7 +144,7 @@
       "offset": "0x514116",
       "address": "0x106a4116",
       "before": "1e2380b5",
-      "after": "a2f201ba",
+      "after": "a2f201bb",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x514126",
       "address": "0x106a4126",
       "before": "1e22a0f10f03",
-      "after": "a2f2fdb900bf",
+      "after": "a2f2fdba00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x51139c",
       "address": "0x106a139c",
       "before": "4ff4867050f07cfc",
-      "after": "a5f246f800bf00bf",
+      "after": "a5f246f900bf00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,7 +244,7 @@
       "offset": "0x418482",
       "address": "0x105a8482",
       "before": "00242048214b84610360",
-      "after": "9ef339f800bf00bf00bf",
+      "after": "9ef339f900bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
@@ -258,7 +258,7 @@
       "kind": "bw",
       "target": "lock_hook_can_wakeup",
       "pad": 0,
-      "after": "c7f37aba"
+      "after": "c7f37abb"
     },
     {
       "offset": "0x3f2878",
@@ -268,7 +268,7 @@
       "kind": "bw",
       "target": "lock_hook_open_remote_audio",
       "pad": 0,
-      "after": "c3f363be"
+      "after": "c3f363bf"
     },
     {
       "offset": "0x3f19d8",
@@ -278,7 +278,7 @@
       "kind": "bw",
       "target": "lock_hook_open_recorder",
       "pad": 0,
-      "after": "c4f3bebd"
+      "after": "c4f3bebe"
     },
     {
       "offset": "0x4c5a5c",
@@ -288,7 +288,7 @@
       "kind": "bw",
       "target": "lock_hook_screen_state",
       "pad": 0,
-      "after": "f0f287bd"
+      "after": "f0f287be"
     },
     {
       "offset": "0x41a8e8",
@@ -298,7 +298,7 @@
       "kind": "bw",
       "target": "lock_hook_factory_reset",
       "pad": 0,
-      "after": "9bf34bbe"
+      "after": "9bf34bbf"
     },
     {
       "offset": "0x6ff67c",
@@ -308,7 +308,7 @@
       "kind": "bw",
       "target": "lock_hook_key_read",
       "pad": 0,
-      "after": "b5f040b8"
+      "after": "b5f0aeb8"
     },
     {
       "offset": "0x5fe644",
@@ -318,13 +318,13 @@
       "kind": "bw",
       "target": "lock_hook_wheel_read",
       "pad": 0,
-      "after": "b6f1b3ba"
+      "after": "b6f130bb"
     }
   ],
   "editCount": 32,
-  "moduleBytes": 178556,
+  "moduleBytes": 179772,
   "moduleVA": "0x10929204",
-  "moduleSHA256": "1585bfb15a692e8e022ef4ddd58ad45ab0635720c74b70502c6404d8fa8f9e25",
+  "moduleSHA256": "b5028ccceb69a845e3710fd73f4af944f1e9f5483d2347978d1c230f87f679eb",
   "stockAP": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
   "stockBase": "1.0.6.11",
   "stockMembers": {
@@ -354,11 +354,11 @@
       "bytes": 18315227
     }
   },
-  "APBytes": 8145800,
+  "APBytes": 8147016,
   "archive": {
-    "bytes": 9558353,
-    "sha256": "758ffb7868cb2e4ff2ddef6fd39216023fb4d87e97d3d40e523c55648de631fe",
-    "md5": "c737f6f2a9932427f5e07aac49d7feee"
+    "bytes": 9558782,
+    "sha256": "d0505fc6ca1bed5098f72c89e15eab2a1f1bbbf90b312a6040ff3941ecd7e44d",
+    "md5": "2aaee19f27120842c9edf46045963eb7"
   },
   "sources": [
     {
@@ -543,7 +543,7 @@
     },
     {
       "source": "common-v1/tio_text.c",
-      "sha256": "bdb4869554a4f5336204ff6e447834e378fe5a6a2471b19a010b4852f0a298aa"
+      "sha256": "1f6ef1a750c5a9a8378cbb75cd73210366599d4f013136277ee8af799f6387cd"
     },
     {
       "source": "menu-grid-v2/tile_config.c",
@@ -567,15 +567,15 @@
     },
     {
       "source": "lock-v1/lock_core.c",
-      "sha256": "c36b640d976949ab3452332b3eeb82871ae6f5fc4f07f51f84ca8d103790647d"
+      "sha256": "1d8944744b6cd0c8135baca8c90ccc103554bd77eca1872a47b30f808d6015f0"
     },
     {
       "source": "lock-v1/lock_native.c",
-      "sha256": "5fd83bac9fa84a3978733ccb2bf5de5960e9977422626ba82c962eb99eb9c9d2"
+      "sha256": "0a7e7351953bab01d5f58d6e6bc8d15da826c0d0c7a5dd52e02a0f4102622a72"
     },
     {
       "source": "lock-v1/lock_service.c",
-      "sha256": "add11e463b159ab79617119fbfec3d1b10e757c5bec2a395a3f2260ec48165ee"
+      "sha256": "2665c2e1c2c4727719f6c8602ebfa0bc6785e9027b325498f63dde62785a3ced"
     },
     {
       "source": "lock-v1/lock_store.c",
@@ -583,11 +583,11 @@
     },
     {
       "source": "lock-v1/lock_view.c",
-      "sha256": "b17ed7bb21781d301475344850a1bc763b84deb464c7a3012a8e60a3253b5766"
+      "sha256": "c4e7b63d632fbfdccd32a60cd38f4f2d4015c62d470d94fb60c48d43e63a6a3e"
     }
   ],
   "stockZIP": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",
-  "APSHA256": "c016676076d832b0dd04528c9e9a5b018552f845e7f4087a9e7d4ecc7d1ead21",
+  "APSHA256": "79327d7f0f4a3b0bf5dedc83c1470b339f4e6ef2b54eef5f2f150e25a62daa66",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.5",
     "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"

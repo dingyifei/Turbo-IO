@@ -138,7 +138,7 @@ def main():
     release21=releases['c22'];c22=pp.package_spec(release21);stock21=pp.package_spec(release21,'STOCK-1.0.6.11');c21_zip=zip_of(c22)
     assert [p['label'] for p in release21['packages']]==['TMG13','STOCK-1.0.6.11'] and [p['kind'] for p in pp.packages(release21)]==['TMG','STOCK']
     assert (c22['firmware'],c22['stockBase'],release21['hosts'],c22['acceptCurrent'])==('TMG13','1.0.6.11',['1021-full'],['1.0.5.12','1.0.6.11'])
-    assert (c22['zip']['bytes'],c22['zip']['sha256'])==(9558353,'758ffb7868cb2e4ff2ddef6fd39216023fb4d87e97d3d40e523c55648de631fe')
+    assert (c22['zip']['bytes'],c22['zip']['sha256'])==(9558782,'d0505fc6ca1bed5098f72c89e15eab2a1f1bbbf90b312a6040ff3941ecd7e44d')
     assert (stock21['stockBase'],stock21['acceptCurrent'])==('1.0.6.11',['1.0.5.12','1.0.6.11'])
     assert (stock21['zip']['bytes'],stock21['zip']['sha256'])==(9447267,'5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e')
     stock21_zip=zip_of(stock21);assert stock21_zip.read_bytes()==stock1611.read_bytes()
