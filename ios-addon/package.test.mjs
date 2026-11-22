@@ -723,7 +723,7 @@ test('releases: the only release C22, its pins, the addon release marker and the
  assert.deepEqual(m.releaseNames(),Object.keys(JSON.parse(fs.readFileSync(new URL('./releases.json',import.meta.url),'utf8')).releases));assert.deepEqual(m.releaseNames(),['c22']);
  assert.equal(m.soleRelease(),'c22');
  const c22=m.releasePins('c22');assert.deepEqual(m.releasePins(),c22);
- assert.equal(c22.release,'c22');assert.equal(c22.name,'TMG13');assert.equal(c22.zipSHA256,'81eb560d9fc9f1a0ed8ec120385d2d09c366cece4a325f684ca9e4cadd2b744e');assert.equal(c22.zipBytes,9557730);
+ assert.equal(c22.release,'c22');assert.equal(c22.name,'TMG13');assert.equal(c22.zipSHA256,'758ffb7868cb2e4ff2ddef6fd39216023fb4d87e97d3d40e523c55648de631fe');assert.equal(c22.zipBytes,9558353);
  assert.equal(c22.otaVersion,'Strix OS 1.0.6.11');assert.equal(c22.folder,'Strix_OS_1.0.6.11');assert.equal(c22.stockBase,'1.0.6.11');
  assert.deepEqual(c22.acceptOsVersions,['Strix OS 1.0.5.12','Strix OS 1.0.6.11']);assert.deepEqual(c22.acceptQueryCodes,['01.00.05.0012','01.00.06.0011']);
  assert.equal(c22.feedVersionName,'0100060011');assert.equal(c22.feedVersionCode,100060011);
@@ -732,7 +732,7 @@ test('releases: the only release C22, its pins, the addon release marker and the
  for(const bad of ['c99','c20','c21','C22','default','default ','../c22','',null,1])assert.throws(()=>m.releasePins(bad),/unknown_release/);
  // Two packages: TMG13 (the default) and stock 1.0.6.11, each with its resource name; the marker lists both.
  assert.deepEqual(m.releasePackages(c22).map(e=>[e.name,e.kind,e.resource,e.zipBytes,e.zipSHA256]),[
-  ['TMG13','TMG','TurboWeReadCandidate.zip',9557730,'81eb560d9fc9f1a0ed8ec120385d2d09c366cece4a325f684ca9e4cadd2b744e'],
+  ['TMG13','TMG','TurboWeReadCandidate.zip',9558353,'758ffb7868cb2e4ff2ddef6fd39216023fb4d87e97d3d40e523c55648de631fe'],
   ['STOCK-1.0.6.11','STOCK','TurboStockFirmware.zip',9447267,'5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e']]);
  for(const broken of [{...c22,packages:[]},{...c22,packages:[c22.packages[1],c22.packages[0]]},{...c22,packages:[{...c22.packages[0],zipSHA256:'0'.repeat(64)},c22.packages[1]]},{...c22,packages:[c22.packages[0],{...c22.packages[1],resource:'TurboWeReadCandidate.zip'}]},{...c22,packages:[c22.packages[0],{...c22.packages[1],name:'STOCK-1.0.5.12'}]}])assert.throws(()=>m.releasePackages(broken),/release_packages_invalid/);
  const tail='Strix OS 1.0.5.12, Strix OS 1.0.6.11; target Strix OS 1.0.6.11';

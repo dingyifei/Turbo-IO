@@ -5,7 +5,7 @@
  "businessId": 9,
  "sliceBytes": 51200,
  "totalSlices": 314,
- "totalSliceBytes": 15753934,
+ "totalSliceBytes": 15754702,
  "steps": [
   {
    "d": "tx",
@@ -121,7 +121,7 @@
    "d": "tx",
    "type": 3,
    "json": {
-    "OtaSize": 9557730
+    "OtaSize": 9558353
    }
   },
   {
@@ -169,7 +169,7 @@
    "type": 6,
    "json": "pinned OtaFileInfo.json",
    "jsonBytes": 2886,
-   "jsonSha256": "a6678de2712b2e83e5417206f0ff85b71ee0e2465b6b65b19d16520c03ad2547"
+   "jsonSha256": "d82a6f135434de52e62ad12500de10854d2f3e9aa833ef7d5d58465b586ef33b"
   },
   {
    "d": "tx",
@@ -193,10 +193,10 @@
    "d": "tx",
    "type": 7,
    "name": "nuttx_ap.bin",
-   "bytes": 8145032,
+   "bytes": 8145800,
    "slices": 160,
    "first": 51200,
-   "last": 4232
+   "last": 5000
   },
   {
    "d": "tx",
