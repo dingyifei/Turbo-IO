@@ -25,7 +25,7 @@ extern int32_t tio_lv_obj_get_width(void *),tio_lv_obj_get_height(void *);
 extern void *nav_monitors(void),*nav_input(void *),*nav_link(void *),*fm_system(void *),*fm_battery_monitor(void *);
 extern int64_t fm_local_time(void *);
 extern int fm_battery_level(void *);
-extern void menu_text_align(void *,int,uint32_t);
+extern void menu_text_align(void *,int,uint32_t),stream_invalidate(void *);
 extern unsigned tgr_ota_status(void *);
 extern bool nav_bonded(void *),nav_folded(void *),focus_screen_on(void);
 extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *),nav_force_off(void);
@@ -65,6 +65,7 @@ typedef struct {
  volatile uint32_t gate_fold_s;  /* PMU seconds the screen gate first saw the panel go off while folded */
  /* UI thread only. */
  void *cover;TLKView view;bool view_open;uint32_t view_ms;uint8_t lang;
+ int64_t local;int battery;uint32_t status_ms;bool status_read;   /* band T, read at most once a second per cover */
  bool kws_off;uint32_t kws_ms;
  int32_t wheel_acc;uint32_t wheel_ms;
  bool was_folded;
@@ -93,6 +94,7 @@ static void layers_hidden(bool hidden){
 static void cover_drop(LockCtl *c){
  if(c->view_open){tlv_close(&c->view);c->view_open=false;}
  if(c->cover){tio_lv_obj_delete(c->cover);c->cover=NULL;layers_hidden(false);}
+ c->status_read=false;
 }
 /* The cover: one black object on the sys layer with the top layer hidden, and the lock view created on it. The view's
  * root takes the cover's size, which LVGL applies at its next layout pass, so the view opens on a later call (the next
@@ -143,16 +145,24 @@ static void sync(LockCtl *c,uint32_t now_ms){
   }
   int k=cover_make(c);
   if(k<0){t->state=tlk_locked(t)?TLK_DARK:t->state;go_dark(c);c->locked=tlk_locked(t)?1:0;return;}   /* backstop: dark */
-  bool was=c->dark;c->dark=0;
+  /* k==0: the black cover is created but LVGL has not laid it out (so not drawn) yet. The panel stays as it is (dark
+   * stays dark and gated) until a later sync finds it laid out: turning it on now would light the panel on the last
+   * frame stock drew under it (emulator runs LKF-F2b and LKF-B1: one dashboard frame, 45-90 ms, before the cover). */
   if(k>0){
+   bool was=c->dark;c->dark=0;
    TLVScene s;tlv_snapshot(&s,t,now_s(),now_ms);
-   if(t->state==TLK_ENTRY){   /* band T: time and battery from the same stock getters as the launcher menu */
-    void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*bat=mon?fm_battery_monitor(mon):NULL;
-    s.local=sys?fm_local_time(sys):0;s.battery=bat?fm_battery_level(bat):-1;
+   if(t->state==TLK_ENTRY){   /* band T: time and battery from the same stock getters as the launcher menu, once a second
+                               * (stock's time getter logs each failed clock read) */
+    if(!c->status_read||(uint32_t)(now_ms-c->status_ms)>=1000u){
+     void *mon=nav_monitors(),*sys=mon?fm_system(mon):NULL,*bat=mon?fm_battery_monitor(mon):NULL;
+     c->local=sys?fm_local_time(sys):0;c->battery=bat?fm_battery_level(bat):-1;c->status_ms=now_ms;c->status_read=true;
+    }
+    s.local=c->local;s.battery=c->battery;
    }
    (void)tlv_draw(&c->view,&s,c->lang);
-  }   /* else the black cover until the view opens */
-  if(was||!focus_screen_on())nav_screen_on(true);
+   /* Panel on: redraw the whole cover, so nothing the panel held from before the dark is left around the labels. */
+   if(was||!focus_screen_on()){nav_screen_on(true);stream_invalidate(c->cover);}
+  }
  }
  if(t->flush_input){t->flush_input=false;key_queue_flush();c->wheel_acc=0;}
  /* Wake word: off while locked and unfolded (stock turns it on at every return to running); back on at unlock. */

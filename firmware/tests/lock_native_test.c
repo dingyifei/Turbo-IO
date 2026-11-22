@@ -35,11 +35,12 @@ void *stream_timer_create(void (*cb)(void *),uint32_t period,void *user){(void)c
 void *stream_timer_next(void *t){(void)t;return NULL;}
 static char monitors,input,link_;void *nav_monitors(void){return &monitors;}void *nav_input(void *m){(void)m;return &input;}void *nav_link(void *m){(void)m;return &link_;}
 void *fm_system(void *m){(void)m;return &monitors;}
-static char battery_mon;static int64_t local_time;static int battery_level=-1;static int aligned_right;
+static int invalidates,time_reads;static char battery_mon;static int64_t local_time;static int battery_level=-1;static int aligned_right;
 void *fm_battery_monitor(void *m){(void)m;return &battery_mon;}
-int64_t fm_local_time(void *s){assert(s==&monitors);return local_time;}
+int64_t fm_local_time(void *s){assert(s==&monitors);time_reads++;return local_time;}
 int fm_battery_level(void *b){assert(b==&battery_mon);return battery_level;}
 void menu_text_align(void *o,int a,uint32_t f){(void)o;(void)f;if(a==3)aligned_right++;}
+void stream_invalidate(void *o){assert(o==cover_obj);invalidates++;}
 unsigned tgr_ota_status(void *s){(void)s;return ota?1:0;}
 bool nav_bonded(void *l){(void)l;return bonded;}bool nav_folded(void *i){(void)i;return folded;}bool focus_screen_on(void){return screen;}
 int nav_connection(unsigned f){(void)f;return connected;}
@@ -255,9 +256,12 @@ int main(void){
  reset_world(true);assert(!lock_anchor_any());{uint8_t wd[0x14]={0};lock_hook_wheel_read(NULL,wd);}c=lock_anchor_any();assert(c&&c->svc.lock.state==TLK_DARK);
  reset_world(true);r=phone(TLK_OP_QUERY,0,NULL);c=lock_anchor_any();assert(c&&(r.flags&TLK_F_LOCKED));
  /* 16a. The view opens after LVGL has laid out the cover (the 1.0.6.11 emulator run LKT-R3: a view opened in the same
-  *      call as the cover read a 0x0 parent); a cover that is never laid out falls back to dark. */
- reset_world(true);c=boot();layout_lag=1;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->cover&&!c->view_open&&!c->dark&&screen);
- do_tick();assert(c->view_open&&c->svc.lock.state==TLK_ENTRY);
+  *      call as the cover read a 0x0 parent); a cover that is never laid out falls back to dark. Until the cover is laid
+  *      out (drawn) the panel stays dark and gated, so it never lights on the frame stock drew under it (runs LKF-F2b,
+  *      LKF-B1). */
+ reset_world(true);c=boot();layout_lag=1;int on16=screen_on_calls;
+ assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->cover&&!c->view_open&&c->dark&&!screen&&screen_on_calls==on16&&lock_refuse_screen(1,1));
+ do_tick();assert(c->view_open&&c->svc.lock.state==TLK_ENTRY&&!c->dark&&screen&&screen_on_calls==on16+1);
  reset_world(true);c=boot();layout_lag=1000;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&!c->view_open);
  for(int i=0;i<12;i++){ms+=250;do_tick();}assert(c->dark&&!c->cover&&!screen&&c->svc.lock.state==TLK_DARK);layout_lag=0;
  /* 16b. The early start (stream_register_shim, launcher messages) boots once and then only finds the state. */
@@ -314,7 +318,10 @@ int main(void){
  memcpy(files,saved,sizeof files);reset_world(true);c=boot();local_time=1800057600+3600*14+60*7;   /* 1800057600 is a midnight */battery_level=83;
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->view_open&&aligned_right>0);
  assert(!strcmp(shown(c->view.labels[TLV_TIME]),"14:07")&&!strcmp(shown(c->view.labels[TLV_BATT]),"83%"));
- battery_level=-1;local_time=0;ms+=100;do_tick();assert(!strcmp(shown(c->view.labels[TLV_TIME]),"--:--")&&!strcmp(shown(c->view.labels[TLV_BATT]),"--%"));
+ assert(invalidates>0);   /* the panel came on: the whole cover is redrawn */
+ /* Read at most once a second: a tick 100 ms later still shows the old values, one a second later the new ones. */
+ int tr=time_reads;battery_level=-1;local_time=0;ms+=100;do_tick();assert(time_reads==tr&&!strcmp(shown(c->view.labels[TLV_BATT]),"83%"));
+ ms+=1000;do_tick();assert(time_reads==tr+1&&!strcmp(shown(c->view.labels[TLV_TIME]),"--:--")&&!strcmp(shown(c->view.labels[TLV_BATT]),"--%"));
  /* 20. Something stock adds to the sys layer over the PIN screen (a call view, a toast): the next sync closes the lock
   *     screen, drops the half-entered digits and goes dark; the next press opens it again on top. */
  ms+=100;assert(wheel(-400,1)==0&&key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.slot==1);
