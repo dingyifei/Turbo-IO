@@ -740,6 +740,7 @@ static const TIOStringRow Rows[]={
     {"lock.footer.worn","Uses head motion. Works after this phone has connected to the glasses. When off, the glasses lock after the idle time even while worn.","使用头部动作。本手机连接眼镜后生效。关闭时，即使正在佩戴，眼镜也会在闲置时间后锁定。"},
     {"lock.header.auto","Lock automatically","自动锁定"},
     {"lock.minutes","%u min","%u 分钟"},
+    {"lock.header.unavailable","Not available","不可用"},
     {"lock.note.blocked","The glasses refused: an update is running or they are not connected.","眼镜拒绝了请求：正在升级或未连接。"},
     {"lock.note.canceled","Canceled. Nothing will be resent; read the glasses again.","已取消。不会补发；请重新读取眼镜。"},
     {"lock.note.connect","Connect the glasses, keep this app in front, and finish any update first.","请连接眼镜、保持 App 前台，并先结束升级。"},

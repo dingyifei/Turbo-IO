@@ -503,19 +503,10 @@ static NSString *TIOHubBoundStatus(NSString *value) {
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {[super traitCollectionDidChange:previous];if(!self.page.length)[self updateCard];}
 - (void)refresh {
     self.sections=TIOHubSectionsForProfile(self.page,TIOHostProfile());
-    // The Glasses lock row is shown only while the connected glasses report the lock capability (TD_CAP_PIN_LOCK).
-    // Only a hub that has the row asks for the capability bits (never the download-only host).
-    if ([[self.sections valueForKeyPath:@"@unionOfArrays.rows.key"] containsObject:@"glassesLock"]) {
-        TIOGlassesLockHubRefresh();
-        if (!TIOGlassesLockHubVisible()) {
-            NSMutableArray *kept=[NSMutableArray new];
-            for (NSDictionary *group in self.sections) {
-                NSArray *rows=[group[@"rows"] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"key != %@",@"glassesLock"]];
-                if (rows.count) {NSMutableDictionary *copy=[group mutableCopy];copy[@"rows"]=rows;[kept addObject:copy];}
-            }
-            self.sections=kept;
-        }
-    }
+    // The Glasses lock row is always shown (device feedback 5: hiding it on a stale or refused caps sample lost Unlock
+    // exactly while locked); its page explains when the glasses are missing or lack the lock. Only a hub that has the
+    // row asks for the capability bits (never the download-only host).
+    if ([[self.sections valueForKeyPath:@"@unionOfArrays.rows.key"] containsObject:@"glassesLock"]) TIOGlassesLockHubRefresh();
     self.title=self.page.length ? ([self catalogRowForKey:self.page][@"title"] ?: TIOText(@"hub.title")) : TIOText(@"hub.title");
     if (!self.page.length) {
         NSMutableString *body=[TIOText(@"hub.info.body") mutableCopy];

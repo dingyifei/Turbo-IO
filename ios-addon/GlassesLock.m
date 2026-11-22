@@ -53,7 +53,17 @@ static NSString *ResultNote(unsigned op,unsigned result){
  if((self=[super init])){_peerNow=[peer copy];_allowed=[allowed copy];_clock=[clock copy];_caps=[caps copy];_send=[send copy];_lastResult=TIOLockResultNotSent;}return self;
 }
 - (BOOL)busy{return _done!=nil;}
-- (BOOL)supported{return [_peerNow() length]&&_caps&&TIOLockCapsSupported(_caps());}
+- (void)remember:(NSString *)peer on:(BOOL)on{
+ if(!_seen||!peer.length)return;NSArray *now=[_seen arrayForKey:@"lockPeers"]?:@[];if([now containsObject:peer]==on)return;
+ NSMutableArray *next=[now mutableCopy];if(on)[next addObject:peer];else [next removeObject:peer];[_seen setObject:next forKey:@"lockPeers"];
+}
+- (BOOL)connected{return [_peerNow() length]>0;}
+- (BOOL)supported{
+ NSString *peer=_peerNow();if(!peer.length||!_caps)return NO;uint32_t caps=_caps();
+ if(TIOLockCapsSupported(caps)){[self remember:peer on:YES];return YES;}
+ if(caps){[self remember:peer on:NO];return NO;}   /* a fresh sample without the bit: other firmware */
+ return [[_seen arrayForKey:@"lockPeers"]containsObject:peer];   /* no sample (stale, refused while locked) */
+}
 - (BOOL)known{return _known&&[_peer isEqual:_peerNow()];}
 - (TLKReply)state{return self.known?_state:(TLKReply){0};}
 - (TIOLockModel)model{TLKReply r=_state;return TIOLockModelFromReply(self.known?&r:NULL);}
@@ -122,7 +132,7 @@ static NSString *ResultNote(unsigned op,unsigned result){
  /* A QUERY that succeeded carries the token; nothing else ever does. */
  if((r.op==TLK_OP_QUERY&&r.result==TLK_R_OK&&!r.token)||(r.op!=TLK_OP_QUERY&&r.token)){[self finish:TIOText(@"lock.note.noReply") result:TIOLockResultNoReply];return YES;}
  /* Every reply carries the whole state, whatever the result. */
- _state=r;_known=YES;
+ _state=r;_known=YES;[self remember:_peer on:YES];
  if(r.op==TLK_OP_QUERY&&r.result==TLK_R_OK){_token=r.token;_tokenAt=now;}
  [self finish:ResultNote(r.op,r.result) result:r.result];return YES;
 }

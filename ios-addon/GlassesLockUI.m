@@ -15,6 +15,7 @@ static TIOGlassesLockLink *Link(void){
  dispatch_once(&once,^{link=[[TIOGlassesLockLink alloc]initWithPeer:^{return TIOProtocolDevice();} allowed:^BOOL{
   id stage=TIOOTAFlashStatus()[@"stage"];return UIApplication.sharedApplication.applicationState==UIApplicationStateActive&&[stage isKindOfClass:NSNumber.class]&&[stage doubleValue]==0;
  } clock:^{return NSProcessInfo.processInfo.systemUptime;} caps:^uint32_t{return TDGlassesCaps();} send:^BOOL(NSData *data){return TIOProtocolSendBusiness(15,data);}];
+ link.seen=[[NSUserDefaults alloc]initWithSuiteName:@"org.turboio.addon.lock"];
  [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;[link cancel];}];
  });return link;
 }
@@ -23,13 +24,13 @@ static TIOLockMotion *Motion(void){
  dispatch_once(&once,^{motion=[[TIOLockMotion alloc]initWithDefaults:[[NSUserDefaults alloc]initWithSuiteName:@"org.turboio.addon.lock"] clock:^{return NSProcessInfo.processInfo.systemUptime;}];});return motion;
 }
 BOOL TIOGlassesLockConsume(NSDictionary *e){return [Link() consume:e];}
-BOOL TIOGlassesLockHubVisible(void){return TIOLockCapsSupported(TDGlassesCaps());}
+BOOL TIOGlassesLockHubVisible(void){return Link().supported;}
 NSString *TIOGlassesLockHubStatus(void){NSString *key=TIOLockPhaseTextId(Link().model.phase);return key?TIOText(key):nil;}
 void TIOGlassesLockHubRefresh(void){
  static double asked;double now=NSProcessInfo.processInfo.systemUptime;
  if(!TIOProtocolDevice().length||TDGlassesCaps()||(asked>0&&now-asked<TDGlassesCapsRefreshSeconds))return;
  asked=now;if(!TDGlassesCapsRefresh())return;
- dispatch_after(dispatch_time(DISPATCH_TIME_NOW,4*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(TIOGlassesLockHubVisible())TIOHubReload();});
+ dispatch_after(dispatch_time(DISPATCH_TIME_NOW,4*NSEC_PER_SEC),dispatch_get_main_queue(),^{TIOHubReload();});   /* the subtitle may change */
 }
 /* Sends MOTION_ON to the connected glasses when the switch is on; counts the answer for the early-drop rule. */
 static void SendMotion(TIOGlassesLockLink *link,TIOLockMotion *motion,void(^done)(void)){
@@ -91,6 +92,12 @@ static NSString *Minutes(unsigned minutes){NSString *format=TIOText(@"lock.minut
 }
 - (void)rebuild{
  TIOLockModel m=self.link.model;NSMutableArray *layout=[NSMutableArray new];
+ /* No glasses, or glasses without the lock (and none seen on them): the explanation page, no controls. */
+ if(!self.link.known&&!self.link.supported){
+  NSString *why=TIOText(self.link.connected?@"lock.note.unsupported":@"lock.note.connect");
+  [layout addObject:@{@"rows":@[],@"header":TIOText(@"lock.header.unavailable"),@"footer":[NSString stringWithFormat:@"%@\n\n%@",why,TIOText(@"lock.footer.main")]}];
+  self.layout=layout;[self.tableView reloadData];return;
+ }
  [layout addObject:@{@"rows":@[@(RowEnable),@(RowStatus)],@"footer":self.link.note?:@""}];
  if(m.showUnlock)[layout addObject:@{@"rows":@[@(RowUnlock)]}];
  else if(m.showLockNow)[layout addObject:@{@"rows":@[@(RowLockNow)]}];
@@ -221,8 +228,10 @@ UIViewController *TIOGlassesLockPreviewController(NSString *fixture){
  if([fixture isEqual:@"unlocked"])flags=TLK_F_ENABLED;
  else if([fixture isEqual:@"locked"])flags=TLK_F_ENABLED|TLK_F_LOCKED;
  else if([fixture isEqual:@"wrong"]){flags=TLK_F_ENABLED|TLK_F_LOCKED;wrong=3;unacked=3;}
- __block __weak TIOGlassesLockLink *weak=nil;NSString *peer=@"preview-lock";
- TIOGlassesLockLink *link=[[TIOGlassesLockLink alloc]initWithPeer:^{return peer;} allowed:^BOOL{return YES;} clock:^{return NSProcessInfo.processInfo.systemUptime;} caps:^uint32_t{return TD_CAP_PIN_LOCK;} send:^BOOL(NSData *data){
+ /* "unsupported": glasses without the lock; "none": no glasses connected (the explanation page, device feedback 5). */
+ uint32_t caps=[fixture isEqual:@"unsupported"]?TD_CAPS_TMG9:[fixture isEqual:@"none"]?0:TD_CAP_PIN_LOCK;
+ __block __weak TIOGlassesLockLink *weak=nil;NSString *peer=[fixture isEqual:@"none"]?@"":@"preview-lock";
+ TIOGlassesLockLink *link=[[TIOGlassesLockLink alloc]initWithPeer:^{return peer;} allowed:^BOOL{return YES;} clock:^{return NSProcessInfo.processInfo.systemUptime;} caps:^uint32_t{return caps;} send:^BOOL(NSData *data){
   uint8_t raw[32],wire[74];TLKCommand q;if(!tlk_uncarrier(data.bytes,data.length,raw,false)||!tlk_decode(raw,32,&q))return NO;
   unsigned r=tlk_session(&session,&q,(uint32_t)(NSProcessInfo.processInfo.systemUptime*1000),++nonce);
   if(r==TLK_R_OK)switch(q.op){

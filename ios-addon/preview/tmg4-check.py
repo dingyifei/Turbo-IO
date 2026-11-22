@@ -8,7 +8,7 @@ Every screen is shot in the same matrix (preview/shoot.sh):
   that ignored the requested setting.
 """
 from pathlib import Path
-import hashlib,json,sys
+import hashlib,json,re,sys
 
 LANGS=('en','zh-Hans')
 APPEARANCES=('light','dark')
@@ -20,7 +20,9 @@ TABLE_SCREENS=('tiles','runtime','knob')+KNOB_STEP_SCREENS
 BENCH_SCREENS=('push-testBench','bench-lyrics','bench-song','bench-card','bench-timer')
 # The Glasses lock page with canned glasses (docs/lock-design.md §4): screen -> (phase, switch on, action row id or None, wrong tries).
 LOCK_SCREENS={'lock-off':('off',False,None,0),'lock-unlocked':('unlocked',True,'lock-lock-now',0),'lock-locked':('locked',True,'lock-unlock',0),'lock-wrong':('locked',True,'lock-unlock',3)}
-LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')+KNOB_STEP_SCREENS+BENCH_SCREENS+tuple(LOCK_SCREENS)
+# The explanation page (device feedback 5: the hub row is always there): screen -> the reason shown.
+LOCK_UNAVAILABLE={'lock-unsupported':'unsupported','lock-none':'connect'}
+LOCALIZED_TITLE=('tiles','layout','layout-tmg7','runtime','knob','captions')+KNOB_STEP_SCREENS+BENCH_SCREENS+tuple(LOCK_SCREENS)+tuple(LOCK_UNAVAILABLE)
 # The menu layout screen with canned TMG8 glasses (carousel stored) and with older glasses (three rows, Carousel disabled).
 LAYOUT_SCREENS=('layout','layout-tmg7')
 SEGMENTS={'en':['Carousel','2 rows','3 rows'],'zh-Hans':['轮播','两排','三排']}
@@ -126,6 +128,12 @@ def check_bench(screen,report,lang,stem,size):
     assert not card['bench-note-route']['status'].strip()=='' ,'route note in '+str(stem)
 LOCK_WORDS={'en':{'off':'Off','unlocked':'Unlocked','locked':'Locked','wrong':'wrong tries since last unlock','footer':'can always unlock them','idle':'lock after the idle time even while worn'},
     'zh-Hans':{'off':'关闭','unlocked':'已解锁','locked':'已锁定','wrong':'上次解锁后输错','footer':'始终可以解锁眼镜','idle':'也会在闲置时间后锁定'}}
+LOCK_REASONS={'en':{'unsupported':'do not have the lock','connect':'Connect the glasses'},'zh-Hans':{'unsupported':'没有锁定功能','connect':'请连接眼镜'}}
+def check_lock_unavailable(screen,report,lang,stem):
+    tag=' in '+str(stem);rows=[r for s in report['sections'] for r in s['rows']];footer=' '.join(s['footer'] for s in report['sections'])
+    assert not rows,'no controls on the explanation page'+tag
+    assert not re.search(r'\block\.[a-z]',footer) and LOCK_REASONS[lang][LOCK_UNAVAILABLE[screen]] in footer and LOCK_WORDS[lang]['footer'] in footer,'explanation'+tag+': '+footer
+    assert (han(footer) if lang=='zh-Hans' else not han(footer)),'page language'+tag
 def check_lock(screen,report,lang,stem):
     phase,on,action,wrong=LOCK_SCREENS[screen];w=LOCK_WORDS[lang];tag=' in '+str(stem)
     rows={r['id']:r for s in report['sections'] for r in s['rows']};text=' '.join(str(r[k]) for r in rows.values() for k in ('title','status'))+' '.join(s['footer'] for s in report['sections'])
@@ -170,6 +178,7 @@ def check(root,screens):
             if screen in PANELS:check_panel(screen,report,stem)
             if screen in BENCH_SCREENS:check_bench(screen,report,lang,stem,size)
             if screen in LOCK_SCREENS:check_lock(screen,report,lang,stem)
+            if screen in LOCK_UNAVAILABLE:check_lock_unavailable(screen,report,lang,stem)
             sha=hashlib.sha256(png.read_bytes()).hexdigest();shas[(lang,look,size)]=sha
             receipts.append({'screen':screen,'language':lang,'appearance':look,'contentSize':size,'sha256':sha,'sections':len(report['sections'])})
         for lang in LANGS:

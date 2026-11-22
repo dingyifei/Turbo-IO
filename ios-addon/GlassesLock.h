@@ -2,7 +2,8 @@
 #include "lock_codec.h"
 /* The glasses PIN lock on the phone (docs/lock-design.md §4, §5). The TLK:/TKA: records come from lock_codec.c, which is
  * byte-identical with the firmware copy. Nothing about the lock is kept on the phone except the "Stay unlocked while worn"
- * switch and its early-drop counter (TIOLockMotion); the state shown is the glasses' last reply, read again on every visit. */
+ * switch and its early-drop counter (TIOLockMotion) and which glasses have shown the lock (TIOGlassesLockLink.seen); the
+ * state shown is the glasses' last reply, read again on every visit. */
 
 typedef NS_ENUM(NSUInteger,TIOLockPhase){TIOLockPhaseUnknown,TIOLockPhaseOff,TIOLockPhaseUnlocked,TIOLockPhaseLocked};
 /* The page as the last reply describes it. */
@@ -31,8 +32,15 @@ extern const double TIOLockTokenUseSeconds; /* a QUERY token is used only this l
 
 @interface TIOGlassesLockLink:NSObject
 @property(nonatomic,readonly) BOOL busy;
-/* The connected glasses report TD_CAP_PIN_LOCK. Without it nothing is encoded or sent. */
+/* The connected glasses report TD_CAP_PIN_LOCK, or this phone has seen the lock on them before (seen). Without either
+ * nothing is encoded or sent. The glasses refuse the diagnostics status read while locked, so the caps sample goes stale
+ * exactly when Unlock is needed (device feedback 5): once seen, the TLK: QUERY answer is the live state. A fresh sample
+ * without the bit (other firmware) forgets them again. */
 @property(nonatomic,readonly) BOOL supported;
+/* Where the glasses that have shown the lock are remembered (key "lockPeers"); nil: the live caps only. */
+@property(nonatomic,strong) NSUserDefaults *seen;
+/* Glasses are connected (a peer). */
+@property(nonatomic,readonly) BOOL connected;
 /* A reply from the connected glasses is known; state and model describe it. */
 @property(nonatomic,readonly) BOOL known;
 @property(nonatomic,readonly) TLKReply state;

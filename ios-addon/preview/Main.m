@@ -432,7 +432,8 @@ static void RunConfirmRaceCase(UIViewController *host, NSUInteger index,
             UIViewController *page=TIOMenuLayoutPreviewController([screen isEqual:@"layout"]?@"tmg8":@"tmg7");
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen hasPrefix:@"lock-"]) {
-            // The real Glasses lock page with canned glasses: lock-off, lock-unlocked, lock-locked, lock-wrong (locked, 3 wrong tries).
+            // The real Glasses lock page with canned glasses: lock-off, lock-unlocked, lock-locked, lock-wrong (locked, 3 wrong tries),
+            // lock-unsupported and lock-none (the explanation page: glasses without the lock, no glasses).
             UIViewController *page=TIOGlassesLockPreviewController([screen substringFromIndex:5]);
             if(page)navigation=TIOCreateTurboHub(page);presented=navigation;
         } else if ([screen isEqual:@"runtime"] || [screen isEqual:@"knob"] || [screen hasPrefix:@"knob-"]) {

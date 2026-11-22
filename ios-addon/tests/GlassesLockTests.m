@@ -141,8 +141,31 @@ static void Caps(void){@autoreleasepool{
  assert(f.done==4&&!f.wires.count&&f.link.lastResult==TIOLockResultNotSent&&[f.link.note isEqual:TIOText(@"lock.note.unsupported")]);
  f.caps=TD_CAPS_TMG13;f.peer=@"";assert(!f.link.supported); /* no connected glasses */
  f.peer=@"glasses-13";assert(f.link.supported);[f.link query:f.cb];assert(f.wires.count==1&&f.link.known);
- /* The caps bit goes away (another firmware, a stale sample): the state stays readable, nothing more is sent. */
+ /* No memory (seen nil): the caps bit goes away (another firmware, a stale sample): the state stays readable, nothing more is sent. */
  f.caps=0;[f.link lockNow:f.cb];assert(f.wires.count==1&&f.link.lastResult==TIOLockResultNotSent);
+}}
+
+static void CapsWhileLocked(void){@autoreleasepool{
+ /* Device feedback 5: the glasses refuse the diagnostics status read while locked, so the caps sample goes stale (300 s) or
+  * is never answered exactly when Unlock is needed. Caps sample stale or refused while locked: row shown, Unlock works. */
+ NSString *suite=@"io.turboio.test.lock.seen";NSUserDefaults *d=[[NSUserDefaults alloc]initWithSuiteName:suite];[d removePersistentDomainForName:suite];
+ Fixture *f=[Fixture new];f.link.seen=d;f->g.flags=TLK_F_ENABLED;
+ /* Never seen and no sample: nothing is offered or sent (the page explains). */
+ f.caps=0;assert(f.link.connected&&!f.link.supported);[f.link query:f.cb];assert(!f.wires.count);
+ /* Seen once with the caps bit, then locked: the sample is stale (0) and every status read refused. */
+ f.caps=TD_CAPS_TMG13;assert(f.link.supported);f.caps=0;f->g.flags=TLK_F_ENABLED|TLK_F_LOCKED;
+ assert(f.link.supported);   /* the hub row's TIOGlassesLockHubVisible */
+ [f.link query:f.cb];assert(f.link.known&&f.link.model.showUnlock&&f.link.model.phase==TIOLockPhaseLocked);
+ [f.link unlock:f.cb];assert(f->g.last.op==TLK_OP_UNLOCK&&f.link.lastResult==TLK_R_OK&&f.link.model.phase==TIOLockPhaseUnlocked);
+ /* Remembered across app launches (a new link, same defaults), per glasses. */
+ Fixture *g2=[Fixture new];g2.link.seen=d;g2.caps=0;assert(g2.link.supported);g2.peer=@"glasses-other";assert(!g2.link.supported);
+ /* A TLK: answer also marks them (glasses that answered before this release kept the memory). */
+ Fixture *g3=[Fixture new];g3.peer=@"glasses-answered";g3.link.seen=d;[g3.link query:g3.cb];g3.caps=0;assert(g3.link.supported);
+ /* A fresh sample without the bit (reflashed to firmware without the lock) forgets them. */
+ f.caps=TD_CAPS_TMG9;assert(!f.link.supported);f.caps=0;assert(!f.link.supported);
+ unsigned n=(unsigned)f.wires.count;[f.link unlock:f.cb];assert(f.wires.count==n&&[f.link.note isEqual:TIOText(@"lock.note.unsupported")]);
+ f.peer=@"";assert(!f.link.connected&&!f.link.supported);
+ [d removePersistentDomainForName:suite];
 }}
 
 static void Motion(void){@autoreleasepool{
@@ -202,7 +225,8 @@ int main(void){@autoreleasepool{
  Exchange();
  Matching();
  Caps();
+ CapsWhileLocked();
  Motion();
  Model();
- puts("GlassesLock phone PASS: shared codec records, query-then-change with a fresh token, exact reply matching, no resend, caps bit 11 gate, MOTION_ON refused, early-drop counter, state to page model");
+ puts("GlassesLock phone PASS: shared codec records, query-then-change with a fresh token, exact reply matching, no resend, caps bit 11 gate, caps sample stale or refused while locked: row shown, Unlock works, MOTION_ON refused, early-drop counter, state to page model");
 }return 0;}
