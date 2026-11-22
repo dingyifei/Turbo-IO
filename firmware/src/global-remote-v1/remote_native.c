@@ -24,6 +24,7 @@ extern unsigned tgr_ota_status(void *);
 extern bool nav_bonded(void *),nav_folded(void *),focus_screen_on(void);
 extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,unsigned,void *);
 extern const char *nav_top_app(void);
+extern bool lock_native_locked(void),lock_native_message(const uint8_t *,unsigned);
 extern void nav_screen_on(bool),native_report_activity(void);
 extern void *tgr_indev_next(void *),*tgr_indev_group(void *),*tgr_indev_driver(void *);
 extern unsigned tgr_indev_type(void *);
@@ -38,6 +39,7 @@ static const char *gate_top(void){
  void *m=nav_monitors(),*i=m?nav_input(m):NULL,*l=m?nav_link(m):NULL;
  void *sys=m?fm_system(m):NULL;
  if(!i||!l||!sys||tgr_ota_status(sys)!=0||!nav_bonded(l)||!nav_connection(TIO_STOCK_LINK_CONNECTED)||nav_folded(i))return NULL;
+ if(lock_native_locked())return NULL;   /* PIN lock: while locked no remote input, knob lease or settings family is admitted */
  return nav_top_app();
 }
 static bool listed(const char *top){
@@ -109,7 +111,7 @@ unsigned tgr_knob_command(void *app,const TDCommand *q,uint32_t now){
 void tgr_knob_cancel(void *app,uint32_t now){Control *c=find();if(c&&app&&c->menu_app==app)tk_cancel(&c->knob,now);}
 void tgr_knob_observe(void *app,int32_t delta,uint32_t now){Control *c=find();if(!c||c->knob.state!=TK_ACTIVE)return;bool ok=c->menu_app==app&&allowed()&&fm_menu_plain(app);tk_observe(&c->knob,delta,now,ok,c->synthetic_depth!=0);}
 void tgr_runtime_snapshot(TDSample *s){
- if(!s)return;s->caps=TD_CAPS_TMG9;s->detent=tio_knob_detent(); /* the persisted D (400 when none is stored), with or without a control state */
+ if(!s)return;s->caps=TD_CAPS_TMG13;s->detent=tio_knob_detent(); /* the persisted D (400 when none is stored), with or without a control state */
  s->extension_valid&=TD_EXT_NAND;s->tile_generation=s->settings_flags=0;s->language=s->language_source=0;
  s->calibration_state=0;s->calibration_window=s->calibration_elapsed=s->calibration_samples=s->calibration_sequence=0;s->calibration_net=0;s->calibration_absolute=0;
  Control *c=find();if(!c)return;
@@ -156,6 +158,7 @@ void tgr_native_message(const TIONativeMessage *m){
  /* Preserve original handler + original payload disposal for EVERY message.
   * This function never takes ownership and never changes the message bytes. */
  if(!m||m->id!=TIO_STOCK_MESSAGE_RNLINK||m->bytes!=74||!m->data)return;
+ if(lock_native_message(m->data,m->bytes))return;   /* TLK: (PIN lock) has its own gate and answers while locked */
  uint8_t raw[32];TMLCommand layout;
  if(tml_uncarrier(m->data,m->bytes,raw,false)){
   if(!tml_decode(raw,sizeof raw,&layout))return;

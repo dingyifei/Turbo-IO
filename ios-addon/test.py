@@ -131,7 +131,9 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg4-lang-store',[FW/'tests/lang_store_test.c',FW/'src/global-remote-v1/lang_store.c'],FW/'src')
     ctest('tmg13-lock-core',[FW/'tests/lock_core_test.c',FW/'src/lock-v1/lock_core.c'],FW/'src')   # PIN lock state and start-up tables, delays, clock faults
     ctest('tmg13-lock-store',[FW/'tests/lock_store_test.c',FW/'src/lock-v1/lock_store.c',FW/'src/lock-v1/lock_core.c'],FW/'src')
+    ctest('tmg13-lock-view',[FW/'tests/lock_view_test.c',FW/'src/lock-v1/lock_view.c',FW/'src/lock-v1/lock_core.c',FW/'src/common-v1/tio_text.c'],FW/'src')
     ctest('tmg13-lock-codec',[FW/'tests/lock_codec_test.c',FW/'src/lock-v1/lock_codec.c',FW/'src/lock-v1/lock_service.c',FW/'src/lock-v1/lock_store.c',FW/'src/lock-v1/lock_core.c'],FW/'src')
+    ctest('tmg13-lock-native',[FW/'tests/lock_native_test.c',FW/'src/lock-v1/lock_view.c',FW/'src/lock-v1/lock_core.c',FW/'src/lock-v1/lock_service.c',FW/'src/lock-v1/lock_store.c',FW/'src/lock-v1/lock_codec.c',FW/'src/common-v1/tio_text.c'],FW/'src',['-DTD_STOCK_10412=0','-DTD_STOCK_1055=0','-DTD_STOCK_10512=0','-DTD_STOCK_10611=1','-include',FW/'src/firmware_profile.h'])   # key/wheel hooks, gates, boot, anchor, TLK: routing against stubbed stock
     ctest('tmg4-text',[FW/'tests/tio_text_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
     ctest('tmg4-grid',[FW/'tests/focus_grid_test.c',FW/'src/focus-v1/focus_menu.c',FW/'src/common-v1/tio_text.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')
     ctest('tmg12-tile-model',[FW/'tests/tile_model_test.c',FW/'src/menu-grid-v2/tile_config.c'],FW/'src')

@@ -22,7 +22,7 @@ static void sha_block(Sha *s,const uint8_t *p){
  for(unsigned i=0;i<64;i++){
   uint32_t t1=v[7]+(ror(v[4],6)^ror(v[4],11)^ror(v[4],25))+((v[4]&v[5])^(~v[4]&v[6]))+K[i]+w[i];
   uint32_t t2=(ror(v[0],2)^ror(v[0],13)^ror(v[0],22))+((v[0]&v[1])^(v[0]&v[2])^(v[1]&v[2]));
-  memmove(v+1,v,7*sizeof v[0]);v[4]+=t1;v[0]=t1+t2;
+  for(unsigned k=7;k>0;k--)v[k]=v[k-1];v[4]+=t1;v[0]=t1+t2;
  }
  for(unsigned i=0;i<8;i++)s->h[i]+=v[i];
 }
@@ -134,6 +134,11 @@ void tlk_motion(TLK *t,uint32_t now_s){
  if(!t->screen_on&&idle_elapsed(t,now_s)){lock(t);return;}
  t->last_use_s=now_s;
 }
+
+bool tlk_idle_due(const TLK *t,uint32_t now_s){return !t->screen_on&&idle_elapsed(t,now_s);}
+bool tlk_idle_passed(const TLK *t,uint32_t now_s){return idle_elapsed(t,now_s);}
+bool tlk_idle_check(TLK *t,uint32_t now_s){if(tlk_idle_due(t,now_s))lock(t);return tlk_locked(t);}
+bool tlk_fold_due(const TLK *t,uint32_t now_s){return t->folded&&unlocked(t)&&elapsed(t->folded_s,now_s,t->rec.fold_min);}
 
 void tlk_tick(TLK *t,uint32_t now_s,uint32_t now_ms){
  uint32_t age=now_ms-t->shown_ms;

@@ -45,6 +45,9 @@ void *nav_link(void *p){return p;}
 void *fm_system(void *p){return p;}
 unsigned tgr_ota_status(void *p){(void)p;return blocked?1:0;}
 bool nav_bonded(void *p){return p!=NULL;}
+/* PIN lock: locked closes every remote gate; TLK: frames are not this test's concern. */
+static bool host_locked;bool lock_native_locked(void){return host_locked;}
+bool lock_native_message(const uint8_t *d,unsigned n){(void)d;(void)n;return false;}
 bool nav_folded(void *p){(void)p;return false;}
 bool focus_screen_on(void){return awake;}
 bool fm_menu_plain(void *p){return p==app&&awake&&!detail_open;}
@@ -120,7 +123,7 @@ int main(void){
   top_app="com.rayneo.liteos.launcher";}
  assert(tio_knob_detent()==400); /* the default: nothing stored */
  kq=(TDCommand){TDQ_KNOB_START,102,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);now_ms+=100;tgr_knob_observe(app,4800,now_ms);kq=(TDCommand){TDQ_KNOB_STOP,102,2,0};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK&&find()->knob.net==4800&&find()->knob.samples==1&&reads==before);
- TDSample snapshot={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);assert(snapshot.caps==TD_CAPS_TMG9&&snapshot.detent==TK_DETENT_DEFAULT);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
+ TDSample snapshot={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&snapshot);assert(snapshot.caps==TD_CAPS_TMG13&&snapshot.detent==TK_DETENT_DEFAULT);uint8_t status_raw[TD_WIRE_BYTES];assert(td_encode(&snapshot,status_raw,sizeof status_raw)&&snapshot.calibration_window==102&&snapshot.calibration_net==4800&&snapshot.tile_generation==1&&reads==before);
  kq=(TDCommand){TDQ_KNOB_START,103,1,30000};assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);blocked=true;timer.callback(&timer);assert(find()->knob.state==TK_CANCELED&&reads==before);blocked=false;kq.session=104;assert(tgr_knob_command(app,&kq,now_ms)==TK_OK);detail_open=true;tgr_knob_observe(app,600,now_ms);assert(find()->knob.state==TK_CANCELED&&find()->knob.samples==0);detail_open=false;
  uint8_t raw[32];TTConfig c;tt_default(&c);tt_file_encode(raw,&c,9);chunk=3;assert(tt_file_write(NULL,0,raw,32));uint8_t reread[33];assert(tt_file_read(NULL,0,reread,33)==32&&!memcmp(raw,reread,32));chunk=0;
  const int write_failures[]={FAIL_OPEN,FAIL_ERROR,FAIL_CLOSE,FAIL_WRITE,FAIL_WRITE_ZERO,FAIL_FLUSH,FAIL_FILENO,FAIL_SYNC,FAIL_WRITE_BIG};
@@ -132,14 +135,14 @@ int main(void){
  // A real TLG1 handler query reads cached state; reboot loading is lazy.
  before=reads;lr=language_request((TLGCommand){11,TLG_QUERY,TLG_EN});assert(lr.result==TLG_OK&&reads==before);lr=language_request((TLGCommand){12,TLG_SET,TLG_ZH});assert(lr.result==TLG_OK&&lr.source==2&&tio_lang()==TLG_ZH);
  /* TMG9 detent through the real handler: a TMG9 peer persists D, status reports it live, a reboot reads it back; anything else is dropped. */
- {uint8_t rep[32];TDSample st={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&st);assert(st.caps==TD_CAPS_TMG9&&st.detent==400);
+ {uint8_t rep[32];TDSample st={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};tgr_runtime_snapshot(&st);assert(st.caps==TD_CAPS_TMG13&&st.detent==400);
   assert(layout_request((TMLCommand){.op=TML_QUERY,.request=30,.client=9},rep)&&rep[7]==TML_OK&&u32(rep+12)==77);const uint32_t gen=u32(rep+16);
   TMLCommand base={.op=TML_SET,.request=31,.client=9,.token=77,.generation=gen,.rows=3,.detent=500};unsigned w=writes;
   assert(!layout_request(base,rep));                                                                    /* D without the TMG9 peer byte: no reply, no write */
   base.caps=TML_PEER_TMG8;assert(!layout_request(base,rep));base.caps=TML_PEER_TMG9;base.detent=450+1;assert(!layout_request(base,rep));base.detent=650;assert(!layout_request(base,rep));
   tgr_runtime_snapshot(&st);assert(writes==w&&st.detent==400);
   base.detent=500;assert(layout_request(base,rep)&&rep[7]==TML_OK&&rep[6]==3&&writes==w+1);
-  tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG9);{uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500);}
+  tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG13);{uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500);}
   {unsigned seen=raw_callbacks;top_app="com.rayneo.liteos.launcher";assert(tio_knob_detent()==500&&inject(TGR_NEXT)==TGR_OK&&raw_callbacks==seen+1&&(last_raw==500||last_raw==-500)); /* a remote step is the live D in the launcher, 600 elsewhere */
    top_app="com.rayneo.liteos.recorder";assert(inject(TGR_NEXT)==TGR_OK&&(last_raw==600||last_raw==-600));top_app="com.rayneo.liteos.launcher";}
   free(timer.user);timer=(HostTimer){0};assert(fm_menu_rows()==3);tgr_runtime_snapshot(&st);assert(st.detent==500); /* reboot: the next menu show loads it */
@@ -153,12 +156,12 @@ int main(void){
   * controller is created, nothing is written or kept. */
  {reset();TDSample st={.build=TD_BUILD_TMG6,.kind=TD_STATUS,.session=1,.sequence=1};uint8_t rep[32];
   assert(!timer.user&&!find());
-  tgr_runtime_snapshot(&st);assert(st.detent==400&&st.caps==TD_CAPS_TMG9&&tio_knob_detent()==400&&!timer.user&&allocations==0&&writes==0);   /* nothing stored: the default */
+  tgr_runtime_snapshot(&st);assert(st.detent==400&&st.caps==TD_CAPS_TMG13&&tio_knob_detent()==400&&!timer.user&&allocations==0&&writes==0);   /* nothing stored: the default */
   TMLStored stored=tml_load(&tml_io);assert(stored.readable&&tml_store(&tml_io,&stored,3,500)&&writes==1);                                    /* D = 500 persisted by an earlier boot's SET */
   unsigned w=writes;before=reads;
-  tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG9&&tio_knob_detent()==500&&reads>before);
+  tgr_runtime_snapshot(&st);assert(st.detent==500&&st.caps==TD_CAPS_TMG13&&tio_knob_detent()==500&&reads>before);
   assert(!timer.user&&!find()&&allocations==0&&writes==w);                                                                                    /* read only: no controller, no write */
-  {uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500&&d.caps==TD_CAPS_TMG9);}
+  {uint8_t wire[TD_WIRE_BYTES];TDSample d;assert(td_encode(&st,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.detent==500&&d.caps==TD_CAPS_TMG13);}
   /* A control state that exists but has not loaded the settings (a layout query creates one) answers the same. */
   assert(layout_request((TMLCommand){.op=TML_QUERY,.request=40,.client=9},rep)&&find()&&!find()->settings_loaded);
   tgr_runtime_snapshot(&st);assert(st.detent==500&&tio_knob_detent()==500&&!find()->settings_loaded);
@@ -206,5 +209,6 @@ int main(void){
   top_app="com.rayneo.liteos.navigation";assert(inject(TGR_BACK)==TGR_OK&&intercepts==5&&group_sends==3&&sent_key==TIO_STOCK_KEY_BACK);top_app="com.rayneo.liteos.launcher";}
  expected_knob=TK_CANCELED;
  reset();fail_alloc=true;assert(fm_menu_rows()==3&&!timer.user&&reads==0&&fm_tile_count()==TT_ITEMS);reset();fail_timer=true;assert(fm_menu_rows()==3&&!timer.user&&allocations==1&&frees==1&&reads==0);reset();cycle=true;assert(!control()&&nexts==512&&allocations==0);cycle=false;
+ {bool was=tgr_runtime_allowed();host_locked=true;assert(!tgr_runtime_allowed());host_locked=false;assert(tgr_runtime_allowed()==was);}   /* locked: no remote, lease or settings family */
  reset();puts("PASS native remote: production lazy load, bounded lookup, grant/write/readback, safe active-map switch and native IO fault/progress handling; 14 items (8 stock + 6 module), stock Navigation input allowed and Do Not Disturb refused, both encoder directions, busy encoder, keypad confirm/back, no write to an unarmed menu");return 0;
 }

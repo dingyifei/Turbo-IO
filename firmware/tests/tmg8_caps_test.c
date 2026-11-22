@@ -30,11 +30,11 @@ int main(void){
  s.detent=TK_DETENT_LEGACY;assert(!td_encode(&s,wire,sizeof wire));s.detent=TK_DETENT_RAW;
  s.caps=TD_CAPS_TMG6;assert(!td_encode(&s,wire,sizeof wire));s.detent=TK_DETENT_LEGACY;
  s.caps=TD_CAPS_TMG6;assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&!(d.caps&TD_CAP_MENU_CAROUSEL)); /* a TMG7 status still decodes */
- s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG8|(1u<<11);assert(!td_encode(&s,wire,sizeof wire)); /* nothing beyond bit 10 (TMG9) */
+ s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG8|(1u<<12);assert(!td_encode(&s,wire,sizeof wire)); /* nothing beyond bit 11 (TMG13) */
  s.caps=TD_CAPS_TMG8|TD_CAP_KNOB_DETENT;assert(td_encode(&s,wire,sizeof wire)); /* with bit 10 the detent is the live D (300 is a valid one); bit 9 alone means exactly 300 */
  s.detent=TK_DETENT_DEFAULT;assert(td_encode(&s,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d)&&d.caps==TD_CAPS_TMG9&&d.detent==400);s.detent=TK_DETENT_RAW;
  s.build=TD_BUILD_TMG5;s.detent=TK_DETENT_RAW;s.caps=TD_CAPS_TMG5|TD_CAP_MENU_CAROUSEL;assert(!td_encode(&s,wire,sizeof wire)); /* older builds never claim it */
- TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample sample;assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&sample)&&sample.caps==TD_CAPS_TMG9&&sample.detent==400u);
+ TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample sample;assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&sample)&&sample.caps==TD_CAPS_TMG13&&sample.detent==400u);
 
  /* Command codec: the caps byte is wire byte 7. */
  uint8_t raw[32];TMLCommand q,set1={.op=TML_SET,.request=2,.client=7,.token=32,.rows=TML_CAROUSEL,.caps=TML_PEER_TMG8};

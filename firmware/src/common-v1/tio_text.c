@@ -65,6 +65,13 @@ static const char *const en[TT_COUNT]={
  [TT_STATE_KM_TO_GO]="{} km to go",
  [TT_STATE_M_TO_GO]="{} m to go",
  [TT_STATE_PHONE_OFF]="Phone not connected",
+ [TT_LOCK_HINT]="Wheel: digit / Press: next",
+ [TT_LOCK_WRONG]="Wrong PIN",
+ [TT_LOCK_TRY_AGAIN]="Try again in {}",
+ [TT_LOCK_TRIES]="{} wrong tries",
+ [TT_LOCK_TRY_ONE]="1 wrong try",
+ [TT_LOCK_SINCE]="since last unlock",
+ [TT_LOCK_USE_PHONE]="Use phone",
 };
 static const char *const zh[TT_COUNT]={
  [TT_TILE_DISPLAY]="Turbo Display",
@@ -132,5 +139,12 @@ static const char *const zh[TT_COUNT]={
  [TT_STATE_KM_TO_GO]="剩余 {} 公里",
  [TT_STATE_M_TO_GO]="剩余 {} 米",
  [TT_STATE_PHONE_OFF]="手机未连接",
+ [TT_LOCK_HINT]="转动：数字 · 按下：下一位",
+ [TT_LOCK_WRONG]="PIN 码错误",
+ [TT_LOCK_TRY_AGAIN]="{} 后重试",
+ [TT_LOCK_TRIES]="{} 次输入错误",
+ [TT_LOCK_TRY_ONE]="1 次输入错误",
+ [TT_LOCK_SINCE]="自上次解锁以来",
+ [TT_LOCK_USE_PHONE]="请用手机解锁",
 };
 const char *tio_text(unsigned key,unsigned lang){return key<TT_COUNT?(lang==1?zh[key]:en[key]):"";}

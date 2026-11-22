@@ -79,10 +79,10 @@ static void status_pairing(void){
  /* Older builds never claim bit 10, and bit 11 is unknown everywhere. */
  s.build=TD_BUILD_TMG5;s.caps=TD_CAPS_TMG5|TD_CAP_KNOB_DETENT;s.detent=400;assert(!td_encode(&s,wire,sizeof wire));
  s.build=TD_BUILD_TMG4;s.caps=TD_CAPS_ALL|TD_CAP_KNOB_DETENT;assert(!td_encode(&s,wire,sizeof wire));
- s.build=TD_BUILD_TMG6;s.caps=TD_CAPS_TMG9|(1u<<11);assert(!td_encode(&s,wire,sizeof wire));
+ s.build=TD_BUILD_TMG6;s.caps=TD_CAPS_TMG13|(1u<<12);assert(!td_encode(&s,wire,sizeof wire));
  /* td_sample (what the diagnostics core emits for a TMG6-build sample) is a TMG9 sample with the default D, and it decodes. */
  TDDiagnostics diag;td_init(&diag,TD_BUILD_TMG6);TDSample out;
- assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&out)&&out.caps==TD_CAPS_TMG9&&out.detent==TK_DETENT_DEFAULT&&td_encode(&out,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d));
+ assert(td_start(&diag,5,100,60000)&&td_sample(&diag,100,true,NULL,NULL,NULL,&out)&&out.caps==TD_CAPS_TMG13&&out.detent==TK_DETENT_DEFAULT&&td_encode(&out,wire,sizeof wire)&&td_decode(wire,sizeof wire,&d));
 }
 
 /* Decode refusals. */

@@ -67,6 +67,13 @@ enum TIOTextKey {
  TT_STATE_M_TO_GO,
  TT_STATE_PHONE_OFF,
  TT_GRID_NAVIGATION,
+ TT_LOCK_HINT,
+ TT_LOCK_WRONG,
+ TT_LOCK_TRY_AGAIN,
+ TT_LOCK_TRIES,
+ TT_LOCK_TRY_ONE,
+ TT_LOCK_SINCE,
+ TT_LOCK_USE_PHONE,
  TT_COUNT
 };
 const char *tio_text(unsigned key,unsigned lang);

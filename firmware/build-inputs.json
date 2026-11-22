@@ -555,6 +555,34 @@
     {
       "source": "diagnostics-v1/knob_calibration.c",
       "sha256": "5c4737328a9e69166efd177724e48bcb4161d882ee961b5b68c8858151e26de4"
+    },
+    {
+      "source": "lock-v1/lock_anchor.c",
+      "sha256": "e6ff759848ee1de8beb1da08c52acdf577eda6cedb93165933f216b9a38abd6d"
+    },
+    {
+      "source": "lock-v1/lock_codec.c",
+      "sha256": "a101e1325f98394ec05f2f11245445681d0c52ff19cbcfcc6acb41ecb8d0aa7e"
+    },
+    {
+      "source": "lock-v1/lock_core.c",
+      "sha256": "d6e86596116ebf687404e6ee7506a22baab1c14f4fa54e36e2b4444cd2d4a37d"
+    },
+    {
+      "source": "lock-v1/lock_native.c",
+      "sha256": "9504f89a9de1ee8014a846fccd74dc7867197b7ec3b3135a28809f03c78bfddb"
+    },
+    {
+      "source": "lock-v1/lock_service.c",
+      "sha256": "add11e463b159ab79617119fbfec3d1b10e757c5bec2a395a3f2260ec48165ee"
+    },
+    {
+      "source": "lock-v1/lock_store.c",
+      "sha256": "fe9207da5a21f6f079592a3226fda6bec4b2d0790d2517b92254489417f239db"
+    },
+    {
+      "source": "lock-v1/lock_view.c",
+      "sha256": "781138268f637275664ef2f04c01b065c1e4730b7635968564ca71327a0aee95"
     }
   ],
   "stockZIP": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",

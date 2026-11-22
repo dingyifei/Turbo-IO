@@ -184,6 +184,12 @@ static void fold_and_idle(void){
  // Notice state is still subject to the idle lock.
  boot_locked(&t);t.rec.wrong=1;fresh(&t,now);assert(t.state==TLK_NOTICE);tlk_screen_off(&t);
  assert(!tlk_screen_on_request(&t,now+300)&&t.state==TLK_DARK);
+ // The read-only checks used by the screen gate match the transitions.
+ fresh(&t,now);tlk_screen_off(&t);assert(!tlk_idle_due(&t,now+299)&&tlk_idle_due(&t,now+300)&&t.state==TLK_UNLOCKED);
+ t.screen_on=true;assert(!tlk_idle_due(&t,now+300));t.screen_on=false;
+ assert(!tlk_idle_check(&t,now+299)&&t.state==TLK_UNLOCKED&&tlk_idle_check(&t,now+300)&&t.state==TLK_DARK);
+ fresh(&t,now);tlk_fold(&t,now);assert(!tlk_fold_due(&t,now+299)&&tlk_fold_due(&t,now+300)&&tlk_fold_due(&t,0));
+ tlk_unfold(&t,now+1);assert(!tlk_fold_due(&t,now+1000)&&t.state==TLK_UNLOCKED);
  // Off ignores fold and idle.
  tlk_boot(&t,TLK_LOAD_NONE,NULL);tlk_fold(&t,now);tlk_unfold(&t,now+100000);assert(tlk_screen_on_request(&t,0)&&t.state==TLK_OFF);
  // SET_TIME changes the thresholds.

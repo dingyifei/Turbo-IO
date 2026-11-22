@@ -62,6 +62,15 @@ void tlk_unfold(TLK *,uint32_t now_s);
 // Knob/key input. Returns true when the lock consumed it (stock must not see it).
 bool tlk_input(TLK *,TLKInput,int delta,uint32_t now_s,uint32_t now_ms);
 void tlk_motion(TLK *,uint32_t now_s);
+// The idle rule without input: true when unlocked, the screen is off and the idle time has passed (read-only; safe
+// from the screen gate). tlk_idle_check applies it (locks) and returns whether the glasses are locked afterwards.
+bool tlk_idle_due(const TLK *,uint32_t now_s);
+bool tlk_idle_check(TLK *,uint32_t now_s);
+// The idle time alone (unlocked and the idle time passed), whatever the cached screen flag says: the screen gate runs
+// when stock asks to turn the panel on, which is itself the "leaving a screen-off period" event.
+bool tlk_idle_passed(const TLK *,uint32_t now_s);
+// The fold lock without an unfold event: true when unlocked, a fold was seen, and the fold delay has passed.
+bool tlk_fold_due(const TLK *,uint32_t now_s);
 void tlk_tick(TLK *,uint32_t now_s,uint32_t now_ms);
 uint32_t tlk_delay_for(unsigned wrong);          // seconds of delay after this many wrong tries
 uint32_t tlk_delay_left(TLK *,uint32_t now_s);   // 0 = no delay; UINT32_MAX = running, clock invalid
