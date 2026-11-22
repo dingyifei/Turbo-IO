@@ -6,11 +6,11 @@ void tlk_service_boot(TLKService *s,const TLRIO *io){
 bool tlk_service_persist(TLKService *s,const TLRIO *io){
  if(!s->lock.dirty)return true;if(!tlr_store(io,&s->stored,&s->lock.rec))return false;s->lock.dirty=false;return true;
 }
-static unsigned apply(TLKService *s,const TLKCommand *q,uint32_t now_s,const uint8_t salt[TLK_SALT_LEN]){
+static unsigned apply(TLKService *s,const TLKCommand *q,uint32_t now_s,uint32_t now_ms,const uint8_t salt[TLK_SALT_LEN]){
  TLK *t=&s->lock;
  switch(q->op){
  case TLK_OP_QUERY:return TLK_R_OK;
- case TLK_OP_UNLOCK:return tlk_phone_unlock(t,now_s)?TLK_R_OK:TLK_R_REFUSED;
+ case TLK_OP_UNLOCK:return tlk_phone_unlock(t,now_s,now_ms)?TLK_R_OK:TLK_R_REFUSED;
  case TLK_OP_LOCK_NOW:return tlk_phone_lock(t)?TLK_R_OK:TLK_R_REFUSED;
  case TLK_OP_SET_PIN:return tlk_phone_set_pin(t,q->pin,salt,now_s)?TLK_R_OK:TLK_R_INVALID;
  case TLK_OP_SET_TIME:return tlk_phone_set_time(t,q->fold_min,q->idle_min)?TLK_R_OK:TLK_R_REFUSED;
@@ -23,7 +23,7 @@ static unsigned apply(TLKService *s,const TLKCommand *q,uint32_t now_s,const uin
 unsigned tlk_service_command(TLKService *s,const TLKCommand *q,TLKReply *out,uint32_t now_ms,uint32_t now_s,uint32_t nonce,const uint8_t salt[TLK_SALT_LEN],bool allowed,const TLRIO *io){
  unsigned r;
  if(!allowed){s->session.token=0;r=TLK_R_BLOCKED;}
- else if((r=tlk_session(&s->session,q,now_ms,nonce))==TLK_R_OK){r=apply(s,q,now_s,salt);if(!tlk_service_persist(s,io)&&r==TLK_R_OK)r=TLK_R_STORAGE;}
+ else if((r=tlk_session(&s->session,q,now_ms,nonce))==TLK_R_OK){r=apply(s,q,now_s,now_ms,salt);if(!tlk_service_persist(s,io)&&r==TLK_R_OK)r=TLK_R_STORAGE;}
  TLK *t=&s->lock;uint32_t left=tlk_delay_left(t,now_s);
  if(t->dirty)tlk_service_persist(s,io);   // a delay restarted by the read above
  *out=(TLKReply){.request=q->request,.client=q->client,.op=q->op,.result=(uint8_t)r,.delay_left=left,

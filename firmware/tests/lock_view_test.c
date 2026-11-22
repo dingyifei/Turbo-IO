@@ -12,8 +12,12 @@ static int slot_of(void *o){for(int i=0;i<16;i++)if(fk.objs[i]==o)return i;retur
 static bool idle(void *c){(void)c;return true;}
 static void *mk(void){static char pool[64];void *o=&pool[fk.made];fk.objs[fk.made++]=o;return o;}
 static void *root(void *c,void *p){(void)c;(void)p;return mk();}
-static void *label(void *c,void *p,unsigned f){(void)c;(void)p;assert(f>=16&&f<=48);return mk();}
-static void place(void *c,void *o,int x,int y,int w,int h){(void)c;(void)o;assert(x>=0&&y>=0&&w>0&&h>0&&x+w<=540&&y+h<=180);}
+static void *label(void *c,void *p,unsigned f){(void)c;(void)p;assert(f>=16&&f<=TLV_DIGIT_PX);return mk();}
+static int px[16],py[16];static bool shownv[16];
+static void place(void *c,void *o,int x,int y,int w,int h){(void)c;assert(x>=0&&y>=0&&w>0&&h>0&&x+w<=540&&y+h<=180);int i=slot_of(o);if(i>=0){px[i]=x;py[i]=y;}}
+static void *canvas(void *c,void *p){(void)c;(void)p;return mk();}
+static const uint8_t *buf;static void buffer(void *c,void *o,const uint8_t *d,unsigned w,unsigned h){(void)c;(void)o;assert(w==TLV_SLOT_W&&h==TLV_CARET_H);buf=d;}
+static void visible(void *c,void *o,bool on){(void)c;int i=slot_of(o);if(i>=0)shownv[i]=on;}
 static void text(void *c,void *o,const char *s){(void)c;fk.text[slot_of(o)]=s;fk.texts++;}
 static void color(void *c,void *o,uint32_t rgb){(void)c;fk.color[slot_of(o)]=rgb;}
 static void destroy(void *c,void *o){(void)c;assert(slot_of(o)==0);fk.destroyed++;}
@@ -51,5 +55,19 @@ int main(void){
  // Snapshot from the core.
  TLK t;TLKRecord r;tlk_record_default(&r);r.enabled=true;r.wrong=3;r.delay_until=1000+30;tlk_boot(&t,TLK_LOAD_GOOD,&r);t.state=TLK_WAITING;
  tlv_snapshot(&s,&t,1000+10,77);assert(s.state==TLK_WAITING&&s.delay_left==20&&s.wrong==3&&s.now_ms==77&&s.local==0&&s.battery==-1);
- puts("PASS lock_view: every lock screen's text and colours, 3 s hint, dots not digits, EN and ZH, no redundant redraws");
+ // "Unlocked" (phone unlock) in band B, EN and ZH.
+ memset(&fk,0,sizeof fk);assert(tlv_open(&v,&W,NULL,(void*)1));
+ s=(TLVScene){.state=TLK_UNLOCKED_MSG,.now_ms=9000};assert(tlv_draw(&v,&s,0)&&!strcmp(L(TLV_B),"Unlocked")&&!*L(TLV_S0));
+ assert(tlv_draw(&v,&s,1)&&!strcmp(L(TLV_B),"\xe5\xb7\xb2\xe8\xa7\xa3\xe9\x94\x81"));
+ tlv_close(&v);
+ // With a canvas: the caret is a solid bar under the focused slot, moves with each digit entered, shows only on the
+ // PIN screen; digits are TLV_DIGIT_PX and everything sits between band T and the bottom reserve (device feedback 1).
+ memset(&fk,0,sizeof fk);static const TNWidgets W2={.idle=idle,.root=root,.canvas=canvas,.label=label,.place=place,.buffer=buffer,.text_static=text,.visible=visible,.destroy=destroy,.color=color};
+ assert(tlv_open(&v,&W2,NULL,(void*)1)&&v.caret&&buf);int ci=slot_of(v.caret);for(unsigned k=0;k<TLV_SLOT_W*TLV_CARET_H;k++)assert(buf[k]==0xff);
+ assert(py[1+TLV_S0]>=34&&py[1+TLV_S0]+TLV_DIGIT_PX+4<=py[ci]&&py[ci]+TLV_CARET_H<=172);
+ for(unsigned i=0;i<4;i++){s=(TLVScene){.state=TLK_ENTRY,.slot=(uint8_t)i,.now_ms=20000+i};assert(tlv_draw(&v,&s,0));
+  assert(shownv[ci]&&px[ci]==px[1+TLV_S0+i]&&!*L(TLV_CARET));}
+ s=(TLVScene){.state=TLK_WRONG,.now_ms=30000};assert(tlv_draw(&v,&s,0)&&!shownv[ci]);
+ tlv_close(&v);
+ puts("PASS lock_view: every lock screen's text and colours, 3 s hint, dots not digits, EN and ZH, no redundant redraws, the phone's Unlocked, caret bar follows the focused slot, large digits fit the page");
 }

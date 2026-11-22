@@ -162,6 +162,8 @@ static void sync(LockCtl *c,uint32_t now_ms){
    (void)tlv_draw(&c->view,&s,c->lang);
    /* Panel on: redraw the whole cover, so nothing the panel held from before the dark is left around the labels. */
    if(was||!focus_screen_on()){nav_screen_on(true);stream_invalidate(c->cover);}
+   /* The PIN screen is up and the panel asked on: input counts after the grace from here; what queued before is dropped. */
+   if(t->state==TLK_ENTRY)tlk_entry_lit(t,now_ms);
   }
  }
  if(t->flush_input){t->flush_input=false;key_queue_flush();c->wheel_acc=0;}
@@ -295,7 +297,7 @@ void lock_hook_key_read(void *indev,void *data){
  fold_edge_now(c);
  TLK *t=&c->svc.lock;uint32_t ms=stream_tick();t->screen_on=focus_screen_on();
  bool consumed;
- if(key==KEY_RELEASED)consumed=tlk_locked(t)||t->state==TLK_NOTICE;
+ if(key==KEY_RELEASED)consumed=tlk_locked(t)||t->state==TLK_NOTICE||t->state==TLK_UNLOCKED_MSG;
  else consumed=tlk_input(t,key_input(key),0,now_s(),ms);
  TR("[TurboLock] key 0x%x state=%u consumed=%u tid=%d",key,t->state,consumed,td_gettid());
  if(consumed){*(uint32_t *)(d+TIO_STOCK_INDEV_DATA_KEY)=0;d[TIO_STOCK_INDEV_DATA_STATE]=0;}

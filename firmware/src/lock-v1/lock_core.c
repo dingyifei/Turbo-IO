@@ -54,11 +54,13 @@ void tlk_boot(TLK *t,TLKLoad load,const TLKRecord *r){
 }
 
 bool tlk_locked(const TLK *t){return t->state>=TLK_DARK&&t->state<=TLK_USE_PHONE;}
-static bool unlocked(const TLK *t){return t->state==TLK_UNLOCKED||t->state==TLK_NOTICE;}
+static bool unlocked(const TLK *t){return t->state==TLK_UNLOCKED||t->state==TLK_NOTICE||t->state==TLK_UNLOCKED_MSG;}
 bool tlk_screen_allowed(const TLK *t){return t->state!=TLK_DARK;}
 
 static void lock(TLK *t){t->state=TLK_DARK;t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);}
-static void entry(TLK *t,uint32_t now_ms){t->state=TLK_ENTRY;t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);t->shown_ms=now_ms;}
+static void entry(TLK *t,uint32_t now_ms){t->state=TLK_ENTRY;t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);t->shown_ms=now_ms;t->lit=false;}
+void tlk_entry_lit(TLK *t,uint32_t now_ms){if(t->state==TLK_ENTRY&&!t->lit){t->lit=true;t->lit_ms=now_ms;t->flush_input=true;}}
+static void after_unlock_msg(TLK *t){t->state=t->notice?TLK_NOTICE:TLK_UNLOCKED;}
 
 // A missing, zero or backwards PMU reading counts as elapsed: a clock fault never keeps the glasses unlocked.
 static bool elapsed(uint32_t since,uint32_t now,unsigned minutes){return !since||!now||now<since||now-since>=(uint32_t)minutes*60u;}
@@ -109,6 +111,7 @@ bool tlk_input(TLK *t,TLKInput in,int delta,uint32_t now_s,uint32_t now_ms){
  if(unlocked(t)&&!t->screen_on&&idle_elapsed(t,now_s))lock(t);
  if(t->state==TLK_UNLOCKED){t->last_use_s=now_s;return false;}
  if(t->state==TLK_NOTICE){t->last_use_s=now_s;if(in==TLK_IN_PRESS)t->state=TLK_UNLOCKED;return true;}
+ if(t->state==TLK_UNLOCKED_MSG){t->last_use_s=now_s;if(in==TLK_IN_PRESS)after_unlock_msg(t);return true;}
  switch(t->state){
  case TLK_DARK:
   if(in==TLK_IN_BACK)return false;   // back passes to stock unless a lock screen is up (§7)
@@ -118,6 +121,7 @@ bool tlk_input(TLK *t,TLKInput in,int delta,uint32_t now_s,uint32_t now_ms){
   else entry(t,now_ms);
   return true;
  case TLK_ENTRY:
+  if(in!=TLK_IN_BACK&&(!t->lit||now_ms-t->lit_ms<TLK_ENTRY_GRACE_MS))return true;   // not visibly up yet: presses and turns dropped
   t->shown_ms=now_ms;
   if(in==TLK_IN_STEP){int d=((int)t->digit+delta%10+10)%10;t->digit=(uint8_t)d;}
   else if(in==TLK_IN_BACK){if(!t->slot)lock(t);else{t->slot--;t->digit=0;}}
@@ -152,11 +156,16 @@ void tlk_tick(TLK *t,uint32_t now_s,uint32_t now_ms){
  case TLK_WAITING:if(!tlk_delay_left(t,now_s))entry(t,now_ms);else if(age>=TLK_ENTRY_TIMEOUT_MS)lock(t);break;
  case TLK_WRONG:if(age>=TLK_WRONG_SHOW_MS){if(tlk_delay_left(t,now_s)){t->state=TLK_WAITING;t->shown_ms=now_ms;}else entry(t,now_ms);}break;
  case TLK_USE_PHONE:if(age>=TLK_USE_PHONE_SHOW_MS)lock(t);break;
+ case TLK_UNLOCKED_MSG:if(age>=TLK_UNLOCKED_SHOW_MS)after_unlock_msg(t);break;
  default:break;
  }
 }
 
-bool tlk_phone_unlock(TLK *t,uint32_t now_s){if(t->state==TLK_OFF)return false;if(tlk_locked(t))do_unlock(t,now_s);return true;}
+bool tlk_phone_unlock(TLK *t,uint32_t now_s,uint32_t now_ms){
+ if(t->state==TLK_OFF)return false;
+ if(tlk_locked(t)){do_unlock(t,now_s);if(!t->folded){t->state=TLK_UNLOCKED_MSG;t->shown_ms=now_ms;}}
+ return true;
+}
 bool tlk_phone_lock(TLK *t){if(t->state==TLK_OFF)return false;lock(t);return true;}
 bool tlk_phone_set_pin(TLK *t,const uint8_t pin[TLK_PIN_LEN],const uint8_t salt[TLK_SALT_LEN],uint32_t now_s){
  for(unsigned i=0;i<TLK_PIN_LEN;i++)if(pin[i]>9)return false;

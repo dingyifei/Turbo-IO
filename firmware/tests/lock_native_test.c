@@ -143,7 +143,10 @@ static TLKReply phone(uint8_t op,uint32_t token,const TLKCommand *extra){
  uint8_t back[32];assert(tlk_uncarrier(last_reply,74,back,true));TLKReply r;assert(tlk_reply_decode(back,32,&r)&&r.request==q.request);return r;
 }
 static TLKReply op(uint8_t o,const TLKCommand *extra){TLKReply r=phone(TLK_OP_QUERY,0,NULL);assert(r.result==TLK_R_OK&&r.token);return phone(o,r.token,extra);}
+/* Phone unlock: while locked and unfolded the glasses show "Unlocked" for 2 s (panel on), then the state underneath. */
+static TLKReply unlock(void){TLKReply r=op(TLK_OP_UNLOCK,NULL);LockCtl *c=lock_anchor_any();if(c&&c->svc.lock.state==TLK_UNLOCKED_MSG){ms+=TLK_UNLOCKED_SHOW_MS;tick(timer_obj);}return r;}
 static void enter_pin(const uint8_t pin[4]){
+ ms+=TLK_ENTRY_GRACE_MS;   /* the PIN screen was lit by the last sync; input counts after the grace */
  for(unsigned i=0;i<4;i++){for(unsigned k=0;k<pin[i];k++)assert(wheel(-400,1)==0);assert(key(TIO_STOCK_KEY_CONFIRM)==0);}
 }
 
@@ -180,11 +183,18 @@ int main(void){
  /* 4. A press brings up the PIN screen: the gate opens, the cover goes up, the panel turns on. */
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY);
  assert(!c->dark&&screen&&covers==1&&c->view_open&&hidden_set>0&&!lock_refuse_screen(1,1)&&c->locked);
+ /* First press (device feedback 1): the wake press opened the PIN screen and the sync lit it (queue flushed); an impatient
+  * second press and a turn inside the grace are dropped, so no digit is taken; after the grace a turn counts. */
+ assert(c->svc.lock.lit&&c->svc.lock.lit_ms==ms);
+ {int fl=flushes;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&wheel(-400,1)==0&&c->svc.lock.slot==0&&c->svc.lock.digit==0&&flushes==fl);}
+ ms+=TLK_ENTRY_GRACE_MS;assert(wheel(-400,1)==0&&c->svc.lock.digit==1);assert(wheel(400,1)==0&&c->svc.lock.digit==0);
  /* 5. Digits by knob (one detent = one step; the topic samples are summed), wrong PIN, then the right one. */
  ms+=100;enter_pin(BAD);assert(c->svc.lock.state==TLK_WRONG&&c->svc.lock.rec.wrong==1&&files[0].exists);
  ms+=2000;do_tick();assert(c->svc.lock.state==TLK_ENTRY);
+ /* The PIN screen came back after "Wrong PIN" and was lit again at that tick: the queue is flushed then, once. */
+ assert(c->svc.lock.lit&&flushes==2);
  calls=stock_wheel_calls;ms+=100;enter_pin(PIN);assert(stock_wheel_calls==calls);
- assert(c->svc.lock.state==TLK_NOTICE&&c->svc.lock.notice==1&&!c->locked&&!lock_refuse_can_wakeup()&&flushes==1);
+ assert(c->svc.lock.state==TLK_NOTICE&&c->svc.lock.notice==1&&!c->locked&&!lock_refuse_can_wakeup()&&flushes==3);   /* + the unlock flush */
  assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_UNLOCKED);   /* the press that dismisses the notice is consumed */
  do_tick();assert(cover_deletes==1&&hidden_clear>0&&kws_on==1);
  assert(key(0x45)==0x45);next_diff=1;assert(wheel(500,1)==1);   /* unlocked: stock again */
@@ -192,42 +202,47 @@ int main(void){
  screen=false;pmu+=299;assert(!lock_refuse_screen(1,2));pmu+=1;
  assert(lock_refuse_screen(1,2)&&c->lock_request);do_tick();assert(c->svc.lock.state==TLK_DARK&&c->dark&&lock_refuse_screen(1,2));
  /* Knob or key use keeps it unlocked. */
- r=op(TLK_OP_UNLOCK,NULL);assert(r.result==TLK_R_OK&&c->svc.lock.state==TLK_UNLOCKED&&!c->dark);
+ /* Phone unlock while dark: the panel turns on with "Unlocked" in band B, the gates open at once; 2 s later the cover goes. */
+ {int on=screen_on_calls,cov=covers;r=op(TLK_OP_UNLOCK,NULL);
+  assert(r.result==TLK_R_OK&&c->svc.lock.state==TLK_UNLOCKED_MSG&&!c->dark&&!c->locked&&screen&&screen_on_calls>on&&covers==cov+1&&!lock_refuse_can_wakeup());
+  ms+=100;do_tick();assert(!strcmp(shown(c->view.labels[TLV_B]),"Unlocked"));
+  ms+=TLK_UNLOCKED_SHOW_MS;do_tick();assert(c->svc.lock.state==TLK_UNLOCKED&&!c->cover&&screen);}
+ assert(c->svc.lock.state==TLK_UNLOCKED&&!c->dark);
  screen=false;pmu+=200;assert(key(TIO_STOCK_KEY_CONFIRM)==TIO_STOCK_KEY_CONFIRM);pmu+=200;assert(!lock_refuse_screen(1,2));
  /* An input after the idle time with the screen off locks first and is then handled as locked input. */
  screen=false;pmu+=300;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&screen);
  key(TIO_STOCK_KEY_BACK);assert(c->svc.lock.state==TLK_DARK);
  /* 7. Fold lock: fold seen by the gate as the panel goes off, unfold after the fold delay. */
- r=op(TLK_OP_UNLOCK,NULL);assert(c->svc.lock.state==TLK_UNLOCKED);
+ r=unlock();assert(c->svc.lock.state==TLK_UNLOCKED);
  folded=true;assert(!lock_refuse_screen(0,3)&&c->gate_fold_s==(uint32_t)pmu);
  pmu+=300;folded=false;assert(lock_refuse_screen(1,3)&&c->lock_request);do_tick();assert(c->svc.lock.state==TLK_DARK);
  /* A fold only the gate saw (no tick while folded): the first unfolded tick applies it before the screen-on request. */
- r=op(TLK_OP_UNLOCK,NULL);folded=true;screen=false;assert(!lock_refuse_screen(0,3));pmu+=300;folded=false;do_tick();assert(c->svc.lock.state==TLK_DARK);
+ r=unlock();folded=true;screen=false;assert(!lock_refuse_screen(0,3));pmu+=300;folded=false;do_tick();assert(c->svc.lock.state==TLK_DARK);
  /* Folded and unfolded within the delay: stays unlocked. */
- r=op(TLK_OP_UNLOCK,NULL);folded=true;screen=false;do_tick();pmu+=10;folded=false;screen=true;assert(!lock_refuse_screen(1,3));do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);
+ r=unlock();folded=true;screen=false;do_tick();pmu+=10;folded=false;screen=true;assert(!lock_refuse_screen(1,3));do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);
  /* The unfold window: after a fold past the delay the lock is taken at the first UI-thread step after stock's unfold (a
   * launcher message, which runs before stock's handler, or a key), not at the next tick; before that the wake gates refuse. */
- r=op(TLK_OP_UNLOCK,NULL);folded=true;screen=false;do_tick();pmu+=300;folded=false;
+ r=unlock();folded=true;screen=false;do_tick();pmu+=300;folded=false;
  assert(lock_refuse_can_wakeup()&&lock_refuse_open_recorder()&&lock_refuse_open_remote_audio()&&c->svc.lock.state==TLK_UNLOCKED);
  lock_boot_early();assert(c->svc.lock.state==TLK_DARK&&c->dark&&!c->lock_request);
- r=op(TLK_OP_UNLOCK,NULL);do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);   /* no stale lock request after the unlock */
+ r=unlock();do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);   /* no stale lock request after the unlock */
  folded=true;screen=false;do_tick();pmu+=300;folded=false;
  assert(key(TIO_STOCK_KEY_CONFIRM)==0&&tlk_locked(&c->svc.lock));
- r=op(TLK_OP_UNLOCK,NULL);do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);
+ r=unlock();do_tick();assert(c->svc.lock.state==TLK_UNLOCKED);
  /* Unlocked with the screen on past the idle time (reading): the wake gates do not refuse. */
  screen=true;do_tick();pmu+=400;assert(!lock_refuse_can_wakeup());pmu-=400;
  /* 8. A clock fault never keeps the glasses unlocked. */
  screen=false;pmu=0;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);
- pmu=T0+5000;r=op(TLK_OP_UNLOCK,NULL);screen=false;pmu=(int64_t)1e12;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);
+ pmu=T0+5000;r=unlock();screen=false;pmu=(int64_t)1e12;assert(lock_refuse_screen(1,2));do_tick();assert(c->svc.lock.state==TLK_DARK);
  pmu=T0+6000;
  /* 9. Phone while locked: other families are refused (remote gate), TLK: answers; Lock now from the phone. */
- assert(lock_native_locked());r=op(TLK_OP_UNLOCK,NULL);assert(!lock_native_locked());r=op(TLK_OP_LOCK_NOW,NULL);assert(r.result==TLK_R_OK&&c->dark&&!screen);
+ assert(lock_native_locked());r=unlock();assert(!lock_native_locked());r=op(TLK_OP_LOCK_NOW,NULL);assert(r.result==TLK_R_OK&&c->dark&&!screen);
  /* 10. The anchor displaced (something inserted ahead of it): the tick goes dark while locked and puts it back. */
  static AnchorNode other;memset(&other,0,sizeof other);other.next=tio_key_interceptors;tio_key_interceptors=&other;
  assert(!lock_anchor_any()&&(lock_refuse_can_wakeup()==(ms<PENDING_UNTIL_MS)));{uint32_t m0=ms;ms=PENDING_UNTIL_MS;assert(!lock_refuse_can_wakeup());ms=m0;}int offs=force_off_calls;do_tick();assert(force_off_calls>offs||c->dark);
  assert(lock_anchor_any()==c&&((AnchorNode *)tio_key_interceptors)->next==&other&&other.next==NULL);
  /* 11. Wrong tries persist across a reboot and the delay continues. */
- r=op(TLK_OP_UNLOCK,NULL);r=op(TLK_OP_LOCK_NOW,NULL);
+ r=unlock();r=op(TLK_OP_LOCK_NOW,NULL);
  for(int i=0;i<3;i++){key(TIO_STOCK_KEY_CONFIRM);enter_pin(BAD);ms+=2000;do_tick();if(c->svc.lock.state==TLK_ENTRY)key(TIO_STOCK_KEY_BACK);}
  assert(c->svc.lock.rec.wrong==3&&c->svc.lock.rec.delay_until==(uint32_t)pmu+30);
  reset_world(true);pmu=T0+6000+10;c=boot();assert(c->svc.lock.state==TLK_DARK&&c->svc.lock.rec.wrong==3);
@@ -238,14 +253,14 @@ int main(void){
  r=op(TLK_OP_SET_PIN,&pin);files[0].data[9]^=1;files[1].data[9]^=1;files[1].exists=true;files[1].n=files[0].n;
  reset_world(true);c=boot();assert(c->svc.lock.state==TLK_DARK&&c->svc.lock.damaged);
  ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->svc.lock.state==TLK_USE_PHONE&&screen);ms+=2000;do_tick();assert(c->svc.lock.state==TLK_DARK&&!screen);
- r=op(TLK_OP_UNLOCK,NULL);assert(r.result==TLK_R_OK&&!c->locked);r=op(TLK_OP_SET_PIN,&pin);assert(!(r.flags&TLK_F_DAMAGED));
+ r=unlock();assert(r.result==TLK_R_OK&&!c->locked);r=op(TLK_OP_SET_PIN,&pin);assert(!(r.flags&TLK_F_DAMAGED));
  reset_world(true);c=boot();assert(c->svc.lock.state==TLK_DARK&&!c->svc.lock.damaged);
  /* 14. The cover cannot be made (no sys layer): the backstop keeps the panel dark. */
  memset(display,0,sizeof display);ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->dark&&!screen&&c->svc.lock.state==TLK_DARK);
  /* 15. A stale key (LVGL re-presents the last key on every empty poll) is not an event: it neither keeps the glasses
   *     unlocked nor counts as a press while locked. */
  reset_world(true);c=boot();
- r=op(TLK_OP_UNLOCK,NULL);assert(c->svc.lock.state==TLK_UNLOCKED);ms+=100;
+ r=unlock();assert(c->svc.lock.state==TLK_UNLOCKED);ms+=100;
  assert(key(TIO_STOCK_KEY_CONFIRM)==TIO_STOCK_KEY_CONFIRM);
  screen=false;pmu+=300;for(int i=0;i<5;i++)assert(poll_empty()==TIO_STOCK_KEY_CONFIRM&&c->svc.lock.state==TLK_UNLOCKED);
  assert(lock_refuse_screen(1,2)&&c->lock_request);do_tick();assert(c->svc.lock.state==TLK_DARK);
@@ -338,5 +353,5 @@ int main(void){
  /* The failure notice is unlocked: something over it changes nothing. */
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY);enter_pin(BAD);ms+=2000;do_tick();enter_pin(PIN);
  assert(c->svc.lock.state==TLK_NOTICE);kid_add(foreign_obj);ms+=100;do_tick();assert(c->svc.lock.state==TLK_NOTICE&&!c->dark);kid_remove(foreign_obj);
- puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank");
+ puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank, first-press grace on the PIN screen, the phone's Unlocked lights the panel");
 }

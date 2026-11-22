@@ -8,7 +8,10 @@
 
 enum {TLK_PIN_LEN=4,TLK_SALT_LEN=8,TLK_HASH_LEN=8};
 enum {TLK_MINUTES_MIN=1,TLK_MINUTES_MAX=240,TLK_DEFAULT_MINUTES=5};
-enum {TLK_ENTRY_TIMEOUT_MS=30000,TLK_WRONG_SHOW_MS=2000,TLK_USE_PHONE_SHOW_MS=2000};
+enum {TLK_ENTRY_TIMEOUT_MS=30000,TLK_WRONG_SHOW_MS=2000,TLK_USE_PHONE_SHOW_MS=2000,TLK_UNLOCKED_SHOW_MS=2000};
+/* Input on the PIN screen counts only once the screen has been lit for this long (the panel takes a moment to light on
+ * the device; the press that woke it and impatient presses or turns before it is visible are dropped). */
+enum {TLK_ENTRY_GRACE_MS=600};
 
 typedef enum {
  TLK_OFF=0,        // no PIN set
@@ -19,6 +22,7 @@ typedef enum {
  TLK_WAITING,      // locked, delay running, "Try again in m:ss"
  TLK_USE_PHONE,    // locked, damaged record, "Use phone" for 2 s
  TLK_NOTICE,       // unlocked, failure notice until pressed
+ TLK_UNLOCKED_MSG, // unlocked by the phone: "Unlocked" for 2 s, then the failure notice if there were wrong tries
 } TLKState;
 
 // What is kept in the lock file (two banks, see lock_store).
@@ -43,6 +47,8 @@ typedef struct {
  uint8_t slot,digit,digits[TLK_PIN_LEN];
  uint8_t notice;         // wrong tries shown by the failure notice
  uint32_t shown_ms;      // when the current locked screen (or its last input) started
+ uint32_t lit_ms;        // when the PIN screen was lit (tlk_entry_lit); input counts from lit_ms + TLK_ENTRY_GRACE_MS
+ bool lit;               // the PIN screen has been lit since it was opened
  uint32_t folded_s;      // PMU seconds at fold; 0 = unknown
  bool folded;
  uint32_t last_use_s;    // later of input, motion and unlock; 0 = none since boot
@@ -77,7 +83,10 @@ void tlk_tick(TLK *,uint32_t now_s,uint32_t now_ms);
 uint32_t tlk_delay_for(unsigned wrong);          // seconds of delay after this many wrong tries
 uint32_t tlk_delay_left(TLK *,uint32_t now_s);   // 0 = no delay; UINT32_MAX = running, clock invalid
 // Phone operations (TLK: commands). Return false when refused.
-bool tlk_phone_unlock(TLK *,uint32_t now_s);
+// A phone unlock while locked shows "Unlocked" (TLK_UNLOCKED_MSG) unless the glasses are folded.
+bool tlk_phone_unlock(TLK *,uint32_t now_s,uint32_t now_ms);
+// The caller lit the panel with the PIN screen up: input counts from now_ms + TLK_ENTRY_GRACE_MS; queued input is dropped.
+void tlk_entry_lit(TLK *,uint32_t now_ms);
 bool tlk_phone_lock(TLK *);
 bool tlk_phone_set_pin(TLK *,const uint8_t pin[TLK_PIN_LEN],const uint8_t salt[TLK_SALT_LEN],uint32_t now_s);
 bool tlk_phone_set_time(TLK *,unsigned fold_min,unsigned idle_min);

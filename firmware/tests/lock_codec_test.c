@@ -49,7 +49,8 @@ int main(void){
  // Unlock, wrong tries reported, ACK clears the phone count.
  s.lock.rec.wrong=3;s.lock.rec.unacked=3;s.lock.rec.delay_until=0;
  tok=query(&s,&io,77,10000,&r);assert(r.wrong==3&&r.unacked==3&&r.delay_left==30&&(r.flags&TLK_F_LOCKED));
- assert(cmd(&s,&io,TLK_OP_UNLOCK,tok,77,10100,&r,NULL,true)==TLK_R_OK&&!(r.flags&TLK_F_LOCKED)&&r.wrong==0&&r.unacked==3&&r.delay_left==0&&s.lock.state==TLK_NOTICE);
+ assert(cmd(&s,&io,TLK_OP_UNLOCK,tok,77,10100,&r,NULL,true)==TLK_R_OK&&!(r.flags&TLK_F_LOCKED)&&r.wrong==0&&r.unacked==3&&r.delay_left==0&&s.lock.state==TLK_UNLOCKED_MSG&&s.lock.notice==3);
+ tlk_tick(&s.lock,1000010,10100+TLK_UNLOCKED_SHOW_MS);assert(s.lock.state==TLK_NOTICE);   // "Unlocked" first, then the failure notice
  tok=query(&s,&io,77,11000,&r);assert(cmd(&s,&io,TLK_OP_ACK_FAILURES,tok,77,11100,&r,NULL,true)==TLK_R_OK&&r.unacked==0);
  // SET_TIME, then the record survives a reboot.
  TLKCommand tm={.fold_min=1,.idle_min=240};tok=query(&s,&io,77,12000,&r);assert(cmd(&s,&io,TLK_OP_SET_TIME,tok,77,12100,&r,&tm,true)==TLK_R_OK&&r.fold_min==1&&r.idle_min==240);

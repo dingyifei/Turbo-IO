@@ -8,11 +8,16 @@
 // the launcher menu; owner decision g4).
 enum {TLV_T,TLV_M,TLV_B,TLV_S0,TLV_S1,TLV_S2,TLV_S3,TLV_CARET,TLV_TIME,TLV_BATT,TLV_LABELS};
 enum {TLV_TEXT=48,TLV_HINT_MS=3000,TLV_STATUS_W=64};
+/* PIN digits (owner, device feedback 1: as large as the page allows). The stock font manager creates any size from its
+ * font file; the limit is the page: band T ends at y 34 and the bottom reserve starts at y 172, which leaves 138 px for
+ * the digit box (size + 4), a 4 px gap and the caret bar. 116 is the most that fits; 112 keeps 6 px spare. */
+enum {TLV_DIGIT_PX=112,TLV_SLOT_W=80,TLV_SLOT_PITCH=112,TLV_CARET_H=8,TLV_CARET_GAP=4};
 typedef struct {
  TNWidgets api;void *root,*labels[TLV_LABELS];
  char text[2][TLV_LABELS][TLV_TEXT];unsigned bank;
  uint32_t colors[TLV_LABELS];
  uint32_t entry_ms;TLKState last_state;bool open;
+ void *caret;int caret_slot;   // a solid bar under the focused slot (a canvas; NULL: the "^" label instead)
 } TLKView;
 // What the view shows; filled from the lock state by tlv_snapshot.
 // local: local time in seconds (stock's system monitor; shown when 2000..2100, else --:--); battery: 0..100, else --%.

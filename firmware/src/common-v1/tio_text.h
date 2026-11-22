@@ -74,6 +74,7 @@ enum TIOTextKey {
  TT_LOCK_TRY_ONE,
  TT_LOCK_SINCE,
  TT_LOCK_USE_PHONE,
+ TT_LOCK_UNLOCKED,
  TT_COUNT
 };
 const char *tio_text(unsigned key,unsigned lang);

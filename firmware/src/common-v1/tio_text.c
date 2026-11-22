@@ -72,6 +72,7 @@ static const char *const en[TT_COUNT]={
  [TT_LOCK_TRY_ONE]="1 wrong try",
  [TT_LOCK_SINCE]="since last unlock",
  [TT_LOCK_USE_PHONE]="Use phone",
+ [TT_LOCK_UNLOCKED]="Unlocked",
 };
 static const char *const zh[TT_COUNT]={
  [TT_TILE_DISPLAY]="Turbo Display",
@@ -146,5 +147,6 @@ static const char *const zh[TT_COUNT]={
  [TT_LOCK_TRY_ONE]="1 次输入错误",
  [TT_LOCK_SINCE]="自上次解锁以来",
  [TT_LOCK_USE_PHONE]="请用手机解锁",
+ [TT_LOCK_UNLOCKED]="已解锁",
 };
 const char *tio_text(unsigned key,unsigned lang){return key<TT_COUNT?(lang==1?zh[key]:en[key]):"";}
