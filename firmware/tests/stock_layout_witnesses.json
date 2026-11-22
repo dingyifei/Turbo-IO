@@ -30,7 +30,14 @@
    "sha256=24926e315c4025ddca43ab8313ea7e654c583baaa05108fceb57e9f8728c4022,len=107": 1,
    "sha256=fe7182aeac9fefbbe47fee3eac8e0d7869d7d5a799cd9f6a300003b8111a3379,len=67": 1,
    "sha256=a59e3a02240fd0736a5589b2fe8bc7aae2d3f29a0a340bb492df89b183c748f1,len=59": 1,
-   "sha256=ad615f087a7c61001a88f946819fdfedbced7d4f5e3b84cf8270d93f1a5f4f95,len=78": 1
+   "sha256=ad615f087a7c61001a88f946819fdfedbced7d4f5e3b84cf8270d93f1a5f4f95,len=78": 1,
+   "sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17": 3,
+   "sha256=ef25516ef4b0a3acac81fb88d99491df4a95a5fd1ff02bc664d8753c24ad2eb0,len=28": 1,
+   "sha256=15d7fdb552a37ec04d67f4158a7a03b321f3d62bdc97c5d6a1a920688758ebaf,len=24": 1,
+   "sha256=e53208940f83e75ba7f33d225f08dea63b3d885fcbb88fb477e5847f3b847d6d,len=24": 1,
+   "sha256=be8cd9da1dfd9a0e1f8db3678d0e1cdad099b09532189c3ffc836720a74cb03e,len=41": 1,
+   "sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31": 2,
+   "sha256=1803e82ea8c76b4719140429f4e9bdae08970d9117790e2e91bdbc65fd81a9d1,len=93": 1
   }
  },
  "moduleMessageIds": [
@@ -2756,6 +2763,288 @@
     }
    ],
    "why": "A stock routine sends on the phone link through the interface's send entry with this business id and no callback."
+  },
+  {
+   "constant": "TIO_STOCK_DISPLAY_SCREEN",
+   "n": 1,
+   "where": "str:sha256=ef25516ef4b0a3acac81fb88d99491df4a95a5fd1ff02bc664d8753c24ad2eb0,len=28#0",
+   "at": 16,
+   "function": {
+    "where": "str:sha256=ef25516ef4b0a3acac81fb88d99491df4a95a5fd1ff02bc664d8753c24ad2eb0,len=28#0",
+    "at": -26
+   },
+   "shape": "ldr.w-imm12",
+   "regs": {
+    "rt": 4,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the getter returns this display slot"
+  },
+  {
+   "constant": "TIO_STOCK_DISPLAY_SCREEN",
+   "n": 2,
+   "where": "str:sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17#0",
+   "at": 328,
+   "function": {
+    "where": "str:sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17#0",
+    "at": -40
+   },
+   "shape": "str.w-imm12",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "creation stores the active screen here"
+  },
+  {
+   "constant": "TIO_STOCK_DISPLAY_TOP",
+   "n": 1,
+   "where": "str:sha256=15d7fdb552a37ec04d67f4158a7a03b321f3d62bdc97c5d6a1a920688758ebaf,len=24#0",
+   "at": 16,
+   "function": {
+    "where": "str:sha256=15d7fdb552a37ec04d67f4158a7a03b321f3d62bdc97c5d6a1a920688758ebaf,len=24#0",
+    "at": -26
+   },
+   "shape": "ldr.w-imm12",
+   "regs": {
+    "rt": 4,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the getter returns this display slot"
+  },
+  {
+   "constant": "TIO_STOCK_DISPLAY_TOP",
+   "n": 2,
+   "where": "str:sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17#0",
+   "at": 340,
+   "function": {
+    "where": "str:sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17#0",
+    "at": -40
+   },
+   "shape": "str.w-imm12",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "creation stores the top layer here"
+  },
+  {
+   "constant": "TIO_STOCK_DISPLAY_SYS",
+   "n": 1,
+   "where": "str:sha256=e53208940f83e75ba7f33d225f08dea63b3d885fcbb88fb477e5847f3b847d6d,len=24#0",
+   "at": 16,
+   "function": {
+    "where": "str:sha256=e53208940f83e75ba7f33d225f08dea63b3d885fcbb88fb477e5847f3b847d6d,len=24#0",
+    "at": -26
+   },
+   "shape": "ldr.w-imm12",
+   "regs": {
+    "rt": 4,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the getter returns this display slot"
+  },
+  {
+   "constant": "TIO_STOCK_DISPLAY_SYS",
+   "n": 2,
+   "where": "str:sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17#0",
+   "at": 354,
+   "function": {
+    "where": "str:sha256=33c514b285cb4028241a163a0298b905aef1b8e973a7419b9c35cf0852767b4c,len=17#0",
+    "at": -40
+   },
+   "shape": "str.w-imm12",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "creation stores the sys layer here"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_KEY",
+   "n": 1,
+   "where": "edit:lock_hook_key_read",
+   "at": 58,
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 2,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the keypad read callback stores the mapped key into its data argument (r4 = r1 at entry)"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_KEY",
+   "n": 2,
+   "where": "call:str:sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31#1@0x1c",
+   "at": 6,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 1
+   },
+   "transform": "id",
+   "why": "the keypad proc reads the key from its data argument (r1)"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_ENC_DIFF",
+   "n": 1,
+   "where": "edit:lock_hook_wheel_read",
+   "at": 224,
+   "shape": "strh.w-imm12",
+   "regs": {
+    "rt": 3,
+    "rn": 8
+   },
+   "transform": "id",
+   "why": "the wheel read callback stores the encoder step into its data argument (r8 = r1 at entry)"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_ENC_DIFF",
+   "n": 2,
+   "where": "ptr:str:sha256=1803e82ea8c76b4719140429f4e9bdae08970d9117790e2e91bdbc65fd81a9d1,len=93#0@0x88",
+   "at": 406,
+   "shape": "strh-imm5",
+   "regs": {
+    "rt": 6,
+    "rn": 3
+   },
+   "transform": "id",
+   "why": "the navigation capture read callback stores its own encoder step into the data argument"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_STATE",
+   "n": 1,
+   "where": "str:sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31#1",
+   "at": -58,
+   "function": {
+    "where": "str:sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31#1",
+    "at": -112
+   },
+   "shape": "ldrb-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 7
+   },
+   "transform": {
+    "add": -4
+   },
+   "context": [
+    {
+     "at": -62,
+     "shape": "adds-imm3",
+     "regs": {
+      "rd": 1,
+      "rn": 7
+     },
+     "field": 4
+    }
+   ],
+   "why": "after read_cb the indev read copies the state from the stack data at r7+4 (the address it passes as r1)"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_STATE",
+   "n": 2,
+   "where": "call:str:sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31#1@0x1c",
+   "at": 16,
+   "shape": "ldrb-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 1
+   },
+   "transform": "id",
+   "why": "the keypad proc reads the state from its data argument (r1)"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_CONTINUE",
+   "n": 1,
+   "where": "str:sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31#1",
+   "at": -56,
+   "function": {
+    "where": "str:sha256=93502c762a6dad0fc57e04384d9028681791ddba29fe9941fc6cb123d9e529e6,len=31#1",
+    "at": -112
+   },
+   "shape": "ldrb-imm5",
+   "regs": {
+    "rt": 5,
+    "rn": 7
+   },
+   "transform": {
+    "add": -4
+   },
+   "context": [
+    {
+     "at": -62,
+     "shape": "adds-imm3",
+     "regs": {
+      "rd": 1,
+      "rn": 7
+     },
+     "field": 4
+    }
+   ],
+   "why": "after read_cb the indev read loads continue_reading from the stack data at r7+4 (the address it passes as r1)"
+  },
+  {
+   "constant": "TIO_STOCK_INDEV_DATA_CONTINUE",
+   "n": 2,
+   "where": "edit:lock_hook_key_read",
+   "at": 68,
+   "shape": "strb-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the keypad read callback stores continue_reading (the event hub is not empty) into its data argument"
+  },
+  {
+   "constant": "TIO_STOCK_WHEEL_FD",
+   "n": 1,
+   "where": "edit:lock_hook_wheel_read",
+   "at": 22,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 0
+   },
+   "transform": "id",
+   "context": [
+    {
+     "at": 10,
+     "shape": "bl",
+     "target": "link:tgr_indev_driver"
+    },
+    {
+     "at": 24,
+     "shape": "bl",
+     "target": "link:ots_topic_read"
+    }
+   ],
+   "why": "the wheel read loads the topic fd from the driver ctx and passes it to the topic read"
+  },
+  {
+   "constant": "TIO_STOCK_WHEEL_FD",
+   "n": 2,
+   "where": "str:sha256=be8cd9da1dfd9a0e1f8db3678d0e1cdad099b09532189c3ffc836720a74cb03e,len=41#0",
+   "at": -4,
+   "function": {
+    "where": "str:sha256=be8cd9da1dfd9a0e1f8db3678d0e1cdad099b09532189c3ffc836720a74cb03e,len=41#0",
+    "at": -62
+   },
+   "shape": "str-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 5
+   },
+   "transform": "id",
+   "why": "the wheel create stores the topic subscription result into its new driver ctx"
   }
  ]
 }

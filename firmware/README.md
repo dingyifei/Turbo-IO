@@ -1,6 +1,6 @@
 # TurboIO firmware
 
-The source for the patched Strix OS firmware of the RayNeo iO glasses. The build compiles a module, links it into stock `nuttx_ap.bin` at 25 patch sites and packs the result with the other stock payloads, unchanged, into an OTA ZIP.
+The source for the patched Strix OS firmware of the RayNeo iO glasses. The build compiles a module, links it into stock `nuttx_ap.bin` at the patch sites pinned in `build-inputs.json` (`editCount`) and packs the result with the other stock payloads, unchanged, into an OTA ZIP.
 
 There is one tree. The release label is the single line in [`RELEASE`](RELEASE). `build.py` names the ZIP from it and `tools/phone_pins.py` names the phone pins from it. Each released firmware is an annotated git tag `fw/tmgN`. Run `git show fw/tmgN` to see its ZIP hash and paired phone build. Release history lives in those tags, in git history and in [docs/CHANGELOG.md](../docs/CHANGELOG.md).
 

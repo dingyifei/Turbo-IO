@@ -123,6 +123,12 @@ nav_bonded = 0x105a83b1;
 nav_folded = 0x105a4e05;
 tio_imu_family = 0x1983b17c;
 tio_light_latest = 0x1061bea9;
+pmu_rtc_epoch = 0x105ab2b9;
+kws_enable = 0x1057e77d;
+kws_disable = 0x1057e7f1;
+key_queue_flush = 0x1061c5b1;
+ots_topic_read = 0x1064d47d;
+tio_key_interceptors = 0x197656dc;
 tio_launcher_global = 0x199595d4;
 nav_business_idle = 0x105a2f35;
 nav_connection = 0x1050e94d;
@@ -144,6 +150,13 @@ resume_lottie = 0x106a4931;
 resume_app_id = 0x106a4511;
 resume_refresh_label = 0x106a48f3;
 resume_vm_event = 0x106a3651;
+resume_can_wakeup = 0x1057f039;
+resume_open_remote_audio = 0x1058287d;
+resume_open_recorder = 0x105819dd;
+resume_screen_state = 0x10655a61;
+resume_factory_reset = 0x105aa8ed;
+resume_key_read = 0x1088f681;
+resume_wheel_read = 0x1078e649;
 
 SECTIONS {
  . = 0x10929204;

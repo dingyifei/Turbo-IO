@@ -57,7 +57,7 @@ SAME_FUNCTION_EXCEPTION = ('TIO_STOCK_MESSAGE_ID_MAX', 'same-function: bound and
 # Decision R3: the one derived constant, with its parts. Any other derived header macro is refused.
 DERIVED_CONSTANT = ('TIO_MENU_SCROLL_POSITION_OFFSET', ('TIO_STOCK_MENU_MOTION', 'TIO_STOCK_MOTION_POSITION'))
 # The number of context entries over all records, so that a dropped context is noticed.
-CONTEXT_ENTRIES = 108
+CONTEXT_ENTRIES = 112
 # A +1 witness is an unsigned compare whose bound is inclusive: the next flag reader is bls (in range) or bhi (out
 # of range), with only flag-preserving register moves between. bcc/bcs would make the bound exclusive.
 PLUS_ONE_SHAPES = ('cmp-imm8', 'cmp.w-imm')
@@ -155,11 +155,13 @@ ENC = {
     'str-imm5': dict(n=2, fixed=[(0xf800, 0x6000)], regs=lambda h, g: {'rt': h & 7, 'rn': _lo3(h, 3)}, field=lambda h, g, a: ((h >> 6) & 31) * 4, low=(0, 6)),
     'ldrb-imm5': dict(n=2, fixed=[(0xf800, 0x7800)], regs=lambda h, g: {'rt': h & 7, 'rn': _lo3(h, 3)}, field=lambda h, g, a: (h >> 6) & 31, low=(0, 6)),
     'ldrh-imm5': dict(n=2, fixed=[(0xf800, 0x8800)], regs=lambda h, g: {'rt': h & 7, 'rn': _lo3(h, 3)}, field=lambda h, g, a: ((h >> 6) & 31) * 2, low=(0, 6)),
+    'strb-imm5': dict(n=2, fixed=[(0xf800, 0x7000)], regs=lambda h, g: {'rt': h & 7, 'rn': _lo3(h, 3)}, field=lambda h, g, a: (h >> 6) & 31, low=(0, 6)),
     'strh-imm5': dict(n=2, fixed=[(0xf800, 0x8000)], regs=lambda h, g: {'rt': h & 7, 'rn': _lo3(h, 3)}, field=lambda h, g, a: ((h >> 6) & 31) * 2, low=(0, 6)),
     # 32-bit loads and stores, positive 12-bit immediate (Rn = pc is the literal form, excluded)
     'ldr.w-imm12': dict(n=4, fixed=[(0xfff0, 0xf8d0), (0, 0)], exclude=(0x000f, 0x000f), regs=lambda h, g: {'rt': g >> 12, 'rn': h & 0xf}, field=lambda h, g, a: g & 0xfff, low=(1, 0)),
     'str.w-imm12': dict(n=4, fixed=[(0xfff0, 0xf8c0), (0, 0)], exclude=(0x000f, 0x000f), regs=lambda h, g: {'rt': g >> 12, 'rn': h & 0xf}, field=lambda h, g, a: g & 0xfff, low=(1, 0)),
     'ldrb.w-imm12': dict(n=4, fixed=[(0xfff0, 0xf890), (0, 0)], exclude=(0x000f, 0x000f), regs=lambda h, g: {'rt': g >> 12, 'rn': h & 0xf}, field=lambda h, g, a: g & 0xfff, low=(1, 0)),
+    'strh.w-imm12': dict(n=4, fixed=[(0xfff0, 0xf8a0), (0, 0)], exclude=(0x000f, 0x000f), regs=lambda h, g: {'rt': g >> 12, 'rn': h & 0xf}, field=lambda h, g, a: g & 0xfff, low=(1, 0)),
     'strb.w-imm12': dict(n=4, fixed=[(0xfff0, 0xf880), (0, 0)], exclude=(0x000f, 0x000f), regs=lambda h, g: {'rt': g >> 12, 'rn': h & 0xf}, field=lambda h, g, a: g & 0xfff, low=(1, 0)),
     'ldrsh.w-imm12': dict(n=4, fixed=[(0xfff0, 0xf9b0), (0, 0)], exclude=(0x000f, 0x000f), regs=lambda h, g: {'rt': g >> 12, 'rn': h & 0xf}, field=lambda h, g, a: g & 0xfff, low=(1, 0)),
     # strd with P=1 U=1 W=0

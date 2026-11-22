@@ -20,8 +20,8 @@ derivation: it prints a summary marked "derive-only", compares with no tree or t
 resolves, 3 when some rows are unresolved (each listed with its reason), and 1 when a known-bad row fails or on any
 other error.
 
-Universe. Every stock address in the OLD tree (the pair's old tag): the link.ld symbols and module start, the 25 edits
-of build-inputs.json, the stock ABI ranges, and every hex token under src/, include/, tests/, trampolines.S and
+Universe. Every stock address in the OLD tree (the pair's old tag): the link.ld symbols and module start, the edits
+of build-inputs.json (plus the pair's reviewed addedCode, addedRam and addedEdits), the stock ABI ranges, and every hex token under src/, include/, tests/, trampolines.S and
 ImageWireFormat.h that falls inside the old AP image or the RAM window 0x18000000-0x1a000000. A token in that window
 that is not a stock address must be listed in NOT_STOCK with a reason, else the run fails. The old tree's
 tests/stock_abi_test.py lists the ranges on the first base only; for a later pair their old addresses come from the
@@ -163,7 +163,14 @@ NOT_STOCK = {
 # old tree (RAM data, not code), verified by pool_context_check instead of by the old-tree universe. stringChanges:
 # old .data address -> the one reviewed substring change its string may have. addedCode: link.ld code symbols added
 # after the old tree -> their old-base value (Thumb bit included), reviewed on the old image; each one joins the old
-# universe as a link row before the derivation, so every method re-derives it like any other code symbol. knownBad: values known to be wrong
+# universe as a link row before the derivation, so every method re-derives it like any other code symbol. addedRam: the
+# same for a RAM link.ld symbol (derived by literal votes like any RAM row; at least two votes required). addedEdits: entry
+# trampolines added after the old tree -> (old address, old before), reviewed on the old image; each joins the old
+# universe as an edit (kind bw) and adds resume_<name> = old + 5 as a link row, so the edit is derived like any code
+# address, must be a called function entry (as addedCode) or, marked 'pointer', a stored function pointer (literal votes
+# for old | 1 name the derived value | 1, and every voting load is an LDR into r1 directly followed in both images by a
+# BL to one slot setter, the new BL target being the setter's signature answer), and its resume row must be the derived
+# edit + 5. knownBad: values known to be wrong
 # upstream; `good` only cross-checks the derivation and is never used to derive anything. windowsDiffer=None asserts
 # nothing about the masked windows at the bad value (native_label_create has an identical-code twin). A known-bad entry
 # passes when the bad value has no caller vote and the row resolves to `good`. split=True allows one more case, for a
@@ -192,7 +199,21 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
     newStock=('inputs', 'tmg12-emu/stock/Strix-OS-1.0.6.11-members-canonical.zip'),
     oldAP='af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae', newAP='9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260',
     addedAfterOldTree=set(), stringChanges={0x1804_338b: (':58]', ':62]')},
-    addedCode={'tio_light_latest': 0x1062_c3d5},   # F5: stock's latest-light getter
+    addedCode={'tio_light_latest': 0x1062_c3d5,   # F5: stock's latest-light getter
+               # TMG13 PIN lock: stock calls (SYMBOLS.md / HOOKS.md of the lock RE)
+               'pmu_rtc_epoch': 0x1058_6a49, 'kws_enable': 0x1055_9b75,
+               'kws_disable': 0x1055_9be9, 'key_queue_flush': 0x1062_c5f1, 'ots_topic_read': 0x1062_0fcd},
+    addedRam={'tio_key_interceptors': 0x1975_46e4},   # TMG13: the key interceptor list head
+    # TMG13 entry trampolines: role -> (old address, old before[, 'pointer']); each adds resume_<name> = old + 5 to the
+    # old universe. ('pointer', arg): reached only through a stored function pointer (no BL caller), loaded into r<arg>
+    # right before the BL that consumes it (the indev slot setter, or the LVGL timer constructor)
+    addedEdits={'Entry trampoline can_wakeup': (0x1055_a488, '2de9f041'),
+                'Entry trampoline open_remote_audio': (0x1055_dbcc, '2de9f047'),
+                'Entry trampoline open_recorder': (0x1055_ccfc, 'f0b583b0'),
+                'Entry trampoline screen_state': (0x1064_5d48, '2de9f041'),
+                'Entry trampoline factory_reset': (0x1058_6098, 'b0b582b0', 'pointer', 0),   # reset worker timer callback
+                'Entry trampoline key_read': (0x1080_a918, '002390b5', 'pointer', 1),
+                'Entry trampoline wheel_read': (0x1071_caf0, '2de9f04f', 'pointer', 1)},
     newTreeChanges=dict(pruneLink={'dots_getrandom', 'dots_stock_notify', 'ce_utc_time', 'ce_focus_manager',
                                    'ce_focus_enabled', 'ce_head_mode', 'ce_stock_head_notify_resume',
                                    'ce_stock_head_start_resume', 'ce_stock_head_stop_resume',
@@ -887,7 +908,8 @@ def not_stock_seen(fw, img):
 
 # ---------------------------------------------------------------- derivation
 
-def derive(old_fw, old, new, abi=None, string_changes=None, disabled=frozenset(), added_code=None):
+def derive(old_fw, old, new, abi=None, string_changes=None, disabled=frozenset(), added_code=None, added_ram=None,
+           added_edits=None):
     """Rows: one per universe address, each with the derived new value and the evidence. `disabled`: names from
     TEST_METHODS that are not applied (acceptance only)."""
     d = Deriver(old, new)
@@ -895,6 +917,16 @@ def derive(old_fw, old, new, abi=None, string_changes=None, disabled=frozenset()
     for name, value in (added_code or {}).items():
         assert name not in u['link'] and value & 1 and old.has(value & ~1), 'addedCode %s' % name
         u['link'][name] = value
+    for name, value in (added_ram or {}).items():
+        assert name not in u['link'] and RAM_LO <= value < RAM_HI and not value % 4, 'addedRam %s' % name
+        u['link'][name] = value
+    for role, (value, before, *_) in (added_edits or {}).items():
+        name = role.removeprefix('Entry trampoline ')
+        assert role.startswith('Entry trampoline ') and role not in u['edits'] and 'resume_' + name not in u['link'] and \
+            not value & 1 and old.has(value, 4) and old.raw[value - FLASH:value - FLASH + 4].hex() == before, 'addedEdits %s' % role
+        u['edits'][role] = {'role': role, 'offset': hex(value - FLASH), 'address': hex(value), 'before': before,
+                            'kind': 'bw', 'pad': 0, 'added': True}
+        u['link']['resume_' + name] = value + 5
     string_changes = string_changes or {}
     rows = []
 
@@ -1262,7 +1294,7 @@ def compare_tree(old_u, rows, new_fw, new_img):
                 if tb != before:
                     out.append('trampoline prologue %r != before' % e['role'])
             old_e = r['edit']
-            if old_e['kind'] != e['kind'] or old_e.get('after') is None and e.get('after') is not None:
+            if old_e['kind'] != e['kind'] or not old_e.get('added') and old_e.get('after') is None and e.get('after') is not None:
                 out.append('edit %r kind changed' % r['name'])
         elif r['kind'] == 'module':
             if nu['moduleVA'] != r['new'] or nu['module'] != [r['new']]:
@@ -1465,26 +1497,75 @@ def old_abi(old_fw, key):
     return ranges
 
 
-def added_entry(added_code, rows, d, old):
-    """addedCode symbols have no old-tree row behind them, so each one's old value must be shown to be a function start:
-    an old BL/B.W target with at least one paired caller (T1 or T2) naming the derived value. Runs after every pass that
-    can resolve a row, so nothing clears the problem it adds."""
-    for name, value in added_code.items():
+def added_entry(added_code, rows, d, old, added_ram=None, added_edits=None):
+    """addedCode symbols and addedEdits sites have no old-tree row behind them, so each one's old value must be shown to be
+    a function start: an old BL/B.W target with at least one paired caller (T1 or T2) naming the derived value. An
+    addedRam symbol must be derived by at least two literal votes. Runs after every pass that can resolve a row, so
+    nothing clears the problem it adds."""
+    for name, value in (added_ram or {}).items():
         found = [r for r in rows if r['kind'] == 'link' and r['name'] == name]
-        assert len(found) == 1, 'addedCode %s: %d link rows' % (name, len(found))
+        assert len(found) == 1, 'addedRam %s: %d link rows' % (name, len(found))
+        r = found[0]
+        votes = d.lit_votes(value)
+        if r['new'] is None or sum(votes.values()) < 2 or votes.most_common(1)[0][0] != r['new']:
+            r['problems'].append('addedRam: fewer than two literal votes name the derived value (%s)' % (
+                ', '.join('%s: %d' % (hex(k), n) for k, n in votes.items()) or 'no literal vote'))
+    for role, (value, _, *proof) in (added_edits or {}).items():
+        if not proof or proof[0] != 'pointer':
+            continue
+        arg = proof[1]
+        found = [r for r in rows if r['kind'] == 'edit' and r['name'] == role]
+        assert len(found) == 1, 'added edit %s: %d rows' % (role, len(found))
+        r, why, ok = found[0], [], 0
+        votes = d.lit_votes(value | 1)
+        if r['new'] is None and r['problems'] and all(x.startswith('unresolved') for x in r['problems']) and len(votes) == 1:
+            # a stock rewrite left no signature: the one stored pointer (checked below to reach the slot setter) decides,
+            # and the row's resume symbol is then this edit + 5 (it has no other evidence either)
+            r['new'], r['problems'] = next(iter(votes)) & ~1, []
+            r['methods']['lit'] = 'pointer vote %s decides (no signature: stock rewrote the function)' % hex(r['new'] | 1)
+            resume = [x for x in rows if x['kind'] == 'link' and x['name'] == 'resume_' + role.removeprefix('Entry trampoline ')]
+            if len(resume) == 1 and resume[0]['new'] is None and all(x.startswith('unresolved') for x in resume[0]['problems']):
+                resume[0]['new'], resume[0]['problems'] = r['new'] + 5, []
+                resume[0]['methods']['resume'] = 'its pointer-decided edit + 5'
+        if r['new'] is None or not votes or votes.most_common(1)[0][0] != r['new'] | 1 or len(votes) != 1:
+            why.append('literal votes for %s are %s' % (hex(value | 1), {hex(k): n for k, n in votes.items()} or 'none'))
+        for lit in old.word_sites(value | 1):
+            for q, sub in d.load_sites(lit):
+                nq = d.load_pairs.get(q) or d.site(q)
+                if nq is None or sub:
+                    continue
+                new = d.new
+                bo, bn = branch(old, q + 2), branch(new, nq + 2)
+                so = d.sig(bo[1])[0] if bo else None
+                if old.h(q) & 0xf800 != 0x4800 or (old.h(q) >> 8) & 7 != arg or new.h(nq) & 0xf800 != 0x4800 or \
+                        (new.h(nq) >> 8) & 7 != arg or not bo or not bn or bo[0] != 'bl' or bn[0] != 'bl' or so != bn[1]:
+                    why.append('load %s/%s is not ldr r%d followed by a bl to one consumer' % (hex(q), hex(nq), arg))
+                else:
+                    ok += 1
+        if not ok:
+            why.append('no paired load passes the pointer to the slot setter')
+        if why:
+            r['problems'].append('added edit (pointer): ' + '; '.join(why))
+        else:
+            r['methods']['entry'] = 'stored pointer: %d paired ldr r%d + bl to one consumer name %s' % (ok, arg, hex(r['new'] | 1))
+    for kind, name, value in [('link', n, v) for n, v in added_code.items()] + \
+            [('edit', role, v) for role, (v, _, *proof) in (added_edits or {}).items() if not proof]:
+        found = [r for r in rows if r['kind'] == kind and r['name'] == name]
+        assert len(found) == 1, 'added %s %s: %d rows' % (kind, name, len(found))
         r, at = found[0], value & ~1
         calls = d.callers(at) + d.t2_callers(at)[0]
         if not old.branch_sites().get(at):
-            r['problems'].append('addedCode: the old value is not the target of any old BL/B.W')
+            r['problems'].append('added %s: the old value is not the target of any old BL/B.W' % kind)
         elif r['new'] is None or not calls.get(r['new'] & ~1):
-            r['problems'].append('addedCode: no paired caller names the derived value (%s)' % (
+            r['problems'].append('added %s: no paired caller names the derived value (%s)' % (kind, 
                 ', '.join('%s: %d' % (hex(k), n) for k, n in calls.items()) or 'no paired caller'))
         else:
             r['methods']['entry'] = 'old BL/B.W target; %d paired caller vote(s) name %s' % (calls[r['new'] & ~1], hex(r['new'] & ~1))
 
 
 def run(old_fw, new_fw, table_path, old, new, cfg, abi=None, derive_only=False, disabled=frozenset()):
-    u, rows, d, derived = derive(old_fw, old, new, abi, cfg['stringChanges'], disabled, cfg.get('addedCode'))
+    u, rows, d, derived = derive(old_fw, old, new, abi, cfg['stringChanges'], disabled, cfg.get('addedCode'),
+                                 cfg.get('addedRam'), cfg.get('addedEdits'))
     # the known-bad check runs before the reviewed splits, so that its split case stays load-bearing, and again after
     # them, when it must find the good value on every row a reviewed split resolved
     kb_lines, kb_fails = known_bad(cfg, rows, d, old, new)
@@ -1495,7 +1576,7 @@ def run(old_fw, new_fw, table_path, old, new, cfg, abi=None, derive_only=False, 
         lines, fails = known_bad(cfg, rows, d, old, new, applied)
         kb_lines += lines
         kb_fails += fails
-    added_entry(cfg.get('addedCode') or {}, rows, d, old)
+    added_entry(cfg.get('addedCode') or {}, rows, d, old, cfg.get('addedRam'), cfg.get('addedEdits'))
     row_problems, problems = [], []
     for r in rows:
         row_problems += ['%s %s %s: %s' % (r['kind'], r['name'], hex(r['old']), p) for p in r['problems']]
@@ -1952,6 +2033,28 @@ def mutation(old_fw, new_fw, table, old, new, rows, added=frozenset()):
             e['name'], len(tb), 'DETECTED' if tb else 'MISSED', (': ' + tb[0]) if tb else ''))
         if not tb:
             out.append('mutation of a table edit not detected')
+        added_edit = next((r for r in rows if r['kind'] == 'edit' and r['edit'].get('added') and r['new'] is not None), None)
+        if added_edit is not None:
+            mt = json.loads(json.dumps(table))
+            row = next(x for x in mt['edits'] if x['role'] == added_edit['name'])
+            row['newAddress'] = hex(added_edit['new'] + 2)
+            tb = [x for x in compare_table(rows, mt, added=added)[0] if x not in base_table and added_edit['name'] in x]
+            print('mutation: table added edit %r newAddress +2 -> %d new table problem(s) %s%s' % (
+                added_edit['name'], len(tb), 'DETECTED' if tb else 'MISSED', (': ' + tb[0]) if tb else ''))
+            if not tb:
+                out.append('mutation of an added table edit not detected')
+            q = tree/'build-inputs.json'
+            text = q.read_text()
+            spec = json.loads(text)
+            e = next(x for x in spec['edits'] if x['role'] == added_edit['name'])
+            e['address'], e['offset'] = hex(added_edit['new'] + 2), hex(added_edit['new'] + 2 - FLASH)
+            q.write_text(json.dumps(spec, indent=2) + '\n')
+            tp = [x for x in compare_tree(None, rows, tree, new) if x not in base_tree and added_edit['name'] in x]
+            print('mutation: build-inputs added edit %r address +2 -> %d new tree problem(s) %s%s' % (
+                added_edit['name'], len(tp), 'DETECTED' if tp else 'MISSED', (': ' + tp[0]) if tp else ''))
+            if not tp:
+                out.append('mutation of an added tree edit not detected')
+            q.write_text(text)
     return out
 
 

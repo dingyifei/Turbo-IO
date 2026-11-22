@@ -105,6 +105,24 @@
 #define TIO_STOCK_LVGL_MEM_USED 0x1bcu
 /* LVGL global: peak memory in use. */
 #define TIO_STOCK_LVGL_MEM_PEAK 0x1c0u
+/* Display: the active screen object slot. */
+#define TIO_STOCK_DISPLAY_SCREEN 0x2b0u
+/* Display: the top layer object slot. */
+#define TIO_STOCK_DISPLAY_TOP 0x2c0u
+/* Display: the sys layer object slot. */
+#define TIO_STOCK_DISPLAY_SYS 0x2c4u
+
+/* LVGL indev data (lv_indev_data_t) as the RayNeo keypad and wheel read callbacks fill it, and the wheel driver ctx. */
+/* Indev data: the key (u32). */
+#define TIO_STOCK_INDEV_DATA_KEY 0x8u
+/* Indev data: the encoder step (i16). */
+#define TIO_STOCK_INDEV_DATA_ENC_DIFF 0x10u
+/* Indev data: pressed or released (u8). */
+#define TIO_STOCK_INDEV_DATA_STATE 0x12u
+/* Indev data: read again before processing (u8). */
+#define TIO_STOCK_INDEV_DATA_CONTINUE 0x13u
+/* Wheel driver ctx (the indev driver data): the wheel topic fd (int). */
+#define TIO_STOCK_WHEEL_FD 0x0u
 
 /* LVGL image decoder descriptor (filled by the decoder open function) and image decoder. */
 /* Image decoder descriptor: its size. */

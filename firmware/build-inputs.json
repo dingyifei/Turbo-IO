@@ -249,8 +249,72 @@
       "kind": "bl",
       "target": "stream_register_shim",
       "pad": 3
+    },
+    {
+      "offset": "0x3ef034",
+      "address": "0x1057f034",
+      "before": "2de9f041",
+      "role": "Entry trampoline can_wakeup",
+      "kind": "bw",
+      "target": "lock_hook_can_wakeup",
+      "pad": 0
+    },
+    {
+      "offset": "0x3f2878",
+      "address": "0x10582878",
+      "before": "2de9f047",
+      "role": "Entry trampoline open_remote_audio",
+      "kind": "bw",
+      "target": "lock_hook_open_remote_audio",
+      "pad": 0
+    },
+    {
+      "offset": "0x3f19d8",
+      "address": "0x105819d8",
+      "before": "f0b583b0",
+      "role": "Entry trampoline open_recorder",
+      "kind": "bw",
+      "target": "lock_hook_open_recorder",
+      "pad": 0
+    },
+    {
+      "offset": "0x4c5a5c",
+      "address": "0x10655a5c",
+      "before": "2de9f041",
+      "role": "Entry trampoline screen_state",
+      "kind": "bw",
+      "target": "lock_hook_screen_state",
+      "pad": 0
+    },
+    {
+      "offset": "0x41a8e8",
+      "address": "0x105aa8e8",
+      "before": "b0b582b0",
+      "role": "Entry trampoline factory_reset",
+      "kind": "bw",
+      "target": "lock_hook_factory_reset",
+      "pad": 0
+    },
+    {
+      "offset": "0x6ff67c",
+      "address": "0x1088f67c",
+      "before": "002390b5",
+      "role": "Entry trampoline key_read",
+      "kind": "bw",
+      "target": "lock_hook_key_read",
+      "pad": 0
+    },
+    {
+      "offset": "0x5fe644",
+      "address": "0x1078e644",
+      "before": "2de9f04f",
+      "role": "Entry trampoline wheel_read",
+      "kind": "bw",
+      "target": "lock_hook_wheel_read",
+      "pad": 0
     }
   ],
+  "editCount": 32,
   "moduleBytes": 165116,
   "moduleVA": "0x10929204",
   "moduleSHA256": "267a1a758dbdabe71892d4ff7a0556231f2e390779543cef2b7c7ce95fc0c841",

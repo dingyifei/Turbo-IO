@@ -59,6 +59,7 @@ def expected(spec):
  """(ranges, the audited TMG3 patch set) on the tree's stock base, walked through the table chain from 1.0.5.5."""
  chain=load(FW/'tools/rebase_apply.py','stock_abi_rebase').table_chain(FW)
  original=json.loads((FW/'baseline/tmg3-build-inputs.json').read_text())
+ assert len(original['edits'])==25,'the audited TMG3 patch set is 25 edits'
  base=spec['stockBase']
  assert chain and chain[0]['from']=='1.0.5.5','the table chain does not start at 1.0.5.5'
  assert [(int(r['old'],16),r['bytes'],r['oldSHA256']) for r in chain[0]['stockAbiRanges']]==RANGES,'rebase table ranges are not these 11'
@@ -89,7 +90,13 @@ def expected(spec):
     listed=REVIEWED_ABI_CHANGES.get((t['to'],r['new']))
     assert listed and listed[0]==r['newSHA256'],'unreviewed changed ABI range %s on %s'%(r['new'],t['to'])
   ranges=[(int(r['new'],16),r['bytes'],r['newSHA256']) for r in t['stockAbiRanges']]
-  rows={r['role']:r for r in t['edits']};assert len(rows)==len(edits)==25,'%s to %s edits'%(t['from'],t['to'])
+  rows={r['role']:r for r in t['edits']}
+  # Edits added on this base: exactly the table's reviewed addEdits (format 2), each an entry trampoline whose before
+  # is the same on both bases; every earlier edit must still be a row.
+  reviewed_add=(t.get('provenance',{}).get('reviewed',{}).get('universe',{}).get('addEdits',{})) if two else {}
+  added=[r for r in t['edits'] if r['role'] not in {e['role'] for e in edits}]
+  assert len(t['edits'])==len(rows) and all(e['role'] in rows for e in edits),'%s to %s edits'%(t['from'],t['to'])
+  assert [r['role'] for r in added]==list(reviewed_add),'%s to %s: added edits %s are not the reviewed addEdits %s'%(t['from'],t['to'],[r['role'] for r in added],list(reviewed_add))
   for (to,role),value in REVIEWED_BEFORE_CHANGES.items():
    assert to!=t['to'] or role in rows,'reviewed before for unknown role %r'%role
   for (to,role) in REVIEWED_AFTER_CHANGES:
@@ -115,6 +122,10 @@ def expected(spec):
    if 'newPad' in r:n['pad']=r['newPad']
    if two and e['kind']=='raw':n['after']=r['newAfter']
    mapped.append(n)
+  for r in added:
+   a=reviewed_add[r['role']]
+   assert (r['oldAddress'],r['newAddress'],r['oldBefore'],r['newBefore'],r['kind'],r['newPad'])==(a['old'],a['new'],a['before'],a['before'],a['kind'],0),'added edit %s is not its reviewed entry'%r['role']
+   mapped.append({'offset':r['newOffset'],'address':r['newAddress'],'before':r['newBefore'],'role':r['role'],'kind':r['kind'],'target':a['target'],'pad':r['newPad']})
   edits,at=mapped,t['to']
  assert at==base,'stock base %r has no rebase column'%base
  return ranges,edits
@@ -124,9 +135,9 @@ def main():
  spec=json.loads((FW/'build-inputs.json').read_text());assert hashlib.sha256(raw).hexdigest()==spec['stockAP']
  ranges,original=expected(spec)
  for address,n,sha in ranges:assert hashlib.sha256(raw[address-0x10190000:address-0x10190000+n]).hexdigest()==sha,hex(address)
- assert len(spec['edits'])==25 and [{k:e.get(k) for k in KEYS} for e in spec['edits']]==[{k:e.get(k) for k in KEYS} for e in original]
+ assert len(spec['edits'])==spec['editCount'] and [{k:e.get(k) for k in KEYS} for e in spec['edits']]==[{k:e.get(k) for k in KEYS} for e in original]
  assert [e for e in spec['edits'] if e['kind']=='raw']==[e for e in original if e['kind']=='raw']
  for e in original:at=int(e['offset'],16);assert raw[at:at+len(e['before'])//2].hex()==e['before'],'stock bytes at '+e['role']
- print('PASS stock ABI (%s): 11 exact ranges (%d reviewed changes on this base), synchronous raw listener route and 25 unchanged patch sites/raw bytes'%(
-  spec['stockBase'],sum(1 for k in REVIEWED_ABI_CHANGES if k[0]==spec['stockBase'])))
+ print('PASS stock ABI (%s): 11 exact ranges (%d reviewed changes on this base), synchronous raw listener route, 25 unchanged patch sites/raw bytes and %d reviewed added sites'%(
+  spec['stockBase'],sum(1 for k in REVIEWED_ABI_CHANGES if k[0]==spec['stockBase']),len(original)-25))
 if __name__=='__main__':main()

@@ -47,7 +47,7 @@ The .data copy (file offset = VA - delta, and its length) is read from each imag
 (rebase_apply.data_copy).
 
 Propose mode. The TSV (columns kind, name, addr_1012, final_verdict, new_address_1611, source) must hold exactly one row
-per item of the old tree: its link.ld symbols, its 25 edits by role, and the old table's 15 values and 11 stock ABI
+per item of the old tree: its link.ld symbols, its edits by role, and the old table's 15 values and 11 stock ABI
 ranges (their column of --from); anything else is fatal. The old table is the TABLES entry ending at --from, loaded by
 path from the old tree. Both stock ZIPs go through build.safe_zip, check_stock_members and core_identity (the new one
 against stock_zip.pinned(--to)), and the old tree must be wholly on --from. Every method below is computed from the two
@@ -772,6 +772,12 @@ REVIEWED_SITES = {
     # Rows whose one locating method was a single paired caller (call locates only with two paired votes).
     ('1.0.6.11', 'linkld', 'dots_stock_notify'): {'old': 0x10584425, 'new': 0x105a8ced, 'bytes': (248, 'd941bbe769f8e34b59da51d2afd17413771f944ba22c50cf13d29f9cd92f9094'), 'votes': ('call', '1 of 1 paired votes for 0x105a8cec'), 'reason': 'its one caller pairs and names it; its bounded body (228 bytes old, 248 new) has no T2 hit in the new image and no pool word or anchor row within 0x40 below names it, so besides that caller only the positional align places it'},
     ('1.0.6.11', 'linkld', 'nav_ensure_menu'): {'old': 0x10683241, 'new': 0x106a1365, 'bytes': (132, '1020fb1e2ba5a386a1bc954fa537781146be77e37b57a4ea8ff9f76b1192263e'), 'votes': ('call', '1 of 1 paired votes for 0x106a1364'), 'reason': 'one of its two callers pairs and names it (the other does not pair); its bounded body (130 bytes old, 132 new) has no T2 hit in the new image and no pool word or anchor row within 0x40 below names it, so besides that caller only the positional align and edge2 place it'},
+    # TMG13 additions (REVIEWED_UNIVERSE_CHANGES addLinkld, addEdits) that no agreeing pair with a locating method decides.
+    ('1.0.6.11', 'linkld', 'kws_enable'): {'old': 0x10559b75, 'new': 0x1057e77d, 'bytes': (102, '41177a62f189592b4b1be9863e929a91b8c9f6e3e830fabccf28a51e041236f9'), 'votes': ('call', '1 of 1 paired votes for 0x1057e77c'), 'reason': 'identical-code twin of kws_disable (the two differ in their log string pool words and the enable flag, which the masks hide), so sig has two hits; one of its three callers pairs and names it, and align, edge and edge2 agree'},
+    ('1.0.6.11', 'linkld', 'kws_disable'): {'old': 0x10559be9, 'new': 0x1057e7f1, 'bytes': (100, 'b893eafaf9611353a4303e69e18019421556e6e2226e0cf5d1d9fd053c36b332'), 'votes': ('call', '1 of 1 paired votes for 0x1057e7f0'), 'reason': 'identical-code twin of kws_enable, as above; one of its two callers pairs and names it, and align, edge and edge2 agree'},
+    ('1.0.6.11', 'edit', 'Entry trampoline wheel_read'): {'old': 0x1071caf0, 'new': 0x1078e644, 'bytes': (120, '2b41e7338293c71b8bbb507a168074f9786376fa8d5c224448cbf4981609bcd5'), 'votes': ('lit', '1 of 1 paired votes for 0x1078e645'), 'reason': 'the RayNeo wheel read callback, rewritten in stock 1.0.6.11 (it gained the step accumulator), so neither sig nor body finds it; it has no BL caller, and its one stored pointer, loaded into r1 and passed to the indev slot setter at the paired wheel-create site, names it (the addEdits pointer rule checks that site)'},
+    ('1.0.6.11', 'linkld', 'resume_wheel_read'): {'old': 0x1071caf5, 'new': 0x1078e649, 'bytes': (116, '933d8461b21d8ae3704e9d094c306a3eb079ac8f97480be304e849fc6befe5ea'), 'votes': ('start', 's edit Entry trampoline wheel_read (reviewed entry) 0x1071caf0->0x1078e644, 4-byte T2 prefix equal'), 'reason': 'the instruction after the push (sub sp) changed with the rewrite, so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1'},
+    ('1.0.6.11', 'linkld', 'resume_screen_state'): {'old': 0x10645d4d, 'new': 0x10655a61, 'bytes': (96, '34130bcfa8699bc7428682dfe555ece90c24e6b0efa4fa140b75716502020642'), 'votes': ('start', 's edit Entry trampoline screen_state 0x10645d48->0x10655a5c, 4-byte T2 prefix equal'), 'reason': 'the instruction after the push is a pc-relative load whose offset moved (0xf8 became 0x108), so sig finds nothing; start places it from its own edit, and the fixpoint requires it to be that edit + 4 + 1'},
     ('1.0.6.11', 'abi-range', '0x10686caa'): {'old': 0x10686caa, 'new': 0x106a4fd6, 'bytes': (18, '77ae3ae8ee8475e1f9525e348b6f8304daa4e0e81d6ca9b5366c1cea1ff908e5'), 'votes': ('align', 'equal block of 79 tokens (36 before x, 35 after), once in each span; anchors 0x10686c4a->0x106a4f76 (linkld resume_wheel), 0x10686db8->0x106a50e0 (linkld native_snap)'), 'reason': 'an 18-byte function with six old twins and no paired caller or pool word (its two pointer loads do not pair); body leaves one twin not ruled out, so only the positional align, edge and edge2 place it'},
 }
 # Reviewed departures of the NEW tree from the old tree's universe, keyed by `to` (decided in phase F4). Every row is still
@@ -785,10 +791,49 @@ REVIEWED_UNIVERSE_CHANGES = {
                         'ce_head_mode', 'ce_stock_head_notify_resume', 'ce_stock_head_start_resume',
                         'ce_stock_head_stop_resume', 'ce_stock_sys_destroy_resume'),
         'valueToLinkld': {'launcher_global': 'tio_launcher_global'},
-        'addLinkld': {'tio_light_latest': {'old': '0x1062c3d5', 'new': '0x1061bea9'}},
+        'addLinkld': {'tio_light_latest': {'old': '0x1062c3d5', 'new': '0x1061bea9'},
+                      # TMG13 PIN lock (SYMBOLS.md, HOOKS.md of the lock RE; old values found by a masked-prologue
+                      # search of the new entry over the old image and by the paired callers, then derived here)
+                      'pmu_rtc_epoch': {'old': '0x10586a49', 'new': '0x105ab2b9'},
+                      'kws_enable': {'old': '0x10559b75', 'new': '0x1057e77d'},
+                      'kws_disable': {'old': '0x10559be9', 'new': '0x1057e7f1'},
+                      'key_queue_flush': {'old': '0x1062c5f1', 'new': '0x1061c5b1'},
+                      'ots_topic_read': {'old': '0x10620fcd', 'new': '0x1064d47d'},
+                      'tio_key_interceptors': {'old': '0x197546e4', 'new': '0x197656dc'}},
+        # addEdits (TMG13 PIN lock): entry trampolines the old tree does not have. Each is derived and checked from its
+        # old address like any edit row (rule 1 before: the old before, which has no BL/B.W, must be the new image's
+        # bytes); its old address must be an old BL/B.W target with at least one paired caller naming the proposal
+        # (by a 16-byte window or by G), so it is a function entry in both images. Each also adds the link.ld row
+        # resume_<name> = address + len(before) | 1, derived like any code row and required to equal its edit's
+        # accepted address + len(before) | 1. entry 'pointer' (the two input read callbacks, which stock reaches only
+        # through a stored function pointer and never by BL/B.W): instead of a paired caller, lit on the Thumb pointer
+        # (old address | 1) must agree with at least one paired vote, and every paired load site must be an LDR into the
+        # argument register `arg` (default r1) followed directly by a BL whose old target's 24-byte masked pattern occurs
+        # once in each image, the new hit being the new BL's target (one consumer in both images: the indev slot setter for
+        # the read callbacks, the LVGL timer constructor for the factory-reset worker; SETTER_BYTES).
+        'addEdits': {
+            'Entry trampoline can_wakeup': {'old': '0x1055a488', 'new': '0x1057f034', 'before': '2de9f041', 'kind': 'bw',
+                                            'target': 'lock_hook_can_wakeup'},
+            'Entry trampoline open_remote_audio': {'old': '0x1055dbcc', 'new': '0x10582878', 'before': '2de9f047', 'kind': 'bw',
+                                                   'target': 'lock_hook_open_remote_audio'},
+            'Entry trampoline open_recorder': {'old': '0x1055ccfc', 'new': '0x105819d8', 'before': 'f0b583b0', 'kind': 'bw',
+                                               'target': 'lock_hook_open_recorder'},
+            'Entry trampoline screen_state': {'old': '0x10645d48', 'new': '0x10655a5c', 'before': '2de9f041', 'kind': 'bw',
+                                              'target': 'lock_hook_screen_state'},
+            # the factory-reset worker timer callback (SysStateMonitor.cpp 'start rnlink factory_reset'): handleResetFactoryResult
+            # creates its timer only when the ERPC reset reports success, after every refusal check
+            'Entry trampoline factory_reset': {'old': '0x10586098', 'new': '0x105aa8e8', 'before': 'b0b582b0', 'kind': 'bw',
+                                               'target': 'lock_hook_factory_reset', 'entry': 'pointer', 'arg': 0},
+            'Entry trampoline key_read': {'old': '0x1080a918', 'new': '0x1088f67c', 'before': '002390b5', 'kind': 'bw',
+                                          'target': 'lock_hook_key_read', 'entry': 'pointer'},
+            'Entry trampoline wheel_read': {'old': '0x1071caf0', 'new': '0x1078e644', 'before': '2de9f04f', 'kind': 'bw',
+                                            'target': 'lock_hook_wheel_read', 'entry': 'pointer'},
+        },
         'reason': 'referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher '
                   'global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter '
-                  '(addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row)',
+                  '(addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); '
+                  'TMG13 adds the PIN lock\'s stock calls, the key interceptor list head (RAM) and seven entry trampolines '
+                  '(addEdits)',
         # correctComment (phase F7 candidate 3): a code-comment value row whose old address was never the function the
         # comment names. The row is derived and checked from the old tree exactly as before and must still give
         # `derived`; only the table written takes `new`, which must hold the pinned bytes, start a function by its bytes
@@ -830,6 +875,7 @@ LOCATING_TEXT = ('lit, field, veneer, body, call with at least %d paired votes, 
                  'start and not through a reviewed entry' % CALL_LOCATING_VOTES)
 DISABLE_METHODS = NEW_COUNTING + ('grow', 'edge-lit', 'fixed', 'reviewed-site')  # --disable-method (acceptance only)
 SIG_BYTES, SITE_BYTES, EDGE_BYTES, WINDOW_BYTES, COPY_BYTES = 24, 16, 64, 32, 32
+SETTER_BYTES = 24  # addEdits entry 'pointer': masked pattern that must pair the pointer's consumer across the images
 MAX_VOTES, MAX_TRIES = 12, 48  # paired votes per method, old sites tried per method
 COPY_DESCRIPTOR = 0x408  # <3I src, end, dst> of the copy to 0x100000 (memcpy, memset, strcmp, strlen)
 TSV_COLUMNS = ('kind', 'name', 'addr_1012', 'final_verdict', 'new_address_1611', 'source')
@@ -1671,15 +1717,40 @@ def propose(args):
             oa = H(r[col])
             assert sha(old[oa - FLASH: oa - FLASH + r['bytes']]) == r[col + 'SHA256'], r[col] + ': old range hash'
             item(('abi-range', oa), family='abi-range', type='abi', old=oa, text=r[col], bytes=r['bytes'], range=r)
-        # ---- reviewed additions (REVIEWED_UNIVERSE_CHANGES addLinkld): new-tree symbols with an old address ----
+        # ---- reviewed additions (REVIEWED_UNIVERSE_CHANGES addLinkld, addEdits): new-tree rows with an old address ----
         added = REVIEWED_UNIVERSE_CHANGES.get(to, {}).get('addLinkld', {})
         for sym, e in added.items():
             assert sym not in linkld, sym + ': addLinkld names a symbol the old tree already defines'
             v, nv = H(e['old']), H(e['new'])
+            if DATA_RUNTIME <= v < 0x1a000000 or DATA_RUNTIME <= nv < 0x1a000000:
+                # a RAM symbol: both addresses word-aligned RAM; checked like any RAM row (lit, two paired votes)
+                assert DATA_RUNTIME <= v < 0x1a000000 and DATA_RUNTIME <= nv < 0x1a000000 and not v % 4 and not nv % 4, \
+                    sym + ': addLinkld RAM symbol needs word-aligned RAM addresses in both columns'
+                item(('linkld', sym), family='linkld', old=v, text=e['old'], type='ram', added=e)
+                continue
             assert v & 1 and nv & 1, sym + ': addLinkld needs Thumb code addresses'
             assert FLASH <= (v & ~1) and (v & ~1) + 2 <= FLASH + len(old), sym + ': addLinkld old address is outside the old AP image'
             assert FLASH <= (nv & ~1) and (nv & ~1) + 2 <= FLASH + len(new), sym + ': addLinkld new address is outside the new AP image'
             item(('linkld', sym), family='linkld', old=v, text=e['old'], type='code', added=e)
+        old_roles = {e['role'] for e in spec['edits']}
+        for role, e in REVIEWED_UNIVERSE_CHANGES.get(to, {}).get('addEdits', {}).items():
+            assert role not in old_roles, role + ': addEdits names an edit the old tree already has'
+            assert role.startswith('Entry trampoline ') and e['kind'] == 'bw', role + ': addEdits takes entry trampolines (bw) only'
+            assert e.get('entry', 'call') in ('call', 'pointer'), role + ': addEdits entry proof must be call or pointer'
+            assert e.get('arg', 1) in (0, 1) and ('arg' not in e or e.get('entry') == 'pointer'), role + ': arg is r0 or r1, pointer entries only'
+            oa, na, before = H(e['old']), H(e['new']), bytes.fromhex(e['before'])
+            assert not oa & 1 and not na & 1 and len(before) == 4, role + ': addEdits needs even addresses and a 4-byte before'
+            assert old[oa - FLASH: oa - FLASH + 4] == before, role + ': addEdits before is not the old image\'s bytes'
+            assert not any(br for i, size, br, hw in instructions(old, oa, 4)) and \
+                sum(size for i, size, br, hw in instructions(old, oa, 4) if i + size <= 4) == 4, \
+                role + ': addEdits before must be whole instructions with no BL/B.W'
+            edit = {'role': role, 'offset': hex(oa - FLASH), 'address': e['old'], 'before': e['before'], 'kind': 'bw',
+                    'target': e['target'], 'pad': 0}
+            item(('edit', role), family='edit', type='edit', old=oa, text=e['old'], edit=edit, added=dict(e, source='addEdits'))
+            name = 'resume_' + role.removeprefix('Entry trampoline ')
+            assert name not in linkld and name not in added, name + ': already a link.ld symbol'
+            item(('linkld', name), family='linkld', old=oa + 5, text=hex(oa + 5), type='code',
+                 added={'old': hex(oa + 5), 'new': hex(na + 5), 'resumeOf': role})
         # ---- the TSV: exactly one row per item ----
         with open(args.propose, newline='') as f:
             reader = csv.DictReader(f, delimiter='\t')
@@ -1713,8 +1784,9 @@ def propose(args):
         errors += ['line %d: %s %r is a reviewed addition and takes no TSV row' % (x['line'], x['kind'], x['name']) for x in rows if x['it'].get('added')]
         for k, it in keyed.items():
             if it.get('added'):
-                rows.append({'it': it, 'kind': 'linkld', 'name': k[1], 'line': 0, 'text': it['added']['new'], 'proposal': H(it['added']['new']),
-                             'info': {'verdict': 'ADDED', 'source': 'reviewed:addLinkld', 'row': 0}})
+                source = 'reviewed:addEdits' if k[0] == 'edit' else 'reviewed:addEdits resume' if 'resumeOf' in it['added'] else 'reviewed:addLinkld'
+                rows.append({'it': it, 'kind': k[0], 'name': k[1], 'line': 0, 'text': it['added']['new'], 'proposal': H(it['added']['new']),
+                             'info': {'verdict': 'ADDED', 'source': source, 'row': 0}})
         assert not errors and len(rows) == len(items), 'the TSV does not cover the old tree one row per item:\n  ' + '\n  '.join(errors)
     except AssertionError as error:
         raise SystemExit('rebase table NOT written (%s to %s): %s' % (frm, to, error))
@@ -1757,6 +1829,38 @@ def propose(args):
         a, b = load_literal(old, site), load_literal(new, p)
         return b[3] if a and b and a[:2] == b[:2] else None
 
+    def setter_check(sites, arg):
+        """addEdits entry 'pointer': each old load site of the pointer, paired (16-byte window, else G), must be an LDR into r<arg>
+        followed directly by a BL in both images whose old target's SETTER_BYTES masked pattern has exactly one hit in
+        each image, the new hit being the new BL's target. Returns {'ok', 'sites': [...]}."""
+        out, ok = [], bool(sites)
+        for site in sites:
+            q = pair(site)
+            if q is None and not methods.off('grow'):
+                q = methods.grow(site)[0]
+            a, b = load_literal(old, site), (load_literal(new, q) if q is not None else None)
+            why = None
+            if q is None or not a or not b:
+                why = 'load site does not pair'
+            elif a[1] != arg or b[1] != arg:
+                why = 'the load is not into r%d' % arg
+            else:
+                bo, bn = site + a[0], q + b[0]
+                h1, h2 = struct.unpack_from('<HH', old, bo - FLASH)
+                g1, g2 = struct.unpack_from('<HH', new, bn - FLASH)
+                if not (t4(h1, h2) and h2 & 0x4000 and t4(g1, g2) and g2 & 0x4000):
+                    why = 'no BL right after the load'
+                else:
+                    to_old, to_new = t4_target(bo, h1, h2), t4_target(bn, g1, g2)
+                    if masked_hits(old, old, to_old, SETTER_BYTES) != [to_old] or masked_hits(new, old, to_old, SETTER_BYTES) != [to_new]:
+                        why = 'the BL targets %s and %s are not one setter by a unique %d-byte pattern' % (hex(to_old), hex(to_new), SETTER_BYTES)
+                    else:
+                        out.append('%s->%s ldr r%d then bl %s->%s' % (hex(site), hex(q), arg, hex(to_old), hex(to_new)))
+                        continue
+            ok = False
+            out.append('%s: %s' % (hex(site), why))
+        return {'ok': ok, 'sites': out}
+
     field_cache = {}
 
     def static(row):
@@ -1768,10 +1872,18 @@ def propose(args):
             # new image, and sig would then name the twin's new address (stricter than spec 2h, which checks the new image only).
             s['sig'] = {'hits': masked_hits(new, old, oa & ~1, n), 'oldHits': masked_hits(old, old, oa & ~1, n)}
         if typ in ('code', 'edit', 'abi', 'copy'):
-            s['call'] = votes(branches.get(oa & ~1, []), call_vote)
-        # An ABI range is a code address stored as a pointer with its Thumb bit, so lit searches the range address | 1.
-        word = oa | 1 if typ == 'abi' else oa
-        s['lit'] = votes(sorted({site for at in find_all(old, struct.pack('<I', word)) for site in loads.get(FLASH + at, [])}), lit_vote, grown=True)
+            # A reviewed addition (addLinkld code, addEdits) has no old-tree row behind it, so its callers are also tried
+            # with G: its old address must be shown to be a call target with a paired caller (see evaluate)
+            grown_call = bool(it.get('added')) and 'resumeOf' not in it['added']
+            s['call'] = votes(branches.get(oa & ~1, []), call_vote, grown=grown_call)
+        # An ABI range is a code address stored as a pointer with its Thumb bit, so lit searches the range address | 1;
+        # so does an added edit whose entry proof is a stored pointer (addEdits entry 'pointer').
+        pointer = (it.get('added') or {}).get('entry') == 'pointer'
+        word = oa | 1 if typ == 'abi' or pointer else oa
+        lit_sites = sorted({site for at in find_all(old, struct.pack('<I', word)) for site in loads.get(FLASH + at, [])})
+        s['lit'] = votes(lit_sites, lit_vote, grown=True)
+        if pointer:
+            s['setter'] = setter_check(lit_sites, it['added'].get('arg', 1))
         if typ == 'copy':
             a, b = copy_bytes(old, oa), copy_bytes(new, oa)
             s['copy'] = {'answer': oa if a is not None and a == b else None,
@@ -1999,7 +2111,10 @@ def propose(args):
                 proof['rawDifferences'] = ['+%d' % i for i in range(it['bytes']) if old[oa - FLASH + i] != new[(p & ~1) - FLASH + i]]
         if 'call' in s:
             m['call'] = counted(s['call'], p & ~1)
-        m['lit'] = counted(s['lit'], p | 1 if typ == 'abi' else p)
+        pointer = (it.get('added') or {}).get('entry') == 'pointer'
+        m['lit'] = counted(s['lit'], p | 1 if typ == 'abi' or pointer else p)
+        if 'setter' in s:
+            proof['setter'] = s['setter']
         if 'copy' in s:
             m['copy'] = judge(s['copy']['answer'], p, {'note': s['copy']['note']})
         if 'str' in s:
@@ -2091,9 +2206,25 @@ def propose(args):
                     ''.join('; %s does not locate (%s)' % (k, v) for k, v in proof.get('pairRule', {}).get('notLocating', {}).items()))))
         if failed:
             reasons.append('reviewed site %s %s does not apply: %s' % (row['kind'], row['name'], '; '.join(failed)))
-        if it.get('added') and not ('call' in m and m['call']['state'] == 'agree' and m['call']['paired'] >= 1):
-            # A reviewed addition (addLinkld) has no old-tree row to vouch that its old address is a function start, so
-            # its old address must be an old BL/B.W target and at least one paired old caller must name the proposal.
+        if it.get('added') and typ == 'ram':
+            # A reviewed RAM addition: lit with at least two paired votes must name the proposal (the RAM primary).
+            if not ('lit' in m and m['lit']['state'] == 'agree' and m['lit']['paired'] >= 2):
+                reasons.append('reviewed RAM addition %s needs lit with at least two paired votes for the proposal: %s' % (
+                    name, json.dumps({x: y for x, y in m.get('lit', {'state': 'none'}).items() if x not in ('good', 'bad')})))
+        elif it.get('added') and 'resumeOf' in it['added']:
+            # A resume row of an added trampoline: checked against its edit once every row is known (the fixpoint)
+            pass
+        elif pointer:
+            # addEdits entry 'pointer': no BL caller; the stored Thumb pointer, loaded and passed to the slot setter in both
+            # images, must name the proposal
+            if not ('lit' in m and m['lit']['state'] == 'agree' and m['lit']['paired'] >= 1 and s['setter']['ok']):
+                reasons.append('reviewed pointer-entry addition %s needs lit with a paired vote for the proposal | 1 and every '
+                               'load site passing the pointer to the slot setter: %s; setter %s' % (
+                                   name, json.dumps({x: y for x, y in m.get('lit', {'state': 'none'}).items() if x not in ('good', 'bad')}),
+                                   json.dumps(s['setter'])))
+        elif it.get('added') and not ('call' in m and m['call']['state'] == 'agree' and m['call']['paired'] >= 1):
+            # A reviewed addition (addLinkld, addEdits) has no old-tree row to vouch that its old address is a function
+            # start, so its old address must be an old BL/B.W target and at least one paired old caller must name the proposal.
             reasons.append('reviewed addition %s needs at least one paired call vote for the proposal (the old address must '
                            'be an old BL/B.W target): %s' % (name, json.dumps({x: y for x, y in m.get('call', {'state': 'none'}).items()
                                                                                if x not in ('good', 'bad')})))
@@ -2135,6 +2266,13 @@ def propose(args):
             if len(news) > 1:
                 bad.update({k: 'accepted rows at old %s name different new addresses: %s' % (hex(even), ', '.join(hex(n) for n in news))
                             for ks in news.values() for k in ks if k not in bad})
+        for k in acc:
+            role = (keyed[k].get('added') or {}).get('resumeOf')
+            if role is not None and acc.get(('edit', role)) is None:
+                bad.setdefault(k, 'resume row of %r, whose edit is not accepted' % role)
+            elif role is not None and acc[k] != acc[('edit', role)] + len(bytes.fromhex(keyed[('edit', role)]['edit']['before'])) + 1:
+                bad.setdefault(k, 'resume row %s is not its edit %r + %d + 1 (%s)' % (hex(acc[k]), role,
+                               len(bytes.fromhex(keyed[('edit', role)]['edit']['before'])), hex(acc[('edit', role)])))
         olds = {keyed[k]['old']: k for k in acc if keyed[k]['family'] == 'value'}
         for k, v in acc.items():
             if keyed[k]['family'] == 'value' and v in olds and olds[v] != k:
@@ -2165,7 +2303,9 @@ def propose(args):
     prune, to_link = set(universe['pruneLinkld']), dict(universe['valueToLinkld'])
     if not rejected:
         missing = sorted(prune - {k[1] for k in acc if k[0] == 'linkld'}) + sorted(set(to_link) - {k[1] for k in acc if k[0] == 'value'}) \
-            + sorted(set(universe.get('addLinkld', {})) - {k[1] for k in acc if k[0] == 'linkld'})
+            + sorted(set(universe.get('addLinkld', {})) - {k[1] for k in acc if k[0] == 'linkld'}) \
+            + sorted(set(universe.get('addEdits', {})) - {k[1] for k in acc if k[0] == 'edit'}) \
+            + sorted({'resume_' + r.removeprefix('Entry trampoline ') for r in universe.get('addEdits', {})} - {k[1] for k in acc if k[0] == 'linkld'})
         if missing:
             raise SystemExit('rebase table NOT written: REVIEWED_UNIVERSE_CHANGES names rows that are not accepted rows: ' + ', '.join(missing))
     corrections = comment_corrections(universe.get('correctComment', {}), keyed, acc, new) if not rejected else {}
@@ -2223,6 +2363,8 @@ def propose(args):
                                     **({'universe': {'pruneLinkld': list(universe['pruneLinkld']),
                                                      'valueToLinkld': dict(universe['valueToLinkld']),
                                                      'addLinkld': {k: dict(v) for k, v in universe.get('addLinkld', {}).items()},
+                                                     **({'addEdits': {k: dict(v) for k, v in universe['addEdits'].items()}}
+                                                        if 'addEdits' in universe else {}),
                                                      **({'correctComment': {k: dict(v, bytes=list(v['bytes'])) for k, v in universe['correctComment'].items()}}
                                                         if 'correctComment' in universe else {}),
                                                      'reason': universe['reason']}} if to in REVIEWED_UNIVERSE_CHANGES else {})}},
@@ -2250,8 +2392,8 @@ def propose(args):
 
 
 # --self-test fixtures on the 1.0.5.12 and 1.0.6.11 AP images (pinned by sha256). G: seven call sites that a looser
-# grow rule mispaired; G must refuse six and pair the seventh inside the local shift (G itself only ever runs on lit and
-# field sites). body: eight groups of old twin functions; the twin guard must leave 15 without an answer and decide
+# grow rule mispaired; G must refuse six and pair the seventh inside the local shift (G runs on lit and field sites, and on
+# the call sites of reviewed additions only, which must also agree with every other method). body: eight groups of old twin functions; the twin guard must leave 15 without an answer and decide
 # 0x105c8fd0 only through the distinguishing edge at +16 between two fixed functions.
 SELF_TEST_AP = {'old': 'af701a6525fbf703854b3d63e757734546c20bdb5d50e246867dc6a0565713ae',
                 'new': '9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260'}

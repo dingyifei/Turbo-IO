@@ -73,9 +73,18 @@ def decode(site, encoded):
 
 
 def pin(spec, field, value, repin):
-    if not repin and spec[field] != value:
+    if not repin and spec.get(field) != value:   # a missing pin (a new edit's after before its first repin) fails here too
         raise AssertionError('pin mismatch: ' + field)
     spec[field] = value
+
+def edit_count(spec):
+    """The pinned number of patch sites (build-inputs.json editCount). The build and the audit both require exactly
+    that many edits, so a site cannot be added or dropped without changing the pin in the same commit."""
+    count = spec.get('editCount')
+    assert isinstance(count, int) and not isinstance(count, bool) and count > 0, 'build-inputs.json editCount must be a positive integer'
+    assert count == len(spec['edits']), 'pin mismatch: editCount %d, %d edits' % (count, len(spec['edits']))
+    return count
+
 
 def release_label(root=None):
     """The one place the release label comes from: RELEASE, beside this file. Never the folder name."""
@@ -277,7 +286,7 @@ def audit(stock_path, candidate_path, spec):
         assert len(a) == len(b) and base[at:at+len(a)] == a and ap[at:at+len(b)] == b
         assert not allowed.intersection(range(at, at+len(b)))
         allowed.update(range(at, at+len(b)))
-    assert len(spec['edits']) == 25
+    assert edit_count(spec) == len(spec['edits'])
     assert all(x == y or i in allowed for i, (x,y) in enumerate(zip(base[:-8],ap)))
     at = int(spec['moduleVA'], 16) - FLASH
     assert not any(ap[len(base)-8:at])
@@ -427,7 +436,7 @@ def build(stock_path, llvm, out, repin=False, compile_only=False):
     assert room['partitionHeadroom'] > 0, 'module overruns the AP partition'
     ap = bytearray(base[:-8]) + bytearray(at-(len(base)-8)) + module
     ap += bytearray((-len(ap))%4) + base[-8:]
-    assert len(spec['edits']) == 25
+    assert edit_count(spec) == len(spec['edits'])
     for e in spec['edits']:
         offset = int(e['offset'],16); address = int(e['address'],16)
         assert offset == address-FLASH
