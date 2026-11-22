@@ -159,6 +159,12 @@ static void fold_and_idle(void){
  // Unfold without a fold seen does nothing; motion never delays the fold lock.
  fresh(&t,now);tlk_unfold(&t,now+10000);assert(t.state==TLK_UNLOCKED);
  tlk_fold(&t,now);tlk_motion(&t,now+200);tlk_unfold(&t,now+300);assert(t.state==TLK_DARK);
+ // Folding closes a lock screen: digits dropped, dark; unfolding stays dark and a press opens a fresh entry.
+ {TLK u;boot_locked(&u);u.flush_input=false;assert(tlk_input(&u,TLK_IN_PRESS,0,now,ms+=100)&&u.state==TLK_ENTRY);
+  tlk_input(&u,TLK_IN_STEP,3,now,ms+=100);tlk_input(&u,TLK_IN_PRESS,0,now,ms+=100);assert(u.slot==1);
+  tlk_fold(&u,now);assert(u.state==TLK_DARK&&u.slot==0&&u.digit==0&&u.digits[0]==0);
+  tlk_unfold(&u,now+10);assert(u.state==TLK_DARK);
+  assert(tlk_input(&u,TLK_IN_PRESS,0,now+10,ms+=100)&&u.state==TLK_ENTRY&&u.slot==0&&u.digit==0);}
  // A phone unlock while folded restarts the fold delay.
  tlk_fold(&t,now);assert(tlk_phone_unlock(&t,now+1000));tlk_unfold(&t,now+1100);assert(t.state==TLK_UNLOCKED);
  // Screen about to turn on: lock if idle >= idle time (5 min) since last use; the check runs before anything draws.
