@@ -123,6 +123,8 @@ There is no keyed hash and no answer field. The protection is what the other com
 
 The `TLK:` gate is: no OTA running, bonded, connected. It does not depend on fold state or on which app is on top. While locked, `TGR` input injection, the knob lease and all other settings commands are refused; `TLK:` is the only family that answers.
 
+The record layouts are in `firmware/src/lock-v1/lock_codec.h` (op numbers, result codes, reply flags). `TLK:` is a new family, so it needs no peer byte in the menu-layout family. A refused or mismatched token is spent, as in the menu-layout family. MOTION_ON answers "refused" until the firmware carries the motion hook (reply flag "motion supported").
+
 A new capability bit (`TD_CAP_PIN_LOCK`, bit 11) tells the phone the firmware has the lock; both copies of the diagnostics codec change together.
 
 ## 6. Hiding the display
