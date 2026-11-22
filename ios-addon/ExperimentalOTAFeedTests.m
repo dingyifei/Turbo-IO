@@ -19,8 +19,8 @@ static NSDictionary *Fetch(uint16_t port,NSString *method,NSString *target,NSStr
 }
 static NSDictionary *Query(uint16_t port,NSString *path){NSDictionary *r=Fetch(port,@"GET",path,@"");assert([r[@"code"] intValue]==200);return [NSJSONSerialization JSONObjectWithData:r[@"body"] options:0 error:nil];}
 // The release's feed policy, written out here by hand (not from FirmwarePins.h) so a wrong generated value fails.
-// C22, the only release (TMG13 on 1.0.6.11): flashes glasses that report 1.0.5.12 (TMG11) or 1.0.6.11 (stock, TMG12, or
-// TMG13 flashed again); its releases.json entry must match.
+// C23, the only release (TMG14 on 1.0.6.11): flashes glasses that report 1.0.5.12 (TMG11) or 1.0.6.11 (stock, TMG12, or
+// TMG14 flashed again); its releases.json entry must match.
 static NSArray *Accepted(void){return @[@"01.00.05.0012",@"01.00.06.0011"];}
 static NSString *const WantName=@"0100060011";static const int WantCode=100060011;static NSString *const WantFile=@"Strix_OS_1.0.6.11.zip";
 int main(int argc,const char **argv){@autoreleasepool{
@@ -60,7 +60,7 @@ int main(int argc,const char **argv){@autoreleasepool{
     [feed disarm];assert(Query(port,path)[@"data"]==NSNull.null);assert([Fetch(port,@"GET",download,@"")[@"code"] intValue]==404);
     assert([feed armArchive:file lifetime:0.01 error:&error]);usleep(20000);assert(![feed.status[@"armed"] boolValue]);assert(Query(port,path)[@"data"]==NSNull.null);
     assert([feed armArchive:file lifetime:60 error:&error]);NSString *next=[NSURL URLWithString:Query(port,path)[@"data"][@"downloadUrl"]].path;assert(![next isEqual:download]);assert([Fetch(port,@"GET",download,@"")[@"code"] intValue]==404);
-    assert([Query(port,path)[@"data"][@"taskName"] isEqual:@"Turbo Menu TMG13 PRIVATE EXPERIMENT"]&&[feed.status[@"package"] isEqual:@"TMG13"]);
+    assert([Query(port,path)[@"data"][@"taskName"] isEqual:@"Turbo Menu TMG14 PRIVATE EXPERIMENT"]&&[feed.status[@"package"] isEqual:@"TMG14"]);
     // The update text names the members that differ from the bundled stock package.
     assert([Query(port,path)[@"data"][@"updateDesc"] isEqual:@"PRIVATE EXPERIMENT: AP modified, other 15 payloads unchanged. Runtime unverified."]);
     // A change of selection closes the open window at once, even when the first package is picked again.
@@ -74,9 +74,9 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert([stockMeta[@"taskName"] isEqual:@"Stock 1.0.6.11"]&&[stockMeta[@"apkSize"] unsignedIntegerValue]==stockZip.length&&stockZip.length==[TIOOTAPackageAt(1)[@"zipBytes"] unsignedIntegerValue]);
     assert([stockMeta[@"apkMd5"] isEqual:stockMD5]&&![stockMD5 isEqual:md5]&&[stockMeta[@"versionCode"] intValue]==WantCode&&[[NSURL URLWithString:stockMeta[@"downloadUrl"]].lastPathComponent isEqual:WantFile]);
     NSDictionary *stockBody=Fetch(port,@"GET",[NSURL URLWithString:stockMeta[@"downloadUrl"]].path,@"");assert([stockBody[@"code"] intValue]==200&&[stockBody[@"body"] isEqual:stockZip]);
-    // The stock query and download did not switch back to TMG13 or move the generation either.
+    // The stock query and download did not switch back to TMG14 or move the generation either.
     assert(TIOOTASelectedPackageIndex()==1&&TIOOTASelectionGeneration()==generation+1);
-    // An arm made for an older generation is refused; picking TMG13 again closes the stock window.
+    // An arm made for an older generation is refused; picking TMG14 again closes the stock window.
     assert(![feed armArchive:stockFile package:TIOOTAPackageAt(1) generation:generation lifetime:60 error:&error]);
     assert(TIOOTASelectPackage(0,&error));assert(![feed.status[@"armed"] boolValue]);assert(Query(port,path)[@"data"]==NSNull.null);
     assert(!TIOOTASelectPackage(2,&error)&&TIOOTASelectedPackageIndex()==0);

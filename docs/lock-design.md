@@ -2,7 +2,7 @@
 
 Written by manager, 2026-11-21. Sources: the owner's decisions (`DECISIONS.md`), Block B (`b/REPORT-B.md`, `b/logs/b3-b5-design.md`). Block A (`a/REPORT-A.md`) is folded in. Block C (`b/REPORT-C.md`) is folded in. Block D (`a/REPORT-D.md`) is folded in. Block E (the Bluetooth-image motion hook) is folded in. The owner approved building from this design on 2026-11-21 at 19:18. The investigation reports are private working notes outside the repo; the file names are kept so findings can be traced. This file is the master copy of the design; owner changes are recorded in the decisions log and folded in here.
 
-Releases: firmware TMG13 on stock 1.0.6.11 (modified `nuttx_ap.bin` and, for the first time, `nuttx_bth.bin`), phone build C22.
+Releases: firmware TMG13 on stock 1.0.6.11 (modified `nuttx_ap.bin`), phone build C22; firmware TMG14 (TMG13 plus the head-motion hook: modified `nuttx_ap.bin` and, for the first time, `nuttx_bth.bin`), phone build C23.
 
 ## 1. What it does
 

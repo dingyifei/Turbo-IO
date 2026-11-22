@@ -1,13 +1,13 @@
-// The two packages of one release (TMG13 first, stock 1.0.6.11 second) through the real guard and gate
+// The two packages of one release (TMG14 first, stock 1.0.6.11 second) through the real guard and gate
 // (ExperimentalOTAFlash.m, adapted by test.py like flash-sequence-1021) on the full 1.0.21 host
 // (tests/FullHostFixture.h), with both real release ZIPs unzipped by test.py. One run per mode, because stages 2
 // and 3 last until the process ends:
-//   fresh                  a new process selects TMG13, the first package;
+//   fresh                  a new process selects TMG14, the first package;
 //   stock-replay           stock selected: the sequence recorded on 2026-11-15 (tests/flash-sequence-1021.json)
 //                          replays with the stock ZIP size, manifest and slices and is allowed, with the slice
 //                          totals test.py computed from the stock ZIP in the recorded file order;
-//   tmg-stock-manifest     TMG13 authorized and started: the stock manifest is refused;
-//   tmg-stock-slice        TMG13 authorized, started, manifest sent: a stock nuttx_ap.bin slice is refused;
+//   tmg-stock-manifest     TMG14 authorized and started: the stock manifest is refused;
+//   tmg-stock-slice        TMG14 authorized, started, manifest sent: a stock nuttx_ap.bin slice is refused;
 //   stock-tmg-manifest     the same the other way round;
 //   stock-tmg-slice        the same the other way round;
 //   size                   type 3 with the other package's ZIP size is refused at stages 0, 1 and 2;
@@ -19,7 +19,7 @@
 //                          (ota.package.changed), each way, with the same capture allowed once it is selected;
 //   version               (test-only package table, TIO_TEST_PACKAGE_TABLE: stock accepts only 1.0.6.11) a
 //                          version read the selected package does not accept refuses authorization.
-// argv: <TMG13 dir> <stock dir> <home root> <fixture> <mode> [<stock slices> <stock slice bytes>]. No device I/O.
+// argv: <TMG14 dir> <stock dir> <home root> <fixture> <mode> [<stock slices> <stock slice bytes>]. No device I/O.
 #import "TMG4WizardHost.h"
 #import "FullHostFixture.h"
 #import "ExperimentalOTAFlash.h"
@@ -96,7 +96,7 @@ int main(int argc,char **argv){@autoreleasepool{
     TIOOTARecordTransportHookReady();assert(TIOOTAFullHost()&&TIOOTAFlashProtected());
     // Both packages, each read from its own unzipped ZIP against its own pins.
     assert(TIOOTAPackageCount()==2);NSDictionary *tmg=TIOOTAPackageAt(0),*stock=TIOOTAPackageAt(1);
-    assert([tmg[@"name"] isEqual:@"TMG13"]&&[stock[@"name"] isEqual:@"STOCK-1.0.6.11"]&&[stock[@"kind"] isEqual:@"STOCK"]);
+    assert([tmg[@"name"] isEqual:@"TMG14"]&&[stock[@"name"] isEqual:@"STOCK-1.0.6.11"]&&[stock[@"kind"] isEqual:@"STOCK"]);
     NSDictionary *tmgFiles=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:@(argv[1])],tmg,nil),*stockFiles=TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:@(argv[2])],stock,nil);
     assert(tmgFiles.count==17&&stockFiles.count==17);
     assert(!TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:@(argv[1])],stock,nil)&&!TIOCopyExperimentalOTAPayloads([NSURL fileURLWithPath:@(argv[2])],tmg,nil));
@@ -106,22 +106,22 @@ int main(int argc,char **argv){@autoreleasepool{
     NSUInteger apDiff=DifferingSlice(tmgFiles[@"nuttx_ap.bin"],stockFiles[@"nuttx_ap.bin"]);
     NSUInteger apSize=MIN((NSUInteger)51200,MIN([tmgFiles[@"nuttx_ap.bin"] length],[stockFiles[@"nuttx_ap.bin"] length])-apDiff);
     if([mode isEqual:@"fresh"]){
-        Check(TIOOTASelectedPackageIndex()==0&&[TIOOTASelectedPackage() isEqual:tmg]&&TIOOTASelectionGeneration()==0,"a new process selects the first package, TMG13");
-        Check([Status()[@"selectedPackage"] isEqual:@"TMG13"]&&[Status()[@"selectedPackageIndex"] isEqual:@0]&&Stage()==0&&[Captured() isEqual:@""],"status names TMG13 as selected, nothing captured");
-        Check([TIO_FW_NAME isEqual:@"TMG13"]&&TIO_FW_ZIP_BYTES==[tmg[@"zipBytes"] unsignedIntegerValue],"the selected-package macros read TMG13");
-        printf("PASS flash packages fresh: TMG13 selected in a new process\n");[fm removeItemAtPath:Home error:nil];return 0;
+        Check(TIOOTASelectedPackageIndex()==0&&[TIOOTASelectedPackage() isEqual:tmg]&&TIOOTASelectionGeneration()==0,"a new process selects the first package, TMG14");
+        Check([Status()[@"selectedPackage"] isEqual:@"TMG14"]&&[Status()[@"selectedPackageIndex"] isEqual:@0]&&Stage()==0&&[Captured() isEqual:@""],"status names TMG14 as selected, nothing captured");
+        Check([TIO_FW_NAME isEqual:@"TMG14"]&&TIO_FW_ZIP_BYTES==[tmg[@"zipBytes"] unsignedIntegerValue],"the selected-package macros read TMG14");
+        printf("PASS flash packages fresh: TMG14 selected in a new process\n");[fm removeItemAtPath:Home error:nil];return 0;
     }
     if([mode isEqual:@"version"]){
 #if !TIO_TEST_PACKAGE_TABLE
         abort();
 #else
-        Check([TIOOTAPackageAt(1)[@"acceptOsVersions"] isEqual:@[@"Strix OS 1.0.6.11"]]&&[TIOOTAPackageAt(0)[@"acceptOsVersions"] containsObject:@"Strix OS 1.0.5.12"],"test-only table: stock accepts only 1.0.6.11, TMG13 accepts 1.0.5.12");
+        Check([TIOOTAPackageAt(1)[@"acceptOsVersions"] isEqual:@[@"Strix OS 1.0.6.11"]]&&[TIOOTAPackageAt(0)[@"acceptOsVersions"] containsObject:@"Strix OS 1.0.5.12"],"test-only table: stock accepts only 1.0.6.11, TMG14 accepts 1.0.5.12");
         Place(argv[2]);NSError *e=nil;
         assert(TIOOTASelectPackage(1,&e));ReadVersion(@"Strix OS 1.0.5.12");
         Check(![Status()[@"recentTargetVersionRead"] boolValue],"1.0.5.12 read: not counted for the selected stock package");
         Check(!Authorize(&e)&&[e.localizedDescription isEqual:[NSString stringWithFormat:TIOText(@"ota.version.recheck"),@"1.0.6.11"]]&&Stage()==0,"stock selected, glasses on 1.0.5.12: authorization refused, the message names 1.0.6.11");
-        // The same read counts for TMG13, which accepts it; the selection never switches by itself.
-        assert(TIOOTASelectPackage(0,&e));Check([Status()[@"recentTargetVersionRead"] boolValue]&&TIOOTASelectedPackageIndex()==0,"the same read counts for TMG13");
+        // The same read counts for TMG14, which accepts it; the selection never switches by itself.
+        assert(TIOOTASelectPackage(0,&e));Check([Status()[@"recentTargetVersionRead"] boolValue]&&TIOOTASelectedPackageIndex()==0,"the same read counts for TMG14");
         assert(TIOOTASelectPackage(1,&e));ReadVersion(@"Strix OS 1.0.6.11");e=nil;
         Check([Status()[@"recentTargetVersionRead"] boolValue]&&Authorize(&e)&&!e&&Stage()==1&&[Captured() isEqual:@"STOCK-1.0.6.11"],"stock selected, glasses on 1.0.6.11: authorized and stock captured");
         assert(TIOOTAFlashCancel());ReadVersion(@"Strix OS 1.0.4.12");
@@ -136,14 +136,14 @@ int main(int argc,char **argv){@autoreleasepool{
         TIOOTAFlashGate *g=[TIOOTAFlashGate new];NSURL *dir=[NSURL fileURLWithPath:Directory() isDirectory:YES];NSError *e=nil;
         NSString *changed=TIOText(@"ota.package.changed");
         Place(argv[2]);
-        Check(![g prepareDirectory:dir package:1 device:@"d" uptime:1 error:&e]&&[e.localizedDescription isEqual:changed]&&[[g status][@"stage"] isEqual:@0]&&[[g status][@"package"] isEqual:@""],"TMG13 selected, stock folder: a capture of package 1 (stock) is refused as changed, nothing captured");
+        Check(![g prepareDirectory:dir package:1 device:@"d" uptime:1 error:&e]&&[e.localizedDescription isEqual:changed]&&[[g status][@"stage"] isEqual:@0]&&[[g status][@"package"] isEqual:@""],"TMG14 selected, stock folder: a capture of package 1 (stock) is refused as changed, nothing captured");
         e=nil;Check(![g prepareDirectory:dir package:2 device:@"d" uptime:1 error:&e]&&[e.localizedDescription isEqual:changed]&&[[g status][@"stage"] isEqual:@0],"an unknown package index is refused");
         e=nil;assert(TIOOTASelectPackage(1,&e));
         e=nil;Check([g prepareDirectory:dir package:1 device:@"d" uptime:1 error:&e]&&!e&&[[g status][@"package"] isEqual:@"STOCK-1.0.6.11"],"control: stock selected, the same capture is allowed");
         assert([g cancel]);Place(argv[1]);
-        e=nil;Check(![g prepareDirectory:dir package:0 device:@"d" uptime:1 error:&e]&&[e.localizedDescription isEqual:changed]&&[[g status][@"stage"] isEqual:@0]&&[[g status][@"package"] isEqual:@""],"stock selected, TMG13 folder: a capture of package 0 (TMG13) is refused as changed, nothing captured");
+        e=nil;Check(![g prepareDirectory:dir package:0 device:@"d" uptime:1 error:&e]&&[e.localizedDescription isEqual:changed]&&[[g status][@"stage"] isEqual:@0]&&[[g status][@"package"] isEqual:@""],"stock selected, TMG14 folder: a capture of package 0 (TMG14) is refused as changed, nothing captured");
         e=nil;assert(TIOOTASelectPackage(0,&e));
-        e=nil;Check([g prepareDirectory:dir package:0 device:@"d" uptime:1 error:&e]&&!e&&[[g status][@"package"] isEqual:@"TMG13"],"control: TMG13 selected, the same capture is allowed");
+        e=nil;Check([g prepareDirectory:dir package:0 device:@"d" uptime:1 error:&e]&&!e&&[[g status][@"package"] isEqual:@"TMG14"],"control: TMG14 selected, the same capture is allowed");
         assert([g cancel]);
         printf("PASS flash packages index: a capture for a package that is not selected is refused\n");[fm removeItemAtPath:Home error:nil];return 0;
     }
@@ -161,7 +161,7 @@ int main(int argc,char **argv){@autoreleasepool{
             if([s[@"d"] isEqual:@"rx"]){Receive(Frame(type,s[@"json"],nil));continue;}
             if(type>=3&&!authorized){authorized=YES;e=nil;Check(Authorize(&e)&&!e&&Stage()==1&&[Captured() isEqual:@"STOCK-1.0.6.11"],"stock authorized and captured");}
             NSData *frame=nil;
-            // The recorded TMG13 frames become the stock package's: its ZIP size, its manifest and its slices.
+            // The recorded TMG14 frames become the stock package's: its ZIP size, its manifest and its slices.
             if(type==3){assert([s[@"json"][@"OtaSize"] isEqual:tmg[@"zipBytes"]]);frame=ZipSize(stock);}
             else if(type==6)frame=RawFrame(6,manifest,nil);
             else if(type==7){
@@ -184,13 +184,13 @@ int main(int argc,char **argv){@autoreleasepool{
     }
     if([mode isEqual:@"size"]){
         // Stage 0: the selected package's size only.
-        Check(Send(ZipSize(tmg))&&!Send(ZipSize(stock)),"stage 0, TMG13 selected: TMG13 size allowed, stock size refused");
+        Check(Send(ZipSize(tmg))&&!Send(ZipSize(stock)),"stage 0, TMG14 selected: TMG14 size allowed, stock size refused");
         NSError *e=nil;assert(TIOOTASelectPackage(1,&e));
-        Check(Send(ZipSize(stock))&&!Send(ZipSize(tmg)),"stage 0, stock selected: stock size allowed, TMG13 size refused");
+        Check(Send(ZipSize(stock))&&!Send(ZipSize(tmg)),"stage 0, stock selected: stock size allowed, TMG14 size refused");
         Place(argv[2]);e=nil;assert(Authorize(&e)&&Stage()==1);
-        Check(Send(ZipSize(stock))&&!Send(ZipSize(tmg))&&Stage()==1,"stage 1, stock captured: TMG13 size refused");
+        Check(Send(ZipSize(stock))&&!Send(ZipSize(tmg))&&Stage()==1,"stage 1, stock captured: TMG14 size refused");
         Check(Send(start)&&Stage()==2,"stage 2 started");
-        Check(!Send(ZipSize(tmg))&&Stage()==3,"stage 2: TMG13 size refused, the transfer ends");
+        Check(!Send(ZipSize(tmg))&&Stage()==3,"stage 2: TMG14 size refused, the transfer ends");
         printf("PASS flash packages size: type 3 with the other package's size refused at stages 0, 1 and 2\n");[fm removeItemAtPath:Home error:nil];return 0;
     }
     BOOL stockFirst=[mode hasPrefix:@"stock-"];NSError *e=nil;
@@ -203,10 +203,10 @@ int main(int argc,char **argv){@autoreleasepool{
         Check(TIOOTASelectPackage(1,&e)&&TIOOTASelectedPackageIndex()==1&&TIOOTASelectionGeneration()==generation+1,"a change at stage 1 is accepted");
         Check(Stage()==0&&![Status()[@"authorized"] boolValue]&&[Captured() isEqual:@""],"the stage-1 authorization is cancelled and the capture dropped");
         Check(!Send(start)&&Stage()==0,"type 4 refused after the change");
-        // The folder still holds TMG13: authorization for the stock package fails with the member mismatch message.
+        // The folder still holds TMG14: authorization for the stock package fails with the member mismatch message.
         // The members are read in name order, so the manifest (OtaFileInfo.json) is the first that differs.
         NSString *mismatch=[NSString stringWithFormat:TIOText(@"ota.identity.payloadMismatch"),@"OtaFileInfo.json",TIOOTAPackageDisplayName(stock)];
-        e=nil;Check(!Authorize(&e)&&Stage()==0&&[e.localizedDescription isEqual:mismatch],"the folder holds TMG13: stock authorization refused with the mismatch message naming Stock 1.0.6.11");
+        e=nil;Check(!Authorize(&e)&&Stage()==0&&[e.localizedDescription isEqual:mismatch],"the folder holds TMG14: stock authorization refused with the mismatch message naming Stock 1.0.6.11");
         Place(argv[2]);e=nil;Check(Authorize(&e)&&!e&&Stage()==1&&[Captured() isEqual:@"STOCK-1.0.6.11"],"with the stock folder, stock is authorized and captured");
         printf("PASS flash packages select-stage1: the change cancelled the authorization\n");[fm removeItemAtPath:Home error:nil];return 0;
     }
@@ -215,10 +215,10 @@ int main(int argc,char **argv){@autoreleasepool{
         if([mode isEqual:@"select-stage3"])Check(!Send(start)&&Stage()==3,"a second type 4: stage 3");
         NSUInteger stage=Stage(),generation=TIOOTASelectionGeneration();NSDictionary *before=Status();
         e=nil;Check(!TIOOTASelectPackage(1,&e)&&[e.localizedDescription isEqual:TIOText(@"ota.package.locked")],"a change after the start is refused");
-        Check(TIOOTASelectedPackageIndex()==0&&TIOOTASelectionGeneration()==generation&&Stage()==stage&&[Captured() isEqual:@"TMG13"],"selection, stage and capture unchanged");
+        Check(TIOOTASelectedPackageIndex()==0&&TIOOTASelectionGeneration()==generation&&Stage()==stage&&[Captured() isEqual:@"TMG14"],"selection, stage and capture unchanged");
         Check([Status()[@"validatedSlices"] isEqual:before[@"validatedSlices"]]&&[Status()[@"versionMatched"] isEqual:before[@"versionMatched"]],"the session counters unchanged");
         if(stage==2){
-            Check(Send(target)&&Send(RawFrame(6,myFiles[@"OtaFileInfo.json"],nil))&&Send(Slice(@"nuttx_ap.bin",apDiff,[myFiles[@"nuttx_ap.bin"] subdataWithRange:NSMakeRange(apDiff,apSize)]))&&Stage()==2,"the TMG13 session goes on with the TMG13 capture");
+            Check(Send(target)&&Send(RawFrame(6,myFiles[@"OtaFileInfo.json"],nil))&&Send(Slice(@"nuttx_ap.bin",apDiff,[myFiles[@"nuttx_ap.bin"] subdataWithRange:NSMakeRange(apDiff,apSize)]))&&Stage()==2,"the TMG14 session goes on with the TMG14 capture");
         }else Check(!Send(target)&&Stage()==3,"stage 3 stays closed");
         printf("PASS flash packages %s: refused, capture unchanged\n",mode.UTF8String);[fm removeItemAtPath:Home error:nil];return 0;
     }
