@@ -3,6 +3,8 @@
 // rules in docs/design-system (bands, reserved rows, 16 px text floor, no filled panels).
 // Pages that still use the TMG6 layout are listed as PENDING and must report violations; the commit that re-lays a
 // page flips its flag, after which it must report none.
+// The glasses lock screen (src/lock-v1/lock_view.c, TMG15) predates these rules and is measured in report mode (Lock below):
+// its violations and peaks are printed and written to lock-report.json, and they stay out of the brightness verdict.
 #import <AppKit/AppKit.h>
 #include "../src/navigation-runtime-v1/nav_view.h"
 #include "../src/navigation-runtime-v1/nav_text.h"
@@ -19,6 +21,8 @@
 #include "../src/common-v1/tio_caret.h"
 #include "../src/app-runtime-v1/app_view.h"
 #include "../src/app-runtime-v1/app_shelf.h"
+#include "../src/lock-v1/lock_view.h"
+#include "lock_options.h"
 #include "lens_brightness.h"
 #include <assert.h>
 #include <stdio.h>
@@ -105,13 +109,19 @@ static unsigned Judge(const BRow *r){
 }
 static const char *PageOf(const char *name,char *out,size_t n){size_t k=0;while(name[k]&&name[k]!='-'&&k+1<n){out[k]=name[k];k++;}while(k&&out[k-1]>='0'&&out[k-1]<='9')k--;out[k]=0;return out;}
 static bool Cjk(const Host *host){for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(!w->text)continue;for(const unsigned char *p=(const unsigned char *)w->text;*p;p++)if((*p>=0xe3&&*p<=0xe9)||*p==0xef)return true;}return false;}
+static void MeasureInto(const Host *host,const char *name,BRow *r,bool dump_plane);
 static void Measure(const Host *host,const char *name){
  if(!gLiveBrightness)return;
- const int H=tio_surface_h(gSurface);uint8_t *g=malloc((size_t)540*H);assert(g&&gRowCount<sizeof gRows/sizeof *gRows);
- BRow *r=&gRows[gRowCount++];memset(r,0,sizeof *r);snprintf(r->screen,sizeof r->screen,"%s",name);PageOf(name,r->page,sizeof r->page);
+ assert(gRowCount<sizeof gRows/sizeof *gRows);BRow *r=&gRows[gRowCount++];MeasureInto(host,name,r,true);
+ if(r->bad)printf("BRIGHT %s: whole %.3f at (%d,%d), rest %.3f (max 0.45)%s%s mask 0x%x\n",name,r->all.peak,r->all.peak_x,r->all.peak_y,r->pn,r->hasp?" primary ":"",r->hasp?(r->pp>LB_PEAK_MAX_PRIMARY+1e-9?"over 0.65":"ok"):"",r->bad);
+}
+// One render's brightness row. Report-only renders (the shipped lock screen, see Lock) are measured here without joining gRows or the verdict.
+static void MeasureInto(const Host *host,const char *name,BRow *r,bool dump_plane){
+ const int H=tio_surface_h(gSurface);uint8_t *g=malloc((size_t)540*H);assert(g);
+ memset(r,0,sizeof *r);snprintf(r->screen,sizeof r->screen,"%s",name);PageOf(name,r->page,sizeof r->page);
  size_t L=strlen(name);snprintf(r->lang,sizeof r->lang,"%s",L>3&&!strcmp(name+L-3,"-en")?"en":L>3&&!strcmp(name+L-3,"-zh")?"zh":Cjk(host)?"zh":"en");
  Plane(host,-1,g,H);lb_metrics(g,540,H,&r->all);
- {const char *dump=getenv("TIO_BRIGHTNESS_PLANES");if(dump&&*dump){   // the green plane as binary PGM, for the independent cross-check in tmg7_host_test.py
+ {const char *dump=getenv("TIO_BRIGHTNESS_PLANES");if(dump_plane&&dump&&*dump){   // the green plane as binary PGM, for the independent cross-check in tmg7_host_test.py
   NSString *f=[[NSString stringWithUTF8String:dump] stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.pgm",name]];NSMutableData *d=[NSMutableData dataWithData:[[NSString stringWithFormat:@"P5\n540 %d\n255\n",H] dataUsingEncoding:NSASCIIStringEncoding]];
   [d appendBytes:g length:(NSUInteger)540*H];assert([d writeToFile:f atomically:YES]);}}
  r->hasp=HasClass(host,CPrimary);r->hasu=HasClass(host,CUnfocused);
@@ -119,7 +129,6 @@ static void Measure(const Host *host,const char *name){
  if(r->hasp){Plane(host,CPrimary,g,H);lb_metrics(g,540,H,&m);r->pp=m.peak;}
  if(r->hasu){Plane(host,CUnfocused,g,H);lb_metrics(g,540,H,&m);r->pu=m.peak;}
  free(g);r->bad=Judge(r);
- if(r->bad)printf("BRIGHT %s: whole %.3f at (%d,%d), rest %.3f (max 0.45)%s%s mask 0x%x\n",name,r->all.peak,r->all.peak_x,r->all.peak_y,r->pn,r->hasp?" primary ":"",r->hasp?(r->pp>LB_PEAK_MAX_PRIMARY+1e-9?"over 0.65":"ok"):"",r->bad);
 }
 // A render that is not a Host (the dashboard card is a raster, 256x194): the same metric, no classes, the 0.45 limit. The card step calls this
 // with its green plane and its row joins brightness.json and the verdict like every other render.
@@ -955,10 +964,190 @@ static void Card(NSString *dir,NSString *board){
   host->n=0;}
  gCard=NULL;free(host);
 }
+// ---- Glasses lock (LensLock): the shipped TMG15 view in report mode, and the design-system options A, B and C ------------------
+// The shipped view (src/lock-v1/lock_view.c) is drawn through the host exactly as the glasses draw it and reported, not failed: it
+// predates the rules it is measured against (owner decision: bring it into line). Its rows go to lock-report.json, not to
+// brightness.json or the brightness verdict. The options (tests/lock_options.c, test-only) must pass every rule with no exemption, and
+// the board's panels must equal the HTML this gate derives from the renders.
+// Shipped canvas buffers: the native buffer() hands the pointer to stream_canvas_set_buffer without a copy, so an unaligned buffer is
+// drawn from the next 64-byte boundary on the glasses. The host notes the alignment instead of aborting and draws the intended pixels.
+static unsigned gUnaligned;
+static void bufferNote(void *p,void *o,const uint8_t *pixels,unsigned w,unsigned h){(void)p;Widget *v=o;
+ if(((uintptr_t)pixels&63)!=0){gUnaligned++;printf("NOTE lock canvas buffer %ux%u is not 64-byte aligned on the host (address mod 64 = %u)\n",w,h,(unsigned)((uintptr_t)pixels&63));}
+ if(!v->w&&!v->h){v->w=(int)w;v->h=(int)h;}   // tlv_open sets the buffer before it places the canvas
+ assert(v->w==(int)w&&v->h==(int)h);v->pixels=pixels;v->kind=KPixels;}
+typedef struct {const char *tag;TLKState state;uint8_t slot,digit,notice,wrong;uint32_t delay,now;bool input,save;} LockShot;
+// One PIN entry from the screen opening to the last digit, then every other state. Time 10:24, battery 82%.
+static const LockShot kLockShots[]={
+ {"entry-hint",TLK_ENTRY,0,0,0,0,0,1000,false,true},{"",TLK_ENTRY,0,3,0,0,0,1400,true,false},{"",TLK_ENTRY,1,0,0,0,0,1800,true,false},
+ {"",TLK_ENTRY,1,5,0,0,0,2200,true,false},{"",TLK_ENTRY,2,0,0,0,0,2600,true,false},{"",TLK_ENTRY,2,7,0,0,0,3000,true,false},
+ {"entry-fade",TLK_ENTRY,2,7,0,0,0,5850,false,true},{"entry",TLK_ENTRY,2,7,0,0,0,6500,false,true},
+ {"",TLK_ENTRY,3,0,0,0,0,6600,true,false},{"entry-last",TLK_ENTRY,3,9,0,0,0,10000,false,true},
+ {"wrong",TLK_WRONG,0,0,0,1,0,20000,false,true},{"waiting",TLK_WAITING,0,0,0,5,45,21000,false,true},
+ {"waiting-noclock",TLK_WAITING,0,0,0,5,UINT32_MAX,22000,false,true},{"usephone",TLK_USE_PHONE,0,0,0,0,0,23000,false,true},
+ {"notice",TLK_NOTICE,0,0,3,0,0,24000,false,true},{"unlocked",TLK_UNLOCKED_MSG,0,0,0,0,0,25000,false,true}};
+static TLVScene LockScene(const LockShot *sh){
+ return (TLVScene){.state=sh->state,.slot=sh->slot,.digit=sh->digit,.notice=sh->notice,.wrong=sh->wrong,.delay_left=sh->delay,.now_ms=sh->now,.local=946684800+10*3600+24*60,.battery=82};
+}
+// Ink height of one widget alone (the lit rows of its own green plane).
+static int InkHeight(const Widget *w){
+ Host *one=calloc(1,sizeof *one);assert(one);create(one,one);one->w[one->count++]=*w;one->w[1].shown=true;one->w[1].cls=CNormal;
+ uint8_t *g=malloc(540*180);Plane(one,-1,g,180);int y0=-1,y1=-1;for(int y=0;y<180;y++)for(int x=0;x<540;x++)if(g[y*540+x]>16){if(y0<0)y0=y;y1=y;}
+ free(g);free(one);return y0<0?0:y1-y0+1;
+}
+// The lock-screen rules the generic gate does not see: the system caret, the transient hint and its fade, the primary digit in band B.
+enum {LDigitBand=1,LDigitSize=2,LCaret=4,LHint=8,LHintFade=16,LStatus=32,LTrackText=64};
+static const char *kLockRuleNames[]={"digit outside band B","digit above lens-hero","caret is not the 24x3 system caret","hint not lens-high in band T","hint has no fade","time/battery not lens-mid in band T","text in lens-track (the gate reads it as a fading hint)"};
+static unsigned LockRules(const Widget *digit,unsigned digit_font,const Widget *caret,const Widget *hint,const Widget *hint_fade,const Widget *time,const Widget *batt){
+ unsigned bad=0;TIORect d={digit->x,digit->y,digit->w,digit->h};
+ if(!tio_rect_in_band(TIO_SURFACE_PAGE,TIO_BAND_B,d))bad|=LDigitBand;
+ if(digit->kind==KText&&(digit_font>TIO_FONT_HERO||!tio_font_native(digit_font)))bad|=LDigitSize;
+ bool level=caret&&caret->kind==KPixels;if(level)for(int k=0;k<caret->w*caret->h;k++)level&=caret->pixels[k]==TF_FILL_LEVEL;
+ if(!caret||caret->w!=TIO_CARET_W||caret->h!=TIO_CARET_H||!level)bad|=LCaret;
+ else{int under=digit->kind==KText?tio_caret_top(digit->y,digit->font):digit->y+digit->h+TIO_CARET_GAP;if(abs(caret->y-under)>1||abs(caret->x+caret->w/2-(digit->x+digit->w/2))>1)bad|=LCaret;}
+ if(!hint||!hint->shown||hint->color!=TIO_LENS_HIGH||tio_band_of(TIO_SURFACE_PAGE,hint->y,hint->h)!=TIO_BAND_T)bad|=LHint;
+ if(!hint_fade||!hint_fade->shown||!(hint_fade->color>0&&hint_fade->color<TIO_LENS_HIGH))bad|=LHintFade;
+ for(const Widget *s=time;s;s=s==time?batt:NULL)if(!s->shown||s->color!=TIO_LENS_MID||tio_band_of(TIO_SURFACE_PAGE,s->y,s->h)!=TIO_BAND_T)bad|=LStatus;
+ return bad;
+}
+// "lens-track is never text": Check() lets text below lens-high pass as a fading hint, so the lock pages check it themselves.
+static unsigned TrackText(const Host *host){for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(w->shown&&textual(w)&&w->color==TIO_LENS_TRACK)return LTrackText;}return 0;}
+static NSString *MaskNames(unsigned gate,unsigned rules){
+ static const char *g[]={"reserved rows","band","16 px floor / ramp","filled panel","core","intensity (track or off-ramp text)","overlap","canvas","text box"};
+ NSMutableArray *a=[NSMutableArray array];for(unsigned i=0;i<9;i++)if(gate&(1u<<i))[a addObject:[NSString stringWithUTF8String:g[i]]];
+ for(unsigned i=0;i<7;i++)if(rules&(1u<<i))[a addObject:[NSString stringWithUTF8String:kLockRuleNames[i]]];return [a componentsJoinedByString:@", "];
+}
+// The board panel for a render: every shown widget as an absolutely positioned div at 2x (text, bars, dots) or an inline SVG (the drawn numeral).
+static NSString *Esc(const char *s){NSString *t=[NSString stringWithUTF8String:s];return [[[t stringByReplacingOccurrencesOfString:@"&" withString:@"&amp;"] stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"] stringByReplacingOccurrencesOfString:@">" withString:@"&gt;"];}
+static NSString *LockPanel(const Host *host,const Widget *glyph,unsigned glyph_digit){
+ NSMutableString *h=[NSMutableString string];
+ for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(!w->shown)continue;
+  if(w->kind==KText&&w->text&&*w->text){uint32_t c=w->color?w->color:TIO_LENS_FULL;
+   [h appendFormat:@"    <div style=\"position: absolute; left: %dpx; top: %dpx; width: %dpx; height: %dpx; font-size: %upx; line-height: %dpx; text-align: %s; white-space: nowrap; overflow: hidden; color: #%06x;\">%@</div>\n",2*w->x,2*w->y,2*w->w,2*w->h,2*w->font,2*w->h,w->align==1?"center":w->align==2?"right":"left",c,Esc(w->text)];}
+  else if(w->kind==KPixels&&w->pixels){
+   if(w==glyph){LOLine l[4];unsigned n=lo_glyph_lines(glyph_digit,l);
+    [h appendFormat:@"    <svg style=\"position: absolute; left: %dpx; top: %dpx;\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">",2*w->x,2*w->y,2*w->w,2*w->h,w->w,w->h];
+    for(unsigned k=0;k<n;k++){[h appendString:@"<polyline points=\""];for(unsigned j=0;j<l[k].n;j++)[h appendFormat:@"%s%.2f,%.2f",j?" ":"",l[k].x[j],l[k].y[j]];[h appendFormat:@"\" fill=\"none\" stroke=\"#00ff00\" stroke-width=\"%d\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",LO_GLYPH_STROKE];}
+    [h appendString:@"</svg>\n"];continue;}
+   uint8_t top=0;bool flat=true;for(int k=0;k<w->w*w->h;k++){if(w->pixels[k]>top)top=w->pixels[k];flat&=w->pixels[k]==w->pixels[0];}
+   [h appendFormat:@"    <div style=\"position: absolute; left: %dpx; top: %dpx; width: %dpx; height: %dpx; border-radius: %s; background: #00%02x00;\"></div>\n",2*w->x,2*w->y,2*w->w,2*w->h,flat?"2px":"50%",top];}
+ }
+ return h;
+}
+typedef struct {const char *name;unsigned gate,rules,font;int ink;BRow b;} LockRow;
+static LockRow gLock[96];static unsigned gLockCount;
+static void LockRecord(const char *name,unsigned gate,unsigned rules,unsigned font,int ink,const BRow *b){assert(gLockCount<sizeof gLock/sizeof *gLock);gLock[gLockCount++]=(LockRow){strdup(name),gate,rules,font,ink,*b};}
+static NSMutableDictionary *gPanels;
+// The shipped TMG15 view: every state EN and ZH, reported. Returns the number of renders that break a rule (expected: the PIN screen).
+static unsigned LockShipped(NSString *dir){
+ unsigned broken=0;
+ for(unsigned z=0;z<2;z++){language=z;Host *host=calloc(1,sizeof *host);assert(host);create(host,host);
+  TNWidgets api={host,idle,create,create,label,place,bufferNote,text,visible,destroy,cliptext,color};TLKView *v=calloc64(sizeof *v);assert(v&&tlv_open(v,&api,host,host));
+  for(unsigned i=TLV_S0;i<=TLV_S3;i++)W(v->labels[i])->align=1;W(v->labels[TLV_BATT])->align=2;   // lock_native.c: slots centred, battery right-aligned
+  uint32_t hint_color=0,fade_color=0;bool hint_shown=false,fade_shown=false;
+  for(unsigned k=0;k<sizeof kLockShots/sizeof *kLockShots;k++){const LockShot *sh=&kLockShots[k];TLVScene s=LockScene(sh);assert(tlv_draw(v,&s,z));
+   if(!sh->save)continue;
+   Widget *digit=sh->state==TLK_ENTRY?W(v->labels[TLV_S0+sh->slot]):NULL;if(digit)digit->cls=CPrimary;   // counts as the primary readout only if wholly in band B
+   Widget *hint=W(v->labels[TLV_T]);
+   if(!strcmp(sh->tag,"entry-hint")){hint_shown=hint->text&&*hint->text;hint_color=hint->color;}
+   if(!strcmp(sh->tag,"entry-fade")){fade_shown=hint->text&&*hint->text;fade_color=hint->color;}
+   char name[64];snprintf(name,sizeof name,"lock-tmg15-%s-%s",sh->tag,z?"zh":"en");
+   unsigned gate=Check(host,name,false);BRow b;MeasureInto(host,name,&b,false);unsigned rules=TrackText(host);int ink=0;
+   if(digit&&!strcmp(sh->tag,"entry")){
+    Widget hs=*hint;hs.shown=hint_shown;hs.color=hint_color;Widget hf=*hint;hf.shown=fade_shown;hf.color=fade_color;
+    rules|=LockRules(digit,digit->font,W(v->caret),&hs,&hf,W(v->labels[TLV_TIME]),W(v->labels[TLV_BATT]));ink=InkHeight(digit);}
+   if(gate){printf("REPORT %s: layout rules broken: %s\n",name,MaskNames(gate,0).UTF8String);Check(host,name,true);}
+   if(rules)printf("REPORT %s: lock rules broken: %s\n",name,MaskNames(0,rules).UTF8String);
+   if(b.bad)printf("REPORT %s: brightness over the limit: whole %.3f at (%d,%d), rest %.3f%s (limit %.2f)\n",name,b.all.peak,b.all.peak_x,b.all.peak_y,b.pn,b.hasp?" (primary class)":"",b.hasp?LB_PEAK_MAX_PRIMARY:LB_PEAK_MAX);
+   printf("REPORT %s: peak 1 deg %.3f at (%d,%d)%s\n",name,b.all.peak,b.all.peak_x,b.all.peak_y,digit?[NSString stringWithFormat:@", digit %u px font, ink %d px high",digit->font,ink?ink:InkHeight(digit)].UTF8String:"");
+   broken+=gate||rules||b.bad;LockRecord(name,gate,rules,digit?digit->font:0,digit?(ink?ink:InkHeight(digit)):0,&b);
+   if(!z&&!strcmp(sh->tag,"entry"))gPanels[@"lock-tmg15-entry-en"]=LockPanel(host,NULL,0);
+   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);
+   if(digit)digit->cls=CNormal;
+  }
+  {double worst=0;unsigned at=0;   // every digit 0..9 in the focused slot
+   for(unsigned d=0;d<10;d++){TLVScene s={.state=TLK_ENTRY,.slot=1,.digit=(uint8_t)d,.now_ms=30000,.local=946684800+10*3600+24*60,.battery=82};tlv_draw(v,&s,z);
+    char name[64];snprintf(name,sizeof name,"lock-tmg15-digit%u-%s",d,z?"zh":"en");BRow b;MeasureInto(host,name,&b,false);if(b.all.peak>worst){worst=b.all.peak;at=d;}}
+   printf("REPORT lock-tmg15 digits 0-9 (%s): brightest 1 deg peak %.3f (digit %u), limit 0.45 (the digit is not wholly in band B, so not the primary class)\n",z?"zh":"en",worst,at);}
+  tlv_close(v);free(v);free(host);
+ }
+ return broken;
+}
+// The options: every state EN and ZH through the strict gate and the brightness verdict, plus the lock rules on the PIN screen.
+static void LockOption(NSString *dir,unsigned opt){
+ const char letter='A'+(char)opt;
+ for(unsigned z=0;z<2;z++){language=z;Host *host=calloc(1,sizeof *host);assert(host);create(host,host);
+  TNWidgets api={host,idle,create,create,label,place,buffer,text,visible,destroy,cliptext,color};LOView *v=calloc64(sizeof *v);assert(v&&lo_open(v,opt,&api,host,host));
+  for(unsigned i=0;i<LO_LABELS;i++)W(v->labels[i])->align=(int)v->align[i];
+  Widget hs={0},hf={0};
+  for(unsigned k=0;k<sizeof kLockShots/sizeof *kLockShots;k++){const LockShot *sh=&kLockShots[k];TLVScene s=LockScene(sh);if(sh->input)lo_input(v,sh->now);assert(lo_draw(v,&s,z,sh->now));
+   if(!sh->save)continue;
+   const bool entry=sh->state==TLK_ENTRY;Widget *digit=!entry?NULL:opt==LO_C?W(v->canvas[LO_GLYPH]):W(v->labels[LO_DIGIT]);
+   Widget *msg=W(v->labels[LO_BTEXT]);
+   if(digit)digit->cls=CPrimary;else if(msg->shown)msg->cls=CPrimary;   // the one band-B readout of the page
+   if(!strcmp(sh->tag,"entry-hint"))hs=*W(v->labels[LO_HINT]);
+   if(!strcmp(sh->tag,"entry-fade"))hf=*W(v->labels[LO_HINT]);
+   char name[64];snprintf(name,sizeof name,"lock%c-%s-%s",letter,sh->tag,z?"zh":"en");Gate(host,name,true);
+   unsigned rules=TrackText(host);int ink=0;
+   if(entry&&!strcmp(sh->tag,"entry"))rules|=LockRules(digit,digit->kind==KText?digit->font:0,W(v->canvas[LO_CARET]),&hs,&hf,W(v->labels[LO_TIME]),W(v->labels[LO_BATT]));
+   if(entry)ink=InkHeight(digit);
+   if(rules){printf("FAIL %s: %s\n",name,MaskNames(0,rules).UTF8String);assert(0);}
+   if(entry){   // shape of the PIN screen: dots for entered slots, track shapes for empty ones, no digit text but the focused one
+    unsigned digits=0;for(unsigned i=1;i<host->count;i++){const Widget *w=&host->w[i];if(w->shown&&textual(w)&&w->text[0]>='0'&&w->text[0]<='9'&&!w->text[1])digits++;}
+    assert(digits==(opt==LO_B?3u:opt==LO_A?1u:0u));
+    unsigned dots=0,tracks=0;for(unsigned i=0;i<TLK_PIN_LEN;i++){dots+=W(v->canvas[LO_DOT0+i])->shown;tracks+=W(v->canvas[LO_TRACK0+i])->shown;}
+    if(opt==LO_B)assert(dots==TLK_PIN_LEN);else assert(dots==sh->slot&&tracks==TLK_PIN_LEN-1-sh->slot);}
+   const BRow *b=&gRows[gRowCount-1];assert(!strcmp(b->screen,name));
+   if(digit||msg->shown)assert(b->hasp);   // the readout is wholly in band B, so it is measured as the primary
+   printf("LOCK %s: peak 1 deg %.3f%s%s\n",name,b->all.peak,b->hasp?[NSString stringWithFormat:@", primary %.3f",b->pp].UTF8String:"",digit?[NSString stringWithFormat:@", digit %s %d px, ink %d px high",opt==LO_C?"glyph":"font",opt==LO_C?LO_GLYPH_H:(int)digit->font,ink?ink:InkHeight(digit)].UTF8String:"");
+   LockRecord(name,0,rules,digit&&digit->kind==KText?digit->font:0,digit?(ink?ink:InkHeight(digit)):0,b);
+   if(!z&&(!strcmp(sh->tag,"entry")||!entry)){NSString *key=[NSString stringWithFormat:@"lock%c-%s-en",letter,sh->tag];gPanels[key]=LockPanel(host,opt==LO_C?W(v->canvas[LO_GLYPH]):NULL,v->glyph_digit<0?0:(unsigned)v->glyph_digit);}
+   Save(host,[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.png",name]]);
+   if(digit)digit->cls=CNormal;msg->cls=CNormal;
+  }
+  {double worst=0;unsigned at=0;   // every digit 0..9 in the focused slot, not only the ones the shots show
+   for(unsigned d=0;d<10;d++){TLVScene s={.state=TLK_ENTRY,.slot=1,.digit=(uint8_t)d,.now_ms=30000,.local=946684800+10*3600+24*60,.battery=82};assert(lo_draw(v,&s,z,30000));
+    Widget *digit=opt==LO_C?W(v->canvas[LO_GLYPH]):W(v->labels[LO_DIGIT]);digit->cls=CPrimary;
+    char name[64];snprintf(name,sizeof name,"lock%c-digit%u-%s",letter,d,z?"zh":"en");assert(Check(host,name,true)==0);
+    BRow b;MeasureInto(host,name,&b,false);assert(!b.bad&&b.hasp);if(b.pp>worst){worst=b.pp;at=d;}digit->cls=CNormal;}
+   printf("LOCK lock%c digits 0-9 (%s): brightest primary %.3f (digit %u), limit 0.65; rest within 0.45\n",letter,z?"zh":"en",worst,at);}
+  lo_close(v);free(v);free(host);
+ }
+}
+// Every panel of the board (between <!-- render:NAME --> and <!-- /render:NAME -->) must equal the HTML derived from that render here.
+static void CompareLockBoard(NSString *html,NSString *dir){
+ NSMutableString *all=[NSMutableString string];unsigned matched=0;   // every panel, written first so a new board can be built from it
+ for(NSString *key in [gPanels.allKeys sortedArrayUsingSelector:@selector(compare:)])[all appendFormat:@"<!-- render:%@ -->\n%@<!-- /render:%@ -->\n",key,gPanels[key],key];
+ assert([all writeToFile:[dir stringByAppendingPathComponent:@"LensLock-panels.html"] atomically:YES encoding:NSUTF8StringEncoding error:nil]);
+ NSString *s=[NSString stringWithContentsOfFile:html encoding:NSUTF8StringEncoding error:nil];assert(s);
+ for(NSString *key in [gPanels.allKeys sortedArrayUsingSelector:@selector(compare:)]){
+  NSRange a=[s rangeOfString:[NSString stringWithFormat:@"<!-- render:%@ -->\n",key]],b=[s rangeOfString:[NSString stringWithFormat:@"<!-- /render:%@ -->",key]];
+  if(a.location==NSNotFound)continue;assert(b.location!=NSNotFound&&b.location>a.location);
+  NSString *board=[s substringWithRange:NSMakeRange(NSMaxRange(a),b.location-NSMaxRange(a))];
+  NSString *want=gPanels[key];if(![board isEqualToString:want]){printf("board panel %s differs from the render\n--- board\n%s--- render\n%s",key.UTF8String,board.UTF8String,want.UTF8String);assert(0);}
+  matched++;}
+ for(NSString *need in @[@"lock-tmg15-entry-en",@"lockA-entry-en",@"lockB-entry-en",@"lockC-entry-en"]){NSString *tag=[NSString stringWithFormat:@"<!-- render:%@ -->",need];assert([s containsString:tag]);}
+ printf("PASS board LensLock: %u panels equal the renders (current TMG15 and options A, B, C)\n",matched);
+}
+static void Lock(NSString *dir,NSString *board){
+ gPanels=[NSMutableDictionary dictionary];gUnaligned=0;
+ unsigned broken=LockShipped(dir);assert(broken>0);   // report mode: the shipped PIN screen must still show its violations until it is re-laid
+ printf("REPORT lock-tmg15: %u of %u renders break a rule; %u unaligned canvas buffer(s) on the host\n",broken,gLockCount,gUnaligned);
+ for(unsigned o=0;o<LO_OPTIONS;o++)LockOption(dir,o);
+ for(NSString *key in gPanels.allKeys)if([key hasPrefix:@"lockA-"]&&![key hasPrefix:@"lockA-entry"]){   // the other states share one layout in every option
+  NSString *rest=[key substringFromIndex:5];NSString *a=gPanels[key],*b=gPanels[[@"lockB" stringByAppendingString:rest]],*c=gPanels[[@"lockC" stringByAppendingString:rest]];assert([a isEqualToString:b]&&[a isEqualToString:c]);}
+ NSMutableString *j=[NSMutableString stringWithString:@"[\n"];
+ for(unsigned i=0;i<gLockCount;i++){const LockRow *r=&gLock[i];
+  [j appendFormat:@" {\"screen\": \"%s\", \"layout_mask\": %u, \"lock_mask\": %u, \"broken\": \"%@\", \"digit_font\": %u, \"digit_ink_px\": %d, \"peak_1deg\": %.4f, \"peak_x\": %d, \"peak_y\": %d, \"peak_rest\": %.4f, \"peak_primary\": %@, \"limit\": %.2f, \"brightness_pass\": %@}%s\n",
+   r->name,r->gate,r->rules,MaskNames(r->gate,r->rules),r->font,r->ink,r->b.all.peak,r->b.all.peak_x,r->b.all.peak_y,r->b.pn,r->b.hasp?[NSString stringWithFormat:@"%.4f",r->b.pp]:@"null",r->b.hasp?LB_PEAK_MAX_PRIMARY:LB_PEAK_MAX,r->b.bad?@"false":@"true",i+1<gLockCount?",":""];}
+ [j appendString:@"]\n"];assert([j writeToFile:[dir stringByAppendingPathComponent:@"lock-report.json"] atomically:YES encoding:NSUTF8StringEncoding error:nil]);
+ CompareLockBoard(board,dir);
+ printf("PASS lock options A, B, C: every state EN and ZH passes the layout gate, the lock rules and the brightness limits\n");
+}
 int main(int argc,char **argv){@autoreleasepool{assert(argc>=3);NSString *dir=[NSString stringWithUTF8String:argv[1]];assert([NSFileManager.defaultManager createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil]);
- NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);MenuMatrix(dir,false);MenuMatrix(dir,true);NSString *cardBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensDashCard.dc.html"];Card(dir,cardBoard);
+ NSString *board=[NSString stringWithUTF8String:argv[2]];SelfTest();BrightSelfTest();AppPages(dir,board);AppRuntime(dir,board,argc,argv);Shelf(dir);NSString *navBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensNav.dc.html"];Nav(dir,navBoard,false,false);Nav(dir,navBoard,true,false);Nav(dir,navBoard,false,true);Nav(dir,navBoard,true,true);NSString *musicBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMusic.dc.html"];Lyrics(dir,musicBoard,false);Lyrics(dir,musicBoard,true);NSString *focusBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensFocus.dc.html"];Focus(dir,focusBoard,false);Focus(dir,focusBoard,true);NSString *menuBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenu.dc.html"];Menu(dir,menuBoard,false);Menu(dir,menuBoard,true);NSString *carouselBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuCarousel.dc.html"];NSString *gridBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensMenuGrid2.dc.html"];CheckStatusBoard(gridBoard);Carousel(dir,carouselBoard,false);Carousel(dir,carouselBoard,true);MenuMatrix(dir,false);MenuMatrix(dir,true);NSString *cardBoard=[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensDashCard.dc.html"];Card(dir,cardBoard);Lock(dir,[[board stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"LensLock.dc.html"]);
  {const char *env=getenv("TIO_BRIGHTNESS_JSON");WriteBrightness(env&&*env?[NSString stringWithUTF8String:env]:[dir stringByAppendingPathComponent:@"brightness.json"]);
   unsigned bad=0;for(unsigned i=0;i<gRowCount;i++)bad+=gRows[i].bad!=0;
   if(bad){printf("FAIL brightness gate: %u of %u renders over the 1 degree limits (0.45, band-B primary 0.65, unfocused icons 0.20)\n",bad,gRowCount);return 1;}
   printf("PASS tmg8 brightness gate: %u renders, 1 degree peak (25x25 px, L^2.2) at most 0.45, band-B primary at most 0.65, unfocused icons at most 0.20\n",gRowCount);}
- puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid");}return 0;}
+ puts("PASS tmg7 layout gate and previews (EN/ZH); preview typography uses macOS surrogate fonts, app, nav, music, focus and menu are re-laid; the shipped lock screen is reported, not gated");}return 0;}

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glasses lock screen</title>
+</head>
+<body style="margin: 0;">
+<!-- Plain HTML, drawn at 2x on a 1080x360 black panel per 540x180 page. Every block between render:NAME markers is derived from
+     the host render NAME by firmware/tests/tmg7_layout_preview.m (Lock), and the layout gate fails if it differs. The options are
+     test-only prototypes (firmware/tests/lock_options.c); the shipped view is src/lock-v1/lock_view.c. Peaks: 1 degree window,
+     mean of level^2.2 over 25x25 px; limits 0.45, and 0.65 for the one band-B primary readout. -->
+<div style="width: 1160px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 10px; background: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', system-ui, sans-serif; color: #f0ede5;">
+  <div style="font-size: 22px; line-height: 30px; font-weight: 600;">Lock screen: the PIN entry moves into band B at sizes the design system allows</div>
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8; margin-bottom: 14px;">PIN entry, third digit, after the hint has faded. Time 10:24, battery 82%. Digit sizes are ink height in pixels; peaks are the brightest 1° window.</div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Current · TMG15</div>
+  <div role="img" aria-label="Current TMG15 PIN screen: 112 px digits across all three bands, an 80 by 8 caret bar, entered slots as dots and the empty slot as a dash" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+<!-- render:lock-tmg15-entry-en -->
+    <div style="position: absolute; left: 124px; top: 78px; width: 160px; height: 232px; font-size: 224px; line-height: 232px; text-align: center; white-space: nowrap; overflow: hidden; color: #00b000;">·</div>
+    <div style="position: absolute; left: 348px; top: 78px; width: 160px; height: 232px; font-size: 224px; line-height: 232px; text-align: center; white-space: nowrap; overflow: hidden; color: #00b000;">·</div>
+    <div style="position: absolute; left: 572px; top: 78px; width: 160px; height: 232px; font-size: 224px; line-height: 232px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">7</div>
+    <div style="position: absolute; left: 796px; top: 78px; width: 160px; height: 232px; font-size: 224px; line-height: 232px; text-align: center; white-space: nowrap; overflow: hidden; color: #003800;">-</div>
+    <div style="position: absolute; left: 80px; top: 24px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: left; white-space: nowrap; overflow: hidden; color: #007700;">10:24</div>
+    <div style="position: absolute; left: 872px; top: 24px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: right; white-space: nowrap; overflow: hidden; color: #007700;">82%</div>
+    <div style="position: absolute; left: 572px; top: 318px; width: 160px; height: 16px; border-radius: 2px; background: #00ff00;"></div>
+<!-- /render:lock-tmg15-entry-en -->
+    <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 0; top: 112px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 224px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 1052px; top: 30px; font-size: 18px; font-weight: 700; color: #ff7a1a;">T</div>
+    <div style="position: absolute; left: 1052px; top: 120px; font-size: 18px; font-weight: 700; color: #ff7a1a;">M</div>
+    <div style="position: absolute; left: 1052px; top: 232px; font-size: 18px; font-weight: 700; color: #ff7a1a;">B</div>
+  </div>
+
+  <div style="font-size: 14px; line-height: 20px; color: #ff9f0a;">Rule breaks: digits are 112 px (ramp ends at lens-hero 48) and span bands T, M and B; the caret is an 80×8 bar, not the 24×3 system caret;</div>
+  <div style="font-size: 14px; line-height: 20px; color: #ff9f0a;">the hint is lens-mid and disappears without the fade; the empty slot is a "-" drawn as text in lens-track (track is never text).</div>
+  <div style="font-size: 14px; line-height: 20px; color: #ff9f0a;">Measured: digit ink 79–83 px. Peak 0.587 on this screen, 0.686 for the brightest digit (4), against a limit of 0.45: the digit is not wholly in band B, so the 0.65 primary allowance does not apply.</div>
+
+  <div style="height: 18px;"></div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Option A · four slots in band B</div>
+  <div role="img" aria-label="Option A: four slots in band B, the focused 7 at 48 px with the caret under it, two entered dots and one empty track bar" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+<!-- render:lockA-entry-en -->
+    <div style="position: absolute; left: 80px; top: 46px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: left; white-space: nowrap; overflow: hidden; color: #007700;">10:24</div>
+    <div style="position: absolute; left: 872px; top: 46px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: right; white-space: nowrap; overflow: hidden; color: #007700;">82%</div>
+    <div style="position: absolute; left: 572px; top: 228px; width: 96px; height: 104px; font-size: 96px; line-height: 104px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">7</div>
+    <div style="position: absolute; left: 596px; top: 334px; width: 48px; height: 6px; border-radius: 2px; background: #00ff00;"></div>
+    <div style="position: absolute; left: 290px; top: 282px; width: 20px; height: 20px; border-radius: 50%; background: #00b000;"></div>
+    <div style="position: absolute; left: 450px; top: 282px; width: 20px; height: 20px; border-radius: 50%; background: #00b000;"></div>
+    <div style="position: absolute; left: 756px; top: 334px; width: 48px; height: 6px; border-radius: 2px; background: #003800;"></div>
+<!-- /render:lockA-entry-en -->
+    <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 0; top: 112px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 224px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 1052px; top: 30px; font-size: 18px; font-weight: 700; color: #ff7a1a;">T</div>
+    <div style="position: absolute; left: 1052px; top: 120px; font-size: 18px; font-weight: 700; color: #ff7a1a;">M</div>
+    <div style="position: absolute; left: 1052px; top: 232px; font-size: 18px; font-weight: 700; color: #ff7a1a;">B</div>
+  </div>
+
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">The focused digit at lens-hero (48 px) with the 24×3 caret under it; entered slots are lens-high dots, empty slots lens-track bars. Band M stays clear.</div>
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">Closest to today’s screen and every part is a stock component. Trade: the digit is 34–36 px of ink, less than half of today’s 79–83. Peak 0.255 here, 0.405 for the brightest digit (8).</div>
+
+  <div style="height: 18px;"></div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Option B · one digit, progress row above</div>
+  <div role="img" aria-label="Option B: one 7 at 48 px in band B with 6 and 8 either side in dim green, four progress dots in band M" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+<!-- render:lockB-entry-en -->
+    <div style="position: absolute; left: 80px; top: 46px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: left; white-space: nowrap; overflow: hidden; color: #007700;">10:24</div>
+    <div style="position: absolute; left: 872px; top: 46px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: right; white-space: nowrap; overflow: hidden; color: #007700;">82%</div>
+    <div style="position: absolute; left: 492px; top: 228px; width: 96px; height: 104px; font-size: 96px; line-height: 104px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">7</div>
+    <div style="position: absolute; left: 356px; top: 260px; width: 80px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #007700;">6</div>
+    <div style="position: absolute; left: 644px; top: 260px; width: 80px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #007700;">8</div>
+    <div style="position: absolute; left: 516px; top: 334px; width: 48px; height: 6px; border-radius: 2px; background: #00ff00;"></div>
+    <div style="position: absolute; left: 444px; top: 180px; width: 24px; height: 24px; border-radius: 50%; background: #00b000;"></div>
+    <div style="position: absolute; left: 500px; top: 180px; width: 24px; height: 24px; border-radius: 50%; background: #00b000;"></div>
+    <div style="position: absolute; left: 556px; top: 180px; width: 24px; height: 24px; border-radius: 50%; background: #00ff00;"></div>
+    <div style="position: absolute; left: 612px; top: 180px; width: 24px; height: 24px; border-radius: 50%; background: #003800;"></div>
+<!-- /render:lockB-entry-en -->
+    <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 0; top: 112px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 224px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 1052px; top: 30px; font-size: 18px; font-weight: 700; color: #ff7a1a;">T</div>
+    <div style="position: absolute; left: 1052px; top: 120px; font-size: 18px; font-weight: 700; color: #ff7a1a;">M</div>
+    <div style="position: absolute; left: 1052px; top: 232px; font-size: 18px; font-weight: 700; color: #ff7a1a;">B</div>
+  </div>
+
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">One digit at lens-hero in band B with its wheel neighbours (lens-primary, lens-mid) either side; a four-dot progress row at the bottom of band M (entered lens-high, current lens-full, empty lens-track).</div>
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">The neighbours show which way a turn goes. Trade: same 34–36 px digit as A, and position is read from a small row the eye has to link to the digit. Peak 0.255 here, 0.405 for the brightest digit (8).</div>
+
+  <div style="height: 18px;"></div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Option C · drawn numeral in band B</div>
+  <div role="img" aria-label="Option C: four slots as in A, the focused 7 drawn as a 50 px tall stroke numeral with the caret under it" style="width: 1080px; height: 360px; position: relative; overflow: hidden; border-radius: 16px; background: #000000;">
+<!-- render:lockC-entry-en -->
+    <div style="position: absolute; left: 80px; top: 46px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: left; white-space: nowrap; overflow: hidden; color: #007700;">10:24</div>
+    <div style="position: absolute; left: 872px; top: 46px; width: 128px; height: 44px; font-size: 36px; line-height: 44px; text-align: right; white-space: nowrap; overflow: hidden; color: #007700;">82%</div>
+    <div style="position: absolute; left: 596px; top: 336px; width: 48px; height: 6px; border-radius: 2px; background: #00ff00;"></div>
+    <div style="position: absolute; left: 290px; top: 268px; width: 20px; height: 20px; border-radius: 50%; background: #00b000;"></div>
+    <div style="position: absolute; left: 450px; top: 268px; width: 20px; height: 20px; border-radius: 50%; background: #00b000;"></div>
+    <div style="position: absolute; left: 756px; top: 336px; width: 48px; height: 6px; border-radius: 2px; background: #003800;"></div>
+    <svg style="position: absolute; left: 586px; top: 228px;" width="68" height="100" viewBox="0 0 34 50"><polyline points="3.00,3.00 31.00,3.00 13.08,47.00" fill="none" stroke="#00ff00" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<!-- /render:lockC-entry-en -->
+    <div style="position: absolute; left: 0; top: 0; width: 1080px; height: 24px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 0; top: 112px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 224px; width: 1080px; border-top: 1px dashed rgba(255,122,26,.55);"></div>
+    <div style="position: absolute; left: 0; top: 344px; width: 1080px; height: 16px; background: rgba(255,122,26,.14);"></div>
+    <div style="position: absolute; left: 1052px; top: 30px; font-size: 18px; font-weight: 700; color: #ff7a1a;">T</div>
+    <div style="position: absolute; left: 1052px; top: 120px; font-size: 18px; font-weight: 700; color: #ff7a1a;">M</div>
+    <div style="position: absolute; left: 1052px; top: 232px; font-size: 18px; font-weight: 700; color: #ff7a1a;">B</div>
+  </div>
+
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">Four slots as in A, but the focused digit is a drawn numeral: 34×50 px, 5 px round strokes, as tall as band B allows above the caret (like the 56 px turn arrow, a glyph, not type).</div>
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">Ink 50 px, 1.4–1.5× A and about 60% of today. Trade: a ten-glyph set to maintain, and the rulebook needs one line saying the PIN digit is a glyph. Peak 0.335 here, 0.528 for the brightest digit (8), under the 0.65 primary limit.</div>
+
+  <div style="height: 18px;"></div>
+  <div style="font-size: 13px; font-weight: 600; color: #c7c7cc; letter-spacing: .02em;">Other states · the same layout in all three options (band M lens-body in lens-high, band B lens-primary in lens-full, centred)</div>
+  <div style="display: grid; grid-template-columns: 540px 540px; gap: 16px 0; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12px; font-weight: 600; color: #c7c7cc;">Wrong PIN</div>
+      <div style="width: 540px; height: 180px; position: relative; overflow: hidden; border-radius: 10px; background: #000000;">
+        <div role="img" aria-label="Wrong PIN" style="width: 1080px; height: 360px; position: absolute; left: 0; top: 0; transform: scale(.5); transform-origin: 0 0;">
+<!-- render:lockA-wrong-en -->
+    <div style="position: absolute; left: 80px; top: 252px; width: 920px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">Wrong PIN</div>
+<!-- /render:lockA-wrong-en -->
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12px; font-weight: 600; color: #c7c7cc;">Waiting</div>
+      <div style="width: 540px; height: 180px; position: relative; overflow: hidden; border-radius: 10px; background: #000000;">
+        <div role="img" aria-label="Waiting" style="width: 1080px; height: 360px; position: absolute; left: 0; top: 0; transform: scale(.5); transform-origin: 0 0;">
+<!-- render:lockA-waiting-en -->
+    <div style="position: absolute; left: 80px; top: 160px; width: 920px; height: 48px; font-size: 40px; line-height: 48px; text-align: center; white-space: nowrap; overflow: hidden; color: #00b000;">5 wrong tries</div>
+    <div style="position: absolute; left: 80px; top: 252px; width: 920px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">Try again in 0:45</div>
+<!-- /render:lockA-waiting-en -->
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12px; font-weight: 600; color: #c7c7cc;">Waiting, no clock</div>
+      <div style="width: 540px; height: 180px; position: relative; overflow: hidden; border-radius: 10px; background: #000000;">
+        <div role="img" aria-label="Waiting, no clock" style="width: 1080px; height: 360px; position: absolute; left: 0; top: 0; transform: scale(.5); transform-origin: 0 0;">
+<!-- render:lockA-waiting-noclock-en -->
+    <div style="position: absolute; left: 80px; top: 160px; width: 920px; height: 48px; font-size: 40px; line-height: 48px; text-align: center; white-space: nowrap; overflow: hidden; color: #00b000;">5 wrong tries</div>
+    <div style="position: absolute; left: 80px; top: 252px; width: 920px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">Use phone</div>
+<!-- /render:lockA-waiting-noclock-en -->
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12px; font-weight: 600; color: #c7c7cc;">Use phone</div>
+      <div style="width: 540px; height: 180px; position: relative; overflow: hidden; border-radius: 10px; background: #000000;">
+        <div role="img" aria-label="Use phone" style="width: 1080px; height: 360px; position: absolute; left: 0; top: 0; transform: scale(.5); transform-origin: 0 0;">
+<!-- render:lockA-usephone-en -->
+    <div style="position: absolute; left: 80px; top: 252px; width: 920px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">Use phone</div>
+<!-- /render:lockA-usephone-en -->
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12px; font-weight: 600; color: #c7c7cc;">Failure notice</div>
+      <div style="width: 540px; height: 180px; position: relative; overflow: hidden; border-radius: 10px; background: #000000;">
+        <div role="img" aria-label="Failure notice" style="width: 1080px; height: 360px; position: absolute; left: 0; top: 0; transform: scale(.5); transform-origin: 0 0;">
+<!-- render:lockA-notice-en -->
+    <div style="position: absolute; left: 80px; top: 160px; width: 920px; height: 48px; font-size: 40px; line-height: 48px; text-align: center; white-space: nowrap; overflow: hidden; color: #00b000;">since last unlock</div>
+    <div style="position: absolute; left: 80px; top: 252px; width: 920px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">3 wrong tries</div>
+<!-- /render:lockA-notice-en -->
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12px; font-weight: 600; color: #c7c7cc;">Unlocked</div>
+      <div style="width: 540px; height: 180px; position: relative; overflow: hidden; border-radius: 10px; background: #000000;">
+        <div role="img" aria-label="Unlocked" style="width: 1080px; height: 360px; position: absolute; left: 0; top: 0; transform: scale(.5); transform-origin: 0 0;">
+<!-- render:lockA-unlocked-en -->
+    <div style="position: absolute; left: 80px; top: 252px; width: 920px; height: 72px; font-size: 64px; line-height: 72px; text-align: center; white-space: nowrap; overflow: hidden; color: #00ff00;">Unlocked</div>
+<!-- /render:lockA-unlocked-en -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size: 14px; line-height: 20px; color: #a39fa8;">The shipped other states already pass the gate (they use the same text sizes, left-aligned); peaks are 0.28–0.45, the highest in ZH at 32 px.</div>
+</div>
+</body>
+</html>
