@@ -66,7 +66,7 @@ Turbo IO has two surfaces that work as a pair. The **phone** is where people set
 
 The glasses are not a small phone. The field of view is about 23.5°, so the centre of it has to stay clear for the real world. There is no eye tracking. Edges lose brightness and color. Input is one-dimensional. Design for a two-second glance.
 
-**1. Size everything by angle.** One degree is `lens-ppd` pixels (24.8, an unverified estimate). Write sizes as angles and convert, so that a measured ppd changes one number. Human-factors practice (for example MIL-STD-1472) puts minimum legible character height around 16–24 arcminutes. Our floor is `lens-min` (16px, about 39′ em and about 27′ cap height). Use only the ramp `lens-hero` 48, `lens-primary` 32, `lens-title` 24, `lens-body` 20, `lens-label` 18, `lens-min` 16. 14px is retired.
+**1. Size everything by angle.** One degree is `lens-ppd` pixels (24.8, an unverified estimate). Write sizes as angles and convert, so that a measured ppd changes one number. Human-factors practice (for example MIL-STD-1472) puts minimum legible character height around 16–24 arcminutes. Our floor is `lens-min` (16px, about 39′ em and about 27′ cap height). Use only the ramp `lens-hero` 48, `lens-primary` 32, `lens-title` 24, `lens-body` 20, `lens-label` 18, `lens-min` 16. 14px is retired. The lock screen's PIN digit is a drawn glyph like the navigation turn arrow, not type: 34×50 px with 5 px round strokes, so it is not bound by the ramp.
 
 **2. Priority runs bottom-up.** The display sits high in the field of view, so the lower an item sits, the closer it is to where the eye naturally rests.
 - **Band B** (`lens-band-b`, y 112–172) holds the single thing the page is for: the turn and distance, the current lyric, the timer, the answer.
