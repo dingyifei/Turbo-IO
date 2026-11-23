@@ -237,6 +237,14 @@
    "h": 900,
    "title": "Round 2 · Glasses · Wake screen (needs RE)",
    "page": "round2"
+  },
+  "LensLock.dc.html": {
+   "x": 0,
+   "y": 4040,
+   "w": 1160,
+   "h": 2960,
+   "title": "Glasses · Lock screen (Current TMG15, Options A, B, C)",
+   "page": "glasses"
   }
  },
  "order": [
@@ -264,7 +272,8 @@
   "PhoneMenuLayout.dc.html",
   "OptionANavTitle.dc.html",
   "LensDashCard.dc.html",
-  "LensWake.dc.html"
+  "LensWake.dc.html",
+  "LensLock.dc.html"
  ],
  "notes": {
   "phone-title": {
