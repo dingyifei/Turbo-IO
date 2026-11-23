@@ -114,6 +114,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg9-stepping',[FW/'tests/tmg9_stepping_test.c'],FW/'src')
     ctest('tmg8-music-input',[FW/'src/music-runtime-v1/music_input_test.c'],FW/'src/music-runtime-v1')
     run('tmg8-icons',['python3','-I',FW/'tests/tmg8_icons_test.py'])
+    run('tmg16-lock-glyphs',['python3','-I',FW/'tests/lock_glyphs_test.py'])   # the PIN digit tables equal tools/lock_glyphs.py's output
     run('tmg8-brightness',['python3','-I',FW/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
     ctest('tmg8-lyrics',[FW/'tests/tmg8_lyrics_test.c'],FW/'src')
     ctest('tmg8-tile-state',[FW/'tests/tmg8_tile_state_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')

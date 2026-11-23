@@ -91,10 +91,15 @@ static void *w_label(void *c,void *p,unsigned f){(void)f;return w_obj(c,p);}
 static void w_place(void *c,void *o,int x,int y,int w,int h){(void)c;(void)o;(void)x;(void)y;(void)w;(void)h;}
 static char w_txt[32][48];
 static void w_text(void *c,void *o,const char *s){(void)c;view_texts++;snprintf(w_txt[(char *)o-w_objs],48,"%s",s);}
-static const char *shown(void *label){return w_txt[(char *)label-w_objs];}
+static bool w_shown[32];
+static const char *shown(void *label){return w_shown[(char *)label-w_objs]?w_txt[(char *)label-w_objs]:"";}
 static void w_destroy(void *c,void *o){(void)c;(void)o;}
 #include "../src/navigation-runtime-v1/nav_view.h"
-TNWidgets tn_lvgl_widgets(void){return (TNWidgets){.idle=w_idle,.root=w_obj,.label=w_label,.place=w_place,.text_static=w_text,.destroy=w_destroy};}
+static int unaligned_buffers;
+static void *w_canvas(void *c,void *p){return w_obj(c,p);}
+static void w_buffer(void *c,void *o,const uint8_t *d,unsigned w,unsigned h){(void)c;(void)o;(void)w;(void)h;if((uintptr_t)d&63)unaligned_buffers++;}
+static void w_visible(void *c,void *o,bool on){(void)c;w_shown[(char *)o-w_objs]=on;}
+TNWidgets tn_lvgl_widgets(void){return (TNWidgets){.idle=w_idle,.root=w_obj,.canvas=w_canvas,.label=w_label,.place=w_place,.buffer=w_buffer,.text_static=w_text,.visible=w_visible,.destroy=w_destroy};}
 /* An in-memory /mnt/nand_data with fault switches. */
 typedef struct {char path[64];uint8_t data[64];size_t n;bool exists;} File;
 static File files[2];static int writes;static bool write_fail;static int fail_bank=-1;static bool read_fail;static int err;
@@ -338,7 +343,9 @@ int main(void){
  /* 19. Band T of the PIN screen: time and battery from stock's getters, battery right-aligned; unknown shows --:-- and --%. */
  memcpy(files,saved,sizeof files);reset_world(true);c=boot();local_time=1800057600+3600*14+60*7;   /* 1800057600 is a midnight */battery_level=83;
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->view_open&&aligned_right>0);
- {int hit=0;for(unsigned i=TLV_S0;i<=TLV_S3;i++)for(int j=0;j<16;j++)if(centred[j]==c->view.labels[i]){hit++;break;}assert(hit==4);}   /* F2-2: the four slots centred */
+ {int hit=0;for(unsigned i=TLV_M;i<=TLV_B;i++)for(int j=0;j<16;j++)if(centred[j]==c->view.labels[i]){hit++;break;}assert(hit==2);}   /* the message lines centred */
+ assert(((uintptr_t)c&63)==0&&!unaligned_buffers);   /* the state block and every canvas buffer the view hands over are 64-byte aligned */
+ ms+=3000;do_tick();   /* the hint covers band T for 3 s after the screen opens */
  assert(!strcmp(shown(c->view.labels[TLV_TIME]),"14:07")&&!strcmp(shown(c->view.labels[TLV_BATT]),"83%"));
  assert(invalidates>0);   /* the panel came on: the whole cover is redrawn */
  /* Read at most once a second: a tick 100 ms later still shows the old values, one a second later the new ones. */

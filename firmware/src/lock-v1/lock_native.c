@@ -65,7 +65,7 @@ typedef struct {
  volatile uint8_t lock_request;  /* set by the screen and wake gates when the idle or fold time has passed; applied by the tick */
  volatile uint32_t gate_fold_s;  /* PMU seconds the screen gate first saw the panel go off while folded */
  /* UI thread only. */
- void *cover;TLKView view;bool view_open;uint32_t view_ms;uint8_t lang;
+ void *cover;TLKView view;bool view_open;uint32_t view_ms;uint8_t lang;   /* view: 64-byte aligned canvas buffers (lock_view.h) */
  int64_t local;int battery;uint32_t status_ms;bool status_read;   /* band T, read at most once a second per cover */
  bool kws_off;uint32_t kws_ms;
  int32_t wheel_acc;uint32_t wheel_ms;
@@ -135,9 +135,7 @@ static int cover_make(LockCtl *c){
  }
  TNWidgets w=tn_lvgl_widgets();if(!tlv_open(&c->view,&w,NULL,c->cover)){TR("[TurboLock] view open failed");cover_drop(c);return -1;}
  menu_text_align(c->view.labels[TLV_BATT],3,0);   /* battery right-aligned to the core edge, as on the launcher menu */
- /* Digits, dots and dashes centred in their slots, over the centre of the caret bar (device feedback F2-2: left-aligned,
-  * the bar ran about 31 px past the digit's right edge). */
- for(unsigned i=TLV_S0;i<=TLV_S3;i++)menu_text_align(c->view.labels[i],2,0);
+ menu_text_align(c->view.labels[TLV_M],2,0);menu_text_align(c->view.labels[TLV_B],2,0);   /* the message lines centred */
  c->view_open=true;return 1;
 }
 /* The cover must stay the last child of the sys layer, the one drawn on top. A child stock adds later (a call view, a
@@ -280,7 +278,7 @@ static void tick(void *timer){
  * timer, the cover and nav_force_off are called from the thread that owns them. ui() finds the state again on every
  * later call, so this runs once per boot. */
 static LockCtl *lock_boot(void){
- LockCtl *c=stream_memalign(8,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=LOCK_MAGIC;
+ LockCtl *c=stream_memalign(64,sizeof *c);if(!c)return NULL;memset(c,0,sizeof *c);c->magic=LOCK_MAGIC;   /* 64: the view's canvas buffers */
  bool mounted=store_mounted();
  tlk_service_boot(&c->svc,&tlr_io);
  if(!mounted&&load_kind(&c->svc)!=TLK_LOAD_GOOD){   /* Pending: dark, no record (a good record is taken even if statfs failed) */

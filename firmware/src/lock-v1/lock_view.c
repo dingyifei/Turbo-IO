@@ -1,12 +1,10 @@
 #include "lock_view.h"
+#include "lock_glyphs.h"
 #include "../common-v1/tio_text.h"
-#include "../common-v1/tio_ui.h"
 #include <string.h>
 TIO_PAGES_CHECK;
-#define SLOT_PITCH TLV_SLOT_PITCH
-#define SLOT_W TLV_SLOT_W
-/* The caret bar: L8 full luminance, read-only (LVGL only reads a canvas buffer it draws). */
-static const uint8_t caret_px[TLV_SLOT_W*TLV_CARET_H]={[0 ... TLV_SLOT_W*TLV_CARET_H-1]=0xff};
+_Static_assert(_Alignof(TLKView)>=64,"the canvas buffers are 64-byte aligned");
+#define LEVEL(c) ((uint8_t)((c)>>8&255u))
 static void put(char *d,const char *s){size_t n=0;while(n<TLV_TEXT-1&&s[n])n++;memcpy(d,s,n);d[n]=0;}
 // "{}" in a catalog string is replaced by arg.
 static void fill(char *d,const char *fmt,const char *arg){
@@ -31,94 +29,122 @@ void tlv_snapshot(TLVScene *s,TLK *t,uint32_t now_s,uint32_t now_ms){
  *s=(TLVScene){.state=t->state,.slot=t->slot,.digit=t->digit,.notice=t->notice,.wrong=t->rec.wrong,.delay_left=left,.now_ms=now_ms,.local=0,.battery=-1};
 }
 
-static TIORect rect(unsigned i){
- const int x0=(TIO_PAGE_W-(TLK_PIN_LEN-1)*SLOT_PITCH-SLOT_W)/2;
- const int band_t=TIO_PAGE_T0+TIO_LINE(TIO_FONT_LABEL),room=TIO_PAGE_B1-band_t;
- const int digit_y=band_t+(room-TIO_LINE(TLV_DIGIT_PX)-TLV_CARET_GAP-TLV_CARET_H)/2;
+/* Label boxes and fonts. */
+static const unsigned kFont[TLV_LABELS]={[TLV_HINT]=TIO_HINT_FONT,[TLV_TIME]=TIO_FONT_LABEL,[TLV_BATT]=TIO_FONT_LABEL,[TLV_M]=TIO_FONT_BODY,[TLV_B]=TIO_FONT_PRIMARY};
+static TIORect label_rect(unsigned i){
+ const TIORect h=tio_hint_rect(TIO_SURFACE_PAGE);
  switch(i){
- case TLV_T:return (TIORect){TIO_CORE_X0+TLV_STATUS_W+4,TIO_PAGE_T0,TIO_CORE_W-2*(TLV_STATUS_W+4),TIO_LINE(TIO_FONT_LABEL)};   // the hint, between time and battery
- case TLV_TIME:return (TIORect){TIO_CORE_X0,TIO_PAGE_T0,TLV_STATUS_W,TIO_LINE(TIO_FONT_LABEL)};
- case TLV_BATT:return (TIORect){TIO_CORE_X1-TLV_STATUS_W,TIO_PAGE_T0,TLV_STATUS_W,TIO_LINE(TIO_FONT_LABEL)};   // right-aligned by the native side
- case TLV_M:return (TIORect){TIO_CORE_X0,TIO_PAGE_T1,TIO_CORE_W,TIO_LINE(TIO_FONT_BODY)};
- case TLV_B:return (TIORect){TIO_CORE_X0,TIO_PAGE_B1-TIO_LINE(TIO_FONT_PRIMARY),TIO_CORE_W,TIO_LINE(TIO_FONT_PRIMARY)};
- case TLV_CARET:return (TIORect){x0,digit_y+TIO_LINE(TLV_DIGIT_PX)+TLV_CARET_GAP,SLOT_W,TLV_CARET_H};   // the bar (the no-canvas "^" fallback is clipped to it)
- default:return (TIORect){x0+(int)(i-TLV_S0)*SLOT_PITCH,digit_y,SLOT_W,TIO_LINE(TLV_DIGIT_PX)};
+ case TLV_HINT:return h;
+ case TLV_TIME:return (TIORect){TIO_CORE_X0,h.y,TLV_STATUS_W,h.h};
+ case TLV_BATT:return (TIORect){TIO_CORE_X1-TLV_STATUS_W,h.y,TLV_STATUS_W,h.h};   // right-aligned by the native side
+ case TLV_M:return (TIORect){TIO_CORE_X0,TLV_MSG_M_Y,TIO_CORE_W,TIO_LINE(TIO_FONT_BODY)};   // centred by the native side
+ default:return (TIORect){TIO_CORE_X0,TLV_MSG_B_Y,TIO_CORE_W,TIO_LINE(TIO_FONT_PRIMARY)};  // centred by the native side
  }
 }
-static unsigned font(unsigned i){return i==TLV_T||i==TLV_TIME||i==TLV_BATT?TIO_FONT_LABEL:i==TLV_M||i==TLV_CARET?TIO_FONT_BODY:i==TLV_B?TIO_FONT_PRIMARY:TLV_DIGIT_PX;}
-// The caret bar's place under slot i.
-static void caret_place(TLKView *v,unsigned i){TIORect r=rect(TLV_CARET);v->api.place(v->api.ctx,v->caret,r.x+(int)i*SLOT_PITCH,r.y,SLOT_W,TLV_CARET_H);v->caret_slot=(int)i;}
+static void canvas_size(unsigned i,int *w,int *h){
+ if(i==TLV_GLYPH){*w=TLV_GLYPH_W;*h=TLV_GLYPH_H;}else if(i>=TLV_DOT0&&i<TLV_TRACK0){*w=*h=TLV_DOT;}else{*w=TIO_CARET_W;*h=TIO_CARET_H;}
+}
+/* An anti-aliased round dot of n px at a level: 4x4 samples per pixel, exact in integers (coordinates in eighths of a pixel). */
+static void disc(uint8_t *d,int n,uint8_t level){
+ for(int y=0;y<n;y++)for(int x=0;x<n;x++){
+  int in=0;for(int sy=0;sy<4;sy++)for(int sx=0;sx<4;sx++){int X=8*x+2*sx+1-4*n,Y=8*y+2*sy+1-4*n;in+=X*X+Y*Y<=16*n*n;}
+  d[y*n+x]=(uint8_t)(level*in/16);
+ }
+}
+/* Digit d from the 4 bpp table into the glyph buffer (an even pixel is the high nibble; level = nibble * 17). */
+static void glyph_decode(uint8_t *out,unsigned d){
+ const unsigned char *p=tlv_glyph4[d%10];
+ for(unsigned i=0;i<TLV_GLYPH_W*TLV_GLYPH_H;i++)out[i]=(uint8_t)(((p[i/2]>>(i%2?0:4))&15u)*17u);
+}
 
 bool tlv_open(TLKView *v,const TNWidgets *api,void *surface,void *parent){
- if(!v||!api||!api->root||!api->label||!api->place||!api->text_static)return false;
+ if(!v||((uintptr_t)v&63u)||!api||!api->root||!api->label||!api->place||!api->text_static||!api->canvas||!api->buffer||!api->visible||!api->destroy)return false;
  memset(v,0,sizeof *v);v->api=*api;v->api.ctx=surface;
+ memset(v->caret_px,LEVEL(TIO_LENS_FULL),sizeof v->caret_px);memset(v->track_px,LEVEL(TIO_LENS_TRACK),sizeof v->track_px);
+ disc(v->dot_px,TLV_DOT,LEVEL(TIO_LENS_HIGH));
  v->root=api->root(surface,parent);if(!v->root)return false;
  api->place(surface,v->root,0,0,TIO_PAGE_W,TIO_PAGE_H);
  for(unsigned i=0;i<TLV_LABELS;i++){
-  v->labels[i]=api->label(surface,v->root,font(i));
-  if(!v->labels[i]){api->destroy(surface,v->root);memset(v,0,sizeof *v);return false;}
-  TIORect r=rect(i);api->place(surface,v->labels[i],r.x,r.y,r.w,r.h);if(api->clip_text)api->clip_text(surface,v->labels[i]);
+  if(!(v->labels[i]=api->label(surface,v->root,kFont[i]))){api->destroy(surface,v->root);memset(v,0,sizeof *v);return false;}
+  TIORect r=label_rect(i);api->place(surface,v->labels[i],r.x,r.y,r.w,r.h);if(api->clip_text)api->clip_text(surface,v->labels[i]);
+  api->visible(surface,v->labels[i],false);
  }
- v->caret_slot=-1;
- if(api->canvas&&api->buffer&&api->visible&&(v->caret=api->canvas(surface,v->root))){
-  api->buffer(surface,v->caret,caret_px,TLV_SLOT_W,TLV_CARET_H);caret_place(v,0);api->visible(surface,v->caret,false);
+ for(unsigned i=0;i<TLV_CANVASES;i++){
+  if(!(v->canvas[i]=api->canvas(surface,v->root))){api->destroy(surface,v->root);memset(v,0,sizeof *v);return false;}
+  int w,h;canvas_size(i,&w,&h);api->place(surface,v->canvas[i],0,0,w,h);
+  if(i!=TLV_GLYPH)api->buffer(surface,v->canvas[i],tlv_canvas_pixels(v,i),(unsigned)w,(unsigned)h);   // the glyph gets its buffer with its first digit
+  api->visible(surface,v->canvas[i],false);
  }
- if(api->visible)api->visible(surface,v->root,true);
+ tio_hint_init(&v->hint);tio_caret_init(&v->caret);v->caret.reduce_motion=true;   // the lock screen has no animation timer: the caret snaps
+ v->shown.digit=v->glyph_digit=-1;
+ api->visible(surface,v->root,true);
  v->last_state=TLK_OFF;v->open=true;return true;
 }
 
+static void canvas_at(TLVFrame *f,unsigned i,int x,int y){f->on[i]=true;f->x[i]=(int16_t)x;f->y[i]=(int16_t)y;}
 bool tlv_layout(TLKView *v,const TLVScene *s,unsigned lang){
- if(s->state==TLK_ENTRY&&v->last_state!=TLK_ENTRY)v->entry_ms=s->now_ms;   // the hint shows for 3 s after the PIN screen appears
+ const uint32_t now=s->now_ms;
+ if(s->state==TLK_ENTRY){
+  // The hint shows when the PIN screen appears and again after every input (a wheel step changes the digit, a press the slot).
+  if(v->last_state!=TLK_ENTRY){tio_hint_enter(&v->hint,now);tio_caret_init(&v->caret);v->caret.reduce_motion=true;}
+  else if(s->slot!=v->last_slot||s->digit!=v->last_digit)tio_hint_input(&v->hint,now);
+  v->last_slot=s->slot;v->last_digit=s->digit;
+ }
  v->last_state=s->state;
- unsigned b=v->bank^1;memset(v->text[b],0,sizeof v->text[b]);uint32_t colors[TLV_LABELS]={0};
+ TLVFrame *f=&v->next;memset(f,0,sizeof *f);f->digit=-1;
  char t[TLV_TEXT];
  switch(s->state){
  case TLK_ENTRY:{
-  if((uint32_t)(s->now_ms-v->entry_ms)<TLV_HINT_MS)put(v->text[b][TLV_T],tio_text(TT_LOCK_HINT,lang));colors[TLV_T]=TIO_LENS_MID;
-  hhmm(v->text[b][TLV_TIME],s->local);colors[TLV_TIME]=TIO_LENS_MID;percent(v->text[b][TLV_BATT],s->battery);colors[TLV_BATT]=TIO_LENS_MID;
+  if(tio_hint_visible(&v->hint,now)){put(f->text[TLV_HINT],tio_text(TT_LOCK_HINT,lang));f->color[TLV_HINT]=tio_hint_color(&v->hint,now);}
+  else{hhmm(f->text[TLV_TIME],s->local);f->color[TLV_TIME]=TIO_LENS_MID;percent(f->text[TLV_BATT],s->battery);f->color[TLV_BATT]=TIO_LENS_MID;}
+  const unsigned slot=s->slot<TLK_PIN_LEN?s->slot:TLK_PIN_LEN-1;
   for(unsigned i=0;i<TLK_PIN_LEN;i++){
-   char *d=v->text[b][TLV_S0+i];
-   if(i<s->slot){put(d,"\xc2\xb7");colors[TLV_S0+i]=TIO_LENS_HIGH;}                // entered: a dot
-   else if(i==s->slot){d[0]=(char)('0'+s->digit);d[1]=0;colors[TLV_S0+i]=TIO_LENS_FULL;}  // focused digit
-   else{put(d,"-");colors[TLV_S0+i]=TIO_LENS_TRACK;}                            // empty slot
+   const int cx=tlv_slot_cx(i);
+   if(i<slot)canvas_at(f,TLV_DOT0+i,cx-TLV_DOT/2,TLV_DOT_CY-TLV_DOT/2);                      // entered: a dot
+   else if(i>slot)canvas_at(f,TLV_TRACK0+i,cx-TIO_CARET_W/2,TLV_CARET_Y);                    // empty: a track bar
   }
-  if(!v->caret){put(v->text[b][TLV_CARET],"^");colors[TLV_CARET]=TIO_LENS_FULL;}   // no canvas: the old marker
+  const int cx=tlv_slot_cx(slot);
+  canvas_at(f,TLV_GLYPH,cx-TLV_GLYPH_W/2,TLV_GLYPH_Y);f->digit=(int8_t)(s->digit%10);         // the focused digit, drawn
+  tio_caret_to(&v->caret,tio_caret_centered(cx),TLV_CARET_Y,now,false);TIORect c=tio_caret_rect(&v->caret,now);
+  canvas_at(f,TLV_CARET,c.x,c.y);
   break;}
- case TLK_WRONG:put(v->text[b][TLV_B],tio_text(TT_LOCK_WRONG,lang));colors[TLV_B]=TIO_LENS_FULL;break;
+ case TLK_WRONG:put(f->text[TLV_B],tio_text(TT_LOCK_WRONG,lang));break;
  case TLK_WAITING:   // band M: the wrong-try count; band B: the countdown
-  tries(v->text[b][TLV_M],s->wrong,lang);colors[TLV_M]=TIO_LENS_HIGH;
+  tries(f->text[TLV_M],s->wrong,lang);
   // no valid clock: the delay cannot end on the glasses until the phone sets the time, so say how out instead of 0:00
-  if(s->delay_left==UINT32_MAX)put(v->text[b][TLV_B],tio_text(TT_LOCK_USE_PHONE,lang));
-  else{clock_text(t,s->delay_left);fill(v->text[b][TLV_B],tio_text(TT_LOCK_TRY_AGAIN,lang),t);}
-  colors[TLV_B]=TIO_LENS_FULL;
+  if(s->delay_left==UINT32_MAX)put(f->text[TLV_B],tio_text(TT_LOCK_USE_PHONE,lang));
+  else{clock_text(t,s->delay_left);fill(f->text[TLV_B],tio_text(TT_LOCK_TRY_AGAIN,lang),t);}
   break;
- case TLK_USE_PHONE:put(v->text[b][TLV_B],tio_text(TT_LOCK_USE_PHONE,lang));colors[TLV_B]=TIO_LENS_FULL;break;
- case TLK_UNLOCKED_MSG:put(v->text[b][TLV_B],tio_text(TT_LOCK_UNLOCKED,lang));colors[TLV_B]=TIO_LENS_FULL;break;   // phone unlock
+ case TLK_USE_PHONE:put(f->text[TLV_B],tio_text(TT_LOCK_USE_PHONE,lang));break;
+ case TLK_UNLOCKED_MSG:put(f->text[TLV_B],tio_text(TT_LOCK_UNLOCKED,lang));break;   // phone unlock
  case TLK_NOTICE:    // band M: "since last unlock"; band B: the count
-  put(v->text[b][TLV_M],tio_text(TT_LOCK_SINCE,lang));colors[TLV_M]=TIO_LENS_HIGH;
-  tries(v->text[b][TLV_B],s->notice,lang);colors[TLV_B]=TIO_LENS_FULL;
+  put(f->text[TLV_M],tio_text(TT_LOCK_SINCE,lang));tries(f->text[TLV_B],s->notice,lang);
   break;
  default:break;
  }
- bool differs=memcmp(v->text[b],v->text[v->bank],sizeof v->text[b])||memcmp(colors,v->colors,sizeof colors)||!v->root;
- if(!differs)return false;
- memcpy(v->colors,colors,sizeof colors);v->bank=b;return true;
+ if(s->state!=TLK_ENTRY){if(*f->text[TLV_M])f->color[TLV_M]=TIO_LENS_HIGH;if(*f->text[TLV_B])f->color[TLV_B]=TIO_LENS_FULL;}
+ return !v->drawn||memcmp(f,&v->shown,sizeof *f)!=0;
 }
 
 bool tlv_draw(TLKView *v,const TLVScene *s,unsigned lang){
  if(!v||!v->open||!v->root)return false;
  if(v->api.idle&&!v->api.idle(v->api.ctx))return false;
  if(!tlv_layout(v,s,lang))return true;
- // The caret follows the focused slot (it was placed once under slot 0 before, device feedback 1) and shows only on the PIN screen.
- if(v->caret){
-  bool on=s->state==TLK_ENTRY&&s->slot<TLK_PIN_LEN;
-  if(on&&v->caret_slot!=s->slot)caret_place(v,s->slot);
-  v->api.visible(v->api.ctx,v->caret,on);
+ const TNWidgets *a=&v->api;TLVFrame *n=&v->next,*o=&v->shown;const bool all=!v->drawn;
+ // The glyph first: a new digit is decoded into its buffer, which is handed to the canvas again (that redraws it).
+ if(n->digit>=0&&n->digit!=v->glyph_digit){glyph_decode(v->glyph,(unsigned)n->digit);a->buffer(a->ctx,v->canvas[TLV_GLYPH],v->glyph,TLV_GLYPH_W,TLV_GLYPH_H);v->glyph_digit=n->digit;}
+ o->digit=n->digit;
+ for(unsigned i=0;i<TLV_CANVASES;i++){
+  if(n->on[i]&&(all||!o->on[i]||n->x[i]!=o->x[i]||n->y[i]!=o->y[i])){int w,h;canvas_size(i,&w,&h);a->place(a->ctx,v->canvas[i],n->x[i],n->y[i],w,h);o->x[i]=n->x[i];o->y[i]=n->y[i];}
+  if(all||n->on[i]!=o->on[i]){a->visible(a->ctx,v->canvas[i],n->on[i]);o->on[i]=n->on[i];}
  }
  for(unsigned i=0;i<TLV_LABELS;i++){
-  v->api.text_static(v->api.ctx,v->labels[i],v->text[v->bank][i]);
-  if(v->api.color&&v->colors[i])v->api.color(v->api.ctx,v->labels[i],v->colors[i]);
+  const bool text=all||strcmp(n->text[i],o->text[i])!=0,color=all||n->color[i]!=o->color[i];
+  if(text){memcpy(o->text[i],n->text[i],TLV_TEXT);a->text_static(a->ctx,v->labels[i],o->text[i]);}
+  if((text||color)&&a->color&&n->color[i])a->color(a->ctx,v->labels[i],n->color[i]);
+  o->color[i]=n->color[i];
+  if(text)a->visible(a->ctx,v->labels[i],o->text[i][0]!=0);
  }
- return true;
+ v->drawn=true;return true;
 }
 void tlv_close(TLKView *v){if(v&&v->open&&v->root)v->api.destroy(v->api.ctx,v->root);if(v)memset(v,0,sizeof *v);}
