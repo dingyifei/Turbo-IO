@@ -3,7 +3,7 @@
 An unofficial SDK and set of patched builds for RayNeo iO glasses. It has two parts:
 
 - **Phone addon.** Objective-C and C code that runs inside the RayNeo AI iPhone app. It adds Spotify music and lyrics, Apple Maps navigation, a Pomodoro timer, your own AI model, dashboards and mini-apps.
-- **Glasses firmware.** Patched Strix OS builds for the glasses, built from one source tree.
+- **Glasses firmware.** Patched Strix OS builds for the glasses, built from one source tree. The current one adds a PIN lock.
 
 It is for developers. It is not a finished product. If you just want to use the glasses, keep the official app and firmware.
 
@@ -11,21 +11,23 @@ There are no prebuilt or signed apps here. You merge, sign and install the addon
 
 <a id="ios107-update"></a>
 
-## Current release: C21 + TMG12
+## Current release: C24 + TMG15
 
-Always use the phone build and the firmware as a pair. C21 carries two packages, and you pick one in its flash wizard: TMG12, or stock Strix OS 1.0.6.11 to go back.
+Always use the phone build and the firmware as a pair. C24 carries two packages, and you pick one in its flash wizard: TMG15, or stock Strix OS 1.0.6.11 to go back.
 
 | | |
 |---|---|
-| Phone build | C21: RayNeo AI 1.0.21 (1), full build |
-| Firmware | TMG12: TMG11 ported to stock Strix OS 1.0.6.11 |
-| TMG12 ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`, 9,549,211 bytes |
-| TMG12 ZIP SHA-256 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
+| Phone build | C24: RayNeo AI 1.0.21 (1), full build |
+| Firmware | TMG15: TMG12 plus a PIN lock for the glasses, on stock Strix OS 1.0.6.11 |
+| TMG15 ZIP | `StrixOS-1.0.6.11-TurboIO-TMG15-CANDIDATE-NOT-APPROVED.zip`, 9,559,509 bytes |
+| TMG15 ZIP SHA-256 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
 | Stock ZIP SHA-256 | `5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e` (9,447,267 bytes) |
 | Glasses must report | Strix OS 1.0.5.12 or 1.0.6.11 |
-| Build identity after a TMG12 flash | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
+| Build identity after a TMG15 flash | `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26` |
 
-TMG12 was flashed from C20 on 2026-11-15 and passed the owner's first check (tags `app/c20` and `fw/tmg12`). C21 was installed on 2026-11-16 (tag `app/c21`) and has not flashed anything yet. No full device checklist has been run yet. The pins are the `c21` entry in [releases.json](ios-addon/releases.json).
+New in this release is the glasses lock. The glasses lock after they have been folded or left idle for a set time. You unlock them with a 4-digit PIN on the knob, or from the phone. While locked, the display is dark and nothing can be started: no key, no wake word, no microphone. With "Stay unlocked while worn" on, glasses on your head do not lock. The lock keeps a casual hand off your glasses; it is not built to resist a determined one. Set it up in Turbo › Glasses › Glasses lock.
+
+TMG15 was flashed from C24 on 2026-11-23 and passed the owner's device check (tags `app/c24` and `fw/tmg15`). It changes two firmware files, the launcher image and the Bluetooth core's image. The pins are the `c24` entry in [releases.json](ios-addon/releases.json).
 
 To flash, follow [OTA.md](ios-addon/OTA.md). Flash only these ZIPs, and only if the SHA-256 matches the line above.
 
@@ -35,7 +37,7 @@ Each release is an annotated git tag. Run `git show <tag>` to see its ZIP SHA-25
 
 | Phone | Firmware | RayNeo AI host | Stock Strix OS | Tags |
 |---|---|---|---|---|
-| C20 | TMG12 | 1.0.21 (1) | 1.0.6.11 | `app/c20`, `fw/tmg12` |
+| C20, C21 | TMG12 | 1.0.21 (1) | 1.0.6.11 | `app/c20`, `app/c21`, `fw/tmg12` |
 | C18 | TMG11 | 1.0.11 (259) | 1.0.5.12 | `app/c18`, `fw/tmg11` |
 | C16 | TMG10 | 1.0.11 (259) | 1.0.5.12 | `app/c16`, `fw/tmg10` |
 | C13 | TMG9 | 1.0.7 (230) | 1.0.5.5 | `app/c13`, `fw/tmg9` |
@@ -60,7 +62,7 @@ You need your own decrypted copy of RayNeo AI 1.0.21 (1), your own signing setup
 
 1. Run the quick check: `bash scripts/turbo-gate.sh --only-build`
 2. Run the full check: `bash scripts/turbo-gate.sh`
-3. Build and sign C21: `bash scripts/turbo-package.sh --host 1021-full --wire-log <label>`
+3. Build and sign C24: `bash scripts/turbo-package.sh --host 1021-full --wire-log <label>`
 4. Install the IPA over the existing app yourself. Then flash with [OTA.md](ios-addon/OTA.md).
 
 The stock app inputs this project has published (1.0.7 and older) are listed in [official-apps](official-apps/README.md). They contain no Turbo IO code.
@@ -77,7 +79,7 @@ Copy this prompt:
 Help me build Turbo IO from this repository, for personal non-commercial use.
 Read README.md, AGENTS.md and docs/AI_SETUP.md first.
 Check my tools and any uncommitted changes. Do not overwrite or reset anything.
-Use the repo's own scripts: run scripts/turbo-gate.sh, then build C21 with scripts/turbo-package.sh --host 1021-full --wire-log.
+Use the repo's own scripts: run scripts/turbo-gate.sh, then build C24 with scripts/turbo-package.sh --host 1021-full --wire-log.
 If an input does not match its pinned version or hash, stop and tell me what is missing. Never change a check to get past it.
 Do not install the app, flash the glasses or delete any app. I do those myself.
 I enter keys and signing passwords myself. Never ask for them in chat, and never commit them.

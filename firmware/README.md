@@ -6,60 +6,72 @@ There is one tree. The release label is the single line in [`RELEASE`](RELEASE).
 
 Agents never flash. The owner flashes, with the steps in [OTA.md](../ios-addon/OTA.md).
 
-## Current release: TMG12
+## Current release: TMG15
 
-TMG12 is on the owner's glasses: flashed from C20 on 2026-11-15, with the update confirmed after the first boot, and the owner's first check passed. It is tagged `fw/tmg12`. No full TMG12 device checklist has been run yet. The ZIP keeps its pinned file name, `CANDIDATE-NOT-APPROVED` included. The phone build that flashes it is C20 (release `c20` in [releases.json](../ios-addon/releases.json)).
+TMG15 is on the owner's glasses: flashed from C24 on 2026-11-23, and the owner's device check passed (see [Device check](#device-check)). It is tagged `fw/tmg15`. The ZIP keeps its pinned file name, `CANDIDATE-NOT-APPROVED` included. The phone build that flashes it is C24 (release `c24` in [releases.json](../ios-addon/releases.json)).
 
-TMG12 is TMG11 ported to stock Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)).
+TMG15 is TMG12 plus a PIN lock for the glasses, on the same stock base, Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)). It is the first release that changes two payloads: the launcher image `nuttx_ap.bin`, and the Bluetooth core's image `nuttx_bth.bin`. The design is in [docs/lock-design.md](../docs/lock-design.md).
+
+TMG13 (the lock alone) and TMG14 (the lock with head motion) were device candidates on the way to TMG15. They are not tagged.
 
 | Item | Value |
 | --- | --- |
-| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG12-CANDIDATE-NOT-APPROVED.zip`, 9,549,211 bytes |
-| ZIP SHA-256 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
-| ZIP MD5 | `063b380629e1a01fcde04ce45a5dac15` |
-| Pinned copy | `$TURBO_INPUTS/tmg12/` |
-| AP (`nuttx_ap.bin`) | 8,132,360 bytes, SHA-256 `6b6afd77ce845aca83c52ce23c5a1eae006a7d36ca1cc89536dff3ec795aba50`, MD5 `96eebf1467b53759e816f05057df506e` |
-| Module | 165,116 bytes at 0x10929204 |
-| Build identity (status `build` field) | `0f43c519fc964dc4bd578cf9d7193e502b5c5daa17f3061fba26ccec0280fc55` |
-| Package | 17 entries: 16 payloads and `OtaFileInfo.json`. Only `nuttx_ap.bin` differs from stock; the other 15 payloads are stock 1.0.6.11, byte for byte. |
-| Audit | 25 patch sites, 7 startup descriptors, stock cores `Strix OS 1.0.6` build 11 |
+| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG15-CANDIDATE-NOT-APPROVED.zip`, 9,559,509 bytes |
+| ZIP SHA-256 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
+| ZIP MD5 | `0b9dbe99397639c90bde89d534ce7794` |
+| Pinned copy | `$TURBO_INPUTS/tmg15/` |
+| AP (`nuttx_ap.bin`) | 8,147,400 bytes, SHA-256 `ce6815c8a9ec12e555bef80d89f7fcd21dab156bb972125951d4a848f6b6f725`, MD5 `c2233e05c0354d2fb6963beeaa8beadc` |
+| BTH (`nuttx_bth.bin`) | 1,251,308 bytes, SHA-256 `8a101a702e3f6a2eb327747f246c40ea62ace22e86cd5a86e1acc88679466ffd`, MD5 `3544eb350d4ba5b5665c34e0afa56435` |
+| AP module | 180,156 bytes at 0x10929204 |
+| BTH module | 452 bytes at 0x0c131620 |
+| Build identity (status `build` field) | `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26` |
+| Package | 17 entries: 16 payloads and `OtaFileInfo.json`. `nuttx_ap.bin` and `nuttx_bth.bin` differ from stock; the other 14 payloads are stock 1.0.6.11, byte for byte. |
+| Audit | 33 AP patch sites, 3 BTH patch sites, 7 startup descriptors, stock cores `Strix OS 1.0.6` build 11 |
 | Toolchain | LLVM/LLD 23.1.5 |
 
-### Do not repin while TMG12 is current
+The build identity is 32 bytes in the AP, at AP offset 0x7b7c52. It hashes `build.py` and every source. A plain build and a `--repin` build of the tagged tree give the same ZIP; there is no identity carry-over any more.
 
-The build identity is 32 bytes in the AP, at AP offset 0x7b45fe. It hashes `build.py` and every source. `build.py` was edited after the last repin, but nothing it compiles or links changed. So `build-inputs.json` carries `identityCarryOver` for `build.py`: it binds the hash of the older `build.py` (`carried`) to the current file (`live`). `tests/identity_test.py` allows this only next to the TMG12 ZIP pin.
+### What TMG15 changes
 
-A `--repin` drops the carry-over. The AP then differs in those 32 bytes (identity `45c4c4ba3d07b380314f59d8ffad7fdd30923f3bddec329aaaf6c15c1c2b8e13`), and the ZIP no longer matches the pinned release. Repin only when you make a new release.
+Everything in TMG12 is still there. TMG15 adds the lock:
 
-### What TMG12 changes
+- **When it locks.** After the glasses have stayed folded for the fold delay, or have sat unfolded and unused for the idle time. Both default to 5 minutes and are set on the phone, from 1 to 240 minutes. With the lock on, every boot starts locked.
+- **While locked.** The display stays dark until the knob is pressed. A press shows the PIN screen, with the time and battery at the top. Notifications are not shown, then or later. The phone link keeps running.
+- **PIN entry.** Four digits, one at a time: turn the knob to change the digit, press to move on, and the fourth press submits. A long press steps back, then leaves. Entered digits show as dots.
+- **Wrong PINs.** Three free tries, then a wait of 30 s, 1 min, 5 min, and 15 min for every later try. The count survives a restart. Nothing is ever wiped. After the next unlock the glasses show "N wrong tries since last unlock", and so does the phone.
+- **Nothing can be started.** While locked, the keys, the double press, the wake word and the microphone are refused. The rebond hold and the factory-reset confirm pass through to stock.
+- **From the phone.** The phone that is paired and runs the addon can unlock, lock now, set or change the PIN, change the two times, and turn the lock off. There is no shared secret. After a phone unlock the glasses show "Unlocked" for 4 s once the panel is lit.
+- **Head motion.** With "Stay unlocked while worn" on, head motion counts as use, so worn glasses do not idle-lock. The signal comes from a hook in the Bluetooth core's head-up detector. The hook is off after every boot; the phone switches it on after it connects.
+- **Factory reset.** The stock factory reset also deletes the lock record.
 
-- The carousel has 8 stock and 6 module tiles: 14 items, module ids 8 to 13.
-- The module's navigation tile is labelled Turbo Nav. Stock's own Navigation app is added to the remote's input gate.
-- The Sensors page (Display Test, then one knob press) shows a "UI heap" line: the LVGL memory in use and its peak. It updates once a second.
-- A new "Light" line shows the bucket of the light value stock last cached ("0-1 lx" to "5000+ lx", or "n/a"). It is read through stock's own getter (`tio_light_latest` in `link.ld`). The module never starts or stops the sensor. Build with `TIO_SENSORS_LIGHT=0` to remove the line.
-- Tile settings are stored in new version-2 files (`turbo_tiles_v2_{0,1}.cfg`). The TMG11 order and hidden set are not carried over; TMG12 starts with the default order.
-- Tile commands from an old phone build (version 1) are refused with no reply.
+The lock record is two files, `/mnt/nand_data/turbo_lock_v1_0.cfg` and `turbo_lock_v1_1.cfg`. A firmware update keeps them. A damaged record starts locked.
 
-Stock 1.0.6.11 changed these, and the port follows:
-
-- The menu object is 0x10c bytes (it was 0xfc), so the allocation with the module's tail is 0x130.
-- Stock has 8 tiles, with Navigation at index 4. Every stock tile from index 4 up moved by one.
-- The launcher's manager pointer is at +0x15c (it was +0x3c).
-- The package holds 16 payloads, one more than 1.0.5.12.
+The Bluetooth image gets a 452-byte module and three patch sites: the message switch (0x0c0aa958), the motion hook in the head-up detector (0x0c0bfe30), and the end of the boot-time memory clear (0x0c02a1fc), which makes the hook start switched off.
 
 Every stock offset the tree uses is named in [`src/stock_layout.h`](src/stock_layout.h) and proven from the stock image by `tests/stock_layout_test.py`.
 
 ### What was checked
 
-- The firmware-only gate passed with a plain build of the tree.
-- The ZIP is byte-identical to candidate 4's (`tmg12(42)`). Three plain builds, one from the worktree and two from clean copies, gave the same bytes.
-- A static check found no changed byte on the boot-confirm path, and nothing in the module posts to the OTA queue.
-- The emulator ran the candidates with no crash, assert, hang, reset or new guest-error class. The Display page passed 100 open and close cycles.
-- `tools/phone_pins.py` builds the phone pins from this ZIP for the 1.0.21 full host (for C20 then; now the TMG12 package of `c21`).
+- The full gate with previews passed on the release commit.
+- A plain build and a `--repin` build give the same ZIP, byte for byte.
+- `build.py --audit` passes on the pinned ZIP: both images differ from stock only at the pinned sites and in the appended modules.
+- The emulator ran the lock from boot: fold and idle locking, PIN entry, wrong-PIN waits, phone commands over the emulated link, and every branch of the Bluetooth hook.
+- `tools/phone_pins.py` builds the phone pins from this ZIP for the 1.0.21 full host (release `c24`).
+- On the glasses: see [Device check](#device-check).
 
-Not checked: anything on glasses, the phone link, the OTA install of a 1.0.6.11 package and its post-boot confirm, real sensors and real timing.
+Not checked on the glasses: the factory reset clearing the lock, a damaged lock record, and a restart with no phone in reach.
 
 ### Known limits
+
+The lock is for honest people. It stops someone nearby from picking the glasses up and using them as you. It does not resist deliberate effort.
+
+- Any phone that pairs with the glasses and runs the addon can unlock them.
+- A feature started from the paired phone still starts on locked glasses. The glasses microphone does not open and nothing shows through the lock screen.
+- With "Stay unlocked while worn" on, unfolded glasses that keep moving (in a bag, in a moving car) do not idle-lock.
+- The clock is trusted only after the phone has set it since the last power-off. Until then every unfold and every screen-on locks again, and after three wrong tries the glasses ask for the phone instead of starting a wait.
+- A phone that has never seen the glasses unlocked asks them once whether they have the lock. That path is covered by a host test only.
+
+These TMG12 limits still apply:
 
 - If the menu's arming check fails (trace event 141), the menu stays unarmed. The carousel does not animate, but the build still advertises and is confirmed, so the fix is a reflash. Event 142 means the menu's canary word was overwritten; the menu then reads as unarmed.
 - With event 141 result 4, stock logs a warning at each step and show while the selection is past index 7, and a press there launches nothing.
@@ -67,23 +79,23 @@ Not checked: anything on glasses, the phone link, the OTA install of a 1.0.6.11 
 - The phone status shows the LVGL heap total as not available.
 - The first "UI heap" interval after the Sensors page opens can be shorter than a second.
 - The Turbo Display page has no top-app check. Behind an app that opens without hiding the menu, the page stays until its deadline (60, 120 or 300 s).
-- The system heap is smaller than on 1.0.5.12: 24,241,248 bytes against 27,004,960. The module's worst case live at once is about 350 KB.
 
 ### Device check
 
-There is no full TMG12 checklist yet. Until there is one, check at least the following, and compare with the TMG11 owner check below:
+The owner ran these on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed.
 
-1. RayNeo › Glasses › Software version shows Strix OS 1.0.6.11, and Turbo › Developer › Glasses runtime, row "Firmware and build", shows the build identity above.
-2. The carousel has 14 items, the navigation tile reads Turbo Nav, and every tile behaves as on TMG11.
-3. The tile order is the default one.
-4. Display Test opens, and one knob press shows "Sensors (read only)".
-5. The IMU line reads ST or TDK.
-6. Folding the glasses changes the fold line.
-7. Turning and pressing the knob change its counts.
-8. The "UI heap" line shows memory, and the "Light" line shows a lux bucket.
-9. Leaving the page restores normal menu stepping.
+1. The update completes, also with the glasses locked. They boot, and the phone reconnects without pairing again.
+2. Notifications, head-up wake and the Turbo features work as on TMG12.
+3. Turbo › Glasses › Glasses lock: set a PIN. "Lock now" locks the glasses, and "Unlock glasses" unlocks them and shows "Unlocked" on the glasses.
+4. Locked glasses stay dark until the knob is pressed. The PIN screen shows large digits, each centred over its line, and the right PIN unlocks.
+5. Repeated wrong PINs start the wait. After the next unlock the glasses and the phone show the number of wrong tries.
+6. While locked, a double press and "hey RayNeo" start nothing. No notification was seen on locked glasses.
+7. A very long knob press restarts locked glasses, and they come back locked.
+8. Folded for longer than the fold delay, then unfolded: locked.
+9. "Stay unlocked while worn" on, idle time 1 min: worn glasses stay unlocked. Left unfolded on a desk they lock, and they stay locked when picked up.
+10. After a restart, head motion counts again once the phone has reconnected, with no action on the phone.
 
-For comparison, the TMG11 owner check on 2026-11-12 found: IMU ST; fold reads "open" when unfolded (the Hall sensor is on the right hinge); the knob counts negative counter-clockwise, about 1,200 counts per turn. The C18 sensor log named the ST IMU (LSM6DSO32 driver, WHO_AM_I 0x6b), the MMC5603NJ magnetometer (ID 0x10), the W1161 light sensor (ID 0xe6) and the Mixo OTS knob (ID 0xB1).
+Not part of that run: the build identity row (Turbo › Developer › Glasses runtime, "Firmware and build", must show the identity above), and battery over a full day.
 
 To go back, see [Going back](../ios-addon/OTA.md#going-back) in OTA.md.
 
@@ -108,19 +120,19 @@ D=$(mktemp -d)
 python3 -I "$FW/tools/rebase_apply.py" --check --stock "$STOCK"
 python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
 python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP"
-cmp "$D/build/$ZIP" "$TURBO_INPUTS/tmg12/$ZIP"
+cmp "$D/build/$ZIP" "$TURBO_INPUTS/tmg15/$ZIP"
 ```
 
 - `rebase_apply.py --check` confirms the tree is wholly on its stock base.
 - A plain build asserts every pin in `build-inputs.json` and stops at the first mismatch. It writes the ZIP and `audit.json` to `--out`.
-- `--audit` checks a ZIP: the patch sites, the unchanged stock payloads, the startup descriptors, the stock cores and an AP below 9,600,000 bytes.
+- `--audit` checks a ZIP: the patch sites in both images, the unchanged stock payloads, the startup descriptors, the stock cores, an AP below 9,600,000 bytes and a Bluetooth image no larger than its partition (0x180000 bytes).
 - `tests/rebase_independent_test.py` re-derives every rebased address. It takes about 40 s.
 
 Other `--show` values: `base` (the stock base) and `emu-only` (`false` for this tree).
 
 ## Update the pins
 
-Do this only for a new release. It ends the TMG12 identity carry-over (see above).
+Do this only for a new release. A repin changes the build identity, so the ZIP no longer matches the pinned release.
 
 1. Change the source. If the label changes, edit `RELEASE`.
 2. Run the build with `--repin` in place of a plain build:
@@ -136,7 +148,7 @@ Do this only for a new release. It ends the TMG12 identity carry-over (see above
    python3 -I "$FW/tools/phone_pins.py" --write "$R/ios-addon" --inputs "$TURBO_INPUTS"
    python3 -I "$FW/tools/phone_pins.py" --check "$R/ios-addon" --inputs "$TURBO_INPUTS"
    ```
-   `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c21`).
+   `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c24`).
 
 `phone_pins.py` refuses emulator-only builds in every mode. It also refuses the superseded TMG12 candidates 1 to 3 by their SHA-256 (`SUPERSEDED_ZIPS`).
 
@@ -149,7 +161,7 @@ Run `bash scripts/turbo-gate.sh --firmware-only` for the firmware checks alone. 
 3. `fw-build`: a plain build of the tree, then `tests/sensors_light_off_link_test.py`. With `--tree-zip ZIP` it compiles only and uses the given ZIP.
 4. `fw-audit`: `build.py --audit` of the tree ZIP.
 5. `fw-tests`: `test.py --firmware-only`.
-6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD (today `fw/tmg12`) with that tag's own `build.py` and pins.
+6. `fw-reproduce`: rebuilds the newest `fw/tmgN` tag merged into HEAD with that tag's own `build.py` and pins.
 7. `source-audit`.
 
 A pass ends with `GATE PASS (firmware-only, plain build)`. Run it without `--tree-zip`.
@@ -173,6 +185,7 @@ The recipe works as written for `fw/tmg10` and `fw/tmg11`, with LLVM/LLD 23.1.5 
 
 | Tag | Stock base | Phone build | ZIP SHA-256 |
 | --- | --- | --- | --- |
+| `fw/tmg12` | 1.0.6.11 | C20, C21 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
 | `fw/tmg11` | 1.0.5.12 | C18 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` |
 | `fw/tmg10` | 1.0.5.12 | C16 | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` |
 | `fw/tmg9` | 1.0.5.5 | C13 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` |
@@ -192,8 +205,9 @@ Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the 
 | --- | --- |
 | `RELEASE` | The release label |
 | `build.py` | Build, audit, repin and `--show` |
-| `build-inputs.json` | Every pin: stock base and hashes, the 25 edits, module, AP, ZIP and toolchain |
+| `build-inputs.json` | Every pin: stock base and hashes, the patch sites, both modules, AP, BTH, ZIP and toolchain |
 | `src/` | Module source; `src/stock_layout.h` names every stock offset |
+| `bth-v1/` | The head-motion module for the Bluetooth core's image |
 | `link.ld`, `trampolines.S` | The link script with the stock symbol addresses, and the patch-site trampolines |
 | `ImageWireFormat.h` | The image wire format shared with the phone |
 | `include/`, `assets/` | Build includes and the menu icon art |
