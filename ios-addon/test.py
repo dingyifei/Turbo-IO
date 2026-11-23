@@ -305,7 +305,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     else:skip('tmg4-wizard','not selected by --only')
     # The 1.0.21 flash sequence recorded on 2026-11-15 (tests/flash-sequence-1021.json), replayed through the
     # same unchanged guard and gate on the full 1.0.21 host with the slices cut from this release's ZIP:
-    # every frame allowed, stage 2, 314 slices and 15,756,690 bytes; then each mutation in its own process
+    # every frame allowed, stage 2, 314 slices and 15,756,754 bytes; then each mutation in its own process
     # (stages 2 and 3 last until the app restarts), each refused.
     seen.add('flash-sequence-1021')
     if only is None or 'flash-sequence-1021' in only:
