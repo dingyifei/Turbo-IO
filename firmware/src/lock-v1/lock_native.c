@@ -135,6 +135,9 @@ static int cover_make(LockCtl *c){
  }
  TNWidgets w=tn_lvgl_widgets();if(!tlv_open(&c->view,&w,NULL,c->cover)){TR("[TurboLock] view open failed");cover_drop(c);return -1;}
  menu_text_align(c->view.labels[TLV_BATT],3,0);   /* battery right-aligned to the core edge, as on the launcher menu */
+ /* Digits, dots and dashes centred in their slots, over the centre of the caret bar (device feedback F2-2: left-aligned,
+  * the bar ran about 31 px past the digit's right edge). */
+ for(unsigned i=TLV_S0;i<=TLV_S3;i++)menu_text_align(c->view.labels[i],2,0);
  c->view_open=true;return 1;
 }
 /* The cover must stay the last child of the sys layer, the one drawn on top. A child stock adds later (a call view, a
@@ -184,6 +187,7 @@ static void sync(LockCtl *c,uint32_t now_ms){
    if(was||!focus_screen_on()){nav_screen_on(true);stream_invalidate(c->cover);}
    /* The PIN screen is up and the panel asked on: input counts after the grace from here; what queued before is dropped. */
    if(t->state==TLK_ENTRY)tlk_entry_lit(t,now_ms);
+   else if(t->state==TLK_UNLOCKED_MSG)tlk_unlocked_lit(t,now_ms);   /* "Unlocked" shows from here */
   }
  }
  if(t->flush_input){t->flush_input=false;key_queue_flush();c->wheel_acc=0;}

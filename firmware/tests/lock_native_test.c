@@ -36,11 +36,11 @@ void *stream_timer_create(void (*cb)(void *),uint32_t period,void *user){(void)c
 void *stream_timer_next(void *t){(void)t;return NULL;}
 static char monitors,input,link_;void *nav_monitors(void){return &monitors;}void *nav_input(void *m){(void)m;return &input;}void *nav_link(void *m){(void)m;return &link_;}
 void *fm_system(void *m){(void)m;return &monitors;}
-static int invalidates,time_reads;static char battery_mon;static int64_t local_time;static int battery_level=-1;static int aligned_right;
+static int invalidates,time_reads;static char battery_mon;static int64_t local_time;static int battery_level=-1;static int aligned_right;static void *centred[16];static int n_centred;
 void *fm_battery_monitor(void *m){(void)m;return &battery_mon;}
 int64_t fm_local_time(void *s){assert(s==&monitors);time_reads++;return local_time;}
 int fm_battery_level(void *b){assert(b==&battery_mon);return battery_level;}
-void menu_text_align(void *o,int a,uint32_t f){(void)o;(void)f;if(a==3)aligned_right++;}
+void menu_text_align(void *o,int a,uint32_t f){(void)o;(void)f;if(a==3)aligned_right++;if(a==2)centred[n_centred++%16]=o;}
 void stream_invalidate(void *o){assert(o==cover_obj);invalidates++;}
 unsigned tgr_ota_status(void *s){(void)s;return ota?1:0;}
 bool nav_bonded(void *l){(void)l;return bonded;}bool nav_folded(void *i){(void)i;return folded;}bool focus_screen_on(void){return screen;}
@@ -209,8 +209,10 @@ int main(void){
  /* Phone unlock while dark: the panel turns on with "Unlocked" in band B, the gates open at once; 2 s later the cover goes. */
  {int on=screen_on_calls,cov=covers;r=op(TLK_OP_UNLOCK,NULL);
   assert(r.result==TLK_R_OK&&c->svc.lock.state==TLK_UNLOCKED_MSG&&!c->dark&&!c->locked&&screen&&screen_on_calls>on&&covers==cov+1&&!lock_refuse_can_wakeup());
-  ms+=100;do_tick();assert(!strcmp(shown(c->view.labels[TLV_B]),"Unlocked"));
-  ms+=TLK_UNLOCKED_SHOW_MS;do_tick();assert(c->svc.lock.state==TLK_UNLOCKED&&!c->cover&&screen);}
+  ms+=100;do_tick();assert(!strcmp(shown(c->view.labels[TLV_B]),"Unlocked")&&c->svc.lock.lit);
+  /* F2-3: shown TLK_UNLOCKED_SHOW_MS from the moment the panel was asked on, not from the phone's command. */
+  ms+=TLK_UNLOCKED_SHOW_MS-200;do_tick();assert(c->svc.lock.state==TLK_UNLOCKED_MSG&&c->cover);
+  ms+=200;do_tick();assert(c->svc.lock.state==TLK_UNLOCKED&&!c->cover&&screen);}
  assert(c->svc.lock.state==TLK_UNLOCKED&&!c->dark);
  screen=false;pmu+=200;assert(key(TIO_STOCK_KEY_CONFIRM)==TIO_STOCK_KEY_CONFIRM);pmu+=200;assert(!lock_refuse_screen(1,2));
  /* An input after the idle time with the screen off locks first and is then handled as locked input. */
@@ -336,6 +338,7 @@ int main(void){
  /* 19. Band T of the PIN screen: time and battery from stock's getters, battery right-aligned; unknown shows --:-- and --%. */
  memcpy(files,saved,sizeof files);reset_world(true);c=boot();local_time=1800057600+3600*14+60*7;   /* 1800057600 is a midnight */battery_level=83;
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&c->view_open&&aligned_right>0);
+ {int hit=0;for(unsigned i=TLV_S0;i<=TLV_S3;i++)for(int j=0;j<16;j++)if(centred[j]==c->view.labels[i]){hit++;break;}assert(hit==4);}   /* F2-2: the four slots centred */
  assert(!strcmp(shown(c->view.labels[TLV_TIME]),"14:07")&&!strcmp(shown(c->view.labels[TLV_BATT]),"83%"));
  assert(invalidates>0);   /* the panel came on: the whole cover is redrawn */
  /* Read at most once a second: a tick 100 ms later still shows the old values, one a second later the new ones. */

@@ -59,6 +59,7 @@ bool tlk_screen_allowed(const TLK *t){return t->state!=TLK_DARK;}
 
 static void lock(TLK *t){t->state=TLK_DARK;t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);}
 static void entry(TLK *t,uint32_t now_ms){t->state=TLK_ENTRY;t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);t->shown_ms=now_ms;t->lit=false;}
+void tlk_unlocked_lit(TLK *t,uint32_t now_ms){if(t->state==TLK_UNLOCKED_MSG&&!t->lit){t->lit=true;t->shown_ms=now_ms;}}
 void tlk_entry_lit(TLK *t,uint32_t now_ms){if(t->state==TLK_ENTRY&&!t->lit){t->lit=true;t->lit_ms=now_ms;t->flush_input=true;}}
 static void after_unlock_msg(TLK *t){t->state=t->notice?TLK_NOTICE:TLK_UNLOCKED;}
 
@@ -156,14 +157,14 @@ void tlk_tick(TLK *t,uint32_t now_s,uint32_t now_ms){
  case TLK_WAITING:if(!tlk_delay_left(t,now_s))entry(t,now_ms);else if(age>=TLK_ENTRY_TIMEOUT_MS)lock(t);break;
  case TLK_WRONG:if(age>=TLK_WRONG_SHOW_MS){if(tlk_delay_left(t,now_s)){t->state=TLK_WAITING;t->shown_ms=now_ms;}else entry(t,now_ms);}break;
  case TLK_USE_PHONE:if(age>=TLK_USE_PHONE_SHOW_MS)lock(t);break;
- case TLK_UNLOCKED_MSG:if(age>=TLK_UNLOCKED_SHOW_MS)after_unlock_msg(t);break;
+ case TLK_UNLOCKED_MSG:if(age>=(t->lit?TLK_UNLOCKED_SHOW_MS:TLK_UNLOCKED_LIGHT_MS))after_unlock_msg(t);break;
  default:break;
  }
 }
 
 bool tlk_phone_unlock(TLK *t,uint32_t now_s,uint32_t now_ms){
  if(t->state==TLK_OFF)return false;
- if(tlk_locked(t)){do_unlock(t,now_s);if(!t->folded){t->state=TLK_UNLOCKED_MSG;t->shown_ms=now_ms;}}
+ if(tlk_locked(t)){do_unlock(t,now_s);if(!t->folded){t->state=TLK_UNLOCKED_MSG;t->shown_ms=now_ms;t->lit=false;}}
  return true;
 }
 bool tlk_phone_lock(TLK *t){if(t->state==TLK_OFF)return false;lock(t);return true;}

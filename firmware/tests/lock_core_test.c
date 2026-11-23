@@ -85,9 +85,15 @@ static void transitions(void){
  assert(tlk_input(&t,TLK_IN_PRESS,0,T0,ms+TLK_ENTRY_GRACE_MS-1)&&tlk_input(&t,TLK_IN_STEP,2,T0,ms+TLK_ENTRY_GRACE_MS-1)&&t.slot==0&&t.digit==0);
  assert(tlk_input(&t,TLK_IN_STEP,2,T0,ms+TLK_ENTRY_GRACE_MS)&&t.digit==2);ms+=TLK_ENTRY_GRACE_MS;
  assert(tlk_input(&t,TLK_IN_BACK,0,T0,ms+=100)&&t.state==TLK_DARK);
- // Phone "Lock now" -> dark; phone unlock -> "Unlocked" for 2 s, then unlocked; both refused while Off.
- assert(tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_UNLOCKED_MSG&&!tlk_locked(&t));tlk_tick(&t,T0,ms+1999);assert(t.state==TLK_UNLOCKED_MSG);
- tlk_tick(&t,T0,ms+2000);assert(t.state==TLK_UNLOCKED);assert(tlk_phone_lock(&t)&&t.state==TLK_DARK);
+ // Phone "Lock now" -> dark; phone unlock -> "Unlocked" for 4 s from when the panel is lit (F2-3), then unlocked; both
+ // refused while Off. Not lit: it waits for the panel; never lit, it ends TLK_UNLOCKED_LIGHT_MS after the unlock.
+ assert(tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_UNLOCKED_MSG&&!tlk_locked(&t)&&!t.lit);tlk_tick(&t,T0,ms+3000);assert(t.state==TLK_UNLOCKED_MSG);
+ tlk_unlocked_lit(&t,ms+3000);tlk_unlocked_lit(&t,ms+3500);assert(t.lit&&t.shown_ms==ms+3000);   // the first lit counts
+ tlk_tick(&t,T0,ms+3000+TLK_UNLOCKED_SHOW_MS-1);assert(t.state==TLK_UNLOCKED_MSG);
+ tlk_tick(&t,T0,ms+3000+TLK_UNLOCKED_SHOW_MS);assert(t.state==TLK_UNLOCKED);
+ tlk_unlocked_lit(&t,ms);assert(t.state==TLK_UNLOCKED);   // only while "Unlocked" is up
+ tlk_phone_lock(&t);assert(tlk_phone_unlock(&t,T0,ms)&&!t.lit);tlk_tick(&t,T0,ms+TLK_UNLOCKED_LIGHT_MS-1);assert(t.state==TLK_UNLOCKED_MSG);
+ tlk_tick(&t,T0,ms+TLK_UNLOCKED_LIGHT_MS);assert(t.state==TLK_UNLOCKED);assert(tlk_phone_lock(&t)&&t.state==TLK_DARK);
  tlk_boot(&t,TLK_LOAD_NONE,NULL);assert(!tlk_phone_lock(&t)&&!tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_OFF);
  assert(!tlk_input(&t,TLK_IN_PRESS,0,T0,ms)&&t.state==TLK_OFF);           // Off: everything passes
  // SET_PIN from Off -> Unlocked (no lock now); SET_PIN while locked keeps it locked; bad digits refused.
@@ -147,7 +153,7 @@ static void wrong_tries(void){
  t.dirty=false;assert(tlk_phone_ack(&t)&&t.rec.unacked==0&&t.dirty);t.dirty=false;tlk_phone_ack(&t);assert(!t.dirty);
  // Phone unlock after wrong tries also shows the notice and clears the knob counter and delay.
  boot_locked(&t);enter(&t,bad,T0);tlk_tick(&t,T0,ms+=2000);assert(tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_UNLOCKED_MSG&&t.notice==1&&t.rec.wrong==0);
- tlk_tick(&t,T0,ms+=2000);assert(t.state==TLK_NOTICE);   // the failure notice follows the phone's "Unlocked"
+ tlk_tick(&t,T0,ms+=TLK_UNLOCKED_LIGHT_MS);assert(t.state==TLK_NOTICE);   // the failure notice follows the phone's "Unlocked"
  // Unlock with no new wrong tries after a notice: no second notice.
  tlk_phone_lock(&t);assert(tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_UNLOCKED_MSG);
  assert(tlk_input(&t,TLK_IN_PRESS,0,T0,ms)&&t.state==TLK_UNLOCKED);   // a press dismisses "Unlocked" (consumed)
@@ -159,7 +165,7 @@ static void wrong_tries(void){
 }
 
 // Lock, then unlock by phone at now: a fresh unlocked state with last use = now.
-static void fresh(TLK *t,uint32_t now){tlk_phone_lock(t);assert(tlk_phone_unlock(t,now,ms));tlk_tick(t,now,ms+=TLK_UNLOCKED_SHOW_MS);assert(t->state!=TLK_UNLOCKED_MSG);t->screen_on=false;}
+static void fresh(TLK *t,uint32_t now){tlk_phone_lock(t);assert(tlk_phone_unlock(t,now,ms));tlk_tick(t,now,ms+=TLK_UNLOCKED_LIGHT_MS);assert(t->state!=TLK_UNLOCKED_MSG);t->screen_on=false;}
 static void fold_and_idle(void){
  TLK t;ms=0;uint32_t now=T0;
  boot_locked(&t);fresh(&t,now);t.flush_input=false;

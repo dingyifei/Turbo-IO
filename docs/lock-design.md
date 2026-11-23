@@ -153,6 +153,8 @@ Also:
 
 Not shown in the emulator, so on the owner's device checklist: the wake word while locked (the emulator has no model of that processor), and a phone-started session while locked (the emulator's phone side cannot answer one). Both rest on reading the code. The stock callback on the wake-word audio stream (0x1058098c) was decoded: it drives no LED, vibration, sound or display; it forwards audio to the phone only while the recorder-open flag is set, which the openRecorder gate prevents.
 
+**Phone-started features while locked (device feedback F2-4, TMG14).** The lock passes every phone message except `TLK:` on to stock, so the paired phone can still start stock features while the glasses are locked (the owner started several). A phone-started session can start; the glasses microphone cannot open (gate 3), and nothing it shows is visible: stock draws under the lock's opaque cover, and a view that lands on top closes the lock screen to dark. No gate on the phone's messages is planned: it would need a list of messages to let through (time sync, status, bonding, OTA), and a wrong entry would break those while locked, for no gain over what the gates already hold. The phone that can do this is the one that can unlock.
+
 **What is being protected on the glasses themselves:** the to-do and schedule lists and the dashboard widget configuration are stored on the glasses. Whether memories, recordings or cached notifications are too was not traced; most assistant data lives on the phone or in the cloud and is reached through the gates above.
 
 ## 7. Input, timing and reboot (from Block A; A3 idle signal and A5 still to come)
