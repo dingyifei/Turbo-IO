@@ -37,6 +37,22 @@
     "firmware/assets/menu-icons/png/11-pomodoro.png": "6f318b37f3de1a5b8f242018c53c33d7cfa3d6cdc0c463ee8bfb837c58f06f4b",
     "firmware/assets/menu-icons/png/12-my-apps.png": "34f83a02804c448a43334ca86e306fb2781d54918a7ba40c628d8eeeb46b6217",
     "firmware/assets/menu-icons/png/13-camera.png": "273bc6281eba4a936c113fae2484d5cb67456724e4ece124b33a95dd7306d76f",
-    "firmware/baseline/animation-frames.l8": "f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d"
+    "firmware/baseline/animation-frames.l8": "f758dd6e3cdf5fc6550238df26e46111e9d45d098b9d95f649626ea58210ee1d",
+    "docs/images/readme/glasses-dashboard.png": "f82db2c34f0b7b54b6341dd911ed8371f45db94380c667265ff52af7fb725b71",
+    "docs/images/readme/glasses-focus.png": "d41b47aea2f18af287354b6289ffe906d77616b473aa53814649bced4fd2ae7c",
+    "docs/images/readme/glasses-lock.png": "407e39e8e4c97e417215da02b5f2a241526b06f3394ac60809cb5e24ee557261",
+    "docs/images/readme/glasses-menu.png": "9f47b0536cb05cf04c8f9e5c73e2cb6ea089e15499fe6a44a7b586feff613203",
+    "docs/images/readme/glasses-mini-app.png": "db97bddc59094eecf61407949e61ea605ba45c6c242cc0cd4b12b8ca9b5b2adb",
+    "docs/images/readme/glasses-music.png": "30d1a879f5e55c6ce3e996067786a436df41f30b1e6fd3b403e2b4d681b7bc3f",
+    "docs/images/readme/glasses-navigation.png": "02cb5abbff4fcacd2aabe357f4f52a2dd084e7f514e7ca26b3a594fd887298cc",
+    "docs/images/readme/phone-assistant.png": "ca2b37eeb94d86d10ce7792bcdc67dba4c41c9eb8064ca5c6bbe3aa5a2ad5378",
+    "docs/images/readme/phone-captions.png": "7c001066300d06421d3ad308fdb05152221867c1bd380de8df5fb9537ba73c15",
+    "docs/images/readme/phone-dashboard.png": "a8e5c668ea458fd3959a9e7c43c6abf3bcde418ad05e8b465ee740565b2d5bd6",
+    "docs/images/readme/phone-focus.png": "01cc8877d10dc731eb366af15696b3dc891029609baa0c2f16a53fe49378faee",
+    "docs/images/readme/phone-hub.png": "f823dcde5182f47c36c93d6fdc914ff1f43888762c18c3b8edf62c458b5c8fcd",
+    "docs/images/readme/phone-lock.png": "372ee2eb74c8081002602259f72d0d3afb244f8cfaa05d16243b661434723819",
+    "docs/images/readme/phone-menu.png": "088533d7d2b2dc988bfb2412e2ae03ea29e6bfea3bba0284707737d4ccda1233",
+    "docs/images/readme/phone-music.png": "792cbe80df12c9a41bb88922c9b56108b496a92c4ae877216bf0a9a3a806b4a6",
+    "docs/images/readme/phone-navigation.png": "ea4762cd938e69c53f4b031dec2f9622d8b63c2ad1e0cfabfc160622ce265416"
   }
 }

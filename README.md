@@ -9,6 +9,27 @@ It is for developers. It is not a finished product. If you just want to use the 
 
 There are no prebuilt or signed apps here. You merge, sign and install the addon yourself.
 
+## What it looks like
+
+The glasses show green on a see-through lens; black here is transparent there. Each feature has a page on the glasses and a page on the phone that sets it up.
+
+| Feature | On the glasses | On the phone |
+|---|---|---|
+| **Menu.** A carousel of the stock tiles and the Turbo ones. You choose the order and what is hidden. | <img src="docs/images/readme/glasses-menu.png" width="400" alt="Glasses menu: a row of icons with Music in the centre, the time and battery above"> | <img src="docs/images/readme/phone-menu.png" width="170" alt="Phone page: tile order and visibility"> |
+| **Navigation.** Apple Maps turn-by-turn, with the next turn, the distance and a small route sketch. | <img src="docs/images/readme/glasses-navigation.png" width="400" alt="Glasses navigation: turn right in 100 m onto Market St, with a route sketch"> | <img src="docs/images/readme/phone-navigation.png" width="170" alt="Phone page: a route on the map with a preview of the glasses page"> |
+| **Music and lyrics.** The track from Spotify with synced lyrics; the current line is lowest and brightest. | <img src="docs/images/readme/glasses-music.png" width="400" alt="Glasses lyrics: track name at the top, the current line at the bottom"> | <img src="docs/images/readme/phone-music.png" width="170" alt="Phone page: music settings"> |
+| **Focus timer.** A Pomodoro timer that runs on the glasses. | <img src="docs/images/readme/glasses-focus.png" width="400" alt="Glasses focus timer: 18:42 left, session 2 of 4"> | <img src="docs/images/readme/phone-focus.png" width="170" alt="Phone page: focus timer with 15, 25 and 45 minute choices"> |
+| **Dashboard.** A card you lay out yourself, filled from your own data source. | <img src="docs/images/readme/glasses-dashboard.png" width="400" alt="Glasses dashboard card: three lines of text and three meters"> | <img src="docs/images/readme/phone-dashboard.png" width="170" alt="Phone page: the dashboard editor"> |
+| **Mini-apps.** Small pages built with the app SDK; the knob moves the focus and a press selects. | <img src="docs/images/readme/glasses-mini-app.png" width="400" alt="Glasses mini-app: a commute page with two choices"> | |
+| **Glasses lock.** A 4-digit PIN entered with the knob. The glasses lock when folded or left idle. | <img src="docs/images/readme/glasses-lock.png" width="400" alt="Glasses PIN screen: two digits entered as dots, the third digit 7 over a bar"> | <img src="docs/images/readme/phone-lock.png" width="170" alt="Phone page: glasses lock with Lock now and the two lock times"> |
+| **Assistant and captions.** Your own AI model behind the glasses assistant, and live captions with translation. | | <img src="docs/images/readme/phone-assistant.png" width="170" alt="Phone page: assistant settings"> <img src="docs/images/readme/phone-captions.png" width="170" alt="Phone page: live captions in English and Chinese"> |
+
+All of it is reached from one hub page in the RayNeo app:
+
+<img src="docs/images/readme/phone-hub.png" width="220" alt="Phone hub: Glasses firmware, Navigation, Camera remote, Focus timer, Menu layout, Glasses lock and more">
+
+The glasses pictures are drawn on a Mac by the firmware's own layout code, with a substitute font, so spacing and positions are the real ones and the letter shapes are close. The phone pictures are simulator screenshots of the addon's pages with sample data. Neither is a photo through the lens.
+
 <a id="ios107-update"></a>
 
 ## Current release: C24 + TMG15
