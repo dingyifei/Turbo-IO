@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-// Which release this build is (a cN name from releases.json, today c24) and its packages: turbo-package.sh and package.mjs look for this exact string.
+// Which release this build is (a cN name from releases.json, today c25) and its packages: turbo-package.sh and package.mjs look for this exact string.
 __attribute__((used)) const char TIOOTAReleaseMarker[]=TIO_FW_RELEASE_MARKER;
 NSString *TIOOTARelease(void){return TIO_FW_RELEASE;}
 NSString *TIOOTAReleaseFolder(void){return TIO_FW_OTA_FOLDER;}

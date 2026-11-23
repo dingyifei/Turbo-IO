@@ -2,7 +2,7 @@
 // through the real guard and gate (ExperimentalOTAFlash.m, adapted by test.py like tmg4-wizard) on the full
 // 1.0.21 host (tests/FullHostFixture.h). The slices are cut from the release's unzipped --firmware ZIP, so the
 // fixture holds no payload bytes. One run per mode, because stages 2 and 3 last until the process ends:
-//   replay        every tx frame allowed, stage 2 reached, 314 slices and 15,756,754 bytes;
+//   replay        every tx frame allowed, stage 2 reached, 314 slices and 15,765,714 bytes;
 //   no-auth       a transfer frame with no authorization;
 //   mode          type 4 with a Mode other than 2;
 //   version       type 5 with a wrong OtaVersion;
@@ -114,7 +114,7 @@ int main(int argc,char **argv){@autoreleasepool{
         planned+=n;plannedBytes+=file.length;
     }
     assert(planned==[fixture[@"totalSlices"] unsignedIntegerValue]&&plannedBytes==[fixture[@"totalSliceBytes"] unsignedIntegerValue]);
-    assert(planned==314&&plannedBytes==15756754);
+    assert(planned==314&&plannedBytes==15765714);
     NSData *manifest=files[@"OtaFileInfo.json"];
     BOOL authorized=NO,started=NO,sentVersion=NO,sentManifest=NO;NSUInteger sent=0,slices=0;
     for(NSDictionary *s in steps){
@@ -182,7 +182,7 @@ int main(int argc,char **argv){@autoreleasepool{
     NSDictionary *status=TIOOTAFlashStatus();
     if([mode isEqual:@"replay"]){
         assert(started&&sentVersion&&sentManifest&&Stage()==2&&[status[@"started"] boolValue]);
-        assert(slices==314&&[status[@"validatedSlices"] unsignedIntegerValue]==314&&[status[@"validatedSliceBytes"] unsignedIntegerValue]==15756754);
+        assert(slices==314&&[status[@"validatedSlices"] unsignedIntegerValue]==314&&[status[@"validatedSliceBytes"] unsignedIntegerValue]==15765714);
         // After the flash the glasses report the target version: still stage 2, and it cannot be cancelled.
         assert(!TIOOTAFlashCancel()&&Stage()==2);
         printf("PASS flash sequence replay: %lu tx frames allowed, stage 2 reached, %lu slices, %lu bytes\n",(unsigned long)sent,(unsigned long)slices,(unsigned long)[status[@"validatedSliceBytes"] unsignedIntegerValue]);
