@@ -315,7 +315,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
             run('flash-sequence-1021-'+mode,[out/'flash-sequence-1021',root/'candidate',root,P/'tests/flash-sequence-1021.json',mode])
             log=(out/('flash-sequence-1021-'+mode+'.log')).read_text()
             want='PASS flash sequence replay: ' if mode=='replay' else 'PASS flash sequence mutation '+mode+': refused'
-            if want not in log or (mode=='replay' and 'stage 2 reached, 314 slices, 15756690 bytes' not in log):raise RuntimeError('flash-sequence-1021-'+mode+' did not report PASS')
+            if want not in log or (mode=='replay' and 'stage 2 reached, 314 slices, 15756754 bytes' not in log):raise RuntimeError('flash-sequence-1021-'+mode+' did not report PASS')
         # The hook protection on its own refuses authorization: before the transport hook is ready, and in a
         # build without TIO_OTA_FLASH_ENABLED (same sources, that one define left out).
         run('flash-sequence-1021-noflash-build',flags+[P/'tests/FlashSequenceTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-o',out/'flash-sequence-1021-noflash'])

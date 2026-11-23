@@ -1,11 +1,11 @@
 {
  "statement": "sequence seen on 2026-11-15 with RayNeo AI 1.0.21 (1)",
- "note": "Business-9 frames of the TMG12 flash, summarized from the wire log: tx is phone to glasses, rx is glasses to phone. The type 6 frame carries the pinned OtaFileInfo.json (its size and SHA-256 are given). Type 7 slices are summarized per file, in the order sent: each slice starts where the previous one ended and carries sliceBytes bytes, except the last. Progress frames (rx type 8) are left out. No device ids, payload bytes or raw log lines. The release-dependent fields (the type 3 OtaSize, the type 6 manifest SHA-256, the nuttx_ap.bin and nuttx_bth.bin plans and the totals) are the TMG14 ZIP's, derived from its bytes at the C23 pins; the frame order and every other field are the TMG12 recording.",
+ "note": "Business-9 frames of the TMG12 flash, summarized from the wire log: tx is phone to glasses, rx is glasses to phone. The type 6 frame carries the pinned OtaFileInfo.json (its size and SHA-256 are given). Type 7 slices are summarized per file, in the order sent: each slice starts where the previous one ended and carries sliceBytes bytes, except the last. Progress frames (rx type 8) are left out. No device ids, payload bytes or raw log lines. The release-dependent fields (the type 3 OtaSize, the type 6 manifest SHA-256, the nuttx_ap.bin and nuttx_bth.bin plans and the totals) are the TMG15 ZIP's, derived from its bytes at the C24 pins; the frame order and every other field are the TMG12 recording.",
  "host": "RayNeo AI 1.0.21 (1)",
  "businessId": 9,
  "sliceBytes": 51200,
  "totalSlices": 314,
- "totalSliceBytes": 15756690,
+ "totalSliceBytes": 15756754,
  "steps": [
   {
    "d": "tx",
@@ -121,7 +121,7 @@
    "d": "tx",
    "type": 3,
    "json": {
-    "OtaSize": 9559428
+    "OtaSize": 9559509
    }
   },
   {
@@ -169,7 +169,7 @@
    "type": 6,
    "json": "pinned OtaFileInfo.json",
    "jsonBytes": 2886,
-   "jsonSha256": "19a3c653c6658b87ca24f6f9a05b76fd0725fbe32944621bcca6cedbd6a2f216"
+   "jsonSha256": "4d93eaa5e215ba89ece413e480e7d0c001632c79be7f4e01330fb56b997763ae"
   },
   {
    "d": "tx",
@@ -193,10 +193,10 @@
    "d": "tx",
    "type": 7,
    "name": "nuttx_ap.bin",
-   "bytes": 8147336,
+   "bytes": 8147400,
    "slices": 160,
    "first": 51200,
-   "last": 6536
+   "last": 6600
   },
   {
    "d": "tx",

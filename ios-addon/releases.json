@@ -1,18 +1,18 @@
 {
   "schema": 1,
-  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins-<name>.json; --check runs in the gate. Every release is named cN, is built on stock 1.0.6.11 and is built only for the 1.0.21 full host (1021-full). With exactly one release, a build that names none (no TIO_RELEASE, no --release) is that release. A release lists its packages: the first is a TMG build and is selected at every launch; a second one, labelled STOCK-<base>, is the base's stock package, which the owner can pick in the flash wizard instead. C23 is the only release: it carries TMG14 and stock 1.0.6.11, flashes either from the 1.0.21 full host, and accepts glasses on 1.0.5.12 (TMG11) or 1.0.6.11 for both.",
+  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins-<name>.json; --check runs in the gate. Every release is named cN, is built on stock 1.0.6.11 and is built only for the 1.0.21 full host (1021-full). With exactly one release, a build that names none (no TIO_RELEASE, no --release) is that release. A release lists its packages: the first is a TMG build and is selected at every launch; a second one, labelled STOCK-<base>, is the base's stock package, which the owner can pick in the flash wizard instead. C24 is the only release: it carries TMG15 and stock 1.0.6.11, flashes either from the 1.0.21 full host, and accepts glasses on 1.0.5.12 (TMG11) or 1.0.6.11 for both.",
   "releases": {
-    "c23": {
-      "builds": "C23: flashes TMG14 (the PIN lock with the head-motion hook on stock 1.0.6.11) or stock 1.0.6.11, picked in the wizard, from the 1.0.21 full host",
+    "c24": {
+      "builds": "C24: flashes TMG15 (the PIN lock with the head-motion hook on stock 1.0.6.11; TMG14 plus device feedback 2: centred digits, a longer Unlocked) or stock 1.0.6.11, picked in the wizard, from the 1.0.21 full host",
       "hosts": ["1021-full"],
       "stockBase": "1.0.6.11",
       "packages": [
         {
-          "label": "TMG14",
+          "label": "TMG15",
           "zip": {
-            "input": "tmg14/StrixOS-1.0.6.11-TurboIO-TMG14-CANDIDATE-NOT-APPROVED.zip",
-            "bytes": 9559428,
-            "sha256": "96e249a7e63d8903d70abca887c62306c21c406d59de8a1b27a8d094d8a056fc"
+            "input": "tmg15/StrixOS-1.0.6.11-TurboIO-TMG15-CANDIDATE-NOT-APPROVED.zip",
+            "bytes": 9559509,
+            "sha256": "206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49"
           },
           "acceptCurrent": ["1.0.5.12", "1.0.6.11"]
         },
