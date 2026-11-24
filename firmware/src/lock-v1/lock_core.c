@@ -116,7 +116,8 @@ bool tlk_input(TLK *t,TLKInput in,int delta,uint32_t now_s,uint32_t now_ms){
  if(t->state==TLK_UNLOCKED){t->last_use_s=now_s;return false;}
  if(t->state==TLK_NOTICE){   // a press dismisses it; any input while it is dark only shows it again (lit anew at the next sync)
   t->last_use_s=now_s;t->shown_ms=now_ms;
-  if(t->notice_dark){t->notice_dark=false;t->lit=false;}else if(in==TLK_IN_PRESS)t->state=TLK_UNLOCKED;
+  // dark: only a press or a turn shows it again (a crown press also sends other key codes before the press itself)
+  if(t->notice_dark){if(in==TLK_IN_PRESS||in==TLK_IN_STEP){t->notice_dark=false;t->lit=false;}}else if(in==TLK_IN_PRESS)t->state=TLK_UNLOCKED;
   return true;
  }
  if(t->state==TLK_UNLOCKED_MSG){t->last_use_s=now_s;if(in==TLK_IN_PRESS)after_unlock_msg(t);return true;}

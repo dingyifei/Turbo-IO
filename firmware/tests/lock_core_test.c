@@ -155,6 +155,7 @@ static void wrong_tries(void){
  tlk_notice_lit(&t,ms);tlk_tick(&t,now,ms+=TLK_ENTRY_TIMEOUT_MS-1);assert(!t.notice_dark);
  assert(tlk_input(&t,TLK_IN_STEP,1,now,ms)&&t.state==TLK_NOTICE);tlk_tick(&t,now,ms+=TLK_ENTRY_TIMEOUT_MS-1);assert(!t.notice_dark);   // a turn is a touch
  tlk_tick(&t,now,ms+=1);assert(t.state==TLK_NOTICE&&t.notice_dark);tlk_tick(&t,now,ms+=100000);assert(t.state==TLK_NOTICE&&t.notice_dark);
+ assert(tlk_input(&t,TLK_IN_OTHER,0,now,ms+=100)&&t.state==TLK_NOTICE&&t.notice_dark);   // the press's other key codes: nothing
  assert(tlk_input(&t,TLK_IN_PRESS,0,now,ms+=100)&&t.state==TLK_NOTICE&&!t.notice_dark&&!t.lit);   // the wake press shows it again
  tlk_notice_lit(&t,ms);
  t.dirty=false;assert(tlk_phone_ack(&t)&&t.rec.unacked==0&&t.dirty);t.dirty=false;tlk_phone_ack(&t);assert(!t.dirty);

@@ -448,7 +448,9 @@ int main(void){
   assert(c->svc.lock.state==TLK_NOTICE&&c->svc.lock.notice_dark&&!c->cover&&!screen&&force_off_calls==fo+1&&!c->dark&&!c->locked);
   for(int i=0;i<40;i++){ms+=250;do_tick();}assert(screen_on_calls==on&&force_off_calls==fo+1&&!screen);   /* stays dark */
   assert(!lock_refuse_screen(1,1));}   /* unlocked: stock may light the panel */
+ ms+=100;assert(key(0x47)==0&&key(0x48)==0&&c->svc.lock.state==TLK_NOTICE&&c->svc.lock.notice_dark&&!c->cover);   /* a crown press's first codes */
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_NOTICE&&!c->svc.lock.notice_dark&&c->cover&&screen);   /* shown again */
+ assert(key(0x49)==0&&c->svc.lock.state==TLK_NOTICE);   /* its release */
  ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_UNLOCKED);do_tick();assert(!c->cover);
  puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank, first-press grace on the PIN screen, the phone's Unlocked lights the panel, head motion (MOTION_ON sent fire-and-forget or refused, motion seen as use only while on), wake lock taken once per lit lock screen and released on every way out, cover raised over the focus-mode overlay only, failure notice dark after its untouched time and shown again at the next press");
 }
