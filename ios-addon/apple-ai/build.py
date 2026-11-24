@@ -14,11 +14,17 @@ def main():
     frameworks=['FoundationModels','Speech','Translation','AVFoundation']
     present=[f for f in frameworks if (sdk/'System/Library/Frameworks'/(f+'.framework')).exists()]
     out.mkdir(parents=True)
-    sources=[HERE/'src'/(u+'.swift') for u in UNITS]+[HERE.parent/'local-translation'/'src'/(u+'.swift') for u in SHARED]
-    command=['xcrun','--sdk','iphoneos','swiftc','-swift-version','5','-O','-parse-as-library','-target','arm64-apple-ios26.0','-sdk',sdk,'-emit-library','-module-name','TurboAppleAI',*sources]
+    # Sources are named relative to the addon folder and swiftc runs there, so no
+    # absolute checkout path reaches the dylib. With absolute paths, -O code passed the
+    # source path's length to swift_isEscapingClosureAtFileLocation, so two checkouts at
+    # different paths gave different code and a different LC_UUID.
+    # -file-prefix-map is a second guard in case swiftc makes a path absolute.
+    sources=[Path('apple-ai/src')/(u+'.swift') for u in UNITS]+[Path('local-translation/src')/(u+'.swift') for u in SHARED]
+    command=['xcrun','--sdk','iphoneos','swiftc','-swift-version','5','-O','-parse-as-library','-target','arm64-apple-ios26.0','-sdk',sdk,'-emit-library','-module-name','TurboAppleAI',
+             '-file-prefix-map',f'{HERE.parent}=.',*sources]
     for framework in present: command+=['-framework',framework]
     command+=['-Xlinker','-install_name','-Xlinker','@rpath/TurboAppleAI.dylib','-o',out/'TurboAppleAI.dylib']
-    subprocess.run(list(map(str,command)),check=True)
+    subprocess.run(list(map(str,command)),check=True,cwd=HERE.parent)
     (out/'build-info.json').write_text(json.dumps({'version':'APPLE-AI-01','minimumIOS':'26.0','deviceValidated':False,'signed':False,'units':UNITS,'shared':SHARED,'sdkFrameworks':present},indent=2)+'\n')
     print('Built unsigned TurboAppleAI; no device operations')
 if __name__=='__main__':main()
