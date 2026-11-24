@@ -236,11 +236,11 @@
   },
   "LensWake.dc.html": {
    "x": 1640,
-   "y": 5060,
+   "y": 980,
    "w": 1600,
    "h": 900,
-   "title": "Round 2 · Glasses · Wake screen (needs RE)",
-   "page": "round2"
+   "title": "Glasses · Wake screen (proposal, never built)",
+   "page": "archived"
   },
   "LensLock.dc.html": {
    "x": 0,
@@ -443,7 +443,7 @@
   "round2-title": {
    "x": 0,
    "y": 0,
-   "text": "Round 2 (TMG8 + C12): carousel menu, live tile status, a faster knob with wrap (now lens-wheel-detent, default 400), and calmer outline icons. Shipped in TMG8 and C12, except the wake screen.",
+   "text": "Round 2 (TMG8 + C12): carousel menu, live tile status, a faster knob with wrap (now lens-wheel-detent, default 400), and calmer outline icons. Shipped in TMG8 and C12, except the wake screen, which was never built (board on the Archived page).",
    "kind": "title1",
    "maxW": 3560,
    "page": "round2"
