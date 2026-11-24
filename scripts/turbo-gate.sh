@@ -319,6 +319,7 @@ fw_layout_stage() {
   done
   python3 -I "$REPO/firmware/tests/native_light_host_test.py" --stock "$STOCK" --out "$GATE/fw-layout/native_light"
   python3 -I "$REPO/firmware/tests/native_display_host_test.py" --out "$GATE/fw-layout/native_display"
+  python3 -I "$REPO/firmware/tests/tio_tokens_test.py" --out "$GATE/fw-layout/tio_tokens"
   python3 -I "$REPO/firmware/tests/rebase_independent_test.py"
   python3 -I "$REPO/firmware/tests/stock_abi_test.py" --stock "$STOCK"
   python3 -I "$REPO/firmware/tests/stock_base_test.py"
