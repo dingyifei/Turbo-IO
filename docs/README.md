@@ -14,6 +14,10 @@ Status column:
 | [AI setup](AI_SETUP.md) | Current | Pick a platform and have an assistant walk you through setup |
 | [Developer ecosystem](DEVELOPER_ECOSYSTEM.md) | Current | Dashboard and mini-app SDKs: your server, your glasses apps |
 | [Porting flow](porting-flow.md) | Current | How Turbo-IO moves to a new RayNeo firmware or app release |
+| [Glasses PIN lock](lock-design.md) | Current | The lock's design: what it protects against, the PIN screen, the firmware hooks and the phone side |
+| [iOS addon](../ios-addon/README.md) | Current | The phone addon: source, build, packaging and tests |
+| [Flashing firmware](../ios-addon/OTA.md) | Current | How the phone flashes Turbo firmware, and how to go back |
+| [Firmware tree](../firmware/README.md) | Current | The patched firmware source, the current release, and how to build and audit it |
 | [Clench tooling](../tools/clench/README.md) | Current | Offline tooth-tap recording and analysis |
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
 | [Licensing](LICENSING.md) | Current | Non-commercial terms and third-party boundaries |
@@ -22,7 +26,7 @@ Status column:
 
 ## Design system
 
-[Design system](design-system/README.md) is the UI spec for the phone and the lens. It is backed by the [shared rules and tokens](design-system/SPEC.md) and one README per component under [`design-system/components/`](design-system/components/).
+[Design system](design-system/README.md) is the UI spec for the phone and the lens. [SPEC.md](design-system/SPEC.md) lists its files: the tokens (`tokens.json`, checked against the phone and the firmware code by host tests), one README per component under [`design-system/components/`](design-system/components/), and the screen boards.
 
 ## V1 standalone client (archived)
 
@@ -51,4 +55,4 @@ The history notes moved to [archive/history/](archive/history/) in cleanup(6).
 - [AMap navigation](archive/history/NAVIGATION.md) and [its background behaviour](archive/history/NAVIGATION_BACKGROUND.md): replaced by MapKit navigation.
 - [Turbo Display navigation](archive/history/TURBO_DISPLAY_NAVIGATION.md): early display and navigation experiments.
 - [ios107 release](../ios-addon/RELEASE.md): the original addon release record. The older V2 release docs (`official-addon/docs/`) were removed in cleanup(3) and are in git history.
-- Screenshots: the screenshots, the design brief and the `turbo-io` setup skill (with its AGENT_SKILL guide) were removed in cleanup(6), and the last README image went with the review fixes after the README rewrite. All of them are in git history.
+- Screenshots: the old screenshots, the design brief and the `turbo-io` setup skill (with its AGENT_SKILL guide) were removed in cleanup(6) and are in git history. The pictures in the project README today are in [images/readme/](images/readme/).
