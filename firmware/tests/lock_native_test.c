@@ -117,6 +117,19 @@ int tap_fs_fclose(void *h){free(h);return 0;}
 int *tap_fs_errno(void){return &err;}
 static int statfs_calls;
 int tap_fs_statfs(const char *p,void *buf){statfs_calls++;assert(!strcmp(p,"/mnt/nand_data"));if(!mounted||statfs_fail){err=mounted?5:2;return -1;}uint32_t *w=buf;w[0]=0x0a732923u;w[2]=131072;w[4]=539;return 0;}
+/* Stock wake locks: a token per acquire, released by (name, token); a release of a token not held is a stock miscount. */
+static uint32_t holds_live[4];static int hold_takes,hold_releases,hold_next=0x50;
+uint32_t nav_always_on(const char *n){assert(!strcmp(n,"turbo_lock_v1"));for(int i=0;i<4;i++)if(!holds_live[i]){holds_live[i]=(uint32_t)++hold_next;hold_takes++;return holds_live[i];}assert(!"wake lock list full");return 0;}
+void nav_release_always_on(const char *n,uint32_t tok){assert(!strcmp(n,"turbo_lock_v1")&&tok);for(int i=0;i<4;i++)if(holds_live[i]==tok){holds_live[i]=0;hold_releases++;return;}assert(!"released a token not held");}
+static int holds_held(void){int k=0;for(int i=0;i<4;i++)k+=holds_live[i]!=0;return k;}
+/* LVGL lv_obj_move_to_index on a sys-layer child (only the cover is ever moved). */
+static int moves;
+void tio_lv_obj_move_to_index(void *o,int32_t idx){assert(o==cover_obj);uint16_t n=kids_n();assert(idx==(int32_t)n-1);kid_remove(o);kid_add(o);moves++;}
+/* Focus mode: manager (+4 overlay view) -> overlay view (+4 LVGL root on the sys layer). */
+static uint8_t focus_mgr[16],focus_view[16];static char focus_root_obj[4];
+void *volatile tio_focus_manager;
+static void focus_reset(bool on){memset(focus_mgr,0,sizeof focus_mgr);memset(focus_view,0,sizeof focus_view);tio_focus_manager=on?focus_mgr:NULL;
+ void *p=focus_view;memcpy(focus_mgr+TIO_STOCK_FOCUS_MGR_OVERLAY,&p,sizeof p);p=focus_root_obj;memcpy(focus_view+TIO_STOCK_FOCUS_OVERLAY_ROOT,&p,sizeof p);}
 static int logs;void native_log(unsigned a,unsigned b,unsigned c,unsigned d,const char *f,...){(void)a;(void)b;(void)c;(void)d;(void)f;logs++;}
 
 #include "../src/lock-v1/lock_anchor.c"
@@ -126,6 +139,7 @@ static int logs;void native_log(unsigned a,unsigned b,unsigned c,unsigned d,cons
 enum {T0=1800000000};
 static void reset_world(bool keep_files){
  LockCtl *c=lock_anchor_any();(void)c;tio_key_interceptors=NULL;   /* a fresh boot: RAM is gone */
+ memset(holds_live,0,sizeof holds_live);hold_takes=hold_releases=0;tio_focus_manager=NULL;   /* stock's wake lock list too */
  ms=1000;pmu=T0;folded=false;screen=true;ota=false;connected=true;bonded=true;
  screen_on_calls=force_off_calls=kws_on=kws_off=flushes=stock_key_calls=stock_wheel_calls=replies=0;
  covers=cover_deletes=hidden_set=hidden_clear=0;topic_n=0;next_key=0;next_diff=0;
@@ -381,5 +395,60 @@ int main(void){
  lock_motion_rx();pmu+=1;do_tick();assert(c->svc.lock.state==TLK_DARK);   /* motion never unlocks */
  r=op(TLK_OP_DISABLE,NULL);assert(r.result==TLK_R_OK&&c->svc.lock.state==TLK_OFF);neck_sends=0;r=op(TLK_OP_MOTION_ON,NULL);assert(r.result==TLK_R_REFUSED&&neck_sends==0);
  tio_key_interceptors=NULL;lock_motion_rx();   /* no lock state found: dropped, no crash */
- puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank, first-press grace on the PIN screen, the phone's Unlocked lights the panel, head motion (MOTION_ON sent fire-and-forget or refused, motion seen as use only while on)");
+ reset_world(true);
+ /* 21. The wake lock (TMG17): taken once when a time-limited lock screen is lit, never on the failure notice, and released
+  *     on every way out: PIN unlock, phone unlock ("Unlocked" holds it, then releases), entry timeout, covered close, fold,
+  *     back to dark, phone lock now, disable. Never two at once, never a release of a token not held. */
+ assert(!holds_held());
+ memcpy(files,saved,sizeof files);reset_world(true);c=boot();assert(!c->hold&&!holds_held());
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&screen&&c->hold&&holds_held()==1);
+ {int t0=hold_takes;for(int i=0;i<8;i++){ms+=250;do_tick();}assert(hold_takes==t0&&holds_held()==1);}   /* syncs do not take it again */
+ ms+=TLK_ENTRY_TIMEOUT_MS;do_tick();assert(c->svc.lock.state==TLK_DARK&&!c->hold&&!holds_held()&&!screen);   /* 30 s untouched: dark, released */
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);   /* turns and presses keep it up: the lock's 30 s runs from the last input */
+ for(int i=0;i<5;i++){ms+=TLK_ENTRY_TIMEOUT_MS-1000;assert(wheel(-400,1)==0);do_tick();assert(c->svc.lock.state==TLK_ENTRY&&c->hold);}
+ key(TIO_STOCK_KEY_BACK);assert(c->svc.lock.state==TLK_DARK&&!holds_held());   /* back from the first slot: dark */
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);folded=true;do_tick();assert(c->svc.lock.state==TLK_DARK&&!holds_held());folded=false;do_tick();
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);kid_add(foreign_obj);ms+=100;do_tick();assert(c->svc.lock.state==TLK_DARK&&!holds_held());kid_remove(foreign_obj);
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);enter_pin(BAD);assert(c->svc.lock.state==TLK_WRONG&&holds_held()==1);   /* wrong PIN: same hold */
+ ms+=2000;do_tick();assert(c->svc.lock.state==TLK_ENTRY&&holds_held()==1);enter_pin(PIN);
+ assert(c->svc.lock.state==TLK_NOTICE&&!holds_held());   /* the notice holds nothing */
+ key(TIO_STOCK_KEY_CONFIRM);do_tick();assert(c->svc.lock.state==TLK_UNLOCKED&&!holds_held());
+ r=op(TLK_OP_LOCK_NOW,NULL);ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);r=op(TLK_OP_LOCK_NOW,NULL);assert(c->dark&&!holds_held());
+ r=op(TLK_OP_UNLOCK,NULL);assert(c->svc.lock.state==TLK_UNLOCKED_MSG&&holds_held()==1);   /* "Unlocked" (4-5 s) */
+ ms+=TLK_UNLOCKED_SHOW_MS+100;do_tick();do_tick();assert(c->svc.lock.state==TLK_UNLOCKED&&!holds_held());
+ r=op(TLK_OP_LOCK_NOW,NULL);ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);r=op(TLK_OP_UNLOCK,NULL);do_tick();assert(holds_held()==1);
+ r=op(TLK_OP_LOCK_NOW,NULL);ms+=100;key(TIO_STOCK_KEY_CONFIRM);assert(c->hold);r=op(TLK_OP_DISABLE,NULL);assert(c->svc.lock.state==TLK_OFF&&!holds_held());
+ r=op(TLK_OP_SET_PIN,&pin);assert(hold_takes==hold_releases);
+ /* 22. Focus mode ("Do Not Disturb") moves its overlay root to the top of the sys layer 3 s after the panel lights: the
+  *     cover is moved back on top and redrawn, the PIN screen and its digits stay. Any other top child, a missing step in
+  *     the manager -> overlay -> root chain, or a cover no longer in the list still closes to dark. */
+ reset_world(true);c=boot();focus_reset(true);kid_add(focus_root_obj);
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY&&sys_kids[kids_n()-1]==cover_obj);
+ ms+=TLK_ENTRY_GRACE_MS;assert(wheel(-400,1)==0&&wheel(-400,1)==0&&key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.slot==1);
+ {int m0=moves,inv=invalidates,fo=force_off_calls;kid_remove(focus_root_obj);kid_add(focus_root_obj);ms+=250;do_tick();
+  assert(moves==m0+1&&invalidates>inv&&sys_kids[kids_n()-1]==cover_obj&&c->svc.lock.state==TLK_ENTRY&&c->svc.lock.slot==1&&!c->dark&&force_off_calls==fo&&c->hold);}
+ {const uint8_t rest[3]={0,0,5};for(unsigned i=0;i<3;i++){for(unsigned k=0;k<rest[i];k++)assert(wheel(-400,1)==0);assert(key(TIO_STOCK_KEY_CONFIRM)==0);}}
+ assert(c->svc.lock.state==TLK_UNLOCKED&&!holds_held());   /* 2-0-0-5 after the raise: unlocked */
+ r=op(TLK_OP_LOCK_NOW,NULL);
+ #define FOCUS_CLOSES(setup) do{ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_ENTRY);int m0=moves;setup;kid_remove(focus_root_obj);kid_add(focus_root_obj);ms+=250;do_tick();\
+  assert(moves==m0&&c->svc.lock.state==TLK_DARK&&c->dark&&!holds_held());focus_reset(true);}while(0)
+ FOCUS_CLOSES(tio_focus_manager=NULL);
+ FOCUS_CLOSES(memset(focus_mgr+TIO_STOCK_FOCUS_MGR_OVERLAY,0,sizeof(void *)));
+ FOCUS_CLOSES(memset(focus_view+TIO_STOCK_FOCUS_OVERLAY_ROOT,0,sizeof(void *)));
+ FOCUS_CLOSES(kid_remove(cover_obj));
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);{int m0=moves;kid_add(foreign_obj);ms+=250;do_tick();assert(moves==m0&&c->svc.lock.state==TLK_DARK&&!holds_held());kid_remove(foreign_obj);}
+ /* The focus root under a foreign child: closes (only the overlay itself on top is raised over). */
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);kid_remove(focus_root_obj);kid_add(focus_root_obj);kid_add(foreign_obj);ms+=250;do_tick();assert(c->svc.lock.state==TLK_DARK);kid_remove(foreign_obj);
+ /* 23. The failure notice goes dark TLK_ENTRY_TIMEOUT_MS after it was lit or last touched, once (no relight while stock
+  *     keeps the panel off), stays the state, and the next press shows it again; a press then dismisses it. */
+ ms+=100;key(TIO_STOCK_KEY_CONFIRM);enter_pin(BAD);ms+=2000;do_tick();enter_pin(PIN);assert(c->svc.lock.state==TLK_NOTICE&&c->cover&&screen);
+ ms+=100;do_tick();assert(c->svc.lock.lit&&!holds_held());
+ screen=false;ms+=15000;do_tick();assert(screen&&c->cover);   /* inside its time: a stock turn-off is relit, as before */
+ {int fo=force_off_calls,on=screen_on_calls;ms+=TLK_ENTRY_TIMEOUT_MS-15000;do_tick();
+  assert(c->svc.lock.state==TLK_NOTICE&&c->svc.lock.notice_dark&&!c->cover&&!screen&&force_off_calls==fo+1&&!c->dark&&!c->locked);
+  for(int i=0;i<40;i++){ms+=250;do_tick();}assert(screen_on_calls==on&&force_off_calls==fo+1&&!screen);   /* stays dark */
+  assert(!lock_refuse_screen(1,1));}   /* unlocked: stock may light the panel */
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_NOTICE&&!c->svc.lock.notice_dark&&c->cover&&screen);   /* shown again */
+ ms+=100;assert(key(TIO_STOCK_KEY_CONFIRM)==0&&c->svc.lock.state==TLK_UNLOCKED);do_tick();assert(!c->cover);
+ puts("PASS lock_native: boot off/locked/damaged, key consume-and-drop with 0x3d/0x44 to stock, knob drain, PIN entry and notice, idle and fold locks via the screen gate, clock faults, phone ops and gates, anchor repair, reboot during a delay, factory reset clear, cover backstop, view opened after the cover layout, early start, stale key not an event, boot from the first LVGL-thread call, Pending until the first mounted read (late mount locked/Off, never mounted, phone while Pending, no re-entry), gates refuse with no lock in the first minute, factory reset with a failed bank, first-press grace on the PIN screen, the phone's Unlocked lights the panel, head motion (MOTION_ON sent fire-and-forget or refused, motion seen as use only while on), wake lock taken once per lit lock screen and released on every way out, cover raised over the focus-mode overlay only, failure notice dark after its untouched time and shown again at the next press");
 }

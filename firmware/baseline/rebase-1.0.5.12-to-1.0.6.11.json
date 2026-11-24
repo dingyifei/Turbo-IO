@@ -322,6 +322,14 @@
      "neck_send": {
       "old": "0x104e892d",
       "new": "0x10662255"
+     },
+     "tio_lv_obj_move_to_index": {
+      "old": "0x10549db5",
+      "new": "0x1056d85d"
+     },
+     "tio_focus_manager": {
+      "old": "0x196c69f4",
+      "new": "0x196dfb70"
      }
     },
     "addEdits": {
@@ -409,7 +417,7 @@
       "reason": "the derived address lies inside an unrelated sort routine; the comment names the helper that clears a 64-byte statfs buffer, calls statfs and returns the word at +8 times the 64-bit word at +32"
      }
     },
-    "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter (addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); TMG13 adds the PIN lock's stock calls, the key interceptor list head (RAM) and seven entry trampolines (addEdits); TMG14 adds the neck-monitor send and the neck rx callback's entry trampoline"
+    "reason": "referenced by no built file, header or edit target (tools/check_layout.py pin); the launcher global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter (addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); TMG13 adds the PIN lock's stock calls, the key interceptor list head (RAM) and seven entry trampolines (addEdits); TMG14 adds the neck-monitor send and the neck rx callback's entry trampoline; TMG17 adds lv_obj_move_to_index and the focus-mode manager pointer (RAM)"
    }
   }
  },
@@ -15326,6 +15334,154 @@
      "sites": 0,
      "tried": 0,
      "state": "none"
+    }
+   }
+  },
+  {
+   "symbol": "tio_lv_obj_move_to_index",
+   "old": "0x10549db5",
+   "new": "0x1056d85d",
+   "delta": 146088,
+   "verdict": "shift",
+   "checks": [
+    "sig",
+    "call",
+    "body",
+    "align",
+    "edge2"
+   ],
+   "proof": {
+    "proposal": {
+     "verdict": "ADDED",
+     "source": "reviewed:addLinkld",
+     "row": 0
+    },
+    "window": "30 of 32 masked bytes equal at the proposal",
+    "prologue": true,
+    "new-sig": "1 hits of the 24-byte pattern built from the new image",
+    "sig": {
+     "hits": 1,
+     "at": [
+      "0x1056d85c"
+     ],
+     "state": "agree",
+     "answer": "0x1056d85c"
+    },
+    "edge": {
+     "state": "none",
+     "good": [],
+     "bad": [],
+     "branches": 3,
+     "window": "64 bytes, equal"
+    },
+    "body": {
+     "tier": "T1",
+     "length": 40,
+     "oldHits": "1: 0x10549db4",
+     "newHits": "1: 0x1056d85c",
+     "evidence": "T1 40 bytes, old 1 new 1",
+     "state": "agree",
+     "answer": "0x1056d85c"
+    },
+    "align": {
+     "anchors": "0x10549c98->0x1056d740 (fixed), 0x10549e8e->0x1056d936 (fixed)",
+     "block": 191,
+     "before": 104,
+     "after": 86,
+     "occurrences": "1 old, 1 new",
+     "evidence": "equal block of 191 tokens (104 before x, 86 after), once in each span; anchors 0x10549c98->0x1056d740 (fixed), 0x10549e8e->0x1056d936 (fixed)",
+     "state": "agree",
+     "answer": "0x1056d85c"
+    },
+    "start": {
+     "how": "no accepted row in [x-0x40, x-2]",
+     "state": "none"
+    },
+    "entry": {
+     "anchors": "0x10549c98->0x1056d740 (fixed), 0x10549e8e->0x1056d936 (fixed)",
+     "how": "x is inside an equal block",
+     "state": "none"
+    },
+    "veneer": {
+     "how": "not a veneer",
+     "state": "none"
+    },
+    "edge2": {
+     "state": "agree",
+     "walked": "64 of 64 bytes",
+     "good": [
+      "0x104b7554->0x104d9400 (fixed)",
+      "0x105499dc->0x1056d484 (fixed)"
+     ],
+     "bad": [],
+     "evidence": "walked 64 bytes; good 0x104b7554->0x104d9400 (fixed), 0x105499dc->0x1056d484 (fixed)"
+    },
+    "call": {
+     "votes": "12 of 12 paired votes for 0x1056d85c (2 by G)",
+     "paired": 12,
+     "sites": 76,
+     "tried": 31,
+     "grown": [
+      "site 0x104c0750: grown: fwd 28, old 1 new 1 at 0x104e2634, confirmed by 32; grown: back 20, old 1 new 1 at 0x104e2634, confirmed by 24",
+      "site 0x104c0842: grown: fwd 20, old 1 new 1 at 0x104e2726, confirmed by 24; back 20: old 1 new 1 at 0x104e2726, not confirmed by 24 (old 1 new 0), refused",
+      "site 0x10594bb0: fwd: no window with one old hit; back 32: old 1 new 0, refused",
+      "site 0x1067ae16: fwd 12: old 1 new 0, refused; back 20: old 1 new 0, refused",
+      "site 0x1067b060: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x1067f7be: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x10687cf4: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x1068e6c8: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x1068f97c: fwd: no window with one old hit; back 32: old 1 new 0, refused",
+      "site 0x10692368: fwd: no window with one old hit; back 32: old 1 new 0, refused",
+      "site 0x10695270: fwd: no window with one old hit; back 32: old 1 new 0, refused",
+      "site 0x106a6bc8: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x106afebc: fwd 28: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x106b748c: fwd 28: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x106b874a: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x106bdec8: fwd 12: old 1 new 0, refused; back 20: old 1 new 0, refused",
+      "site 0x106d6300: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x106d6884: fwd 24: old 1 new 0, refused; back 32: old 1 new 0, refused",
+      "site 0x107477d4: fwd 16: old 1 new 0, refused; back 20: old 1 new 0, refused",
+      "site 0x1074816c: fwd 16: old 1 new 0, refused; back 20: old 1 new 0, refused",
+      "site 0x10818908: fwd 32: old 1 new 0, refused; back 32: old 1 new 0, refused"
+     ],
+     "state": "agree",
+     "answer": "0x1056d85c"
+    },
+    "lit": {
+     "votes": "0 of 0 paired votes for no single address",
+     "paired": 0,
+     "sites": 0,
+     "tried": 0,
+     "state": "none"
+    }
+   }
+  },
+  {
+   "symbol": "tio_focus_manager",
+   "old": "0x196c69f4",
+   "new": "0x196dfb70",
+   "delta": 102780,
+   "verdict": "shift",
+   "checks": [
+    "lit"
+   ],
+   "proof": {
+    "proposal": {
+     "verdict": "ADDED",
+     "source": "reviewed:addLinkld",
+     "row": 0
+    },
+    "lit": {
+     "votes": "9 of 9 paired votes for 0x196dfb70 (2 by G)",
+     "paired": 9,
+     "sites": 9,
+     "tried": 9,
+     "grown": [
+      "site 0x105906a6: fwd 24: old 1 new 2, refused; grown: back 28, old 1 new 1 at 0x105b5bb2, confirmed by 32",
+      "site 0x10591ba2: grown: fwd 32, old 1 new 1 at 0x105b7062, confirmed by 36; back 20: old 1 new 1 at 0x105b7062, not confirmed by 24 (old 1 new 0), refused"
+     ],
+     "state": "agree",
+     "answer": "0x196dfb70"
     }
    }
   },

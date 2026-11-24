@@ -93,6 +93,10 @@
    byte) and the u32 payload length after it; the payload follows the 8-byte header. */
 #define TIO_STOCK_NECK_MSG_TYPE 0x0u
 #define TIO_STOCK_NECK_MSG_LEN 0x4u
+/* Focus mode ("Do Not Disturb") manager: its overlay view object. */
+#define TIO_STOCK_FOCUS_MGR_OVERLAY 0x4u
+/* Focus mode overlay view: its LVGL root object (on the sys layer). */
+#define TIO_STOCK_FOCUS_OVERLAY_ROOT 0x4u
 
 /* LVGL global, draw units, display and layers. */
 /* LVGL global: the head of the draw-unit list. */

@@ -803,7 +803,11 @@ REVIEWED_UNIVERSE_CHANGES = {
                       'ots_topic_read': {'old': '0x10620fcd', 'new': '0x1064d47d'},
                       'tio_key_interceptors': {'old': '0x197546e4', 'new': '0x197656dc'},
                       # TMG14 head motion (re/M3-STATIC.md Q4): neck_monitor_rpmsg_ap_send_to_bth, the same code in both
-                      'neck_send': {'old': '0x104e892d', 'new': '0x10662255'}},
+                      'neck_send': {'old': '0x104e892d', 'new': '0x10662255'},
+                      # TMG17 (DND-DARK): LVGL lv_obj_move_to_index (its assert strings name it in both images) and the
+                      # focus-mode manager singleton pointer (RAM; the pool word of the manager getter in both images)
+                      'tio_lv_obj_move_to_index': {'old': '0x10549db5', 'new': '0x1056d85d'},
+                      'tio_focus_manager': {'old': '0x196c69f4', 'new': '0x196dfb70'}},
         # addEdits (TMG13 PIN lock): entry trampolines the old tree does not have. Each is derived and checked from its
         # old address like any edit row (rule 1 before: the old before, which has no BL/B.W, must be the new image's
         # bytes); its old address must be an old BL/B.W target with at least one paired caller naming the proposal
@@ -843,7 +847,8 @@ REVIEWED_UNIVERSE_CHANGES = {
                   'global is named once, in link.ld, instead of at eleven source sites; phase F5 adds the light getter '
                   '(addLinkld: a symbol the old tree does not have, derived and checked from its old address like any row); '
                   'TMG13 adds the PIN lock\'s stock calls, the key interceptor list head (RAM) and seven entry trampolines '
-                  '(addEdits); TMG14 adds the neck-monitor send and the neck rx callback\'s entry trampoline',
+                  '(addEdits); TMG14 adds the neck-monitor send and the neck rx callback\'s entry trampoline; TMG17 adds lv_obj_move_to_index '
+                  'and the focus-mode manager pointer (RAM)',
         # correctComment (phase F7 candidate 3): a code-comment value row whose old address was never the function the
         # comment names. The row is derived and checked from the old tree exactly as before and must still give
         # `derived`; only the table written takes `new`, which must hold the pinned bytes, start a function by its bytes

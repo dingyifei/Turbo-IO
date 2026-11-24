@@ -61,7 +61,10 @@ static void lock(TLK *t){t->state=TLK_DARK;t->slot=0;t->digit=0;memset(t->digits
 static void entry(TLK *t,uint32_t now_ms){t->state=TLK_ENTRY;t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);t->shown_ms=now_ms;t->lit=false;}
 void tlk_unlocked_lit(TLK *t,uint32_t now_ms){if(t->state==TLK_UNLOCKED_MSG&&!t->lit){t->lit=true;t->shown_ms=now_ms;}}
 void tlk_entry_lit(TLK *t,uint32_t now_ms){if(t->state==TLK_ENTRY&&!t->lit){t->lit=true;t->lit_ms=now_ms;t->flush_input=true;}}
-static void after_unlock_msg(TLK *t){t->state=t->notice?TLK_NOTICE:TLK_UNLOCKED;}
+void tlk_notice_lit(TLK *t,uint32_t now_ms){if(t->state==TLK_NOTICE&&!t->lit){t->lit=true;t->shown_ms=now_ms;}}
+/* The failure notice starts unlit and not dark; tlk_notice_lit starts its timeout. */
+static void notice_or_unlocked(TLK *t){t->state=t->notice?TLK_NOTICE:TLK_UNLOCKED;t->lit=false;t->notice_dark=false;}
+static void after_unlock_msg(TLK *t){notice_or_unlocked(t);}
 
 // A missing, zero or backwards PMU reading counts as elapsed: a clock fault never keeps the glasses unlocked.
 static bool elapsed(uint32_t since,uint32_t now,unsigned minutes){return !since||!now||now<since||now-since>=(uint32_t)minutes*60u;}
@@ -70,7 +73,7 @@ static bool idle_elapsed(const TLK *t,uint32_t now_s){return unlocked(t)&&elapse
 static void do_unlock(TLK *t,uint32_t now_s){
  t->notice=t->rec.wrong;
  if(t->rec.wrong||t->rec.delay_until){t->rec.wrong=0;t->rec.delay_until=0;t->dirty=true;}
- t->state=t->notice?TLK_NOTICE:TLK_UNLOCKED;t->last_use_s=now_s;t->flush_input=true;
+ notice_or_unlocked(t);t->last_use_s=now_s;t->flush_input=true;
  if(t->folded)t->folded_s=now_s;   // an unlock while folded restarts the fold delay
  t->slot=0;t->digit=0;memset(t->digits,0,sizeof t->digits);
 }
@@ -111,7 +114,11 @@ bool tlk_input(TLK *t,TLKInput in,int delta,uint32_t now_s,uint32_t now_ms){
  if(t->state==TLK_OFF){t->last_use_s=now_s;return false;}
  if(unlocked(t)&&!t->screen_on&&idle_elapsed(t,now_s))lock(t);
  if(t->state==TLK_UNLOCKED){t->last_use_s=now_s;return false;}
- if(t->state==TLK_NOTICE){t->last_use_s=now_s;if(in==TLK_IN_PRESS)t->state=TLK_UNLOCKED;return true;}
+ if(t->state==TLK_NOTICE){   // a press dismisses it; any input while it is dark only shows it again (lit anew at the next sync)
+  t->last_use_s=now_s;t->shown_ms=now_ms;
+  if(t->notice_dark){t->notice_dark=false;t->lit=false;}else if(in==TLK_IN_PRESS)t->state=TLK_UNLOCKED;
+  return true;
+ }
  if(t->state==TLK_UNLOCKED_MSG){t->last_use_s=now_s;if(in==TLK_IN_PRESS)after_unlock_msg(t);return true;}
  switch(t->state){
  case TLK_DARK:
@@ -158,6 +165,7 @@ void tlk_tick(TLK *t,uint32_t now_s,uint32_t now_ms){
  case TLK_WRONG:if(age>=TLK_WRONG_SHOW_MS){if(tlk_delay_left(t,now_s)){t->state=TLK_WAITING;t->shown_ms=now_ms;}else entry(t,now_ms);}break;
  case TLK_USE_PHONE:if(age>=TLK_USE_PHONE_SHOW_MS)lock(t);break;
  case TLK_UNLOCKED_MSG:if(age>=(t->lit?TLK_UNLOCKED_SHOW_MS:TLK_UNLOCKED_LIGHT_MS))after_unlock_msg(t);break;
+ case TLK_NOTICE:if(t->lit&&!t->notice_dark&&age>=TLK_ENTRY_TIMEOUT_MS)t->notice_dark=true;break;   // untouched: dark
  default:break;
  }
 }

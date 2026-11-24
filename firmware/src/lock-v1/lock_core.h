@@ -53,6 +53,8 @@ typedef struct {
  bool folded;
  uint32_t last_use_s;    // later of input, motion and unlock; 0 = none since boot
  bool flush_input;       // set at unlock: the caller drops queued key/knob events
+ bool notice_dark;       // the failure notice went dark untouched (TLK_ENTRY_TIMEOUT_MS after it was lit or last
+                         // touched); it stays the state, shown again at the next press or turn, until a press dismisses it
 } TLK;
 
 typedef enum {TLK_IN_STEP=1,TLK_IN_PRESS,TLK_IN_BACK,TLK_IN_OTHER} TLKInput;
@@ -91,6 +93,8 @@ void tlk_entry_lit(TLK *,uint32_t now_ms);
 // feedback F2-3: counted from the phone unlock, it was mostly gone before the panel was on and anyone looked). A message
 // that is never lit ends TLK_UNLOCKED_LIGHT_MS after the unlock.
 void tlk_unlocked_lit(TLK *,uint32_t now_ms);
+// The caller lit the panel with the failure notice up: its TLK_ENTRY_TIMEOUT_MS starts from now_ms.
+void tlk_notice_lit(TLK *,uint32_t now_ms);
 bool tlk_phone_lock(TLK *);
 bool tlk_phone_set_pin(TLK *,const uint8_t pin[TLK_PIN_LEN],const uint8_t salt[TLK_SALT_LEN],uint32_t now_s);
 bool tlk_phone_set_time(TLK *,unsigned fold_min,unsigned idle_min);

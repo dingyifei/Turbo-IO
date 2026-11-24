@@ -149,11 +149,19 @@ static void wrong_tries(void){
  t.dirty=false;enter(&t,PIN,now);assert(t.state==TLK_NOTICE&&t.notice==7&&t.rec.wrong==0&&t.rec.delay_until==0&&t.dirty&&t.rec.unacked==7);
  assert(!tlk_locked(&t)&&tlk_screen_allowed(&t));
  assert(tlk_input(&t,TLK_IN_STEP,1,now,ms+=100)&&t.state==TLK_NOTICE);   // only a press dismisses it
- assert(tlk_input(&t,TLK_IN_PRESS,0,now,ms+=100)&&t.state==TLK_UNLOCKED);
+ // Untouched, the notice goes dark TLK_ENTRY_TIMEOUT_MS after it was lit or last touched (no timeout before it is lit);
+ // it stays the state, and the next press or turn only shows it again (lit anew), so a press then dismisses it.
+ assert(!t.lit);tlk_tick(&t,now,ms+=TLK_ENTRY_TIMEOUT_MS*2);assert(t.state==TLK_NOTICE&&!t.notice_dark);
+ tlk_notice_lit(&t,ms);tlk_tick(&t,now,ms+=TLK_ENTRY_TIMEOUT_MS-1);assert(!t.notice_dark);
+ assert(tlk_input(&t,TLK_IN_STEP,1,now,ms)&&t.state==TLK_NOTICE);tlk_tick(&t,now,ms+=TLK_ENTRY_TIMEOUT_MS-1);assert(!t.notice_dark);   // a turn is a touch
+ tlk_tick(&t,now,ms+=1);assert(t.state==TLK_NOTICE&&t.notice_dark);tlk_tick(&t,now,ms+=100000);assert(t.state==TLK_NOTICE&&t.notice_dark);
+ assert(tlk_input(&t,TLK_IN_PRESS,0,now,ms+=100)&&t.state==TLK_NOTICE&&!t.notice_dark&&!t.lit);   // the wake press shows it again
+ tlk_notice_lit(&t,ms);
  t.dirty=false;assert(tlk_phone_ack(&t)&&t.rec.unacked==0&&t.dirty);t.dirty=false;tlk_phone_ack(&t);assert(!t.dirty);
  // Phone unlock after wrong tries also shows the notice and clears the knob counter and delay.
  boot_locked(&t);enter(&t,bad,T0);tlk_tick(&t,T0,ms+=2000);assert(tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_UNLOCKED_MSG&&t.notice==1&&t.rec.wrong==0);
  tlk_tick(&t,T0,ms+=TLK_UNLOCKED_LIGHT_MS);assert(t.state==TLK_NOTICE);   // the failure notice follows the phone's "Unlocked"
+ assert(!t.lit&&!t.notice_dark);   // the notice's own timeout starts when it is lit, not from "Unlocked"
  // Unlock with no new wrong tries after a notice: no second notice.
  tlk_phone_lock(&t);assert(tlk_phone_unlock(&t,T0,ms)&&t.state==TLK_UNLOCKED_MSG);
  assert(tlk_input(&t,TLK_IN_PRESS,0,T0,ms)&&t.state==TLK_UNLOCKED);   // a press dismisses "Unlocked" (consumed)

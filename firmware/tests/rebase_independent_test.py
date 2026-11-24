@@ -203,8 +203,10 @@ PAIRS = {  # insertion order = rebase_apply.TABLES order
                # TMG13 PIN lock: stock calls (SYMBOLS.md / HOOKS.md of the lock RE)
                'pmu_rtc_epoch': 0x1058_6a49, 'kws_enable': 0x1055_9b75,
                'kws_disable': 0x1055_9be9, 'key_queue_flush': 0x1062_c5f1, 'ots_topic_read': 0x1062_0fcd,
-               'neck_send': 0x104e_892d},   # TMG14 head motion: neck_monitor_rpmsg_ap_send_to_bth
-    addedRam={'tio_key_interceptors': 0x1975_46e4},   # TMG13: the key interceptor list head
+               'neck_send': 0x104e_892d,   # TMG14 head motion: neck_monitor_rpmsg_ap_send_to_bth
+               'tio_lv_obj_move_to_index': 0x1054_9db5},   # TMG17: LVGL lv_obj_move_to_index
+    addedRam={'tio_key_interceptors': 0x1975_46e4,   # TMG13: the key interceptor list head
+              'tio_focus_manager': 0x196c_69f4},   # TMG17: the focus-mode manager singleton pointer
     # TMG13 entry trampolines: role -> (old address, old before[, 'pointer']); each adds resume_<name> = old + 5 to the
     # old universe. ('pointer', arg): reached only through a stored function pointer (no BL caller), loaded into r<arg>
     # right before the BL that consumes it (the indev slot setter, or the LVGL timer constructor)

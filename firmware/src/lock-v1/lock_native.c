@@ -32,6 +32,12 @@ extern int nav_connection(unsigned),tdp_rnlink_send(unsigned,const uint8_t *,uns
 extern void nav_screen_on(bool),*tgr_indev_driver(void *),*stream_display_next(void *);
 extern void *tio_lv_obj_create_ex(void *,uint32_t);
 extern void tio_lv_obj_delete(void *),tio_lv_obj_set_size(void *,int,int),tio_lv_obj_add_flag(void *,uint32_t),tio_lv_obj_remove_flag(void *,uint32_t);
+extern void tio_lv_obj_move_to_index(void *,int32_t);
+extern uint32_t nav_always_on(const char *);
+extern void nav_release_always_on(const char *,uint32_t);
+/* Stock focus mode ("Do Not Disturb"): the manager singleton pointer (RAM word; NULL until stock creates it). Read
+ * directly, never through stock's getter, which allocates the manager when the pointer is NULL. */
+extern void *volatile tio_focus_manager;
 extern void tio_lv_obj_set_style_border_width(void *,int32_t,uint32_t),tio_lv_obj_set_style_radius(void *,int32_t,uint32_t);
 extern void tio_lv_obj_set_style_bg_color(void *,uint32_t,uint32_t),tio_lv_obj_set_style_bg_opa(void *,uint8_t,uint32_t),native_align(void *,int,int,int);
 extern unsigned tio_lang_stored(void);
@@ -75,6 +81,7 @@ typedef struct {
  bool pending;      /* storage not mounted yet: the record is unknown, so dark and gated with no input (§7 boot) */
  uint32_t load_ms;  /* stream_tick of the last mount check */
  uint8_t tr_state;  /* the last state sync saw (trace builds) */
+ uint32_t hold;     /* the stock type-3 wake lock "turbo_lock_v1" while a time-limited lock screen is lit; 0 = none */
 } LockCtl;
 #define PENDING_UNTIL_MS 60000u   /* also the window in which the assistant and microphone gates refuse without a lock */
 #define PENDING_EVERY_MS 1000u
@@ -111,7 +118,13 @@ static void layers_hidden(bool hidden){
  void *top=slot(d,TIO_STOCK_DISPLAY_TOP);if(!top)return;
  if(hidden)tio_lv_obj_add_flag(top,TIO_STOCK_OBJ_FLAG_HIDDEN);else tio_lv_obj_remove_flag(top,TIO_STOCK_OBJ_FLAG_HIDDEN);
 }
+/* The wake lock keeps stock's auto-off and focus mode's 3 s turn-off from turning the panel off under a lock screen; the
+ * lock's own timeouts (PIN entry 30 s after the last input, waiting 30 s, wrong PIN and use phone 2 s, "Unlocked" 4-5 s)
+ * end every such screen in cover_drop. Taken once per lit screen and released once (the token is cleared). */
+#define HOLD_NAME "turbo_lock_v1"
+static void hold_release(LockCtl *c){if(c->hold){nav_release_always_on(HOLD_NAME,c->hold);c->hold=0;TR("[TurboLock] hold released");}}
 static void cover_drop(LockCtl *c){
+ hold_release(c);
  if(c->view_open){tlv_close(&c->view);c->view_open=false;}
  if(c->cover){tio_lv_obj_delete(c->cover);c->cover=NULL;layers_hidden(false);}
  c->status_read=false;
@@ -141,12 +154,29 @@ static int cover_make(LockCtl *c){
 /* The cover must stay the last child of the sys layer, the one drawn on top. A child stock adds later (a call view, a
  * toast, the assistant view) or one it brings to the front would draw over the lock screen; the caller then closes the
  * lock screen and goes dark, and the next press opens it again on top. Unreadable counts as covered (fail closed). */
-static bool cover_last(const LockCtl *c){
- void *d=stream_display_next(NULL),*sys=d?slot(d,TIO_STOCK_DISPLAY_SYS):NULL;if(!sys)return false;
- void *sa=slot(sys,TIO_STOCK_OBJ_SPEC_ATTR);if(!sa)return false;
- uint16_t n;memcpy(&n,(uint8_t *)sa+TIO_STOCK_SPEC_CHILD_CNT,sizeof n);
- void **children=slot(sa,TIO_STOCK_SPEC_CHILDREN);if(!n||!children)return false;
- void *last;memcpy(&last,&children[n-1u],sizeof last);return last==c->cover;
+static void **sys_children(uint16_t *n){
+ void *d=stream_display_next(NULL),*sys=d?slot(d,TIO_STOCK_DISPLAY_SYS):NULL;if(!sys)return NULL;
+ void *sa=slot(sys,TIO_STOCK_OBJ_SPEC_ATTR);if(!sa)return NULL;
+ memcpy(n,(uint8_t *)sa+TIO_STOCK_SPEC_CHILD_CNT,sizeof *n);
+ void **children=slot(sa,TIO_STOCK_SPEC_CHILDREN);return *n&&children?children:NULL;
+}
+static void *child(void **children,uint16_t i){void *o;memcpy(&o,&children[i],sizeof o);return o;}
+static bool cover_last(const LockCtl *c){uint16_t n;void **ch=sys_children(&n);return ch&&child(ch,n-1u)==c->cover;}
+/* Stock focus mode's overlay root (manager -> overlay -> LVGL root), NULL at any missing step. */
+static void *focus_root(void){
+ void *m=tio_focus_manager;if(!m)return NULL;
+ void *o=slot(m,TIO_STOCK_FOCUS_MGR_OVERLAY);return o?slot(o,TIO_STOCK_FOCUS_OVERLAY_ROOT):NULL;
+}
+/* The one known exception to the covered rule: focus mode moves its overlay to the top of the sys layer when its 3 s
+ * timer runs out (and asks the panel off, which the wake lock blocks). When the top child is exactly that overlay's root
+ * and the cover is still in the list, the cover is moved back on top and redrawn. Anything else: false. */
+static bool cover_raise_over_focus(LockCtl *c){
+ uint16_t n;void **ch=sys_children(&n);if(!ch||n<2u)return false;
+ void *f=focus_root();if(!f||child(ch,n-1u)!=f)return false;
+ bool in=false;for(uint16_t i=0;i+1u<n;i++)if(child(ch,i)==c->cover)in=true;
+ if(!in)return false;
+ tio_lv_obj_move_to_index(c->cover,(int32_t)n-1);stream_invalidate(c->cover);
+ return cover_last(c);
 }
 static void go_dark(LockCtl *c){c->dark=1;cover_drop(c);(void)nav_force_off();}
 
@@ -159,10 +189,15 @@ static void sync(LockCtl *c,uint32_t now_ms){
  if(t->state==TLK_DARK){if(!c->dark)go_dark(c);}
  else if(t->state==TLK_OFF||t->state==TLK_UNLOCKED){
   c->dark=0;cover_drop(c);
+ }else if(t->state==TLK_NOTICE&&t->notice_dark){   /* the notice went dark untouched: once dark, the panel stays off */
+  if(c->cover){cover_drop(c);(void)nav_force_off();native_log(1,0,0,0,"[TurboLock] notice dark ms=%u",now_ms);}
  }else{   /* a lock screen (PIN, wrong, waiting, use phone) or the failure notice */
-  if(c->cover&&tlk_locked(t)&&!cover_last(c)){   /* something drawn over the lock screen: close it, dark */
-   native_log(1,0,0,0,"[TurboLock] covered: lock screen closed state=%u ms=%u",t->state,now_ms);
-   tlk_close_screen(t);go_dark(c);return;
+  if(c->cover&&!cover_last(c)){
+   if(cover_raise_over_focus(c))native_log(1,0,0,0,"[TurboLock] cover raised over focus overlay state=%u ms=%u",t->state,now_ms);
+   else if(tlk_locked(t)){   /* something else drawn over the lock screen: close it, dark */
+    native_log(1,0,0,0,"[TurboLock] covered: lock screen closed state=%u ms=%u",t->state,now_ms);
+    tlk_close_screen(t);go_dark(c);return;
+   }
   }
   int k=cover_make(c);
   if(k<0){t->state=tlk_locked(t)?TLK_DARK:t->state;go_dark(c);c->locked=tlk_locked(t)?1:0;return;}   /* backstop: dark */
@@ -183,9 +218,13 @@ static void sync(LockCtl *c,uint32_t now_ms){
    (void)tlv_draw(&c->view,&s,c->lang);
    /* Panel on: redraw the whole cover, so nothing the panel held from before the dark is left around the labels. */
    if(was||!focus_screen_on()){nav_screen_on(true);stream_invalidate(c->cover);}
+   /* Every lit screen but the notice holds the panel on (time-limited by the lock's own timers, released in cover_drop). */
+   if(t->state!=TLK_NOTICE){if(!c->hold){c->hold=nav_always_on(HOLD_NAME);TR("[TurboLock] hold taken=%u",c->hold!=0);}}
+   else hold_release(c);
    /* The PIN screen is up and the panel asked on: input counts after the grace from here; what queued before is dropped. */
    if(t->state==TLK_ENTRY)tlk_entry_lit(t,now_ms);
    else if(t->state==TLK_UNLOCKED_MSG)tlk_unlocked_lit(t,now_ms);   /* "Unlocked" shows from here */
+   else if(t->state==TLK_NOTICE)tlk_notice_lit(t,now_ms);          /* its untouched timeout runs from here */
   }
  }
  if(t->flush_input){t->flush_input=false;key_queue_flush();c->wheel_acc=0;}

@@ -7,7 +7,8 @@
    "display_unit": 137,
    "tio_launcher_global": 3,
    "render_dispatch_gpu": 1,
-   "render_dispatch_sw": 1
+   "render_dispatch_sw": 1,
+   "tio_focus_manager": 9
   },
   "str": {
    "\"lv_timer_handler\"": 1,
@@ -3184,6 +3185,58 @@
    },
    "transform": "id",
    "why": "the exercise expected-action sender stores its one-byte payload's length after the type"
+  },
+  {
+   "constant": "TIO_STOCK_FOCUS_MGR_OVERLAY",
+   "n": 1,
+   "where": "call:call:lit:tio_focus_manager#6@0xc@0xe",
+   "at": 4,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 0
+   },
+   "transform": "id",
+   "why": "the overlay-visible check loads the manager's overlay view and returns false when it is NULL"
+  },
+  {
+   "constant": "TIO_STOCK_FOCUS_MGR_OVERLAY",
+   "n": 2,
+   "where": "call:lit:tio_focus_manager#8@0x3a",
+   "at": 6,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 0
+   },
+   "transform": "id",
+   "why": "the screen-on refresh loads the manager's overlay view and passes it to the overlay's visible check"
+  },
+  {
+   "constant": "TIO_STOCK_FOCUS_OVERLAY_ROOT",
+   "n": 1,
+   "where": "call:call:call:lit:tio_focus_manager#6@0xc@0xe@0x10",
+   "at": 2,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 3,
+    "rn": 0
+   },
+   "transform": "id",
+   "why": "the overlay's visible check loads its root object and tests the hidden flag on it"
+  },
+  {
+   "constant": "TIO_STOCK_FOCUS_OVERLAY_ROOT",
+   "n": 2,
+   "where": "call:call:call:call:lit:tio_focus_manager#6@0xc@0xe@0x30@0x1a",
+   "at": 18,
+   "shape": "ldr-imm5",
+   "regs": {
+    "rt": 0,
+    "rn": 4
+   },
+   "transform": "id",
+   "why": "the overlay's bring-to-front loads its root object and clears the hidden flag on it before it moves it to the top"
   }
  ]
 }
