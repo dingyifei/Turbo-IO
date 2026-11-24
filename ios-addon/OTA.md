@@ -91,7 +91,7 @@ This cannot flash the wrong package. Authorization needs all 17 pinned files, `O
 
 ## Going back
 
-The glasses roll back on their own only if Bluetooth advertising has not started within 10 s of first boot. Otherwise the flashed firmware stays until you flash something else.
+The glasses roll back on their own only before the new firmware confirms: if Bluetooth advertising has not started within about 10 s of its first boot, or if the glasses restart before that. They roll back to the last update that confirmed, and only if one exists; with none they stay in the installer. Neither case has been seen on a device. See [When an update goes wrong](../docs/recovery.md). Otherwise the flashed firmware stays until you flash something else.
 
 If TMG15 misbehaves, pick one:
 

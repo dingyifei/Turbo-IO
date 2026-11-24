@@ -17,6 +17,7 @@ Status column:
 | [Glasses PIN lock](lock-design.md) | Current | The lock's design: what it protects against, the PIN screen, the firmware hooks and the phone side |
 | [iOS addon](../ios-addon/README.md) | Current | The phone addon: source, build, packaging and tests |
 | [Flashing firmware](../ios-addon/OTA.md) | Current | How the phone flashes Turbo firmware, and how to go back |
+| [When an update goes wrong](recovery.md) | Current | What the glasses do when a firmware update fails, what survives, and the way back, with how sure we are of each |
 | [Firmware tree](../firmware/README.md) | Current | The patched firmware source, the current release, and how to build and audit it |
 | [Clench tooling](../tools/clench/README.md) | Current | Offline tooth-tap recording and analysis |
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
