@@ -19,12 +19,12 @@ int main(int argc,const char **argv){@autoreleasepool{
     NSData *data=[NSData dataWithContentsOfURL:source];assert(data);
     assert(!TIOCheckExperimentalOTA(data,stock,&error));
     error=nil;NSDictionary *ok=TIOCheckExperimentalOTA(data,tmg,&error);assert(ok&&!error);
-    // The summary is the pins' difference from the stock package (C25: TMG16 changes the AP and the Bluetooth core).
+    // The summary is the pins' difference from the stock package (C26: TMG17 changes the AP and the Bluetooth core).
     {NSMutableArray *diff=[NSMutableArray array];NSDictionary *tp=tmg[@"memberPins"],*sp=stock[@"memberPins"];
      for(NSString *n in [tp.allKeys sortedArrayUsingSelector:@selector(compare:)])if(![n isEqual:@"OtaFileInfo.json"]&&![tp[n] isEqual:sp[n]])[diff addObject:n];
      assert([diff containsObject:@"nuttx_ap.bin"]&&[ok[@"changedPayloads"] isEqual:diff]&&[TIOOTAChangedPayloads(tmg) isEqual:diff]&&[TIOOTAChangedPayloads(stock) isEqual:@[]]);
      assert([ok[@"unchangedPayloadCount"] unsignedIntegerValue]==tp.count-1-diff.count&&[stockOK[@"unchangedPayloadCount"] unsignedIntegerValue]==sp.count-1);
-     if([tmg[@"name"] isEqual:@"TMG16"])assert([diff isEqual:(@[@"nuttx_ap.bin",@"nuttx_bth.bin"])]&&[ok[@"unchangedPayloadCount"] unsignedIntegerValue]==14);}assert([ok[@"integrityPassed"] boolValue]);assert(![ok[@"sent"] boolValue]);assert(![ok[@"officialDispatchConnected"] boolValue]);NSString *identity=[@"Turbo Menu " stringByAppendingString:tmg[@"name"]];assert([ok[@"candidate"] isEqual:identity]);
+     if([tmg[@"name"] isEqual:@"TMG17"])assert([diff isEqual:(@[@"nuttx_ap.bin",@"nuttx_bth.bin"])]&&[ok[@"unchangedPayloadCount"] unsignedIntegerValue]==14);}assert([ok[@"integrityPassed"] boolValue]);assert(![ok[@"sent"] boolValue]);assert(![ok[@"officialDispatchConnected"] boolValue]);NSString *identity=[@"Turbo Menu " stringByAppendingString:tmg[@"name"]];assert([ok[@"candidate"] isEqual:identity]);
     assert(!TIOCheckExperimentalOTA([NSData data],tmg,&error));assert([error.localizedDescription containsString:tmg[@"name"]]);
     assert(!TIOCheckExperimentalOTA([NSData data],stock,&error));assert([error.localizedDescription containsString:TIOOTAPackageDisplayName(stock)]);
     NSMutableData *bad=[data mutableCopy];((uint8_t *)bad.mutableBytes)[100]^=1;assert(!TIOCheckExperimentalOTA(bad,tmg,&error));

@@ -1,18 +1,18 @@
 {
   "schema": 1,
-  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins-<name>.json; --check runs in the gate. Every release is named cN, is built on stock 1.0.6.11 and is built only for the 1.0.21 full host (1021-full). With exactly one release, a build that names none (no TIO_RELEASE, no --release) is that release. A release lists its packages: the first is a TMG build and is selected at every launch; a second one, labelled STOCK-<base>, is the base's stock package, which the owner can pick in the flash wizard instead. C25 is the only release: it carries TMG16 and stock 1.0.6.11, flashes either from the 1.0.21 full host, and accepts glasses on 1.0.5.12 (TMG11) or 1.0.6.11 for both.",
+  "note": "Phone release configurations. firmware/tools/phone_pins.py reads this file and the release ZIPs (paths relative to $TURBO_INPUTS) and writes FirmwarePins.h and firmware-pins-<name>.json; --check runs in the gate. Every release is named cN, is built on stock 1.0.6.11 and is built only for the 1.0.21 full host (1021-full). With exactly one release, a build that names none (no TIO_RELEASE, no --release) is that release. A release lists its packages: the first is a TMG build and is selected at every launch; a second one, labelled STOCK-<base>, is the base's stock package, which the owner can pick in the flash wizard instead. C26 is the only release: it carries TMG17 and stock 1.0.6.11, flashes either from the 1.0.21 full host, and accepts glasses on 1.0.5.12 (TMG11) or 1.0.6.11 for both.",
   "releases": {
-    "c25": {
-      "builds": "C25: flashes TMG16 (the PIN lock with the head-motion hook on stock 1.0.6.11; TMG15 with the design-system PIN screen: a drawn digit over the system caret in band B) or stock 1.0.6.11, picked in the wizard, from the 1.0.21 full host",
+    "c26": {
+      "builds": "C26: flashes TMG17 (the PIN lock with the head-motion hook on stock 1.0.6.11; TMG16 with the PIN screen kept up under Do Not Disturb and a failure notice that goes dark after 30 s untouched) or stock 1.0.6.11, picked in the wizard, from the 1.0.21 full host",
       "hosts": ["1021-full"],
       "stockBase": "1.0.6.11",
       "packages": [
         {
-          "label": "TMG16",
+          "label": "TMG17",
           "zip": {
-            "input": "tmg16/StrixOS-1.0.6.11-TurboIO-TMG16-CANDIDATE-NOT-APPROVED.zip",
-            "bytes": 9562656,
-            "sha256": "f176d90cbf1c870ed29ff01e42f48e4bacf7713c3217a6c333894931b380d3d2"
+            "input": "tmg17/StrixOS-1.0.6.11-TurboIO-TMG17-CANDIDATE-NOT-APPROVED.zip",
+            "bytes": 9563076,
+            "sha256": "dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01"
           },
           "acceptCurrent": ["1.0.5.12", "1.0.6.11"]
         },

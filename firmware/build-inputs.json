@@ -144,7 +144,7 @@
       "offset": "0x514116",
       "address": "0x106a4116",
       "before": "1e2380b5",
-      "after": "a2f2d5bd",
+      "after": "a2f2dbbe",
       "role": "Menu replacement frame_start",
       "kind": "bw",
       "target": "m8_hook_frame_start",
@@ -154,7 +154,7 @@
       "offset": "0x514126",
       "address": "0x106a4126",
       "before": "1e22a0f10f03",
-      "after": "a2f2d1bd00bf",
+      "after": "a2f2d7be00bf",
       "role": "Menu replacement frame_index",
       "kind": "bw",
       "target": "m8_hook_frame_index",
@@ -214,7 +214,7 @@
       "offset": "0x51139c",
       "address": "0x106a139c",
       "before": "4ff4867050f07cfc",
-      "after": "a5f216fc00bf00bf",
+      "after": "a5f21cfd00bf00bf",
       "role": "284-byte menu allocation",
       "kind": "bl",
       "target": "port_allocate_menu",
@@ -244,7 +244,7 @@
       "offset": "0x418482",
       "address": "0x105a8482",
       "before": "00242048214b84610360",
-      "after": "9ef30dfc00bf00bf00bf",
+      "after": "9ef313fd00bf00bf00bf",
       "role": "File callback registration",
       "kind": "bl",
       "target": "stream_register_shim",
@@ -258,7 +258,7 @@
       "kind": "bw",
       "target": "lock_hook_can_wakeup",
       "pad": 0,
-      "after": "c7f34ebe"
+      "after": "c7f354bf"
     },
     {
       "offset": "0x3f2878",
@@ -268,7 +268,7 @@
       "kind": "bw",
       "target": "lock_hook_open_remote_audio",
       "pad": 0,
-      "after": "c4f337ba"
+      "after": "c4f33dbb"
     },
     {
       "offset": "0x3f19d8",
@@ -278,7 +278,7 @@
       "kind": "bw",
       "target": "lock_hook_open_recorder",
       "pad": 0,
-      "after": "c5f392b9"
+      "after": "c5f398ba"
     },
     {
       "offset": "0x4c5a5c",
@@ -288,7 +288,7 @@
       "kind": "bw",
       "target": "lock_hook_screen_state",
       "pad": 0,
-      "after": "f1f25bb9"
+      "after": "f1f261ba"
     },
     {
       "offset": "0x41a8e8",
@@ -298,7 +298,7 @@
       "kind": "bw",
       "target": "lock_hook_factory_reset",
       "pad": 0,
-      "after": "9cf31fba"
+      "after": "9cf325bb"
     },
     {
       "offset": "0x6ff67c",
@@ -308,7 +308,7 @@
       "kind": "bw",
       "target": "lock_hook_key_read",
       "pad": 0,
-      "after": "b5f0ddb8"
+      "after": "b5f017b9"
     },
     {
       "offset": "0x5fe644",
@@ -318,7 +318,7 @@
       "kind": "bw",
       "target": "lock_hook_wheel_read",
       "pad": 0,
-      "after": "b6f172bb"
+      "after": "b6f123bc"
     },
     {
       "offset": "0x4d2b64",
@@ -328,13 +328,13 @@
       "kind": "bw",
       "target": "lock_hook_neck_rx",
       "pad": 0,
-      "after": "e4f2e8b8"
+      "after": "e4f2eeb9"
     }
   ],
   "editCount": 33,
-  "moduleBytes": 189116,
+  "moduleBytes": 189756,
   "moduleVA": "0x10929204",
-  "moduleSHA256": "eca44ef94a27f1585e75fbbdba1b4076b468aa956fa69c30a3837fc8954aadf4",
+  "moduleSHA256": "1b8b274aa89d4aea5f63bd30629373c51dd06a82367b6ba10199e87bd269f89f",
   "stockAP": "9bbf7be31ebb7f8600e6ea4bf51831a151e2af6d4eb8e6ccfcf55d67f2e71260",
   "stockBase": "1.0.6.11",
   "stockMembers": {
@@ -364,11 +364,11 @@
       "bytes": 18315227
     }
   },
-  "APBytes": 8156360,
+  "APBytes": 8157000,
   "archive": {
-    "bytes": 9562656,
-    "sha256": "f176d90cbf1c870ed29ff01e42f48e4bacf7713c3217a6c333894931b380d3d2",
-    "md5": "5dbd0c02d970e5b74db3bc2c87ad1000"
+    "bytes": 9563076,
+    "sha256": "dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01",
+    "md5": "dc804a1ca2a9bc36fccc9bca6483ff9a"
   },
   "sources": [
     {
@@ -577,11 +577,11 @@
     },
     {
       "source": "lock-v1/lock_core.c",
-      "sha256": "1573d9929cbb656c1040ed0c7de3e10a6079d0295ce2ba89697e0a181d485559"
+      "sha256": "35298d43e6761e27755b2cae2fb5c9fa7e2e7be0ba94b7a060bc38d41c745227"
     },
     {
       "source": "lock-v1/lock_native.c",
-      "sha256": "cf5fe5d31959bf9930224ea115f79aca390dc163828cf12fac51b0aafa5ecddc"
+      "sha256": "d9ff7a1b4ea794cc2c72bfd7faa5f0aa42f66fc34c224d8d6c9679cb24d08aa5"
     },
     {
       "source": "lock-v1/lock_service.c",
@@ -597,7 +597,7 @@
     }
   ],
   "stockZIP": "5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e",
-  "APSHA256": "664dc91bcec12588d27ed58827a63e9e0a6c1a4936db474e9c5c34c8983fba94",
+  "APSHA256": "cca3cb6b6301f9aa08499d872c1ceaf4a774a78651bc275b9e4881141ddbdfaa",
   "toolchain": {
     "clang": "Homebrew clang version 23.1.5",
     "lld": "Homebrew LLD 23.1.5 (compatible with GNU linkers)"

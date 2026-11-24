@@ -114,7 +114,7 @@ if only is None or 'tmg4-host' in only:
     ctest('tmg9-stepping',[FW/'tests/tmg9_stepping_test.c'],FW/'src')
     ctest('tmg8-music-input',[FW/'src/music-runtime-v1/music_input_test.c'],FW/'src/music-runtime-v1')
     run('tmg8-icons',['python3','-I',FW/'tests/tmg8_icons_test.py'])
-    run('tmg16-lock-glyphs',['python3','-I',FW/'tests/lock_glyphs_test.py'])   # the PIN digit tables equal tools/lock_glyphs.py's output
+    run('tmg17-lock-glyphs',['python3','-I',FW/'tests/lock_glyphs_test.py'])   # the PIN digit tables equal tools/lock_glyphs.py's output
     run('tmg8-brightness',['python3','-I',FW/'tests/tmg8_brightness_test.py','--out',out/'tmg8-brightness'])
     ctest('tmg8-lyrics',[FW/'tests/tmg8_lyrics_test.c'],FW/'src')
     ctest('tmg8-tile-state',[FW/'tests/tmg8_tile_state_test.c',FW/'src/common-v1/tio_text.c'],FW/'src')
@@ -306,7 +306,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
     else:skip('tmg4-wizard','not selected by --only')
     # The 1.0.21 flash sequence recorded on 2026-11-15 (tests/flash-sequence-1021.json), replayed through the
     # same unchanged guard and gate on the full 1.0.21 host with the slices cut from this release's ZIP:
-    # every frame allowed, stage 2, 314 slices and 15,765,714 bytes; then each mutation in its own process
+    # every frame allowed, stage 2, 314 slices and 15,766,354 bytes; then each mutation in its own process
     # (stages 2 and 3 last until the app restarts), each refused.
     seen.add('flash-sequence-1021')
     if only is None or 'flash-sequence-1021' in only:
@@ -316,7 +316,7 @@ with tempfile.TemporaryDirectory(prefix='turbo-navs3-test-') as tmp:
             run('flash-sequence-1021-'+mode,[out/'flash-sequence-1021',root/'candidate',root,P/'tests/flash-sequence-1021.json',mode])
             log=(out/('flash-sequence-1021-'+mode+'.log')).read_text()
             want='PASS flash sequence replay: ' if mode=='replay' else 'PASS flash sequence mutation '+mode+': refused'
-            if want not in log or (mode=='replay' and 'stage 2 reached, 314 slices, 15765714 bytes' not in log):raise RuntimeError('flash-sequence-1021-'+mode+' did not report PASS')
+            if want not in log or (mode=='replay' and 'stage 2 reached, 314 slices, 15766354 bytes' not in log):raise RuntimeError('flash-sequence-1021-'+mode+' did not report PASS')
         # The hook protection on its own refuses authorization: before the transport hook is ready, and in a
         # build without TIO_OTA_FLASH_ENABLED (same sources, that one define left out).
         run('flash-sequence-1021-noflash-build',flags+[P/'tests/FlashSequenceTests.m',P/'ExperimentalOTA.m',P/'ExperimentalOTAGuard.m',adapted,'-lz','-DTIO_DISPLAY_FLASH=1','-o',out/'flash-sequence-1021-noflash'])

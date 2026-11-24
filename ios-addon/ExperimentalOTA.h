@@ -22,7 +22,7 @@ FOUNDATION_EXPORT NSDictionary * _Nullable TIOReadExperimentalOTA(NSURL *file, N
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOImportExperimentalOTA(NSURL *source, NSURL *directory, NSDictionary * _Nullable package, NSError **error);
 // The official ota/<folder> check for the package: TIOCopyExperimentalOTAPayloads succeeds. A summary, NOT a flash approval.
 FOUNDATION_EXPORT NSDictionary * _Nullable TIOCheckOfficialOTADirectory(NSURL *directory, NSDictionary * _Nullable package, NSError **error);
-// This build's release (a cN name from releases.json, today c25) and its official folder name (Strix_OS_<base>),
+// This build's release (a cN name from releases.json, today c26) and its official folder name (Strix_OS_<base>),
 // the same for every package of the release.
 FOUNDATION_EXPORT NSString *TIOOTARelease(void);
 FOUNDATION_EXPORT NSString *TIOOTAReleaseFolder(void);
