@@ -150,6 +150,21 @@ Run the packager tests with `node --test package.test.mjs`.
 
 Host tests and previews do not show that a build works on the glasses. Only a check on the device does.
 
+### Reproducible build check
+
+Run from the repo root:
+
+```bash
+bash scripts/repro-check.sh --apple-ai --wire-log   # the flags of a packaged build
+bash scripts/repro-check.sh                         # defaults: --host 1021-full; also --host 1021, --release cN, --rev <commit>
+```
+
+The script builds one commit twice: once from a `git archive` export (no git) and once from a temporary `git worktree` at a path of another length. Both go through `turbo-package.sh --build-only`. It then compares the unsigned `TurboIOPrivateAddon.dylib`, and with `--apple-ai` also `TurboAppleAI.dylib`, byte for byte, and fails on any difference. It builds only committed content, copies the private bootstrap sources from `$TURBO_INPUTS/private-backup/ios107` after their SHA-256 check, signs nothing and touches no device. It is not a gate stage: run it once before a release.
+
+- The claim covers the unsigned dylibs with the pinned inputs. A signed IPA carries a signature and timestamps and is never byte-identical.
+- Both builds need the same Xcode and iPhoneOS SDK. Another Xcode changes the SDK version in the load commands, so the dylib differs (this happened to C13). Each package run writes the versions to `toolchain.txt` in its log folder.
+- The build commit that Clench Lab records comes from git in a checkout and from `BUILD_COMMIT` (filled by `export-subst`) in a `git archive` export. Both give the same 12 characters.
+
 ## Wire log (`TIO_WIRE_LOG=1`)
 
 The wire log records the traffic between the RayNeo app's Dart layer and its native layer, one JSON object per line. Without `TIO_WIRE_LOG=1` the addon has no recorder symbols or strings; the gate and the packager check this.
