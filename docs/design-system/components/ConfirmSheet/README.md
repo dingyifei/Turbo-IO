@@ -2,7 +2,7 @@ A half-height sheet that confirms one consequential action, such as an install, 
 
 **Consumer provides:** a question title (`title3`) that names the action and its object, one sentence of consequence, optional `caption` metadata with tabular digits, a confirm verb, and a cancel verb.
 
-**Build with:** `UISheetPresentationController` with the `.medium` detent and the grabber visible. It follows the system appearance, so remove the `overrideUserInterfaceStyle` in `TIOConfirm.m`.
+**Build with:** `UISheetPresentationController` with the `.medium` detent and the grabber visible. It follows the system appearance (`TIOConfirm.m` sets no `overrideUserInterfaceStyle`).
 
 **Rules**
 - The confirm verb repeats the title's verb ("Install"), never "OK" or "Yes".

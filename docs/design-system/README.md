@@ -20,7 +20,7 @@ Turbo IO has two surfaces that work as a pair. The **phone** is where people set
 - **Every string goes through `TIOText()`** with an EN and a ZH-Hans value in `i18n/strings.jsonl`. Design for ZH being about 40% shorter and EN about 30% longer than the mockup. Rows wrap; they never truncate meaningful text.
 - **Glasses copy is a glance.** Use at most 4 words in band B ("Turn right", "100 m"), numbers before nouns, and units abbreviated ("km", "min"). Never put instructions in band B. Instructions are hints, and hints are transient (see Glasses foundations).
 - Real examples to keep: "Apple Maps turn-by-turn", "Ready to check", "Looks up lyrics on lrclib.net using only the song title, artist, and duration."
-- Example to fix: "Copy Spotify callback diagnostics (Developer)" truncates in a row. Move it into the Developer section as "Copy callback log".
+- Keep row titles short enough not to truncate: the Music developer row is "Copy callback log", not "Copy Spotify callback diagnostics".
 
 ## Phone foundations (iOS)
 
@@ -40,7 +40,7 @@ Turbo IO has two surfaces that work as a pair. The **phone** is where people set
 
 **Type.**
 - Use only the text styles `large-title`, `title2`, `title3`, `headline`, `body`, `subheadline`, `footnote` and `caption`, through `UIFont preferredFontForTextStyle:`. Set `adjustsFontForContentSizeCategory = YES`.
-- Never use `systemFontOfSize:`; there are 29 of these today.
+- Never use `systemFontOfSize:` in phone chrome. The `tio-design-literals` test group (`ios-addon/tests/design_literals.py`) fails on any fixed font size or color literal outside `TIODesign` and the glasses-preview surfaces it lists.
 - Use monospaced digits (`caption` + `UIFontDescriptorFeatureSettings`) for sizes, hashes and timers.
 - Layouts must work at AX5. Rows grow, and horizontal button pairs stack vertically above `accessibilityLarge`.
 
@@ -89,7 +89,7 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
 
 **5. Hints are transient.**
 - Control hints ("Wheel: previous / next · Tap: pause") appear in band T at `lens-high` for `lens-hint-ms` (3 s) after a page opens or after the last input, then disappear.
-- They never occupy band B. Today's fixed footer at `{16,150,508,24}` spends the most valuable row on text that is read once. That is the pattern this system removes.
+- They never occupy band B. A permanent footer would spend the most valuable row on text that is read once.
 
 **6. Motion.** Focus and caret moves use `lens-move-ms` (160ms ease-out, or 120ms on a page change). The map blends in 180ms. There is no ambient or looping animation, and nothing moves while the wearer isn't giving input, except live data.
 
@@ -102,7 +102,7 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
 - Mini-app art outside band B is capped at `lens-mid`.
 - Every host render passes the brightness gate, using the same metric as the Lens Brightness Audit dashboard.
 
-**9. Knob.** Every list moves one item per `lens-wheel-detent` raw counts. The token is a range: `min` 300, `max` 600, `step` 50, `default` 400 (about 5.0 items per ~2000-count turn at the default, 6.7 at 300, 3.3 at 600). The phone sets it inside that range, and the firmware, the wire format and the phone code all read the same four numbers (`TIO_WHEEL_DETENT_*`, `TML_DETENT_*`, `TIOLensWheelDetent*`). A list wraps from the last item to the first. Input lockouts are 200 ms on pages and 500 ms in music.
+**9. Knob.** Every list moves one item per `lens-wheel-detent` raw counts. The token is a range: `min` 300, `max` 600, `step` 50, `default` 400 (about 5.0 items per ~2000-count turn at the default, 6.7 at 300, 3.3 at 600). The phone sets it inside that range, and the firmware, the wire format and the phone code all read the same four numbers (`TIO_WHEEL_DETENT_*`, `TML_DETENT_*`, `TIOLensWheelDetent*`). The menu wraps from the last item to the first; focus on a page clamps at its ends (see FocusCaret). Input lockouts are 200 ms on pages and 500 ms in music.
 
 ## Iconography
 
@@ -111,7 +111,7 @@ The glasses are not a small phone. The field of view is about 23.5°, so the cen
   - Tile colors by section: Glasses `accent-fill`/`on-accent`, Assistant `tile-assistant`, Media `tile-media`, Developer `tile-developer`, each with a white glyph.
   - No custom image icons.
 - **Glasses:**
-  - Menu icons are 13 outline glyphs on a 48×48 grid with a 2.6-unit round stroke and no fills. The SVG sources are the single source of truth, encoded to 4 bpp in `focus_menu_icons.h`. They are drawn at 80px (carousel centre), 48 and 36px (carousel neighbours), 32px (2-row grid) or 28px (3-row grid). The focused peak is at most 0.44 at 80px, under `lens-peak-max`; larger sizes thicken the strokes past it.
+  - Menu icons are 14 outline glyphs (8 stock tiles and 6 Turbo tiles on Strix OS 1.0.6.11) on a 48×48 grid with a 2.6-unit round stroke and no fills. The SVG sources are the single source of truth, encoded to 4 bpp in `focus_menu_icons.h`. They are drawn at 80px (carousel centre), 48 and 36px (carousel neighbours), 64, 40 and 32px in the carousel while a route runs, 32px (2-row grid) or 28px (3-row grid). The focused peak is at most 0.44 at 80px, under `lens-peak-max`; larger sizes thicken the strokes past it.
   - App and card icons are 1-bit (`mono1-msb`).
   - Turn arrows are drawn as 64×64 strokes 8px wide.
   - All of them are single-ink `lens-full`, or `lens-mid` when unfocused.

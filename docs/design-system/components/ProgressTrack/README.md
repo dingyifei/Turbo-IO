@@ -1,4 +1,4 @@
-A thin progress track paired with a hero value, used for the Pomodoro timer, the reader position and OTA progress on the glasses.
+A thin progress track paired with a hero value, used for the Pomodoro timer and OTA progress on the glasses.
 
 **Consumer provides:** progress from 0 to 1, a hero value (a countdown or a percentage), and an optional count ("2 / 4").
 

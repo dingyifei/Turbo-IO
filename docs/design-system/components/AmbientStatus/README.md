@@ -6,4 +6,4 @@ The menu's ambient status row and the grid's focus treatment. Status sits quietl
 - **Status row in T:** time on the left, battery on the right, both `lens-label`/`lens-mid`. There is no "Turbo IO" wordmark. The wearer knows which product they are wearing.
 - **Unfocused icons** draw in `lens-mid` with their labels at `lens-min`. The **focused icon** draws in `lens-full` with the `lens-caret` under it, and its name in `lens-title` at band B, centred.
 - **Menu bands (540×220):** reserved y 0–12, T y 12–56, the grid in M y 56–172, B y 172–212 for the focused label, and reserved y 212–220.
-- **Page dots** (today 36×4 at y 214, in the reserved strip) move into band T, centred between the time and the battery.
+- **Page dots** (36×4) sit in band T, centred between the time and the battery. While a route runs, the navigation title takes that slot and the dots hide.

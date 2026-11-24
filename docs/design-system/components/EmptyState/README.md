@@ -5,4 +5,4 @@ The centred message shown when a screen has nothing to show yet, or can't work u
 **Rules**
 - Name the cause and the fix, without apologizing. "Glasses not connected" plus what to do, never "Something went wrong".
 - At most one action, styled as an `accent` text button.
-- Replaces the current `TIOEmptyState(symbol, title, detail)`. The fonts move from 18/14pt to `title3`/`subheadline`, and the padding to `space-6`.
+- Built by `TIODesignEmptyState`; the older `TIOEmptyState(symbol, title, detail)` forwards to it.
