@@ -779,7 +779,7 @@ static const TIOStringRow Rows[]={
     {"music.advanced","Advanced","高级"},
     {"music.bridge.busy","The glasses are on another page. Open Music on the glasses to resume.","眼镜正停在其他页面。请在眼镜上打开音乐以继续。"},
     {"music.bridge.noSession","The glasses closed the music page. Open Music on the glasses to resume.","眼镜已关闭音乐页。请在眼镜上打开音乐以继续。"},
-    {"music.callback.copy","Copy Spotify callback diagnostics","复制 Spotify 回调诊断"},
+    {"music.callback.copy","Copy callback log","复制回调日志"},
     {"music.callback.none","No callback received this session","本次会话尚未收到回调"},
     {"music.cancel","Cancel","取消"},
     {"music.catalog.row","Spotify · glasses menu 10","Spotify · 眼镜第十项菜单"},

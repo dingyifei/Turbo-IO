@@ -513,7 +513,7 @@
 {"key":"music.advanced","en":"Advanced","zh":"高级"}
 {"key":"music.bridge.busy","en":"The glasses are on another page. Open Music on the glasses to resume.","zh":"眼镜正停在其他页面。请在眼镜上打开音乐以继续。"}
 {"key":"music.bridge.noSession","en":"The glasses closed the music page. Open Music on the glasses to resume.","zh":"眼镜已关闭音乐页。请在眼镜上打开音乐以继续。"}
-{"key":"music.callback.copy","en":"Copy Spotify callback diagnostics","zh":"复制 Spotify 回调诊断"}
+{"key":"music.callback.copy","en":"Copy callback log","zh":"复制回调日志"}
 {"key":"music.callback.none","en":"No callback received this session","zh":"本次会话尚未收到回调"}
 {"key":"music.cancel","en":"Cancel","zh":"取消"}
 {"key":"music.catalog.row","en":"Spotify · glasses menu 10","zh":"Spotify · 眼镜第十项菜单"}
