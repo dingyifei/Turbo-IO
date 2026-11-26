@@ -186,24 +186,40 @@ if args.firmware_only:
     raise SystemExit(0)
 seen.add('shared-sources')
 if only is None or 'shared-sources' in only:
-    pairs=['menu-grid-v2/menu_config.c','menu-grid-v2/menu_config.h',
-        'navigation-runtime-v1/nav_map.c','navigation-runtime-v1/nav_map.h','navigation-runtime-v1/nav_text.h',
-        'navigation-runtime-v1/nav_runtime.c','navigation-runtime-v1/nav_runtime.h',
-        'music-runtime-v1/music.c','music-runtime-v1/music.h',
-        'focus-v1/focus.c','focus-v1/focus.h','app-runtime-v1/app.c',
-        'global-remote-v1/remote.c','dashboard-v1/card.c','diagnostics-v1/command.c',
-        'display-runtime-v1/display_runtime.c','global-remote-v1/lang_flag.c','global-remote-v1/lang_flag.h']
-    for name in pairs:
-        phone=P/Path(name).name
-        if not phone.exists():
-            print('shared-sources: skip removed phone copy '+phone.name);continue
-        if phone.read_bytes()!=(FW/'src'/name).read_bytes():
-            raise RuntimeError('shared source mismatch: '+name)
-    for name in ['menu-grid-v2/tile_config.c','menu-grid-v2/tile_config.h','global-remote-v1/lang_store.c','global-remote-v1/lang_store.h','diagnostics-v1/diagnostics.c','diagnostics-v1/diagnostics.h','diagnostics-v1/command.h','diagnostics-v1/knob_calibration.c','diagnostics-v1/knob_calibration.h','lock-v1/lock_codec.c','lock-v1/lock_codec.h']:
-        phone=P/Path(name).name
-        if not phone.is_file() or phone.read_bytes()!=(FW/'src'/name).read_bytes():
-            raise RuntimeError('TMG4 shared source missing/mismatch: '+name)
-    groups.append('shared-sources');print('shared-sources: PASS')
+    # Every C/H file name present in both the firmware tree and the addon must be byte-identical, except these.
+    shared_exceptions={
+        # The firmware copy (in the firmware build) has the TMG7 caret and TMG8 brightness rule and a tint callback;
+        # the phone compiles the older copy and AppUI.m mirrors the newer behaviour by hand. Syncing the firmware side
+        # would change the ZIP; syncing the phone side needs common-v1 headers and a tint callback in AppUI.m.
+        'app_view.c':'firmware and phone copies differ on purpose (see above)','app_view.h':'firmware and phone copies differ on purpose (see above)',
+    }
+    # Objective-C phone headers with leftover copies in firmware/src: no firmware build or test reads those copies,
+    # and the addon's copies are the live ones.
+    for name in ['AppBridge.h','AppPackage.h','AppTransport.h','AppUI.h','DashboardCard.h','DisplayPhoneSession.h',
+                 'DisplayPhoneTransport.h','DisplayPhoneUI.h','DisplayReplyObserver.h','NativeNavigation.h',
+                 'TDPhoneBridge.h','TDPhoneReply.h','TDPhoneRun.h','TDPhoneStore.h','TDPhoneUI.h']:
+        shared_exceptions[name]='phone header; the firmware/src copy is an unused leftover'
+    def c_sources(root):
+        found={}
+        for path in root.rglob('*'):
+            parts=path.relative_to(root).parts
+            if path.suffix not in ('.c','.h') or not path.is_file() or 'build' in parts or 'PrivateBootstrap' in path.name:continue
+            found.setdefault(path.name,[]).append(path)
+        return found
+    fw_sources,phone_sources=c_sources(FW),c_sources(P)
+    common=sorted(set(fw_sources)&set(phone_sources))
+    stale=sorted(set(shared_exceptions)-set(common))
+    if stale:raise RuntimeError('shared-sources exception no longer on both sides, remove it: '+', '.join(stale))
+    compared=0
+    for name in common:
+        if name in shared_exceptions:continue
+        if len(fw_sources[name])!=1 or len(phone_sources[name])!=1:
+            raise RuntimeError('shared source name is ambiguous: '+name+' ('+', '.join(str(p.relative_to(ROOT)) for p in fw_sources[name]+phone_sources[name])+')')
+        if fw_sources[name][0].read_bytes()!=phone_sources[name][0].read_bytes():
+            raise RuntimeError('shared source mismatch: '+str(fw_sources[name][0].relative_to(ROOT))+' vs '+str(phone_sources[name][0].relative_to(ROOT)))
+        compared+=1
+    if not compared:raise RuntimeError('shared-sources compared no file')
+    groups.append('shared-sources');print(f'shared-sources: PASS ({compared} identical, {len(shared_exceptions)} listed exceptions)')
 else:skip('shared-sources','not selected by --only')
 
 seen.add('pins')
