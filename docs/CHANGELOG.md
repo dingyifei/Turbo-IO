@@ -188,7 +188,7 @@ npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 
 **开放开发能力，不取消安全边界：** 最多四个已安装应用、一个前台实例、每包最多四页、每页最多 12 个组件；解压后总预算 20 KiB，ZIP 上限 24 KiB。保留手机确认与协议校验，眼镜不运行 MCP 或任意脚本；API Key、Cookie、签名证书和私用安装包不随源码发布。先在电脑运行模板与后端测试，再处理匹配手机和固件集成。详见[公开范围与兼容前提](DEVELOPER_ECOSYSTEM.md)。
 
-[20 个模板及来源](../app-gallery/README.md) · [API 与安装步骤](DEVELOPER_ECOSYSTEM.md) · [手机集成边界](../official-addon/research/app-runtime-v1/README.md)
+[20 个模板及来源](../app-gallery/README.md) · [API 与安装步骤](DEVELOPER_ECOSYSTEM.md) · 手机集成边界（已删除，见 `git show b389cc6:official-addon/research/app-runtime-v1/README.md`）
 
 <details>
 <summary>查看应用广场界面</summary>

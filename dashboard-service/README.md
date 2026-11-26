@@ -62,7 +62,7 @@ TURBOIO_TOKEN_FILE="$PWD/.state/writer.token" uv run python examples/backend_met
 
 ### iOS 后端连接测试版
 
-源码：`../official-addon/research/dashboard-editor-v1/EditorBackend*`。入口：**我的仪表盘 → 数据源**。
+源码：`../ios-addon/EditorBackend*`。入口：**我的仪表盘 → 数据源**。
 
 1. 用户在自己的 HTTPS 入口前配置受控访问；不把默认本机服务直接暴露公网。电脑端仍可通过回环 HTTP 调试，手机只接受 HTTPS，不忽略证书错误。
 2. 为同一 device 单独签发 `phone` Token，模型仍用 `writer` / `reader`。手机配置时需连接目标眼镜，验证角色后把服务 device 绑定到这副眼镜。Token 仅存本机钥匙串。
@@ -141,6 +141,6 @@ uv run pytest -q
 
 2026-09-26 本机 47 项测试通过，覆盖 API、隔离、并发、重复发布、超时、持久化、恶意包、JS 打包、HTTP/MCP stdio、Python/Objective-C 文档及编码一致性、原生 C ASan/UBSan。20 个模板共 40 页另做原生内存测试；UIKit 验证 12 个桥接场景、4 个基础示例、20 个模板预览与三分区。macOS 专用测试在其他平台会跳过；模拟不是蓝牙、掉电或所有上游服务的实机验收。
 
-原生协议、包解码与内存测试源码位于 `../official-addon/research/app-runtime-v1/`。公开参考模块不是完整可刷 OTA，不附带硬编码私人配置或修改官方固件的自动命令。本轮只改手机应用广场与主机 SDK，没有刷写或改变 AP。
+原生协议、包解码与内存源码：眼镜运行时在 `../firmware/src/app-runtime-v1/`，手机模块在 `../ios-addon/`；测试驱动在 `tests/native/`，测试直接编译这两处的现行源码。公开参考模块不是完整可刷 OTA，不附带硬编码私人配置或修改官方固件的自动命令。本轮只改手机应用广场与主机 SDK，没有刷写或改变 AP。
 
 后续需完成 App 后端事件/字段回流、队列恢复，以及各用户自己服务器的授权与设备联合验收。`capabilities` 的物理标记不是设备探测结果，保持保守值；服务不能因代码存在就宣称手机在线。
