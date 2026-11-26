@@ -1,27 +1,29 @@
-# 本地翻译与英语离线字幕 · iOS 26+
+English | [中文](README-zh.md)
 
-2026-09-24。公开 OFFLINE-ENGLISH-05 的原创实现，支持 **Apple 本地翻译 / Hy-MT2 本地翻译 / 只显示英文**。运行在 iPhone，不在眼镜上加载大模型，**不需要刷固件，也不需要服务 Key**。不提供签名 IPA 或模型打包下载。
+# Local translation and offline English captions · iOS 26+
 
-## 能做什么
+2026-09-24. An original implementation of the public OFFLINE-ENGLISH-05 build. It offers **Apple local translation, Hy-MT2 local translation, or English only**. It runs on the iPhone and loads no large model on the glasses. It **needs no firmware flash and no service key**. No signed IPA and no model bundle are provided for download.
 
-| 部分 | 实现与限制 |
+## What it does
+
+| Part | Implementation and limits |
 | --- | --- |
-| 文字翻译 | Apple 系统 Translation，或 Hy-MT2-1.8B-1.25Bit GGUF；当前 UI 中英互译 |
-| 英语离线 ASR | Parakeet Realtime EOU 120M CoreML / FluidAudio，320 ms 模型块；不是 320 ms 端到端延迟，也不是中文 ASR |
-| 收音 | 手机麦克风，或系统实际列出的 AirPods/蓝牙 HFP 输入；路由变化停止，不悄悄切换 |
-| 字幕翻译 | 默认“快速预译”，约6个识别词后尝试短前缀，保留末尾上下文；Hy-MT 逐步输出，Apple 每次前缀返回整体结果 |
-| 镜片同步 | 原厂字幕纯显示通道，业务19：设置→匹配SID回执→文字→退出；不启动原厂录音上行 |
-| 运行边界 | 前台、用户主动开启；离开页面/退后台/中断/输入路由改变即停止，20分钟保护 |
+| Text translation | Apple system Translation, or Hy-MT2-1.8B-1.25Bit GGUF; the current UI translates between Chinese and English |
+| Offline English ASR | Parakeet Realtime EOU 120M CoreML / FluidAudio, 320 ms model chunks; this is not a 320 ms end-to-end latency, and it is not Chinese ASR |
+| Audio input | The phone microphone, or an AirPods/Bluetooth HFP input that the system actually lists; a route change stops capture instead of switching silently |
+| Caption translation | "Fast pre-translation" (快速预译) is on by default: after about 6 recognized words it tries a short prefix and keeps the trailing context; Hy-MT streams its output, Apple returns a whole result for each prefix |
+| Lens sync | The stock caption display-only channel, service 19: set → match the SID receipt → text → exit; the stock recording uplink is not started |
+| Runtime limits | Foreground only, started by the user; leaving the page, going to the background, an interruption or an input route change stops it; 20-minute guard |
 
-预译会修正，不等于同时传译。只运行一个翻译任务，待处理最终片段最多4项，音频最多32个缓冲；积压明确报错。眼镜0.5秒发送节流、384字节帧上限、单个待提交包、合并最新内容。旧导航的3秒/80帧/4分钟限制保持不变。
+Pre-translation gets corrected; it is not simultaneous interpretation. Only one translation task runs at a time, at most 4 final segments wait, and audio holds at most 32 buffers; a backlog reports an explicit error. Glasses output is throttled to one send per 0.5 seconds, with a 384-byte frame limit, a single pending packet, and the latest content merged in. The old navigation limits of 3 seconds / 80 frames / 4 minutes are unchanged.
 
-**不包含**：眼镜“前方/四周”定向原始收音、自定义云端 ASR/实时翻译配置 UI、多语言离线 ASR、后台无限录音、自动保存转写或音频、云端失败兜底。蓝牙HFP可用不等于已实现眼镜专有方向协议。
+**Not included**: directional raw capture from the glasses ("front"/"surround"), a settings UI for custom cloud ASR or live translation, multilingual offline ASR, unlimited background recording, automatic saving of transcripts or audio, and a cloud fallback on failure. A working Bluetooth HFP input does not mean the glasses' proprietary directional protocol is implemented.
 
-## 1. 准备依赖
+## 1. Prepare the dependencies
 
-Apple Silicon Mac、CMake、Python 3.10+、Node.js、完整 Xcode（本次用 iOS 27 SDK、Swift 6.4，语言模式 Swift 6；目标最低 iOS 26）。需要足够磁盘与内存，模型约462 MB +224 MB，兼容转换保留原件，因此下载目录大于1 GB。运行内存还包括计算/缓存及宿主 App，不能拿权重大小当峰值RAM。
+You need an Apple Silicon Mac, CMake, Python 3.10+, Node.js and full Xcode (this run used the iOS 27 SDK and Swift 6.4 in Swift 6 language mode; the minimum target is iOS 26). You need enough disk and memory: the models are about 462 MB + 224 MB, and the compatibility conversion keeps the originals, so the download directory exceeds 1 GB. Runtime memory also includes compute buffers, caches and the host app, so the weight size is not the peak RAM.
 
-先阅读[第三方许可](THIRD_PARTY.md)。下面命令在仓库根目录运行，目录必须是新的，不覆盖已有实验：
+Read the [third-party licenses](THIRD_PARTY.md) first. Run the commands below from the repository root. The directories must be new; do not overwrite an existing experiment:
 
 ```sh
 mkdir -p ios-addon/local-translation/work
@@ -33,9 +35,9 @@ python3 ios-addon/local-translation/models.py \
   --out ios-addon/local-translation/work/models --accept-model-licenses
 ```
 
-下载器只访问固定公开版本，逐文件验证长度和 SHA-256；失败保留 `.download` 供检查，使用新输出目录重试。不要用其他权重替换文件名绕过校验。Apple语言包不是这里下载的：在 App 内点“准备 Apple 语言包”，明确同意系统下载，之后才可离线翻译。
+The downloader fetches only fixed public versions and checks each file's length and SHA-256. On failure it keeps the `.download` file for inspection; retry with a new output directory. Do not swap in other weights under the same file names to get past the check. Apple language packs are not downloaded here: in the app, tap "Prepare Apple language packs" (准备 Apple 语言包) and explicitly agree to the system download. Offline translation works only after that.
 
-## 2. 编译翻译模块和宿主入口
+## 2. Build the translation module and the host entry
 
 ```sh
 python3 ios-addon/local-translation/build.py \
@@ -46,13 +48,13 @@ TIO_LOCAL_TRANSLATION=1 bash ios-addon/build.sh embedded
 python3 ios-addon/local-translation/test.py
 ```
 
-第一个命令生成 `module/TurboCaptionTranslation.dylib` 和依赖资源，不使用开发者证书。第二个生成 `ios-addon/build/local-translation/TurboIOPrivateAddon.dylib`，增加「TurboIO → 资料 → Apple / Hy-MT2 本地翻译」入口。默认构建不带此入口；旧 iOS 不加载26+模块。也可与既有导航/音乐构建开关组合，但仍须遵守各自固件门禁，不因此授权刷机。
+The first command produces `module/TurboCaptionTranslation.dylib` and its resources; it uses no developer certificate. The second produces `ios-addon/build/local-translation/TurboIOPrivateAddon.dylib`, which adds the "TurboIO → Library → Apple / Hy-MT2 local translation" entry. The default build has no such entry, and older iOS versions do not load the 26+ module. You can combine it with the existing navigation and music build switches, but each still follows its own firmware gate, and none of this authorizes a flash.
 
-Hy-MT 使用固定 STQ CPU/ARM NEON 内核，不是 Metal/ANE 后端。默认线程数最多6，可选至8但不超过设备核心数，保留温控/低电量降档、取消、15秒单次超时、1024 token上下文、384 token输出上限与退出释放。
+Hy-MT uses a fixed STQ CPU/ARM NEON kernel, not a Metal or ANE backend. The default thread count is at most 6, selectable up to 8 but never above the device's core count. It keeps thermal and low-power step-down, cancellation, a 15-second per-call timeout, a 1024-token context, a 384-token output limit, and release on exit.
 
-## 3. 自行签名打包
+## 3. Sign and package it yourself
 
-遵循[宿主版本与签名说明](../README.md)。需要合法取得且通过仓库校验的未加密 thin-arm64 `Runner.app`；本文不提供解密操作。已测试私用前身宿主为官方 iOS 1.0.5（201），设备为 iPhone Air；其他版本不能直接外推。
+Follow the [host version and signing notes](../README.md). You need a legally obtained, unencrypted thin-arm64 `Runner.app` that passes the repository checks; this document does not describe decryption. The private predecessor was tested with the official iOS host 1.0.5 (201) on an iPhone Air; do not extrapolate directly to other versions.
 
 ```sh
 node ios-addon/package.mjs \
@@ -66,24 +68,24 @@ node ios-addon/package.mjs \
   --out /absolute/new-local-output
 ```
 
-占位路径和签名参数由你替换，**不填写维护者账号**。打包器检查入口与资源配对，核对模型哈希，只拷贝明确列出的文件，拒绝覆盖宿主内已有翻译资源；在现有签名步骤之前加入dylib、模型和资源。此命令不安装、不刷眼镜、不为你增加不属于证书的权限。完整打包仍须使用自己的证书在自己的设备验收。
+Replace the placeholder paths and signing arguments with your own. **Do not enter the maintainer's account.** The packager checks that the entry and resources match, verifies the model hashes, copies only the files it lists explicitly, and refuses to overwrite translation resources already in the host. It adds the dylib, models and resources before the existing signing step. This command does not install anything, does not flash the glasses, and does not grant you entitlements your certificate does not have. You still have to check the full package with your own certificate on your own device.
 
-## 4. 手机上使用
+## 4. Use it on the phone
 
-1. 打开「TurboIO → 资料 → Apple / Hy-MT2 本地翻译」。先测试短句；Apple先准备语言包，Hy-MT自动校验本机随包模型。
-2. 点右上角麦克风进入“英语离线字幕”；选择仅英文或翻译引擎、输入设备、是否同步眼镜。
-3. 先停止音乐/TTS/对话/录音/导航等其他任务，再主动点开始并允许麦克风。模型首次校验加载可能需数秒。
-4. 开启镜片同步时等待本次SID成功回执；失败可关闭镜片同步，先在手机测收音。不强抢官方会话。
-5. 说英语，先显示英文，再显示带“预译”标识的译文。想要更稳定可关“快速预译”。停止或退出页面即取消收音和翻译。
+1. Open "TurboIO → Library → Apple / Hy-MT2 local translation". Test a short sentence first. For Apple, prepare the language packs first; Hy-MT verifies the bundled on-device model automatically.
+2. Tap the microphone at the top right to enter "Offline English captions" (英语离线字幕). Choose English only or a translation engine, the input device, and whether to sync to the glasses.
+3. First stop other tasks such as music, TTS, conversation, recording and navigation. Then tap start yourself and allow the microphone. The first model check and load can take a few seconds.
+4. With lens sync on, wait for this session's SID success receipt. If it fails, turn lens sync off and test capture on the phone first. It does not seize the official session.
+5. Speak English. The English text appears first, then the translation marked "pre-translation" (预译). For steadier output, turn off "Fast pre-translation". Stopping or leaving the page cancels capture and translation.
 
-官方 App 的其他功能仍可能联网；“本地翻译”仅指这条识别/翻译处理链无云端兜底，不代表整个宿主 App 被断网。
+Other features of the official app may still use the network. "Local translation" means only that this recognition and translation chain has no cloud fallback; it does not mean the whole host app is offline.
 
-## 验证与已知问题
+## Validation and known issues
 
-- 私用前身：用户确认文字翻译可用、04版真实英语识别很好；05版已安装。不能把这些反馈当成本次公开包已经真机全量验收。
-- 05版历史设备组合探针：音频回调和ASR通过，但Apple翻译阶段返回 `CaptionFailure`；未明确错误分支，可能需要核对语言资源，**不宣称组合探针全通过**。
-- 本次公开构建/测试结果见 [VALIDATION.md](VALIDATION.md)。没有操作用户手机或眼镜。
-- AirPods/其他蓝牙麦克风、长时温升、真实镜片延迟和多语种质量仍需专项验收；不承诺零延迟。
-- 这是新的独立字幕入口，不是全面替换官方翻译页所有行为。遇到内存压力/温控/积压会停止或降档，不强行持续运行。
+- Private predecessor: the user confirmed that text translation works and that real English recognition in build 04 was very good; build 05 is installed. Do not take this feedback as a full device acceptance of this public package.
+- Historical device combination probe for build 05: the audio callback and ASR passed, but the Apple translation stage returned `CaptionFailure`. The error branch was not identified, and the language resources may need checking. **We do not claim the combination probe fully passed.**
+- The build and test results for this public release are in [VALIDATION.md](VALIDATION.md). No user phone or glasses were touched.
+- AirPods and other Bluetooth microphones, long-run heating, real lens latency and multilingual quality still need dedicated acceptance. Zero latency is not promised.
+- This is a new, separate caption entry. It does not replace every behavior of the official translation page. Under memory pressure, thermal limits or a backlog it stops or steps down instead of forcing itself to keep running.
 
-原创代码沿用仓库非商业许可；第三方模型/依赖保持各自许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)。不上传 Key、Cookie、个人提示词、模型权重、签名材料或 IPA。
+Original code follows the repository's non-commercial license; third-party models and dependencies keep their own licenses, see [THIRD_PARTY.md](THIRD_PARTY.md). Do not upload keys, cookies, personal prompts, model weights, signing material or IPAs.

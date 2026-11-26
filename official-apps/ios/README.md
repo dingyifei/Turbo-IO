@@ -1,13 +1,13 @@
-# 原厂 iOS 砸壳应用输入
+# Stock decrypted iOS app inputs
 
-这里索引原厂解密 IPA，**没有 Turbo IO 插件**，也不是官方源码。IPA 较大，存放于 GitHub Releases，不把二进制放入 Git 历史。
+This folder indexes the stock decrypted RayNeo IPAs. They contain **no Turbo IO addon** and they are not official source code. The IPAs are large, so they are stored in GitHub Releases; the binaries are kept out of Git history.
 
-| 版本 | 状态与用途 | 下载 |
+| Version | Status and use | Download |
 | --- | --- | --- |
-| **1.0.7（230）** | 原厂砸壳、**全部代码签名已移除**；作为 APP107 / TMG2 精确匹配输入（1.0.7 的主机代码已不在当前树，见 git 历史，标签 `app/c11` 至 `app/c13`） | [版本说明与校验](1.0.7/README.md) · [Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.7-230) |
-| **1.0.6（218）** | 原厂砸壳、**所有代码签名已移除**；适合作为 TMIG1 / Strix 1.0.5.5（已归档 / archived in commit `27ad86e`: `official-addon/tmig1-edition/README.md`） 输入 | [版本说明与校验](1.0.6/README.md) · [Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.6-218) |
-| 1.0.5（201） | 历史原厂解密输入，保留当时的 App Store 签名信息，不是维护者个人开发者签名；没有按新版方式重新制作 | [版本说明与校验](1.0.5/README.md) · [历史 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.5-201) |
+| **1.0.7 (230)** | Stock, decrypted, **all code signatures removed**. The exact-match input for APP107 / TMG2. The 1.0.7 host code is no longer in the current tree; see Git history, tags `app/c11` to `app/c13`. | [Notes and checksums](1.0.7/README.md) · [Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.7-230) |
+| **1.0.6 (218)** | Stock, decrypted, **all code signatures removed**. Suitable as the input for TMIG1 / Strix 1.0.5.5 (archived in commit `27ad86e`: `official-addon/tmig1-edition/README.md`). | [Notes and checksums](1.0.6/README.md) · [Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.6-218) |
+| 1.0.5 (201) | Older stock decrypted input. It keeps the App Store signing information it had at the time, not the maintainer's personal developer signature. It was not rebuilt the way the newer versions were. | [Notes and checksums](1.0.5/README.md) · [Older Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.5-201) |
 
-版权仍归雷鸟官方及相关权利人所有，本仓库原创源码许可不适用于原厂 IPA。不表示官方背书，不提供个人账号、服务配置、签名证书或私钥。
+Copyright remains with RayNeo and the other rights holders. The license for this repository's original source code does not apply to the stock IPAs. Nothing here implies official endorsement. No personal accounts, service configuration, signing certificates or private keys are provided.
 
-“原厂版本”指未加入自定义功能；解密、去签名和重新归档意味着文件不与 App Store 加密包逐字节一致。**不提供已为你签名的可直接安装包**；需要 Turbo IO 时按对应版本教程自行合并、配置与签名，普通加密 App Store IPA 不能直接合并。
+"Stock" means no custom features have been added. Because the files were decrypted, stripped of signatures and re-archived, they are not byte-for-byte identical to the encrypted App Store packages. **No package signed for you and ready to install is provided.** If you want Turbo IO, follow the guide for the matching version to merge, configure and sign it yourself. A normal encrypted App Store IPA cannot be merged directly.

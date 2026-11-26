@@ -35,7 +35,7 @@ This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It co
 - **Commit subjects** follow `<line>(<n>): <what changed, in plain words>`, for example `tmg9(3): …` for firmware or `ds3(p2): …` for the phone.
   - Describe the change, not a test result.
   - Agent commits end with a `Co-Authored-By:` trailer.
-- Agent docs and commit messages are in English. The README and many user docs are in Chinese; keep them in Chinese.
+- Docs, agent docs and commit messages are in English. A reader-facing README may have a Chinese copy, `README-zh.md`, next to it; change both in the same commit so they stay in step. Quoted on-device or in-app UI labels stay in the language the UI shows.
 
 ## Porting to a new RayNeo release
 

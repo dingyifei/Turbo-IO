@@ -1,405 +1,405 @@
-# 更新记录
+# Changelog
 
-> **已冻结（2026-11-15，cleanup(6)）：** 本文件不再更新。cleanup(1)–(6) 删除了其中提到的 Android、鸿蒙、V1、Apple Watch、TVP2/TAR2、Strix OS 1.0.4.12 研究树与大部分截图；指向这些已删除文件的链接与图片已改为纯文本或移除，原文件保留在 git 历史中（例如 `git show 5b6c63d:<路径>`）。
+> **Frozen (2026-11-15, cleanup(6)):** this file is no longer updated. cleanup(1)–(6) deleted the Android, HarmonyOS, V1, Apple Watch, TVP2/TAR2 and Strix OS 1.0.4.12 research trees it mentions, and most of the screenshots. Links and images that pointed to those deleted files were turned into plain text or removed. The original files stay in git history (for example `git show 5b6c63d:<path>`). In 2026-11 the text was translated from Chinese to English; the facts are unchanged.
 
-2026-09-22 至 2026-10-23 的更新说明与历史验收记录，从[项目首页](../README.md)移出，正文保持原样，只修正了链接，并把“上方”这类指向首页内容的说法改成了链接。之后的固件版本见 [`firmware/`](../firmware/README.md) 和 `fw/tmgN` 标签。
+Update notes and historical acceptance records from 2026-09-22 to 2026-10-23, moved out of the [project home page](../README.md). The text was kept as it was; only the links were fixed, and phrases such as "above" that pointed at home-page content were turned into links. Later firmware versions are in [`firmware/`](../firmware/README.md) and the `fw/tmgN` tags.
 
 <a id="updates"></a>
 
-## 近期更新与眼镜端应用
+## Recent updates and glasses apps
 
-按日期倒序整理；每项单独标注公开范围与验收边界。
+Newest first. Each entry states its public scope and acceptance limits.
 
-| 日期 | 更新 | 公开范围 |
+| Date | Update | Public scope |
 | --- | --- | --- |
-| 2026-10-23 | [TVP2 / TAR2 原生清晰投屏](#tvp2-tar2-update) | 540×220点对点、完整画面/局部放大/灰阶；用户在iPhone 17 Pro Max实测反馈通过；公开原样固件、可复现构建、高清传输代码和独立GPLv3接收SDK，不含个人合并IPA/账号/视频 |
-| 2026-10-19 | [原厂 iOS 1.0.7（230）砸壳 · 去签名输入](../official-apps/ios/1.0.7/README.md) | 未合并 Turbo IO；95 个代码签名及商店授权元数据移除；附 SHA-256 与审计，支持最新版 APP107 打包器，自行合并签名 |
-| 2026-10-19 | [iOS 1.0.7（230）APP107 兼容适配与 OTA 开放](#ios107-update) | iPhone 17 Pro Max 功能反馈正常，通过 1.0.7 官方升级流程实刷 TMG2 成功；公开脱敏源码、专用查询适配与打包工具，保留完整校验和单次授权；继承 NAVS3，固件原样沿用 |
-| 2026-10-19 | [NAVS3 矢量导航与 TMG2 可选排数菜单](#navs3-update) | 起终点直达模拟/真实导航、道路与路名稳定性修正、两/三排菜单；iOS源码、离线测试、原样TMG2固件与可复现构建；锁屏问题仍未闭环 |
-| 2026-10-19 | [遥控拍照：眼镜取景、旋钮快门与变焦](#remote-camera) | iOS 手机端与眼镜原生源码已公开，已包含在 TMG2 固件；可设倒计时、压缩取景与拍后回看，原片保存手机相册；手机需前台且不锁屏 |
-| 2026-10-15 | [原厂 iOS 1.0.6（218）砸壳 · 去签名输入](../official-apps/ios/1.0.6/README.md) | 未合并 Turbo IO；95 个代码签名及商店授权元数据移除；原厂功能代码保留，自行合并签名；版权仍归官方 |
-| 2026-10-14 | [新版本适配：App 1.0.6 / Strix 1.0.5.5 / TMIG1](#tmig1-update) | iPhone 17 Pro Max 实测兼容；原样固件、可复现 AP 构建、手机适配源码、情境英语、新版原厂 ZIP；Dots 开发中，尚未完成 |
-| 2026-09-30 | [TLC1：全天智记与扩展应用共存](#lifelog-coexist) | 六个扩展应用共存判断、可复现构建与测试、原样实刷固件及 iOS OTA 参考；仅 AP 改动，刷后须结束手机升级保护 |
-| 2026-09-29 | [Apple Watch 遥控实验源码与 TGR1 固件](#apple-watch-remote) | Watch 表冠/屏幕/手势、iOS 桥接、TGR1 AP 输入适配与原样实验 OTA；已知翻页问题未闭环，不含签名包 |
-| 2026-09-27 | [Android 1.0.5 完整插件与官方流程 OTA](#android-release-update) | 去除网页正文适配的完整APK、扩展源码、TAP1-TEST-01原样实刷固件、校验与逐步教程；高风险实验版 |
-| 2026-09-26 | [开发者生态：应用广场、仪表盘与 App SDK](#developer-ecosystem) | 自托管 API / Python / MCP、20 个离线模板 ZIP、Agent Skill、协议参考源码；配套完整固件不在本次发布内 |
-| 2026-09-25 | [重磅更新：新 UI、四项菜单、原生番茄时钟](#focus-update) | FOCUS-04 原创源码、配套 iOS 插件与精确实刷实验固件；不含私人配置或网页正文适配 |
-| 2026-09-24 | [本地翻译与英语离线字幕](#local-translation) | Apple / Hy-MT2 / Parakeet 源码、模型下载与可选 iOS 构建；不含权重或密钥 |
-| 2026-09-24 | [微信读书：四本书架与阅读页](#weread-research) | TWR1 原创模块、构建工具与实刷实验固件；不含网页正文适配 |
-| 2026-09-23 | [网易云音乐：第十项菜单](#music-app) | TMU1 源码、配套手机代码与实测实验固件 |
-| 2026-09-22 | [Turbo Display 与原生导航](#native-apps) | TDP1/TNV1 源码、配套手机代码与匹配固件 |
-| 2026-09-22 | [ANIM60 本地动图](#animation-test) | 动图实验源码与独立固件候选；非通用动图上传 |
+| 2026-10-23 | [TVP2 / TAR2 native sharp mirroring](#tvp2-tar2-update) | 540×220 pixel for pixel, full frame / zoomed region / grayscale; a user tested on iPhone 17 Pro Max and reported it works; published the as-flashed firmware, a reproducible build, the HD transfer code and a standalone GPLv3 receiver SDK; no personal merged IPA, account or video |
+| 2026-10-19 | [Stock iOS 1.0.7 (230) decrypted · unsigned input](../official-apps/ios/1.0.7/README.md) | Turbo IO not merged; 95 code signatures and store license metadata removed; SHA-256 and audit included; works with the latest APP107 packager; merge and sign it yourself |
+| 2026-10-19 | [iOS 1.0.7 (230) APP107 adaptation and OTA enabled](#ios107-update) | Features reported working on iPhone 17 Pro Max; TMG2 flashed successfully through the official 1.0.7 update flow; published redacted source, the dedicated query adapter and the packaging tool; full checks and one-time authorization kept; inherits NAVS3; firmware reused unchanged |
+| 2026-10-19 | [NAVS3 vector navigation and TMG2 selectable-row menu](#navs3-update) | Simulated/real navigation straight from start and destination, road and road-name stability fixes, two/three-row menu; iOS source, offline tests, as-flashed TMG2 firmware and reproducible build; the lock-screen problem is still open |
+| 2026-10-19 | [Remote camera: glasses viewfinder, knob shutter and zoom](#remote-camera) | iOS phone and glasses native source published; included in TMG2 firmware; countdown, compressed viewfinder and post-shot review; originals saved to the phone's photo library; the phone must stay in the foreground and unlocked |
+| 2026-10-15 | [Stock iOS 1.0.6 (218) decrypted · unsigned input](../official-apps/ios/1.0.6/README.md) | Turbo IO not merged; 95 code signatures and store license metadata removed; stock feature code kept; merge and sign it yourself; copyright stays with the vendor |
+| 2026-10-14 | [New version adaptation: App 1.0.6 / Strix 1.0.5.5 / TMIG1](#tmig1-update) | Tested compatible on iPhone 17 Pro Max; as-flashed firmware, reproducible AP build, phone adapter source, Situational English, new stock ZIP; Dots in development, not finished |
+| 2026-09-30 | [TLC1: all-day Lifelog coexists with extension apps](#lifelog-coexist) | Coexistence checks for six extension apps, reproducible build and tests, as-flashed firmware and iOS OTA reference; AP-only change; after flashing you must end the phone's update protection |
+| 2026-09-29 | [Apple Watch remote experiment source and TGR1 firmware](#apple-watch-remote) | Watch crown/screen/gestures, iOS bridge, TGR1 AP input adapter and the experimental OTA as is; known page-turn problem not resolved; no signed package |
+| 2026-09-27 | [Android 1.0.5 full addon and official-flow OTA](#android-release-update) | Full APK without the web-text adapter, extension source, as-flashed TAP1-TEST-01 firmware, checksums and step-by-step guide; high-risk experimental release |
+| 2026-09-26 | [Developer ecosystem: app gallery, dashboard and App SDK](#developer-ecosystem) | Self-hosted API / Python / MCP, 20 offline template ZIPs, Agent Skill, protocol reference source; the matching full firmware is not in this release |
+| 2026-09-25 | [Major update: new UI, four-item menu, native Pomodoro timer](#focus-update) | FOCUS-04 original source, matching iOS addon and the exact as-flashed experimental firmware; no private config or web-text adapter |
+| 2026-09-24 | [Local translation and offline English captions](#local-translation) | Apple / Hy-MT2 / Parakeet source, model downloads and optional iOS build; no weights or keys |
+| 2026-09-24 | [WeChat Reading: four-book shelf and reading page](#weread-research) | TWR1 original module, build tools and as-flashed experimental firmware; no web-text adapter |
+| 2026-09-23 | [NetEase Cloud Music: tenth menu item](#music-app) | TMU1 source, matching phone code and tested experimental firmware |
+| 2026-09-22 | [Turbo Display and native navigation](#native-apps) | TDP1/TNV1 source, matching phone code and matching firmware |
+| 2026-09-22 | [ANIM60 local animation](#animation-test) | Animation experiment source and a standalone firmware candidate; not a general animated-image upload |
 
-> **自定义固件是试验用品，非开发者请勿刷。** AP 改动仍可能导致无法启动或失去 OTA；不要混用不同候选的固件、手机门禁或授权。原厂回滚不是救砖保证。实机成功不等于生产稳定版。
+> **Custom firmware is experimental. If you are not a developer, do not flash it.** AP changes can still leave the glasses unable to boot or lose OTA. Do not mix firmware, phone gates or authorizations from different candidates. Rolling back to stock is not a guaranteed unbrick. Success on a device does not make it a stable production release.
 
 <a id="tvp2-tar2-update"></a>
 
-### 2026-10-23 · 清晰投屏：从“能传画面”到原生540×220
+### 2026-10-23 · Sharp mirroring: from "it sends a picture" to native 540×220
 
-**不再把270×110小图放大2倍。** TVP2按540×220编码并点对点显示，像素数增加4倍；手机支持完整画面、局部放大、拖动选区和2/4/8/16级灰阶。四个分块全部收齐、逐块及整图CRC核对后才切帧，避免半张图和旧帧排队；更高细节也意味着实际帧率受带宽限制，不保证30fps。
+**No more scaling a 270×110 image up 2×.** TVP2 encodes at 540×220 and displays it pixel for pixel, 4× the pixel count. The phone supports full frame, zoomed region, a draggable selection and 2/4/8/16 gray levels. A frame switches only after all four tiles have arrived and passed per-tile and whole-image CRC checks, which avoids half images and queued stale frames. The extra detail also means the real frame rate is limited by bandwidth; 30 fps is not guaranteed.
 
-**另一台iPhone/iPad/Mac → 同Wi-Fi的iPhone接收器 → 眼镜，不需要额外Mac或服务器。** 手机请求1280×720源画面并在本机解码/缩放，眼镜只接收有界灰度数据；前台、静音、手动开启、PIN配对，不保存画面。接收手机仍是必要中转，不支持本轮未验收的锁屏后台、受保护视频或任意发送端。
+**Another iPhone/iPad/Mac → iPhone receiver on the same Wi-Fi → glasses. No extra Mac or server needed.** The phone requests a 1280×720 source and decodes and scales it locally; the glasses receive only bounded grayscale data. It runs in the foreground, muted, started by hand and PIN-paired, and saves no frames. The receiving phone is still a required relay. Locked-screen background use, protected video and arbitrary senders were not accepted this round and are not supported.
 
-用户在 **iPhone 17 Pro Max / 雷鸟App 1.0.7（230）/ TAR2 + TVP2** 测试反馈“没问题”。本机仅回读统计：1280×720源、540×220输出、16灰、3470帧解码零错误、186帧眼镜完整确认、正常关闭；不公开原始日志。独立公开SDK另行编译/链接验证，不将私用集成版的验收冒充公开宿主绑定版已实装。
+A user tested **iPhone 17 Pro Max / RayNeo app 1.0.7 (230) / TAR2 + TVP2** and reported "no problems". Only summary statistics were read back from the device: 1280×720 source, 540×220 output, 16 grays, 3470 frames decoded with zero errors, 186 frames fully acknowledged by the glasses, clean shutdown. The raw logs are not published. The standalone public SDK was compiled and linked separately; the acceptance of the private integrated build is not presented as proof that the public host-bound build is in place.
 
-**双缓冲内存不增加：239424字节；AP为7,435,336字节，仅增加1024字节。** 旧TVP1视频兼容保留，其余14个新版原厂载荷不变；公开源码重建所得AP与ZIP与实测候选逐字节一致。新高清需刷TVP2，不能只装手机插件；完整OTA和恢复风险依旧存在，非开发者请保留原厂固件。
+**Double-buffer memory does not grow: 239424 bytes. The AP is 7,435,336 bytes, only 1024 bytes larger.** Old TVP1 video compatibility is kept, and the other 14 new stock payloads are unchanged. The AP and ZIP rebuilt from public source match the tested candidate byte for byte. The new HD mode needs TVP2 flashed; installing only the phone addon is not enough. Full OTA and recovery risks remain; non-developers should keep stock firmware.
 
-**[原样固件/AP/SHA256/源码包](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [完整教程与版本差别](archive/TVP2_TAR2.md) · 固件源码与重建 · 原创高清模块 · GPLv3 AirPlay接收SDK**
+**[As-flashed firmware/AP/SHA256/source bundle](https://github.com/Turbo1123/Turbo-IO/releases/tag/tvp2-tar2-20261023) · [Full guide and version differences](archive/TVP2_TAR2.md) · Firmware source and rebuild · Original HD module · GPLv3 AirPlay receiver SDK**
 
-不发布个人签名/合并IPA、视频素材、配对密钥、Cookie或账号。`tar2-airplay`是经维护者确认的GPLv3局部许可例外，其余目录非商业许可不变；本次未发布Android AirPlay接收器。Mentra OS商店应用完整兼容仍在继续适配，不在本次投屏实测结论内。
+No personal signed or merged IPA, video material, pairing keys, cookies or accounts are published. `tar2-airplay` is a GPLv3 partial license exception confirmed by the maintainer; all other directories keep the non-commercial license. No Android AirPlay receiver was released this time. Full compatibility with Mentra OS store apps is still being adapted and is not part of this mirroring test result.
 
 <a id="ios107-update"></a>
 
-### 2026-10-19 · iOS 1.0.7 已适配，TMG2 刷机实测通过
+### 2026-10-19 · iOS 1.0.7 adapted; TMG2 flash tested
 
-**用户在 iPhone 17 Pro Max 安装 1.0.7（230）APP107 后，实测反馈“没啥问题”。** 安装后已回读新版插件加载标记、版本/UUID 门槛及关键回调。公开版从已脱敏的 NAVS3 基线整理，单独编译与离线回归；用户反馈不等于所有功能、机型和后台场景的全量验收。
+**A user installed APP107 on 1.0.7 (230) on an iPhone 17 Pro Max and reported "no real problems".** After install, the new addon's load marker, the version/UUID gate and the key callbacks were read back. The public build was prepared from the redacted NAVS3 baseline, compiled separately and run through offline regression. A user report is not full acceptance of every feature, phone model and background scenario.
 
-本轮保留矢量小地图、两/三排菜单配置及现有扩展模块，**只更新手机，不修改眼镜固件**。沿用已安装的 TMG2，无需为了手机升级再次刷机。8 个关键 native 类的 110 个既有方法签名与 Flutter 桥接检查通过；没有把旧版地址直接套到新版。
+This round keeps the vector mini map, the two/three-row menu setting and the existing extension modules, and **updates only the phone, not the glasses firmware**. The installed TMG2 stays; there is no need to reflash for the phone update. Signature and Flutter bridge checks passed for 110 existing methods across 8 key native classes. Old-version addresses were not applied directly to the new version.
 
-**OTA 已开放：2026-10-19 在 iPhone 17 Pro Max / 1.0.7（230）上实刷原样 TMG2 成功。** 官方日志确认传输 100%、安装成功、重连版本匹配；刷后已重启手机 App，恢复授权 0。公开代码新增 1.0.7 专用查询路由与宿主校验，不套用 1.0.6 偏移。打包即包含升级通道，但不会自动授权或刷写；请按[新版教程](../ios-addon/OTA.md)操作，刷后完成收尾。本轮复用校验一致的官方缓存，不宣称重新网络下载或全部机型验收。手机锁屏导航问题仍保留；Dots 仍未完成。
+**OTA is enabled: on 2026-10-19 the as-is TMG2 was flashed successfully on iPhone 17 Pro Max / 1.0.7 (230).** The official log confirms 100% transfer, a successful install and a matching version on reconnect. After flashing, the phone app was restarted and the authorization was back to 0. The public code adds a 1.0.7-specific query route and host check and does not reuse 1.0.6 offsets. Packaging includes the update channel but never authorizes or flashes on its own; follow the [new guide](../ios-addon/OTA.md) and finish the wrap-up after flashing. This round reused the official cache, whose checksum matched; it does not claim a fresh network download or acceptance on every phone model. The phone lock-screen navigation problem remains; Dots is still unfinished.
 
-公开源码、构建及测试，不公开个人签名 IPA、Cookie、Key、私人服务地址、设备备份或微信读书网页正文适配。[原厂 1.0.7 砸壳／去签名输入](../official-apps/ios/1.0.7/README.md)已单独归档，未合并 Turbo IO，需自行合法使用与签名；历史原厂 1.0.6 输入不能用于 1.0.7 打包。
+Source, build and tests are public. Personal signed IPAs, cookies, keys, private service addresses, device backups and the WeChat Reading web-text adapter are not. The [stock 1.0.7 decrypted/unsigned input](../official-apps/ios/1.0.7/README.md) is archived separately and not merged with Turbo IO; you must use and sign it lawfully yourself. The older stock 1.0.6 input cannot be used for 1.0.7 packaging.
 
-**[1.0.7 源码 / 构建与版本对比](../ios-addon/README.md) · [APP107 OTA 预发布](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [现有 TMG2 固件（git 标签 `fw/tmg2`，下载见 Release）](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [当前眼镜固件源码 `firmware/`](../firmware/README.md)**
+**[1.0.7 source / build and version comparison](../ios-addon/README.md) · [APP107 OTA pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/ios107-app107-ota-20261019) · [Current TMG2 firmware (git tag `fw/tmg2`, download from the Release)](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [Current glasses firmware source `firmware/`](../firmware/README.md)**
 
 <a id="remote-camera"></a>
 
-### 2026-10-19 · 遥控拍照：把手机放好，用眼镜取景和拍摄
+### 2026-10-19 · Remote camera: set the phone down, frame and shoot from the glasses
 
-手机负责拍摄，眼镜作为取景与控制端：**旋钮短按拍照、滚动变焦、长按取消／退出**。手机可选无倒计时或 3 / 5 / 10 秒倒计时，并调整取景清晰度与横竖方向；眼镜显示压缩预览，拍完后显示回看，原片保存到手机相册。预览在本机处理，不上传云端。
+The phone takes the photo; the glasses are the viewfinder and the controller: **short-press the knob to shoot, scroll to zoom, long-press to cancel or exit**. The phone offers no countdown or a 3 / 5 / 10 second countdown, and lets you set viewfinder sharpness and landscape or portrait orientation. The glasses show a compressed preview and, after the shot, a review; the original is saved to the phone's photo library. The preview is processed on the device and not uploaded to the cloud.
 
-在手机 TurboIO 中打开「遥控拍照」，授予相机与相册保存权限，点击「开启相机与眼镜取景」，再用眼镜操作。**手机须保持该页面在前台、不锁屏**；眼镜取景区最高 256×144，高清档传输更慢，是辅助构图的低帧率预览，不是高清实时视频。
+In TurboIO on the phone, open 「遥控拍照」 (Remote Camera), grant camera and save-to-photos permission, tap 「开启相机与眼镜取景」 (Start camera and glasses viewfinder), then operate from the glasses. **The phone must keep this page in the foreground and stay unlocked.** The glasses viewfinder is at most 256×144, and the HD level transfers more slowly. It is a low-frame-rate preview to help framing, not HD live video.
 
-手机端捕获、压缩、传输及测试代码，眼镜端原生页面和控制协议均已公开。**已发布的 TMG2 固件包含此功能，已有 TMG2 不必另刷 TCM1。** 本次补充独立功能说明，不生成或替换固件；当前列出的配套手机实现为 iOS，不代表 Android 已同步适配。
+The phone-side capture, compression, transfer and test code, and the glasses native page and control protocol are all public. **The released TMG2 firmware includes this feature; if you already have TMG2 you do not need to flash TCM1.** This entry adds a standalone feature description and does not build or replace firmware. The matching phone implementation listed is iOS; that does not mean Android has been adapted too.
 
-**[iOS 1.0.7 手机源码](../ios-addon/camera-v1) · iOS 1.0.6 手机源码（已归档，见提交 `27ad86e` 的 `official-addon/navs3-edition/camera-v1`） · [眼镜原生源码](../firmware/src/camera-v1) · [TMG2 固件下载](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 刷机教程](../ios-addon/OTA.md)**
+**[iOS 1.0.7 phone source](../ios-addon/camera-v1) · iOS 1.0.6 phone source (archived; see `official-addon/navs3-edition/camera-v1` at commit `27ad86e`) · [Glasses native source](../firmware/src/camera-v1) · [TMG2 firmware download](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019) · [1.0.7 flash guide](../ios-addon/OTA.md)**
 
 <a id="navs3-update"></a>
 
-### 2026-10-19 · 矢量小地图：从选择起终点，到眼镜原生绘制
+### 2026-10-19 · Vector mini map: from picking start and destination to native drawing on the glasses
 
 
 
-*imagegen 生成的设计示意，非实机截图；地图与地名为说明性展示，不代表实际路线或显示精度。实验预发布，锁屏导航问题仍待解决。图片生成说明。*
+*Design illustration made with imagegen, not a device screenshot. The map and place names are illustrative and do not represent actual routes or display accuracy. Experimental pre-release; the lock-screen navigation problem is still open. Image generation notes.*
 
-**选择起点与目的地，直接开始模拟导航或真实导航。** 手机用高德规划与定位，获取经授权的 OSM 周边道路并完成坐标转换，眼镜用有界矢量场景绘制道路、路线、车标、路名与比例尺，不再连续传整屏截图。时间栏稳定显示，不再与“导航常亮”轮换。
+**Pick a start and a destination, then start simulated or real navigation directly.** The phone uses Amap for planning and location, fetches licensed OSM roads nearby and converts the coordinates. The glasses draw roads, route, vehicle marker, road names and scale bar from a bounded vector scene, instead of receiving a continuous stream of full-screen screenshots. The time bar now stays in place and no longer alternates with 「导航常亮」 (navigation keep-on).
 
-这次 NAVS3 修正旧路网提前清空的问题：保留最多两块区域，提前请求、原子交接；路名沿真实道路选取适合当前航向的可见锚点。首次加载、断网或超过图源请求预算仍可能只剩路线，不伪造周边道路。**手机锁屏后导航停止/卡住仍为已知问题，不能用于驾驶或安全依赖。**
+NAVS3 fixes the old road network being cleared too early: it keeps at most two areas, requests ahead and hands over atomically. Road names are placed at visible anchors along real roads that suit the current heading. On first load, when offline, or past the map-source request budget, only the route may be shown; nearby roads are never faked. **Navigation stopping or freezing after the phone locks is a known problem. Do not use it for driving or anything safety-relevant.**
 
-配套 **TMG2** 默认三排三列菜单，手机可切两排三列并保存；保留遥控拍照、音乐、阅读、番茄、情境英语、仪表盘、小应用、Watch输入等。自定义仅修改 AP（7,408,584字节），其余14个原厂载荷不变；完整 OTA 不等于只写 AP。
+The matching **TMG2** defaults to a menu of three rows and three columns; the phone can switch it to two rows of three and save that. Remote camera, music, reading, Pomodoro, Situational English, dashboard, mini apps, Watch input and the rest are kept. The customization changes only the AP (7,408,584 bytes); the other 14 stock payloads are unchanged. A full OTA is not the same as writing only the AP.
 
-- TMG2 用户已反馈刷入成功，发布保持原样，公开源码已重建出字节一致的 AP / ZIP。
-- NAVS3 私用手机包已安装到 iPhone 17 Pro Max 并核对加载；公开脱敏派生源码单独编译及离线回归，**不声称持续实机导航或全功能验收完成**。
-- 仅针对 RayNeo AI iOS 1.0.6（218）＋ Strix OS 1.0.5.5；不是新版 Android APK。已有 TMG2 无需为 NAVS3 重刷。
-- 不含 Cookie、Key、签名材料、私用 IPA、真实路线/通知/智记记录或网页阅读适配；Dots 仍未完成。
+- TMG2 users have reported successful flashes. The release stays as it was, and the public source rebuilds a byte-identical AP / ZIP.
+- The private NAVS3 phone build was installed on an iPhone 17 Pro Max and its loading checked. The public redacted derived source was compiled separately and passed offline regression. **There is no claim of sustained on-device navigation or full-feature acceptance.**
+- Only for RayNeo AI iOS 1.0.6 (218) + Strix OS 1.0.5.5; this is not a new Android APK. An existing TMG2 does not need reflashing for NAVS3.
+- No cookies, keys, signing material, private IPA, real routes/notifications/Lifelog records or web reading adapter. Dots is still unfinished.
 
-**源码与构建（已归档，见提交 `27ad86e` 的 `official-addon/navs3-edition/README.md`） · [固件与刷写步骤（git 标签 `fw/tmg2`）](https://github.com/Turbo1123/Turbo-IO/blob/fw/tmg2/firmware-research/strix-1.0.5.5-tmg2/README.md) · [下载 / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
+**Source and build (archived; see `official-addon/navs3-edition/README.md` at commit `27ad86e`) · [Firmware and flash steps (git tag `fw/tmg2`)](https://github.com/Turbo1123/Turbo-IO/blob/fw/tmg2/firmware-research/strix-1.0.5.5-tmg2/README.md) · [Download / SHA-256](https://github.com/Turbo1123/Turbo-IO/releases/tag/navs3-tmg2-20261019)**
 
 <a id="tmig1-update"></a>
 
-### 2026-10-14 · 新版本适配预发布：底层再迁移，体验再延续
+### 2026-10-14 · New version adaptation pre-release: the low level moved again, the features carry on
 
 
 
-*imagegen 横版宣传设计，不是实机截图。版本号为本轮固定适配对象，不表示未来版本自动兼容。*
+*Landscape promo design made with imagegen, not a device screenshot. The version numbers are this round's fixed targets; future versions are not automatically compatible.*
 
-**用户已在 iPhone 17 Pro Max 实测：RayNeo AI iOS 1.0.6（218）＋ Strix OS 1.0.5.5 / TMIG1 已刷入、进入并验证兼容。** 上传实刷原样固件，不另改二进制冒充实测；公开手机源码移除私人配置和微信读书网页正文适配后重新编译通过，未再安装做公开派生整包的全量回归。
+**A user tested on iPhone 17 Pro Max: RayNeo AI iOS 1.0.6 (218) + Strix OS 1.0.5.5 / TMIG1 was flashed, entered and verified compatible.** The uploaded firmware is the one actually flashed, with no binary changes passed off as tested. The public phone source, with private config and the WeChat Reading web-text adapter removed, recompiles cleanly; the public derived full package was not reinstalled for a full regression.
 
-**这次是底层迁移，不是改版本号。** 旧补丁前置字节在新版相同位置 **0/36 匹配**；重定位 134 个原生绑定，核对 C++ 菜单/头控对象的新尺寸与成员偏移、回调与输入生命周期，再适配 1.0.6 官方查询、下载、解压和 15 个负载的 OTA 校验。公开构建已重建出与实测一致的 AP 和完整 ZIP。适配并不容易，后续官方升级仍须重新审计，不能照搬旧地址。
+**This is a low-level migration, not a version-number bump.** The bytes ahead of the old patches match **0/36** at the same locations in the new version. 134 native bindings were relocated; the new sizes and member offsets of the C++ menu and head-control objects were checked, along with callbacks and input lifecycle; then the 1.0.6 official query, download, unzip and 15-payload OTA checks were adapted. The public build rebuilds the AP and full ZIP identical to the tested ones. The adaptation was not easy. Later official updates must be audited again; old addresses cannot be copied over.
 
-- 延续四项菜单、仪表盘与小应用 SDK、导航、音乐、原生阅读、番茄、Watch 输入、诊断及智记共存等模块；不承诺各功能已完成长期全量验收。
-- **情境英语进入本次公开研究范围**：从本机已有智记片段生成有界题库，手机授权/校验/发送，眼镜轻量学习与复习。模型与服务凭据自行配置，自动功能默认关闭。
-- **Dots 保留开发中入口，尚未完成**，不是本次已交付的对话产品；不公开私人 Bridge、会话、订阅、隧道或认证配置。
-- 自定义只改新版 AP，其他 **14 个负载与新版原厂逐字节一致**；完整 OTA 仍会安装它们。AP **7,373,064 字节**，低于 9.6 MB 保守预算；体积不是 RAM 或安全保证。
-- **归档官方原始 1.0.5.5 ZIP**：不重封装、无自定义修改，附来源和校验；不是救砖保证，TMIG1 固定门禁不能把它当自定义包刷入。
+- Carries over the four-item menu, dashboard and mini-app SDK, navigation, music, native reading, Pomodoro, Watch input, diagnostics, Lifelog coexistence and other modules. There is no promise that each feature has passed long-term full acceptance.
+- **Situational English joins this public research scope**: it builds a bounded question bank from Lifelog clips already on the device; the phone authorizes, checks and sends; the glasses run light study and review. You configure models and service credentials yourself; automatic features are off by default.
+- **Dots keeps an in-development entry and is not finished**; it is not a conversation product shipped in this round. Private Bridge, session, subscription, tunnel and auth configuration is not published.
+- The customization changes only the new AP; the other **14 payloads are byte-identical to the new stock**, and a full OTA still installs them. The AP is **7,373,064 bytes**, under the conservative 9.6 MB budget. Size is no guarantee of RAM headroom or safety.
+- **Archived the original official 1.0.5.5 ZIP**: not repackaged, no custom changes, with its source and checksums. It is not an unbrick guarantee, and the fixed TMIG1 gate cannot flash it as a custom package.
 
-**[下载 TMIG1 / 校验](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · 底层迁移、复现与刷写教程（已删除，见 `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`） · 1.0.6 插件构建（已归档，见提交 `27ad86e` 的 `official-addon/tmig1-edition/README.md`） · [原版 1.0.5.5](../firmware-research/strix-1.0.5.5/stock/README.md)**
+**[Download TMIG1 / checksums](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.5.5-tmig1) · Low-level migration, reproduction and flash guide (deleted; see `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`) · 1.0.6 addon build (archived; see `official-addon/tmig1-edition/README.md` at commit `27ad86e`) · [Stock 1.0.5.5](../firmware-research/strix-1.0.5.5/stock/README.md)**
 
-**非官方实验预发布，小白不要刷。** 掉电、中断、错包和代码缺陷可能造成无法启动或设备损坏，不保证稳定、回滚或救砖。旧 Android APK / iOS 候选不能混用，未发布新版 Android 1.0.6 APK。不含任何个人 Key、Cookie、Apple 开发者账号、签名材料或合并 IPA。
+**Unofficial experimental pre-release; beginners should not flash it.** Power loss, an interruption, the wrong package or a code defect can leave the glasses unable to boot or damage the device. Stability, rollback and unbricking are not guaranteed. Old Android APK and iOS candidates cannot be mixed in; no new Android 1.0.6 APK was released. It contains no personal keys, cookies, Apple developer account, signing material or merged IPA.
 
 <a id="lifelog-coexist"></a>
 
-### 2026-09-30 · TLC1：开着全天智记，也能进入扩展应用
+### 2026-09-30 · TLC1: extension apps open even with all-day Lifelog on
 
-修复开启官方「全天智记」后，导航、音乐、读书、番茄、滴滴和小应用可能无法从眼镜菜单进入的问题。**不关闭智记、不重写原厂录音，只调整六个扩展的共存判断；相对 TGR1 的 AP 增加 192 字节。** 原厂前台占用与助手活动检查保留，不包含 TBL1 亮度实验补丁。
+Fixes navigation, music, reading, Pomodoro, DiDi and mini apps sometimes failing to open from the glasses menu once the official 「全天智记」 (all-day Lifelog) is on. **Lifelog stays on and stock recording is not rewritten; only the coexistence checks of six extensions change. The AP grows by 192 bytes relative to TGR1.** The stock foreground-occupancy and assistant-activity checks are kept. The TBL1 brightness experiment patch is not included.
 
-**源码、复现与刷写说明 · [下载 TLC1 固件 / SHA-256 / 审计](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
+**Source, reproduction and flash notes · [Download TLC1 firmware / SHA-256 / audit](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
 
-用户已确认智记开启时其他应用可进入，并在升级保护收尾说明后确认本轮音乐显示正常；持续采集、音频共存、反复抬头和长期稳定性仍需测试。**确认眼镜升级完成、自然回首页后，必须彻底退出重开手机雷鸟 App，结束本次进程内升级保护，否则音乐等内容可能无法同步。升级未完成或状态不明时不可强停。**
+A user confirmed that other apps open with Lifelog on and, after the update-protection wrap-up instructions, that music displays correctly in this round. Continuous capture, audio coexistence, repeated head raises and long-term stability still need testing. **Once you have confirmed that the glasses update finished and the glasses returned to the home screen on their own, you must fully quit and reopen the RayNeo app on the phone to end the in-process update protection; otherwise music and other content may not sync. Do not force-quit while the update is unfinished or its state is unclear.**
 
-实验固件，非开发者不要刷，回滚不保证救砖。只改 AP 内容，但仍为完整 OTA；其他 13 个负载不变。提供定向源码与 iOS OTA 参考，不提供私用 IPA、凭据或新的 TLC1 Android APK；旧 GUARD-07 APK 不能直接刷本包。TGR1 的 Watch 全局翻页已知问题不因此解决。
+Experimental firmware: non-developers should not flash it, and rollback is no unbrick guarantee. Only AP content changes, but it is still a full OTA; the other 13 payloads are unchanged. Targeted source and an iOS OTA reference are provided; there is no private IPA, no credentials and no new TLC1 Android APK. The old GUARD-07 APK cannot flash this package directly. This does not fix the known TGR1 Watch global page-turn problem.
 
 <a id="apple-watch-remote"></a>
 
-### 2026-09-29 · Apple Watch 遥控：表冠、手势与屏幕操作
+### 2026-09-29 · Apple Watch remote: crown, gestures and screen controls
 
 
 
-*imagegen 生成的横版概念图，不是实机截图；示意界面不代表已完成全局输入验收。*
+*Landscape concept image made with imagegen, not a device screenshot. The illustrated UI does not mean global input has passed acceptance.*
 
-把 Watch 作为眼镜的输入端：经配对 iPhone 的雷鸟插件中转，支持表冠上一项/下一项、屏幕确认/返回、两套手势映射，以及 10 分钟或始终开启的手机授权。源码、构建与接入 · TGR1 协议与验收边界
+Uses the Watch as an input device for the glasses, relayed through the RayNeo addon on the paired iPhone: crown for previous/next item, screen for confirm/back, two gesture mappings, and phone authorization for 10 minutes or always on. Source, build and integration · TGR1 protocol and acceptance limits
 
-**[下载 TGR1 实验 OTA / SHA-256 / 审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tgr1) · 兼容条件、校验与风险**
+**[Download TGR1 experimental OTA / SHA-256 / audit report](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tgr1) · Compatibility, checks and risks**
 
-**实验源码与固件，不是稳定遥控交付。** TGR1 虽已有用户刷入完成反馈，但“翻页翻不了”仍未闭环；本次上传的是原样归档包，没有重新编译或新真机验收。全局输入需要配套 TGR1，原厂固件与已发布 TAP1/FOCUS-04 不自动支持；旧版公开 APK 的固定候选门禁也不能直接导入本包。不发布私人 IPA、签名材料或个人配置；始终开启也不保证 Watch/手机后台可达。非开发者请勿刷，回滚不保证救砖。
+**Experimental source and firmware, not a stable remote-control release.** A user has reported that TGR1 flashed fine, but "page turning doesn't work" is still unresolved. This upload is the archived package as is, with no rebuild and no new device acceptance. Global input needs the matching TGR1; stock firmware and the released TAP1/FOCUS-04 do not support it automatically, and the fixed candidate gate in the old public APK cannot import this package directly either. No private IPA, signing material or personal config is published. "Always on" does not guarantee that the Watch or phone stays reachable in the background. Non-developers should not flash it; rollback is no unbrick guarantee.
 
 <a id="android-release-update"></a>
 
-### 2026-09-27 · Android 1.0.5 完整插件与实验 OTA
+### 2026-09-27 · Android 1.0.5 full addon and experimental OTA
 
 
 
-**[下载完整 APK / TAP1-TEST-01 / 校验文件](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · 完整安装与刷机教程 · 公开范围与源码构建**
+**[Download full APK / TAP1-TEST-01 / checksum files](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) · Full install and flash guide · Public scope and source build**
 
-*横版更新说明由 imagegen 生成，不是实机截图，也不能代替完整教程。公开 APK 不含微信读书网页正文适配或私人配置；公开派生包尚未再次实机刷写。眼镜自然重启后，必须按教程只读回查并解除结果保护；更新未结束或状态不明时不能释放。*
+*The landscape update graphic was made with imagegen. It is not a device screenshot and does not replace the full guide. The public APK has no WeChat Reading web-text adapter or private config; the public derived package has not been flashed on a device again. After the glasses restart on their own, you must follow the guide to read the state back (read-only) and release the result protection. Do not release it while the update is unfinished or its state is unclear.*
 
 <a id="developer-ecosystem"></a>
 
-### 2026-09-26 · BIG STEP：从内置功能，走向开发者生态
+### 2026-09-26 · BIG STEP: from built-in features to a developer ecosystem
 
 
 
-*AI 生成的开发者生态效果示意，不是镜片实拍；图中数据与界面为示例，音乐模板不播放音频。开放的是开发接口与有界组件能力，不是无限系统权限。配套 TAP1 实验固件于 09-27 单独发布，见顶部下载入口。*
+*AI-generated illustration of the developer ecosystem, not a lens photo. The data and UI in the image are examples, and the music template plays no audio. What is opened up is developer interfaces and bounded component capabilities, not unlimited system access. The matching TAP1 experimental firmware was released separately on 09-27; see the download entry at the top.*
 
-**这次的价值，是把“我们替你做功能”推进到“你也能为眼镜开发功能”。** 在匹配运行时支持的组件范围内，新增信息卡或小应用可以通过数据和 ZIP 完成，不必为每个页面重新修改 AP。需要新系统能力、底层协议或运行时之外的组件时，仍需固件开发；不是任意网页或 JS 都能装进眼镜。
+**The point of this release is moving from "we build features for you" to "you can build features for the glasses too".** Within the components the matching runtime supports, new info cards or mini apps can be made from data and a ZIP, without changing the AP for every page. New system capabilities, low-level protocols or components outside the runtime still need firmware work; not just any web page or JS can be put on the glasses.
 
-| 这次开放了什么 | 用户能用它做什么 |
+| What this opens up | What users can do with it |
 | --- | --- |
-| 仪表盘组件、JSON 约束与后端 API | 把额度、天气、日程、设备状态等自有数据排成信息卡，复用图标、进度条和图表 |
-| 小应用描述、打包校验与原生运行时参考源码 | 用受约束的页面和交互生成 ZIP，在匹配运行时导入、查询四槽、启动小应用 |
-| 自托管 HTTP / Python / MCP | 数据源和凭据由用户自己掌管，不依赖作者的私人服务器 |
-| 20 个离线模板、可复制提示词与 Agent Skill | 从已有例子起步，让 Agent 按尺寸、组件和内存限制生成、检查、打包，而不是从头猜协议 |
+| Dashboard components, JSON constraints and backend API | Lay out your own data, such as quotas, weather, calendar and device status, as info cards, reusing icons, progress bars and charts |
+| Mini-app descriptions, package validation and native runtime reference source | Generate a ZIP with constrained pages and interactions; on a matching runtime, import it, query the four slots and launch the mini app |
+| Self-hosted HTTP / Python / MCP | You keep the data sources and credentials, with no dependency on the author's private server |
+| 20 offline templates, copyable prompts and Agent Skill | Start from existing examples and have an Agent generate, check and package within size, component and memory limits, instead of guessing the protocol from scratch |
 
-**更新清单：** 应用广场整理为三个入口；进入“我的应用”自动查询四槽（受连接、忙碌和升级保护限制）；新增 20 个可下载 ZIP 与来源说明；补齐仪表盘/小应用后端开发教程、12 个 MCP 工具及 Agent Skill。手机配套研究版还加入了仪表盘草稿预览列表；本 PR 的公开仪表盘范围是模型与后端接口参考，未包含该完整编辑器 UI。
+**Changes:** the app gallery is reorganized into three entries. Opening 「我的应用」 (My Apps) queries the four slots automatically (subject to connection, busy and update-protection limits). 20 downloadable ZIPs with source notes were added, and the dashboard and mini-app backend developer guides, 12 MCP tools and the Agent Skill were completed. The phone research build also added a dashboard draft preview list; the public dashboard scope of this PR is the model and backend interface reference and does not include that full editor UI.
 
-应用广场分为 **我的应用 / 应用广场 / 开发指南**。保留四个基础示例，新增天气、降雨、通勤、余票、航班、日程、待办、知识便签、阅读摘记、代码与服务状态等 **20 个可修改的离线模板**。每个都有图标、内容、接入要求、ZIP 和可复制 Agent 提示词。眼镜最多安装四个小应用、一次运行一个，广场条目不会自动全部安装。
+The app gallery has three tabs: **我的应用 / 应用广场 / 开发指南** (My Apps / App Gallery / Developer Guide). The four basic examples stay, and **20 editable offline templates** are added, covering weather, rain, commute, remaining train tickets, flights, calendar, to-dos, knowledge notes, reading notes, code and service status, and more. Each has an icon, content, integration requirements, a ZIP and a copyable Agent prompt. The glasses install at most four mini apps and run one at a time; gallery entries are not all installed automatically.
 
 ```sh
 npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
 ```
 
-把需求与选中的模板提示词交给 Agent，让它连接**你自己的 Server / MCP**，保留最少展示字段，生成并验证小包；密钥始终留在服务端。手机、仪表盘、应用包的开发与打包细节统一放在[开发教程](DEVELOPER_ECOSYSTEM.md)，避免主 README 堆积命令。
+Give the Agent your requirement and the selected template's prompt, and have it connect to **your own Server / MCP**, keep the minimum display fields, and generate and validate a small package. Keys always stay on the server. Development and packaging details for the phone, dashboard and app packages are all in the [developer guide](DEVELOPER_ECOSYSTEM.md), to keep commands out of the main README.
 
-- **仪表盘 SDK**：256×194 卡片，文字 / 图标 / 图片 / 进度条 / 柱图 / 折线；后端草稿、revision、发布、手机批准与回执。
-- **App SDK**：540×180，最多四页，JS 仅用于开发电脑构建；ZIP 解压预算 20 KiB。眼镜使用有界原生组件，不执行 ZIP 中的代码。
-- **独立后端**：HTTP API、Python SDK、12 个 MCP 工具，无作者私有服务依赖。
+- **Dashboard SDK**: 256×194 cards with text / icons / images / progress bars / bar charts / line charts; backend drafts, revisions, publishing, phone approval and receipts.
+- **App SDK**: 540×180, at most four pages; JS is used only for the build on the development computer; the ZIP's unpacked budget is 20 KiB. The glasses use bounded native components and do not run code from the ZIP.
+- **Standalone backend**: HTTP API, Python SDK, 12 MCP tools, no dependency on the author's private services.
 
-**边界：** 本版小应用使用版本化快照与手机手动导入，自动后台刷新、按钮回传 Server 和队列恢复尚未接通。20 个模板不是 20 项联网成品；公开 API/打包工具可以独立运行，手机模块是集成源码，不是签名安装包。私用匹配运行时的基础安装已有用户实测反馈，但本次不发布新的可刷固件，也不把模拟器测试当镜片验收。
+**Limits:** mini apps in this release use versioned snapshots and manual import on the phone. Automatic background refresh, button callbacks to the server and queue recovery are not wired up yet. The 20 templates are not 20 finished connected apps. The public API and packaging tools run on their own; the phone module is integration source, not a signed install package. The basic install of the private matching runtime has user test feedback, but this release publishes no new flashable firmware and does not treat simulator tests as lens acceptance.
 
-**开放开发能力，不取消安全边界：** 最多四个已安装应用、一个前台实例、每包最多四页、每页最多 12 个组件；解压后总预算 20 KiB，ZIP 上限 24 KiB。保留手机确认与协议校验，眼镜不运行 MCP 或任意脚本；API Key、Cookie、签名证书和私用安装包不随源码发布。先在电脑运行模板与后端测试，再处理匹配手机和固件集成。详见[公开范围与兼容前提](DEVELOPER_ECOSYSTEM.md)。
+**Opening up development does not remove the safety limits:** at most four installed apps, one foreground instance, at most four pages per package and at most 12 components per page; total unpacked budget 20 KiB, ZIP limit 24 KiB. Phone confirmation and protocol checks stay. The glasses do not run MCP or arbitrary scripts. API keys, cookies, signing certificates and private install packages are not published with the source. Run the template and backend tests on a computer first, then handle the matching phone and firmware integration. See [public scope and compatibility prerequisites](DEVELOPER_ECOSYSTEM.md).
 
-[20 个模板及来源](../app-gallery/README.md) · [API 与安装步骤](DEVELOPER_ECOSYSTEM.md) · 手机集成边界（已删除，见 `git show b389cc6:official-addon/research/app-runtime-v1/README.md`）
+[20 templates and their sources](../app-gallery/README.md) · [API and install steps](DEVELOPER_ECOSYSTEM.md) · Phone integration limits (deleted; see `git show b389cc6:official-addon/research/app-runtime-v1/README.md`)
 
 <details>
-<summary>查看应用广场界面</summary>
+<summary>View the app gallery UI</summary>
 
 
-隔离模拟器运行截图，不是镜片实拍，也不代表已连接上游 MCP。
+Screenshot from an isolated simulator. It is not a lens photo, and it does not mean an upstream MCP is connected.
 </details>
 
 <a id="focus-update"></a>
 
-### 2026-09-25 · 中秋重磅更新：全新 UI 与 FOCUS-04
+### 2026-09-25 · Mid-Autumn major update: new UI and FOCUS-04
 
-1. **菜单重构**：眼镜菜单四项同屏，明显选中框，左上角时间与电量；详情页不再残留菜单滚动指示器。
-2. **修复遗留固件问题**：优化音乐旋钮轻触误切歌、文字边距、微信读书长按返回/退出与番茄页面重叠。
-3. **新增原生番茄时钟应用**：眼镜第十二项菜单，手机双向控制，短按暂停/继续、长按停止；息屏继续计时、到时空闲提醒，避免长期亮屏打扰。
-4. **Turbo IO 插件 UI 焕新**：首页眼镜动效、音乐/微信读书/导航/番茄卡片，整理内页与设置；只改自己的插件，不重做官方 App。
+1. **Menu rework**: four glasses menu items on one screen, a clear selection frame, time and battery in the top-left corner. Detail pages no longer show a leftover menu scroll indicator.
+2. **Fixes for remaining firmware problems**: light touches on the music knob skipping tracks by mistake, text margins, WeChat Reading long-press back/exit, and Pomodoro page overlap.
+3. **New native Pomodoro timer app**: the twelfth glasses menu item, with two-way control from the phone; short press to pause or resume, long press to stop. It keeps timing with the screen off and gives an idle reminder when time is up, so the screen does not stay lit and distracting.
+4. **Turbo IO addon UI refresh**: home-screen glasses animation, music/WeChat Reading/navigation/Pomodoro cards, reorganized inner pages and settings. Only our own addon changed; the official app was not redone.
 
-**FOCUS-04 固件与构建校验** · **配套手机构建和使用（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）** · **[下载实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
+**FOCUS-04 firmware and build checks** · **Matching phone build and use (archived; see `official-addon/focus-edition/README.md` at commit `27ad86e`)** · **[Download experimental firmware](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tfp1-focus04)**
 
-基于 Strix OS 1.0.4.12，仅 AP 内容变化，其他 13 个固件负载不变；AP **9,558,216 字节**，低于 9,600,000 字节限制。2026-09-25 用户实刷并确认此版正常；仍是试验用品，不代表全场景稳定、不会变砖或可保证救砖。配套宿主为雷鸟 AI **iOS 1.0.5（201）**，不可与旧包/门禁混用。
+Based on Strix OS 1.0.4.12. Only AP content changes; the other 13 firmware payloads are unchanged. The AP is **9,558,216 bytes**, under the 9,600,000-byte limit. On 2026-09-25 a user flashed this build and confirmed it works. It is still experimental; that does not mean it is stable in every scenario, cannot brick, or can be guaranteed to unbrick. The matching host is RayNeo AI **iOS 1.0.5 (201)**; do not mix it with old packages or gates.
 
 
 
-完整更新长海报。界面效果示意，不是镜片实拍；微信读书公开版正文需自行合法导入。
+Full long update poster. UI illustration, not a lens photo. In the public build, WeChat Reading text must be imported lawfully by yourself.
 
 <details>
-<summary>查看首页、番茄时钟与音乐单独效果图</summary>
+<summary>View the home screen, Pomodoro timer and music images separately</summary>
 
 
 
 
 
-首页为模拟环境界面；番茄与音乐为设计效果，不作为实机像素一致性或完整验收证据。
+The home screen is a simulated-environment UI; Pomodoro and music are design renders. They are not evidence of pixel accuracy or full acceptance on the device.
 </details>
 
 <a id="local-translation"></a>
 
-### 2026-09-24 · 本地翻译与英语离线字幕
+### 2026-09-24 · Local translation and offline English captions
 
-公开 **Apple 本地翻译、Hy-MT2 文字翻译和 Parakeet 英语离线 ASR**，支持手机/系统可用的蓝牙麦克风、快速预译、原文与译文同步眼镜。运行在 iPhone，**无需服务 Key、无需刷眼镜固件**；是独立字幕入口，不是全面替换官方翻译所有功能。iOS 26+ 可选构建，首次需自行准备模型与系统语言包，不提供签名 IPA 或权重包。
+Publishes **Apple on-device translation, Hy-MT2 text translation and Parakeet offline English ASR**, with support for Bluetooth microphones the phone/system can use, fast pre-translation, and syncing the original and translated text to the glasses. It runs on the iPhone and **needs no service key and no glasses firmware flash**. It is a standalone captions entry, not a full replacement for all official translation features. It is an optional build for iOS 26+; on first use you prepare the models and system language packs yourself. No signed IPA or weight packages are provided.
 
-[下载、构建、签名与使用教程](../ios-addon/local-translation/README.md) · [模型及第三方许可证](../ios-addon/local-translation/THIRD_PARTY.md) · [验证与限制](../ios-addon/local-translation/VALIDATION.md)。英语识别不是多语言 ASR；眼镜专有前方/四周定向收音尚未接入，前台采集、20分钟保护，无自动云端兜底。公开源码已编译并做离线测试，完整公开包与镜片仍需使用者验收。
+[Download, build, signing and usage guide](../ios-addon/local-translation/README.md) · [Models and third-party licenses](../ios-addon/local-translation/THIRD_PARTY.md) · [Validation and limits](../ios-addon/local-translation/VALIDATION.md). English recognition is not multilingual ASR. The glasses' own front/surround directional pickup is not wired up yet. Capture runs in the foreground with a 20-minute protection, and there is no automatic cloud fallback. The public source has been compiled and tested offline; the full public package and the lenses still need acceptance by the user.
 
 <a id="weread-research"></a>
 
-### 2026-09-24 · 微信读书研究：四本书架与原生阅读页
+### 2026-09-24 · WeChat Reading research: four-book shelf and native reading page
 
-**新增第十一项“微信读书”研究菜单：四本封面书架、原生文本窗口与手动/自动滚动。** 已公开原创 AP / 手机模块、构建与协议说明，以及 [TWR1 实刷实验固件](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1)。源码重建 AP 与实刷版本一致，仅 AP 改变，其他13个负载不变。**旧 TWR1 的长按返回问题在 09-25 FOCUS-04 中加入修复，旧 Release 不变。非开发者请勿刷，不保证回滚或救砖。**
+**New eleventh research menu item 「微信读书」 (WeChat Reading): a four-cover bookshelf, a native text window and manual/auto scrolling.** Published the original AP / phone modules, build and protocol notes, and the [TWR1 as-flashed experimental firmware](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1). The AP rebuilt from source matches the flashed version; only the AP changes, and the other 13 payloads are unchanged. **The old TWR1 long-press back problem was fixed in FOCUS-04 on 09-25; the old Release is unchanged. Non-developers should not flash it; rollback and unbricking are not guaranteed.**
 
-手机模块公开书架/统计、封面处理、TXT/EPUB 导入及阅读传输，**不含网页正文适配、Cookie、Key 或私用 IPA，也尚未接入主仓库默认构建及 TWR1 OTA 打包入口**；没有自己的匹配手机集成时先别刷。这不是“下载源码就能直接读取所有微信读书正文”的声明。书架/统计参考 [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading)，网页阅读可自行研究 AGPL 项目 [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin)。[架构思路与许可范围](archive/history/WEREAD_RESEARCH.md)
+The phone module publishes the bookshelf/statistics, cover processing, TXT/EPUB import and reading transfer, **without the web-text adapter, cookies, keys or private IPA, and it is not yet wired into the main repo's default build or the TWR1 OTA packaging entry**. Do not flash until you have your own matching phone integration. This is not a claim that "download the source and you can read all WeChat Reading text directly". The bookshelf/statistics follow [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading); for web reading you can study the AGPL project [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin) yourself. [Architecture approach and license scope](archive/history/WEREAD_RESEARCH.md)
 
 
 
-上述集成限制针对历史 TWR1；09-25 新增的 FOCUS-04 可选集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）已提供匹配的构建与 TFP1 打包入口。网页正文适配仍未公开，本机 TXT/EPUB 导入范围不变。
+The integration limits above apply to the historical TWR1. The optional FOCUS-04 integration build added on 09-25 (archived; see `official-addon/focus-edition/README.md` at commit `27ad86e`) provides a matching build and a TFP1 packaging entry. The web-text adapter is still not public; the local TXT/EPUB import scope is unchanged.
 
-*界面效果示意（用户提供）：展示菜单、同步提示、四本书架与阅读布局，不作为实机验收证据；图中书籍、文字、页码和速度仅为示例，具体交互以研究说明为准。*
+*UI illustration (provided by a user): shows the menu, sync prompt, four-book shelf and reading layout. It is not device acceptance evidence. The books, text, page numbers and speed are examples only; see the research notes for the actual interaction.*
 
 <a id="music-app"></a>
 
-### 2026-09-23 · 网易云音乐：眼镜第十项菜单
+### 2026-09-23 · NetEase Cloud Music: the tenth glasses menu item
 
-**2026-09-23 研究机实测通过**：配套 iOS 播放器有声音、封面和歌词；眼镜显示旋转专辑封面与**五行歌词，当前句始终在中间高亮**，暂停/继续、切歌、拖动进度同步正常。手机发起播放与眼镜反向请求均有代码支持；不保证 App 被系统终止后能自动拉起。
+**Passed testing on the research device on 2026-09-23**: the matching iOS player has sound, cover art and lyrics. The glasses show a spinning album cover and **five lines of lyrics, with the current line always highlighted in the middle**; pause/resume, track skip and seeking stay in sync. The code supports both playback started from the phone and reverse requests from the glasses. Automatic relaunch after the system kills the app is not guaranteed.
 
-- **新增第十项音乐菜单**，保留原七项、第八项 Turbo Display/ANIM60 和第九项原生导航。
-- 手机负责获取可播放歌曲、封面和歌词以及播放音频；眼镜 AP 原生绘制，不持续传整屏截图。可选常亮 / 30秒 / 60秒显示。
-- **旧 TMU1 已知问题：轻碰旋钮可能误切歌。09-25 FOCUS-04 已加入输入过滤与去抖，旧 Release 不变。** 扫码登录可能报“环境异常”，本次用未登录可播放歌曲验收，不绕过风控、会员或版权限制。
-- 适配 **雷鸟 AI iOS 1.0.5（201）+ Strix OS 1.0.4.12**，Android / HarmonyOS 暂未接入此音乐播放器。
+- **New tenth menu item for music**; the original seven items, the eighth (Turbo Display/ANIM60) and the ninth (native navigation) stay.
+- The phone fetches playable songs, covers and lyrics and plays the audio; the glasses AP draws natively, with no continuous full-screen screenshots. Optional display: always on / 30 s / 60 s.
+- **Known problem in the old TMU1: a light touch on the knob may skip a track by mistake. FOCUS-04 on 09-25 added input filtering and debounce; the old Release is unchanged.** QR-code login may report 「环境异常」 (environment abnormal). This round was accepted with songs that play without login; risk controls, membership and copyright limits are not bypassed.
+- Targets **RayNeo AI iOS 1.0.5 (201) + Strix OS 1.0.4.12**. Android / HarmonyOS do not have this music player yet.
 
-**完整教程：构建、签名、试刷、播放与协议** · **[下载 TMU1 实测固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**。发布源码、精确实测固件及校验工具，不提供合并 IPA、个人签名、Key、账号或 Cookie。
+**Full guide: build, signing, test flash, playback and protocol** · **[Download TMU1 tested firmware pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**. Source, the exact tested firmware and the checking tools are published; no merged IPA, personal signing, keys, accounts or cookies.
 
-> **试验用品，仅供开发者非商业学习研究，非开发者请勿刷！** 仅 AP 内容改变、其他13项保持原厂字节，清单更新 AP Size/MD5；不代表 OTA 只写 AP，也不保证不会变砖。断电、中断、错误固件可能导致无法启动或失去 OTA，原厂回滚不是救砖保证。实测通过不等于生产稳定版。普通 SDK/App 开发无需刷固件。
+> **Experimental; for non-commercial developer study and research only. Non-developers, do not flash it!** Only AP content changes; the other 13 items keep the stock bytes, and the manifest updates the AP Size/MD5. That does not mean the OTA writes only the AP, nor that it cannot brick. Power loss, an interruption or the wrong firmware can leave the glasses unable to boot or lose OTA; rolling back to stock is no unbrick guarantee. Passing tests does not make it a stable production release. Ordinary SDK/App development does not need a firmware flash.
 
 <a id="native-apps"></a>
 
-### 2026-09-22 · Turbo Display 与原生导航应用
+### 2026-09-22 · Turbo Display and the native navigation app
 
-**这次不只是“把导航测试文字发到眼镜”，而是在眼镜端增加了独立的导航应用页面。** **Turbo Display 保留为开发者的传图／显示测试工具，不是面向日常使用的显示应用**；新增导航则是拥有独立菜单入口、布局和运行状态的应用页面。两者定位不同。
+**This is more than "sending navigation test text to the glasses": the glasses get a standalone navigation app page.** **Turbo Display stays as a developer image-transfer and display test tool, not a display app for daily use.** The new navigation is an app page with its own menu entry, layout and run state. The two have different roles.
 
-| 功能 | Turbo Display · 显示测试（Test） | 原生导航 · TNV1 |
+| Feature | Turbo Display · display test (Test) | Native navigation · TNV1 |
 | --- | --- | --- |
-| 用来做什么 | 验证传图、像素渲染、局部更新与显示协议 | 手机规划路线，眼镜原生绘制导航界面 |
-| 眼镜入口 | 第八项 **Turbo Display** | 新增第九项 **导航**，原七项与 Turbo Display 保留 |
-| 怎么更新 | 手机处理图像，发送完整图或局部像素更新 | 手机发送转向、距离、路名和路线点；眼镜用 LVGL 绘制 |
-| 显示内容 | 当前 512×128 灰度画布；镜片呈现绿色单色图像 | 540×180 布局：方向箭头、距离、路名、剩余信息、路线示意图 |
-| 适合什么场景 | 开发调试、测试图与协议验收；不是日常应用或视频投屏 | 持续变化的导航指引，无需每次传一整张导航图片 |
+| What it is for | Verify image transfer, pixel rendering, partial updates and the display protocol | The phone plans the route; the glasses draw the navigation UI natively |
+| Glasses entry | Eighth item **Turbo Display** | New ninth item **导航** (Navigation); the original seven items and Turbo Display stay |
+| How it updates | The phone processes the image and sends a full image or partial pixel updates | The phone sends turns, distance, road name and route points; the glasses draw with LVGL |
+| What it shows | The current 512×128 grayscale canvas; the lens shows a green monochrome image | 540×180 layout: direction arrow, distance, road name, remaining info, route sketch |
+| Good for | Development debugging, test images and protocol acceptance; not a daily app or video mirroring | Continuously changing navigation guidance, without sending a whole navigation image each time |
 
-#### 导航应用：独立入口与原生绘制
+#### Navigation app: own entry and native drawing
 
-- **独立入口与生命周期**：眼镜菜单中有“导航”；手机开始后可主动打开，不必每次先去官方字幕或提词器操作一遍。
-- **眼镜端原生绘制**：内置转向图标、文字与路线示意图。手机只发导航数据，单次完整快照最多 **328 B**，减少旧传图方案的带宽负担；这不是无延迟保证。
-- **高德提供路线，眼镜呈现指引**：手机支持步行、骑行、驾车的规划/导航入口；路线示意图不是高德完整地图底图，也不是路口实景。
-- **显示与退出管理**：实现了停止/实体返回收尾、无有效更新约60秒息屏、按键唤醒及可选常亮；各分支仍需扩大验收，不承诺绝不熄屏。
-- **后台导航已修复立即退出问题**：配套 iPhone Air 版收到用户正常反馈；真实导航按授权使用后台定位，模拟后台仅短时测试。见[后台行为与限制](archive/history/NAVIGATION_BACKGROUND.md)。
+- **Own entry and lifecycle**: the glasses menu has 「导航」 (Navigation). Once the phone starts navigation it can open the page directly, without going through the official captions or teleprompter first each time.
+- **Native drawing on the glasses**: built-in turn icons, text and route sketch. The phone sends only navigation data, at most **328 B** per full snapshot, which reduces the bandwidth load of the old image-transfer approach. This is no guarantee of zero latency.
+- **Amap provides the route, the glasses show the guidance**: the phone has planning/navigation entries for walking, cycling and driving. The route sketch is not a full Amap base map or a real-world junction view.
+- **Display and exit handling**: implements stop/physical-back wrap-up, screen off after about 60 seconds without a valid update, wake on key press and optional always-on. Each branch still needs wider acceptance; there is no promise that the screen never turns off.
+- **Background navigation no longer exits immediately**: the matching iPhone Air build got a normal report from a user. Real navigation uses background location as authorized; simulated background was only tested briefly. See [background behavior and limits](archive/history/NAVIGATION_BACKGROUND.md).
 
-这里的“应用级别”指**集成在固件 application 内、拥有独立菜单和交互的原生应用页面**，不再借用旧测试界面；并不是已经开放 Android 式 APK 安装、任意第三方 App 加载或整个系统 UI 替换。
+"App-level" here means **a native app page integrated into the firmware application, with its own menu and interaction**, no longer borrowing the old test UI. It does not mean that Android-style APK installs, loading arbitrary third-party apps or replacing the whole system UI are open.
 
-**实机进展（2026-09-22）**：Turbo Display 完整图和局部更新已有镜片反馈；TNV1 已刷入并进入独立导航页，手机发起导航及后台修复获用户初步正常反馈。新增应用不等于生产稳定版，长期运行、全部模式、低电量和异常恢复仍需专项验证。
+**Device progress (2026-09-22)**: Turbo Display full-image and partial updates have lens feedback. TNV1 was flashed and the standalone navigation page opened; navigation started from the phone and the background fix got initial normal feedback from a user. A new app is not a stable production release; long runs, all modes, low battery and fault recovery still need dedicated testing.
 
-**TNV1 匹配版本已公开：** [下载高风险固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · 完整源码、构建与手机合并 · 升级、导航与传图测试说明。此包保留 **Turbo Display 测试工具**并新增**独立原生导航应用**，含配套 iOS 1.0.5（201）源码与后台修复；仅 AP 内容变化，另13项不变。使用自己的配置和签名，不提供合并后 IPA。旧 R3 Release 不含这两项，不能混用。**非开发者请勿刷；实机成功不代表不会变砖或保证救砖。**
+**The matching TNV1 build is public:** [Download high-risk firmware pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) · Full source, build and phone merge · Update, navigation and image-transfer test notes. This package keeps the **Turbo Display test tool** and adds the **standalone native navigation app**, with matching iOS 1.0.5 (201) source and the background fix. Only AP content changes; the other 13 items are unchanged. Use your own config and signing; no merged IPA is provided. The old R3 Release has neither feature and cannot be mixed in. **Non-developers should not flash it. Success on a device does not mean it cannot brick or that unbricking is guaranteed.**
 
 <a id="animation-test"></a>
 
-### 2026-09-22 · ANIM60：眼镜端本地动图实验
+### 2026-09-22 · ANIM60: local animation on the glasses (experiment)
 
-ANIM60 是基于相同 Strix OS 1.0.4.12 的**另一份实验 AP**：复用第八项 Turbo Display，内置 12 帧素材、在眼镜端定时绘制，手机无需逐帧传输。2026-09-22 研究机已刷入，用户确认动画播放，30 秒结束计数 1799 次提交；这是约 60 次/秒的**提交计数**，不是物理面板 60 FPS 的测量，也未证明长期热稳定或全部情形无丢帧。它不是 GIF 上传器或面向普通用户的动画 App。
+ANIM60 is **a separate experimental AP** based on the same Strix OS 1.0.4.12. It reuses the eighth item, Turbo Display, has 12 built-in frames and draws them on a timer on the glasses, so the phone does not send each frame. On 2026-09-22 it was flashed on the research device; a user confirmed the animation plays, and after 30 seconds the counter showed 1799 submits. That is a **submit count** of about 60 per second, not a measurement of 60 FPS on the physical panel, and it does not prove long-term thermal stability or no dropped frames in every case. It is not a GIF uploader or an animation app for ordinary users.
 
-查看素材预览、实测边界、AP 校验值与离线重建 · [ANIM60 高风险实验固件 Pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-anim60)。ANIM60 与 TNV1 是不同固件候选，不能混用升级授权或手机端门禁；公开源码目前不提供 ANIM60 专用手机 OTA 操作入口。**普通 SDK/App 开发不需要刷固件。**
+View asset previews, test limits, AP checksums and offline rebuild · [ANIM60 high-risk experimental firmware pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-anim60). ANIM60 and TNV1 are different firmware candidates; do not mix their update authorizations or phone gates. The public source does not currently provide an ANIM60-specific phone OTA entry. **Ordinary SDK/App development does not need a firmware flash.**
 
-> **仅限开发者的非商业学习研究，有风险，不是日常导航产品。** 不在驾驶、骑行或过马路时操作/测试；可能出现断连、延迟、旧指引或熄屏。使用自定义固件还可能无法启动或失去 OTA，原厂回滚不是救砖保证。普通 SDK/App 开发不需要刷固件。
+> **For non-commercial developer study and research only. Risky; not a daily navigation product.** Do not operate or test it while driving, cycling or crossing the road; disconnects, delay, stale guidance or screen-off can happen. Custom firmware can also leave the glasses unable to boot or lose OTA; rolling back to stock is no unbrick guarantee. Ordinary SDK/App development does not need a firmware flash.
 
 <details>
-<summary>早期 R3 固件验证：为什么只修改 application？</summary>
+<summary>Early R3 firmware validation: why change only the application?</summary>
 
-> **试验用品，不是日常固件；非开发者请勿尝试，务必不要随便刷。** 本次要验证的是能否经官方 OTA 运行修改后的 AP、能否开发眼镜端页面并显示 PNG，不是为了做固件而做固件，也不是推荐替换官方系统。
+> **Experimental, not daily firmware. Non-developers should not try it; do not flash it casually.** This round tests whether a modified AP can run through the official OTA and whether glasses pages can be developed that show a PNG. It is not firmware for its own sake, and not a recommendation to replace the official system.
 
-2026-09-21，基于 **Strix OS 1.0.4.12** 的 Turbo Photo R3 获得用户真机确认：更新后显示自定义图片，图片页可退出并再次进入。仅 AP 负载改变，另 13 项不变；不等于完整 OTA 只写 AP。**不保证回滚或救砖**：掉电、意外中断、版本不匹配、错误代码/资源都可能导致无法启动或失去 OTA。不能宣传“几乎刷不死”。
+On 2026-09-21, Turbo Photo R3, based on **Strix OS 1.0.4.12**, was confirmed on a real device by a user: after the update it showed a custom image, and the image page could be exited and entered again. Only the AP payload changed; the other 13 items are unchanged. This does not mean a full OTA writes only the AP. **Rollback and unbricking are not guaranteed**: power loss, an unexpected interruption, a version mismatch or wrong code/resources can all leave the glasses unable to boot or lose OTA. Do not advertise it as "almost unbrickable".
 
-**为什么只改 application（`nuttx_ap.bin`）？** 菜单、页面和 PNG 显示的目标代码位于 AP；先把改动限制在这里，保留其余原厂组件，减少变量与额外风险，验证眼镜应用/UI 扩展能力，而非重写系统。AP 不是隔离沙盒，错误仍可能导致整机无法启动；“只改 AP”不是不会变砖的保证。设计取舍
+**Why change only the application (`nuttx_ap.bin`)?** The target code for menus, pages and PNG display is in the AP. Limiting changes to it first and keeping the other stock components reduces variables and extra risk, and tests the glasses' app/UI extension ability rather than rewriting the system. The AP is not an isolated sandbox; mistakes can still stop the whole device from booting. "AP only" is no guarantee against bricking. Design trade-offs
 
-**研究过程、源码、已知问题与离线测试** · **[实验固件 Pre-release 与校验值](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-turbophoto-r3)**。普通 SDK/App 开发不需要刷这个固件。R3 只验证嵌入图片页，不含后续 TDP1 传图和 TNV1 导航；它不是通用眼镜 App 安装系统，长期稳定性和故障恢复未验。
+**Research process, source, known problems and offline tests** · **[Experimental firmware pre-release and checksums](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-turbophoto-r3)**. Ordinary SDK/App development does not need this firmware. R3 tests only the embedded image page and does not include the later TDP1 image transfer or TNV1 navigation. It is not a general glasses app install system, and long-term stability and fault recovery were not tested.
 
 </details>
 
 
-## 2026-10-14 各端功能对比（历史）
+## 2026-10-14 feature comparison across platforms (historical)
 
-### 手机版本怎么选（2026-10-14）
+### Which phone version to choose (2026-10-14)
 
-**新增固定组合：iOS 官方 1.0.6（218）＋ TMIG1 / Strix OS 1.0.5.5**，见新适配教程（已归档，见提交 `27ad86e` 的 `official-addon/tmig1-edition/README.md`）。其 iPhone 17 Pro Max 实测不自动扩展到旧 Android APK、旧 iOS 门禁或其他机型。以下历史版本仍保留各自兼容边界。
+**New fixed pair: official iOS 1.0.6 (218) + TMIG1 / Strix OS 1.0.5.5**; see the new adaptation guide (archived; see `official-addon/tmig1-edition/README.md` at commit `27ad86e`). Its iPhone 17 Pro Max test does not extend automatically to old Android APKs, old iOS gates or other phone models. The historical versions below keep their own compatibility limits.
 
-下表比较**当前公开的内容与接入方式**，不把“有源码”“已打包”和“真机全量通过”混为一谈。V1/V2 是架构路线，1.0.5 是官方宿主版本；GUARD-07、FOCUS-04、TAP1 则是不同扩展/固件标记，不是同一组版本号。
+The table compares **what is currently public and how it is integrated**, without mixing up "has source", "is packaged" and "fully passed on a device". V1/V2 are architecture routes and 1.0.5 is the official host version; GUARD-07, FOCUS-04 and TAP1 are different extension/firmware labels, not one series of version numbers.
 
-| 差别 | Android 1.0.5 · GUARD-07 | iOS 官方扩展 · V2 | iOS 独立 SDK · V1 | 鸿蒙 HarmonyOS |
+| Difference | Android 1.0.5 · GUARD-07 | iOS official extension · V2 | iOS standalone SDK · V1 | HarmonyOS |
 | --- | --- | --- | --- | --- |
-| 交付形态 | **完整实验 APK + 源码** | **源码**；自行合并签名，无合并 IPA | SDK + 示例客户端源码 | 历史源码，无 HAP；**停止更新** |
-| 连接 / ASR | 复用官方宿主连接与 ASR | 复用官方宿主连接与 ASR | 独立连接、自有 ASR | 独立连接、自有 ASR；历史验收 |
-| 自有模型 / 搜索 / TTS | 配置与实现已集成；凭据自备 | 模型、TinyFish、本机/云端 TTS；按构建说明启用 | 自有模型/语音路线；不等于 V2 模块齐全 | 保留原有自有语音；不跟进新模块 |
-| 音乐 / 阅读 / 原生导航 / 番茄 | 已集成对应手机模块，需匹配实验固件 | 有对应公开模块；FOCUS-04 提供可选集成构建，不能混用历史候选 | 不作为该路线的完整集成功能 | 无当前这组原生应用移植 |
-| 微信读书正文 | **本地 TXT**、原创示例；不含网页正文/Cookie入口 | FOCUS-04 支持本地 **TXT / EPUB**；不含网页正文适配 | 不能视作同一套微信读书客户端 | 未移植当前阅读应用 |
-| 本地翻译 / 离线 ASR | **未移植**；云端字幕另行配置 | **可选 iOS 26+** Apple / Hy-MT2 / Parakeet 模块，模型与语言包自备 | 未接该独立模块 | 未接 |
-| 仪表盘 / 四槽应用广场 | 当前 APK 已集成入口与 20 个离线模板；需 TCE1/TAP1 | 已公开协议及手机参考模块，**需自行集成**；旧 FOCUS-04 不自动包含 | 不默认提供 | 不跟进 |
-| 刷机方式 | 当前 Release 固定 TAP1-TEST-01，沿官方 OTA，**刷后人工回查并释放保护** | 按所选 iOS 集成版匹配固定固件/门禁，自行构建签名 | 不提供当前 Android OTA 工作流 | 无当前刷机流程适配 |
-| 验收边界 | Fold3 / Android 15 私用前身实刷通过；公开删减 APK 构建/审计通过，未再次实刷 | 各模块有各自研究验收；公开重建包、签名和所选组合仍需验证 | 仅适用 V1 已记录结果 | Mate X5 / HarmonyOS 6.1 历史结果，不保证新固件 |
+| Delivery | **Full experimental APK + source** | **Source**; merge and sign it yourself; no merged IPA | SDK + example client source | Historical source, no HAP; **no longer updated** |
+| Connection / ASR | Reuses the official host's connection and ASR | Reuses the official host's connection and ASR | Own connection, own ASR | Own connection, own ASR; historical acceptance |
+| Own model / search / TTS | Config and implementation integrated; bring your own credentials | Models, TinyFish, on-device/cloud TTS; enable per the build notes | Own model/voice route; not the same as V2's full module set | Keeps its existing own voice; does not follow new modules |
+| Music / reading / native navigation / Pomodoro | Matching phone modules integrated; needs the matching experimental firmware | Matching public modules exist; FOCUS-04 provides an optional integration build; do not mix in historical candidates | Not a fully integrated feature of this route | No port of the current native apps |
+| WeChat Reading text | **Local TXT** and original samples; no web-text/cookie entry | FOCUS-04 supports local **TXT / EPUB**; no web-text adapter | Not the same WeChat Reading client | The current reading app is not ported |
+| Local translation / offline ASR | **Not ported**; cloud captions configured separately | **Optional iOS 26+** Apple / Hy-MT2 / Parakeet module; bring your own models and language packs | This standalone module not wired | Not wired |
+| Dashboard / four-slot app gallery | The current APK integrates the entry and 20 offline templates; needs TCE1/TAP1 | Protocol and phone reference module are public; **integrate them yourself**; the old FOCUS-04 does not include them | Not provided by default | Not followed |
+| Flashing | Current Release fixed to TAP1-TEST-01, through the official OTA; **after flashing, check by hand and release the protection** | Fixed firmware/gate matching the chosen iOS integration build; build and sign it yourself | No current Android OTA workflow | No current flash flow |
+| Acceptance limits | The private predecessor flashed fine on Fold3 / Android 15; the public trimmed APK passed build and audit but was not flashed again | Each module has its own research acceptance; the public rebuild, signing and the chosen pair still need verification | Only V1's recorded results apply | Mate X5 / HarmonyOS 6.1 historical results; new firmware not guaranteed |
 
-**共同限制：** 自备模型/地图等配置；微信读书、网易云登录与服务权限自行处理；无私人凭据、代登录或风控绕过。云服务、系统权限、长时后台和其他机型不保证一致，不能用某一端的成功证明另一端已验证。
+**Shared limits:** bring your own model, map and other config. Handle WeChat Reading and NetEase Cloud Music login and service permissions yourself. No private credentials, no logging in on your behalf and no risk-control bypass. Cloud services, system permissions, long background runs and other phone models may behave differently; success on one platform does not prove another has been verified.
 
-### 眼镜固件有什么差别
+### How the glasses firmware differs
 
-| 固件 / 运行时 | 主要能力与用途 | 配套要求 |
+| Firmware / runtime | Main capabilities and use | Requirements |
 | --- | --- | --- |
-| **原厂 Strix OS** | 官方菜单和功能；手机扩展可利用已有文字/字幕等通道，但没有我们的原生新菜单、TCE1图形编辑运行时或TAP1四槽应用 | 普通用户首选。保留官方 App / 固件；原厂有限卡片不等于新仪表盘 SDK |
-| **FOCUS-04 / TFP1**（历史实验版） | 四项同屏菜单、原生番茄；包含音乐/阅读交互等修复。**不包含后来的 TCE1/TAP1 运行时** | FOCUS-04 iOS 集成版（已归档，见提交 `27ad86e` 的 `official-addon/focus-edition/README.md`）与该 Release 固定固件；不是 Android GUARD-07 的升级候选 |
-| **TAP1-TEST-01**（当前 Android 实验发行） | 此前 TAP1 有界四槽小应用运行时及仪表盘能力；相对 spacefix-c 仅将菜单标记改为“显示TEST”，不是全新功能重写 | GUARD-07 APK + 同一 Release 的精确 ZIP；TCE1/TAP1手机桥必须匹配。不能拿 FOCUS-04 的 iOS 门禁直接刷 |
-| **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1**（历史研究包） | 分别研究图片、传图、导航、动图、音乐、阅读；各自对应当时源码与验收 | 固件研究索引。不是需按顺序安装的“补丁”，不建议为了追版本逐个刷 |
+| **Stock Strix OS** | Official menu and features. Phone extensions can use the existing text/captions channels, but there is no native new menu of ours, no TCE1 graphics editor runtime and no TAP1 four-slot apps | First choice for ordinary users. Keep the official app and firmware; the stock limited cards are not the new dashboard SDK |
+| **FOCUS-04 / TFP1** (historical experimental) | Four-item menu on one screen, native Pomodoro; includes fixes to music/reading interaction and more. **Does not include the later TCE1/TAP1 runtime** | The FOCUS-04 iOS integration build (archived; see `official-addon/focus-edition/README.md` at commit `27ad86e`) with that Release's fixed firmware; not an upgrade candidate for Android GUARD-07 |
+| **TAP1-TEST-01** (current Android experimental release) | The earlier TAP1 bounded four-slot mini-app runtime and dashboard capabilities. Compared with spacefix-c it only changes the menu marker so it shows "TEST"; it is not a new feature rewrite | GUARD-07 APK + the exact ZIP from the same Release; the TCE1/TAP1 phone bridge must match. It cannot be flashed with the FOCUS-04 iOS gate directly |
+| **R3 / TDP1 / TNV1 / ANIM60 / TMU1 / TWR1** (historical research packages) | Research into images, image transfer, navigation, animation, music and reading respectively; each matches its source and acceptance at the time | Firmware research index. These are not "patches" to install in order; flashing each one to keep up is not recommended |
 
-**不是固件越新就可以随便升级。** FOCUS-04 与 TAP1-TEST-01 均基于 Strix OS 1.0.4.12，系统版本数字可能不变；必须核对 Release 名、SHA-256、宿主和门禁，不只看“1.0.4.12”。所有自定义固件均是高风险实验包，不保证回滚或救砖。
+**Newer firmware does not mean you can upgrade freely.** FOCUS-04 and TAP1-TEST-01 are both based on Strix OS 1.0.4.12, so the system version number may not change. You must check the Release name, SHA-256, host and gate, not just "1.0.4.12". All custom firmware is high-risk and experimental; rollback and unbricking are not guaranteed.
 
-### 历史逐项验收记录
+### Historical per-item acceptance records
 
-以下为 **2026-09-24 历史对照**，保留以便追溯，不用于判断当前 Android 是否已移植。当前范围以本节上表及各模块文档为准；鸿蒙已停止更新。
+Below is the **2026-09-24 historical comparison**, kept for traceability. Do not use it to judge whether the current Android build has been ported. The current scope is the table above in this section and each module's docs. HarmonyOS is no longer updated.
 
-**实测**＝有对应路线的真机/镜片反馈；**部分**＝仅部分流程通过或仍有已知问题；**待验**＝已有代码，但尚未完成对应真机闭环；**未接**＝本路线未集成；**官方**＝沿用宿主能力，不代表扩展重写或重新验收。历史私用前身的反馈不能保证你自己编译的包、其他固件和机型全部可用。
+**Tested** = device/lens feedback for that route; **Partial** = only part of the flow passed, or known problems remain; **To verify** = code exists but the device loop is not closed; **Not wired** = not integrated in this route; **Official** = uses the host's capability, which does not mean the extension rewrote or re-accepted it. Feedback on historical private predecessors does not guarantee that your own build, other firmware or other phone models all work.
 
 <details>
-<summary>展开 09-24 四端历史功能与验收对比</summary>
+<summary>Expand the 09-24 historical feature and acceptance comparison across four platforms</summary>
 
-| 功能 | iOS 独立 SDK · V1 | iOS 官方扩展 · V2 | Android 官方扩展 | 原生鸿蒙 HarmonyOS |
+| Feature | iOS standalone SDK · V1 | iOS official extension · V2 | Android official extension | Native HarmonyOS |
 | --- | --- | --- | --- | --- |
-| 应用形态 / 连接 | **实测**：独立配对，复用厂商通信库 | **官方**：保留登录、配对与连接 | **官方**：保留登录、配对与连接 | **实测**：原生独立配对、认证、初始化 |
-| 免越狱 / 免 Root | 非越狱 iPhone 已验 | 非越狱 iPhone 已验，需兼容未加密输入 | 非 Root 设备已验，需兼容 APK | 无需 Root；Mate X5 已验，无需官方包 |
-| 语音识别 ASR | 自有阿里流式 ASR / 云 VAD | 沿用官方 ASR | 沿用官方 ASR | 自有阿里流式 ASR / 云 VAD |
-| 本地翻译 / 英语离线字幕 | **未接此模块** | **可选 iOS 26+**：Apple / Hy-MT2 翻译、Parakeet 英语识别；公开构建和测试通过，真机组合链待复验 | **未接** | **未接** |
-| 自有模型 → 镜片回答 | **实测**：支持流式显示 | **实测**：支持流式显示 | **实测**：支持流式显示 | **实测**：当前非 SSE，取回后分段显示 |
-| 回答同步朗读 TTS | **未接此扩展** | **云端私用版实测**：官方/自有回答各完整朗读一次；**本机默认模式待镜片听感验收** | **未接** | **未接** |
-| 音乐封面 / 五行歌词 · TMU1 | **未接** | **实测**：可选音乐构建 + TMU1固件；旋钮误切歌为已知问题 | **未接** | **未接** |
-| 插话 / 回答后自动关闭 | **实测** | **部分**：有研究实测，依赖官方会话事件 | **实测**：研究设备通过 | **部分**：退出已验；WB14 插话改动待复验 |
-| TinyFish 联网搜索 | 未接专用工具 | **实测**：需自有 Key | **实测**：需自有 Key | **待验**：工具代码已接，默认关闭 |
-| Codex / 知识库 | **实测**：发任务、查结果、完成通知 | **待验**：只读服务/Tools 已有，公开版全链路未验全 | **待验**：查询/状态适配代码已有 | **未接** |
-| 录音与文字导出 | **部分**：短录音接收、手动 ASR 通过；长录音/完整分享待验全 | **部分**：本机音频分享、转写整理；不保证完整官方历史 | **部分**：本机录音选择/分享已验，不重建完整智记 | **部分**：眼镜起录可用；手机起录及完整导出待验 |
-| 全天智记 | **部分**：限时协议实验，非完整全天产品链 | **部分**：开启保存后的片段导出，不补历史音频 | **未完整移植** | **未完成完整链路** |
-| 待办下发 / 双向同步 | **部分**：新增/发送可用，眼镜完成回传仍有问题 | **部分**：自然语音创建已验，网页全链路双向未验全 | **官方**待办；扩展双向未完整移植 | **部分**：下发镜片已验，反向完成待验 |
-| 提词器 / AI 新闻 | **部分**：传稿、TXT/EPUB 书稿；未接新闻生成 | **部分**：新闻长稿滚动已验，重启准备/速度未验全 | **官方**提词；AI 新闻未完整移植 | **已知问题**：眼镜菜单未知错误，列表握手未齐 |
-| 天气 → 眼镜首页 | **部分**：自有天气已接，部分镜片验收 | **官方**，不算独立天气移植 | **官方**，不算独立天气移植 | **部分**：模拟天气镜片已验，实时服务需配置/复验 |
-| 地图搜索 / 算路 | **未接本仓库导航模块** | **部分**：地图搜索、三种模式入口；逐模式未验全 | **实测**：地图/搜索，三种模式规划返回路线 | **部分**：POI/步行算路已验；手机底图白屏 |
-| 导航 → 眼镜持续指引 | **未接** | **部分**：模拟镜片已验，4 分钟保护 | **部分**：真实路线文字已验；新增模拟模式待验，4 分钟保护 | **部分**：步行模拟镜片已验，骑行/驾车待验 |
-| 真实外场 / 长期后台导航 | **未接** | **未完整验收**，不作为已完成能力 | **未完整验收**，前台研究指引 | **未完整验收**，离页/后台停止导航 |
-| 主动自定义文字通知 | **实测**：手动及 Codex 完成通知；非 APNs | 扩展主动推送未完成；APNs 未接 | 扩展主动通知未完整移植 | **待验**：手动指令与总开关已接 |
-| 其他 App 系统通知转发 | iOS 系统共享通知，需用户授权 | 沿用官方/系统权限；不保证重签后官方推送 | 沿用官方通知能力与权限 | **未实现**：需受限订阅权限、扩展和用户授权 |
-| Web 显示观察 | **实测**：USB 状态观察＋样式预览，非像素投屏 | 不把 V1 观察能力直接套用 | 未迁移 V1 观察接口 | 未迁移 V1 观察接口 |
+| App form / connection | **Tested**: standalone pairing, reuses the vendor communication library | **Official**: keeps login, pairing and connection | **Official**: keeps login, pairing and connection | **Tested**: native standalone pairing, auth, initialization |
+| No jailbreak / no root | Verified on a non-jailbroken iPhone | Verified on a non-jailbroken iPhone; needs a compatible unencrypted input | Verified on a non-rooted device; needs a compatible APK | No root needed; verified on Mate X5; no official package needed |
+| Speech recognition ASR | Own Alibaba streaming ASR / cloud VAD | Uses the official ASR | Uses the official ASR | Own Alibaba streaming ASR / cloud VAD |
+| Local translation / offline English captions | **Module not wired** | **Optional iOS 26+**: Apple / Hy-MT2 translation, Parakeet English recognition; public build and tests passed, the full chain on a device is to be rechecked | **Not wired** | **Not wired** |
+| Own model → answer on the lens | **Tested**: streaming display | **Tested**: streaming display | **Tested**: streaming display | **Tested**: currently not SSE; fetched, then shown in segments |
+| Spoken answer TTS | **Extension not wired** | **Private cloud build tested**: official and own answers each read aloud in full once; **on-device default mode awaits a listening check on the lens** | **Not wired** | **Not wired** |
+| Music cover / five-line lyrics · TMU1 | **Not wired** | **Tested**: optional music build + TMU1 firmware; knob accidental track skip is a known problem | **Not wired** | **Not wired** |
+| Barge-in / auto-close after the answer | **Tested** | **Partial**: research tests; depends on official session events | **Tested**: passed on the research device | **Partial**: exit verified; WB14 barge-in change to be rechecked |
+| TinyFish web search | No dedicated tool | **Tested**: needs your own key | **Tested**: needs your own key | **To verify**: tool code wired, off by default |
+| Codex / knowledge base | **Tested**: send tasks, check results, completion notifications | **To verify**: read-only service/Tools exist; the public build's full chain not fully verified | **To verify**: query/status adapter code exists | **Not wired** |
+| Recording and text export | **Partial**: short recording receive and manual ASR passed; long recordings/full sharing not fully verified | **Partial**: local audio sharing, transcript cleanup; the complete official history is not guaranteed | **Partial**: local recording selection/sharing verified; full Lifelog not rebuilt | **Partial**: recording started from the glasses works; recording started from the phone and full export to verify |
+| All-day Lifelog | **Partial**: time-limited protocol experiment, not a full all-day product chain | **Partial**: export of clips after saving is turned on; historical audio is not backfilled | **Not fully ported** | **Full chain not finished** |
+| To-do push / two-way sync | **Partial**: add/send works; completion sync back from the glasses still has problems | **Partial**: creation by natural voice verified; the full two-way web chain not fully verified | **Official** to-dos; extension two-way sync not fully ported | **Partial**: push to the lens verified; reverse completion to verify |
+| Teleprompter / AI news | **Partial**: script transfer, TXT/EPUB manuscripts; news generation not wired | **Partial**: long news script scrolling verified; restart preparation/speed not fully verified | **Official** teleprompter; AI news not fully ported | **Known problem**: unknown error in the glasses menu; list handshake incomplete |
+| Weather → glasses home screen | **Partial**: own weather wired, partial lens acceptance | **Official**; not counted as a standalone weather port | **Official**; not counted as a standalone weather port | **Partial**: simulated weather verified on the lens; the live service needs config and a recheck |
+| Map search / routing | **This repo's navigation module not wired** | **Partial**: map search and entries for three modes; not each mode fully verified | **Tested**: map/search; all three modes return planned routes | **Partial**: POI/walking routing verified; white screen on the phone base map |
+| Navigation → continuous guidance on the glasses | **Not wired** | **Partial**: simulated guidance verified on the lens, 4-minute protection | **Partial**: real route text verified; the new simulated mode to verify, 4-minute protection | **Partial**: walking simulation verified on the lens; cycling/driving to verify |
+| Real outdoor / long background navigation | **Not wired** | **Not fully accepted**; not a finished capability | **Not fully accepted**; foreground research guidance | **Not fully accepted**; navigation stops when leaving the page or in the background |
+| Proactive custom text notifications | **Tested**: manual and Codex completion notifications; not APNs | Extension proactive push not finished; APNs not wired | Extension proactive notifications not fully ported | **To verify**: manual command and master switch wired |
+| Forwarding other apps' system notifications | iOS system shared notifications; needs user authorization | Uses official/system permissions; official push after re-signing not guaranteed | Uses the official notification capability and permissions | **Not implemented**: needs a restricted subscription permission, an extension and user authorization |
+| Web display observation | **Tested**: USB state observation + style preview; not pixel mirroring | V1's observation ability is not applied directly | V1 observation interface not migrated | V1 observation interface not migrated |
 
 </details>
 
-**默认原厂固件与自定义固件是两条路线：** 原厂固件下的有限卡片/通知模板不等于自由替换系统 UI；自定义 AP 路线已发展到 Turbo Display 和独立导航应用，但需要匹配固件与手机实现，不能直接套到四端。Claude Code、Hermes、WorkBuddy、OpenClaw 也不能仅凭下拉选项视作已接通。
+**Default stock firmware and custom firmware are two routes:** the limited card/notification templates on stock firmware do not mean the system UI can be replaced freely. The custom AP route has grown to Turbo Display and a standalone navigation app, but it needs matching firmware and a matching phone implementation and cannot be applied directly to all four platforms. Claude Code, Hermes, WorkBuddy and OpenClaw also cannot be considered connected just because they appear as dropdown options.
 
-详细证据与使用限制：[iOS V1](archive/v1/v1-sdk.md#能力与边界) · iOS V2 · Android 当前发行 · 鸿蒙历史验收。Android 已提供独立研究签名的完整实验 APK；iOS 仍需自行合并、构建与签名，不提供合并 IPA，鸿蒙不提供 HAP。各端服务配置均由用户自行准备。
+Detailed evidence and usage limits: [iOS V1](archive/v1/v1-sdk.md#能力与边界) · iOS V2 · Android current release · HarmonyOS historical acceptance. Android provides a full experimental APK with its own research signature. iOS still needs you to merge, build and sign, and no merged IPA is provided; HarmonyOS provides no HAP. You prepare the service config for each platform yourself.
 
-## 版本与历史进展
+## Versions and history
 
-近期功能按日期整理在[更新区](#updates)。以下保留各平台的历史适配记录，不代表本次重新验收。
+Recent features are listed by date in the [updates section](#updates). Below are each platform's historical adaptation records; they were not re-accepted for this page.
 
 <details>
-<summary>展开 iOS / Android / HarmonyOS 版本记录</summary>
+<summary>Expand iOS / Android / HarmonyOS version records</summary>
 
-- **iOS 1.0.5（201）+ Strix OS 1.0.4.12**：新增新版宿主的精确版本 / Build / UUID 适配，保留 1.0.4 和 1.0.2。非越狱 iPhone Air 私用研究版已安装并确认扩展加载；用户完成官方固件升级后反馈「一切正常」，目前未报告升级引入的功能异常。该反馈不是全部功能、长期后台或其他平台的全量回归结论。兼容性、升级步骤与验收边界
+- **iOS 1.0.5 (201) + Strix OS 1.0.4.12**: adds exact version / Build / UUID adaptation for the new host and keeps 1.0.4 and 1.0.2. The private research build on a non-jailbroken iPhone Air was installed and the extension load confirmed. After the user finished the official firmware update they reported "everything normal", and no feature problems caused by the update have been reported so far. That report is not a full regression conclusion for all features, long background runs or other platforms. Compatibility, update steps and acceptance limits
 
-- **原生鸿蒙源码首次公开 · WORKBENCH 14**：独立 BLE 连接/初始化、自有语音模型已在 Mate X5 验证；模拟天气、待办和自定义卡片下发通过。高德原生 POI 搜索、步行算路、模拟导航回调及眼镜显示本轮通过。243 项本机测试通过；**手机地图底图目前白屏，骑行/驾车真机与实际外场导航尚未验收**。录音/提词器仍有未修复问题，系统通知转发未实现。安装与使用 · 逐项验收状态
+- **Native HarmonyOS source first published · WORKBENCH 14**: standalone BLE connection/initialization and own voice model verified on Mate X5; simulated weather, to-dos and custom card push passed. Amap native POI search, walking routing, simulated navigation callbacks and glasses display passed this round. 243 local tests passed. **The phone map base map is currently a white screen, and cycling/driving on a device and real outdoor navigation are not accepted yet.** Recording and teleprompter still have unfixed problems; system notification forwarding is not implemented. Install and use · Per-item acceptance status
 
-- **Android 源码新增公开**：兼容官方 Android 1.0.4（195），**非 Root 设备已由用户实机验证可用**。模型/搜索/录音导出和路线文字已有研究机用户确认。模拟导航支持暂停、1/2/4/8倍速，自动测试通过，新增模拟镜片效果待验收。仍只提供源码，需自行编译签名，不是预打包成品。
-- **iOS 1.0.4 + Strix OS 1.0.4.8**：保留 iOS 1.0.2 支持；非越狱 iPhone 上个人签名研究版的语音、自有模型与导航回归正常。新增自适应毛玻璃 TurboIO 底栏。兼容性与预览
-- **导航**：三种出行方式、地图搜索和眼镜文字指引，不是地图投屏。iOS 已修复离开前台立即停止手机导航的问题，真实路线按授权启用后台定位，模拟仅短时后台测试；同源私用 iPhone Air 版收到初步正常反馈，长期后台与公开版各显示通道仍待专项验收，旧字幕4分钟/80帧与前台保护仍保留。**实验性功能有断连、延迟、旧指引和熄屏风险，不替代正式导航，不要在行车中测试。** [iOS 后台修复与限制](archive/history/NAVIGATION_BACKGROUND.md) · [iOS 导航](archive/history/NAVIGATION.md) · Android 导航
+- **Android source newly published**: compatible with official Android 1.0.4 (195); **a user verified on a real non-rooted device that it works**. Model/search/recording export and route text have user confirmation on the research device. Simulated navigation supports pause and 1/2/4/8× speed, and automated tests passed; the new simulated lens view awaits acceptance. Still source only: compile and sign it yourself; it is not a prebuilt package.
+- **iOS 1.0.4 + Strix OS 1.0.4.8**: keeps iOS 1.0.2 support. The personally signed research build on a non-jailbroken iPhone passed regression for voice, own model and navigation. Adds an adaptive frosted-glass TurboIO bottom bar. Compatibility and preview
+- **Navigation**: three travel modes, map search and text guidance on the glasses; not map mirroring. iOS fixed phone navigation stopping as soon as it left the foreground; real routes enable background location as authorized, and simulation was only tested briefly in the background. The private iPhone Air build from the same source got initial normal feedback; long background runs and each display channel of the public build still await dedicated acceptance. The old captions 4-minute/80-frame limit and foreground protection remain. **Experimental feature with risks of disconnects, delay, stale guidance and screen-off. It does not replace real navigation; do not test it while driving.** [iOS background fix and limits](archive/history/NAVIGATION_BACKGROUND.md) · [iOS navigation](archive/history/NAVIGATION.md) · Android navigation
 
 </details>
 
-模型 Key、搜索 Key、TTS 云端 Key、个人提示词与私有知识库由使用者自己配置；本机 TTS 不需要服务 Key。二进制例外仅限[首页列出的原厂砸壳 IPA](../README.md#ios-原厂砸壳-ipa-下载)，以及独立标注警告的 R3、TNV1、ANIM60、TMU1、TWR1 实验固件/原厂内容基线 Release；不提供合并后手机成品包或个人签名材料。固件中的原厂代码/资源版权不变，实验附件不是官方升级推荐；未知二进制版本不得跳过兼容检查。iOS 详细版本/UUID见 [V2文档](../official-addon/README.md#1-兼容性门槛)，Android输入校验见 Android文档。
+Model keys, search keys, cloud TTS keys, personal prompts and private knowledge bases are configured by the user; on-device TTS needs no service key. The only binary exceptions are the [stock decrypted IPAs listed on the home page](../README.md#ios-原厂砸壳-ipa-下载) and the separately warned R3, TNV1, ANIM60, TMU1 and TWR1 experimental firmware / stock-content baseline Releases. No merged phone packages or personal signing material are provided. Copyright in the stock code and resources inside the firmware is unchanged; the experimental attachments are not official update recommendations; unknown binary versions must not skip compatibility checks. iOS version/UUID details are in the [V2 doc](../official-addon/README.md#1-兼容性门槛); Android input checks are in the Android doc.

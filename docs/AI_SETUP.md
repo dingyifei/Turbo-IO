@@ -1,68 +1,67 @@
-# 用 Claude Code / Codex 接入 Turbo IO
+# Set up Turbo IO with Claude Code or Codex
 
-**当前 iOS 路线：** 雷鸟 AI 1.0.21（1）使用 [ios-addon 目录](../ios-addon/README.md)；自行准备合法的 1.0.21 未加密输入，按[专用刷机教程](../ios-addon/OTA.md)核对当前固定组合、单次授权与刷后收尾。历史 1.0.6 NAVS3 资料可用 `git show 27ad86e:official-addon/navs3-edition/README.md` 查看，旧门禁不能移用。**高德（AMap）导航已从当前构建移除**；[历史导航文档](archive/history/NAVIGATION.md)不是当前功能或安装指引。不得通过改版本白名单假装兼容。
+**Current iOS route:** RayNeo AI 1.0.21 (1) uses the [ios-addon folder](../ios-addon/README.md). Prepare your own lawful, unencrypted 1.0.21 input, then follow the [flashing guide](../ios-addon/OTA.md) to check the current pinned pair, the single-use authorization and the post-flash cleanup. The old 1.0.6 NAVS3 docs can be viewed with `git show 27ad86e:official-addon/navs3-edition/README.md`; their old gates do not carry over. **AMap (高德) navigation has been removed from the current build.** The [old navigation doc](archive/history/NAVIGATION.md) does not describe a current feature or install path. Never edit a version allowlist to fake compatibility.
 
-目标是把重复的环境检查、构建、合并和排错交给编程助手，让开发者主要完成账号、签名、设备确认和实测。**不是承诺一条提示词就能跨过所有安装限制，也不是成品 App 安装服务。** 仅限非商业学习研究。
+The goal is to hand the repetitive work (environment checks, builds, merging and troubleshooting) to a coding assistant, so the developer mainly handles accounts, signing, device confirmation and real-device testing. **This is not a promise that one prompt gets past every install restriction, and it is not a finished-app install service.** For non-commercial study and research only.
 
-## 先给助手三样东西
+## Give the assistant three things first
 
-1. 本仓库：<https://github.com/dingyifei/Turbo-IO>。它派生自上游项目 [Turbo1123/Turbo-IO](https://github.com/Turbo1123/Turbo-IO)；构建与刷机以本仓库为准。
-2. **iOS 官方扩展可使用[明确列出的原厂解密输入](../official-apps/ios/README.md)，或自行准备有权使用的兼容副本。当前路线使用匹配的 1.0.21（1）输入；仓库发布过的 1.0.7 及更早的原厂输入只对应旧版本，当前构建不接受。原厂输入无插件，仍需自己合并与签名。** 不提供代砸壳或代签服务。商店安装仍不等于取得可合并的未加密 Runner.app，不能跳过版本与哈希校验。
-3. [首页可复制的完整提示词](../README.md#让-claude-code--codex-帮你接入)，并选好自己的平台。不要让助手同时搭建全部组件。
+1. This repository: <https://github.com/dingyifei/Turbo-IO>. It is forked from the upstream project [Turbo1123/Turbo-IO](https://github.com/Turbo1123/Turbo-IO); for builds and flashing, this repository is the reference.
+2. **The iOS official addon can use the [explicitly listed stock decrypted inputs](../official-apps/ios/README.md), or a compatible copy you prepare yourself and have the right to use. The current route uses a matching 1.0.21 (1) input. The stock inputs this repo published for 1.0.7 and earlier match only those old versions, and the current build does not accept them. Stock inputs contain no addon; you still merge and sign them yourself.** No decryption or signing is done on your behalf. Installing from the App Store still does not give you an unencrypted Runner.app you can merge, and it cannot skip the version and hash checks.
+3. The [full prompt on the front page](../README.md#use-a-coding-assistant), ready to copy, plus your chosen platform. Do not ask the assistant to set up every component at once.
 
-在电脑端编程助手中打开自己的工作目录，允许其在任务范围内读取文件、执行构建命令。Codex 的本机项目使用方式可参考 [官方入门](https://learn.chatgpt.com/docs/quickstart)。Claude Code 使用项目目录中的同一份自然语言提示词即可，不依赖本项目专用云账号。若助手只能远端聊天，先让它生成清单，转到能访问开发电脑的环境继续；云端不能看到你的 USB 手机。
+Open your own working folder in a desktop coding assistant and let it read files and run build commands within the scope of the task. For using Codex on a local project, see the [official quickstart](https://learn.chatgpt.com/docs/quickstart). Claude Code works with the same plain-language prompt in the project folder and does not need any cloud account specific to this project. If the assistant can only chat remotely, have it produce a checklist first, then continue in an environment that can reach your development computer; the cloud cannot see your phone on USB.
 
-**不要把 API Key、签名密码、登录验证码当作“第三样东西”发进提示词。** 这些只在你自己的程序设置、本机凭据存储或交互式签名工具内输入。
+**Do not send API keys, signing passwords or login verification codes in the prompt as a "third thing".** Enter these only in your own app settings, the local credential store or the interactive signing tool.
 
-## 路线
+## Routes
 
-| 目标 | 助手先做 | 用户提供 / 确认 | 当前门槛 |
+| Goal | Assistant does first | User provides / confirms | Current bar |
 | --- | --- | --- | --- |
-| iOS 官方扩展 | [扩展说明](../ios-addon/README.md)，先测试与零密钥预览，再按条件本地合并 | 合法兼容未加密 `Runner.app`、个人证书/描述文件与设备授权 | 当前为 1.0.21（1），须通过打包器的精确输入校验；普通商店加密IPA不能直接合并 |
+| iOS official addon | [Addon guide](../ios-addon/README.md): tests and the zero-key preview first, then a local merge when the conditions are met | A lawful, compatible, unencrypted `Runner.app`, a personal certificate and provisioning profile, and device authorization | Currently 1.0.21 (1); must pass the packager's exact input check. A normal encrypted App Store IPA cannot be merged directly |
 
-iOS 官方扩展**不是第二个独立蓝牙客户端**，沿用宿主的配对和识别。不要自动卸载正在使用的官方App；签名冲突可能需要另外的测试设备或恢复方案。
+The iOS official addon **is not a second, independent Bluetooth client**; it reuses the host app's pairing and recognition. Do not automatically uninstall the official app you are using. A signing conflict may need a separate test device or a recovery plan.
 
-## 推荐的一次接入过程
+## Recommended setup flow
 
-### 1. 环境和版本预检
+### 1. Environment and version precheck
 
-助手先报告选择的路线、当前源码提交、工具缺项、目标设备。已有项目先检查未提交改动，不覆盖或重置。
+The assistant first reports the chosen route, the current source commit, missing tools and the target device. In an existing project it first checks for uncommitted changes and does not overwrite or reset them.
 
-需要官方输入时，iOS使用用户另行自行准备的合法兼容未加密副本；保存原件并记录校验信息。**不要把页面“最新版”当作本项目“已适配版”。** 未知版本时给出实际版本和拒绝原因，等待兼容包或新的适配；不要更改SHA/UUID白名单来伪装兼容，不提供或执行解密绕过。
+When stock input is needed, iOS uses a lawful, compatible, unencrypted copy that the user prepares separately; keep the original and record its checksums. **Do not treat the "最新版" (latest version) shown on a download page as the version this project supports.** For an unknown version, report the actual version and the reason it was rejected, and wait for a compatible package or a new port. Do not change a SHA/UUID allowlist to fake compatibility, and do not provide or run a decryption bypass.
 
-### 2. 在不影响手机的情况下先验证
+### 2. Verify first without touching the phone
 
-- iOS可先构建无账号/无Key预览。
-- 构建缺SDK/工具时，按平台教程补全或列出缺项，不需要先重置眼镜。
-- 不需要先为运行本项目把任何Key嵌入源码；合并生成物放在被忽略的本机目录，不能上传GitHub。
+- On iOS you can build the no-account, no-key preview first.
+- If a build is missing an SDK or tool, install it following the platform guide or list what is missing. You do not need to reset the glasses first.
+- You do not need to embed any key in the source to run this project. Merged outputs go in an ignored local folder and must not be uploaded to GitHub.
 
-### 3. 签名、安装和连接
+### 3. Signing, install and connection
 
-助手可以准备命令并检查产物；用户选择自己的证书、解锁设备并确认信任或调试授权。真正安装、重启、卸载或改绑定前确认设备与当前任务，保留可恢复的原件和个人资料。
+The assistant can prepare commands and check outputs; the user picks their own certificate, unlocks the device and confirms trust or debugging authorization. Before any real install, restart, uninstall or rebinding, confirm the device and the current task, and keep the recoverable originals and personal data.
 
-iOS保留Bundle ID也不等于拥有原厂推送/钥匙串授权。具体处理以平台教程为准。
+On iOS, keeping the Bundle ID does not mean you have the stock push or keychain entitlements. The platform guide is the reference for how to handle this.
 
-### 4. 自己填服务，先做最小测试
+### 4. Fill in your own services and start with a minimal test
 
-官方扩展保留官方ASR；先随机文字/短问答测试，再配置模型地址、模型ID与自己的Key，按需开启TinyFish和知识库。
+The official addon keeps the stock ASR. Test first with random text or a short Q&A, then configure the model URL, the model ID and your own key, and turn on TinyFish and the knowledge base as needed.
 
-模型能回答后，再测试插话、收尾和文件分享；导航仅在所选平台仍支持时单独验收，当前 ios107 不包含高德导航。眼镜显示由使用者实际确认，成功回执不能代替镜片检查。不要一开始就启用所有收费服务或上传长录音。
+Once the model answers, test barge-in, wrap-up and file sharing. Accept navigation separately, and only on a platform that still supports it; the current ios107 build does not include AMap navigation. The user confirms the glasses display in person; a success receipt does not replace checking the lens. Do not turn on every paid service or upload long recordings at the start.
 
-## 可追加给助手的任务
+## Tasks you can add for the assistant
 
-下面是在上方完整提示词之后追加的目标，不会扩大签名、凭据或设备操作授权：
+These goals are appended after the full prompt above. They do not widen the authorization for signing, credentials or device actions:
 
-**眼镜接入自己的知识库**
+**Connect the glasses to your own knowledge base**
 
 ```text
-手机基础对话通过后，再按我选择的平台文档接入自己的Codex知识库。
-先问我允许读取哪个工作区和哪些数据源，默认只读并保留鉴权，不公开裸服务。
-用无敏感内容的查询验证创建任务、完成、手机取回和镜片显示；不要启动自动批准。
+After the basic phone conversation works, connect my own Codex knowledge base following the doc for the platform I chose.
+First ask me which workspace and which data sources you may read. Default to read-only, keep authentication on, and do not expose a bare service.
+Use a query with no sensitive content to verify task creation, completion, retrieval on the phone and display on the lens. Do not turn on auto-approve.
 ```
 
-“让Claude Code/Codex帮我搭建”与“眼镜通过Tools调用电脑Agent”是两件事。后者需要单独的bridge、网络与权限配置，各平台的实现/验收不同；不能因用Claude Code编译成功就标记Claude Code后端已接通。
+"Have Claude Code/Codex set it up for me" and "the glasses call a computer agent through Tools" are two different things. The second needs its own bridge, network and permission setup, and the implementation and acceptance differ by platform. A successful Claude Code build does not mean the Claude Code backend is connected.
 
-## 最后应拿到什么
+## What you should end up with
 
-助手应给出：源码目录/版本、可重现命令、产物或预览地址、测试结果、用户配置项、尚未验收项和清理自己启动进程的方法。停在证书、兼容输入或物理确认上时应精确说明，不说“全部搞定”。有能力继续的本机步骤可以继续做，但不替用户确认镜片、签名或登录。
-
+The assistant should give you: the source folder and version, reproducible commands, the outputs or the preview address, the test results, the settings the user must fill in, the items not yet accepted, and how to clean up the processes it started. When it stops at a certificate, a compatible input or a physical confirmation, it should say so exactly, and not claim "all done". It may continue with local steps it is able to do, but it does not confirm the lens, signing or logins on the user's behalf.

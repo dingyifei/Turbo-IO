@@ -1,51 +1,51 @@
-# 源码发布说明
+# Source release notes
 
-> **历史文档，不是当前发布记录。** 本页描述的是上游项目 2026-09 至 2026-10 的源码发布做法（Android GUARD-07 例外发行、单独 Release 分发的原厂 1.0.5 / 1.0.6 IPA 输入、私有工作区与公开候选目录的分离）。正文没有随之后的发布更新，其中的路径、发行和门槛可能已不适用。当前发布记录是 [ios-addon/RELEASE.md](../ios-addon/RELEASE.md)。
+> **Historical document, not the current release record.** This page describes how the upstream project released its source between 2026-09 and 2026-10: the Android GUARD-07 exception release, the stock 1.0.5 / 1.0.6 IPA inputs distributed through a separate Release, and the split between the private workspace and the public candidate directory. The text was not updated for later releases, so its paths, releases and gates may no longer apply. The current release record is [ios-addon/RELEASE.md](../ios-addon/RELEASE.md).
 
-发布目标：拿到源码后按说明配置、构建，不需要用户复盘逆向过程。不提供个人开发者云凭据或绑定数据。
+Release goal: someone who gets the source can configure and build it from the instructions, without retracing the reverse-engineering work. No personal developer cloud credentials or binding data are provided.
 
-**2026-09-27 发行例外：** [Android GUARD-07 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) 提供独立研究签名的完整非官方修改 APK、TAP1-TEST-01 实验固件及摘要。APK 不含作者账号、Key、Cookie、签名私钥或微信读书网页正文适配；公开派生 APK 尚未再次进行真机刷机验收。iOS 仍不提供合并后的 IPA，原厂砸壳 IPA 仅为明确列出的宿主输入；鸿蒙不提供 HAP 且已停止更新。以下通用源码导出排除项不表示这些单独列明的 Release 附件不存在。
+**2026-09-27 release exception:** The [Android GUARD-07 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) provides a complete unofficial modified APK signed with a separate research key, the TAP1-TEST-01 experimental firmware, and checksums. The APK contains no author account, key, cookie or signing private key, and no WeChat Read web-text adaptation. The public derived APK has not been through another flash acceptance on a real device. iOS still ships no merged IPA; the stock decrypted IPA is only an explicitly listed host input. HarmonyOS ships no HAP and is no longer updated. The general source-export exclusions below do not mean that these separately listed Release attachments do not exist.
 
-## 两个目录，不混在一起
+## Two directories, kept apart
 
-- 私有研究工作区：包含历史日志、录音、截图、反编译材料与临时配置，不能整体公开。
-- 公开候选目录：从显式白名单复制源码、测试、公共文档和构建配置。根README使用面向使用者的版本，不带内部取证链接。
+- Private research workspace: holds historical logs, recordings, screenshots, decompiled material and temporary configuration. It cannot be published as a whole.
+- Public candidate directory: source, tests, public docs and build configuration, copied from an explicit allowlist. Its root README is the user-facing version, without internal forensic links.
 
-研究工作区维护者执行：
+The research workspace maintainer runs:
 
 ```sh
 node scripts/export-source.mjs /absolute/new/turbo-io-source
 ```
 
-目标必须是工作区外不存在的新目录；脚本不覆盖旧目录、不删除原件、不创建Git仓库、不上传、不打IPA或ZIP。遇到扫描发现时保留候选供检查，退出失败；不要因此公开。V1 客户端及其厂商 framework、Opus、VAD 与 ZIPFoundation 依赖已在 cleanup(2) 从源码树删除，`DEPENDENCIES.json` 随之删除；它们保留在 git 历史中。
+The target must be a new directory, outside the workspace, that does not exist yet. The script does not overwrite an old directory, delete originals, create a Git repository, upload anything, or build an IPA or ZIP. If the scan finds something, the script keeps the candidate for inspection and exits with a failure; do not publish in that case. The V1 client and its vendor frameworks, Opus, VAD and ZIPFoundation dependencies were removed from the source tree in cleanup(2), and `DEPENDENCIES.json` was removed with them; they remain in git history.
 
-候选目录检查：
+Check the candidate directory:
 
 ```sh
 node scripts/check-source.mjs /absolute/new/turbo-io-source
 ```
 
-扫描只输出路径/行号/规则，不打印命中的秘密内容。模式匹配不能保证不存在秘密，应再做人工代码/依赖清单检查及独立秘密扫描；已暴露的服务凭据需要由所有者在服务端轮换，删除源码文本不等于令牌失效。
+The scan prints only the path, line number and rule; it does not print the matched secret. Pattern matching cannot prove that no secrets are present, so also review the code and dependency list by hand and run an independent secret scan. An exposed service credential must be rotated by its owner on the server side; deleting the text from the source does not invalidate the token.
 
-安装 Gitleaks 后还可运行 `gitleaks dir . --redact=100`，提交后运行 `gitleaks git . --redact=100`。仓库规则继承默认检测，仅排除两个精确的 UserDefaults 存储键名误报，不排除整份源码或整个依赖目录。公开版使用中性的 `io.turboio` 标识前缀；不发布维护者私有 Git 历史或本机提交邮箱。
+With Gitleaks installed you can also run `gitleaks dir . --redact=100`, and after committing, `gitleaks git . --redact=100`. The repository rules inherit the default detection and exclude only two exact UserDefaults storage key names that are false positives; they do not exclude whole source files or whole dependency directories. The public version uses the neutral `io.turboio` identifier prefix. The maintainer's private Git history and local commit email are not published.
 
-## 排除项
+## Exclusions
 
-- IPA/APK、预签名App、构建缓存、xcresult、临时文件、个人音视频/图片/文本日志。
-- SSH/WDA私人配置、设备ID/绑定库、生产环境变量、API Key、开发者专属Host、临时隧道地址、签名/证书/描述文件。
-- 历史研究Markdown默认不直接发布，避免包含设备路径、私人原话或无意义的内部证据链接。
-- 厂商与第三方依赖单独标注来源及许可，不混入本项目非商业许可声明；是否随源码附带以最终清单为准。
+- IPAs and APKs, pre-signed apps, build caches, xcresult bundles, temporary files, and personal audio, video, image and text logs.
+- Private SSH/WDA configuration, device IDs and binding databases, production environment variables, API keys, developer-only hosts, temporary tunnel addresses, signing material, certificates and provisioning profiles.
+- Historical research Markdown is not published by default, so that device paths, private quotes and meaningless internal evidence links stay out.
+- Vendor and third-party dependencies are labelled separately with their source and license and are not mixed into this project's noncommercial license notice. Whether they ship with the source is decided by the final manifest.
 
-## 发布前门槛
+## Pre-release gates
 
-1. 用候选目录构建本地版并跑单元测试，确认没有依赖私有工作区的绝对路径。
-2. 设备版检查依赖是否齐全、版本是否匹配；真实手机需自己的签名/配置，不提供开发者Key。
-3. 检查源码与实际分发物、许可证/第三方说明、示例配置占位、用户数据与签名材料排除。
-4. 明确当前已知问题：待办反向合并、长期后台/可靠推送、更多设备/固件兼容、最新语音配置硬件回归等，不承诺“任意设备配置即可用”。
-5. 再经所有者确认公开仓库位置后提交/发布。生成候选目录不代表已经公开。
+1. Build the local version from the candidate directory and run the unit tests. Confirm that nothing depends on absolute paths in the private workspace.
+2. For the device build, check that the dependencies are complete and their versions match. A real phone needs your own signing and configuration; no developer key is provided.
+3. Check the source against what is actually distributed, the license and third-party notices, the placeholders in example configuration, and the exclusion of user data and signing material.
+4. State the current known issues: the reverse merge still on the to-do list, long-running background work and reliable push, compatibility with more devices and firmware, hardware regression testing of the latest voice configuration, and so on. Do not promise that "any device configuration works".
+5. Commit and publish only after the owner confirms where the public repository will be. Generating a candidate directory does not mean it has been published.
 
-当前原创内容采用 PolyForm Noncommercial 1.0.0，仅在许可允许的非商业范围内使用。历史 MIT 已授予权利不追溯撤销，详见[许可与历史版本说明](LICENSING.md)。此源码包没有Apple签名，也不包含对第三方组件的额外许可授权。
+The current original content is licensed under PolyForm Noncommercial 1.0.0 and may be used only within the noncommercial scope that license allows. Rights already granted under the earlier MIT license are not revoked retroactively; see [Licensing and earlier versions](LICENSING.md). This source package has no Apple signature and grants no additional license to third-party components.
 
-## 单独标注的固件研究附件
+## Separately listed firmware research attachments
 
-首页另列[原厂 IPA 输入索引](../official-apps/ios/README.md)：1.0.6（218）是原厂砸壳、完全去签名输入，1.0.5（201）保留历史附件形态；均不含 Turbo IO，且不是个人预签名包。它们仅通过单独 Release 分发，不进入源码 Git 历史。仍不提供合并后 IPA。固件研究附件也单独列版本、风险和校验，TMIG1（已删除，见 `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`）与历史包不能混用。仅 AP 内容改变不意味着只刷 AP 或保证回滚；原厂版权不变。未公开个人 Key、账号、签名材料或原始设备日志。
+The front page separately lists the [stock IPA input index](../official-apps/ios/README.md): 1.0.6 (218) is a stock decrypted, fully unsigned input, and 1.0.5 (201) keeps its historical attachment form. Neither contains Turbo IO, and neither is a personal pre-signed package. They are distributed only through a separate Release and are not in the source Git history. A merged IPA is still not provided. The firmware research attachments also list their versions, risks and checksums separately; TMIG1 (deleted, see `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`) must not be mixed with the historical packages. A change limited to AP content does not mean you can flash only the AP, and it does not guarantee rollback. The stock copyright is unchanged. No personal keys, accounts, signing material or raw device logs have been published.

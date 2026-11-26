@@ -1,60 +1,60 @@
 > Historical: describes a feature removed from the current ios107 build (2026-10)
 
-# 雷鸟 iO 眼镜导航 · 开发者使用教程
+# RayNeo iO Glasses Navigation: Developer Guide
 
-**当前实测环境：官方 iOS 雷鸟 AI App 1.0.5（Build 201）+ Strix OS 1.0.4.12，非越狱 iPhone Air。** App 版本和眼镜固件版本是两回事；1.0.4/1.0.2 是历史适配，不是本次使用的 App。
+**Tested environment at the time: official iOS RayNeo AI app 1.0.5 (Build 201) + Strix OS 1.0.4.12, on a non-jailbroken iPhone Air.** The app version and the glasses firmware version are separate things. 1.0.4 and 1.0.2 are older adaptations, not the app used here.
 
-2026-09-22：手机导航后台生命周期已修复，实时路线按授权启用后台定位；模拟最多25秒短时后台测试。同源私用 iPhone Air 版收到初步正常反馈。**长期后台与公开版各显示通道仍待专项验收，旧字幕通道有独立前台保护；实验性、有风险，不用于行车决策。** 详见[后台导航设置与验收边界](NAVIGATION_BACKGROUND.md)。
+2026-09-22: the phone navigation background lifecycle is fixed. Live routes use background location once the user grants it; simulation allows only a short background test of up to 25 seconds. A private iPhone Air build from the same source has received early positive feedback. **Long-running background use and each display channel of the public build still need dedicated acceptance testing, and the old subtitle channel keeps its own foreground guard. This is experimental and risky; do not use it to make driving decisions.** See [background navigation setup and acceptance limits](NAVIGATION_BACKGROUND.md).
 
-这是 V2 官方 App 扩展的可选模块，不是 V1 独立客户端功能。本项目仅供开发者非商业研究，沿用根目录 PolyForm Noncommercial 许可；不提供已合并/预签名 IPA、签名证书、个人账号或 API Key。可用仓库 [原厂1.0.5（201）砸壳IPA](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.5-201) 作为合并输入，它不含 Turbo IO 扩展。
+This is an optional module of the V2 official-app addon, not a feature of the V1 standalone client. The project is for non-commercial developer research only and uses the PolyForm Noncommercial license in the repository root. It does not provide merged or pre-signed IPAs, signing certificates, personal accounts or API keys. The repository's [stock 1.0.5 (201) decrypted IPA](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.5-201) can be used as the merge input; it does not contain the Turbo IO addon.
 
-**先选路线，不要混用两套显示方式：**
+**Choose one route first. Do not mix the two display methods:**
 
-- **普通构建 / 原厂固件**：高德手机导航 + 原厂字幕模板；本页第2—5节的默认命令和“开启眼镜字幕显示”属于这条路线，仍有模拟/前台保护。
-- **TNV1 实验固件 / 独立导航应用**：最新的应用级眼镜导航，手机发语义数据，眼镜 LVGL 本地画箭头与路线示意图，可从首页主动开启。需匹配的 **1.0.5（201）** 专用构建与高风险研究固件；请按 TNV1 构建 和升级/导航使用流程 操作，按钮是“开启眼镜原生导航”。**不要按普通构建命令编译后期待出现 TNV1。** Turbo Display 是传图测试工具，不是导航应用。
+- **Standard build / stock firmware**: AMap phone navigation + the stock subtitle template. The default commands in sections 2 to 5 and the "开启眼镜字幕显示" (Turn on glasses subtitle display) button belong to this route, which still has simulation and foreground guards.
+- **TNV1 experimental firmware / standalone navigation app**: the newest app-level glasses navigation. The phone sends semantic data and the glasses draw the arrows and route sketch locally in LVGL; it can be started from the home page. It needs the matching dedicated **1.0.5 (201)** build and the high-risk research firmware. Follow the TNV1 build and the upgrade/navigation usage flow; the button is "开启眼镜原生导航" (Turn on glasses native navigation). **Do not compile with the standard build commands and expect TNV1 to appear.** Turbo Display is an image-transfer test tool, not a navigation app.
 
-下面先介绍两条路线共享的地图能力，再说明普通字幕构建。
+The map features both routes share come first, then the standard subtitle build.
 
-## 1. 能做什么，以及不能做什么
+## 1. What it can and cannot do
 
-| 内容 | 当前实现 / 验证边界 |
+| Item | Current implementation / verification limits |
 | --- | --- |
-| 手机地图与地点 | 高德关键词搜索（城市可选）、最近12个选择、单击/长按选点、中心选点、加减缩放、主动定位 |
-| 路线 | 步行、骑行、驾车分别使用对应高德引擎；全览、分段详情、模拟/实时切换；先规划后开始，改起终点或出行方式使旧路线失效 |
-| 普通构建镜片文字 | 高德模拟回调 → 转向/距离/道路/剩余信息 → 眼镜内置字幕UI；不是地图图片或屏幕镜像 |
-| 普通字幕常亮 | 私用前身字幕驻留约2分钟获反馈，免操作官方字幕的导航显示获确认；不是无限常亮保证 |
-| 普通字幕使用保护 | 首帧等待新会话ACK，3.2秒节流且只保留最新内容；4分钟/80帧上限，15秒数据断流停止；离开前台停止 |
-| 本次交互修复 | 显式搜索、取消、城市变更作废旧查询、单击选点、真实缩放、固定模拟起点通过本机/模拟器检查；在线POI和真机手感仍需验收 |
-| 实际出行 | 手机实时导航已接入后台定位（需权限与宿主location模式，匹配TNV1私用版已有用户反馈，长期运行待验）；**眼镜字幕只开放模拟，不开放真实出行指引，更不是安全导航设备** |
+| Phone map and places | AMap keyword search (city optional), last 12 selections, tap/long-press to pick a point, pick the map center, zoom in/out buttons, locate on request |
+| Routes | Walking, cycling and driving each use their own AMap engine; overview, step details, simulation/live switch; plan first, then start; changing the start, destination or travel mode invalidates the old route |
+| Standard-build lens text | AMap simulation callbacks → turn/distance/road/remaining info → the glasses' built-in subtitle UI; not a map image or screen mirror |
+| Standard subtitle staying on | The private predecessor's subtitles stayed up for about 2 minutes in feedback; hands-free navigation display through the official subtitles was confirmed; no guarantee it stays on indefinitely |
+| Standard subtitle guards | The first frame waits for a new session ACK; 3.2 s throttle, keeping only the newest content; 4-minute/80-frame cap; stops after 15 s without data; stops when the app leaves the foreground |
+| Interaction fixes in this round | Explicit search, cancel, a city change discarding the old query, tap to pick, real zoom and the fixed simulation start passed local/simulator checks; online POI results and on-device feel still need acceptance |
+| Real trips | Live phone navigation now uses background location (needs permission and the host's location mode; the matching TNV1 private build has user feedback; long runs untested). **Glasses subtitles are open for simulation only, not for real trip guidance, and are not a safe navigation device** |
 
-不要边开车边测试，不以实验镜片文字替代道路观察或成熟导航产品。地图及搜索依赖网络；本项目不提供离线地图、导航TTS接管或路线轨迹存储。锁屏持续GPS已接入配置但仍需真机验收，不能视为稳定可用保证。
+Do not test while driving, and do not let experimental lens text replace watching the road or a mature navigation product. The map and search need a network connection. The project provides no offline maps, no navigation TTS takeover and no route track storage. Continuous GPS with the screen locked is configured but still needs on-device acceptance; do not treat it as a guarantee of stable use.
 
-## 2. 兼容性与高德依赖
+## 2. Compatibility and AMap dependencies
 
-- **当前官方 App：iOS 雷鸟 AI 眼镜 1.0.5 / Build 201**。普通扩展保留1.0.4（195）、1.0.2（67）的历史适配；**TNV1实验OTA仅适配1.0.5（201）**。精确二进制约束见[V2构建说明](../../../official-addon/README.md)。未知版本不要跳过检查。
-- **当前固件：Strix OS 1.0.4.12**。原厂升级后用户反馈正常，TNV1的固定AP修改版另有导航及后台实测反馈。见1.0.5适配说明和TNV1验收边界。早期协议研究基于1.0.3.15，1.0.4.8为历史升级验证。每次重新生成SID并等待眼镜ACK，不能外推全部模式/固件。
-- Navi **11.2.100**（含地图），Foundation **1.9.1**（非IDFA包），Search **9.8.1**。使用静态库构建进扩展；不能再把相同SDK作为第二套动态库重复注入宿主。
-- 官方来源：[导航SDK下载](https://developer.amap.com/api/ios-navi-sdk/download)、[地图/搜索SDK下载](https://lbs.amap.com/api/ios-sdk/download)。使用前阅读并遵循其许可、隐私及服务要求。本仓库不再分发这些SDK二进制。
+- **Current official app: iOS RayNeo AI Glasses 1.0.5 / Build 201.** The standard addon keeps older adaptations for 1.0.4 (195) and 1.0.2 (67); **the TNV1 experimental OTA supports only 1.0.5 (201)**. For the exact binary constraints, see the [V2 build notes](../../../official-addon/README.md). Do not skip the check for unknown versions.
+- **Current firmware: Strix OS 1.0.4.12.** Users reported normal behaviour after the stock upgrade; the TNV1 fixed-AP modified build has separate navigation and background test feedback. See the 1.0.5 adaptation notes and the TNV1 acceptance limits. Early protocol research was based on 1.0.3.15, and 1.0.4.8 was a past upgrade check. A new SID is generated each time and the glasses ACK is awaited; this cannot be extrapolated to every mode or firmware.
+- Navi **11.2.100** (includes maps), Foundation **1.9.1** (non-IDFA package), Search **9.8.1**. They are built into the addon as static libraries; do not inject the same SDKs into the host a second time as dynamic libraries.
+- Official sources: [Navigation SDK download](https://developer.amap.com/api/ios-navi-sdk/download), [Map/Search SDK download](https://lbs.amap.com/api/ios-sdk/download). Read and follow their license, privacy and service terms before use. This repository no longer distributes these SDK binaries.
 
-在仓库根目录：
+From the repository root:
 
 ```sh
-# 阅读官方条款后，显式同意下载固定依赖。不需要输入Key。
+# After reading the official terms, explicitly agree to download the pinned dependencies. No key is needed.
 node official-addon/setup-amap.mjs --accept-sdk-terms
 
-# 编译有真实高德地图的arm64扩展
+# Build the arm64 addon with real AMap maps
 TIO_AMAP_ENABLED=1 bash official-addon/build.sh embedded
 ```
 
-输出 `official-addon/build/navigation/TurboIOPrivateAddon.dylib`。SDK保存在被Git忽略的 `official-addon/build/amap-sdk`，不得提交build目录。
+The output is `official-addon/build/navigation/TurboIOPrivateAddon.dylib`. The SDKs are stored in `official-addon/build/amap-sdk`, which Git ignores; never commit the build directory.
 
-获取脚本校验两份官方压缩包SHA256并展开指定子包，遇到下载链接更新导致哈希不一致就停止，不静默换SDK。已下载的同一批压缩包可放入绝对目录并追加 `--archives-dir /absolute/downloads`，文件名需为 `AMap_iOS_Navi_ALL.zip` 与 `search-9.8.1.zip`。离线导入同样校验哈希；已存在的SDK目录不覆盖。
+The fetch script checks the SHA256 of both official archives and unpacks only the named sub-packages. If a download link changes and the hash no longer matches, it stops instead of silently switching SDKs. If you already downloaded the same archives, put them in an absolute directory and add `--archives-dir /absolute/downloads`; the file names must be `AMap_iOS_Navi_ALL.zip` and `search-9.8.1.zip`. Offline import checks the hashes too, and an existing SDK directory is not overwritten.
 
-默认 `bash official-addon/build.sh embedded` 不链接高德；适合基础扩展或零密钥预览，页面会明确提示缺SDK，不会伪造地图和搜索结果。
+The default `bash official-addon/build.sh embedded` does not link AMap. It suits the base addon or a zero-key preview; the page says plainly that the SDK is missing and does not fake maps or search results.
 
-## 3. 在自己电脑合并、签名
+## 3. Merge and sign on your own computer
 
-先准备有权使用且符合[V2技术门槛](../../../official-addon/README.md)的原始 `Runner.app` 和自己的签名材料。工具不下载应用、不解密、不绕过登录/付费限制。不要拿上一次带个人配置的私用包当公开输入。
+First prepare an original `Runner.app` that you are entitled to use and that meets the [V2 technical requirements](../../../official-addon/README.md), plus your own signing material. The tools do not download apps, decrypt them, or bypass login or payment limits. Do not use a previous private build that carries personal configuration as public input.
 
 ```sh
 node official-addon/package.mjs \
@@ -70,82 +70,82 @@ xcrun devicectl device install app --device YOUR_DEVICE_ID \
   /absolute/private/new-navigation-output/Payload/Runner.app
 ```
 
-`--amap-sdk-root` 将 `AMap.bundle`、`AMapNavi.bundle`、`AMapSearch.bundle` 复制到输出App，缺失/符号链接/已有同名资源会停止，避免混版本；必要时添加前台定位用途说明。Navi/Foundation/Search代码已静态链接进扩展，不复制framework到发布仓库。**导航构建不可漏掉这个参数，否则资源可能缺失。**
+`--amap-sdk-root` copies `AMap.bundle`, `AMapNavi.bundle` and `AMapSearch.bundle` into the output app. It stops if one is missing, is a symbolic link, or a resource with the same name already exists, to avoid mixing versions; it adds a foreground location usage description when needed. The Navi/Foundation/Search code is statically linked into the addon, and no framework is copied into the release repository. **A navigation build must not leave out this parameter, or resources may be missing.**
 
-输入原App不修改；输出目录必须不存在。签名、IPA仅在本机生成，项目不上传也不提供这些产物。安装成功与App可启动、账号/蓝牙可用、镜片正确显示是分开的验收步骤。
+The input app is not modified, and the output directory must not already exist. Signing and the IPA happen only on your machine; the project neither uploads nor provides these products. A successful install, the app launching, the account and Bluetooth working, and the lens showing the right content are separate acceptance steps.
 
-## 4. 填自己的高德Key
+## 4. Enter your own AMap key
 
-1. 在高德控制台创建 **iOS平台Key**，绑定实际应用 Bundle ID；本适配目标为 `com.rayneo.venus.pub`。Web服务Key/TinyFish Key不能替代iOS Key。
-2. 根据自己账号开通所需地图、搜索及导航服务；服务权限/额度由高德管理。
-3. App内进入 **TurboIO → 资料 → 步行 / 骑行 / 驾车导航 → 右上角更多 → 高德 Key 设置**，粘贴自己的Key。
-4. Key只存本机钥匙串，不回显旧值。公开版没有维护者Key或从私用包自动导入Key的逻辑。要换Key时先重启App，在初始化地图前修改。
-5. 点击“开启地图”并阅读隐私说明后决定是否同意。拒绝时不初始化地图SDK。主动点“我的位置”或实时导航才请求定位；模拟不必使用真实位置。
+1. In the AMap console, create an **iOS platform key** bound to the real app Bundle ID; the target here is `com.rayneo.venus.pub`. A Web service key or TinyFish key cannot replace the iOS key.
+2. Enable the map, search and navigation services your account needs; AMap manages service permissions and quotas.
+3. In the app, go to **TurboIO → 资料 (Profile) → 步行 / 骑行 / 驾车导航 (Walking / Cycling / Driving navigation) → 更多 (More) at the top right → 高德 Key 设置 (AMap key settings)** and paste your key.
+4. The key is stored only in the local keychain, and the old value is never shown again. The public build has no maintainer key and no logic that imports a key from a private build. To change the key, restart the app first and change it before the map initializes.
+5. Tap "开启地图" (Turn on map), read the privacy notice, then decide whether to agree. If you decline, the map SDK is not initialized. Location is requested only when you tap "我的位置" (My location) or use live navigation; simulation does not need your real location.
 
-## 5. 第一次运行建议用模拟
+## 5. Use simulation for the first run
 
-1. 在雷鸟App首页确认眼镜正常连接，结束录音、提词、字幕、智记和对话。V2在同一宿主内工作，不需要另开V1；不要为使用导航反复解绑。
-2. 进入导航，先选择 **步行 / 骑行 / 驾车**，保留 **模拟验收**。点“去哪里？”输入地点、可选城市，再点 **搜索地点** 或键盘搜索。仅输入不会每字上传查询；搜索中可点取消。
-3. 选择搜索结果，或在地图**单击**选择终点。拖动地图后点“将地图中心设为终点”也可以。
-4. 模拟起点与终点独立。初始北京起点有明确标签；要测试其他地方，切换 **选模拟起点** 后点地图，或点“我的位置”使用本次手机位置。搜索/拖图不会自动改变起点。
-5. 右侧 **＋ / －** 负责缩放，中央准星本身不是按钮。地图可拖动，单击/长按按当前角色选点。
-6. 点 **规划路线**，核对所选出行方式的路线、距离和时间，再点 **开始模拟**。右上角更多有公开的北京演示路线，便于不使用私人位置验收。
-7. 手机出现实时指引后，点 **开启眼镜字幕显示**，确认镜片首页无其他任务。等待新的会话ACK后开始发字。
-8. 正常支持版本不必每次先去官方“实时字幕→预览→退出”。只恢复版式/配置，不恢复过期SID或假装蓝牙已连接。
-9. **停止眼镜显示**保留手机模拟；**结束导航**停止本次任务。退出回执不明确时保留不确定状态；镜片没关闭可用实体按钮退出，不连续叠加会话。
+1. On the RayNeo app home page, confirm the glasses are connected, and end any recording, teleprompter, subtitles, smart notes and conversation. V2 works inside the same host, so V1 does not need to be opened; do not unpair repeatedly to use navigation.
+2. Open navigation, choose **步行 / 骑行 / 驾车** (Walking / Cycling / Driving) first, and keep **模拟验收** (Simulation check). Tap "去哪里？" (Where to?), enter a place and an optional city, then tap **搜索地点** (Search place) or the keyboard's search key. Typing alone does not upload a query per character; you can tap cancel while a search runs.
+3. Pick a search result, or **tap** the map to choose the destination. You can also drag the map and tap "将地图中心设为终点" (Set map center as destination).
+4. The simulation start and the destination are independent. The initial Beijing start has a clear label. To test elsewhere, switch to **选模拟起点** (Pick simulation start) and tap the map, or tap "我的位置" (My location) to use the phone's current position. Searching or dragging the map does not change the start.
+5. The **＋ / －** buttons on the right zoom; the crosshair in the middle is not a button. The map can be dragged, and a tap or long press picks a point for the current role.
+6. Tap **规划路线** (Plan route), check the route, distance and time for the chosen travel mode, then tap **开始模拟** (Start simulation). The 更多 (More) menu at the top right has a public Beijing demo route, so you can run the check without a private location.
+7. When live guidance appears on the phone, tap **开启眼镜字幕显示** (Turn on glasses subtitle display) and confirm the lens home page has no other task. Text starts only after a new session ACK.
+8. On normally supported versions you do not need to go through the official "实时字幕→预览→退出" (Live subtitles → Preview → Exit) every time. Only the layout and configuration are restored; an expired SID is not reused and Bluetooth is not assumed to be connected.
+9. **停止眼镜显示** (Stop glasses display) keeps the phone simulation running; **结束导航** (End navigation) stops this task. If the exit acknowledgement is unclear, the state stays uncertain. If the lens does not close, exit with the physical button; do not stack sessions one after another.
 
-修改已规划但尚未开始的起终点或出行方式会清掉旧路线，须重新规划。真正导航过程中先停止再更换目的地。字幕4分钟保护并非故障，不用自动重开循环规避保护。
+Changing the start, destination or travel mode of a planned route that has not started clears the old route, and you must plan again. During real navigation, stop first before changing the destination. The 4-minute subtitle guard is not a fault; do not work around it with an automatic restart loop.
 
-### 三种方式的实现差异与验收边界
+### How the three modes differ and their acceptance limits
 
-- 步行：`AMapNaviWalkManager`，起终点为坐标数组。
-- 骑行：`AMapNaviRideManager`，起终点为单个坐标；不是复用步行算路。
-- 驾车：`AMapNaviDriveManager`，当前使用单路线默认策略（0），不提供多路线选择、避收费/货车参数。
-- 三种方式各有“固定模拟起点”和“手机当前位置”两个算路入口。SDK 拒绝或服务权限不足时明确失败，不悄悄退回步行。
-- 高德引擎存在单例互斥要求；切换时仅释放本扩展拥有的旧引擎，不强行停止宿主其他导航。释放未完成会提示稍后再规划。
-- 算路/导航中不能切模式，先结束；仅已规划未开始的路线可直接切换并重新规划。
-- 公交和独立电动车模式尚未实现。骑行不能被当作电动车/摩托车法规适配。
-- **本次新增模式已通过六接口参数 mock、UIKit 模式切换和真机架构编译，未完成骑行/驾车在线路线及眼镜实测。** 不用源码可编译替代真实验收，欢迎提交脱敏测试结果。
+- Walking: `AMapNaviWalkManager`, with the start and destination as coordinate arrays.
+- Cycling: `AMapNaviRideManager`, with the start and destination as single coordinates; it does not reuse walking route planning.
+- Driving: `AMapNaviDriveManager`, currently with the single-route default strategy (0); no multi-route choice and no avoid-tolls or truck parameters.
+- Each of the three modes has two route-planning entries: "fixed simulation start" and "phone's current position". If the SDK refuses or service permissions are missing, it fails clearly and does not quietly fall back to walking.
+- AMap engines must be mutually exclusive singletons. When switching, only the old engine this addon owns is released; other navigation in the host is not forcibly stopped. If the release has not finished, a prompt asks you to plan again later.
+- You cannot switch modes during route planning or navigation; end it first. Only a planned route that has not started can be switched directly and re-planned.
+- Public transit and a dedicated e-bike mode are not implemented. Cycling must not be treated as adapted to e-bike or motorcycle regulations.
+- **The modes added in this round passed parameter mocks for six interfaces, UIKit mode-switch checks and an on-device-architecture build; cycling and driving have not been tested with online routes or on the glasses.** Source that compiles does not replace real acceptance; anonymized test results are welcome.
 
-## 6. 常见问题
+## 6. Common problems
 
-| 现象 | 检查 |
+| Symptom | Check |
 | --- | --- |
-| 输入文字没结果 | 点“搜索地点”或键盘搜索；观察加载、无结果、错误码。城市填写后是城市限定查询 |
-| 搜索失败但地图能加载 | 搜索服务权限、网络、Key绑定可能与地图不同；按错误码查，不认为地图能看就全部鉴权成功 |
-| 提示离线预览/未链接SDK | 重新使用 `TIO_AMAP_ENABLED=1` 构建并带上资源参数；填Key不能补齐二进制依赖 |
-| 起终点不足30米 | 重新选择起点或终点。只拖地图不会改变固定起点 |
-| 眼镜显示按钮不可用 | 先开始真实高德模拟，等待新鲜导航回调；停止其他显示任务。不是实时导航模式，也不是离线夹具 |
-| 显示仍要求格式/连接 | 首页确认当前连接；默认仅匹配支持版本。未知格式在更多的字幕检查中重新学习；不要重用旧会话 |
-| 约4分钟后停止/离开前台停止 | 当前实验保护。户外/后台长运行尚未完成，不承诺始终常亮 |
-| 重签安装但打不开 | 检查解锁、开发者模式、证书/描述文件、系统提示；不要靠清空唯一原App恢复 |
+| Typing gives no results | Tap "搜索地点" (Search place) or the keyboard's search key; watch for loading, no results or an error code. Filling in a city makes it a city-restricted query |
+| Search fails but the map loads | Search service permission, network and key binding may differ from the map's; check the error code; a visible map does not mean every authorization succeeded |
+| Offline preview / SDK not linked message | Rebuild with `TIO_AMAP_ENABLED=1` and pass the resource parameter; entering a key cannot supply missing binary dependencies |
+| Start and destination less than 30 m apart | Choose the start or destination again. Dragging the map alone does not change the fixed start |
+| Glasses display button unavailable | Start a real AMap simulation first and wait for a fresh navigation callback; stop other display tasks. It is not live navigation mode and not an offline fixture |
+| Display still asks for format/connection | Confirm the current connection on the home page; by default only supported versions match. An unknown format is relearned in the subtitle check under 更多 (More); do not reuse an old session |
+| Stops after about 4 minutes / stops when leaving the foreground | Current experimental guard. Long outdoor/background runs are not finished; staying on is not promised |
+| Re-signed install will not open | Check unlock, Developer Mode, certificate/provisioning profile and system prompts; do not try to recover by wiping the only original app |
 
-可查看本机 `Documents/TurboIOResearch/navigation/search.json` 的阶段、错误码、结果数量；它不包含搜索词/坐标/Key。不要提交完整App沙盒、账号日志或私人录音。
+You can look at the local `Documents/TurboIOResearch/navigation/search.json` for the stage, error code and result count; it does not contain search terms, coordinates or the key. Do not commit a full app sandbox, account logs or private recordings.
 
-## 7. 架构与扩展点
+## 7. Architecture and extension points
 
 ```text
-高德SDK：搜索 / Walk、Ride、Drive算路及导航回调
+AMap SDK: search / Walk, Ride, Drive route planning and navigation callbacks
                  ↓
-NavigationModes：选择正确引擎和参数，导航页面归一三种回调
+NavigationModes: picks the right engine and parameters; the navigation page normalizes the three callback sets
                  ↓
-NavigationCore：转向、距离、道路等统一文字状态
+NavigationCore: one text state for turn, distance, road and so on
                  ↓
-NavigationSubtitleHUD：最新帧、限频、断流/超时保护
+NavigationSubtitleHUD: newest frame, rate limit, data-gap/timeout guards
                  ↓
-SubtitleHUD + ProtocolContext：当前设备、新SID、ACK门槛
+SubtitleHUD + ProtocolContext: current device, new SID, ACK gate
                  ↓
-官方通信通道 → 雷鸟 iO 内置字幕页面
+Official communication channel → RayNeo iO built-in subtitle page
 ```
 
-`NavigationWorkspace.inc`/`NavigationPlacePicker.m`负责手机交互，`NavigationTransport.m`保留通知与专用仪表盘卡备用通道，`NavigationTeleHUD.m`保留手动提词备用方案。通知和卡片会熄屏，提词器换稿有loading，不应当成无缝常亮主方案。
+`NavigationWorkspace.inc`/`NavigationPlacePicker.m` handle phone interaction, `NavigationTransport.m` keeps the notification and dedicated dashboard-card fallback channels, and `NavigationTeleHUD.m` keeps the manual teleprompter fallback. Notifications and cards turn the screen off, and the teleprompter shows loading when the script changes, so none of them should be treated as a seamless always-on main path.
 
-这是业务内容与受限组件协议研究，不是HTML、Canvas、像素截图或替换系统桌面。后续优先研究三种出行方式的真实场景安全验收、生命周期、长时间后台和异常恢复，而非先取消保护计时。
+This is research into business content and a restricted component protocol, not HTML, Canvas, pixel screenshots or replacing the system home screen. Next priorities are real-world safety acceptance of the three travel modes, lifecycle, long background runs and error recovery, not removing the guard timers first.
 
-## 8. 无Key测试
+## 8. Testing without a key
 
 
-上图是公开源码的UIKit模拟器截图，使用公开测试词演示取消状态，不是眼镜截图或真实搜索结果。
+The image above is a UIKit simulator screenshot of the public source, using a public test term to show the cancelled state. It is not a glasses screenshot or a real search result.
 
 ```sh
 bash official-addon/test.sh
@@ -156,4 +156,4 @@ xcrun simctl launch --terminate-running-process booted io.turboio.research.previ
 xcrun simctl launch --terminate-running-process booted io.turboio.research.preview --navigation --navigation-interaction-check
 ```
 
-模拟器不联网、不链接高德，不把模拟器页面当镜片截图；测试结果也不代表真实地图服务可用。公开源码保留个人资料默认留空和模型/搜索Key自行配置，不内置维护者服务。
+The simulator has no network and does not link AMap; do not treat simulator pages as lens screenshots, and the test results do not show that the real map service works. The public source leaves personal profile data empty by default and has you configure model and search keys yourself; it has no built-in maintainer services.

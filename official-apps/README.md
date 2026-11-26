@@ -1,5 +1,5 @@
-# 原厂应用研究输入
+# Stock app research inputs
 
-[iOS 原厂砸壳 IPA：1.0.7（230）、1.0.6（218）与 1.0.5（201）](ios/README.md)
+[Decrypted stock iOS IPAs: 1.0.7 (230), 1.0.6 (218) and 1.0.5 (201)](ios/README.md)
 
-应用版权仍归官方及相关权利人。这里只提供明确标注的版本索引与审计，较大 IPA 放在 GitHub Releases；不是官方源码、Turbo IO 合并成品或预签名安装服务。
+Copyright in the apps stays with the vendor and the other rights holders. This folder only provides a clearly labelled index of versions and their audits; the larger IPAs are stored in GitHub Releases. It is not official source code, not a merged Turbo IO build and not a pre-signed install service.

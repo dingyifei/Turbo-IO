@@ -1,45 +1,45 @@
-# TVP2 / TAR2 · 清晰投屏安装与验收
+# TVP2 / TAR2 · Clear Screen Casting: Install and Acceptance
 
-> 归档：TVP2 / TAR2 的接收与显示模块（`official-addon/tar2-airplay`、`tar2-display`）已在 cleanup(3) 从源码树删除，保留在 git 历史中。本文只作记录。
+> Archived: the TVP2 / TAR2 receiver and display modules (`official-addon/tar2-airplay`, `tar2-display`) were removed from the source tree in cleanup(3) and remain in git history. This page is a record only.
 
-## 版本与公开范围
+## Versions and what is public
 
-| 部分 | 本次状态 |
+| Part | Status in this release |
 | --- | --- |
-| iOS 接收器 | TAR2，用户在iPhone 17 Pro Max / 1.0.7（230）私用集成版测试反馈通过；公开独立GPLv3接收SDK，不提供私人合并/签名IPA |
-| 眼镜固件 | 原厂1.0.5.5基线 + TVP2；发布原样ZIP/AP、校验和及可复现扩展源码 |
-| Android | 本轮未移植AirPlay接收器，不把“仓库已有Android插件”当作此功能已适配 |
-| 原厂旧固件 / TMG2 / TVP1 | 不能运行新的540×220分块协议；握手会拒绝，不能只更新手机就获得高清 |
+| iOS receiver | TAR2. The user tested it in a private integrated build on iPhone 17 Pro Max / 1.0.7 (230) and reported it passed. The standalone GPLv3 receiver SDK is public; no private merged or signed IPA is provided. |
+| Glasses firmware | Stock 1.0.5.5 baseline + TVP2. Published: the unmodified ZIP/AP, checksums, and reproducible extension source. |
+| Android | The AirPlay receiver was not ported in this round. The Android plugin already in the repo does not mean this feature is supported there. |
+| Stock older firmware / TMG2 / TVP1 | Cannot run the new 540×220 tiled protocol. The handshake rejects them; updating only the phone does not give you HD. |
 
-源码可见不等于拿任意旧手机插件就能使用。新手请继续用官方App/固件。GPL接收SDK需要开发者自行接入、构建、签名；闭源宿主组合和二进制再分发还须审查许可。微信读书和网易云账号仍须自行解决，不随包提供登录态。
+Visible source does not mean any old phone plugin will work. Beginners should keep using the official app and firmware. The GPL receiver SDK has to be integrated, built and signed by the developer; combining it with a closed-source host, or redistributing binaries, also needs a licence review. WeChat Read and NetEase Cloud Music accounts are still your own problem; no login state ships with the package.
 
-## 配套手机端
+## Matching phone side
 
-完整私用集成版包含个人素材和签名，**不公开下载**。公开开发者按 TAR2 SDK构建接收器，按接入契约连接自己合法使用的iOS宿主。原厂1.0.7输入与既有SDK参考见 [ios-addon](../../ios-addon/README.md)；历史APP107/TMG2打包器仍固定旧候选，不能拿它误认为已经支持TVP2。
+The full private integrated build contains personal assets and signing, and is **not available for public download**. Public developers build the receiver from the TAR2 SDK and connect it, following the integration contract, to an iOS host they are legally entitled to use. For the stock 1.0.7 inputs and the existing SDK reference, see [ios-addon](../../ios-addon/README.md). The historical APP107/TMG2 packager is still pinned to the old candidate; do not mistake it for TVP2 support.
 
-若自行迁移现有OTA组件，必须保留原版保护，并将候选ZIP、AP、解压15文件、每个分片的大小/哈希整套更新为TVP2；不能只改名字或替换下载URL。不能用硬编码“校验通过”替代真实回读。
+If you port the existing OTA component yourself, keep the original protections and update the whole set to TVP2: the candidate ZIP, the AP, the 15 extracted files, and the size and hash of every chunk. Changing only the name or swapping the download URL is not enough. Do not replace the real read-back with a hard-coded "check passed".
 
-## 固件安装（匹配并已接好TVP2门禁的手机端）
+## Firmware install (phone side that matches and has the TVP2 gate wired in)
 
-1. 导出/备份手机App必要数据，确认眼镜电量至少50%，回首页，结束录音、智记、导航、音乐、阅读、相机、Mentra等任务。
-2. 下载本次完整TVP2 ZIP，用 `shasum -a 256 <ZIP>` 比对固定SHA。单独AP不是刷机输入。
-3. 手机TurboIO → 设置 → 诊断与实验固件 → TVP2。内置候选或导入ZIP必须真正通过校验。
-4. 开启“15分钟只下载验收”，回原厂固件页检查、下载，等“软件就绪”。此步不授权安装。
-5. 回读官方解压目录，逐个核对15个载荷及清单。旧TVP1缓存、残缺包或哈希不符一律停，不反复强刷。
-6. 人工确认精确候选 **TVP2**、电量和首页空闲状态，授予本次升级权限，再按官方流程开始安装。授权过期按页面重新预检；不重放旧授权。
-7. 升级期间不关机、不切断连接、不启动其他任务。状态不明时不要反复点、重启或解除保护。
-8. 眼镜自行回首页、检查显示正常后，按保护页完成“已自然回首页：允许只读回查”和“已检查显示：解除结果保护”（标题可能随客户端变化）。确认授权0、未在传输、结果保护已结束，才恢复日常官方功能。否则手机可能继续拦截官方业务。
+1. Export or back up the phone app data you need. Make sure the glasses are at 50% battery or more, go back to the home screen, and end recording, smart notes, navigation, music, reading, camera, Mentra and other tasks.
+2. Download the full TVP2 ZIP for this release and check it against the pinned SHA with `shasum -a 256 <ZIP>`. The AP on its own is not a flash input.
+3. On the phone, open TurboIO → "设置" (Settings) → "诊断与实验固件" (Diagnostics and experimental firmware) → TVP2. The built-in candidate or the imported ZIP must actually pass verification.
+4. Turn on "15分钟只下载验收" (15-minute download-only acceptance), go back to the stock firmware page, check for and download the update, and wait for "软件就绪" (Software ready). This step does not authorize the install.
+5. Read back the official extraction directory and check each of the 15 payloads and the manifest one by one. Stop on an old TVP1 cache, an incomplete package or any hash mismatch. Do not force-flash repeatedly.
+6. Manually confirm the exact candidate **TVP2**, the battery level and that the home screen is idle, grant permission for this one upgrade, then start the install through the official flow. If the authorization expires, run the page's pre-check again; do not replay an old authorization.
+7. During the upgrade, do not power off, do not drop the connection and do not start other tasks. If the state is unclear, do not tap repeatedly, restart or remove the protection.
+8. After the glasses return to the home screen on their own and you have checked that the display is normal, complete "已自然回首页：允许只读回查" (Returned to home on its own: allow read-only check) and "已检查显示：解除结果保护" (Display checked: release result protection) on the protection page (the titles may change between client versions). Only resume everyday official features after you confirm authorization 0, no transfer in progress, and result protection ended. Otherwise the phone may keep blocking official features.
 
-## 投屏测试
+## Screen-casting test
 
-接收iPhone与发送设备同Wi-Fi，允许本地网络；保持接收页前台。点开启，在**另一台**iPhone/iPad/Mac控制中心选择“屏幕镜像 → Turbo IO”，输入显示的PIN。无需额外Mac/服务器，但接收手机本身不可被省略。
+Put the receiving iPhone and the sending device on the same Wi-Fi and allow local network access. Keep the receiver page in the foreground. Tap start, then on **another** iPhone, iPad or Mac open Control Center, choose "屏幕镜像 → Turbo IO" (Screen Mirroring → Turbo IO), and enter the PIN shown. No extra Mac or server is needed, but the receiving phone itself cannot be left out.
 
-先用横屏桌面/相册/大字网页，不用受保护流媒体。完整画面保留比例，竖屏可能很窄；小字使用局部放大并拖动定位。8灰/10目标帧为默认值，可比较4/8/16灰。高清增加传输量，目标帧率不等于实际帧率。
+Start with a landscape desktop, the photo library or a large-text web page, not protected streaming media. The full picture keeps its aspect ratio, so portrait content can be very narrow; for small text, use partial zoom and drag to position it. The defaults are 8 gray levels and a 10 fps target; you can compare 4/8/16 gray levels. HD increases the transfer volume, and the target frame rate is not the actual frame rate.
 
-验收分开看：Bonjour服务发布 → 连接 → 收到视频 → 手机解码 → 眼镜完整确认 → 镜片清晰可见。短按暂停/继续，长按退出；结束后检查正常关闭，再测原厂抬头、录音/智记和旧应用。锁屏/后台接收本次未支持。
+Check acceptance stage by stage: Bonjour service published → connected → video received → phone decodes → glasses confirm complete frames → clearly visible on the lens. Short press pauses/resumes, long press exits. Afterwards, check that it closed normally, then test stock head-up wake, recording/smart notes and the old apps. Receiving on the lock screen or in the background is not supported in this release.
 
-## 实测及限制
+## Measured results and limits
 
-2026-10-23用户反馈清晰版测试完成无问题；本机元数据回读：1280×720源、540×220输出、16级灰、3470解码帧零解码错误、186帧眼镜完整确认、正常关闭。仅公开这些汇总，不公开原始日志/内容/设备身份/PIN。它不代表所有发送端、长时间稳定性、所有原厂功能或全部型号均通过。
+On 2026-10-23 the user reported the clear-version test finished with no problems. Metadata read back on the device: 1280×720 source, 540×220 output, 16 gray levels, 3470 decoded frames with zero decode errors, 186 frames confirmed complete by the glasses, normal close. Only these totals are published; raw logs, content, device identity and the PIN are not. This does not mean every sender, long-run stability, every stock feature or every model passes.
 
-本次不宣称经典蓝牙硬件极限、固定30fps、4K或后台永久接收，不把蓝牙提交量当成已显示帧数。MFi优先选择也不单独证明实际链路类型。
+This release does not claim the Classic Bluetooth hardware limit, a fixed 30 fps, 4K or permanent background receiving, and does not count Bluetooth submissions as displayed frames. Preferring MFi does not by itself prove which link type is actually in use.

@@ -1,31 +1,31 @@
-# 许可与非商业使用
+# Licensing and noncommercial use
 
-Turbo IO 面向个人学习、互操作研究、实验与非商业爱好项目，不提供商业使用授权。当前原创内容采用 [PolyForm Noncommercial License 1.0.0](../LICENSE)，保留官方许可原文；具体允许的用途、例外、通知、违约处理及免责以该文本和适用法律为准。本说明不是另行修改许可证的附加条款。
+Turbo IO is for personal learning, interoperability research, experiments and noncommercial hobby projects. It offers no license for commercial use. The current original content is licensed under the [PolyForm Noncommercial License 1.0.0](../LICENSE), kept as the official license text. That text and the applicable law decide which uses are permitted, and govern the exceptions, notices, handling of violations and the disclaimer. This page is not an additional term that changes the license.
 
-## 商业使用边界
+## Limits on commercial use
 
-在没有其他有效授权的情况下，不能将受本许可证约束的内容用于商业目的，例如商业销售、付费分发、收费托管服务或商业产品集成。非商业不简单等于“没有直接收费”；具体用途需按许可证判断。向 ASR/模型提供商支付自己的调用费用，也不自动将个人非商业实验变成商业经营。
+Without some other valid license, content covered by this license may not be used for commercial purposes, such as commercial sale, paid distribution, a paid hosted service or integration into a commercial product. Noncommercial does not simply mean "no direct charge"; whether a given use is allowed is decided by the license. Paying an ASR or model provider for your own API calls does not by itself turn a personal noncommercial experiment into a commercial business.
 
-**未经授权的商业使用、收费分发或其他超出许可范围的行为，可能侵犯相关权利；权利人保留依法追究法律责任的权利。** 是否构成侵权及承担何种责任，取决于具体行为、有效授权和适用法律，不意味着任何收费行为都自动构成犯罪。正式商业安排应取得相关权利人的有效授权并自行寻求法律意见；本项目不承诺提供商业授权。
+**Unlicensed commercial use, paid distribution or any other use beyond the license may infringe the rights involved; the rights holders reserve the right to take legal action as the law allows.** Whether something infringes, and what liability follows, depends on the specific conduct, any valid license and the applicable law; it does not mean that every act of charging money is automatically a crime. For a formal commercial arrangement, get a valid license from the rights holders concerned and seek your own legal advice. This project does not promise to offer a commercial license.
 
-这是一份**源码可见、非商业许可**的研究项目，不是允许任意商用的 MIT 项目，也不将限制商用的许可称为 OSI 定义下的开源许可。
+This is a **source-available, noncommercially licensed** research project. It is not an MIT project open to any commercial use, and it does not call a license that restricts commercial use an open source license in the OSI sense.
 
-## 2026-09-08 许可变更与历史版本
+## 2026-09-08 license change and earlier versions
 
-自引入本说明及新 LICENSE 的提交起，维护者将其有权授权的当前原创内容以 PolyForm Noncommercial 1.0.0 提供。此前公开版本（包括提交 `f78573e0f6298677ab50adba342e161c32e9de45`）采用 MIT。
+From the commit that introduced this page and the new LICENSE, the maintainer offers the current original content they have the right to license under PolyForm Noncommercial 1.0.0. Earlier public versions (including commit `f78573e0f6298677ab50adba342e161c32e9de45`) were licensed under MIT.
 
-**此次变更不追溯撤销历史 MIT 版本已授予的权利。** 对已按 MIT 获得的原有代码，原许可仍适用，包含其符合条款的商用权；本次新增的非商业限制不能覆盖这些已有权利。后续新增且未曾按 MIT 授权的原创内容按新许可证提供。因此，这次变更不能保证历史代码从此无法被合法商用，也不删除或改写 Git 历史来隐藏原授权。
+**This change does not retroactively revoke rights already granted by the earlier MIT versions.** For existing code already received under MIT, the original license still applies, including the right to commercial use on its terms; the new noncommercial restriction cannot override those rights. Original content added later, and never licensed under MIT, is offered under the new license. So this change cannot guarantee that the earlier code can no longer be used commercially in a lawful way, and the Git history is not deleted or rewritten to hide the original license.
 
-后续贡献请确认有权提交并同意按当时项目许可证提供自己的贡献；第三方内容必须保留来源和原许可，不要冒充原创。修改项目许可证不能替第三方权利人作出授权。
+If you contribute, confirm that you have the right to submit your contribution and agree to offer it under the project license in force at the time. Third-party content must keep its source and original license; do not present it as original work. Changing the project license cannot grant a license on behalf of third-party rights holders.
 
-## 第三方依赖
+## Third-party dependencies
 
-### TAR2 AirPlay接收模块的局部例外（2026-10-23）
+### Local exception for the TAR2 AirPlay receiver module (2026-10-23)
 
-`official-addon/tar2-airplay/`（维护者于 2026-10-23 明确授权单独采用 **GPL-3.0-or-later** 的接收模块）与 `official-addon/tar2-display/` 已在 cleanup(3) 从源码树删除。历史版本中这两个目录的许可说明保持不变：GPL 目录不受根目录非商业条款限制，`tar2-display/` 和固件中的原创副本仍按根许可提供。
+`official-addon/tar2-airplay/` (the receiver module that the maintainer explicitly licensed separately under **GPL-3.0-or-later** on 2026-10-23) and `official-addon/tar2-display/` were removed from the source tree in cleanup(3). In earlier versions, the license notes for these two directories stay as they were: the GPL directory is not bound by the root noncommercial terms, and `tar2-display/` and the original copies in the firmware are still offered under the root license.
 
-UxPlay、libplist、OpenSSL依赖分别保留GPL、LGPL和Apache许可及来源。发布独立源码不等于取得任意闭源宿主/厂商SDK组合后二进制的再分发授权；需要自行审查组合关系并满足所有许可证。本次没有公开个人合并IPA或预签名接收App。
+The UxPlay, libplist and OpenSSL dependencies keep their GPL, LGPL and Apache licenses respectively, and their sources. Publishing standalone source does not grant a license to redistribute a binary that combines it with any closed-source host or vendor SDK; review the combination yourself and meet every license. No personal merged IPA or pre-signed receiver app was published.
 
-根 LICENSE 只适用于本项目有权授权的原创部分，不覆盖厂商 framework、恢复接口、第三方源码、商标及服务。它们保留各自原许可与权利限制，详见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。其 MIT、BSD 等许可文件必须保留，不能全局替换成非商业许可。附带二进制依赖不等于取得额外商用或再分发权。
+The root LICENSE applies only to the original parts this project has the right to license. It does not cover vendor frameworks, recovery interfaces, third-party source, trademarks or services. These keep their own licenses and rights restrictions; see [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). Their MIT, BSD and other license files must be kept and cannot be replaced across the board with the noncommercial license. Shipping a binary dependency alongside does not grant any extra right to commercial use or redistribution.
 
-参考：[PolyForm 官方许可](https://polyformproject.org/licenses/noncommercial/1.0.0)、[MIT 原文](https://opensource.org/license/mit)、[OSI 开源定义](https://opensource.org/osd)。
+References: [PolyForm official license](https://polyformproject.org/licenses/noncommercial/1.0.0), [MIT license text](https://opensource.org/license/mit), [OSI Open Source Definition](https://opensource.org/osd).

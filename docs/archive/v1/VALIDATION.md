@@ -1,38 +1,38 @@
-# 源码交付验证
+# Source Release Validation
 
-> 归档：V1 客户端代码（apps、core-probe、codex-bridge、display-observer、rayneo-session、rayneo-archive、third-party）已在 cleanup(2) 从源码树删除，保留在 git 历史中。本文只作记录，其中的命令和路径已不可用。
+> Archived: the V1 client code (apps, core-probe, codex-bridge, display-observer, rayneo-session, rayneo-archive, third-party) was removed from the source tree in cleanup(2) and remains in git history. This file is a record only; its commands and paths no longer work.
 
-日期：2026-09-08。验证从独立源码目录运行，不引用私有研究工作区的构建依赖；使用 Xcode 27.0、XcodeGen 2.45.4、Node.js 26.3.0。
+Date: 2026-09-08. Validation ran from a standalone source directory with no build dependency on the private research workspace, using Xcode 27.0, XcodeGen 2.45.4 and Node.js 26.3.0.
 
-## 已完成
+## Completed
 
-- 真机目标 `RayNeoCompanionDevice`：全新 DerivedData、仅使用随源码附带的依赖，未签名编译通过。不是安装/镜片验收。
-- 模拟器 App 单元测试：214 项通过、0 失败；包含显式 ASR Host、非法地址拒绝、密钥服务隔离与通知名称迁移。
-- 模拟器 UI 冒烟：自定义通知测试页、系统提醒事项导入/去重，日志显示 2 个用例通过、0 失败。Xcode beta 在用例结束后的报告收尾阶段停滞，本轮中止了收尾进程，未取得完整 xcresult；不记作完整 UI runner 绿色，也不代替真机通知送达或系统授权验收。
-- Node bridge / 显示观察测试：23 项通过、0 失败。
-- 独立 Swift 包测试：protocol 94、session 82、session-runtime 35、display 121、archive 39、audio-container 21、transport-ios 53，共 445 项通过。
-- 厂商 framework、Opus、VAD、ZIPFoundation：逐文件 SHA-256 记录于 `DEPENDENCIES.json`。
+- Device target `RayNeoCompanionDevice`: built unsigned from a fresh DerivedData, using only the dependencies shipped with the source. This is not an install or lens acceptance check.
+- Simulator app unit tests: 214 passed, 0 failed. They cover the explicit ASR host, rejection of invalid addresses, key-service isolation and the notification-name migration.
+- Simulator UI smoke test: the custom notification test page and system Reminders import/dedup. The log shows 2 cases passed, 0 failed. The Xcode beta stalled in the report wrap-up after the cases finished; this run killed the wrap-up process and got no complete xcresult. It does not count as a full green UI runner, and it does not replace on-device checks of notification delivery or system permission prompts.
+- Node bridge / display observer tests: 23 passed, 0 failed.
+- Standalone Swift package tests: protocol 94, session 82, session-runtime 35, display 121, archive 39, audio-container 21, transport-ios 53; 445 passed in total.
+- Vendor frameworks, Opus, VAD and ZIPFoundation: per-file SHA-256 recorded in `DEPENDENCIES.json`.
 
-## 发布隐私检查
+## Release privacy check
 
-### 技能与许可更新（2026-09-08）
+### Skill and license update (2026-09-08)
 
-- `turbo-io` 技能结构校验通过；使用 Skills 1.5.24 在隔离临时项目中安装到 Codex 与 Claude Code 目录，五个技能文件逐一比对一致，未修改维护者全局技能。
-- README/技能/许可文档的本地链接检查通过；根许可证与技能附带许可证一致，采用 PolyForm Noncommercial 1.0.0 原文，第三方许可证未替换。
-- 本轮 Node bridge / 显示观察测试重新运行，23 项通过；源码发布规则与 Gitleaks 目录扫描无发现。
-- 本轮仅变更技能、许可和文档；未重新验收 iOS 编译、签名、硬件、云接口，也未将技能安装成功当作两个助手均已自动完成整套真机流程。
+- The `turbo-io` skill passed structure validation. Skills 1.5.24 installed it into the Codex and Claude Code directories inside an isolated temporary project; all five skill files matched one by one, and the maintainer's global skills were not modified.
+- The local link check on the README, skill and license docs passed. The root license matches the license shipped with the skill; both are the original PolyForm Noncommercial 1.0.0 text. Third-party licenses were not replaced.
+- The Node bridge / display observer tests were re-run in this round: 23 passed. The source release rules and a Gitleaks directory scan found nothing.
+- This round changed only the skill, licenses and docs. It did not re-check the iOS build, signing, hardware or cloud APIs, and a successful skill install is not taken to mean that both assistants can run the full on-device flow by themselves.
 
-以白名单从研究工作区生成全新源码目录，不携带原 Git 历史、用户容器、录音、聊天、原始日志、设备 ID、签名或私有配置。公开版命名空间独立于维护者的原测试 App。
+A fresh source directory was generated from the research workspace through an allowlist. It carries no original Git history, user containers, recordings, chats, raw logs, device IDs, signing material or private configuration. The public namespace is separate from the maintainer's original test app.
 
-源码规则扫描、Gitleaks 默认规则加两个精确设置键名误报排除，以及厂商二进制可打印字符串扫描，未检出凭据；个人专属云 Host 与维护者个人标识检查未发现残留。厂商原二进制可能保留其上游构建路径，并非维护者私人目录；未改写厂商 ABI 或将其冒充自研开源库。
+The source rule scan, Gitleaks default rules (plus exclusions for two false positives on exact settings key names) and a printable-strings scan of the vendor binaries found no credentials. Checks for the maintainer's personal cloud host and personal identifiers found nothing left behind. The original vendor binaries may contain their upstream build paths; these are not the maintainer's private directories. The vendor ABI was not rewritten, and the vendor binaries are not presented as self-developed open-source libraries.
 
-扫描不能证明绝对不存在任何未知格式的秘密或漏洞。历史上在仓库之外分享过的 Key 应由所有者自行轮换；发布脱敏不会撤销旧 Key。请勿把自己的真实配置、录音和调试转储提交到公开仓库。
+Scanning cannot prove that no secret or vulnerability in an unknown format exists. Any key that was ever shared outside the repository should be rotated by its owner; redaction for release does not revoke old keys. Do not commit your own real configuration, recordings or debug dumps to a public repository.
 
-## 实机确认与验收边界
+## On-device confirmation and acceptance limits
 
-- 非越狱设备已由用户确认实机验收通过；该确认不扩大为所有手机、固件及每个功能均已验收。
-- 未用维护者云 Key 跑发布版；用户自填 Host / Key 的真实接口、音频和后台表现需自行测试。
-- 不代表 Claude Code、Hermes Agent、OpenClaw、WorkBuddy 已接入，也不代表所有眼镜功能已完整验证。
-- 未提供 IPA、Apple 签名、凭据、个人录音或原始研究日志。
+- The user confirmed that on-device acceptance passed on a non-jailbroken device. This confirmation does not extend to every phone, every firmware or every feature.
+- The release build was not run with the maintainer's cloud key. Users who fill in their own host / key must test the real APIs, audio and background behavior themselves.
+- This does not mean Claude Code, Hermes Agent, OpenClaw or WorkBuddy are integrated, nor that every glasses feature has been fully verified.
+- No IPA, Apple signing, credentials, personal recordings or raw research logs are provided.
 
-编译成功、协议回执、真实显示、长期后台是不同层级的证据。已知问题和未验功能见根 README，不因源码发布改变状态。
+A successful build, a protocol acknowledgement, a real display and long-running background operation are different levels of evidence. Known issues and unverified features are listed in the root README; the source release does not change their status.

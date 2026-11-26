@@ -1,32 +1,36 @@
-# Turbo IO 开发者生态：你的 Server，你的眼镜应用
+# Turbo IO developer ecosystem: your server, your glasses apps
 
-2026-09-26 · 面向开发者，非商业研究。无需作者服务器、账号或 Key。
+2026-09-26 · For developers; non-commercial research. Needs no server, account or key from the author.
 
-## 先看架构和交付边界
+## Architecture and delivery boundaries first
 
-**用户自己的 Server 运行 MCP 客户端，连接用户授权的数据源；Turbo IO
-SDK 把选定字段转换成卡片或应用；手机负责确认和蓝牙传输；眼镜只显示
-原生有界组件。MCP 不在眼镜上运行。**
+**Your own server runs the MCP client and connects to the data sources you
+authorize. The Turbo IO SDK turns the fields you select into cards or apps.
+The phone handles confirmation and Bluetooth transfer. The glasses show only
+native, bounded components. MCP does not run on the glasses.**
 
-| | 仪表盘 SDK | 小应用 SDK |
+| | Dashboard SDK | Mini-app SDK |
 | --- | --- | --- |
-| 使用位置 | 桌面卡片 | “我的应用”菜单，四个槽位 |
-| 协议/运行时 | TCE1 | TAP1 / TAX1 |
-| 显示区域 | 256×194，四边6px安全区 | 540×180 |
-| 组件 | 文本、图标、图片、进度条、柱图、折线、线、框 | 文本、图片、按钮、进度条、框 |
-| 更新方式 | API 草稿、数据更新、发布、手机批准和回执 | Server 生成版本化 ZIP；手机导入预览后确认安装 |
-| 运行方式 | 静态卡片 | 最多4页，单实例，切页/退出 |
-| 目前未提供 | 自动订阅、自动队列恢复 | 自动后台数据刷新、按钮到 Server 的事件回流、JS/HTML执行 |
+| Where it appears | Home-screen card | "我的应用" (My Apps) menu, four slots |
+| Protocol/runtime | TCE1 | TAP1 / TAX1 |
+| Display area | 256×194, 6px safe margin on all four sides | 540×180 |
+| Components | Text, icon, image, progress bar, bar chart, line chart, line, box | Text, image, button, progress bar, box |
+| Update path | API draft, data update, publish, phone approval and receipt | The server builds a versioned ZIP; the phone imports and previews it, then installs after confirmation |
+| Runtime behaviour | Static card | Up to 4 pages, single instance, page switching / exit |
+| Not provided yet | Automatic subscriptions, automatic queue recovery | Automatic background data refresh, button events flowing back to the server, JS/HTML execution |
 
-**兼容前提不能省略：** 手机必须包含对应的编辑器/App SDK 桥，眼镜必须
-安装兼容的 TCE1/TAP1 研究运行时。原厂固件和较早 FOCUS-04 不自动获得这些
-能力。私用 TAP1 SPACEFIX-01 的应用安装已有用户真机反馈通过；本次新模板
-仍需分别真机验收。iOS 的手机模块已在 [ios-addon](../ios-addon/README.md) 中构建，仍须自行构建和签名，不能将旧 FOCUS-04 当作已包含当前 SDK 的完整包。
-未具备运行时也可完成 Server、ZIP、SVG 和模拟器开发。不要因此直接刷未知包；已有兼容运行时后，导入兼容卡片或应用 ZIP 不要求每次重刷。
+**The compatibility prerequisites cannot be skipped:** the phone must include
+the matching editor / App SDK bridge, and the glasses must have a compatible
+TCE1/TAP1 research runtime installed. Stock firmware and the older FOCUS-04 do
+not get these capabilities automatically. App installs on the private TAP1
+SPACEFIX-01 build have passed in a user's real-device report; the new templates
+in this release still need their own real-device acceptance, one by one. The
+iOS phone module is already built as part of [ios-addon](../ios-addon/README.md), but you still have to build and sign it yourself; do not treat the old FOCUS-04 as a complete package that already includes the current SDK.
+Without the runtime you can still do server, ZIP, SVG and simulator development. That is no reason to flash an unknown package. Once a compatible runtime is installed, importing a compatible card or app ZIP does not need a reflash each time.
 
-## 1. 十分钟离线入门
+## 1. Ten-minute offline quick start
 
-从仓库根目录开始，需要 Python 3.11+、uv；JS 示例另需 Node.js。
+Start from the repository root. You need Python 3.11+ and uv; the JS example also needs Node.js.
 
 ```sh
 cd dashboard-service
@@ -38,47 +42,63 @@ uv run turbo-app check .state/demo/weather.zip
 uv run turbo-app preview .state/demo/weather.zip --page home --out .state/demo/weather.svg
 ```
 
-这个 ZIP 可以在兼容研究版手机里导入，但显示的是明确标注的离线示例。
-不需要任何第三方凭据；不会调用 MCP、自动刷机或安装。输出文件已存在会拒绝覆盖。
+This ZIP can be imported in a compatible research-build phone app, but it shows
+a clearly labelled offline sample. It needs no third-party credentials, and it
+does not call MCP, flash or install anything automatically. If an output file
+already exists, the command refuses to overwrite it.
 
-手机：**首页 → 应用广场 → 我的应用 → 导入应用 ZIP**。查看每页、权限和
-哈希，查询当前眼镜槽位，让眼镜回首页后确认安装。相同 ID 的更新必须提高
-version；最多四槽。安装成功后从手机打开，或在眼镜“我的应用”中选择。
+Phone: **首页 (Home) → 应用广场 (App Gallery) → 我的应用 (My Apps) → 导入应用 ZIP (Import app ZIP)**.
+Review each page, the permissions and the hash, query the current glasses
+slots, send the glasses back to their home screen, then confirm the install. An
+update with the same ID must raise version; there are four slots at most. After
+a successful install, open the app from the phone or choose it under "我的应用"
+(My Apps) on the glasses.
 
-## 2. 给 Agent 一行 Skill
+## 2. Give your agent the skill in one line
 
-审阅仓库源码后，在自己的开发电脑执行：
+After reviewing the repository source, run this on your own development computer:
 
 ```sh
 npx skills add dingyifei/Turbo-IO --skill turboio-developer -g
 ```
 
-选择 Codex / Claude Code 等实际使用的 Agent。该命令仅安装开发技能，不会
-部署 Server、授权外部 MCP 或刷眼镜。发布前本地可用：
-`npx skills add /absolute/path/to/Turbo-IO --skill turboio-developer -g`。
-已安装旧版的用户需要更新 Skill；不要把旧 `turbo-io` 安装/协议技能误认为
-本次专门的开发技能。
+Choose the agent you actually use, such as Codex or Claude Code. The command
+only installs the development skill; it does not deploy a server, authorize an
+external MCP or flash the glasses. Before publication, a local install works:
+`npx skills add /absolute/path/to/Turbo-IO --skill turboio-developer -g`.
+If you installed an older version, update the skill. Do not mistake the old
+`turbo-io` install/protocol skill for this dedicated development skill.
 
-然后粘贴：
+Then paste:
 
-> 使用 $turboio-developer 为我做一个通勤应用。MCP 在我自己的 Server 上。
-> 先用 commute 模板生成可验证的离线 ZIP，再询问必要的地图授权和起终点。
-> 获取真实数据后，只转换我选择的展示字段，提供 ZIP、SHA256、预览和测试。
-> 不自动安装、不刷机，不把密钥放进包或仓库。
+> Use $turboio-developer to build me a commute app. MCP runs on my own server.
+> First use the commute template to generate a verifiable offline ZIP, then ask
+> for the map authorization and the start and end points it needs.
+> Once real data is fetched, convert only the display fields I choose, and give
+> me the ZIP, SHA256, a preview and tests.
+> Do not install automatically, do not flash, and do not put keys in the package
+> or the repository.
 
-App 每个模板也有“复制 Agent 开发提示词”；开发指南中能复制通用任务。
-Skill 正文：[skills/turboio-developer](../skills/turboio-developer/SKILL.md)。
+Each template in the app also has "复制 Agent 开发提示词" (Copy agent
+development prompt), and the developer guide has general tasks you can copy.
+Skill text: [skills/turboio-developer](../skills/turboio-developer/SKILL.md).
 
-## 3. 自己的 Server 如何接 MCP
+## 3. Connecting MCP on your own server
 
-1. 在用户自己的 Server 上安装所选 MCP 服务/客户端，按**上游当前文档**授权。
-2. 调用 `tools/list`，核对真实工具名、参数和权限；不要从示例猜接口名称。
-3. 白名单选用只读工具。查询天气、行程、笔记等需要相应位置或账号授权。
-4. 把 MCP 的结构化数据或文字结果转成下面的**展示快照**。不要直接把整段
-   MCP 返回、工具描述、HTML 或第三方指令塞进应用，也不要执行其中的指令。
-5. 缺字段显示“暂无数据”；记录来源时间。不要把缓存当实时结果。
+1. Install the chosen MCP server/client on your own server, and authorize it
+   following the **upstream's current documentation**.
+2. Call `tools/list` and check the real tool names, parameters and
+   permissions; do not guess interface names from examples.
+3. Allowlist read-only tools only. Weather, trip, note and similar queries need
+   the matching location or account authorization.
+4. Convert MCP's structured data or text results into the **display snapshot**
+   below. Do not put a whole MCP response, tool descriptions, HTML or
+   third-party instructions straight into the app, and do not execute any
+   instructions found in them.
+5. Show "暂无数据" (No data) for missing fields, and record the source time. Do
+   not present cached data as a live result.
 
-`snapshot.json` 只允许三个字段，拒绝多余字段，避免整个认证响应误入包：
+`snapshot.json` allows only three fields and rejects any extra field, so a whole authenticated response cannot slip into the package by mistake:
 
 ```json
 {
@@ -88,21 +108,25 @@ Skill 正文：[skills/turboio-developer](../skills/turboio-developer/SKILL.md)�
 }
 ```
 
-1–4 行，每个字符串最多80 UTF-8字节，不允许控制字符；时间必须带时区。
-示例时间/数据需换成用户 Server 的实际结果。构建为高版本包：
+1–4 lines, each string at most 80 UTF-8 bytes, no control characters; the time
+must carry a time zone. Replace the sample time and data with your server's
+actual results. Build it as a higher-version package:
 
 ```sh
 uv run turbo-app gallery build city_weather --data snapshot.json --version 2 --out .state/demo/weather-v2.zip
 uv run turbo-app check .state/demo/weather-v2.zip
 ```
 
-**首次是静态快照，不是持续推送。** 再次更新提高版本并导入新包。高频
-动态场景需后续实现事件/数据通道，不应定时重装 ZIP；地图逐秒导航仍应使用
-现有专用导航应用，不能把这个模板描述成实时导航替代品。
+**The first build is a static snapshot, not a continuous push.** For each
+further update, raise the version and import the new package. High-frequency
+dynamic cases need an event/data channel, still to be built, rather than ZIP
+reinstalls on a timer. Second-by-second map navigation should still use the
+existing dedicated navigation app; do not describe this template as a
+real-time navigation replacement.
 
-## 4. 独立后端 API / Python SDK / MCP
+## 4. Standalone backend API / Python SDK / MCP
 
-在 `dashboard-service/`：
+In `dashboard-service/`:
 
 ```sh
 mkdir -p .state
@@ -111,25 +135,31 @@ uv run turbo-dashboard grant --role phone --device my_glasses --out .state/phone
 uv run turbo-dashboard serve
 ```
 
-默认只监听 `127.0.0.1:18796`。远程手机访问须自行设置 HTTPS 反向代理及
-访问控制，不关闭证书校验，不把此开发服务直接暴露公网。Token 在本地文件
-0600保存，数据库存哈希；目前无完整多用户/撤销界面。只给模型 writer/reader，
-phone Token 留给手机确认端。凭据用本地文件或 Secret Manager，不发聊天。
+By default it listens only on `127.0.0.1:18796`. For remote phone access, set up
+your own HTTPS reverse proxy and access control; do not turn off certificate
+verification, and do not expose this development service directly to the
+public internet. Tokens are saved in local files with mode 0600, and the
+database stores their hashes; there is no full multi-user or revocation
+interface yet. Give the model only writer/reader tokens, and keep the phone
+token for the phone-side confirmation. Keep credentials in local files or a
+secret manager, never in chat.
 
-新增接口（除 `/health` 外均需 Bearer Token）：
+New endpoints (all except `/health` need a Bearer token):
 
-| 接口 | 输入 | 返回 |
+| Endpoint | Input | Returns |
 | --- | --- | --- |
-| GET `/v1/apps/gallery` | 无 | 20项目录、提示词、哈希；不是在线 MCP 状态 |
-| POST `/v1/apps/package` | `document`，writer | 已校验 ZIP Base64、SHA256、大小 |
-| POST `/v1/apps/gallery/{id}/package` | `snapshot`、`version`，writer | 用模板渲染的 ZIP；snapshot=null为离线演示 |
-| POST `/v1/apps/validate` | `document` | 预算校验 |
-| POST `/v1/apps/package/validate` | `zipBase64` | ZIP完整性、格式与预算 |
+| GET `/v1/apps/gallery` | None | 20-item catalog, prompts, hashes; not live MCP status |
+| POST `/v1/apps/package` | `document`, writer | Validated ZIP as Base64, SHA256, size |
+| POST `/v1/apps/gallery/{id}/package` | `snapshot`, `version`, writer | ZIP rendered from the template; snapshot=null gives the offline demo |
+| POST `/v1/apps/validate` | `document` | Budget validation |
+| POST `/v1/apps/package/validate` | `zipBase64` | ZIP integrity, format and budget |
 
-请求上限32KiB；JSON包接近上限时用本机 CLI。API不声称已连接或安装眼镜。
-`health/capabilities` 的连接标记不是对你私人眼镜的远程探测。
+Requests are capped at 32KiB; when a JSON package is near the limit, use the
+local CLI. The API does not claim that any glasses are connected or that
+anything is installed. The connection flags in `health/capabilities` are not a
+remote probe of your private glasses.
 
-Python（Server 获取 MCP 结果后调用；本例读取映射好的 snapshot.json）：
+Python (called on the server after it fetches the MCP results; this example reads an already-mapped snapshot.json):
 
 ```python
 import base64, hashlib, json, os
@@ -149,7 +179,7 @@ finally:
     client.close()
 ```
 
-MCP配置示例，替换绝对路径，由用户确认后添加：
+MCP configuration example. Replace the absolute paths, and add it only after the user confirms:
 
 ```json
 {
@@ -165,17 +195,18 @@ MCP配置示例，替换绝对路径，由用户确认后添加：
 }
 ```
 
-12个工具：`capabilities/cards/card_get/card_validate/card_save/card_update_data/`
-`card_request_publish/delivery_status/app_validate/app_gallery/app_build_package/app_build_snapshot`。
-这套 MCP 是你自己的 SDK 服务，与上游数据源 MCP 分开；应用快照工具不帮你
-暗中获取账号、部署第三方 Server 或调用任意工具。
+12 tools: `capabilities/cards/card_get/card_validate/card_save/card_update_data/`
+`card_request_publish/delivery_status/app_validate/app_gallery/app_build_package/app_build_snapshot`.
+This MCP is your own SDK service, separate from the upstream data-source MCPs.
+The app snapshot tools do not quietly obtain accounts for you, deploy
+third-party servers or call arbitrary tools.
 
-## 5. 仪表盘完整流程
+## 5. Dashboard end-to-end flow
 
-模板、字段与所有 API 见 [服务 README](../dashboard-service/README.md)；
-机器可读 Schema：[card.schema.json](../dashboard-service/turbo_dashboard/card.schema.json)。
+Templates, fields and every API are in the [service README](../dashboard-service/README.md);
+machine-readable schema: [card.schema.json](../dashboard-service/turbo_dashboard/card.schema.json).
 
-最小卡片（`card.json`）：
+Minimal card (`card.json`):
 
 ```json
 {"schema":1,"id":"turbo_ui_card_weather","name":"天气卡片","components":[
@@ -185,24 +216,28 @@ MCP配置示例，替换绝对路径，由用户确认后添加：
 ]}
 ```
 
-`client.save(document, expected_revision=0)` 创建；返回 `revision/hash`。
-用最新 revision 调用 `client.update(id, {"title":{"text":"北京 · 多云"}}, revision)`，
-仅更新数据，不改几何。修改布局需重新 save。409 冲突先读取最新草稿，不强盖。
+`client.save(document, expected_revision=0)` creates the card and returns `revision/hash`.
+Calling `client.update(id, {"title":{"text":"北京 · 多云"}}, revision)` with the latest revision
+updates data only, without changing geometry. A layout change needs a new save.
+On a 409 conflict, read the latest draft first; do not force-overwrite it.
 
-用户确认后 `client.publish(id, revision, hash, idempotency_key)` 得到 job。
-手机「仪表盘 → 数据源」绑定同 device 的 phone Token，刷新任务、查看快照、
-确认发送。查看 `client.job(job_id)`：`awaiting_phone_approval → sending →
-device_accepted/failed/outcome_unknown`。接收回执不等于看见了像素；未知结果
-先回读核对，禁止盲目重试。Server 不代替手机批准。
+After the user confirms, `client.publish(id, revision, hash, idempotency_key)` returns a job.
+On the phone, under "仪表盘 → 数据源" (Dashboard → Data source), bind the phone
+token for the same device, refresh the jobs, view the snapshot and confirm the
+send. Check `client.job(job_id)`: `awaiting_phone_approval → sending →
+device_accepted/failed/outcome_unknown`. A receipt does not mean the pixels
+were seen. For an unknown outcome, read back and check first; never retry
+blindly. The server does not approve on the phone's behalf.
 
-预算：最多12组件、4图标/图片、2图表；文档≤6000字节，wire≤2048字节；
-坐标为偶数、x/y≥6、x+w≤250、y+h≤188。字体14/16/18/20/24/28；
-图标/图片16/24/32/48正方形；总像素缓冲≤32768字节，不含全部LVGL堆。
-两种 SDK 的尺寸和图标格式不能混用。
+Budget: at most 12 components, 4 icons/images and 2 charts; document ≤6000
+bytes, wire ≤2048 bytes; coordinates even, x/y≥6, x+w≤250, y+h≤188. Fonts
+14/16/18/20/24/28; icons/images square at 16/24/32/48; total pixel buffer
+≤32768 bytes, which does not cover the whole LVGL heap. Sizes and icon formats
+from the two SDKs cannot be mixed.
 
-## 6. 从零编写应用、图标、ZIP
+## 6. Writing an app, icons and a ZIP from scratch
 
-JS 是**开发电脑的构建语言**，不是眼镜脚本运行时：
+JS is a **build language on the development computer**, not a script runtime on the glasses:
 
 ```sh
 node examples/tasks.mjs --out .state/demo/tasks.json
@@ -211,47 +246,62 @@ uv run turbo-app check .state/demo/tasks.zip
 uv run turbo-app preview .state/demo/tasks.zip --page home --out .state/demo/tasks.svg
 ```
 
-该任务示例包含 `backend.events` 声明，用于展示协议语法；按钮事件尚无
-端到端 Server 回流，不能当成“点击已修改待办”。纯演示模板都不申请此权限。
+This task example includes a `backend.events` declaration to show the protocol
+syntax. Button events have no end-to-end path back to the server yet, so do not
+read it as "tapping changed the to-do". None of the pure demo templates request
+this permission.
 
-ZIP根目录必须**仅有** `app.json` 和 `manifest.json`。不要手工 zip 一个文件夹；
-打包器生成规范化JSON、manifest SHA256、固定ZIP元数据。限制：
+The ZIP root must contain **only** `app.json` and `manifest.json`. Do not zip a folder by hand;
+the packager generates normalized JSON, the manifest SHA256 and fixed ZIP metadata. Limits:
 
-- schema=1，ID `[a-z][a-z0-9_]{0,23}`，version 1–65535；同ID升级严格递增。
-- 解压两个文件总计≤20,480字节，ZIP≤24,576字节；最多4页、每页12组件。
-- 文本≤96 UTF-8字节；字体14/16/18/20/24/28；文本高度≥font+4。TMG7起14退役：旧包照常解码，眼镜按16绘制；新包请用16及以上。
-- 图片资源最多8项，原生8–128px、宽8倍数，`mono1-msb` 行对齐：每字节
-  bit7是最左像素，1亮0暗，Base64；图片组件尺寸必须等于资源尺寸。
-- 图片单页解码预算≤32KiB；框、进度条、文本与图片之外不支持任意绘图。
-- TMG8起为避免眩光：图片和进度条填充若不完全位于底部主带（y 112–172），一律按 lens-mid（绿色 0x77）绘制；完全在底部主带内的保持最亮。文字、光标和轨道不受此限制。
-- 按钮只允许page/exit/emit；无网络、麦克风、文件路径或可执行代码。TMG7起按钮是焦点文字项：选中项最亮并带24×3下划光标，其余较暗，不再画边框；长按始终退出。
-- 拒绝多余文件、路径穿越、符号链接、加密成员、重复项、哈希或预算不符。
+- schema=1, ID `[a-z][a-z0-9_]{0,23}`, version 1–65535; upgrades with the same ID must strictly increase.
+- The two unpacked files total ≤20,480 bytes, the ZIP ≤24,576 bytes; at most 4 pages and 12 components per page.
+- Text ≤96 UTF-8 bytes; fonts 14/16/18/20/24/28; text height ≥font+4. Size 14 is retired from TMG7: old packages decode as before and the glasses draw them at 16; new packages should use 16 or larger.
+- At most 8 image resources, native 8–128px, width a multiple of 8, `mono1-msb` row-aligned: in each
+  byte, bit7 is the leftmost pixel, 1 is lit and 0 is dark, Base64-encoded; an image component's size must equal its resource's size.
+- Image decode budget ≤32KiB per page; no arbitrary drawing beyond boxes, progress bars, text and images.
+- From TMG8, to avoid glare: image and progress-bar fills that do not lie entirely within the bottom main band (y 112–172) are always drawn at lens-mid (green 0x77); fills fully inside the bottom main band stay at full brightness. Text, the cursor and tracks are not affected.
+- Buttons allow only page/exit/emit; no network, microphone, file paths or executable code. From TMG7, buttons are focusable text items: the selected item is brightest and has a 24×3 underline cursor, the others are dimmer, and no border is drawn any more; a long press always exits.
+- Rejected: extra files, path traversal, symlinks, encrypted members, duplicates, and mismatched hashes or budgets.
 
-资产必须原创或有分发许可。手机压缩、裁剪后再单色化；不要把彩色PNG/JPEG
-直接放ZIP。图库提供原创48px几何图标，手机显示使用系统图标，未复制上游商标。
+Assets must be original or licensed for distribution. Compress and crop on the
+phone first, then convert to monochrome; do not put colour PNG/JPEG files
+straight into the ZIP. The gallery provides original 48px geometric icons, the
+phone display uses system icons, and no upstream trademarks are copied.
 
-## 7. GitHub 分发与社区提交
+## 7. GitHub distribution and community submissions
 
-运行 `uv run turbo-app gallery export --out .state/gallery` 可生成目录、20份ZIP、
-原始JSON及每项提示词。官方内置目录在 [app-gallery](../app-gallery/README.md)。
-首版直接随手机打包，离线可浏览；**不自动联网下载或执行远程包**。
+Run `uv run turbo-app gallery export --out .state/gallery` to generate the catalog, 20 ZIPs,
+the raw JSON and each item's prompt. The official built-in catalog is in [app-gallery](../app-gallery/README.md).
+The first release ships it inside the phone build, so it can be browsed offline; **nothing is downloaded from the network or run as a remote package automatically**.
 
-社区可在自己GitHub仓库或Release发布：源码、ZIP、SHA256、预览、版本、许可、
-所需运行时与测试记录。小型公开目录可存Git；版本化ZIP可用Release assets，
-客户端应固定commit/tag而非静默跟随main，并验证大小、SHA256及完整包后让用户确认。
-个人日程、位置、笔记、MCP凭据、Cookie、Token绝不能发布到公共GitHub。
-本版不提供公开包托管的鉴权代理，也不把目录看成可信任自动更新服务。
+The community can publish in their own GitHub repository or Release: source,
+ZIP, SHA256, preview, version, licence, required runtime and test records. A
+small public catalog can live in Git, and versioned ZIPs can use Release
+assets. Clients should pin a commit/tag rather than silently follow main, and
+verify size, SHA256 and the complete package before letting the user confirm.
+Personal calendars, locations, notes, MCP credentials, cookies and tokens must
+never be published to public GitHub. This release provides no authenticating
+proxy for public package hosting, and it does not treat the catalog as a
+trusted auto-update service.
 
-提交模板需包含来源、只读工具映射、空数据/错误/过期测试和最大长度样本，
-不能夹带上游代码改许可证。第三方MCP各自遵守其许可证；这里只原创模板和引用。
+A template submission must include its sources, the read-only tool mapping,
+tests for empty data, errors and stale data, and maximum-length samples. It
+must not bring in upstream code under a changed licence. Each third-party MCP
+keeps its own licence; this repository holds only original templates and
+references.
 
-## 8. 验收清单
+## 8. Acceptance checklist
 
 ```sh
 uv run pytest -q
 ```
 
-先校验20KiB、图片预算、重复ID、坏ZIP、字段映射；再查本机Server鉴权、
-跨设备隔离、revision冲突；最后才用自己的手机/眼镜验证安装、返回、重启和内存。
-Linux可跑Python/API测试，macOS专用Objective-C与模拟器测试需要Xcode。
-构建成功、模拟器成功和真实眼镜成功必须分别标注，不用上游项目存在来证明已联网。
+First check the 20KiB limit, the image budget, duplicate IDs, bad ZIPs and
+field mapping. Then check the local server's authentication, cross-device
+isolation and revision conflicts. Only after that, use your own phone and
+glasses to verify install, back navigation, restart and memory. Linux can run
+the Python/API tests; the macOS-only Objective-C and simulator tests need
+Xcode. Label build success, simulator success and real-glasses success
+separately, and do not use the existence of the upstream project as proof that
+anything is online.

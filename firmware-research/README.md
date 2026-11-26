@@ -1,16 +1,16 @@
-# 固件研究
+# Firmware research
 
-这里是原厂固件与研究资料。两个 `stock/` 目录里的原厂 ZIP 是固件构建与门禁的输入（`firmware/build.py`、`firmware/baseline/rebase-*.json`、`firmware/tests/stock_base_test.py`、`scripts/turbo-gate.sh` 的标签复现），其余内容不参与当前构建。当前的 TurboIO 眼镜固件只有一个源码树：[`firmware/`](../firmware/README.md)，每个已发布版本是一个 git 标签（`fw/tmg2` … `fw/tmg12`，以及 `fw/tmg15`、`fw/tmg17`；TMG13、TMG14、TMG16 只是候选，没有标签），`git show fw/tmgN` 可查看该版本的 ZIP SHA-256 与配对手机构建。
+This folder holds stock firmware and research material. The stock ZIPs in the two `stock/` folders are inputs to the firmware build and the gate (`firmware/build.py`, `firmware/baseline/rebase-*.json`, `firmware/tests/stock_base_test.py`, and the tag reproduction in `scripts/turbo-gate.sh`). Nothing else here is part of the current build. The current TurboIO glasses firmware has a single source tree, [`firmware/`](../firmware/README.md). Each released version is a git tag (`fw/tmg2` … `fw/tmg12`, plus `fw/tmg15` and `fw/tmg17`; TMG13, TMG14 and TMG16 were candidates only and have no tag). `git show fw/tmgN` shows that release's ZIP SHA-256 and its paired phone build.
 
-所有自定义包均为**非官方、高风险实验用品**。小白不要刷，日常使用请使用官方 App 与原厂固件。掉电、中断、错包或缺陷可能导致设备损坏；不保证回滚、恢复或救砖。
+Every custom package is an **unofficial, high-risk experiment**. If you are new to this, do not flash it; for daily use, use the official app and the stock firmware. Power loss, an interrupted transfer, the wrong package or a bug can damage the device. Rollback, recovery and unbricking are not guaranteed.
 
-| 目录 | 内容 | 官方原版 |
+| Folder | Contents | Official original |
 | --- | --- | --- |
-| [strix-1.0.5.12](strix-1.0.5.12/stock/README.md) | 原厂 Strix OS 1.0.5.12（2026-11-06 由原版 App 1.0.11 下载）：TMG10、TMG11 的构建底座，仅作分析与构建输入，不要刷原厂包 | [官方原始 ZIP / SHA-256](strix-1.0.5.12/stock/README.md)，字节不变、未重封装 |
-| strix-1.0.5.5 | 原厂 Strix OS 1.0.5.5：TMG9 及更早版本的构建底座。TMIG1 研究树已在 C21 删除，保留在 git 历史中（`git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`） | [官方原始 ZIP / SHA-256](strix-1.0.5.5/stock/README.md)，字节不变、未重封装 |
+| [strix-1.0.5.12](strix-1.0.5.12/stock/README.md) | Stock Strix OS 1.0.5.12 (downloaded on 2026-11-06 by the stock app 1.0.11): the build base for TMG10 and TMG11. It is for analysis and as a build input only; do not flash the stock package | [Official original ZIP / SHA-256](strix-1.0.5.12/stock/README.md), bytes unchanged, not repackaged |
+| strix-1.0.5.5 | Stock Strix OS 1.0.5.5: the build base for TMG9 and earlier. The TMIG1 research tree was deleted in C21 and is kept in git history (`git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`) | [Official original ZIP / SHA-256](strix-1.0.5.5/stock/README.md), bytes unchanged, not repackaged |
 
-Strix OS 1.0.4.12 研究树与 TVP2（`strix-1.0.5.5-tvp2`）已在 cleanup(5) 删除，保留在 git 历史中。原厂 1.0.6.11 ZIP（TMG12 起的底座，含当前发布的 TMG17）不在仓库里，放在 `$TURBO_INPUTS` 下，由 `firmware/build.py --show stock-zip` 指出路径。
+The Strix OS 1.0.4.12 research tree and TVP2 (`strix-1.0.5.5-tvp2`) were deleted in cleanup(5) and are kept in git history. The stock 1.0.6.11 ZIP (the base from TMG12 on, including the current release TMG17) is not in the repo. It lives under `$TURBO_INPUTS`, and `firmware/build.py --show stock-zip` prints its path.
 
-版本号只是条件之一，还要核对 ZIP 哈希、官方宿主构建号、扩展标记及固定门禁。旧 iOS / Android 候选不能换文件名或哈希强刷新版；新 AP 不能简单平移旧补丁地址。
+The version number is only one of the conditions. You also have to check the ZIP hash, the official host build number, the extension marker and the fixed gate checks. An old iOS or Android candidate cannot be force-flashed onto a newer version by changing its file name or hash, and old patch addresses cannot simply be carried over to a new AP.
 
-完整 OTA 不等于只写 AP。TMIG1 的自定义变化只在**相对新原厂包**的 application 中，其他负载随官方底座升级，并非固定在旧版本。原厂归档用于分析与受控恢复研究，不是通用一键救砖包。
+A full OTA is not the same as writing only the AP. TMIG1's custom changes are only in the application, **relative to the newer stock package**; the other payloads upgrade with the official base and are not pinned to an old version. The stock archives are for analysis and controlled recovery research, not a general one-tap unbricking package.

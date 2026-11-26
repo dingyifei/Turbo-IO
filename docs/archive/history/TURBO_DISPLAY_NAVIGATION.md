@@ -1,60 +1,60 @@
 > Historical: describes a feature removed from the current ios107 build (2026-10)
 
-# Turbo Display 与原生导航应用
+# Turbo Display and the native navigation app
 
-更新于2026-09-22。这里区分基于 Strix OS 1.0.4.12 的两种实现：**Turbo Display 是开发测试工具，原生导航是独立应用页面**。它们都不是原厂固件下的默认 SDK 能力。
+Updated 2026-09-22. This page separates two implementations built on Strix OS 1.0.4.12: **Turbo Display is a development test tool, and native navigation is a standalone app page**. Neither is a default SDK capability of the stock firmware.
 
-## 1. 一个测试工具，一个导航应用
+## 1. One test tool, one navigation app
 
-### Turbo Display：传图与显示测试工具（Test）
+### Turbo Display: image transfer and display test tool (Test)
 
-眼镜第八项菜单为 **Turbo Display**，专门用于开发调试与验收，不作为日常显示应用。手机选择/处理图像，经过现有蓝牙连接传输，眼镜显示自定义像素内容。当前显示画布为 **512×128、8位灰度**，眼镜呈绿色单色；普通彩色图需要先缩放和转灰度，并非彩色显示器。
+The eighth item in the glasses menu is **Turbo Display**. It is for development, debugging and acceptance checks only, not for everyday display. The phone picks and processes an image, sends it over the existing Bluetooth connection, and the glasses show the custom pixel content. The display canvas is **512×128, 8-bit grayscale**, and the glasses show it as green monochrome. A normal color image has to be scaled and converted to grayscale first; this is not a color display.
 
-已经有完整图显示和局部更新的用户镜片反馈。局部更新只传变化区域，用于验证测试图片、文字布局和显示原型，但首次整图及大范围变化仍有传输开销。逐块更新也可能产生中间画面，不承诺无撕裂，不是视频投屏或任意分辨率传图。
+A user has confirmed, looking through the lens, that both full-image display and partial updates work. A partial update sends only the changed region. It is meant for checking test images, text layout and display prototypes, but the first full image and large changes still cost transfer time. Block-by-block updates can show intermediate frames, so there is no tear-free guarantee. This is not video casting and not image transfer at arbitrary resolutions.
 
-### 原生导航：眼镜端独立应用页面
+### Native navigation: a standalone app page on the glasses
 
-新增第九项 **导航**，保留原七项与 Turbo Display。导航有独立图标、菜单标题、页面和会话状态；不是继续在图片测试页、字幕或提词器上模拟导航。
+A ninth item, **导航** ("Navigation"), was added; the original seven items and Turbo Display stay. Navigation has its own icon, menu title, page and session state. It does not fake navigation on the image test page, captions or the teleprompter.
 
-手机高德负责搜索、算路和导航回调，发送转向、距离、道路文字及路线点。眼镜 application 内的 LVGL 页面绘制箭头、文字和路线示意图，**不再依赖手机为每次导航更新生成整幅图片**。
+On the phone, AMap (Gaode) handles search, route planning and navigation callbacks, and sends the turn, distance, road text and route points. An LVGL page inside the glasses application draws the arrow, text and a route sketch, so **the phone no longer has to render a full image for each navigation update**.
 
-- 布局：540×180；箭头、距离、路名、剩余信息及最多32点路线示意图。
-- 每条完整导航数据最多328字节；单在途传输，等文件终态与对应眼镜回执，只保留最新待发送状态，最高1Hz更新。
-- 手机 START 可从首页打开导航，不必先手动进入眼镜菜单；手动打开导航但未有会话时显示“请从手机开始导航”。
-- 实现默认60秒无有效内容更新息屏、实体按键唤醒、可选常亮，以及停止/返回/业务抢占时收尾。心跳不是新导航数据，不应拿心跳无限延长旧指引。
-- 手机后台立即退出问题已修复，见[后台定位与模拟测试限制](NAVIGATION_BACKGROUND.md)。
+- Layout: 540×180, with arrow, distance, road name, remaining-trip info and a route sketch of up to 32 points.
+- Each complete navigation message is at most 328 bytes. Only one transfer is in flight at a time; the phone waits for the file's final state and the matching glasses acknowledgement, keeps only the latest pending state, and updates at most once per second (1 Hz).
+- The phone's START can open navigation from the home screen, so the user does not have to enter the glasses menu first. If navigation is opened by hand with no session, the glasses show "请从手机开始导航" ("Start navigation from the phone").
+- By default the display turns off after 60 seconds without a valid content update, the physical button wakes it, and always-on is optional. Stop, back, and takeover by another task each end the session cleanly. A heartbeat is not new navigation data and must not keep stale guidance on screen indefinitely.
+- The phone app no longer exits immediately when sent to the background; see [Background location and simulation test limits](NAVIGATION_BACKGROUND.md).
 
-“应用级别”描述的是集成于固件内、有独立入口和生命周期的原生导航应用页面。底层是 Launcher 中的 LVGL 子页面，不是动态安装的 APK/HAP，也不是通用第三方 App 商店。功能仍属于实验阶段。
+"App level" here means a native navigation app page built into the firmware, with its own entry point and lifecycle. Underneath, it is an LVGL subpage in the Launcher. It is not a dynamically installed APK/HAP, and it is not a general third-party app store. The feature is still experimental.
 
-## 2. 使用流程（匹配的新固件与手机端）
+## 2. How to use it (matching new firmware and phone build)
 
-1. 手机保持雷鸟 App 与眼镜正常连接，结束其他录音、提词或语音任务；不需要为了导航重复解绑。
-2. 在 TurboIO 导航中配置自己的高德 iOS Key，选择模式和起终点，规划路线，再点开始模拟/实时导航。
-3. 手机已有转向和距离后，点 **开启眼镜原生导航**。眼镜留在首页也可被主动打开；不要选旧字幕或提词器显示按钮。
-4. 查看箭头、距离、路名与路线示意图。手机路线数据持续驱动原生界面，不是连续传导航截图。
-5. 使用 **停止并退出眼镜导航**，或眼镜实体返回结束显示。真实导航可按授权退后台；模拟只有系统短时后台额度，不承诺无限锁屏模拟。
+1. Keep the RayNeo app connected to the glasses as usual, and end any other recording, teleprompter or voice task. You do not need to unpair and re-pair for navigation.
+2. In TurboIO navigation, enter your own AMap iOS key, choose a mode and the start and end points, plan the route, then tap start simulated or live navigation.
+3. Once the phone has a turn and a distance, tap **开启眼镜原生导航** ("Start native navigation on glasses"). The glasses can be opened this way even while they sit on the home screen. Do not pick the old caption or teleprompter display buttons.
+4. Check the arrow, distance, road name and route sketch. The phone's route data keeps driving the native screen; it is not a stream of navigation screenshots.
+5. Use **停止并退出眼镜导航** ("Stop and exit glasses navigation"), or the glasses' physical back button, to end the display. Live navigation can keep running in the background if location permission allows. Simulation only gets the system's short background allowance, so unlimited simulation with the screen locked is not promised.
 
-使用 [TNV1 实验 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) 和匹配源码构建说明，先读升级与验收步骤。**旧 R3 Release 不含此功能，不能混用。** 不提供合并后/签名 IPA；服务 Key 和签名由使用者配置。
+Use the [TNV1 experimental release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) and its matching source build notes, and read the upgrade and acceptance steps first. **The old R3 release does not include this feature and must not be mixed with it.** No merged or signed IPA is provided; users configure their own service key and signing.
 
-## 3. 已实现、已验证与已发布
+## 3. Implemented, verified and released
 
-| 项目 | 研究设备进展 | 当前公开状态 |
+| Item | Progress on the research device | Current public status |
 | --- | --- | --- |
-| Turbo Photo R3 | 嵌入PNG，进入/退出/再次进入获镜片确认 | 已公开源码、工具与明确标警告的Pre-release |
-| Turbo Display / TDP1（测试工具） | 完整图与局部更新获镜片确认 | 已在 TNV1 Pre-release 提供固定固件；匹配 iOS 源码/构建/校验已公开 |
-| 原生导航 / TNV1 | 新固件已启动、独立导航页可进入，手机导航获用户正常反馈 | 已在 TNV1 Pre-release 提供固定固件；匹配 iOS 源码/构建/校验已公开 |
-| 手机后台修复 | 同源私用 iPhone Air 版用户反馈测试正常 | main 含匹配 TNV1 的可选 iOS 构建、后台修复与测试 |
+| Turbo Photo R3 | Embedded PNG; enter, exit and re-enter confirmed on the lens | Source, tools and a clearly warned pre-release are public |
+| Turbo Display / TDP1 (test tool) | Full image and partial updates confirmed on the lens | Pinned firmware provided in the TNV1 pre-release; matching iOS source, build and checksums are public |
+| Native navigation / TNV1 | New firmware boots, the standalone navigation page opens, and the user reports phone navigation works normally | Pinned firmware provided in the TNV1 pre-release; matching iOS source, build and checksums are public |
+| Phone background fix | A private iPhone Air build from the same source tested fine per user report | main has the optional iOS build matching TNV1, the background fix and tests |
 
-用户反馈未覆盖所有导航方式、长期锁屏、低电量、断连恢复及每条电源策略。不能把研究机的一次成功当作所有公开客户端或所有设备验收通过。
+User reports do not cover every navigation mode, long periods with the screen locked, low battery, reconnect after a disconnect, or every power policy. One success on the research device does not mean every public client or every device has passed acceptance.
 
-## 4. 风险与开发约束
+## 4. Risks and development constraints
 
-**面向开发者，仅限非商业学习研究。不是普通用户成品，也不是正式安全导航产品。** 请在静止安全环境中测试；不在驾驶、骑行、过马路时操作，不依赖实验镜片决定行进方向。
+**For developers, for non-commercial study and research only. This is not a finished product for regular users and not a certified safe navigation product.** Test while stationary in a safe place. Do not operate it while driving, cycling or crossing a street, and do not rely on the experimental lens to decide which way to go.
 
-- 路线示意图不是高德地图底图、街道标注或路口实景，不保证精确地图匹配。
-- 蓝牙传输、手机后台限制、旧数据、异常退出均可能造成延迟、错误指引或熄屏。后台定位增加耗电，强退/系统终止后不保证恢复。
-- 固件只修改 `nuttx_ap.bin` 的内容，其他13项负载保持原样；**不等于OTA只刷AP，更不等于不会变砖**。AP错误、掉电、安装中断和版本不匹配可能导致无法启动或失去OTA，原厂回滚和原始包都不是恢复保证。
-- 不随意扩大图像尺寸、控件数量或传输队列；内存、限流、退出释放及错误回执需要一起验证。
-- 发布仍只包含经审查的源码/依赖和明确列出的研究附件，不公开私人Key、账号、日志、签名材料或已合并手机成品包。
+- The route sketch is not an AMap base map, street labels or a real view of the intersection, and accurate map matching is not guaranteed.
+- Bluetooth transfer, phone background limits, stale data and abnormal exits can all cause delay, wrong guidance or a blank screen. Background location uses more battery, and recovery after a force quit or system termination is not guaranteed.
+- The firmware changes only the contents of `nuttx_ap.bin`; the other 13 payloads stay unchanged. **That does not mean OTA flashes only the AP, and it certainly does not mean the glasses cannot brick.** A bad AP, power loss, an interrupted install or a version mismatch can leave the glasses unable to boot or unable to take OTA. Neither the stock rollback nor the original package is a guaranteed recovery.
+- Do not casually enlarge image sizes, widget counts or transfer queues. Memory, rate limiting, release on exit and error acknowledgements have to be verified together.
+- Releases still contain only reviewed source and dependencies plus explicitly listed research attachments. Private keys, accounts, logs, signing material and merged phone packages are not published.
 
-[返回主README](../../../README.md) · 早期R3过程与风险 · [iOS标准导航教程](NAVIGATION.md)
+[Back to main README](../../../README.md) · Early R3 process and risks · [iOS standard navigation guide](NAVIGATION.md)

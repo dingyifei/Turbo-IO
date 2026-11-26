@@ -1,28 +1,28 @@
-# 从源码配置与启动
+# Configure and start from source
 
-> 归档：V1 客户端代码（apps、core-probe、codex-bridge、display-observer、rayneo-session、rayneo-archive、third-party）已在 cleanup(2) 从源码树删除，保留在 git 历史中。本文只作记录，其中的命令和路径已不可用。
+> Archive: the V1 client code (apps, core-probe, codex-bridge, display-observer, rayneo-session, rayneo-archive, third-party) was removed from the source tree in cleanup(2) and remains in git history. This file is kept as a record only; its commands and paths no longer work.
 
-## 1. 选择正确的入口
+## 1. Choose the right entry point
 
-- 只看 UI、本机文件/待办/书库与逻辑：本地版，不需要眼镜、云 Key 或厂商 framework。
-- 连接真实眼镜：设备版，使用现有通信依赖、自己的 Apple 签名和设备。当前不是从零自主重写的 SDK。
-- 不提供 IPA、预签名 App 或开发者密钥。每位使用者自行配置与编译。
+- To see only the UI, local files, to-dos, the library and the logic: use the local build. It needs no glasses, no cloud keys and no vendor framework.
+- To connect real glasses: use the device build. It uses the existing communication dependencies, your own Apple signing and your own device. It is not currently an SDK rewritten from scratch.
+- No IPA, pre-signed app or developer key is provided. Each user configures and builds it themselves.
 
-先安装/配置 Xcode、XcodeGen、Node.js，并在 Xcode 准备一个可用 iOS 模拟器。App 最低部署 iOS 16；工具链需满足各 Package.swift，自主传输包要求 Swift 6.2+。Node 需支持 fetch、ESM 和 node:test，尚未定义经过完整验证的最低版本。
+First install and set up Xcode, XcodeGen and Node.js, and prepare a working iOS simulator in Xcode. The app's minimum deployment target is iOS 16. The toolchain must satisfy each Package.swift; the standalone transport package needs Swift 6.2+. Node must support fetch, ESM and node:test; no fully verified minimum version has been defined yet.
 
-本次验证使用 Xcode 27.0、XcodeGen 2.45.4、Node.js 26.3.0。系统开发工具不作为源码附件分发；厂商 framework、Opus、VAD 和 ZIPFoundation 均已提供。Codex / 其他 Agent 运行环境及 USB 观察需要的 iproxy 是按需安装的外部工具，不属于 App 编译依赖。
+This verification used Xcode 27.0, XcodeGen 2.45.4 and Node.js 26.3.0. System developer tools are not distributed with the source; the vendor framework, Opus, VAD and ZIPFoundation are all included. The Codex or other agent runtime, and the iproxy needed for USB observation, are external tools installed as needed. They are not app build dependencies.
 
-## 2. 本地版启动
+## 2. Start the local build
 
-在源码根目录执行：
+Run from the source root:
 
 ```sh
 node scripts/start.mjs --local
 ```
 
-脚本检查工具、使用 `apps/RayNeoCompanion/project-source.yml` 生成工程并打开 Xcode；选择 `RayNeoCompanion` 和模拟器，点击 Run。公开交付中 ZIPFoundation 0.9.20 已附带为本地源码依赖，不需要另行下载。脚本不自动安装到手机、不配对、不读系统提醒事项，也不调用模型。
+The script checks the tools, generates the project from `apps/RayNeoCompanion/project-source.yml` and opens Xcode. Select `RayNeoCompanion` and a simulator, then click Run. The public release ships ZIPFoundation 0.9.20 as a local source dependency, so there is nothing extra to download. The script does not install to the phone, does not pair, does not read system Reminders and does not call a model.
 
-命令行构建：
+Command-line build:
 
 ```sh
 xcodegen generate --spec apps/RayNeoCompanion/project-source.yml
@@ -33,62 +33,62 @@ xcodebuild -project apps/RayNeoCompanion/RayNeoCompanion.xcodeproj \
   CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES build
 ```
 
-保留 ad-hoc 签名用于实际 Keychain 运行；`CODE_SIGNING_ALLOWED=NO` 仅适合编译检查，不代表钥匙串正常。不要用模拟器状态演示冒充连接成功。
+Keep ad-hoc signing for real Keychain runs. `CODE_SIGNING_ALLOWED=NO` is only for compile checks and does not mean the Keychain works. Do not present a simulator-state demo as a successful connection.
 
-## 3. 设备版依赖与签名
+## 3. Device build dependencies and signing
 
-设备构建配置为 `project-device.yml`（研究工作区原配置名为 `project.yml`），复用 `core-probe/Sources`。本次源码交付附带下列现有编译依赖，逐文件哈希见根目录 `DEPENDENCIES.json`：
+The device build configuration is `project-device.yml` (named `project.yml` in the original research workspace) and reuses `core-probe/Sources`. This source release includes the existing build dependencies below; per-file hashes are in `DEPENDENCIES.json` at the root:
 
-| 路径 | 作用 |
+| Path | Purpose |
 | --- | --- |
-| `core-probe/Frameworks/RayneoNet.framework` | 厂商通信核心 |
-| 同目录 CocoaAsyncSocket / OpenSSL / RayneoLog / SwiftProtobuf / CocoaLumberjack / SSZipArchive framework | 匹配的运行依赖 |
-| `core-probe/RecoveredInterface/RayneoNet.swift` | 恢复的声明源码；启动脚本用本机工具链生成仅声明的 swiftmodule，不编译/链接占位实现 |
-| `core-probe/Vendor/opus-ios/libopus.a` 与 opus-1.5.2/include | Opus 解码依赖 |
-| `core-probe/Vendor/py-webrtcvad-2.0.10/cbits` | 本地 VAD C 源码与头文件 |
-| 各第三方 COPYING / LICENSE | 原归属与许可，不受本项目非商业许可覆盖 |
+| `core-probe/Frameworks/RayneoNet.framework` | Vendor communication core |
+| CocoaAsyncSocket / OpenSSL / RayneoLog / SwiftProtobuf / CocoaLumberjack / SSZipArchive frameworks in the same folder | Matching runtime dependencies |
+| `core-probe/RecoveredInterface/RayneoNet.swift` | Recovered declaration source; the start script uses the local toolchain to generate a declaration-only swiftmodule and does not compile or link a placeholder implementation |
+| `core-probe/Vendor/opus-ios/libopus.a` and opus-1.5.2/include | Opus decoding dependency |
+| `core-probe/Vendor/py-webrtcvad-2.0.10/cbits` | Local VAD C sources and headers |
+| Each third-party COPYING / LICENSE | Original attribution and license; not covered by this project's non-commercial license |
 
-不要从不明来源随意下载同名库，不要假定别的版本 ABI 相同。缺依赖时启动脚本列出准确缺项并退出，不用空文件伪造成功。
+Do not download same-named libraries from unknown sources, and do not assume another version has the same ABI. If a dependency is missing, the start script lists exactly what is missing and exits; it does not fake success with empty files.
 
 ```sh
 node scripts/start.mjs --device
 ```
 
-在 Xcode 选择 `RayNeoCompanionDevice`、自己的 Signing Team 与明确的 iPhone，运行。Bundle ID 默认 `io.turboio.companion`；自己的项目若需改 ID，应同步所有相关配置并理解数据/钥匙串/绑定隔离影响。已有安装升级时不随意改 ID 或卸载。
+In Xcode, select `RayNeoCompanionDevice`, your own Signing Team and a specific iPhone, then run. The Bundle ID defaults to `io.turboio.companion`. If your own project needs a different ID, update every related configuration and understand how this isolates data, Keychain and pairing. When upgrading an existing install, do not change the ID or uninstall casually.
 
-公开版使用中性的 Bundle ID 与服务命名空间，与维护者原测试安装隔离；不会自动读取原测试 App 的钥匙串。自行签名时应选择自己可用的标识符。不要在两个不同客户端之间复制绑定数据库。
+The public version uses a neutral Bundle ID and service namespace, isolated from the maintainer's original test install; it does not read the original test app's Keychain. When you sign it yourself, choose an identifier you can use. Do not copy the pairing database between two different clients.
 
-首次使用或从官方 App 切换时，**务必先在雷鸟官方 App 内解绑眼镜，再到手机“设置 → 蓝牙”对对应眼镜选择“忽略此设备”**。仅关闭官方 App 不等于解绑。完成后长按眼镜按钮约 5 秒，确认蓝灯闪烁，再在 Turbo IO 选择目标并确认系统配对提示，等待 App“已认证”。不要让官方 App 与 Turbo IO 同时连接或抢连同一副眼镜。
+On first use, or when switching from the official app, **first unbind the glasses inside the official RayNeo app, then in the phone's "设置 → 蓝牙" (Settings → Bluetooth) choose "忽略此设备" (Forget This Device) for those glasses**. Closing the official app is not the same as unbinding. Then hold the glasses button for about 5 seconds, confirm the blue light is flashing, select the target in Turbo IO, confirm the system pairing prompt, and wait for the app to show "已认证" (Authenticated). Do not let the official app and Turbo IO connect to, or compete for, the same glasses at the same time.
 
-已绑定 Turbo IO 后的日常使用优先重连，不需要每次解绑、忽略或重置。非越狱设备已由用户实机验收通过。Android 版本待开发，当前配置步骤仅针对 iOS。
+Once the glasses are bound to Turbo IO, everyday use should reconnect first; there is no need to unbind, forget or reset each time. The user has accepted the build on a non-jailbroken device. An Android version is still to be developed; these configuration steps cover iOS only.
 
-## 4. 云对话：只填自己的服务
+## 4. Cloud conversation: use only your own services
 
-真机打开“会话 → 模型设置 / 配置 ASR 和模型密钥”：
+On the device, open "会话 → 模型设置 / 配置 ASR 和模型密钥" (Conversation → Model settings / Configure ASR and model keys):
 
-1. 填自己的阿里云 ASR Host，只填主机名，不带 `https://`、端口、路径、用户名或查询参数。当前只允许 aliyuncs.com 子域，并要求服务支持 DashScope WebSocket 流式任务协议。
-2. 服务端应提供 `qwen-audio-3.0-asr-flash-streaming`。音频为 16 kHz、mono、PCM16，使用云端 VAD；换模型/协议不是只改密钥就可兼容。
-3. 填 ASR API Key 与 DeepSeek API Key。Key 仅进入自己的 App Keychain，不写源码或环境脚本。
-4. 当前 DeepSeek 执行器使用固定官方 HTTPS chat/completions、`deepseek-v4-flash`、关闭思考、stream=true、max_tokens=1024。其他模型草稿页不替换该执行器。
-5. 选择仅保存，或明确启用默认待命/持续插话。连接后说一条短句，核对 ASR 与回答；不以设置保存成功为接口验收。
+1. Enter your own Alibaba Cloud ASR Host, as a hostname only: no `https://`, port, path, user name or query parameters. Only aliyuncs.com subdomains are currently allowed, and the service must support the DashScope WebSocket streaming task protocol.
+2. The server must provide `qwen-audio-3.0-asr-flash-streaming`. Audio is 16 kHz, mono, PCM16, with cloud-side VAD. Switching model or protocol is not compatible just by changing the key.
+3. Enter the ASR API Key and the DeepSeek API Key. The keys go only into your own app's Keychain; they are not written into source or environment scripts.
+4. The current DeepSeek executor uses the fixed official HTTPS chat/completions endpoint, `deepseek-v4-flash`, thinking off, stream=true, max_tokens=1024. Other model draft pages do not replace this executor.
+5. Choose save only, or explicitly enable default standby or continuous interjection. After connecting, say a short sentence and check the ASR and the answer; a successful settings save does not count as interface acceptance.
 
-源码不带开发者默认 ASR 租户。缺 Host/Key 时不会自动云收音；更换 Host 使用独立服务 Keychain 标识，不沿用旧主机密钥。已有测试安装升级到此配置版，需要先填写自己的 Host；填回原 Host 可按原 service 找到已有钥匙串内容，不删除旧 Key。
+The source carries no developer default ASR tenant. Without a Host or Key there is no automatic cloud audio capture. Changing the Host uses a separate service Keychain identifier and does not reuse the old host's key. When an existing test install upgrades to this configuration version, it must first enter its own Host; entering the original Host again finds the existing Keychain content under the original service. The old Key is not deleted.
 
-普通录音手动 ASR 共用这个用户配置，并在开始时捕获 Host 与对应 Key，避免解码期间改配置把旧 Key 发给新地址。录音不会因为接收到文件就自动转写。
+Manual ASR for ordinary recordings shares this user configuration and captures the Host and its Key at start, so changing the configuration during decoding cannot send the old Key to a new address. A recording is not transcribed automatically just because the file was received.
 
-## 5. 天气、通知、录音
+## 5. Weather, notifications, recordings
 
-- 天气：工具中填写自己的和风 Host / Key、城市；先查询并确认镜片候选图标，再启用已验图标自动下发。首页天气与卡片是不同业务。
-- 系统通知：系统蓝牙配件设置允许共享通知；App 通知中心设置来源。自定义通知使用业务通道，可手动发送随机码，不需要制造手机系统通知。
-- 录音：先开启眼镜录音接收，再在眼镜录制/保存；接收开关当前重开后需复核。录音归档中手动转写、分享；系统分享完整流程仍有待验项。
-- 待办：本机编辑/发送可用，但眼镜完成未同步 App 是已知问题，不要重复下发旧未完成状态覆盖眼镜。
-- NAS/Obsidian：当前先导出音频/Markdown/ZIP，没有配置即自动上传和远端索引承诺。
+- Weather: in Tools, enter your own QWeather Host / Key and city. Query first and confirm the candidate lens icons, then enable automatic sending of verified icons. Home-screen weather and the weather card are separate features.
+- System notifications: allow notification sharing in the system Bluetooth accessory settings; set the sources in the app's notification center. Custom notifications use the app's own channel and can send a random code manually; there is no need to generate a phone system notification.
+- Recordings: first turn on recording receive for the glasses, then record and save on the glasses. The receive switch currently needs rechecking after it is turned back on. Transcribe and share manually from the recording archive; the full system share flow still has items to verify.
+- To-dos: local editing and sending work, but completion on the glasses not syncing back to the app is a known issue. Do not resend an old not-done state that overwrites the glasses.
+- NAS/Obsidian: for now, export audio, Markdown or ZIP. There is no promise of automatic upload or remote indexing once configured.
 
-## 6. Codex bridge（可选）
+## 6. Codex bridge (optional)
 
-电脑需要已有可用 Codex 登录和兼容 app-server。此项目启动独立子进程，不控制当前桌面聊天。可通过 `RAYNEO_CODEX_BINARY` 指定 binary 路径，当前桥接使用已验的 `--stdio` 参数，版本升级需核对 CLI/schema。
+The computer needs a working Codex login and a compatible app-server. This project starts a separate child process and does not control the current desktop chat. `RAYNEO_CODEX_BINARY` can set the binary path. The bridge currently uses the verified `--stdio` argument; check the CLI and schema after a version upgrade.
 
-在私有路径创建随机令牌文件（32–256 位 Base64URL，权限0600），不要复用云服务密钥或把令牌放命令行。运行：
+Create a random token file in a private path (32–256 bits, Base64URL, permissions 0600). Do not reuse a cloud service key, and do not put the token on the command line. Run:
 
 ```sh
 node codex-bridge/bridge.mjs \
@@ -97,32 +97,32 @@ node codex-bridge/bridge.mjs \
   --state-file /absolute/private/ledger.json
 ```
 
-默认 `127.0.0.1:8787`、只读工作区。供 iPhone 访问时使用自己的可信 HTTPS 代理，或提供 `--tls-cert` / `--tls-key`；非回环监听要求 TLS。手机保存 HTTPS 根地址（无 `/v1` 后缀）与独立令牌，检查连接，然后按需允许语音工具和主动提醒。初次联调先用不读写文件的随机码任务。
+The default is `127.0.0.1:8787` with a read-only workspace. For iPhone access, use your own trusted HTTPS proxy or supply `--tls-cert` / `--tls-key`; a non-loopback listener requires TLS. The phone stores the HTTPS root address (no `/v1` suffix) and a separate token, checks the connection, then allows voice tools and proactive reminders as needed. For the first integration test, use a random-code task that reads and writes no files.
 
-| 接口 | 用途 |
+| Endpoint | Purpose |
 | --- | --- |
-| GET /v1/state | 状态、任务和事件 |
-| POST /v1/message | requestId、text、可选taskId；返回accepted不等于完成 |
-| POST /v1/stop | requestId、taskId；请求停止 |
-| POST /v1/decision | requestId、taskId、approvalId及decision/answers；用户手机确认 |
+| GET /v1/state | State, tasks and events |
+| POST /v1/message | requestId, text, optional taskId; returning accepted does not mean done |
+| POST /v1/stop | requestId, taskId; requests a stop |
+| POST /v1/decision | requestId, taskId, approvalId and decision/answers; the user confirms on the phone |
 
-所有请求 Bearer 授权，POST JSON。模型仅有 message/status/stop 三个工具，不能自动审批。写权限只在主机用户明确选择 `--allow-workspace-write` 时增加。请求结果不确定不要换 requestId 重发。
+Every request uses Bearer authorization; POST bodies are JSON. The model has only three tools, message/status/stop, and cannot approve anything automatically. Write access is added only when the host user explicitly chooses `--allow-workspace-write`. If a request's result is uncertain, do not resend it with a new requestId.
 
-主动提醒是 App 运行时轮询和眼镜通知，不是 APNs；强退、挂起、长期离线不能保证送达。不要直接裸露 app-server 或把 bridge token 放网页。
+Proactive reminders are app polling while running plus glasses notifications, not APNs. Delivery is not guaranteed after a force quit, while suspended or during long offline periods. Do not expose the app-server directly or put the bridge token in a web page.
 
-## 7. USB 显示观察（可选）
+## 7. USB display observation (optional)
 
-Mac 配好 iproxy，USB 连接可信手机：
+Set up iproxy on the Mac and connect a trusted phone over USB:
 
 ```sh
 node display-observer/server.mjs --udid YOUR_TEST_DEVICE_UDID
 ```
 
-手机“工具 → 显示观察”开启本轮接口，浏览器打开 `http://127.0.0.1:8790/`，填本轮临时令牌。默认不含文字，单独同意才观察新发生文字；30分钟到期，需重新开启。Mac8790 / 转发18766 / 手机18765均为回环地址，别对外暴露。
+On the phone, open "工具 → 显示观察" (Tools → Display observation) to enable the interface for this session. Open `http://127.0.0.1:8790/` in a browser and enter this session's temporary token. Text is excluded by default; observing newly appearing text needs separate consent. Access expires after 30 minutes and must be re-enabled. Mac 8790, forwarded 18766 and phone 18765 are all loopback addresses; do not expose them externally.
 
-这是页面/状态重绘，不是镜片像素截图。切样式不会控制眼镜；停止时清除内存，不伪造实时状态。
+This is a redraw of page and state, not a pixel screenshot of the lens. Switching styles does not control the glasses. Stopping clears memory and does not fake live state.
 
-## 8. 检查
+## 8. Checks
 
 ```sh
 node scripts/check-source.mjs
@@ -130,4 +130,4 @@ node --test codex-bridge/bridge.test.mjs display-observer/*.test.mjs
 xcrun swift test --package-path rayneo-protocol
 ```
 
-源码扫描不等于完整安全/许可审计；运行后生成的本地构建和数据不用于发布。App 单元/UI测试使用自己已有的模拟器与新 xcresult 路径。非越狱设备已获用户实机确认；后台、声学效果与不同固件下的镜片操作仍需按功能分别验收。
+A source scan is not a full security or license audit. Local builds and data produced by running are not for release. App unit and UI tests use your own existing simulator and a new xcresult path. The user has confirmed the build on a non-jailbroken device; background behavior, acoustic performance and lens operations under different firmware still need acceptance feature by feature.

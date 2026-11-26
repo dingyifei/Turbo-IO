@@ -1,73 +1,73 @@
-# Turbo IO：实现思路
+# Turbo IO: how it works
 
-> 归档：V1 客户端代码（apps、core-probe、codex-bridge、display-observer、rayneo-session、rayneo-archive、third-party）已在 cleanup(2) 从源码树删除，保留在 git 历史中。本文只作记录，其中的命令和路径已不可用。
+> Archived: the V1 client code (apps, core-probe, codex-bridge, display-observer, rayneo-session, rayneo-archive, third-party) was deleted from the source tree in cleanup(2) and is kept in git history. This page is a record only. Its commands and paths no longer work.
 
-## 一句话
+## In one sentence
 
-把眼镜视为随身输入/显示设备，iPhone 负责连接、音频和会话，云服务负责识别与回答，电脑负责执行 Codex 任务。不是修改眼镜固件，也不是用越狱脚本读官方 App 沙盒来实现产品功能。
+The glasses are treated as a wearable input and display device. The iPhone handles the connection, audio and sessions; cloud services handle recognition and answers; a computer runs Codex tasks. The product does not modify the glasses firmware, and it does not use jailbreak scripts to read the official app's sandbox.
 
-## 1. 从观察行为开始，而不是从猜协议开始
+## 1. Start from observed behavior, not from guessing the protocol
 
-研究基于用户自有设备和提供的官方 App 材料。先静态查看资源、符号、序列化结构与调用关系，再用官方 App 的实际操作和日志核对。按业务、消息类型、方向、会话标识、长度和时间区分事件，不把相邻日志误当成同一个功能。
+The research is based on the user's own devices and the official app material the user provided. We first look statically at resources, symbols, serialized structures and call relationships, then check them against real actions and logs in the official app. Events are told apart by business type, message type, direction, session ID, length and time, so that neighboring log lines are not mistaken for the same feature.
 
-对每一项功能分别验证：手机主动发起、眼镜主动发起、SDK 接受发送、设备回执、实际镜片/声音效果。单测与官方 App 的成功不能直接算作新 App 的成功。侵入式观察曾影响稳定性，所以调试优先使用不注入的日志和自身接收路径。
+Each feature is verified separately: initiated by the phone, initiated by the glasses, accepted for sending by the SDK, acknowledged by the device, and the actual effect on the lens or in sound. A passing unit test or success in the official app does not count as success in the new app. Intrusive observation once affected stability, so debugging prefers non-injecting logs and our own receive path.
 
-## 2. 先复用通信核心，把产品做出来
+## 2. Reuse the communication core first and ship the product
 
-当前可用路线复用 RayneoNet 等通信依赖，在自己的 Bundle、签名和容器中管理绑定；业务适配接收/发送 protobuf/JSON 等消息。这样优先验证语音、录音、显示和反向操作，而不是等待所有底层重写完。
+The current working route reuses RayneoNet and the other communication dependencies, and manages pairing inside our own bundle, signature and container. Business adapters receive and send protobuf, JSON and other messages. This lets us verify voice, recording, display and reverse operations first, instead of waiting until the whole lower layer is rewritten.
 
-`core-probe` 既含历史探针，也含当前设备版复用的实现。恢复接口有版本/ABI 耦合，替换库必须重新验证，不能仅改文件名或假定所有版本通用。普通开发签名已在测试设备使用；后续非越狱设备也已由用户确认实机验收通过。更换设备或厂商库版本仍需验证兼容性。
+`core-probe` holds both historical probes and the implementation that the current device build reuses. The recovered interfaces are coupled to versions and ABI. A replacement library must be verified again; renaming a file or assuming that all versions behave the same is not enough. Ordinary development signing has been used on the test device, and the user later confirmed that on-device acceptance also passed on a non-jailbroken device. A different device or a different vendor library version still needs a compatibility check.
 
-同时把可确定的纯逻辑拆成 Swift 包：protocol（帧/计算）、transport（公共 API 字节通道）、session（会话）、display（业务分型）、archive（副本/修订）、audio-container（结构检查）。它们用于测试和逐步替换，不把现有 App 的成功冒充纯 Swift 自主 SDK 已完成。
+In parallel, the logic that can be pinned down is split into Swift packages: protocol (frames and calculations), transport (a byte channel over the public API), session (sessions), display (business types), archive (copies and revisions) and audio-container (structure checks). They exist for testing and for step-by-step replacement. The current app's success is not presented as a finished, self-contained pure-Swift SDK.
 
-## 3. 语音是持续会话，不是一次请求
+## 3. Voice is a continuous session, not a single request
 
 ```text
-眼镜唤醒 → 音频 → 手机解码 → 云 ASR / VAD
-                              ├─ 识别文字 → 镜片上半部
-                              └─ 有效句末 → DeepSeek
-                                            └─ 流式回答 → 镜片下半部
+Glasses wake → audio → phone decodes → cloud ASR / VAD
+                                       ├─ recognized text → top half of the lens
+                                       └─ valid end of sentence → DeepSeek
+                                                                  └─ streamed answer → bottom half of the lens
 
-会话内有效新句 → 取消旧模型/发送代际 → 新一轮
-模型流结束且完成消息已提交 → 静默计时 → 关闭页面 → 保留待命
+Valid new sentence within the session → cancel the old model call / bump the send generation → new round
+Model stream ended and the completion message submitted → silence timer → close the page → stay on standby
 ```
 
-云端 ASR 与模型输出可以同时存在；有效新句触发打断，不能用每一个空事件触发新请求。每轮有独立 ID 和迟到回调保护，断线后旧轮内容不能进入新连接。
+Cloud ASR output and model output can exist at the same time. A valid new sentence triggers an interruption; not every empty event may trigger a new request. Each round has its own ID and protection against late callbacks, and after a disconnect, content from an old round must not reach the new connection.
 
-“模型 EOF”“文本交给 SDK”“镜片显示完”“TTS 播完”是不同事件。当前手机侧的关闭计时从文本流收尾后开始，但没有已验证的镜片渲染完成 ACK；自有 TTS 还没有完成产品闭环。
+"Model EOF", "text handed to the SDK", "lens finished displaying" and "TTS finished playing" are different events. The phone-side close timer currently starts after the text stream finishes, but there is no verified lens-render-complete ACK. Our own TTS does not yet close the product loop.
 
-官方有本地 Sherpa/Zipformer 与云 ASR 的研究证据；Turbo IO 当前默认链路使用用户的云 ASR，不声称已经复刻官方完整仲裁。
+There is research evidence that the official app has local Sherpa/Zipformer and cloud ASR. Turbo IO's default path currently uses the user's cloud ASR and does not claim to reproduce the official app's full arbitration.
 
-## 4. 录音先保原件，再派生文字
+## 4. Recordings: keep the original first, then derive text
 
-眼镜普通录音经过接收、offset/结束处理、原包落地、容器/解码、校验归档。用户手动转写才把转换后的音频发到自己的 ASR。语音聊天时间轴保存的是文字事件，不能与录音库混为一谈。
+An ordinary glasses recording goes through receiving, offset and end handling, writing the raw packets to disk, container handling and decoding, then checking and archiving. Only a manual transcription by the user sends the converted audio to the user's own ASR. The voice-chat timeline stores text events and must not be confused with the recording library.
 
-曾出现“服务 task-finished 但结果为空”：通过同一录音左右声道与实际上送 PCM 对照，发现上传的是接近静音的一侧。因此先做等权混合再转 16 kHz 单声道，而不是修改错误提示或盲目换 API。该策略也有相位抵消等边界，不能宣传通用无损。
+Once, the service returned "task-finished" with an empty result. Comparing the left and right channels of the same recording with the PCM actually uploaded showed that the uploaded side was close to silent. The fix was to mix both channels with equal weight and then convert to 16 kHz mono, rather than changing the error message or switching APIs blindly. This approach has its own edge cases, such as phase cancellation, and must not be advertised as universally lossless.
 
-副本哈希只证明本地复制；Ogg CRC 只证明检查器覆盖的结构子集；可解码不等于内容正确；转写完成不等于 NAS/Obsidian 已入库。每层独立记录状态，派生文件不覆盖原音。
+A copy hash proves only the local copy. An Ogg CRC proves only the subset of the structure the checker covers. Decodable does not mean the content is correct. A finished transcription does not mean the file has reached the NAS or Obsidian. Each layer records its state separately, and derived files never overwrite the original audio.
 
-全天智记是另一套生命周期/实时及缓存消息，不复用普通录音的成功结论。当前只完成限时原包与解码/识别实验，正式长时分段、补传、归档仍在开发。
+"全天智记" (all-day memory) has a different lifecycle and its own real-time and cached messages; conclusions about ordinary recordings do not carry over to it. So far only time-limited raw packets and decoding/recognition experiments are done. Proper long-duration segmentation, re-upload and archiving are still in development.
 
-## 5. Codex：模型选工具，电脑执行
+## 5. Codex: the model picks the tool, the computer runs it
 
-DeepSeek 只收到 `codex_message`、`codex_status`、`codex_stop` 三个 function tools。手机检查参数与当前任务，再请求电脑上的受限 HTTPS bridge。bridge 启动独立 Codex app-server，经 stdio JSON-RPC 管理线程与轮次，不接管当前桌面聊天。
+DeepSeek receives only three function tools: `codex_message`, `codex_status` and `codex_stop`. The phone checks the arguments and the current task, then calls a restricted HTTPS bridge on the computer. The bridge starts a separate Codex app-server and manages threads and turns over stdio JSON-RPC. It does not take over the current desktop chat.
 
-任务接受不等于完成。完成/失败/待确认事件由电脑产生，手机轮询、去重，再用眼镜业务通知显示摘要。当前不是 MCP，也没有 APNs 或长时间离线必达保证。通知不批准任务；需要确认时由用户在手机处理，模型没有自动批准工具。
+A task being accepted does not mean it is done. Completed, failed and needs-confirmation events are produced on the computer; the phone polls them, removes duplicates, and shows a summary through a glasses business notification. This is not MCP, and there is no APNs or guaranteed delivery during long offline periods. A notification does not approve a task. When confirmation is needed, the user handles it on the phone; the model has no tool to approve automatically.
 
-该 stdio 事件架构依据 [Codex App Server 文档](https://learn.chatgpt.com/docs/app-server)，本项目 `/v1/*` 是自定义封装，不是官方 HTTP API。binary 与 schema 随版本变化，升级后必须测试。
+This stdio event architecture follows the [Codex App Server docs](https://learn.chatgpt.com/docs/app-server). This project's `/v1/*` is a custom wrapper, not an official HTTP API. The binary and schema change between versions and must be tested after every upgrade.
 
-## 6. 显示观察不是截图
+## 6. Display observation is not a screenshot
 
-自身接收路径提取 `glass_preview`、屏幕状态原值、业务类型/长度等白名单，放入限时内存快照。Mac 经 USB 转发访问手机回环接口，浏览器重绘页面。
+Our own receive path extracts an allowlist (`glass_preview`, raw screen-state values, business type and length, and similar) into a time-limited in-memory snapshot. The Mac reaches the phone's loopback interface through USB forwarding, and a browser redraws the page.
 
-黑底绿字、对话框、每页一个应用图标是可维护的 SVG/HTML 布局。真实页面回报、App 已提交文字、样式演示分别标注。没有发现已可用的 framebuffer/镜片截图流，所以不把这个页面宣传为屏幕镜像。
+The green-on-black text, dialogs and one-app-icon-per-page view are a maintainable SVG/HTML layout. Real page reports, text the app has submitted, and style demos are labeled separately. No usable framebuffer or lens screenshot stream has been found, so this page is not advertised as a screen mirror.
 
-## 7. 为什么连接与语音要分开
+## 7. Why connection and voice are kept separate
 
-App 更新会结束进程，如果重连 timer 绑在语音待命上，用户关语音后就可能无法自行恢复。因此已有绑定连接维护独立于 ASR/录音：选择唯一已有绑定、从 SDK 重新获取当前对象、有限退避，不偷偷重配或抢其他目标。
+An app update ends the process. If the reconnect timer were tied to voice standby, a user who turned voice off might be unable to recover the connection without help. So maintenance of an existing paired connection is independent of ASR and recording: it picks the single existing pairing, fetches the current object again from the SDK, and backs off a limited number of times. It never silently re-pairs or grabs another target.
 
-后台模式允许某些系统行为，不保证 timer 永远运行。强退、挂起、长时锁屏、射频断连和升级重开必须分别验收。
+Background mode allows some system behaviors but does not guarantee that a timer keeps running. Force quit, suspension, long screen lock, radio disconnects and reopening after an upgrade each need their own acceptance check.
 
-## 8. 当前最重要的缺口
+## 8. The most important gaps now
 
-眼镜待办完成回传合并仍有未修复问题；分享完整文件选择器、最新语音收尾、长期后台、更多设备/固件兼容、自有 TTS、全天智记产品化、NAS 自动入库需要继续验证。源码开放是为了可复现与协作，不把研究原型包装成已覆盖所有硬件边界的通用 SDK。
+Merging the to-do completion sent back from the glasses still has an unfixed problem. The following still need verification: the full file picker for sharing, finishing the latest voice turn, long-term background running, compatibility with more devices and firmware, our own TTS, turning "全天智记" (all-day memory) into a product, and automatic NAS import. The source is open for reproducibility and collaboration. A research prototype is not presented as a general SDK that covers every hardware edge case.

@@ -28,7 +28,7 @@ These are high-risk research specimens, not production firmware. Their source fo
 
 The `firmware-strix-1.0.4.12-tnv1` prerelease additionally provides the exact tested TNV1 navigation OTA archive and AP image, retaining the TDP1 display test tool. Only AP content differs from the 1.0.4.12 original payload baseline; the other 13 payloads are unchanged. These original-code/resource copyright and non-endorsement boundaries also apply. Its README (`firmware-research/strix-1.0.4.12/native-navigation/README.md`) is in git history; rollback is not guaranteed. No personal merged/signed iOS package is included.
 
-## TMU1 音乐 API 参考
+## TMU1 music API reference
 
 The NetEase client adapted from Beans Music (MIT) was removed in 2026-10; the historical source and its license are preserved in commit `27ad86e` (for example, `git show 27ad86e:official-addon/music/Beans-MIT-LICENSE.txt`).
 

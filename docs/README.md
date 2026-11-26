@@ -2,6 +2,8 @@
 
 New here? Start with the [project README](../README.md). Agents should read [AGENTS.md](../AGENTS.md) first.
 
+The docs are in English. Three reader-facing READMEs also have a Chinese copy, `README-zh.md`, kept in step with the English one: the [app gallery](../app-gallery/README-zh.md), the [self-hosted backend](../dashboard-service/README-zh.md) and [local translation](../ios-addon/local-translation/README-zh.md).
+
 Status column:
 - **Current**: describes the build as it is today.
 - **V1**: covers the standalone V1 client, whose code was removed in cleanup(2).
@@ -23,7 +25,7 @@ Status column:
 | [Clench tooling](../tools/clench/README.md) | Current | Offline tooth-tap recording and analysis |
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
 | [Licensing](LICENSING.md) | Current | Non-commercial terms and third-party boundaries |
-| [Source release](SOURCE_RELEASE.md) | Historical | The older source-release notes (Chinese). It names `scripts/export-source.mjs`, which no longer exists, and other platforms' releases; `scripts/check-source.mjs` is the audit that exists today |
+| [Source release](SOURCE_RELEASE.md) | Historical | The older source-release notes. It names `scripts/export-source.mjs`, which no longer exists, and other platforms' releases; `scripts/check-source.mjs` is the audit that exists today |
 | [Changelog](CHANGELOG.md) | Historical | Dated updates and acceptance records up to 2026-10-23, moved out of the README; frozen in cleanup(6), links to removed files unlinked |
 
 ## Design system

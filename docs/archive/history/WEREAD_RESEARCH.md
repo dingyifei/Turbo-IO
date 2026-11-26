@@ -1,73 +1,73 @@
 > Historical: describes a feature removed from the current ios107 build (2026-10)
 
-# 微信读书：眼镜阅读思路与参考项目
+# WeChat Reading (微信读书): reading on the glasses, approach and reference projects
 
-2026-09-24。**本页分享架构思路、研究进展与第三方项目链接。原创 AP / 手机模块与实刷固件现已单独发布，不含网页正文适配代码、账号会话、Cookie、Key、书籍缓存或私用 IPA。** 源码、固件与构建说明。公开手机模块尚未接入默认构建和 TWR1 OTA 门禁，不代表开箱可用。
+2026-09-24. **This page shares the architecture, the research status and links to third-party projects. The original AP and phone modules and the exact flashed firmware have since been released separately. They contain no web-text adapter code, account sessions, cookies, keys, book caches or private IPA.** Source, firmware and build notes. The public phone module is not yet in the default build or behind the TWR1 OTA gate, so it does not work out of the box.
 
-## 界面效果示意
+## What the screens look like
 
 
 
-用户提供的布局效果图，展示菜单、同步提示、四本书架与阅读页；**不是实机验收证据或当前公开构建的功能截图**。图中书籍、文字、页码与速度仅为示例，不附带对应书籍资源；实际速度单位和研究状态见下文。
+A layout mock-up supplied by a user, showing the menu, the sync prompt, the four-book shelf and the reading page. **It is not evidence from a device check and not a screenshot of the current public build.** The books, text, page numbers and speed in it are examples only, and no matching book resources come with it. The actual speed unit and the research status are described below.
 
-## 可以参考哪个项目？
+## Which projects can I look at?
 
-| 项目 | 适合研究什么 | 注意事项 |
+| Project | What it is useful for | Caveats |
 | --- | --- | --- |
-| [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading) | 官方微信读书 Skill：书架、书籍信息、章节目录、笔记划线、阅读统计 | 本轮核对的 Skill 1.0.4 没有章节全文读取接口；目录、简介、划线不能当成正文 |
-| [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin) | 在 KOReader 上阅读微信读书的实现思路：登录会话、目录与正文获取、缓存、阅读状态处理 | 是 KOReader 插件，适用于其支持的 Kindle/Kobo 等设备；不是能直接装进雷鸟 iO 的插件或 iOS SDK |
+| [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading) | The official WeChat Reading Skill: bookshelf, book info, table of contents, notes and highlights, reading stats | Skill 1.0.4, checked this round, has no API for full chapter text. The table of contents, blurb and highlights are not the book text. |
+| [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin) | How to read WeChat Reading in KOReader: login session, fetching the table of contents and text, caching, reading state | It is a KOReader plugin for the devices KOReader supports, such as Kindle and Kobo. It is not a plugin you can install on RayNeo iO, and not an iOS SDK. |
 
-想研究“书架能读到、为什么点开还没有正文”，可以先看第二个项目的 [README](https://github.com/finlater/weread.koplugin#readme) 与 [源码目录](https://github.com/finlater/weread.koplugin/tree/main/weread)。我们的思路是分开处理**账号有权限的内容获取**和**眼镜上的显示与交互**，不让眼镜运行整个 KOReader 或网页浏览器。
+To understand why a book shows on the shelf but opens with no text, start with the second project's [README](https://github.com/finlater/weread.koplugin#readme) and [source folder](https://github.com/finlater/weread.koplugin/tree/main/weread). Our approach separates **fetching content the account has rights to** from **display and interaction on the glasses**. The glasses do not run all of KOReader or a web browser.
 
-上游的功能、登录步骤和接口可能变化，请以其当前文档为准。本项目不保证第三方插件可用，不代办登录，不提供 Cookie，也不处理会员、购买限制或风控绕过。
+Upstream features, login steps and APIs can change; their current docs are authoritative. This project does not guarantee that third-party plugins work, does not log in for you, does not supply cookies, and does not deal with membership, purchase limits or bypassing risk controls.
 
-## 手机负责内容，眼镜负责呈现
+## The phone handles content, the glasses handle display
 
 ```text
-官方 Skill ──书架/统计──┐
-有权使用的 EPUB/TXT ───┼→ 手机：整理、分页、缩图、有限缓存
-用户自己的网页阅读会话 ┘              │
-                                     │ 蓝牙：本页书架 / 正文窗口 / 控制
-                                     ▼
-                              眼镜 AP 原生阅读页
-                                     │
-                                     └→ 翻页 / 选书 / 滚动 / 返回请求
+Official Skill ─── shelf/stats ──┐
+EPUB/TXT you may use ────────────┼→ Phone: organise, paginate, shrink images, bounded cache
+Your own web reading session ────┘              │
+                                                │ Bluetooth: this shelf page / text window / controls
+                                                ▼
+                                       Glasses AP native reading page
+                                                │
+                                                └→ page turn / pick book / scroll / back requests
 ```
 
-网页正文接入与 Skill API 是两条独立路线。安装 Skill 或填入书架 Key，不会自动得到网页正文权限。网页会话失效、没有阅读权限或格式不支持时，应明确停止并提示，不能用简介冒充正文。
+Web text access and the Skill API are two separate routes. Installing the Skill or entering a shelf key does not grant web text access. When the web session expires, the account lacks reading rights, or the format is unsupported, the reader must stop and say so. It must never pass off the blurb as the book text.
 
-### 书架：四本一页
+### Shelf: four books per page
 
-- 手机获取书架，只处理当前页四本；封面在手机先下载、缩放为 **64×88 灰度图**，每张像素数据 5632 字节，再传给眼镜。
-- 翻到下一页才加载下一组；眼镜不保存整个书架的原始图片，也不直接解析任意网络图片。
-- 当前页和接收暂存页使用固定双缓冲。整页校验完成、绘制端空闲后再切换，不能清掉还被 LVGL 使用的旧内存。
-- 手机只把书名、作者、会话内书籍编号和处理好的封面传过去；账号凭据不进入眼镜固件或蓝牙显示数据。
+- The phone fetches the shelf and handles only the four books on the current page. It downloads each cover and scales it to a **64×88 grayscale image**, 5632 bytes of pixel data per cover, before sending it to the glasses.
+- The next group loads only when you turn to the next page. The glasses never store the original images for the whole shelf and never parse arbitrary network images.
+- The current page and the receive staging page use a fixed double buffer. The switch happens only after the whole page passes its check and the renderer is idle, so memory LVGL is still using is never freed.
+- The phone sends only the title, author, a per-session book ID and the processed cover. Account credentials never enter the glasses firmware or the Bluetooth display data.
 
-### 阅读：传文字窗口，不持续传整屏截图
+### Reading: send a text window, not a stream of full-screen images
 
-- 手机按段整理正文、生成有界文本窗口；眼镜原生绘制文字，并在本地执行滚动。
-- 研究实现每次最多 **64 行**，不是整本书进眼镜；前后窗口不足时再向手机请求。长书应限制手机章节缓存，并在取消、换书或退出时释放。
-- 支持手动旋钮和自动滚动；研究版自动速度为 **30–480 字/分钟**，不是像素/秒。手动操作暂停自动滚动，避免两种控制相互争抢。
-- 传输要带会话号、序号、长度校验、确认回执与超时；旧会话的迟到数据不能覆盖新书。SDK“发送成功”不等于镜片已画完。
-- 不默认上传用户阅读内容、划线或偏好到模型；本地阅读统计和微信读书官方统计也不能混成一份。
+- The phone organises the text by paragraph and builds a bounded text window. The glasses draw the text natively and scroll locally.
+- The research build sends at most **64 lines** at a time; the whole book never goes to the glasses. When the window runs short in either direction, the glasses ask the phone for more. For long books the phone should cap its chapter cache and free it on cancel, book change or exit.
+- Manual knob scrolling and auto-scroll are both supported. The research build's auto speed is **30–480 characters per minute**, not pixels per second. Any manual input pauses auto-scroll so the two controls do not fight.
+- Each transfer carries a session number, sequence number, length check, acknowledgement and timeout. Late data from an old session must not overwrite a new book. An SDK "send succeeded" does not mean the lens has finished drawing.
+- Reading content, highlights and preferences are not uploaded to a model by default. Local reading stats and the official WeChat Reading stats are kept apart.
 
-## 当前研究进展与已知问题
+## Current research status and known issues
 
-私用研究基于 **雷鸟 AI iOS 1.0.5（201）+ Strix OS 1.0.4.12**，AP 增加第十一项“微信读书”，保留此前显示测试、导航和音乐入口。仅 AP 内容变化，其他13个 OTA 负载原样；这不代表官方升级过程只写 AP，也不保证不会变砖。
+The private research build is based on **RayNeo AI iOS 1.0.5 (201) + Strix OS 1.0.4.12**. It adds an eleventh AP item, "微信读书" (WeChat Reading), and keeps the earlier display test, navigation and music entries. Only the AP content changed; the other 13 OTA payloads are untouched. That does not mean the official update process writes only the AP, and it does not guarantee the glasses will not brick.
 
-- 已有书架同步的用户实机反馈；手机端四张封面的下载、缩图已验证。
-- 正常网页登录会话下的原生正文读取与窗口生成已在 Mac 验证；最新版 AP 已由用户确认更新完成并回到首页。**不能据此把全部书籍正文、跨章连续阅读或长期稳定性标为镜片验收通过。**
-- **已知问题：长按旋钮返回书架可能异常，尚未定位和修复。** 出现问题时可先在手机尝试“退出眼镜阅读”；不要反复重刷代替诊断。不要把此版当作成熟日常阅读器。
-- 旋钮轻触/滚动的区分、回翻、断线和恢复仍需要扩大验证。阅读交互的调整不代表音乐菜单旋钮问题也已解决。
+- A user reported shelf sync working on a device. Downloading and shrinking the four covers on the phone has been verified.
+- Native text fetching and window building with a normal web login session have been verified on a Mac. A user confirmed the latest AP finished updating and returned to the home screen. **None of this lets us mark all book text, continuous reading across chapters or long-term stability as passed on the lens.**
+- **Known issue: long-pressing the knob to return to the shelf can misbehave. It has not been located or fixed.** If it happens, first try "退出眼镜阅读" (Exit glasses reading) on the phone. Do not reflash repeatedly in place of diagnosing. Do not treat this build as a mature everyday reader.
+- Telling a knob tap from a scroll, paging back, disconnects and recovery all need wider testing. Changes to the reading controls do not mean the music menu knob problem is fixed too.
 
-**后续同日发布已补充 TWR1 原创源码模块与精确实刷固件，但没有把私用网页适配合入公开手机构建。** [TWR1 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1) 与现有 TMU1/TNV1 是不同候选；不得替换版本字符串或跳过升级门禁尝试混刷。没有自己的匹配手机集成时先不要刷。普通 SDK/App 开发不需要刷固件。
+**A later release on the same day added the TWR1 original source modules and the exact flashed firmware, but did not merge the private web adapter into the public phone build.** The [TWR1 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1) and the existing TMU1/TNV1 are different candidates. Do not swap version strings or skip the update gate to mix-flash them. Do not flash it until you have your own matching phone integration. Ordinary SDK or app development does not need a firmware flash.
 
-## 许可证与隐私
+## License and privacy
 
-- 本次公开的原创菜单、书架、阅读排版、滚动、传输、手机本地导入和测试沿用仓库 PolyForm Noncommercial；原厂固件与第三方内容保留原有版权/许可。不要把整个固件声明为我们的原创源码。
-- `finlater/weread.koplugin` 的 [LICENSE](https://github.com/finlater/weread.koplugin/blob/main/LICENSE) 为 AGPL-3.0；它保留自己的版权和条款，不被 Turbo IO 的非商业许可证覆盖。本文只提供链接与架构说明，不复制其正文协议实现。
-- 要采用、移植或分发上游代码，应自行核对其 LICENSE、NOTICE、README 和集成方式；不能只改语言、拆目录或注明出处就认为所有许可问题已解决。若上游各处表述有疑问，应向作者确认。
-- Cookie 属于登录凭据。只使用自己的账号，放本机安全存储；不要写进源码、固件、安装包、截图、运行日志、Git 提交或 Issue。失效后重新登录，不从他人分享的包中获取会话。
-- 本页没有提供维护者 Cookie、API Key、Apple 开发者账号、签名证书、个人书架、正文样本或私用修改版 IPA。主项目许可证没有变更。
+- The original menu, shelf, reading layout, scrolling, transfer, local phone import and tests published here use the repository's PolyForm Noncommercial license. Stock firmware and third-party content keep their own copyright and licenses. Do not describe the whole firmware as our original source.
+- The [LICENSE](https://github.com/finlater/weread.koplugin/blob/main/LICENSE) of `finlater/weread.koplugin` is AGPL-3.0. It keeps its own copyright and terms and is not covered by Turbo IO's noncommercial license. This page only links to it and describes the architecture; it does not copy its text-protocol implementation.
+- If you adopt, port or distribute upstream code, check its LICENSE, NOTICE, README and how it is integrated yourself. Translating it, splitting it into folders or crediting the source does not settle every license question. If upstream statements disagree, ask the author.
+- A cookie is a login credential. Use only your own account and keep the cookie in the device's secure storage. Never put it in source, firmware, an install package, a screenshot, a runtime log, a Git commit or an Issue. When it expires, log in again; never take a session from a package someone else shared.
+- This page does not provide the maintainers' cookies, API keys, Apple developer account, signing certificates, personal bookshelf, text samples or private modified IPA. The main project license has not changed.
 
-建议开发者先用自己有权使用的 TXT/EPUB 或原创短文验证“手机窗口 → 眼镜排版 → 旋钮回传 → 内存回收”，再独立研究内容来源与许可证，避免把登录问题、传输问题和渲染问题混在一起。
+Developers should first test "phone window → glasses layout → knob events back → memory freed" with TXT/EPUB files they have rights to, or with short original texts. Research content sources and licenses separately, so login, transfer and rendering problems do not get mixed up.

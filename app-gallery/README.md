@@ -1,39 +1,41 @@
-# 应用广场 · 20 个 MCP 小应用模板
+English | [中文](README-zh.md)
 
-2026-09-26。**MCP 在你的 Server 上运行；眼镜只显示有界原生组件。** 这些 ZIP 使用原创演示内容，不附带第三方服务代码、授权、账号或密钥。不是 20 个已经联网的成品 App。
+# App Gallery · 20 MCP mini-app templates
 
-手机入口：**TurboIO → 应用广场**，分为“我的应用 / 应用广场 / 开发指南”。每个模板都有预览、参考项目、配置要求、Agent 提示词和 ZIP 导出。已有四个基础示例继续保留。TAP1 眼镜最多安装四个应用，广场里的 20 个模板不等于安装了 20 个应用。
+2026-09-26. **MCP runs on your server; the glasses only show bounded native components.** These ZIPs use original demo content. They ship no third-party service code, authorization, accounts or keys. They are not 20 finished, network-connected apps.
 
-先看[完整开发指南](../docs/DEVELOPER_ECOSYSTEM.md)，将表格中的提示词复制给 Codex / Claude Code 等 Agent。上游项目来自 [awesome-china-mcp](https://github.com/zackchewa/awesome-china-mcp) 的发现线索，实际工具名称、字段、授权与许可证须以对应项目为准。我们不复制上游实现、不代理上游服务。
+On the phone: **TurboIO → App Gallery**, with three tabs: My Apps / App Gallery / Developer guide. Each template has a preview, a reference project, configuration requirements, an agent prompt and ZIP export. The four existing basic examples are still there. Under TAP1 the glasses hold at most four apps, so 20 templates in the gallery does not mean 20 installed apps.
 
-| 方向 | 可复制提示词与接入要求 | 离线 ZIP | MCP 参考项目 |
+Read the [full developer guide](../docs/DEVELOPER_ECOSYSTEM.md) first, then copy a prompt from the table to an agent such as Codex or Claude Code. The upstream projects were found through [awesome-china-mcp](https://github.com/zackchewa/awesome-china-mcp); the actual tool names, fields, authorization and licenses are whatever each project states. We don't copy upstream implementations or proxy upstream services.
+
+| Use | Copyable prompt and setup requirements | Offline ZIP | MCP reference project |
 | --- | --- | --- | --- |
-| 城市天气 | [说明](city_weather.md) | [下载](Gallery_city_weather.zip) | [百度地图](https://github.com/baidu-maps/mcp) |
-| 降雨提醒 | [说明](rain_watch.md) | [下载](Gallery_rain_watch.zip) | [彩云天气](https://github.com/caiyunapp/mcp-caiyun-weather) |
-| 通勤助手 | [说明](commute.md) | [下载](Gallery_commute.zip) | [百度地图](https://github.com/baidu-maps/mcp) |
-| 附近好去处 | [说明](nearby.md) | [下载](Gallery_nearby.zip) | [百度地图](https://github.com/baidu-maps/mcp) |
-| 道路路况 | [说明](traffic.md) | [下载](Gallery_traffic.zip) | [百度地图](https://github.com/baidu-maps/mcp) |
-| 火车余票 | [说明](train_board.md) | [下载](Gallery_train_board.zip) | [12306](https://github.com/Joooook/12306-mcp) |
-| 换乘方案 | [说明](train_transfer.md) | [下载](Gallery_train_transfer.zip) | [12306](https://github.com/Joooook/12306-mcp) |
-| 航班动态 | [说明](flight_board.md) | [下载](Gallery_flight_board.zip) | [飞常准](https://github.com/variflight/variflight-mcp) |
-| 今日日程 | [说明](calendar.md) | [下载](Gallery_calendar.zip) | [飞书](https://github.com/larksuite/lark-openapi-mcp) |
-| 工作待办 | [说明](work_tasks.md) | [下载](Gallery_work_tasks.zip) | [飞书](https://github.com/larksuite/lark-openapi-mcp) |
-| 知识便签 | [说明](knowledge.md) | [下载](Gallery_knowledge.zip) | [语雀](https://github.com/yuque/yuque-mcp-server) |
-| 阅读摘记 | [说明](reading_notes.md) | [下载](Gallery_reading_notes.zip) | [微信读书](https://github.com/freestylefly/mcp-server-weread) |
-| 视频速览 | [说明](video_digest.md) | [下载](Gallery_video_digest.zip) | [哔哩哔哩](https://github.com/huccihuang/bilibili-mcp-server) |
-| 热点一览 | [说明](trending.md) | [下载](Gallery_trending.zip) | [微博](https://github.com/qinyuanpei/mcp-server-weibo) |
-| 代码待办 | [说明](repo_tasks.md) | [下载](Gallery_repo_tasks.zip) | [Gitee](https://github.com/oschina/mcp-gitee) |
-| 构建看板 | [说明](build_status.md) | [下载](Gallery_build_status.zip) | [阿里云效](https://github.com/aliyun/alibabacloud-devops-mcp-server) |
-| 服务健康 | [说明](service_health.md) | [下载](Gallery_service_health.zip) | [阿里云可观测](https://github.com/aliyun/alibabacloud-observability-mcp-server) |
-| 节假日日历 | [说明](holiday.md) | [下载](Gallery_holiday.zip) | [中国 MCP 服务](https://github.com/zackchewa/china-mcp-servers) |
-| 资讯简报 | [说明](news_digest.md) | [下载](Gallery_news_digest.zip) | [博查搜索](https://github.com/BochaAI/bocha-search-mcp) |
-| 餐品营养 | [说明](nutrition.md) | [下载](Gallery_nutrition.zip) | [麦当劳 MCP](https://github.com/M-China/mcd-mcp-server) |
+| City weather | [Prompt](city_weather.md) | [Download](Gallery_city_weather.zip) | [Baidu Maps](https://github.com/baidu-maps/mcp) |
+| Rain alerts | [Prompt](rain_watch.md) | [Download](Gallery_rain_watch.zip) | [Caiyun Weather](https://github.com/caiyunapp/mcp-caiyun-weather) |
+| Commute helper | [Prompt](commute.md) | [Download](Gallery_commute.zip) | [Baidu Maps](https://github.com/baidu-maps/mcp) |
+| Places nearby | [Prompt](nearby.md) | [Download](Gallery_nearby.zip) | [Baidu Maps](https://github.com/baidu-maps/mcp) |
+| Road traffic | [Prompt](traffic.md) | [Download](Gallery_traffic.zip) | [Baidu Maps](https://github.com/baidu-maps/mcp) |
+| Train tickets left | [Prompt](train_board.md) | [Download](Gallery_train_board.zip) | [12306](https://github.com/Joooook/12306-mcp) |
+| Train transfers | [Prompt](train_transfer.md) | [Download](Gallery_train_transfer.zip) | [12306](https://github.com/Joooook/12306-mcp) |
+| Flight status | [Prompt](flight_board.md) | [Download](Gallery_flight_board.zip) | [VariFlight](https://github.com/variflight/variflight-mcp) |
+| Today's calendar | [Prompt](calendar.md) | [Download](Gallery_calendar.zip) | [Feishu (Lark)](https://github.com/larksuite/lark-openapi-mcp) |
+| Work to-dos | [Prompt](work_tasks.md) | [Download](Gallery_work_tasks.zip) | [Feishu (Lark)](https://github.com/larksuite/lark-openapi-mcp) |
+| Knowledge notes | [Prompt](knowledge.md) | [Download](Gallery_knowledge.zip) | [Yuque](https://github.com/yuque/yuque-mcp-server) |
+| Reading notes | [Prompt](reading_notes.md) | [Download](Gallery_reading_notes.zip) | [WeChat Read](https://github.com/freestylefly/mcp-server-weread) |
+| Video summary | [Prompt](video_digest.md) | [Download](Gallery_video_digest.zip) | [Bilibili](https://github.com/huccihuang/bilibili-mcp-server) |
+| Trending topics | [Prompt](trending.md) | [Download](Gallery_trending.zip) | [Weibo](https://github.com/qinyuanpei/mcp-server-weibo) |
+| Code to-dos | [Prompt](repo_tasks.md) | [Download](Gallery_repo_tasks.zip) | [Gitee](https://github.com/oschina/mcp-gitee) |
+| Build board | [Prompt](build_status.md) | [Download](Gallery_build_status.zip) | [Alibaba Cloud DevOps (Yunxiao)](https://github.com/aliyun/alibabacloud-devops-mcp-server) |
+| Service health | [Prompt](service_health.md) | [Download](Gallery_service_health.zip) | [Alibaba Cloud Observability](https://github.com/aliyun/alibabacloud-observability-mcp-server) |
+| Holiday calendar | [Prompt](holiday.md) | [Download](Gallery_holiday.zip) | [China MCP Servers](https://github.com/zackchewa/china-mcp-servers) |
+| News brief | [Prompt](news_digest.md) | [Download](Gallery_news_digest.zip) | [Bocha Search](https://github.com/BochaAI/bocha-search-mcp) |
+| Menu nutrition | [Prompt](nutrition.md) | [Download](Gallery_nutrition.zip) | [McDonald's MCP](https://github.com/M-China/mcd-mcp-server) |
 
-## 从示例到真实数据
+## From examples to real data
 
-1. 在自己的 Server 部署所选 MCP，完成授权；查询 `tools/list`，选择只读工具，不默认开放付款、发消息、下单或运维操作。
-2. 将授权结果提取成 `headline`、1–4 条 `lines`、带时区的 `observedAt`。每串最多 80 UTF-8 字节。只挑要展示的字段，不透传完整响应、Token、Cookie。
-3. 运行 SDK：
+1. Deploy the MCP you picked on your own server and complete its authorization. Query `tools/list` and pick read-only tools. Don't enable payment, messaging, ordering or operations actions by default.
+2. Reduce the authorized result to a `headline`, 1–4 `lines` and an `observedAt` with a time zone. Each string is at most 80 UTF-8 bytes. Pick only the fields you want to show; don't pass through the full response, tokens or cookies.
+3. Run the SDK:
 
 ```sh
 cd dashboard-service
@@ -43,14 +45,14 @@ uv run turbo-app check my-weather.zip
 uv run turbo-app preview my-weather.zip --page home --out weather.svg
 ```
 
-4. 手机导入 ZIP → 预览 → 查询眼镜槽位 → 确认安装。需要兼容的 TAP1 运行时；不是向旧固件直接发送 ZIP。相同 ID 更新必须增加 version。
+4. On the phone: import the ZIP → preview → check the glasses' slots → confirm the install. This needs a compatible TAP1 runtime; the ZIP is not sent directly to old firmware. An update with the same ID must raise the version.
 
-当前是**手动安装快照**，并非后台实时订阅。阅读摘记不提供书籍全文，视频速览不播放视频，通勤不替代实时导航。来源 API 可能变更；模板不保证上游服务始终可用。
+This is a **manually installed snapshot**, not a live background subscription. Reading notes does not provide full book text, Video summary does not play video, and Commute helper does not replace live navigation. Source APIs can change; the templates don't guarantee that the upstream services stay available.
 
-## 目录与可复现生成
+## Catalog and reproducible generation
 
-[`catalog.json`](catalog.json) 包含模板 ID、相对资源名、ZIP 大小、SHA256、来源及提示词；同名 `.json` 是可编辑的 App 文档，`.md` 是提示词。图标为 SDK 自有的 48px 单色几何资源，手机列表另用系统图标，不附带平台商标。
+[`catalog.json`](catalog.json) holds each template's ID, relative resource name, ZIP size, SHA256, source and prompt. The `.json` file with the same name is the editable app document, and the `.md` file is the prompt. The icons are the SDK's own 48px monochrome geometric assets. The phone list uses system icons instead. No platform trademarks are included.
 
-重新生成到一个**新目录**：`uv run turbo-app gallery export --out /path/to/new-gallery`。生成器在 `dashboard-service/turbo_dashboard/gallery.py`。同源生成应产生相同哈希；20 个模板均通过 ZIP/Schema/原生编码和 C 内存检查。模拟器页面通过不代表各第三方服务的真机联网验收。
+Regenerate into a **new directory**: `uv run turbo-app gallery export --out /path/to/new-gallery`. The generator is `dashboard-service/turbo_dashboard/gallery.py`. Generating from the same source should give the same hashes. All 20 templates pass the ZIP, schema, native encoding and C memory checks. Passing on the emulator pages does not mean each third-party service has passed a live, on-device acceptance test.
 
-GitHub 可以托管无密钥的公共模板目录与小 ZIP；发布真实用户数据请用自己的受控 Server。手机本版使用内置目录，不会偷偷拉取并自动安装 GitHub 上的新代码。下载或更新时应固定版本、校验 SHA256、预览内容再批准。
+GitHub can host the public, keyless template catalog and small ZIPs; to publish real user data, use your own server under your control. This phone build uses the built-in catalog. It does not quietly fetch and auto-install new code from GitHub. When you download or update, pin the version, verify the SHA256 and preview the contents before you approve.

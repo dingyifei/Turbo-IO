@@ -1,36 +1,36 @@
 > Historical: describes a feature removed from the current ios107 build (2026-10)
 
-# iOS 导航后台行为修复
+# iOS navigation background behaviour fix
 
-修复版本：2026-09-22。只改手机端，不修改或刷写眼镜固件。
+Fixed on 2026-09-22. Phone side only; the glasses firmware is not changed or flashed.
 
-**风险提示：这是面向开发者的实验性、非商业学习研究代码，不是成熟导航产品。不要在驾驶、骑行或过马路时操作或测试；镜片可能断连、延迟、停留在旧指引或熄屏，必须以实际道路和成熟导航产品为准。后台定位增加耗电，系统可暂停或终止应用，不保证永久连接。仅为使用本次后台修复不需要刷固件，不要误入实验 OTA。**
+**Risk warning: this is experimental, non-commercial developer code for learning and research, not a finished navigation product. Do not operate or test it while driving, cycling or crossing a road. The lens can disconnect, lag, stay on an old instruction or turn off; always go by the actual road and a mature navigation product. Background location uses more battery, and the system can suspend or terminate the app; a permanent connection is not guaranteed. This background fix does not need a firmware flash, so do not go into the experimental OTA just to use it.**
 
-## 修复了什么
+## What was fixed
 
-旧导航页收到 `UIApplicationWillResignActiveNotification` 就调用停止导航，随后停止高德引擎、退出镜片显示。退到桌面、锁屏甚至系统弹窗都可能触发；这不能直接认定为蓝牙断线。
+The old navigation page called stop-navigation as soon as it received `UIApplicationWillResignActiveNotification`, which then stopped the AMap engine and exited the lens display. Going to the home screen, locking the screen, or even a system alert could trigger this, so it cannot be read directly as a Bluetooth disconnect.
 
-现在只在真正进入后台时判定会话：运行中的真实导航保留；尚未开始的路线不自动开启定位。弹窗不再触发 STOP。离开导航页面、结束研究页面、用户停止、到达、导航错误仍沿用收尾，不会改动官方蓝牙连接逻辑。定位权限撤销会停止本会话。
+The session is now judged only when the app really enters the background. Real navigation that is running is kept; a route that has not started yet does not turn on location by itself. Alerts no longer trigger STOP. Leaving the navigation page, closing the research page, a user stop, arrival and a navigation error still run the normal teardown. The official Bluetooth connection logic is not changed. Revoking location permission stops the session.
 
-## 如何使用
+## How to use it
 
-1. 配置自己的高德 iOS Key，按[导航教程](NAVIGATION.md)构建、合并并使用自己的签名。不要把私人配置或签名包提交仓库。
-2. 在手机前台选择实时路线、规划并点击开始。允许“使用 App 期间”定位；本实现不自动申请“始终”权限。
-3. 宿主 `Info.plist` 必须有 `UIBackgroundModes` 的 `location` 项；保留原有蓝牙和配件模式，不能整组覆盖。缺少该项时代码不会强设后台定位，页面明确只支持前台，退后台安全停止。打包器不会静默添加后台能力。
-4. 点击开始实时导航时，自己拥有的高德引擎设置 `allowsBackgroundLocationUpdates=YES`、`pausesLocationUpdatesAutomatically=NO`。停止时恢复；不修改其他业务拥有的引擎。
-5. 可以退到桌面或锁屏；**不要从多任务界面强退 App**。系统终止、连接丢失和定位权限变化仍可能中断，不承诺永久在线。
+1. Configure your own AMap iOS key, then build, merge and sign with your own signature as described in the [navigation guide](NAVIGATION.md). Do not commit private configuration or signed packages to the repo.
+2. With the phone in the foreground, choose a live route, plan it and tap start. Allow location "使用 App 期间" ("While Using the App"); this implementation does not request the "始终" ("Always") permission by itself.
+3. The host `Info.plist` must have the `location` entry in `UIBackgroundModes`. Keep the existing Bluetooth and accessory modes; do not overwrite the whole array. Without that entry the code does not force background location: the page states that only foreground use is supported, and going to the background stops safely. The packager does not add background capabilities silently.
+4. When you tap start on live navigation, the AMap engine that this code owns is set to `allowsBackgroundLocationUpdates=YES` and `pausesLocationUpdatesAutomatically=NO`. Both are restored on stop. Engines owned by other features are not changed.
+5. You can go to the home screen or lock the screen. **Do not force-quit the app from the app switcher.** System termination, lost connection and location permission changes can still interrupt navigation; it is not promised to stay online permanently.
 
-### 模拟导航不同
+### Simulated navigation is different
 
-模拟不需要、也不会为了保活而启动真实定位。进入后台时申请系统短时任务，**最多25秒**，系统可能更早结束；耗尽后停止并给出说明。回前台后释放额度，迟到的旧超时不会终止新会话。没有静音播放、假定位或循环续领后台任务。
+Simulation does not need real location and does not start it to stay alive. On entering the background it requests a short system background task, **25 seconds at most**, and the system may end it sooner. When the time runs out it stops and shows an explanation. Returning to the foreground releases the allowance, and a late timeout from an old session does not end a new one. There is no silent audio playback, fake location or repeated renewal of the background task.
 
-本次修复不取消原有各显示通道限制：公开版字幕仍是模拟研究通道，4分钟/80帧及数据过期保护保留，字幕自身前台保护也不取消。**手机高德后台继续运行不等于旧字幕通道后台持续显示。** 私用 TNV1 原生导航分支使用了相同生命周期修复，但本次提交不打包其固件、OTA入口、个人配置或私用IPA；请勿把本次补丁误当作TNV1完整发布。
+This fix does not lift the existing limits on each display channel. The public subtitle path is still the simulated research channel; the 4-minute/80-frame limit and the stale-data guard stay, and the subtitle channel's own foreground guard is not removed. **AMap continuing to run in the background on the phone does not mean the old subtitle channel keeps displaying in the background.** The private TNV1 native navigation branch uses the same lifecycle fix, but this commit does not package its firmware, OTA entry, personal configuration or private IPA. Do not mistake this patch for a complete TNV1 release.
 
-## 验证边界
+## Verification limits
 
-- 32组策略组合与实际生命周期代码的主机测试：覆盖真实后台保留、拒绝权限、模拟额度、重复后台、前台恢复、过期回调、额度拒绝、用户停止及权限撤销。
-- 通过宿主编译与高德 SDK 编译后才能称为可构建；主机测试使用 OS 替身，**不能代替真实 iPhone 的后台运行证明**。
-- 2026-09-22，配套私用 `NAVIGATION-PHONE-02-BG` 已安装并核对加载标记，用户反馈“没问题，我测了”。记录为该 iPhone Air 研究版的初步实机反馈；它使用同一份生命周期修复，**不等同于公开版所有显示通道、所有机型通过**。
-- 用户未提供本次测试的持续时长和模拟/实时模式，不能据此宣称长期后台已验全。实时导航锁屏至少2分钟、前后台往返、停止后无额外定位、低电量及蓝牙断连恢复仍应分别记录。不要用于实际行车决策。
+- Host tests of 32 policy combinations and the real lifecycle code cover: keeping real navigation in the background, denied permission, the simulation allowance, repeated backgrounding, foreground return, stale callbacks, a refused allowance, user stop and permission revocation.
+- The build can be called buildable only after the host build and the AMap SDK build pass. The host tests use OS stand-ins and **cannot replace proof of background running on a real iPhone**.
+- On 2026-09-22 the matching private build `NAVIGATION-PHONE-02-BG` was installed and its load marker checked; the user reported "No problem, I tested it." This is recorded as initial on-device feedback for that iPhone Air research build. It uses the same lifecycle fix, and **it does not mean every display channel of the public build, or every phone model, has passed**.
+- The user did not give the test duration or whether it was simulated or live mode, so it cannot be used to claim long-running background use is fully verified. Live navigation with the screen locked for at least 2 minutes, foreground/background round trips, no extra location after stop, low battery, and recovery from a Bluetooth disconnect should still each be recorded. Do not use it for real driving decisions.
 
-参考：[高德后台导航设置](https://developer.amap.com/api/ios-navi-sdk/guide/location-info/location-setting-callback)、[Apple 后台定位要求](https://developer.apple.com/documentation/corelocation/cllocationmanager/allowsbackgroundlocationupdates)。
+References: [AMap background navigation settings](https://developer.amap.com/api/ios-navi-sdk/guide/location-info/location-setting-callback), [Apple background location requirements](https://developer.apple.com/documentation/corelocation/cllocationmanager/allowsbackgroundlocationupdates).
