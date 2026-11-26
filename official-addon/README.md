@@ -7,7 +7,7 @@ What stays here:
 | Path | Purpose |
 | --- | --- |
 | `Core.h` | An older copy of the addon's core header. Nothing builds it now; the addon uses its own `ios-addon/Core.h`. |
-| `PrivateBootstrap.h/.m`, `PrivateBootstrapTests.m` | The tracked root parser and its tests, kept for compatibility. Builds use ignored private copies. No private configuration belongs in the source release. |
+| `PrivateBootstrap.h/.m`, `PrivateBootstrapTests.m` | An older copy of the settings parser and its tests, kept for compatibility. Builds use the tracked `ios-addon/PrivateBootstrap.h/.m`. The settings file itself (`TurboIOPrivateBootstrap.json`) is private and never belongs in the repo. |
 
 <a id="1-兼容性门槛"></a>
 ## Archived

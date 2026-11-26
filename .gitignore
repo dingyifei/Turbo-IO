@@ -23,7 +23,7 @@
 *.dex
 *.jsonl
 **/private/
-**/*PrivateBootstrap*
+**/*PrivateBootstrap*.json
 *.hap
 *.app
 *.p7b
