@@ -26,6 +26,14 @@ for(const extension of ['apk','dex','jar','jks','keystore','jsonl','hap','har','
 test('rejects private developer home paths',()=>{
   fixture({'build.sh':'sdk="'+['','Users','sample-person','Library','Android','sdk'].join('/')+'"'},r=>assert.ok(r.findings.some(f=>f.rule==='private-home')));
 });
+test('rejects a device-ID-shaped value and allows an ordinary UUID',()=>{
+  const fake='0'.repeat(8)+'-'+'0'.repeat(16);
+  fixture({'notes.env':'TURBO_DEVICE='+fake},r=>{
+    assert.ok(r.findings.some(f=>f.rule==='device-id'));
+    assert.ok(!JSON.stringify(r).includes(fake));
+  });
+  fixture({'uuid.txt':'0'.repeat(8)+'-0000-0000-0000-'+'0'.repeat(12)},r=>assert.deepEqual(r.findings,[]));
+});
 test('rejects a dedicated weather tenant host',()=>{
   fixture({'settings.ts':"'private-fixture."+'re.qweatherapi.com'+"'"},r=>assert.ok(r.findings.some(f=>f.rule==='dedicated-weather-tenant')));
 });

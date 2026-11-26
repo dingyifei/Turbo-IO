@@ -288,6 +288,9 @@ host1021_stage() {
 }
 source_audit_stage() {
   cd "$REPO"
+  # The audit's own rules and the strings tool, before the audit itself.
+  node --test scripts/check-source.test.mjs
+  python3 ios-addon/i18n/test_tio_strings.py
   node --input-type=module -e "const m=await import('./scripts/check-source.mjs');const r=m.audit(process.cwd());const f=r.findings.filter(x=>!x.file.startsWith('.remember/'));if(f.length){console.log(JSON.stringify(f,null,1));process.exit(1)}console.log(r.files+' files clean')"
 }
 preview_stage() {

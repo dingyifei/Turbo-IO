@@ -23,6 +23,8 @@ export function audit(root){
     ['dedicated-weather-tenant',/[a-z0-9]+\.re\.qweatherapi\.com/],
     ['embedded-credential',/(?:api[_-]?key|password|apiToken|access_token)\s*[:=]\s*["'][a-f0-9]{32,}["']/i],
     ['temporary-public-endpoint',/https:\/\/[a-z0-9-]+\.trycloudflare\.com/],
+    // The iPhone UDID shape (8 hex, dash, 16 hex). Ordinary 8-4-4-4-12 UUIDs do not match.
+    ['device-id',/\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}\b/],
   ];
   function walk(p){
     if(path.basename(p)==='.git')return; // Also support Git worktree pointer files.
