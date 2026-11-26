@@ -9,7 +9,7 @@ Build against the user's own Server. Upstream MCP runs there; phone bridges to
 glasses; the glasses render bounded native components, not JS/HTML or MCP.
 
 Locate the user's Turbo-IO checkout. If absent, ask to clone
-https://github.com/Turbo1123/Turbo-IO into a new directory. Never search unrelated
+https://github.com/dingyifei/Turbo-IO into a new directory. Never search unrelated
 apps for secrets. Read `docs/DEVELOPER_ECOSYSTEM.md` first, then the relevant
 `dashboard-service/README.md` API section and schema. If those files are missing in
 an older checkout, report that version mismatch instead of inventing APIs.

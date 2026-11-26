@@ -6,7 +6,7 @@
 
 ## 先给助手三样东西
 
-1. 本仓库：<https://github.com/Turbo1123/Turbo-IO>。
+1. 本仓库：<https://github.com/dingyifei/Turbo-IO>。它派生自上游项目 [Turbo1123/Turbo-IO](https://github.com/Turbo1123/Turbo-IO)；构建与刷机以本仓库为准。
 2. **iOS 官方扩展可使用[明确列出的原厂解密输入](../official-apps/ios/README.md)，或自行准备有权使用的兼容副本。当前路线使用匹配的 1.0.21（1）输入；仓库发布过的 1.0.7 及更早的原厂输入只对应旧版本，当前构建不接受。原厂输入无插件，仍需自己合并与签名。** 不提供代砸壳或代签服务。商店安装仍不等于取得可合并的未加密 Runner.app，不能跳过版本与哈希校验。
 3. [首页可复制的完整提示词](../README.md#让-claude-code--codex-帮你接入)，并选好自己的平台。不要让助手同时搭建全部组件。
 

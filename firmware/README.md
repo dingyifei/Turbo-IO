@@ -150,7 +150,7 @@ Do this only for a new release. A repin changes the build identity, so the ZIP n
    ```
    `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c26`).
 
-`phone_pins.py` refuses emulator-only builds in every mode. It also refuses the superseded TMG12 candidates 1 to 3 by their SHA-256 (`SUPERSEDED_ZIPS`).
+`phone_pins.py` refuses emulator-only builds in every mode. It also refuses, by SHA-256 (`SUPERSEDED_ZIPS`), the superseded TMG12 candidates 1 to 3 and the first TMG17 ZIP, built before the fix in tmg17(2).
 
 ## Gate
 

@@ -50,7 +50,7 @@ version；最多四槽。安装成功后从手机打开，或在眼镜“我的�
 审阅仓库源码后，在自己的开发电脑执行：
 
 ```sh
-npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
+npx skills add dingyifei/Turbo-IO --skill turboio-developer -g
 ```
 
 选择 Codex / Claude Code 等实际使用的 Agent。该命令仅安装开发技能，不会

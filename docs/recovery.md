@@ -1,6 +1,6 @@
 # When a firmware update goes wrong
 
-This page covers what the RayNeo iO glasses do when a firmware update fails, and what your way back is. It covers Strix OS 1.0.6.11 and the TMG builds on it. TMG15 ships the stock installer unchanged, so everything here applies to it.
+This page covers what the RayNeo iO glasses do when a firmware update fails, and what your way back is. It covers Strix OS 1.0.6.11 and the TMG builds on it. TMG17, the current release, ships the stock installer unchanged, so everything here applies to it. Its ZIP differs from stock only in the AP image, the Bluetooth image and the package manifest.
 
 Every statement carries one of three labels:
 
@@ -19,11 +19,11 @@ None of the failure cases below has been seen on real glasses. Nothing here make
 5. The new firmware must confirm within about 10 s of its update service starting. It confirms when Bluetooth advertising starts successfully. Confirming clears the pending record.
 6. After confirming, the new firmware copies the package into a separate backup area. That copy is now the backup of the last confirmed firmware. A later failed update restores it.
 
-**Device-tested:** the flow end to end. TMG12, TMG14 and TMG15 were flashed this way and came back running. After TMG12 the glasses reported the update as confirmed. The phone's hash check runs before every flash.
+**Device-tested:** the flow end to end. TMG12, TMG14, TMG15 and TMG17 were flashed this way and came back running. After TMG12 the glasses reported the update as confirmed. The phone's hash check runs before every flash.
 **Emulator only:** steps 2 to 6 one by one, from stock to TMG15 and from TMG15 to stock.
 **Not tested:** the glasses' own checksum check in step 1.
 
-The backup is the last update that confirmed, not stock. If your last confirmed update was TMG15, a rollback brings back TMG15. (Emulator only.)
+The backup is the last update that confirmed, not stock. If your last confirmed update was TMG17, a rollback brings back TMG17. (Emulator only: the emulator runs used TMG15, which has the same installer.)
 
 ## What happens if…
 
@@ -61,7 +61,7 @@ If something seems wrong:
 
 - **The glasses stop answering the phone.** Hold the knob down (a very long press) until they restart, then reconnect. (Device-tested on locked glasses.)
 - **They restart on their own once or twice after an update.** Wait. A rollback runs in the installer and needs one or two restarts. (Emulator only.)
-- **The flashed firmware misbehaves, but the glasses still talk to the phone.** Flash stock 1.0.6.11 from the phone app, as in [Going back](../ios-addon/OTA.md#going-back). Flashing TMG builds from the app is device-tested, and so is flashing while the glasses are locked. A stock flash from the app has not been tried on the glasses. In the emulator, an install from TMG15 to stock completed.
+- **The flashed firmware misbehaves, but the glasses still talk to the phone.** Flash stock 1.0.6.11 from the phone app, as in [Going back](../ios-addon/OTA.md#going-back). Flashing TMG builds from the app is device-tested, and so is flashing while the glasses are locked. A stock flash from the app has not been tried on the glasses. In the emulator, an install from TMG15 to stock completed; TMG17 has the same installer, but that install has not been run from TMG17.
 - **They keep restarting and never come back to either firmware.** We have no tested way out of this. Stop, and tell the developer what you saw.
 
 ## What survives a flash and a factory reset

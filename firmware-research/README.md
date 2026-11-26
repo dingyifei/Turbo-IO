@@ -1,6 +1,6 @@
 # 固件研究
 
-这里是原厂固件与研究资料。两个 `stock/` 目录里的原厂 ZIP 是固件构建与门禁的输入（`firmware/build.py`、`firmware/baseline/rebase-*.json`、`firmware/tests/stock_base_test.py`、`scripts/turbo-gate.sh` 的标签复现），其余内容不参与当前构建。当前的 TurboIO 眼镜固件只有一个源码树：[`firmware/`](../firmware/README.md)，每个已发布版本是一个 git 标签（`fw/tmg2` … `fw/tmg12`，以及 `fw/tmg15`；TMG13、TMG14 只是候选，没有标签），`git show fw/tmgN` 可查看该版本的 ZIP SHA-256 与配对手机构建。
+这里是原厂固件与研究资料。两个 `stock/` 目录里的原厂 ZIP 是固件构建与门禁的输入（`firmware/build.py`、`firmware/baseline/rebase-*.json`、`firmware/tests/stock_base_test.py`、`scripts/turbo-gate.sh` 的标签复现），其余内容不参与当前构建。当前的 TurboIO 眼镜固件只有一个源码树：[`firmware/`](../firmware/README.md)，每个已发布版本是一个 git 标签（`fw/tmg2` … `fw/tmg12`，以及 `fw/tmg15`、`fw/tmg17`；TMG13、TMG14、TMG16 只是候选，没有标签），`git show fw/tmgN` 可查看该版本的 ZIP SHA-256 与配对手机构建。
 
 所有自定义包均为**非官方、高风险实验用品**。小白不要刷，日常使用请使用官方 App 与原厂固件。掉电、中断、错包或缺陷可能导致设备损坏；不保证回滚、恢复或救砖。
 

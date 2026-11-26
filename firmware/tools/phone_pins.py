@@ -18,7 +18,8 @@ phoneRelease is false, an emuOnly tree's label or ZIP, and an -EMU-ONLY- ZIP nam
 refuses a ZIP whose own package shape or cores (AP, APC1, BTH) are not on its stock base, so an older emulator-only
 ZIP listed under a phone base is refused even when no name, label or tree record marks it. An older emulator-only
 ZIP that is a valid build on a base that has since become a phone release base (the TMG12 candidates 1 to 3 on
-1.0.6.11) is refused by its pinned SHA-256 (SUPERSEDED_ZIPS), in every mode, before the ZIP is read.
+1.0.6.11) is refused by its pinned SHA-256 (SUPERSEDED_ZIPS), in every mode, before the ZIP is read. So is the first
+TMG17 ZIP, a valid 1.0.6.11 phone build made before the fix in tmg17(2).
 
 Output (--write DIR / --check DIR):
   FirmwarePins.h          one block per release, chosen at compile time by TIO_RELEASE_<NAME>. With no define, the
@@ -62,11 +63,14 @@ TMG_LABEL = re.compile(r'TMG[0-9]+')
 PACKAGE_RESOURCES = {'TMG': 'TurboWeReadCandidate.zip', 'STOCK': 'TurboStockFirmware.zip'}
 # ZIPs that must never become a phone release, by SHA-256: the emulator-only TMG12 candidates 1 to 3 on stock
 # 1.0.6.11, which the TMG12 release (candidate 4's bytes) replaced. Their own bytes are a valid 1.0.6.11 build, so
-# once 1.0.6.11 became a phone release base only this list refuses them under a label other than the tree's.
+# once 1.0.6.11 became a phone release base only this list refuses them under a label other than the tree's. Also
+# the first TMG17 ZIP, built before the fix in tmg17(2): a valid 1.0.6.11 phone build that only this list refuses
+# (RELEASE.md: "Never flash the first TMG17 ZIP").
 SUPERSEDED_ZIPS = {
     'eacb5dcabc513570978edc31a47d3304b2bc361036d5b171e15bd4c3c281e9b5': 'TMG12 emulator-only candidate 1',
     'a8b9de49f2d5dc45311c5b19d61f96d9cc1acb2ed81ab55fb14534c0b68ad849': 'TMG12 emulator-only candidate 2',
     '007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325': 'TMG12 emulator-only candidate 3',
+    'dbe8cfbb7e8733ffea62f144211bd3a0ac0716f61d6f94c7c31414760d1b7b87': 'the first TMG17 ZIP, built before the fix in tmg17(2)',
 }
 
 

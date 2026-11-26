@@ -1,5 +1,7 @@
 # 源码发布说明
 
+> **历史文档，不是当前发布记录。** 本页描述的是上游项目 2026-09 至 2026-10 的源码发布做法（Android GUARD-07 例外发行、单独 Release 分发的原厂 1.0.5 / 1.0.6 IPA 输入、私有工作区与公开候选目录的分离）。正文没有随之后的发布更新，其中的路径、发行和门槛可能已不适用。当前发布记录是 [ios-addon/RELEASE.md](../ios-addon/RELEASE.md)。
+
 发布目标：拿到源码后按说明配置、构建，不需要用户复盘逆向过程。不提供个人开发者云凭据或绑定数据。
 
 **2026-09-27 发行例外：** [Android GUARD-07 Release](https://github.com/Turbo1123/Turbo-IO/releases/tag/android-105-guard07-tap1-test01) 提供独立研究签名的完整非官方修改 APK、TAP1-TEST-01 实验固件及摘要。APK 不含作者账号、Key、Cookie、签名私钥或微信读书网页正文适配；公开派生 APK 尚未再次进行真机刷机验收。iOS 仍不提供合并后的 IPA，原厂砸壳 IPA 仅为明确列出的宿主输入；鸿蒙不提供 HAP 且已停止更新。以下通用源码导出排除项不表示这些单独列明的 Release 附件不存在。

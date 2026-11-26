@@ -95,7 +95,7 @@ MCP 固定使用 `mcp>=1.28,<2` 的 v1 SDK，依赖版本锁定于 `uv.lock`。�
 }
 ```
 
-只给模型 writer / reader Token，**不给 phone Token**。工具没有手机批准、任意蓝牙或刷固件入口。Skill 已迁移到仓库根目录的 `skills/turboio-developer/`，可用 `npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g` 安装；这不等于完成蓝牙连接或公网服务部署。
+只给模型 writer / reader Token，**不给 phone Token**。工具没有手机批准、任意蓝牙或刷固件入口。Skill 已迁移到仓库根目录的 `skills/turboio-developer/`，可用 `npx skills add dingyifei/Turbo-IO --skill turboio-developer -g` 安装；这不等于完成蓝牙连接或公网服务部署。
 
 ### MCP 应用模板 → 自己的 Server → ZIP
 

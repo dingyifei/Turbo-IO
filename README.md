@@ -9,6 +9,8 @@ It is for developers. It is not a finished product. If you just want to use the 
 
 There are no prebuilt or signed apps here. You merge, sign and install the addon yourself.
 
+This repository is <https://github.com/dingyifei/Turbo-IO>. It is a fork of the upstream project [Turbo1123/Turbo-IO](https://github.com/Turbo1123/Turbo-IO).
+
 ## What it looks like
 
 The glasses show green on a see-through lens; black here is transparent there. Each feature has a page on the glasses and a page on the phone that sets it up.

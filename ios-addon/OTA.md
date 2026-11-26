@@ -93,7 +93,7 @@ If TMG17 misbehaves, pick one:
 
 All three are same-version flashes. The 1.0.6.11 installer compares no version, so it does not refuse one. Same-version flashes of TMG packages worked on 2026-11-22 and 2026-11-23, and again for TMG17 from C26; a stock flash has not been tried.
 
-Both need the phone link. If the glasses stop answering the phone, hold the knob down until they restart, then try again. After a restart the head-motion hook in the Bluetooth image is off until the phone reconnects.
+All three need the phone link. If the glasses stop answering the phone, hold the knob down until they restart, then try again. After a restart the head-motion hook in the Bluetooth image is off until the phone reconnects.
 
 The lock record stays on the glasses through a flash, stock included. If you want the lock gone, turn it off in Turbo › Glasses › Glasses lock before you flash stock. If you forget the PIN, unlock from the phone and set a new one; with no phone, the stock factory reset removes the lock with everything else on the glasses.
 

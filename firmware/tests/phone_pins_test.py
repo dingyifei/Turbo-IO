@@ -256,12 +256,13 @@ def main():
     # Every mode refuses each emulator-only condition on its own, --resolve included; the unplanted copy resolves c26.
     emu_planted(FW/'tools/phone_pins.py',None,ED/'releases.json',zips,'c26')
     for why,(plant,_text) in EMU_PLANTS.items():emu_planted(FW/'tools/phone_pins.py',why,ED/'releases.json',zips,'c26',plant)
-    # The superseded TMG12 emulator-only candidates 1 to 3 (written out by hand): valid 1.0.6.11 builds, so neither the
-    # base nor their bytes refuse them under another label. Each is refused by its pin before its ZIP is read (the
-    # path given does not exist), in release_pins and in --resolve; C26 itself resolves.
+    # The superseded TMG12 emulator-only candidates 1 to 3 and the first TMG17 ZIP (written out by hand): valid 1.0.6.11
+    # builds, so neither the base nor their bytes refuse them under another label. Each is refused by its pin before its
+    # ZIP is read (the path given does not exist), in release_pins and in --resolve; C26 itself resolves.
     superseded=('eacb5dcabc513570978edc31a47d3304b2bc361036d5b171e15bd4c3c281e9b5',
                 'a8b9de49f2d5dc45311c5b19d61f96d9cc1acb2ed81ab55fb14534c0b68ad849',
-                '007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325')
+                '007f1dd77b5b93eba3451e4df2ca6ba18264cee1444d9b97b40355b60f103325',
+                'dbe8cfbb7e8733ffea62f144211bd3a0ac0716f61d6f94c7c31414760d1b7b87')
     assert set(superseded)==set(pp.SUPERSEDED_ZIPS)
     for sha in superseded:
         old=copy.deepcopy(c26);old['firmware']='TMG17';old['zip']={'input':'tmg17/StrixOS-1.0.6.11-TurboIO-TMG17-CANDIDATE-NOT-APPROVED.zip','bytes':9549068,'sha256':sha}
