@@ -185,6 +185,20 @@ class ToolTests(unittest.TestCase):
         self.tool.gen();self.tool.gen(check=True);self.put('Localization.m','x')
         with self.assertRaises(t.ToolError):self.tool.gen(check=True)
 
+    def test_gen_keeps_committed_order_and_emits_if_blocks(self):
+        self.rows({'key':'b','en':'B','zh':'乙'},{'key':'a','en':'A','zh':'甲'},{'key':'w.two','en':'W2','zh':'二','if':'TIO_WIRE_LOG'},{'key':'w.one','en':'W1','zh':'一','if':'TIO_WIRE_LOG'})
+        self.tool.gen();text=self.tool.read('Localization.m')
+        # With no committed file the rows are sorted, and flagged rows sit in one #if block after the others.
+        self.assertIn('    {"a","A","甲"},\n    {"b","B","乙"},\n#if TIO_WIRE_LOG\n    {"w.one","W1","一"},\n    {"w.two","W2","二"},\n#endif\n    {NULL,NULL,NULL}',text)
+        # A committed order survives regeneration, a new row goes before the first row that sorts after it,
+        # and a row that is no longer in strings.jsonl drops out.
+        swapped=text.replace('    {"a","A","甲"},\n    {"b","B","乙"},\n','    {"b","B","乙"},\n    {"a","A","甲"},\n').replace('    {"w.one","W1","一"},\n    {"w.two","W2","二"},\n','    {"w.two","W2","二"},\n    {"w.one","W1","一"},\n')
+        self.put('Localization.m',swapped);self.tool.gen(check=True)
+        self.rows({'key':'b','en':'B','zh':'乙'},{'key':'a','en':'A','zh':'甲'},{'key':'c','en':'C','zh':'丙'},{'key':'w.two','en':'W2','zh':'二','if':'TIO_WIRE_LOG'})
+        self.assertIn('    {"b","B","乙"},\n    {"a","A","甲"},\n    {"c","C","丙"},\n#if TIO_WIRE_LOG\n    {"w.two","W2","二"},\n#endif\n',self.tool.generate())
+        with self.assertRaises(t.ToolError):self.tool.gen(check=True)
+        with self.assertRaises(t.ToolError):self.rows({'key':'x','en':'X','zh':'叉','if':'not a macro'});self.tool.load_rows()
+
     def test_unwrap_byte_exact_with_markers_and_identifiers(self):
         old='#import <Foundation/Foundation.h>\n- (void)f{if(a&&b) Show(@"甲" /*inside*/ "乙"); Show(state);}\n'
         ref=self.baseline('Main.m',old)

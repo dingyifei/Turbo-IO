@@ -139,6 +139,8 @@ private_stage() {
 }
 build_stage() {
   cd "$ED"
+  # Localization.m must be exactly what i18n/strings.jsonl generates.
+  python3 -I i18n/tio_strings.py gen --check
   TIO_MAPKIT_ENABLED=1 TIO_IMAGE_RX_LAB=1 TIO_IMAGE_RX_WIDE=1 \
     TIO_DISPLAY_PHONE=1 TIO_DISPLAY_FLASH=1 TIO_OTA_FLASH_ENABLED=1 \
     TIO_CLASSIC_BINDINGS=1 bash build.sh embedded com.rayneo.venus.pub

@@ -2447,3 +2447,23 @@
 {"key":"fwexport.banner.authorized","en":"A TMG flash is authorized on this install. Start installs from the TMG wizard only.","zh":"本机已授权一次 TMG 刷写。只从 TMG 向导开始安装。"}
 {"key":"hub.status.firmwareExport.authorized","en":"Flash authorized","zh":"已授权刷写"}
 {"key":"hub.status.firmwareExport.locked","en":"Flashing locked","zh":"刷写已锁定"}
+{"key":"lock.footer.idleNoMotion","en":"These glasses count only knob and button use, so they lock after the idle time even while worn. Choose 240 min to lock mainly when folded.","zh":"这副眼镜只把旋钮和按键操作算作使用，所以即使正在佩戴，也会在闲置时间后锁定。选择 240 分钟可主要在折叠后锁定。"}
+{"key":"lock.header.unavailable","en":"Not available","zh":"不可用"}
+{"key":"hub.row.wireLog","en":"Wire log","zh":"通信记录","if":"TIO_WIRE_LOG"}
+{"key":"hub.status.wireLog.off","en":"Off","zh":"已关闭","if":"TIO_WIRE_LOG"}
+{"key":"hub.status.wireLog.on","en":"Recording · %lu records","zh":"录制中 · %lu 条","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.pill","en":"REC","zh":"录制","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.pill.accessibility","en":"Wire log is recording","zh":"通信记录正在录制","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.record","en":"Record channel traffic","zh":"记录通道通信","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.status","en":"%lu records · %lu dropped · %@","zh":"%lu 条 · 丢弃 %lu · %@","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.stopped.error","en":"Stopped itself after an error: %@","zh":"因错误已自行停止：%@","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.footer.privacy","en":"Records what the app and the glasses send each other: notification text, caption and ASR text and other glasses data will appear in the file. Values under token, password, cookie, key, device ID, serial number and similar names are replaced before writing, your user folder and app container IDs are masked, and binary data keeps only its length, a SHA-256 and the first 32 bytes, except the glasses protocol frames (RayneoNet send and receive payloads), which are kept in full. Cloud, login and account channels are logged by size only.","zh":"记录应用与眼镜之间互相发送的内容：通知文本、字幕与语音识别文本等眼镜数据会出现在文件中。token、password、cookie、key、设备 ID、序列号等名称下的值在写入前会被替换，用户文件夹和应用容器 ID 会被遮盖，二进制数据只保留长度、SHA-256 和前 32 个字节，眼镜协议帧（RayneoNet 收发的 payload）除外，会完整保留。云端、登录和账号通道只记录大小。","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.autostart","en":"Start recording at launch","zh":"启动时自动开始记录","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.footer.start","en":"Off by default. When off, recording stops with the app and has to be switched on again.","zh":"默认关闭。关闭时，记录随应用退出而停止，需要重新开启。","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.export","en":"Export logs","zh":"导出日志","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.files","en":"%lu files · %@","zh":"%lu 个文件 · %@","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.export.none","en":"There are no logs yet.","zh":"还没有日志。","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.delete","en":"Delete logs","zh":"删除日志","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.delete.message","en":"Deletes every recorded log file on this phone.","zh":"删除这台手机上所有已记录的日志文件。","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.delete.running","en":"Stop recording first.","zh":"请先停止记录。","if":"TIO_WIRE_LOG"}
+{"key":"wirelog.footer.files","en":"Files rotate at 20 MB and the folder is capped at 200 MB; the oldest go first. Use Export logs to share them. They are not included in iCloud or computer backups.","zh":"文件在 20 MB 时轮换，文件夹总量上限 200 MB，先删最旧的。请用“导出日志”分享。这些文件不会进入 iCloud 或电脑备份。","if":"TIO_WIRE_LOG"}
