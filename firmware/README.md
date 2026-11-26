@@ -6,7 +6,7 @@ There is one tree. The release label is the single line in [`RELEASE`](RELEASE).
 
 Agents never flash. The owner flashes, with the steps in [OTA.md](../ios-addon/OTA.md).
 
-## Current release: TMG17
+## Current build: TMG17 (not yet accepted)
 
 TMG17 is on the owner's glasses, flashed from C26 on 2026-11-24, but the owner has not yet accepted it as released and it is not tagged. The owner's checks of what is new since TMG15 have not been reported yet. The release record, with every hash, what was checked and the device status, is in [RELEASE.md](../ios-addon/RELEASE.md). The last tagged release is TMG15 (`fw/tmg15`), and C24 + TMG15 is the way back.
 

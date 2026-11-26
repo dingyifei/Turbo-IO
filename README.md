@@ -32,7 +32,7 @@ The glasses pictures are drawn on a Mac by the firmware's own layout code, with 
 
 <a id="ios107-update"></a>
 
-## Current release: C26 + TMG17
+## Current build: C26 + TMG17 (not yet accepted)
 
 Always use the phone build and the firmware as a pair. C26 carries two packages, and you pick one in its flash wizard: TMG17, or stock Strix OS 1.0.6.11 to go back.
 

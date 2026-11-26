@@ -2,7 +2,7 @@
 
 These are unofficial, high-risk builds. Flash only if you are a developer and accept that recovery is not guaranteed. No merged or personally signed IPA is published.
 
-## Current release: C26 + TMG17
+## Current build: C26 + TMG17 (not yet accepted)
 
 This pair is on the owner's devices but is not yet accepted as released. The owner installed C26 on 2026-11-24 and flashed TMG17 from it. The owner's checks of the new PIN screen, of PIN entry with Do Not Disturb on, and of the wrong-tries notice going dark have not been reported yet. Nothing is tagged: the tags `app/c26` and `fw/tmg17` come only after the owner accepts the pair. The last accepted pair is C24 + TMG15, which is also the way back (see [Way back](#way-back)).
 
