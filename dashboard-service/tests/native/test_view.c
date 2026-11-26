@@ -12,9 +12,18 @@ static void *image(void *p,void *parent,const uint8_t *pixels,unsigned w,unsigne
 static void place(void *p,void *o,unsigned x,unsigned y,unsigned w,unsigned h){(void)p;assert(o&&w&&h&&x+w<=540&&y+h<=180);}
 static void visible(void *p,void *o,bool b){(void)p;(void)b;assert(o);}
 static void destroy(void *p,void *o){assert(o);((Mock *)p)->count=0;}
+// The firmware copy of app_view (FocusCaret) has a tint callback; the phone's older copy (ios-addon) does not.
+#ifdef TAP_CARET_W
+static void tint(void *p,void *o,uint32_t c){(void)p;(void)c;assert(o);}
+#define TINT ,tint
+#else
+#define TINT
+#endif
+// tap_view_focus reports whether the page has a kind 2 button to put the caret under; a page without one is valid.
+static bool has_button(const TAPDocument *d,unsigned page){for(unsigned i=d->first[page];i<d->first[page]+d->size[page];i++)if(d->items[i].kind==2)return true;return false;}
 int main(int argc,char **argv){assert(argc==2);FILE *f=fopen(argv[1],"rb");assert(f);uint8_t wire[TAP_MAX_BYTES];size_t n=fread(wire,1,sizeof wire,f);fclose(f);TAPDocument d;assert(tap_parse(wire,n,&d));
- Mock m={0};m.idle=true;TAPWidgets a={&m,idle,make,text,rect,image,place,visible,destroy};TAPView *v=calloc(1,sizeof *v);assert(v);
- for(unsigned i=0;i<10000;i++){unsigned page=i%d.pages;assert(tap_view_open(v,&a,NULL,&d,page));assert(!tap_view_open(v,&a,NULL,&d,page));assert(tap_view_focus(v,0));m.idle=false;assert(!tap_view_close(v));assert(v->root&&m.count);m.idle=true;assert(tap_view_close(v));assert(!v->root&&!m.count);}
+ Mock m={0};m.idle=true;TAPWidgets a={&m,idle,make,text,rect,image,place,visible,destroy TINT};TAPView *v=calloc(1,sizeof *v);assert(v);
+ for(unsigned i=0;i<10000;i++){unsigned page=i%d.pages;assert(tap_view_open(v,&a,NULL,&d,page));assert(!tap_view_open(v,&a,NULL,&d,page));assert(tap_view_focus(v,0)==has_button(&d,page));m.idle=false;assert(!tap_view_close(v));assert(v->root&&m.count);m.idle=true;assert(tap_view_close(v));assert(!v->root&&!m.count);}
  m.attempt=0;assert(tap_view_open(v,&a,NULL,&d,0));unsigned allocations=m.attempt;assert(tap_view_close(v));
  for(unsigned fail=1;fail<=allocations;fail++){m.attempt=0;m.fail=fail;assert(!tap_view_open(v,&a,NULL,&d,0));assert(!m.count&&!v->root);}free(v);
  m.fail=0;uint8_t *memory=calloc(1,sizeof(TAPView)+128);assert(memory);

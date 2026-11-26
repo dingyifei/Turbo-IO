@@ -6,7 +6,6 @@ import struct
 import subprocess
 import sys
 import zipfile
-from pathlib import Path
 import pytest
 from turbo_dashboard.app_package import build_package
 from turbo_dashboard.app_examples import examples
@@ -14,11 +13,12 @@ from turbo_dashboard.app_wire import encode
 from turbo_dashboard.app_transport import command
 from turbo_dashboard.contracts import canonical
 from test_app_package import example
+from native_sources import DRIVERS, PHONE, phone_includes, phone_language
 
 
 @pytest.mark.skipif(sys.platform != 'darwin', reason='Foundation host codec check on macOS')
 def test_actual_phone_codec_with_python_compiler(tmp_path):
-    src = Path(__file__).resolve().parents[2]/'official-addon/research/app-runtime-v1'
+    src = PHONE
     doc = example()
     doc['name'] = '开发者 / 应用'
     package = build_package(doc)
@@ -68,5 +68,5 @@ def test_actual_phone_codec_with_python_compiler(tmp_path):
     envelope = bytes([8, 1, 16, 6, 26, (n & 127)|128, n >> 7])+data
     (tmp_path/'envelope.bin').write_bytes(envelope)
     exe = tmp_path/'phone-codec'
-    subprocess.run(['xcrun', 'clang', '-fobjc-arc', '-fsanitize=address,undefined', '-g', '-Wno-incompatible-pointer-types', '-Wno-deprecated-declarations', '-framework', 'Foundation', '-lz', str(src/'AppPackage.m'), str(src/'AppPackageTests.m'), str(src/'app.c'), '-o', str(exe)], check=True)
+    subprocess.run(['xcrun', 'clang', '-fobjc-arc', '-fsanitize=address,undefined', '-g', '-Wno-incompatible-pointer-types', '-Wno-deprecated-declarations', '-framework', 'Foundation', '-lz', *phone_includes(), *phone_language(), str(src/'AppPackage.m'), str(DRIVERS/'AppPackageTests.m'), str(src/'app.c'), '-o', str(exe)], check=True)
     subprocess.run([str(exe), str(tmp_path)], check=True)

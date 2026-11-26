@@ -2,7 +2,6 @@ import io
 import zipfile
 import subprocess
 import shutil
-from pathlib import Path
 from turbo_dashboard.app_examples import examples, export
 from turbo_dashboard.app_package import build_package, read_package, validate_app
 from turbo_dashboard.app_wire import encode
@@ -42,14 +41,15 @@ def test_complex_examples_have_images_and_disclaimers():
 
 
 def test_examples_native_views_under_sanitizers(tmp_path):
-    src=Path(__file__).resolve().parents[2]/'official-addon/research/app-runtime-v1'
-    exe=tmp_path/'views'
+    from native_sources import DRIVERS, view_builds
     cc=['clang']
     if shutil.which('xcrun'):
         sdk=subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
         cc=['xcrun','--sdk','macosx','clang','-isysroot',sdk]
-    subprocess.run(cc+['-std=c11','-O1','-g','-fsanitize=address,undefined',
-                    str(src/'app.c'),str(src/'app_view.c'),str(src/'test_view.c'),'-o',str(exe)],check=True)
-    for stem,doc in examples().items():
-        wire=tmp_path/(stem+'.tap');wire.write_bytes(encode(doc))
-        subprocess.run([str(exe),str(wire)],check=True,capture_output=True,timeout=60)
+    for label,includes,sources in view_builds():
+        exe=tmp_path/('views-'+label)
+        subprocess.run(cc+includes+['-std=c11','-O1','-g','-fsanitize=address,undefined',
+                        *map(str,sources),str(DRIVERS/'test_view.c'),'-o',str(exe)],check=True)
+        for stem,doc in examples().items():
+            wire=tmp_path/(stem+'.tap');wire.write_bytes(encode(doc))
+            subprocess.run([str(exe),str(wire)],check=True,capture_output=True,timeout=60)

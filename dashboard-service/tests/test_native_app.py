@@ -4,11 +4,11 @@ import subprocess
 from pathlib import Path
 from turbo_dashboard.app_wire import encode
 from test_app_package import example
+from native_sources import DRIVERS, RUNTIME, runtime_includes, stock_layout_flags
 
 
 def test_native_decoder_under_sanitizers(tmp_path):
-    root = Path(__file__).resolve().parents[2]
-    src = root/'official-addon/research/app-runtime-v1'
+    src, drv = RUNTIME, DRIVERS
     wire = tmp_path/'fixture.tap'; wire.write_bytes(encode(example()))
     binary = tmp_path/'native-test'
     if shutil.which('xcrun'):
@@ -16,13 +16,14 @@ def test_native_decoder_under_sanitizers(tmp_path):
         cc = ['xcrun', '--sdk', 'macosx', 'clang', '-isysroot', sdk]
     else:
         cc = ['clang']
+    cc = cc+runtime_includes()
     subprocess.run(cc+['-std=c11', '-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer',
-                       str(src/'app.c'), str(src/'test_app.c'), '-o', str(binary)], check=True)
+                       str(src/'app.c'), str(drv/'test_app.c'), '-o', str(binary)], check=True)
     result = subprocess.run([str(binary), str(wire)], check=True, text=True, capture_output=True, timeout=60)
     assert '100000 mutations' in result.stdout
     view = tmp_path/'native-view-test'
     subprocess.run(cc+['-std=c11', '-O1', '-g', '-fsanitize=address,undefined',
-                       str(src/'app.c'), str(src/'app_view.c'), str(src/'test_view.c'), '-o', str(view)], check=True)
+                       str(src/'app.c'), str(src/'app_view.c'), str(drv/'test_view.c'), '-o', str(view)], check=True)
     result = subprocess.run([str(view), str(wire)], check=True, text=True, capture_output=True, timeout=60)
     assert '10000 ownership cycles' in result.stdout
     import base64
@@ -36,12 +37,12 @@ def test_native_decoder_under_sanitizers(tmp_path):
     subprocess.run([str(view), str(wire)], check=True, capture_output=True, timeout=60)
     store = tmp_path/'native-store-test'
     subprocess.run(cc+['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
-                       str(src/'app.c'), str(src/'app_store.c'), str(src/'test_store.c'), '-o', str(store)], check=True)
+                       str(src/'app.c'), str(src/'app_store.c'), str(drv/'test_store.c'), '-o', str(store)], check=True)
     result = subprocess.run([str(store), str(wire)], check=True, capture_output=True, text=True, timeout=60)
     assert 'every truncated write' in result.stdout
     runner = tmp_path/'native-runner-test'
     subprocess.run(cc+['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
-                       *[str(src/n) for n in ['app.c', 'app_store.c', 'app_view.c', 'app_runner.c', 'app_command.c', 'app_shelf.c', 'test_runner.c']], '-o', str(runner)], check=True)
+                       *[str(src/n) for n in ['app.c', 'app_store.c', 'app_view.c', 'app_runner.c', 'app_command.c', 'app_shelf.c', '../common-v1/tio_text.c']], str(drv/'test_runner.c'), '-o', str(runner)], check=True)
     result = subprocess.run([str(runner), str(wire)], check=True, capture_output=True, text=True, timeout=60)
     assert '1000 lifecycles' in result.stdout
     import struct
@@ -64,12 +65,12 @@ def test_native_decoder_under_sanitizers(tmp_path):
     assert received[4]['slots'][0]['tombstone']
     files = tmp_path/'native-files-test'
     subprocess.run(cc+['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
-                       *[str(src/n) for n in ['app.c', 'app_store.c', 'app_files.c', 'app_files_native.c', 'test_files.c']], '-o', str(files)], check=True)
+                       *[str(src/n) for n in ['app.c', 'app_store.c', 'app_files.c', 'app_files_native.c']], str(drv/'test_files.c'), '-o', str(files)], check=True)
     result = subprocess.run([str(files), str(wire)], check=True, capture_output=True, text=True, timeout=60)
     assert 'persistent banks passed' in result.stdout
     lvgl = tmp_path/'native-lvgl-test'
-    subprocess.run(cc+['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
-                       *[str(src/n) for n in ['app.c', 'app_view.c', 'app_lvgl.c', 'test_lvgl.c']], '-o', str(lvgl)], check=True)
+    subprocess.run(cc+['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined', *stock_layout_flags(),
+                       *[str(src/n) for n in ['app.c', 'app_view.c', 'app_lvgl.c']], str(drv/'test_lvgl.c'), '-o', str(lvgl)], check=True)
     result = subprocess.run([str(lvgl), str(wire)], check=True, capture_output=True, text=True, timeout=60)
     assert 'parent deletion passed' in result.stdout
 

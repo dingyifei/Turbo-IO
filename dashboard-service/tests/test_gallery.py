@@ -4,7 +4,6 @@ import hashlib
 import json
 import subprocess
 import shutil
-from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from turbo_dashboard.gallery import catalog, export, snapshot_doc
@@ -59,12 +58,14 @@ def test_real_http_package_build_and_auth(tmp_path):
     assert client.post('/v1/apps/package',headers=h['writer'],content=b'x'*32769).status_code==413
 
 def test_all_gallery_pages_native_sanitizers(tmp_path):
-    src=Path(__file__).resolve().parents[2]/'official-addon/research/app-runtime-v1';exe=tmp_path/'views'
+    from native_sources import DRIVERS, view_builds
     cc=['clang']
     if shutil.which('xcrun'):
         sdk=subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
         cc=['xcrun','clang','-isysroot',sdk]
-    subprocess.run(cc+['-std=c11','-O1','-g','-fsanitize=address,undefined',str(src/'app.c'),str(src/'app_view.c'),str(src/'test_view.c'),'-o',str(exe)],check=True)
-    for item in catalog():
-        f=tmp_path/(item['id']+'.tap');f.write_bytes(encode(snapshot_doc(item['id'])))
-        subprocess.run([str(exe),str(f)],check=True,capture_output=True,timeout=60)
+    for label,includes,sources in view_builds():
+        exe=tmp_path/('views-'+label)
+        subprocess.run(cc+includes+['-std=c11','-O1','-g','-fsanitize=address,undefined',*map(str,sources),str(DRIVERS/'test_view.c'),'-o',str(exe)],check=True)
+        for item in catalog():
+            f=tmp_path/(item['id']+'.tap');f.write_bytes(encode(snapshot_doc(item['id'])))
+            subprocess.run([str(exe),str(f)],check=True,capture_output=True,timeout=60)

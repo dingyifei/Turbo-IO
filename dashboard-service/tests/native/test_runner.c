@@ -17,9 +17,11 @@ static void *image(void *ctx,void *p,const uint8_t *data,unsigned w,unsigned h){
 static void place(void *ctx,void *o,unsigned x,unsigned y,unsigned w,unsigned h){(void)ctx;assert(o&&x+w<=540&&y+h<=180);}
 static void visible(void *ctx,void *o,bool yes){(void)ctx;(void)yes;assert(o);}
 static void destroy(void *ctx,void *o){Fixture *f=ctx;assert(f->idle&&o);f->objects=0;}
+static void tint(void *ctx,void *o,uint32_t c){(void)ctx;(void)c;assert(o);}
+unsigned tio_lang(void){return 1;} /* the shelf's strings (tio_text.c): Chinese */
 int main(int argc,char **argv){
  assert(argc==2||argc==4);FILE *in=fopen(argv[1],"rb");assert(in);uint8_t wire[TAP_MAX_BYTES];size_t n=fread(wire,1,sizeof wire,in);fclose(in);
- Fixture *f=calloc(1,sizeof(*f));TAPStore *s=calloc(1,sizeof(*s));TAPRunner *r=calloc(1,sizeof(*r));assert(f&&s&&r);f->idle=true;s->io=(TAPStoreIO){f,read_file,write_file,space};TAPWidgets w={f,idle,make,text,rect,image,place,visible,destroy};tap_runner_init(r,s,&w,NULL);
+ Fixture *f=calloc(1,sizeof(*f));TAPStore *s=calloc(1,sizeof(*s));TAPRunner *r=calloc(1,sizeof(*r));assert(f&&s&&r);f->idle=true;s->io=(TAPStoreIO){f,read_file,write_file,space};TAPWidgets w={f,idle,make,text,rect,image,place,visible,destroy,tint};tap_runner_init(r,s,&w,NULL);
  unsigned slot;assert(tap_runner_install(r,"fixture","测试",1,wire,n,&slot)==0&&slot==0);
  for(unsigned i=0;i<1000;i++){
   assert(tap_runner_start(r,0)==0);assert(tap_runner_start(r,0)==TAP_STORE_BUSY);
@@ -27,6 +29,10 @@ int main(int argc,char **argv){
   assert(tap_runner_remove(r,0)==TAP_STORE_BUSY);
   assert(tap_runner_event(r,TAP_TOUCH,10).type==TAP_NO_EVENT&&r->state.page==0);
   assert(tap_runner_event(r,TAP_PRESS,20).type==TAP_PAGE_CHANGED&&r->state.page==1);
+  // FocusCaret: off the entry page a long press waits for an idle renderer, then goes back to the entry page.
+  f->idle=false;assert(tap_runner_event(r,TAP_LONG_PRESS,25).type==TAP_NO_EVENT&&r->state.page==1&&!r->closing);f->idle=true;
+  assert(tap_runner_event(r,TAP_LONG_PRESS,28).type==TAP_PAGE_CHANGED&&r->state.page==0&&r->view.root&&r->state.active);
+  // On the entry page it exits at once, also while the renderer is busy; the close waits for the renderer.
   f->idle=false;assert(tap_runner_event(r,TAP_LONG_PRESS,30).type==TAP_EXIT&&r->closing&&r->view.root&&r->wire[0]=='T');assert(!tap_runner_poll(r));assert(tap_runner_start(r,0)==TAP_STORE_BUSY);
   f->idle=true;assert(tap_runner_poll(r)&&r->slot==-1&&!r->view.root&&!r->wire[0]&&!f->objects);
  }

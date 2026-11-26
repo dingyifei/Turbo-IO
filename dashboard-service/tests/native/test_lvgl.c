@@ -1,6 +1,6 @@
 #include "app_lvgl.h"
-#include "../menu8-renderer.h"
-#include "../navigation-runtime-v1/nav_lvgl.h"
+#include "menu8-renderer.h"
+#include "navigation-runtime-v1/nav_lvgl.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +38,8 @@ void tio_lv_obj_set_size(void *o,int w,int h){Node *n=o;assert(w>0&&h>0&&w<=540&
 void native_align(void *o,int align,int x,int y){Node *n=o;assert(align==1&&x>=0&&y>=0);n->x=x;n->y=y;assert(n->x+n->w<=540&&n->y+n->h<=180);}
 void native_label_text(void *o,const char *s){assert(strlen(s)<=96);strcpy(((Node *)o)->text,s);}
 void menu_text_font(void *o,void *f,uint32_t sel){assert(o&&f&&!sel);}
-void native_text_color(void *o,uint32_t color,uint32_t sel){assert(o&&color==0x00ff00&&!sel);}
+// Labels open lens-full; the view re-tints action labels to the lens ramp (FocusCaret: focused full, idle mid or high).
+void native_text_color(void *o,uint32_t color,uint32_t sel){assert(o&&(color==TIO_LENS_FULL||color==TIO_LENS_HIGH||color==TIO_LENS_MID)&&!sel);}
 void tio_lv_obj_set_style_bg_color(void *o,uint32_t color,uint32_t sel){(void)color;assert(o&&!sel);}
 void tio_lv_obj_set_style_bg_opa(void *o,uint8_t alpha,uint32_t sel){assert(o&&!sel&&(alpha==0||alpha==255));}
 void tio_lv_obj_set_style_border_color(void *o,uint32_t color,uint32_t sel){(void)color;assert(o&&!sel);}

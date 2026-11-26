@@ -9,7 +9,9 @@ int main(int argc,char **argv){
  for(unsigned round=0;round<10000;round++){
   assert(tap_start(&s,&d));assert(tap_event(&s,TAP_TOUCH,100).type==0);assert(s.page==0);
   assert(tap_event(&s,TAP_PRESS,100).type==TAP_PAGE_CHANGED);assert(s.page==1);
-  assert(tap_event(&s,TAP_LONG_PRESS,200).type==TAP_EXIT);assert(!s.active&&!s.document);
+  // FocusCaret: a long press off the entry page goes back to it; a long press on the entry page exits.
+  assert(tap_event(&s,TAP_LONG_PRESS,200).type==TAP_PAGE_CHANGED);assert(s.page==0&&s.focus==0&&s.active);
+  assert(tap_event(&s,TAP_LONG_PRESS,300).type==TAP_EXIT);assert(!s.active&&!s.document);
  }
  for(size_t cut=0;cut<n;cut++){TAPDocument bad;memset(&bad,0xaa,sizeof bad);assert(!tap_parse(wire,cut,&bad));assert(bad.count==0);}
  unsigned seed=7392;uint8_t fuzz[TAP_MAX_BYTES+1];
