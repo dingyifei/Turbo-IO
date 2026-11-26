@@ -208,6 +208,11 @@ if only is None or 'shared-sources' in only:
         return found
     fw_sources,phone_sources=c_sources(FW),c_sources(P)
     common=sorted(set(fw_sources)&set(phone_sources))
+    # These must exist on both sides; a missing copy must not pass as 'not shared'.
+    required_shared=['tile_config.c','tile_config.h','lang_store.c','lang_store.h','diagnostics.c','diagnostics.h','command.h',
+                     'knob_calibration.c','knob_calibration.h','lock_codec.c','lock_codec.h']
+    missing=[n+' ('+side+')' for n in required_shared for side,found in (('firmware',fw_sources),('phone',phone_sources)) if n not in found]
+    if missing:raise RuntimeError('required shared source missing: '+', '.join(missing))
     stale=sorted(set(shared_exceptions)-set(common))
     if stale:raise RuntimeError('shared-sources exception no longer on both sides, remove it: '+', '.join(stale))
     compared=0
