@@ -6,7 +6,7 @@ This file is the single release record. The full hashes of the released firmware
 
 ## Current release: C26 + TMG17
 
-Released on 2026-11-26. The owner installed C26 on 2026-11-24, flashed TMG17 from it and accepted the pair on 2026-11-26. The release tags are `app/c26` and `fw/tmg17`. The previous release, C24 + TMG15, is the way back (see [Way back](#way-back)).
+Released on 2026-11-26. C26 was installed on the owner's phone on 2026-11-24 and TMG17 was flashed from it; the owner accepted the pair on 2026-11-26. The release tags are `app/c26` and `fw/tmg17`. The previous release, C24 + TMG15, is the way back (see [Way back](#way-back)).
 
 TMG16 and C25 were never tagged: they were built and packaged on 2026-11-23 but never installed. TMG17 contains everything in TMG16.
 
@@ -57,7 +57,7 @@ The packager writes `TIOHostProfile = ios1021` into Info.plist. That key is the 
 
 ### Device check
 
-The checks in [firmware/README.md](../firmware/README.md#device-check) up to item 10 passed on TMG15 with C24 on 2026-11-23. The owner has run TMG17 with C26 since 2026-11-24 and accepted it on 2026-11-26. The items added for TMG16 and TMG17 (the new PIN screen, PIN entry with Do Not Disturb on, the wrong-tries notice going dark) were not reported one by one.
+The checks in [firmware/README.md](../firmware/README.md#device-check) up to item 10 passed on TMG15 with C24 on 2026-11-23. The owner has run TMG17 with C26 since the flash and accepted it on 2026-11-26, confirming the items added for TMG16 and TMG17 (the new PIN screen, PIN entry with Do Not Disturb on, the wrong-tries notice going dark) and the "Stay unlocked while worn" switch. One report from 2026-11-25 is open: the glasses locked while worn (see Known limits in the firmware README).
 
 ### Way back
 

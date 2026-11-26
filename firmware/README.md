@@ -8,7 +8,7 @@ Agents never flash. The owner flashes, with the steps in [OTA.md](../ios-addon/O
 
 ## Current release: TMG17
 
-TMG17 was released with C26 on 2026-11-26 (tags `fw/tmg17` and `app/c26`). The owner flashed it from C26 on 2026-11-24. The release record, with every hash, what was checked and the device status, is in [RELEASE.md](../ios-addon/RELEASE.md). The previous release, C24 + TMG15 (`fw/tmg15`), is the way back.
+TMG17 was released with C26 on 2026-11-26 (tags `fw/tmg17` and `app/c26`). The owner flashed it from C26. The release record, with every hash, what was checked and the device status, is in [RELEASE.md](../ios-addon/RELEASE.md). The previous release, C24 + TMG15 (`fw/tmg15`), is the way back.
 
 | | |
 | --- | --- |
@@ -65,6 +65,7 @@ The lock is for honest people. It stops someone nearby from picking the glasses 
 - A feature started from the paired phone still starts on locked glasses. The glasses microphone does not open and nothing shows through the lock screen.
 - With "Stay unlocked while worn" on, unfolded glasses that keep moving (in a bag, in a moving car) do not idle-lock.
 - The clock is trusted only after the phone has set it since the last power-off. Until then every unfold and every screen-on locks again, and after three wrong tries the glasses ask for the phone instead of starting a wait.
+- With "Stay unlocked while worn" on, the owner reported once (2026-11-25, TMG17 with C26) that the glasses locked while worn. No firmware cause was found. The phone switches head motion on once per connection and does not retry, so worn detection can stay off after the glasses restart until the phone reconnects.
 - A phone that has never seen the glasses unlocked asks them once whether they have the lock. That path is covered by a host test only.
 
 These TMG12 limits still apply:
@@ -78,7 +79,7 @@ These TMG12 limits still apply:
 
 ### Device check
 
-The owner ran items 1 to 10 on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed. Items 11 to 13 are new in TMG16 and TMG17. The owner flashed TMG17 on 2026-11-24 and accepted it on 2026-11-26, without reporting these items one by one.
+The owner ran items 1 to 10 on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed. Items 11 to 13 are new in TMG16 and TMG17. The owner flashed TMG17 from C26 and confirmed these items when accepting it on 2026-11-26.
 
 1. The update completes, also with the glasses locked. They boot, and the phone reconnects without pairing again.
 2. Notifications, head-up wake and the Turbo features work as on TMG12.

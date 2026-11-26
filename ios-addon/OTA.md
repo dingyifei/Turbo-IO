@@ -91,7 +91,7 @@ If TMG17 misbehaves, pick one:
 - **Stock Strix OS 1.0.6.11, from C26.** Pick Stock 1.0.6.11 in the wizard and flash with the same steps. It restores the stock launcher and the stock Bluetooth image. Cost: the Turbo glasses features and the lock are gone until you flash TMG17 again, which C26 also does.
 - **A corrected TMG17.** Wait for the fix. It comes as a new phone build and flashes with the same steps. Cost: the wait.
 
-All three are same-version flashes. The 1.0.6.11 installer compares no version, so it does not refuse one. Same-version flashes of TMG packages worked on 2026-11-22, 2026-11-23 and 2026-11-24; a stock flash has not been tried.
+All three are same-version flashes. The 1.0.6.11 installer compares no version, so it does not refuse one. Same-version flashes of TMG packages worked on 2026-11-22 and 2026-11-23, and again for TMG17 from C26; a stock flash has not been tried.
 
 Both need the phone link. If the glasses stop answering the phone, hold the knob down until they restart, then try again. After a restart the head-motion hook in the Bluetooth image is off until the phone reconnects.
 
@@ -104,7 +104,7 @@ The lock record stays on the glasses through a flash, stock included. If you wan
 - **2026-11-15, C20.** TMG12 installed over the phone link from 1.0.5.12. The glasses came back on Strix OS 1.0.6.11 and confirmed the update after the first boot. RayNeo 1.0.21's update check and install requests matched what the gate expects (wire log); the tests replay that recorded order. RayNeo unpacked the ZIP flat into `ota/Strix_OS_1.0.6.11`, and the folder check passed.
 - **2026-11-22, C23.** TMG14, a candidate for TMG15, installed over a TMG13 candidate. This was the first same-version flash on 1.0.6.11 and the first install of a modified `nuttx_bth.bin`. The glasses booted and the phone reconnected without pairing again.
 - **2026-11-23, C24.** TMG15 installed over TMG14 with the glasses locked. The update completed, and the owner's device check passed ([firmware/README.md](../firmware/README.md#device-check)).
-- **2026-11-24, C26.** The owner flashed TMG17 from C26, and the glasses run it. The owner accepted the pair on 2026-11-26; the checks of the new PIN screen, of PIN entry with Do Not Disturb on, and of the wrong-tries notice going dark were not reported one by one.
+- **C26, installed 2026-11-24.** The owner flashed TMG17 from C26, and the glasses run it. The owner accepted the pair on 2026-11-26 and confirmed the new PIN screen, PIN entry with Do Not Disturb on, and the wrong-tries notice going dark.
 - The package picker, the single Authorize confirmation and the version read without a time limit were used for each of the flashes from C23, C24 and C26.
 
 ## Not yet confirmed on a device
