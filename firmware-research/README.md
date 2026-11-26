@@ -9,7 +9,7 @@
 | [strix-1.0.5.12](strix-1.0.5.12/stock/README.md) | 原厂 Strix OS 1.0.5.12（2026-11-06 由原版 App 1.0.11 下载）：TMG10、TMG11 的构建底座，仅作分析与构建输入，不要刷原厂包 | [官方原始 ZIP / SHA-256](strix-1.0.5.12/stock/README.md)，字节不变、未重封装 |
 | strix-1.0.5.5 | 原厂 Strix OS 1.0.5.5：TMG9 及更早版本的构建底座。TMIG1 研究树已在 C21 删除，保留在 git 历史中（`git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`） | [官方原始 ZIP / SHA-256](strix-1.0.5.5/stock/README.md)，字节不变、未重封装 |
 
-Strix OS 1.0.4.12 研究树与 TVP2（`strix-1.0.5.5-tvp2`）已在 cleanup(5) 删除，保留在 git 历史中。原厂 1.0.6.11 ZIP（TMG12 起的底座，含当前的 TMG15）不在仓库里，放在 `$TURBO_INPUTS` 下，由 `firmware/build.py --show stock-zip` 指出路径。
+Strix OS 1.0.4.12 研究树与 TVP2（`strix-1.0.5.5-tvp2`）已在 cleanup(5) 删除，保留在 git 历史中。原厂 1.0.6.11 ZIP（TMG12 起的底座，含当前发布的 TMG17）不在仓库里，放在 `$TURBO_INPUTS` 下，由 `firmware/build.py --show stock-zip` 指出路径。
 
 版本号只是条件之一，还要核对 ZIP 哈希、官方宿主构建号、扩展标记及固定门禁。旧 iOS / Android 候选不能换文件名或哈希强刷新版；新 AP 不能简单平移旧补丁地址。
 

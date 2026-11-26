@@ -32,7 +32,7 @@ The glasses pictures are drawn on a Mac by the firmware's own layout code, with 
 
 <a id="ios107-update"></a>
 
-## Current build: C26 + TMG17 (not yet accepted)
+## Current release: C26 + TMG17
 
 Always use the phone build and the firmware as a pair. C26 carries two packages, and you pick one in its flash wizard: TMG17, or stock Strix OS 1.0.6.11 to go back.
 
@@ -42,17 +42,17 @@ Always use the phone build and the firmware as a pair. C26 carries two packages,
 | Firmware | TMG17: TMG15 (TMG12 plus the glasses PIN lock) with a new PIN screen and a Do Not Disturb fix, on stock Strix OS 1.0.6.11 |
 | TMG17 ZIP SHA-256 | `dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01` |
 
-The pair is on the owner's devices (C26 installed and TMG17 flashed on 2026-11-24) but is not yet accepted as released or tagged. The owner's checks of what is new have not been reported yet. Every hash, what was checked and the way back are in the [release record](ios-addon/RELEASE.md). The last accepted pair, C24 + TMG15, is the way back.
+Released on 2026-11-26 (tags `app/c26` and `fw/tmg17`). Every hash, what was checked and the way back are in the [release record](ios-addon/RELEASE.md). The previous release, C24 + TMG15, is the way back.
 
 The lock came with TMG15. The glasses lock after they have been folded or left idle for a set time. You unlock them with a 4-digit PIN on the knob, or from the phone. While locked, the display is dark and nothing can be started: no key, no wake word, no microphone. With "Stay unlocked while worn" on, glasses on your head do not lock. The lock keeps a casual hand off your glasses; it is not built to resist a determined one. Set it up in Turbo › Glasses › Glasses lock.
 
-New since TMG15: a PIN screen redrawn to the design system, with the digit you are entering drawn large (TMG16), a PIN screen that stays up with Do Not Disturb on, and a wrong-tries notice that goes dark after 30 s (TMG17). TMG16 + C25 were built but never installed or tagged.
+New since TMG15: a PIN screen redrawn to the design system, with the digit you are entering drawn large (TMG16), a PIN screen that stays up with Do Not Disturb on, and a wrong-tries notice that goes dark after 30 s (TMG17). TMG16 and C25 were never tagged.
 
 To flash, follow [OTA.md](ios-addon/OTA.md). Flash only the ZIPs it lists, and only if the SHA-256 matches.
 
 ### Earlier releases
 
-Each release is an annotated git tag. Run `git show <tag>` to see its ZIP SHA-256, build commit and paired build.
+Each release is an annotated git tag. Run `git show <tag>` to see its ZIP SHA-256, build commit and paired build. The ZIP hashes are also in the [release record](ios-addon/RELEASE.md#earlier-releases).
 
 | Phone | Firmware | RayNeo AI host | Stock Strix OS | Tags |
 |---|---|---|---|---|

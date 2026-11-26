@@ -2,11 +2,13 @@
 
 These are unofficial, high-risk builds. Flash only if you are a developer and accept that recovery is not guaranteed. No merged or personally signed IPA is published.
 
-## Current build: C26 + TMG17 (not yet accepted)
+This file is the single release record. The full hashes of the released firmware ZIPs and phone IPAs are kept here. The other READMEs and the flash guide name the pair, give at most the firmware ZIP's SHA-256 and link here.
 
-This pair is on the owner's devices but is not yet accepted as released. The owner installed C26 on 2026-11-24 and flashed TMG17 from it. The owner's checks of the new PIN screen, of PIN entry with Do Not Disturb on, and of the wrong-tries notice going dark have not been reported yet. Nothing is tagged: the tags `app/c26` and `fw/tmg17` come only after the owner accepts the pair. The last accepted pair is C24 + TMG15, which is also the way back (see [Way back](#way-back)).
+## Current release: C26 + TMG17
 
-TMG16 + C25 were built and packaged on 2026-11-23 but were never installed or tagged. TMG17 contains everything in TMG16.
+Released on 2026-11-26. The owner installed C26 on 2026-11-24, flashed TMG17 from it and accepted the pair on 2026-11-26. The release tags are `app/c26` and `fw/tmg17`. The previous release, C24 + TMG15, is the way back (see [Way back](#way-back)).
+
+TMG16 and C25 were never tagged: they were built and packaged on 2026-11-23 but never installed. TMG17 contains everything in TMG16.
 
 TMG17 is TMG15 with two rounds of lock changes:
 
@@ -21,7 +23,7 @@ C26 carries two packages and the wizard picks one: TMG17, selected at every laun
 | | |
 |---|---|
 | Phone build | C26: RayNeo AI 1.0.21 (1), full host (`--host 1021-full`; Info.plist `TIOHostProfile` `ios1021`) |
-| TMG17 ZIP | `StrixOS-1.0.6.11-TurboIO-TMG17-CANDIDATE-NOT-APPROVED.zip`, 9,563,076 bytes |
+| TMG17 ZIP | `StrixOS-1.0.6.11-TurboIO-TMG17-CANDIDATE-NOT-APPROVED.zip`, 9,563,076 bytes (the pinned name keeps `CANDIDATE-NOT-APPROVED`) |
 | TMG17 ZIP SHA-256 | `dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01` |
 | TMG17 ZIP MD5 | `dc804a1ca2a9bc36fccc9bca6483ff9a` |
 | TMG17 AP (`nuttx_ap.bin`) | 8,157,000 bytes, SHA-256 `cca3cb6b6301f9aa08499d872c1ceaf4a774a78651bc275b9e4881141ddbdfaa`, MD5 `b652fe12cc50ab2d8081c8b0b442eb7f` |
@@ -35,6 +37,9 @@ C26 carries two packages and the wizard picks one: TMG17, selected at every laun
 | Audit | 33 AP patch sites, 3 BTH patch sites, 7 startup descriptors, stock cores `Strix OS 1.0.6` build 11 |
 | Toolchain | LLVM/LLD 23.1.5 |
 | Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |
+| C26 IPA, wire log (`--host 1021-full --wire-log`) | `TurboIO-local-only.ipa`, 447,869,301 bytes, SHA-256 `3242ef6848790dd8e084e27f4a0fc2d510f3b48bb7ca3d373a1744cb9bdccff7` |
+| C26 IPA, plain (`--host 1021-full`) | `TurboIO-local-only.ipa`, 447,823,641 bytes, SHA-256 `a6c43dcd5a1a57e7bcef0fb27d70fb56ced5a2e6f0aa84806b7389a1582caff9` |
+| Build commit | `fdf1b8b` (both IPAs and the ZIP) |
 
 The pins are in the `c26` entry of [releases.json](releases.json) and in [firmware-pins-c26.json](firmware-pins-c26.json). The firmware release label is in [firmware/RELEASE](../firmware/RELEASE). What the lock does is in [firmware/README.md](../firmware/README.md) and [docs/lock-design.md](../docs/lock-design.md).
 
@@ -52,11 +57,11 @@ The packager writes `TIOHostProfile = ios1021` into Info.plist. That key is the 
 
 ### Device check
 
-The checks in [firmware/README.md](../firmware/README.md#device-check) up to item 10 passed on TMG15 with C24 on 2026-11-23. The items added for TMG16 and TMG17 (the new PIN screen, PIN entry with Do Not Disturb on, the wrong-tries notice going dark) have not been reported for TMG17 yet.
+The checks in [firmware/README.md](../firmware/README.md#device-check) up to item 10 passed on TMG15 with C24 on 2026-11-23. The owner has run TMG17 with C26 since 2026-11-24 and accepted it on 2026-11-26. The items added for TMG16 and TMG17 (the new PIN screen, PIN entry with Do Not Disturb on, the wrong-tries notice going dark) were not reported one by one.
 
 ### Way back
 
-- **C24 + TMG15** (tags `app/c24` and `fw/tmg15`). Install C24 over the existing app, then flash TMG15 from it. TMG15 ZIP SHA-256 `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49`; after the flash the build identity reads `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26`.
+- **C24 + TMG15, the previous release** (tags `app/c24` and `fw/tmg15`). Install C24 over the existing app, then flash TMG15 from it. TMG15 ZIP SHA-256 `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49`; after the flash the build identity reads `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26`.
 - **Stock Strix OS 1.0.6.11, from C26.** Pick it in the wizard.
 
 The steps and their costs are in [Going back](OTA.md#going-back) in OTA.md.
@@ -87,7 +92,18 @@ Each release has annotated tags: `app/cN` for the phone build, `fw/tmgN` for the
 | C13 | 1.0.7 (230) | TMG9 | 1.0.5.5 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` | `app/c13`, `fw/tmg9` |
 | C12 | 1.0.7 (230) | TMG8 | 1.0.5.5 | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` | `app/c12`, `fw/tmg8` |
 
-C14 to C25 have left `releases.json`; their entries are in git history. C22 and C23, with firmware TMG13 and TMG14, were device candidates for the lock and are not tagged. C25, with firmware TMG16, was built and packaged on 2026-11-23 but never installed or tagged. C11 is tagged `app/c11` (paired with `fw/tmg7`). Firmware TMG2 to TMG7 are tagged `fw/tmg2` to `fw/tmg7`.
+C14 to C25 have left `releases.json`; their entries are in git history. C22 and C23, with firmware TMG13 and TMG14, were device candidates for the lock and are not tagged. C25, with firmware TMG16, was built and packaged on 2026-11-23 but never installed or tagged. C11 is tagged `app/c11` (paired with `fw/tmg7`). Firmware TMG2 to TMG7 are tagged `fw/tmg2` to `fw/tmg7`:
+
+| Firmware tag | Phone | Stock base | ZIP SHA-256 |
+|---|---|---|---|
+| `fw/tmg7` | C11 | 1.0.5.5 | `6b06d0dd3124ac1f86c91e0879908f9bfe129a2051cf0b619d5b0b664bc3c0aa` |
+| `fw/tmg6` | C10 | 1.0.5.5 | `a134c0f9d8550cdd5b53559e4857e27ca92ec8b168543d2c357cbc1e3fbe4d6e` |
+| `fw/tmg5` | C9 | 1.0.5.5 | `6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef` |
+| `fw/tmg4` | C8 | 1.0.5.5 | `aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126` |
+| `fw/tmg3` | C6 | 1.0.5.5 | `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` |
+| `fw/tmg2` | C1 to C5 | 1.0.5.5 | `6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473` |
+
+Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the tag notes name them.
 
 Never flash the superseded TMG9 ZIP built before review round 1 (the `fw/tmg9` tag message names it). For TMG9, use only the ZIP in the table.
 

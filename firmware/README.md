@@ -6,9 +6,9 @@ There is one tree. The release label is the single line in [`RELEASE`](RELEASE).
 
 Agents never flash. The owner flashes, with the steps in [OTA.md](../ios-addon/OTA.md).
 
-## Current build: TMG17 (not yet accepted)
+## Current release: TMG17
 
-TMG17 is on the owner's glasses, flashed from C26 on 2026-11-24, but the owner has not yet accepted it as released and it is not tagged. The owner's checks of what is new since TMG15 have not been reported yet. The release record, with every hash, what was checked and the device status, is in [RELEASE.md](../ios-addon/RELEASE.md). The last tagged release is TMG15 (`fw/tmg15`), and C24 + TMG15 is the way back.
+TMG17 was released with C26 on 2026-11-26 (tags `fw/tmg17` and `app/c26`). The owner flashed it from C26 on 2026-11-24. The release record, with every hash, what was checked and the device status, is in [RELEASE.md](../ios-addon/RELEASE.md). The previous release, C24 + TMG15 (`fw/tmg15`), is the way back.
 
 | | |
 | --- | --- |
@@ -78,7 +78,7 @@ These TMG12 limits still apply:
 
 ### Device check
 
-The owner ran items 1 to 10 on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed. Items 11 to 13 are new in TMG16 and TMG17; the owner flashed TMG17 on 2026-11-24 and has not reported them yet.
+The owner ran items 1 to 10 on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed. Items 11 to 13 are new in TMG16 and TMG17. The owner flashed TMG17 on 2026-11-24 and accepted it on 2026-11-26, without reporting these items one by one.
 
 1. The update completes, also with the glasses locked. They boot, and the phone reconnects without pairing again.
 2. Notifications, head-up wake and the Turbo features work as on TMG12.
@@ -182,22 +182,22 @@ The recipe works as written for `fw/tmg10` and `fw/tmg11`, with LLVM/LLD 23.1.5 
 
 ## Earlier releases
 
-| Tag | Stock base | Phone build | ZIP SHA-256 |
-| --- | --- | --- | --- |
-| `fw/tmg15` | 1.0.6.11 | C24 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
-| `fw/tmg12` | 1.0.6.11 | C20, C21 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
-| `fw/tmg11` | 1.0.5.12 | C18 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` |
-| `fw/tmg10` | 1.0.5.12 | C16 | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` |
-| `fw/tmg9` | 1.0.5.5 | C13 | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` |
-| `fw/tmg8` | 1.0.5.5 | C12 | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` |
-| `fw/tmg7` | 1.0.5.5 | C11 | `6b06d0dd3124ac1f86c91e0879908f9bfe129a2051cf0b619d5b0b664bc3c0aa` |
-| `fw/tmg6` | 1.0.5.5 | C10 | `a134c0f9d8550cdd5b53559e4857e27ca92ec8b168543d2c357cbc1e3fbe4d6e` |
-| `fw/tmg5` | 1.0.5.5 | C9 | `6705bf4d164178943018d55ac882cf796bbc255f186d0be509ecb2f798ede0ef` |
-| `fw/tmg4` | 1.0.5.5 | C8 | `aa387b37ece2092d50721bcc3409984f7bd0d650aad4b7b249aceba515161126` |
-| `fw/tmg3` | 1.0.5.5 | C6 | `45595fe26086aaeb64e4eaa1243d09f2a7ec8388d52661d34a0c439bbd6de274` |
-| `fw/tmg2` | 1.0.5.5 | C1 to C5 | `6ae710233feec65e23816f4c89e75584de5f1abdde1f0aa8d74c4a3535ca8473` |
+| Tag | Stock base | Phone build |
+| --- | --- | --- |
+| `fw/tmg15` | 1.0.6.11 | C24 |
+| `fw/tmg12` | 1.0.6.11 | C20, C21 |
+| `fw/tmg11` | 1.0.5.12 | C18 |
+| `fw/tmg10` | 1.0.5.12 | C16 |
+| `fw/tmg9` | 1.0.5.5 | C13 |
+| `fw/tmg8` | 1.0.5.5 | C12 |
+| `fw/tmg7` | 1.0.5.5 | C11 |
+| `fw/tmg6` | 1.0.5.5 | C10 |
+| `fw/tmg5` | 1.0.5.5 | C9 |
+| `fw/tmg4` | 1.0.5.5 | C8 |
+| `fw/tmg3` | 1.0.5.5 | C6 |
+| `fw/tmg2` | 1.0.5.5 | C1 to C5 |
 
-Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the tag notes name them.
+The ZIP SHA-256 of each release is in its tag message and in the [release record](../ios-addon/RELEASE.md#earlier-releases). Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the tag notes name them.
 
 ## Files
 

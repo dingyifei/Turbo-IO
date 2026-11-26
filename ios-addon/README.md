@@ -4,7 +4,7 @@ The Turbo IO addon runs inside the RayNeo AI app on the iPhone. This folder hold
 
 You build, sign and install the app yourself. No signed IPA is published. Agents never install the app or flash the glasses.
 
-## Current build: C26
+## Current release: C26
 
 | | |
 |---|---|
@@ -14,7 +14,7 @@ You build, sign and install the app yourself. No signed IPA is published. Agents
 | Release entry | `c26` in [releases.json](releases.json); pins in [firmware-pins-c26.json](firmware-pins-c26.json) |
 | TMG17 ZIP SHA-256 | `dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01` |
 
-The owner installed C26 on 2026-11-24 and flashed TMG17 from it; the pair is not yet accepted as released or tagged. The release record, with every hash and the device status, is in [RELEASE.md](RELEASE.md). The wizard picks the package. One confirmation, Authorize, allows one transfer; there is no arming step.
+C26 + TMG17 was released on 2026-11-26 (tags `app/c26` and `fw/tmg17`). The release record, with every hash, both IPAs and the device status, is in [RELEASE.md](RELEASE.md). The wizard picks the package. One confirmation, Authorize, allows one transfer; there is no arming step.
 
 The page Turbo › Glasses › Glasses lock came with C24. It sets the PIN and the two lock times, locks and unlocks the glasses, and holds the switch "Stay unlocked while worn". The page talks to the lock in the firmware (TMG15 and later); on glasses without it, the page says so and sends nothing more. What the lock does is described in [firmware/README.md](../firmware/README.md) and [docs/lock-design.md](../docs/lock-design.md).
 
@@ -31,18 +31,18 @@ Get the stock app legally yourself. Do not edit a hash check to make another inp
 
 ## Earlier builds
 
-Each tagged build is an annotated `app/cN` tag. The tag message gives the build commit, the IPA hash and the paired firmware.
+Each tagged build is an annotated `app/cN` tag. The tag message gives the build commit, the IPA hash and the paired firmware. The bundled ZIP hashes are in the [release record](RELEASE.md#earlier-releases).
 
-| Tag | Host app | Firmware | Bundled ZIP SHA-256 |
-| --- | --- | --- | --- |
-| `app/c24` | RayNeo AI 1.0.21 (1), full host | TMG15 (`fw/tmg15`) and stock 1.0.6.11 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
-| `app/c21` | RayNeo AI 1.0.21 (1), full host | TMG12 (`fw/tmg12`) and stock 1.0.6.11 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
-| `app/c20` | RayNeo AI 1.0.21 (1), full host | TMG12 (`fw/tmg12`) | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
-| `app/c18` | RayNeo AI 1.0.11 (259), full host | TMG11 (`fw/tmg11`) | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` |
-| `app/c16` | RayNeo AI 1.0.11 (259), full host | TMG10 (`fw/tmg10`) | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` |
-| `app/c13` | RayNeo AI 1.0.7 (230) | TMG9 (`fw/tmg9`) | `def1afe2d5fdc7473147d34bd158fef3965685d1e1f57343c3753a556a7045cd` |
-| `app/c12` | RayNeo AI 1.0.7 (230) | TMG8 (`fw/tmg8`) | `effb10b86ef7064c02512b3f3671284ea40de6349c556383eacf70f09791fbd6` |
-| `app/c11` | RayNeo AI 1.0.7 (230) | TMG7 (`fw/tmg7`) | `6b06d0dd3124ac1f86c91e0879908f9bfe129a2051cf0b619d5b0b664bc3c0aa` |
+| Tag | Host app | Firmware |
+| --- | --- | --- |
+| `app/c24` | RayNeo AI 1.0.21 (1), full host | TMG15 (`fw/tmg15`) and stock 1.0.6.11 |
+| `app/c21` | RayNeo AI 1.0.21 (1), full host | TMG12 (`fw/tmg12`) and stock 1.0.6.11 |
+| `app/c20` | RayNeo AI 1.0.21 (1), full host | TMG12 (`fw/tmg12`) |
+| `app/c18` | RayNeo AI 1.0.11 (259), full host | TMG11 (`fw/tmg11`) |
+| `app/c16` | RayNeo AI 1.0.11 (259), full host | TMG10 (`fw/tmg10`) |
+| `app/c13` | RayNeo AI 1.0.7 (230) | TMG9 (`fw/tmg9`) |
+| `app/c12` | RayNeo AI 1.0.7 (230) | TMG8 (`fw/tmg8`) |
+| `app/c11` | RayNeo AI 1.0.7 (230) | TMG7 (`fw/tmg7`) |
 
 The code for the 1.0.7 and 1.0.11 hosts and the untagged releases (C14, C15, C17) left with C21; it stays in git history. C22 and C23 were device candidates for the lock and are not tagged. C25 (TMG16) was built and packaged on 2026-11-23 but never installed or tagged. Older notes are in git history and in [docs/CHANGELOG.md](../docs/CHANGELOG.md). To go back from TMG17, follow [Going back](OTA.md#going-back) in OTA.md.
 

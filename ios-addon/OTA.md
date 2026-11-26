@@ -4,18 +4,18 @@
 
 This guide flashes firmware onto the RayNeo iO glasses from the Turbo phone build, through RayNeo's own updater. You do every step yourself, on your own iPhone. Agents never install the app or flash the glasses. Flashing is high risk: a bad flash can leave the glasses unusable, and recovery is not guaranteed.
 
-## Current build: C26 + TMG17
+## Current release: C26 + TMG17
 
 C26 carries two firmware packages. You pick one in the wizard: TMG17, or stock Strix OS 1.0.6.11.
 
 | Package | ZIP | SHA-256 |
 |---|---|---|
 | TMG17 (selected at every launch) | `StrixOS-1.0.6.11-TurboIO-TMG17-CANDIDATE-NOT-APPROVED.zip` | `dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01` |
-| Stock 1.0.6.11 | `Strix-OS-1.0.6.11-members-canonical.zip` | `5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e` |
+| Stock 1.0.6.11 | `Strix-OS-1.0.6.11-members-canonical.zip` | in [RELEASE.md](RELEASE.md#current-release-c26--tmg17) |
 
-The glasses must report Strix OS 1.0.5.12 or 1.0.6.11. Both packages install Strix OS 1.0.6.11. Flash only these two ZIPs. Each SHA-256 must match the line above and the `c26` entry in [releases.json](releases.json). C26 carries both, so there is nothing to fetch from anywhere else. C26 cannot flash TMG15 or TMG16.
+The glasses must report Strix OS 1.0.5.12 or 1.0.6.11. Both packages install Strix OS 1.0.6.11. Flash only these two ZIPs. Each SHA-256 must match the [release record](RELEASE.md#current-release-c26--tmg17) and the `c26` entry in [releases.json](releases.json). C26 carries both, so there is nothing to fetch from anywhere else. C26 cannot flash TMG15 or TMG16.
 
-The owner installed C26 on 2026-11-24 and flashed TMG17 from it. The pair is not yet accepted as released or tagged. The full record, with every hash and the device status, is in [RELEASE.md](RELEASE.md). Locked glasses can be flashed; the update runs while they are locked.
+C26 + TMG17 was released on 2026-11-26 (tags `app/c26` and `fw/tmg17`). The full record, with every hash and the device status, is in [RELEASE.md](RELEASE.md). Locked glasses can be flashed; the update runs while they are locked.
 
 Earlier releases are recorded in the git tags `fw/tmgN` (firmware) and `app/cN` (phone builds), and in [RELEASE.md](RELEASE.md). The flash steps that came with each older release are in this file's git history.
 
@@ -77,7 +77,7 @@ This cannot flash the wrong package. Authorization needs all 17 pinned files, `O
 
 1. Close and reopen the RayNeo app.
 2. RayNeo › Glasses › Software version shows Strix OS 1.0.6.11. If it shows another version, stop and tell the developer.
-3. After TMG17: Turbo › Developer (expand it) › Glasses runtime, row "Firmware and build", shows the build identity `3906e459b7835660d61f61713af446b80cd4502552fc555d35337600e58f618c`. After stock, the Turbo glasses features are gone.
+3. After TMG17: Turbo › Developer (expand it) › Glasses runtime, row "Firmware and build", shows the TMG17 build identity given in [RELEASE.md](RELEASE.md#current-release-c26--tmg17). After stock, the Turbo glasses features are gone.
 4. After TMG17, if the lock was on before the flash, the glasses start locked. Unlock with the PIN or from Turbo › Glasses › Glasses lock. If the lock was never set up, it is off until you set a PIN there.
 5. After TMG17, run the device check in [firmware/README.md](../firmware/README.md#device-check).
 
@@ -87,7 +87,7 @@ The glasses roll back on their own only before the new firmware confirms: if Blu
 
 If TMG17 misbehaves, pick one:
 
-- **C24 + TMG15, the last accepted pair.** Install C24 (tag `app/c24`) over the existing app, then flash TMG15 from it with the same steps. TMG15's ZIP SHA-256 is `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49`, and after the flash the build identity reads `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26`. Cost: TMG15's older PIN screen, and with Do Not Disturb on, its PIN screen goes dark about 3 s after it lights; unlock from the phone then.
+- **C24 + TMG15, the previous release.** Install C24 (tag `app/c24`) over the existing app, then flash TMG15 from it with the same steps. TMG15's ZIP SHA-256 and the build identity it shows after the flash are in [Way back](RELEASE.md#way-back) in RELEASE.md. Cost: TMG15's older PIN screen, and with Do Not Disturb on, its PIN screen goes dark about 3 s after it lights; unlock from the phone then.
 - **Stock Strix OS 1.0.6.11, from C26.** Pick Stock 1.0.6.11 in the wizard and flash with the same steps. It restores the stock launcher and the stock Bluetooth image. Cost: the Turbo glasses features and the lock are gone until you flash TMG17 again, which C26 also does.
 - **A corrected TMG17.** Wait for the fix. It comes as a new phone build and flashes with the same steps. Cost: the wait.
 
@@ -104,7 +104,7 @@ The lock record stays on the glasses through a flash, stock included. If you wan
 - **2026-11-15, C20.** TMG12 installed over the phone link from 1.0.5.12. The glasses came back on Strix OS 1.0.6.11 and confirmed the update after the first boot. RayNeo 1.0.21's update check and install requests matched what the gate expects (wire log); the tests replay that recorded order. RayNeo unpacked the ZIP flat into `ota/Strix_OS_1.0.6.11`, and the folder check passed.
 - **2026-11-22, C23.** TMG14, a candidate for TMG15, installed over a TMG13 candidate. This was the first same-version flash on 1.0.6.11 and the first install of a modified `nuttx_bth.bin`. The glasses booted and the phone reconnected without pairing again.
 - **2026-11-23, C24.** TMG15 installed over TMG14 with the glasses locked. The update completed, and the owner's device check passed ([firmware/README.md](../firmware/README.md#device-check)).
-- **2026-11-24, C26.** The owner flashed TMG17 from C26, and the glasses run it. The owner's checks of the new PIN screen, of PIN entry with Do Not Disturb on, and of the wrong-tries notice going dark have not been reported yet.
+- **2026-11-24, C26.** The owner flashed TMG17 from C26, and the glasses run it. The owner accepted the pair on 2026-11-26; the checks of the new PIN screen, of PIN entry with Do Not Disturb on, and of the wrong-tries notice going dark were not reported one by one.
 - The package picker, the single Authorize confirmation and the version read without a time limit were used for each of the flashes from C23, C24 and C26.
 
 ## Not yet confirmed on a device
