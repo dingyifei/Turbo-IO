@@ -38,6 +38,13 @@ This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It co
 
 Follow [docs/porting-flow.md](docs/porting-flow.md): present the whole plan to the owner once, before any work, then run the steps there. Careful review goes only where a mistake can brick the glasses or lock the phone out.
 
+## Delegation
+
+- Pick the model tier by how much judgment the task needs: evidence-driven work (greps, inventories, hash checks, scripted rewrites, running gates) on the smallest tier; analysis, code review and independent checks on the middle tier; whole-repo decisions and the final review of anything that can brick the glasses on the top tier.
+- Every delegated agent names its model and effort. None inherits the top tier by default.
+- A failed or bad result moves up one tier. It is not retried on the same tier.
+- A checker is never a lower tier than the writer it checks, and is a different agent.
+
 ## Layout
 
 | Path | Contents |

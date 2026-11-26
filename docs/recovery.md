@@ -37,7 +37,7 @@ These results come from 15 emulator runs: one clean update as a control, and 14 
 | A restart interrupts the install | The installer starts the interrupted step again and finishes. The glasses end on the new firmware. | Emulator only |
 | Power loss interrupts the install | This depends on whether a boot-mode flag survives a power loss, which only a device can show. If the flag is lost: a cut early in the install starts the old firmware, and the update is not applied. A cut during the main write lets the installer resume and finish. A cut in a very short window at the end, after the images are marked bootable and before the pending record is written, starts the new firmware with no check at all. Nothing can then roll it back on its own. | Emulator only, partial model |
 | There is no backup from an earlier confirmed update | If the new firmware then fails to confirm, or crashes, the installer finds nothing to restore. It keeps the failure state and restarts to try again, every few seconds, with no end. Neither firmware starts again. | Emulator only |
-| Something interrupts the glasses after the new firmware confirmed | They run the new firmware normally. If the cut landed while the backup was being copied, the backup is left incomplete and unusable. Nothing shows this. The next failed update then ends as in the row above. | Emulator only |
+| Something interrupts the glasses after the new firmware confirmed | They run the new firmware normally. If the cut landed while the backup was being copied, they are expected to redo the copy on the next start, as long as the staged files are still there (read from code, not run). | Not tested |
 
 ## What we do not know
 

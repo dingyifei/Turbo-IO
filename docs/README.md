@@ -19,10 +19,11 @@ Status column:
 | [Flashing firmware](../ios-addon/OTA.md) | Current | How the phone flashes Turbo firmware, and how to go back |
 | [When an update goes wrong](recovery.md) | Current | What the glasses do when a firmware update fails, what survives, and the way back, with how sure we are of each |
 | [Firmware tree](../firmware/README.md) | Current | The patched firmware source, the current release, and how to build and audit it |
+| [Releases](../ios-addon/RELEASE.md) | Current | The phone-and-firmware release record: the pair, the pins and the hashes a flasher compares |
 | [Clench tooling](../tools/clench/README.md) | Current | Offline tooth-tap recording and analysis |
 | [Original app inputs](../official-apps/README.md) | Current | Where the stock app inputs come from, and their versions |
 | [Licensing](LICENSING.md) | Current | Non-commercial terms and third-party boundaries |
-| [Source release](SOURCE_RELEASE.md) | Current | What the public source includes and excludes |
+| [Source release](SOURCE_RELEASE.md) | Historical | The older source-release notes (Chinese). It names `scripts/export-source.mjs`, which no longer exists, and other platforms' releases; `scripts/check-source.mjs` is the audit that exists today |
 | [Changelog](CHANGELOG.md) | Historical | Dated updates and acceptance records up to 2026-10-23, moved out of the README; frozen in cleanup(6), links to removed files unlinked |
 
 ## Design system
@@ -55,5 +56,5 @@ The history notes moved to [archive/history/](archive/history/) in cleanup(6).
 - [WeRead research](archive/history/WEREAD_RESEARCH.md): the reading integration, since removed.
 - [AMap navigation](archive/history/NAVIGATION.md) and [its background behaviour](archive/history/NAVIGATION_BACKGROUND.md): replaced by MapKit navigation.
 - [Turbo Display navigation](archive/history/TURBO_DISPLAY_NAVIGATION.md): early display and navigation experiments.
-- [ios107 release](../ios-addon/RELEASE.md): the original addon release record. The older V2 release docs (`official-addon/docs/`) were removed in cleanup(3) and are in git history.
+- The older V2 release docs (`official-addon/docs/`) were removed in cleanup(3) and are in git history.
 - Screenshots: the old screenshots, the design brief and the `turbo-io` setup skill (with its AGENT_SKILL guide) were removed in cleanup(6) and are in git history. The pictures in the project README today are in [images/readme/](images/readme/).

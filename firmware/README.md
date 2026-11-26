@@ -142,7 +142,7 @@ Do this only for a new release. A repin changes the build identity, so the ZIP n
    It writes `$D/repin/build-inputs.pinned.json`.
 3. Review the diff, then copy that file over `firmware/build-inputs.json`.
 4. Run a plain build again. It must pass with the new pins.
-5. Copy the ZIP to `$TURBO_INPUTS/<folder>/`. Add or update its entry in `ios-addon/releases.json`: `firmware`, `stockBase`, `zip.input` (relative to `$TURBO_INPUTS`), `zip.bytes`, `zip.sha256`, `acceptCurrent` and `hosts`. Paste the size and hash from command output.
+5. Copy the ZIP to `$TURBO_INPUTS/<folder>/`. Add or update its entry in `ios-addon/releases.json`: `builds`, `hosts`, `stockBase` and `packages[]`. Each package has a `label`, a `zip` (`input` relative to `$TURBO_INPUTS`, `bytes`, `sha256`) and `acceptCurrent`; the first package is the TMG build and the second is the `STOCK-<base>` package. Paste the size and hash from command output.
 6. Regenerate and check the phone pins (`FirmwarePins.h` and `firmware-pins*.json`):
    ```sh
    python3 -I "$FW/tools/phone_pins.py" --write "$R/ios-addon" --inputs "$TURBO_INPUTS"
@@ -212,5 +212,5 @@ Flash only a ZIP whose SHA-256 matches its tag. Never use a superseded ZIP; the 
 | `ImageWireFormat.h` | The image wire format shared with the phone |
 | `include/`, `assets/` | Build includes and the menu icon art |
 | `baseline/` | Immutable inputs carried over from older releases, and the rebase tables ([README](baseline/README.md)) |
-| `tools/` | `rebase_apply.py`, `rebase_derive.py`, `phone_pins.py`, `stock_zip.py`, `check_layout.py`, `check_kept.py`, `check_cjk.py`, `encode_icons.py`, `test_branch.py` |
+| `tools/` | `rebase_apply.py`, `rebase_derive.py`, `phone_pins.py`, `lock_glyphs.py`, `stock_zip.py`, `check_layout.py`, `check_kept.py`, `check_cjk.py`, `encode_icons.py`, `test_branch.py` |
 | `tests/` | Host tests and stock proofs |

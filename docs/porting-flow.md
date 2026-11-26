@@ -20,7 +20,7 @@ The owner cuts or adds, then gives one go. Do not approve the firmware part firs
 4. **Check.** On the last commit: the firmware-only gate and the quick gate, a second build that is byte-identical, and the static check that no patch sits on the path from boot to Bluetooth advertising (the glasses roll back on their own only if advertising has not started within 10 s).
 5. **Emulator.** One round on the candidate: boot, advertising, the menu arms, each page opens and closes, plus one case for each behaviour change. Fix real defects. Run again only if code bytes changed.
 6. **Phone.** Make the phone build for the current RayNeo AI version able to flash the candidate: the update-route patch for that app version, the host checks, a release entry with generated pins. Flashing first; phone features that depend on the new firmware (for example the tile list) can follow in a later build if they fail safely in the meantime.
-7. **Flash.** One question to the owner: flash, yes or not yet. The owner installs the phone build, arms it and flashes. The phone's gate refuses anything it does not expect and nothing is flashed in that case, so a refused first attempt is the dry run: export the log, fix the build, try again.
+7. **Flash.** One question to the owner: flash, yes or not yet. The owner installs the phone build, authorizes one transfer in the wizard and flashes. The phone's gate refuses anything it does not expect and nothing is flashed in that case, so a refused first attempt is the dry run: export the log, fix the build, try again.
 8. **After.** The owner's device check. Tags, pushes and release notes follow on the owner's OK.
 
 ## How careful
@@ -38,7 +38,7 @@ Everything else gets one pass and the gates.
 
 Do these only when the owner asks for them:
 
-- a rollback plan, a recovery build made in advance, or a stock-first flash. If a build does not work, the owner waits for a corrected build, or goes back to the stock firmware the build is based on. Both flash from the same phone build; the stock package is pinned as a release when it is needed, not before;
+- a rollback plan, a recovery build made in advance, or a stock-first flash. If a build does not work, the owner waits for a corrected build, or goes back to the stock firmware the build is based on. Both flash from the same phone build; the stock package ships in every phone build;
 - spec and critic rounds, acceptance matrices, per-commit gates;
 - static studies of stock code that the port does not touch;
 - lint, naming and witness work beyond the lines the port changes;
