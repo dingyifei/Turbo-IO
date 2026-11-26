@@ -14,13 +14,13 @@ A user has confirmed, looking through the lens, that both full-image display and
 
 ### Native navigation: a standalone app page on the glasses
 
-A ninth item, **导航** ("Navigation"), was added; the original seven items and Turbo Display stay. Navigation has its own icon, menu title, page and session state. It does not fake navigation on the image test page, captions or the teleprompter.
+A ninth item, "导航" (Navigation), was added; the original seven items and Turbo Display stay. Navigation has its own icon, menu title, page and session state. It does not fake navigation on the image test page, captions or the teleprompter.
 
 On the phone, AMap (Gaode) handles search, route planning and navigation callbacks, and sends the turn, distance, road text and route points. An LVGL page inside the glasses application draws the arrow, text and a route sketch, so **the phone no longer has to render a full image for each navigation update**.
 
 - Layout: 540×180, with arrow, distance, road name, remaining-trip info and a route sketch of up to 32 points.
 - Each complete navigation message is at most 328 bytes. Only one transfer is in flight at a time; the phone waits for the file's final state and the matching glasses acknowledgement, keeps only the latest pending state, and updates at most once per second (1 Hz).
-- The phone's START can open navigation from the home screen, so the user does not have to enter the glasses menu first. If navigation is opened by hand with no session, the glasses show "请从手机开始导航" ("Start navigation from the phone").
+- The phone's START can open navigation from the home screen, so the user does not have to enter the glasses menu first. If navigation is opened by hand with no session, the glasses show "请从手机开始导航" (Start navigation from the phone).
 - By default the display turns off after 60 seconds without a valid content update, the physical button wakes it, and always-on is optional. Stop, back, and takeover by another task each end the session cleanly. A heartbeat is not new navigation data and must not keep stale guidance on screen indefinitely.
 - The phone app no longer exits immediately when sent to the background; see [Background location and simulation test limits](NAVIGATION_BACKGROUND.md).
 
@@ -30,9 +30,9 @@ On the phone, AMap (Gaode) handles search, route planning and navigation callbac
 
 1. Keep the RayNeo app connected to the glasses as usual, and end any other recording, teleprompter or voice task. You do not need to unpair and re-pair for navigation.
 2. In TurboIO navigation, enter your own AMap iOS key, choose a mode and the start and end points, plan the route, then tap start simulated or live navigation.
-3. Once the phone has a turn and a distance, tap **开启眼镜原生导航** ("Start native navigation on glasses"). The glasses can be opened this way even while they sit on the home screen. Do not pick the old caption or teleprompter display buttons.
+3. Once the phone has a turn and a distance, tap "开启眼镜原生导航" (Start native navigation on glasses). The glasses can be opened this way even while they sit on the home screen. Do not pick the old caption or teleprompter display buttons.
 4. Check the arrow, distance, road name and route sketch. The phone's route data keeps driving the native screen; it is not a stream of navigation screenshots.
-5. Use **停止并退出眼镜导航** ("Stop and exit glasses navigation"), or the glasses' physical back button, to end the display. Live navigation can keep running in the background if location permission allows. Simulation only gets the system's short background allowance, so unlimited simulation with the screen locked is not promised.
+5. Use "停止并退出眼镜导航" (Stop and exit glasses navigation), or the glasses' physical back button, to end the display. Live navigation can keep running in the background if location permission allows. Simulation only gets the system's short background allowance, so unlimited simulation with the screen locked is not promised.
 
 Use the [TNV1 experimental release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tnv1) and its matching source build notes, and read the upgrade and acceptance steps first. **The old R3 release does not include this feature and must not be mixed with it.** No merged or signed IPA is provided; users configure their own service key and signing.
 

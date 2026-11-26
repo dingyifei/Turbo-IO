@@ -1,46 +1,46 @@
-# 雷鸟 AI iOS 1.0.6（218）· 原厂砸壳 / 未签名 IPA
+# RayNeo AI iOS 1.0.6 (218) · Stock decrypted / unsigned IPA
 
-2026-10-15 · **[下载 IPA、SHA256SUMS 与审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.6-218)** · [版本索引](../README.md)
+2026-10-15 · **[Download the IPA, SHA256SUMS and audit report](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.6-218)** · [Version index](../README.md)
 
-提供的是**原厂 1.0.6（218）应用的砸壳副本，未加入 Turbo IO，也没有修改应用功能**。为发布隐私与自行签名需要，移除了全部代码签名、描述文件及商店授权元数据，并重新归档。因此不等同于 App Store 原始加密包，也不能声称整包逐字节未变。
+This is **a decrypted copy of the stock 1.0.6 (218) app. It contains no Turbo IO code and none of the app's features were changed.** For release privacy and so that you can sign it yourself, every code signature, provisioning profile and store authorization metadata file was removed and the archive was repacked. It is therefore not the same as the original encrypted App Store package, and it cannot be claimed to be byte-for-byte unchanged as a whole.
 
-**版权仍归雷鸟官方及相关权利人。** 这不是官方应用源码，仓库的原创非商业源码许可不覆盖原厂二进制；归档不改变其版权或原有许可，不表示官方背书。
+**Copyright stays with RayNeo and the other rights holders.** This is not the official app's source code. The repository's original non-commercial source license does not cover the stock binary; archiving it does not change its copyright or its original license, and does not imply endorsement by RayNeo.
 
-## 精确产物
+## Exact artifact
 
-| 项目 | 值 |
+| Item | Value |
 | --- | --- |
-| 文件 | `RayNeo_AI_1.0.6_218_decrypted_unsigned_original.ipa` |
-| 版本 / Build | **1.0.6 / 218** |
+| File | `RayNeo_AI_1.0.6_218_decrypted_unsigned_original.ipa` |
+| Version / Build | **1.0.6 / 218** |
 | Bundle ID | `com.rayneo.venus.pub` |
-| 架构 / 加密状态 | arm64；全部 95 个 Mach-O 均无启用的加密标记 |
-| 大小 | **353,545,727 字节** |
+| Architecture / encryption | arm64; none of the 95 Mach-O files has encryption turned on |
+| Size | **353,545,727 bytes** |
 | IPA SHA-256 | `f20d23c2e90c9f6effb73463491725d2a359af14b1afa1bc06cf68f61bf2a852` |
-| 未签名 Runner SHA-256 | `d59823568be232b1742f7414a6ebae4718f053e1a251577808041b032306bd44` |
-| 未签名 App.framework/App SHA-256 | `57d064491c46a21420fd73c969ebfb390707556861526e62db58633514caf884` |
+| Unsigned Runner SHA-256 | `d59823568be232b1742f7414a6ebae4718f053e1a251577808041b032306bd44` |
+| Unsigned App.framework/App SHA-256 | `57d064491c46a21420fd73c969ebfb390707556861526e62db58633514caf884` |
 
-解压不是签名，去签名也不是替你签名。非越狱设备仍需自己的合法证书、描述文件和设备授权，不能将此文件当作为自己预签名的安装包。自签 App 的官方登录/推送等权限还需独立验证。
+Unzipping is not signing, and removing signatures is not signing it for you. A non-jailbroken device still needs your own lawful certificate, provisioning profile and device authorization; do not treat this file as an install package pre-signed for you. Official login, push and other entitlements of a self-signed app have to be verified separately.
 
-## 清理与核验范围
+## What was cleaned and checked
 
-- **95/95 个 Mach-O 的代码签名移除**，不重新签名；最终 `LC_CODE_SIGNATURE` 数量为 0，不携带签名证书与 entitlements 签名块。
-- 清理签名目录、`SC_Info`、商店收据和 provisioning 等元数据，本轮共移除 102 个文件；不发布个人签名、Apple 开发者账号/设备列表、Cookie、Key 或应用数据备份。
-- 对照已保存的原厂解密代码，检查 UUID、加载依赖、归一化加载命令、全部文件内 section 内容及签名前数据，**可执行代码和依赖未改变**；签名相关头部/链接区长度变化明确允许，资源 2610 项保持原样。
-- 对照本机个人签名 profile 的标识进行包内扫描，未发现匹配；报告只给结果，不包含被比对的标识。
-- IPA 共 2705 个成员，ZIP CRC 与归档成员逐个回读一致；原始输入保持不变。
-- 不含 Turbo IO、研究探针、越狱注入加载项、个人模型、Watch 扩展或账号数据目录。检查不等于审计官方应用全部业务、第三方服务或嵌入的厂商配置。
+- **Code signatures removed from 95/95 Mach-O files**, with no re-signing. The final `LC_CODE_SIGNATURE` count is 0; no signing certificate or entitlements signature blob is included.
+- Signature directories, `SC_Info`, store receipts, provisioning and similar metadata were cleaned; 102 files were removed in this round. No personal signature, Apple developer account or device list, cookie, key or app data backup is published.
+- Against the saved stock decrypted code, the UUIDs, load dependencies, normalized load commands, all in-file section contents and pre-signature data were checked: **the executable code and dependencies are unchanged**. Length changes in the signature-related header and link-edit areas are explicitly allowed; the 2610 resource entries are unchanged.
+- The package was scanned for the identifiers in the local personal signing profile, with no match. The report gives only the result, not the identifiers compared against.
+- The IPA has 2705 members; the ZIP CRCs and each archive member were read back and match. The original input is unchanged.
+- It contains no Turbo IO, research probes, jailbreak injection load commands, personal models, Watch extension or account data directories. These checks are not an audit of all of the official app's business logic, third-party services or embedded vendor configuration.
 
-[审计报告](audit.json) / [SHA256SUMS](SHA256SUMS) 同时附在 Release。
+The [audit report](audit.json) / [SHA256SUMS](SHA256SUMS) are also attached to the release.
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 unzip RayNeo_AI_1.0.6_218_decrypted_unsigned_original.ipa -d /absolute/new-input
 ```
 
-## 合并 Turbo IO
+## Merging Turbo IO
 
-新版对应 **TMIG1 插件（已归档 / archived in commit `27ad86e`: `official-addon/tmig1-edition/README.md`）** 和 **Strix OS 1.0.5.5（研究树已删除，见 `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`）**。使用最新版仓库打包器，其精确接受原始签名保留版及本 Release 未签名版这两个固定 App.framework 哈希，**没有放宽固件哈希、清单或刷写门禁**。
+This version pairs with **the TMIG1 addon (archived in commit `27ad86e`: `official-addon/tmig1-edition/README.md`)** and **Strix OS 1.0.5.5 (research tree deleted; see `git show 5b6c63d:firmware-research/strix-1.0.5.5/README.md`)**. Use the latest repository packager. It accepts exactly two pinned App.framework hashes, the original signature-preserved one and this release's unsigned one, and **does not relax the firmware hash, manifest or flash gates**.
 
-本未签名副本已通过清理审计与打包输入/加载项测试，尚未把这份去签名派生包重新签名安装做整包真机回归。此前 iPhone 17 Pro Max 的 1.0.6 / TMIG1 实测与此发行输入的审计是不同证据，不能混为“此 IPA 可直接安装或已全量验收”。
+This unsigned copy has passed the cleaning audit and the packaging input / load command tests. The de-signed derived package has not yet been re-signed, installed and given a whole-package real-device regression. The earlier 1.0.6 / TMIG1 test on an iPhone 17 Pro Max and the audit of this release input are separate evidence; do not merge them into "this IPA installs directly or is fully accepted".
 
-`sanitize.py` 只处理已有合法未加密输入或先前已取得的解密主程序，不执行砸壳/设备提取、联网、签名、安装或刷写；拒绝未知 App.framework、启用加密的代码与研究注入项。输出必须为新的目录，原始输入不修改。使用者仍需有权使用所提供输入。
+`sanitize.py` processes only an existing lawful unencrypted input or a previously obtained decrypted main binary. It does not decrypt or extract from a device, go online, sign, install or flash. It refuses an unknown App.framework, code with encryption turned on, and research injections. The output must be a new directory; the original input is not modified. You still need the right to use the input you provide.

@@ -68,7 +68,7 @@ Source, build and tests are public. Personal signed IPAs, cookies, keys, private
 
 The phone takes the photo; the glasses are the viewfinder and the controller: **short-press the knob to shoot, scroll to zoom, long-press to cancel or exit**. The phone offers no countdown or a 3 / 5 / 10 second countdown, and lets you set viewfinder sharpness and landscape or portrait orientation. The glasses show a compressed preview and, after the shot, a review; the original is saved to the phone's photo library. The preview is processed on the device and not uploaded to the cloud.
 
-In TurboIO on the phone, open 「遥控拍照」 (Remote Camera), grant camera and save-to-photos permission, tap 「开启相机与眼镜取景」 (Start camera and glasses viewfinder), then operate from the glasses. **The phone must keep this page in the foreground and stay unlocked.** The glasses viewfinder is at most 256×144, and the HD level transfers more slowly. It is a low-frame-rate preview to help framing, not HD live video.
+In TurboIO on the phone, open "遥控拍照" (Camera remote), grant camera and save-to-photos permission, tap "开启相机与眼镜取景" (Start camera and glasses viewfinder), then operate from the glasses. **The phone must keep this page in the foreground and stay unlocked.** The glasses viewfinder is at most 256×144, and the HD level transfers more slowly. It is a low-frame-rate preview to help framing, not HD live video.
 
 The phone-side capture, compression, transfer and test code, and the glasses native page and control protocol are all public. **The released TMG2 firmware includes this feature; if you already have TMG2 you do not need to flash TCM1.** This entry adds a standalone feature description and does not build or replace firmware. The matching phone implementation listed is iOS; that does not mean Android has been adapted too.
 
@@ -82,7 +82,7 @@ The phone-side capture, compression, transfer and test code, and the glasses nat
 
 *Design illustration made with imagegen, not a device screenshot. The map and place names are illustrative and do not represent actual routes or display accuracy. Experimental pre-release; the lock-screen navigation problem is still open. Image generation notes.*
 
-**Pick a start and a destination, then start simulated or real navigation directly.** The phone uses Amap for planning and location, fetches licensed OSM roads nearby and converts the coordinates. The glasses draw roads, route, vehicle marker, road names and scale bar from a bounded vector scene, instead of receiving a continuous stream of full-screen screenshots. The time bar now stays in place and no longer alternates with 「导航常亮」 (navigation keep-on).
+**Pick a start and a destination, then start simulated or real navigation directly.** The phone uses Amap for planning and location, fetches licensed OSM roads nearby and converts the coordinates. The glasses draw roads, route, vehicle marker, road names and scale bar from a bounded vector scene, instead of receiving a continuous stream of full-screen screenshots. The time bar now stays in place and no longer alternates with "导航常亮" (navigation keep-on).
 
 NAVS3 fixes the old road network being cleared too early: it keeps at most two areas, requests ahead and hands over atomically. Road names are placed at visible anchors along real roads that suit the current heading. On first load, when offline, or past the map-source request budget, only the route may be shown; nearby roads are never faked. **Navigation stopping or freezing after the phone locks is a known problem. Do not use it for driving or anything safety-relevant.**
 
@@ -121,7 +121,7 @@ The matching **TMG2** defaults to a menu of three rows and three columns; the ph
 
 ### 2026-09-30 · TLC1: extension apps open even with all-day Lifelog on
 
-Fixes navigation, music, reading, Pomodoro, DiDi and mini apps sometimes failing to open from the glasses menu once the official 「全天智记」 (all-day Lifelog) is on. **Lifelog stays on and stock recording is not rewritten; only the coexistence checks of six extensions change. The AP grows by 192 bytes relative to TGR1.** The stock foreground-occupancy and assistant-activity checks are kept. The TBL1 brightness experiment patch is not included.
+Fixes navigation, music, reading, Pomodoro, DiDi and mini apps sometimes failing to open from the glasses menu once the official "全天智记" (all-day Lifelog) is on. **Lifelog stays on and stock recording is not rewritten; only the coexistence checks of six extensions change. The AP grows by 192 bytes relative to TGR1.** The stock foreground-occupancy and assistant-activity checks are kept. The TBL1 brightness experiment patch is not included.
 
 **Source, reproduction and flash notes · [Download TLC1 firmware / SHA-256 / audit](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tlc1)**
 
@@ -170,9 +170,9 @@ Uses the Watch as an input device for the glasses, relayed through the RayNeo ad
 | Self-hosted HTTP / Python / MCP | You keep the data sources and credentials, with no dependency on the author's private server |
 | 20 offline templates, copyable prompts and Agent Skill | Start from existing examples and have an Agent generate, check and package within size, component and memory limits, instead of guessing the protocol from scratch |
 
-**Changes:** the app gallery is reorganized into three entries. Opening 「我的应用」 (My Apps) queries the four slots automatically (subject to connection, busy and update-protection limits). 20 downloadable ZIPs with source notes were added, and the dashboard and mini-app backend developer guides, 12 MCP tools and the Agent Skill were completed. The phone research build also added a dashboard draft preview list; the public dashboard scope of this PR is the model and backend interface reference and does not include that full editor UI.
+**Changes:** the app gallery is reorganized into three entries. Opening "我的应用" (My Apps) queries the four slots automatically (subject to connection, busy and update-protection limits). 20 downloadable ZIPs with source notes were added, and the dashboard and mini-app backend developer guides, 12 MCP tools and the Agent Skill were completed. The phone research build also added a dashboard draft preview list; the public dashboard scope of this PR is the model and backend interface reference and does not include that full editor UI.
 
-The app gallery has three tabs: **我的应用 / 应用广场 / 开发指南** (My Apps / App Gallery / Developer Guide). The four basic examples stay, and **20 editable offline templates** are added, covering weather, rain, commute, remaining train tickets, flights, calendar, to-dos, knowledge notes, reading notes, code and service status, and more. Each has an icon, content, integration requirements, a ZIP and a copyable Agent prompt. The glasses install at most four mini apps and run one at a time; gallery entries are not all installed automatically.
+The app gallery has three tabs: "我的应用 / 应用广场 / 开发指南" (My Apps / App Gallery / Developer Guide). The four basic examples stay, and **20 editable offline templates** are added, covering weather, rain, commute, remaining train tickets, flights, calendar, to-dos, knowledge notes, reading notes, code and service status, and more. Each has an icon, content, integration requirements, a ZIP and a copyable Agent prompt. The glasses install at most four mini apps and run one at a time; gallery entries are not all installed automatically.
 
 ```sh
 npx skills add Turbo1123/Turbo-IO --skill turboio-developer -g
@@ -236,7 +236,7 @@ Publishes **Apple on-device translation, Hy-MT2 text translation and Parakeet of
 
 ### 2026-09-24 · WeChat Reading research: four-book shelf and native reading page
 
-**New eleventh research menu item 「微信读书」 (WeChat Reading): a four-cover bookshelf, a native text window and manual/auto scrolling.** Published the original AP / phone modules, build and protocol notes, and the [TWR1 as-flashed experimental firmware](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1). The AP rebuilt from source matches the flashed version; only the AP changes, and the other 13 payloads are unchanged. **The old TWR1 long-press back problem was fixed in FOCUS-04 on 09-25; the old Release is unchanged. Non-developers should not flash it; rollback and unbricking are not guaranteed.**
+**New eleventh research menu item "微信读书" (WeChat Reading): a four-cover bookshelf, a native text window and manual/auto scrolling.** Published the original AP / phone modules, build and protocol notes, and the [TWR1 as-flashed experimental firmware](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-twr1). The AP rebuilt from source matches the flashed version; only the AP changes, and the other 13 payloads are unchanged. **The old TWR1 long-press back problem was fixed in FOCUS-04 on 09-25; the old Release is unchanged. Non-developers should not flash it; rollback and unbricking are not guaranteed.**
 
 The phone module publishes the bookshelf/statistics, cover processing, TXT/EPUB import and reading transfer, **without the web-text adapter, cookies, keys or private IPA, and it is not yet wired into the main repo's default build or the TWR1 OTA packaging entry**. Do not flash until you have your own matching phone integration. This is not a claim that "download the source and you can read all WeChat Reading text directly". The bookshelf/statistics follow [Tencent/WeChatReading](https://github.com/Tencent/WeChatReading); for web reading you can study the AGPL project [finlater/weread.koplugin](https://github.com/finlater/weread.koplugin) yourself. [Architecture approach and license scope](archive/history/WEREAD_RESEARCH.md)
 
@@ -254,7 +254,7 @@ The integration limits above apply to the historical TWR1. The optional FOCUS-04
 
 - **New tenth menu item for music**; the original seven items, the eighth (Turbo Display/ANIM60) and the ninth (native navigation) stay.
 - The phone fetches playable songs, covers and lyrics and plays the audio; the glasses AP draws natively, with no continuous full-screen screenshots. Optional display: always on / 30 s / 60 s.
-- **Known problem in the old TMU1: a light touch on the knob may skip a track by mistake. FOCUS-04 on 09-25 added input filtering and debounce; the old Release is unchanged.** QR-code login may report 「环境异常」 (environment abnormal). This round was accepted with songs that play without login; risk controls, membership and copyright limits are not bypassed.
+- **Known problem in the old TMU1: a light touch on the knob may skip a track by mistake. FOCUS-04 on 09-25 added input filtering and debounce; the old Release is unchanged.** QR-code login may report "环境异常" (environment abnormal). This round was accepted with songs that play without login; risk controls, membership and copyright limits are not bypassed.
 - Targets **RayNeo AI iOS 1.0.5 (201) + Strix OS 1.0.4.12**. Android / HarmonyOS do not have this music player yet.
 
 **Full guide: build, signing, test flash, playback and protocol** · **[Download TMU1 tested firmware pre-release](https://github.com/Turbo1123/Turbo-IO/releases/tag/firmware-strix-1.0.4.12-tmu1)**. Source, the exact tested firmware and the checking tools are published; no merged IPA, personal signing, keys, accounts or cookies.
@@ -270,14 +270,14 @@ The integration limits above apply to the historical TWR1. The optional FOCUS-04
 | Feature | Turbo Display · display test (Test) | Native navigation · TNV1 |
 | --- | --- | --- |
 | What it is for | Verify image transfer, pixel rendering, partial updates and the display protocol | The phone plans the route; the glasses draw the navigation UI natively |
-| Glasses entry | Eighth item **Turbo Display** | New ninth item **导航** (Navigation); the original seven items and Turbo Display stay |
+| Glasses entry | Eighth item "Turbo Display" | New ninth item "导航" (Navigation); the original seven items and Turbo Display stay |
 | How it updates | The phone processes the image and sends a full image or partial pixel updates | The phone sends turns, distance, road name and route points; the glasses draw with LVGL |
 | What it shows | The current 512×128 grayscale canvas; the lens shows a green monochrome image | 540×180 layout: direction arrow, distance, road name, remaining info, route sketch |
 | Good for | Development debugging, test images and protocol acceptance; not a daily app or video mirroring | Continuously changing navigation guidance, without sending a whole navigation image each time |
 
 #### Navigation app: own entry and native drawing
 
-- **Own entry and lifecycle**: the glasses menu has 「导航」 (Navigation). Once the phone starts navigation it can open the page directly, without going through the official captions or teleprompter first each time.
+- **Own entry and lifecycle**: the glasses menu has "导航" (Navigation). Once the phone starts navigation it can open the page directly, without going through the official captions or teleprompter first each time.
 - **Native drawing on the glasses**: built-in turn icons, text and route sketch. The phone sends only navigation data, at most **328 B** per full snapshot, which reduces the bandwidth load of the old image-transfer approach. This is no guarantee of zero latency.
 - **Amap provides the route, the glasses show the guidance**: the phone has planning/navigation entries for walking, cycling and driving. The route sketch is not a full Amap base map or a real-world junction view.
 - **Display and exit handling**: implements stop/physical-back wrap-up, screen off after about 60 seconds without a valid update, wake on key press and optional always-on. Each branch still needs wider acceptance; there is no promise that the screen never turns off.

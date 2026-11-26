@@ -1,46 +1,46 @@
-# 雷鸟 AI iOS 1.0.7（230）· 原厂砸壳 / 未签名 IPA
+# RayNeo AI iOS 1.0.7 (230) · Stock decrypted / unsigned IPA
 
-2026-10-19 · **[下载 IPA、SHA256SUMS 与审计报告](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.7-230)** · [版本索引](../README.md)
+2026-10-19 · **[Download the IPA, SHA256SUMS and audit report](https://github.com/Turbo1123/Turbo-IO/releases/tag/rayneo-ios-1.0.7-230)** · [Version index](../README.md)
 
-这是**原厂 1.0.7（230）的砸壳副本，未加入 Turbo IO，未改变原厂功能代码**。移除了全部代码签名、描述文件和商店授权元数据，并重新归档；不是 App Store 原始加密包，也不是已签名可直接安装的成品。
+This is **a decrypted copy of stock 1.0.7 (230). It contains no Turbo IO code and the stock feature code is unchanged.** Every code signature, provisioning profile and store authorization metadata file was removed and the archive was repacked. It is not the original encrypted App Store package, and it is not a signed, ready-to-install product.
 
-**版权仍归雷鸟官方及相关权利人。** 这不是官方源码；仓库原创源码许可证不覆盖原厂二进制，不改变其原有许可，也不表示官方背书。使用者须有权使用该输入。
+**Copyright stays with RayNeo and the other rights holders.** This is not official source code. The repository's original source license does not cover the stock binary, does not change its original license and does not imply endorsement by RayNeo. You must have the right to use this input.
 
-## 精确产物
+## Exact artifact
 
-| 项目 | 值 |
+| Item | Value |
 | --- | --- |
-| 文件 | `RayNeo_AI_1.0.7_230_decrypted_unsigned_original.ipa` |
-| 版本 / Build | **1.0.7 / 230** |
+| File | `RayNeo_AI_1.0.7_230_decrypted_unsigned_original.ipa` |
+| Version / Build | **1.0.7 / 230** |
 | Bundle ID | `com.rayneo.venus.pub` |
-| 架构 / 加密状态 | arm64；全部 95 个 Mach-O 均无启用的加密标记 |
-| 大小 | **353,804,631 字节** |
+| Architecture / encryption | arm64; none of the 95 Mach-O files has encryption turned on |
+| Size | **353,804,631 bytes** |
 | IPA SHA-256 | `50df3954845e3bc2e34f9ba6def8c3837e9d1a6c232f36f3a975dd08152a3ff7` |
-| 未签名 Runner SHA-256 | `765715adebb3b6132a1870d9b500e861e028cdaecc2f6485296a428c1812e0b3` |
-| 未签名 App.framework/App SHA-256 | `041dc97ad3a864ac322e92a49d3b1ebbd466d371dc427591b0b82c8c56b5090d` |
+| Unsigned Runner SHA-256 | `765715adebb3b6132a1870d9b500e861e028cdaecc2f6485296a428c1812e0b3` |
+| Unsigned App.framework/App SHA-256 | `041dc97ad3a864ac322e92a49d3b1ebbd466d371dc427591b0b82c8c56b5090d` |
 
-## 去签名与隐私检查
+## Signature removal and privacy checks
 
-- **95/95 个 Mach-O 签名移除**；另行回读归档确认 `LC_CODE_SIGNATURE`、`LC_DYLIB_CODE_SIGN_DRS` 和启用加密的代码镜像均为 0。
-- 清理 102 个签名／商店元数据文件，包括签名目录、SC_Info、收据和描述文件。没有重新签名。
-- 与已有原厂解密输入比对：UUID、加载依赖、归一化加载命令、全部文件内 section 与签名前数据一致；签名相关头部及链接区长度变化允许，其他 2610 项资源保持原样。
-- 对照本机个人签名 profile 中的标识扫描，匹配数为 0；不发布比对标识、Cookie、Key、应用数据、个人签名或证书私钥。
-- ZIP CRC、2705 个归档成员逐个回读通过；原始输入保持不变。
-- 不含 Turbo IO、研究探针、越狱注入加载项、个人模型或 Watch 扩展。这些检查不等于对原厂所有业务或厂商内置配置的完整审计。
+- **Signatures removed from 95/95 Mach-O files.** A separate read-back of the archive confirmed that `LC_CODE_SIGNATURE`, `LC_DYLIB_CODE_SIGN_DRS` and code images with encryption turned on all number 0.
+- 102 signature and store metadata files were cleaned, including the signature directories, SC_Info, receipts and provisioning profiles. Nothing was re-signed.
+- Compared with the existing stock decrypted input: the UUIDs, load dependencies, normalized load commands, all in-file sections and pre-signature data match. Length changes in the signature-related header and link-edit areas are allowed; the other 2610 resource entries are unchanged.
+- A scan for the identifiers in the local personal signing profile found 0 matches. The compared identifiers, cookies, keys, app data, personal signatures and certificate private keys are not published.
+- The ZIP CRCs and each of the 2705 archive members passed read-back. The original input is unchanged.
+- It contains no Turbo IO, research probes, jailbreak injection load commands, personal models or Watch extension. These checks are not a complete audit of all stock business logic or vendor built-in configuration.
 
-[审计报告](audit.json)与[SHA256SUMS](SHA256SUMS)同时附在 Release；大体积 IPA 存于 Release，不加入 Git 历史。
+The [audit report](audit.json) and [SHA256SUMS](SHA256SUMS) are also attached to the release; the large IPA is stored in the release and is not added to the git history.
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 unzip RayNeo_AI_1.0.7_230_decrypted_unsigned_original.ipa -d /absolute/new-input
 ```
 
-## 合并 Turbo IO
+## Merging Turbo IO
 
-使用最新版 [APP107 / iOS 1.0.7 集成目录](../../../ios-addon/README.md)。打包器精确接受原始签名保留版或本 Release 去签名版的 Runner + App.framework **配对哈希**；不接受混搭、其他版本或未知重签输入，没有放宽固件校验和单次刷写门禁。
+Use the latest [APP107 / iOS 1.0.7 integration folder](../../../ios-addon/README.md). The packager accepts exactly the **paired hashes** of Runner + App.framework for either the original signature-preserved version or this release's de-signed version. It does not accept a mix, other versions or unknown re-signed inputs, and it does not relax the firmware checks or the single-flash gate.
 
-你仍须使用自己的合法证书、描述文件与设备授权完成合并签名；解压或去签名都不等于签名。官方登录、推送等权限需独立核验。1.0.6 输入不能替代此版本。
+You must still complete the merge signing with your own lawful certificate, provisioning profile and device authorization; unzipping or removing signatures is not signing. Official login, push and other entitlements need separate verification. A 1.0.6 input cannot stand in for this version.
 
-1.0.7 / TMG2 已有 iPhone 17 Pro Max 实测；**这份去签名派生输入只做发布审计与本地打包签名验证，没有另行安装做全功能真机回归**。不要将前者当作此 IPA 已预签名或开箱可用。
+1.0.7 / TMG2 has been tested on an iPhone 17 Pro Max. **This de-signed derived input has only had the release audit and a local package-and-sign check; it has not been installed separately for a full-feature real-device regression.** Do not take the former as meaning this IPA is pre-signed or works out of the box.
 
-`sanitize.py` 只处理固定哈希的已有原厂未加密输入／已取得的解密主程序，不执行设备砸壳、联网提取、安装、签名或刷写；输出必须是新目录，原输入不修改。未知版本、代码和研究注入项会被拒绝。
+`sanitize.py` processes only an existing stock unencrypted input with a pinned hash, or a decrypted main binary already obtained. It does not decrypt on a device, extract over the network, install, sign or flash. The output must be a new directory; the original input is not modified. Unknown versions, code and research injections are refused.

@@ -11,7 +11,7 @@ English | [中文](README-zh.md)
 | Text translation | Apple system Translation, or Hy-MT2-1.8B-1.25Bit GGUF; the current UI translates between Chinese and English |
 | Offline English ASR | Parakeet Realtime EOU 120M CoreML / FluidAudio, 320 ms model chunks; this is not a 320 ms end-to-end latency, and it is not Chinese ASR |
 | Audio input | The phone microphone, or an AirPods/Bluetooth HFP input that the system actually lists; a route change stops capture instead of switching silently |
-| Caption translation | "Fast pre-translation" (快速预译) is on by default: after about 6 recognized words it tries a short prefix and keeps the trailing context; Hy-MT streams its output, Apple returns a whole result for each prefix |
+| Caption translation | "快速预译" (Fast pre-translation) is on by default: after about 6 recognized words it tries a short prefix and keeps the trailing context; Hy-MT streams its output, Apple returns a whole result for each prefix |
 | Lens sync | The stock caption display-only channel, service 19: set → match the SID receipt → text → exit; the stock recording uplink is not started |
 | Runtime limits | Foreground only, started by the user; leaving the page, going to the background, an interruption or an input route change stops it; 20-minute guard |
 
@@ -35,7 +35,7 @@ python3 ios-addon/local-translation/models.py \
   --out ios-addon/local-translation/work/models --accept-model-licenses
 ```
 
-The downloader fetches only fixed public versions and checks each file's length and SHA-256. On failure it keeps the `.download` file for inspection; retry with a new output directory. Do not swap in other weights under the same file names to get past the check. Apple language packs are not downloaded here: in the app, tap "Prepare Apple language packs" (准备 Apple 语言包) and explicitly agree to the system download. Offline translation works only after that.
+The downloader fetches only fixed public versions and checks each file's length and SHA-256. On failure it keeps the `.download` file for inspection; retry with a new output directory. Do not swap in other weights under the same file names to get past the check. Apple language packs are not downloaded here: in the app, tap "准备 Apple 语言包" (Prepare Apple language packs) and explicitly agree to the system download. Offline translation works only after that.
 
 ## 2. Build the translation module and the host entry
 
@@ -73,10 +73,10 @@ Replace the placeholder paths and signing arguments with your own. **Do not ente
 ## 4. Use it on the phone
 
 1. Open "TurboIO → Library → Apple / Hy-MT2 local translation". Test a short sentence first. For Apple, prepare the language packs first; Hy-MT verifies the bundled on-device model automatically.
-2. Tap the microphone at the top right to enter "Offline English captions" (英语离线字幕). Choose English only or a translation engine, the input device, and whether to sync to the glasses.
+2. Tap the microphone at the top right to enter "英语离线字幕" (Offline English captions). Choose English only or a translation engine, the input device, and whether to sync to the glasses.
 3. First stop other tasks such as music, TTS, conversation, recording and navigation. Then tap start yourself and allow the microphone. The first model check and load can take a few seconds.
 4. With lens sync on, wait for this session's SID success receipt. If it fails, turn lens sync off and test capture on the phone first. It does not seize the official session.
-5. Speak English. The English text appears first, then the translation marked "pre-translation" (预译). For steadier output, turn off "Fast pre-translation". Stopping or leaving the page cancels capture and translation.
+5. Speak English. The English text appears first, then the translation marked "预译" (pre-translation). For steadier output, turn off "快速预译" (Fast pre-translation). Stopping or leaving the page cancels capture and translation.
 
 Other features of the official app may still use the network. "Local translation" means only that this recognition and translation chain has no cloud fallback; it does not mean the whole host app is offline.
 

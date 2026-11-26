@@ -35,7 +35,7 @@ This is an unofficial SDK and set of patched builds for RayNeo iO glasses. It co
 - **Commit subjects** follow `<line>(<n>): <what changed, in plain words>`, for example `tmg9(3): …` for firmware or `ds3(p2): …` for the phone.
   - Describe the change, not a test result.
   - Agent commits end with a `Co-Authored-By:` trailer.
-- Docs, agent docs and commit messages are in English. A reader-facing README may have a Chinese copy, `README-zh.md`, next to it; change both in the same commit so they stay in step. Quoted on-device or in-app UI labels stay in the language the UI shows.
+- Docs, agent docs and commit messages are in English. A reader-facing README may have a Chinese copy, `README-zh.md`, next to it; change both in the same commit so they stay in step. Quoted on-device or in-app UI labels stay in the language the UI shows, with an English gloss in parentheses when the label is Chinese: "眼镜锁" (Glasses lock).
 
 ## Porting to a new RayNeo release
 
@@ -53,7 +53,7 @@ Follow [docs/porting-flow.md](docs/porting-flow.md): present the whole plan to t
 | Path | Contents |
 |---|---|
 | `ios-addon/` | The iOS addon (Objective-C and C) for RayNeo AI 1.0.21 (1), with its build, packaging, tests and the OTA flash guide |
-| `official-addon/` | Leftovers kept for other users: `research/` (compiled by the dashboard-service tests), its `Core.h`, and the tracked root `PrivateBootstrap` sources (builds use ignored private copies) |
+| `official-addon/` | Leftovers kept for other users: an older `Core.h` that nothing builds, and the tracked root `PrivateBootstrap` sources (builds use ignored private copies) |
 | `firmware/` | The patched glasses firmware, as one tree. Each release is an annotated `fw/tmgN` tag, the release label is in `firmware/RELEASE`, and `firmware/baseline/` holds the few inputs carried over from older releases. |
 | `firmware-research/` | Stock firmware ZIPs that the firmware build and the gate read (`strix-1.0.5.5/stock`, `strix-1.0.5.12/stock`). The stock 1.0.6.11 ZIP stays under `$TURBO_INPUTS`; `firmware/build.py --show stock-zip` prints its path. |
 | `scripts/` | Gate, packaging and source audit |

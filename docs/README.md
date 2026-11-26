@@ -2,7 +2,7 @@
 
 New here? Start with the [project README](../README.md). Agents should read [AGENTS.md](../AGENTS.md) first.
 
-The docs are in English. Three reader-facing READMEs also have a Chinese copy, `README-zh.md`, kept in step with the English one: the [app gallery](../app-gallery/README-zh.md), the [self-hosted backend](../dashboard-service/README-zh.md) and [local translation](../ios-addon/local-translation/README-zh.md).
+The docs are in English. Four reader-facing READMEs also have a Chinese copy, `README-zh.md`, kept in step with the English one: the [project README](../README-zh.md), the [app gallery](../app-gallery/README-zh.md), the [self-hosted backend](../dashboard-service/README-zh.md) and [local translation](../ios-addon/local-translation/README-zh.md).
 
 Status column:
 - **Current**: describes the build as it is today.

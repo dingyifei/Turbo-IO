@@ -148,7 +148,7 @@ The source has no default developer tenant or credentials. The services you prov
 | Reverse sync of glasses to-dos | Currently has a bug where completion status does not come back to the app |
 | Teleprompter, weather, notifications | Connected, partly accepted on the lens; not every icon/knob/layout is covered yet |
 | Codex send task/query result/proactive reminder | Real-device records; no APNs, voice auto-approval not enabled |
-| All-day memory | Time-limited experiment: raw packets/computer decoding/ASR comparison; not a full all-day product chain |
+| All-day Lifelog | Time-limited experiment: raw packets/computer decoding/ASR comparison; not a full all-day product chain |
 | Display observer | Real page state→USB→web; not a lens screenshot |
 | NAS/Obsidian automatic filing | Not finished; a local export base exists |
 

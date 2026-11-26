@@ -7,7 +7,7 @@
 | Part | Status in this release |
 | --- | --- |
 | iOS receiver | TAR2. The user tested it in a private integrated build on iPhone 17 Pro Max / 1.0.7 (230) and reported it passed. The standalone GPLv3 receiver SDK is public; no private merged or signed IPA is provided. |
-| Glasses firmware | Stock 1.0.5.5 baseline + TVP2. Published: the unmodified ZIP/AP, checksums, and reproducible extension source. |
+| Glasses firmware | Stock 1.0.5.5 baseline + TVP2. Published: the ZIP/AP exactly as flashed, checksums, and reproducible extension source. |
 | Android | The AirPlay receiver was not ported in this round. The Android plugin already in the repo does not mean this feature is supported there. |
 | Stock older firmware / TMG2 / TVP1 | Cannot run the new 540×220 tiled protocol. The handshake rejects them; updating only the phone does not give you HD. |
 
@@ -21,7 +21,7 @@ If you port the existing OTA component yourself, keep the original protections a
 
 ## Firmware install (phone side that matches and has the TVP2 gate wired in)
 
-1. Export or back up the phone app data you need. Make sure the glasses are at 50% battery or more, go back to the home screen, and end recording, smart notes, navigation, music, reading, camera, Mentra and other tasks.
+1. Export or back up the phone app data you need. Make sure the glasses are at 50% battery or more, go back to the home screen, and end recording, Lifelog, navigation, music, reading, camera, Mentra and other tasks.
 2. Download the full TVP2 ZIP for this release and check it against the pinned SHA with `shasum -a 256 <ZIP>`. The AP on its own is not a flash input.
 3. On the phone, open TurboIO → "设置" (Settings) → "诊断与实验固件" (Diagnostics and experimental firmware) → TVP2. The built-in candidate or the imported ZIP must actually pass verification.
 4. Turn on "15分钟只下载验收" (15-minute download-only acceptance), go back to the stock firmware page, check for and download the update, and wait for "软件就绪" (Software ready). This step does not authorize the install.
@@ -36,7 +36,7 @@ Put the receiving iPhone and the sending device on the same Wi-Fi and allow loca
 
 Start with a landscape desktop, the photo library or a large-text web page, not protected streaming media. The full picture keeps its aspect ratio, so portrait content can be very narrow; for small text, use partial zoom and drag to position it. The defaults are 8 gray levels and a 10 fps target; you can compare 4/8/16 gray levels. HD increases the transfer volume, and the target frame rate is not the actual frame rate.
 
-Check acceptance stage by stage: Bonjour service published → connected → video received → phone decodes → glasses confirm complete frames → clearly visible on the lens. Short press pauses/resumes, long press exits. Afterwards, check that it closed normally, then test stock head-up wake, recording/smart notes and the old apps. Receiving on the lock screen or in the background is not supported in this release.
+Check acceptance stage by stage: Bonjour service published → connected → video received → phone decodes → glasses confirm complete frames → clearly visible on the lens. Short press pauses/resumes, long press exits. Afterwards, check that it closed normally, then test stock head-up wake, recording/Lifelog and the old apps. Receiving on the lock screen or in the background is not supported in this release.
 
 ## Measured results and limits
 

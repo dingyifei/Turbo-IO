@@ -1,3 +1,5 @@
+English | [中文](README-zh.md)
+
 # Turbo IO
 
 An unofficial SDK and set of patched builds for RayNeo iO glasses. It has two parts:

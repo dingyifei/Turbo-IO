@@ -26,7 +26,7 @@ not get these capabilities automatically. App installs on the private TAP1
 SPACEFIX-01 build have passed in a user's real-device report; the new templates
 in this release still need their own real-device acceptance, one by one. The
 iOS phone module is already built as part of [ios-addon](../ios-addon/README.md), but you still have to build and sign it yourself; do not treat the old FOCUS-04 as a complete package that already includes the current SDK.
-Without the runtime you can still do server, ZIP, SVG and simulator development. That is no reason to flash an unknown package. Once a compatible runtime is installed, importing a compatible card or app ZIP does not need a reflash each time.
+Without the runtime you can still do server, ZIP, SVG and simulator development. Do not flash an unknown package because of this. Once a compatible runtime is installed, importing a compatible card or app ZIP does not need a reflash each time.
 
 ## 1. Ten-minute offline quick start
 
@@ -47,7 +47,7 @@ a clearly labelled offline sample. It needs no third-party credentials, and it
 does not call MCP, flash or install anything automatically. If an output file
 already exists, the command refuses to overwrite it.
 
-Phone: **首页 (Home) → 应用广场 (App Gallery) → 我的应用 (My Apps) → 导入应用 ZIP (Import app ZIP)**.
+Phone: "首页 → 应用广场 → 我的应用 → 导入应用 ZIP" (Home → App Gallery → My Apps → Import app ZIP).
 Review each page, the permissions and the hash, query the current glasses
 slots, send the glasses back to their home screen, then confirm the install. An
 update with the same ID must raise version; there are four slots at most. After

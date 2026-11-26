@@ -6,14 +6,13 @@ What stays here:
 
 | Path | Purpose |
 | --- | --- |
-| research/ | app-runtime-v1 and dashboard-editor-v1, plus the menu8 and navigation headers they include; compiled by the dashboard-service tests. |
-| `Core.h` | Header kept for the research sources. The addon has its own copy. |
+| `Core.h` | An older copy of the addon's core header. Nothing builds it now; the addon uses its own `ios-addon/Core.h`. |
 | `PrivateBootstrap.h/.m`, `PrivateBootstrapTests.m` | The tracked root parser and its tests, kept for compatibility. Builds use ignored private copies. No private configuration belongs in the source release. |
 
 <a id="1-兼容性门槛"></a>
 ## Archived
 
-navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. cleanup(3) then removed knowledge-bridge/, tar2-airplay/, tar2-display/, docs/ and the research modules nothing builds any more (focus, music, weread, most of navigation). The 1.0.7 and 1.0.11 host code left with C21. All of it is in git history.
+navs3-edition, tmig1-edition, focus-edition, the root V2 sources, music/ and preview/ were removed from the tree and are kept in commit `27ad86e`, which is on `main`'s history. cleanup(3) then removed knowledge-bridge/, tar2-airplay/, tar2-display/, docs/ and the research modules nothing builds any more (focus, music, weread, most of navigation). The 1.0.7 and 1.0.11 host code left with C21. post17(2) removed research/ once the dashboard-service tests compiled the live sources; its last state is in commit `b389cc6`. All of it is in git history.
 
 ```sh
 git show 27ad86e:official-addon/navs3-edition/README.md

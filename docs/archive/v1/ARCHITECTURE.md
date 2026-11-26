@@ -46,7 +46,7 @@ Once, the service returned "task-finished" with an empty result. Comparing the l
 
 A copy hash proves only the local copy. An Ogg CRC proves only the subset of the structure the checker covers. Decodable does not mean the content is correct. A finished transcription does not mean the file has reached the NAS or Obsidian. Each layer records its state separately, and derived files never overwrite the original audio.
 
-"全天智记" (all-day memory) has a different lifecycle and its own real-time and cached messages; conclusions about ordinary recordings do not carry over to it. So far only time-limited raw packets and decoding/recognition experiments are done. Proper long-duration segmentation, re-upload and archiving are still in development.
+"全天智记" (all-day Lifelog) has a different lifecycle and its own real-time and cached messages; conclusions about ordinary recordings do not carry over to it. So far only time-limited raw packets and decoding/recognition experiments are done. Proper long-duration segmentation, re-upload and archiving are still in development.
 
 ## 5. Codex: the model picks the tool, the computer runs it
 
@@ -70,4 +70,4 @@ Background mode allows some system behaviors but does not guarantee that a timer
 
 ## 8. The most important gaps now
 
-Merging the to-do completion sent back from the glasses still has an unfixed problem. The following still need verification: the full file picker for sharing, finishing the latest voice turn, long-term background running, compatibility with more devices and firmware, our own TTS, turning "全天智记" (all-day memory) into a product, and automatic NAS import. The source is open for reproducibility and collaboration. A research prototype is not presented as a general SDK that covers every hardware edge case.
+Merging the to-do completion sent back from the glasses still has an unfixed problem. The following still need verification: the full file picker for sharing, finishing the latest voice turn, long-term background running, compatibility with more devices and firmware, our own TTS, turning "全天智记" (all-day Lifelog) into a product, and automatic NAS import. The source is open for reproducibility and collaboration. A research prototype is not presented as a general SDK that covers every hardware edge case.

@@ -1,7 +1,7 @@
-# 公开区域地图回归样本
+# Public-area map regression samples
 
-`hongkong.json`、`shenzhen.json` 是 OpenStreetMap API 0.6 的公开区域摘录，源 URL、范围、下载日期、原始摘要和许可记录在各自 `meta` 中；`replay.json` 为合成移动轨迹，不是用户位置记录。
+`hongkong.json` and `shenzhen.json` are public-area extracts from the OpenStreetMap API 0.6. The source URL, bounds, download date, original digest and license are recorded in each file's `meta`. `replay.json` is a synthetic movement track, not a record of anyone's location.
 
-© OpenStreetMap contributors，地图数据采用 [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)，参见 [OpenStreetMap 版权与署名](https://www.openstreetmap.org/copyright)。仓库非商业源码许可不替代这些数据的许可。
+© OpenStreetMap contributors. The map data is under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/); see [OpenStreetMap copyright and attribution](https://www.openstreetmap.org/copyright). The repository's non-commercial source license does not replace the license of this data.
 
-只用于离线回归，默认不复制进 App。实际导航基于用户所选起终点，首次获取周边路网前需同意向图源发送区域范围；没有预置个人行程或服务凭据。
+For offline regression only; not copied into the app by default. Real navigation uses the start and destination the user picks, and the user must agree to send the area bounds to the map source before the surrounding road network is first fetched. No personal trips or service credentials are bundled.

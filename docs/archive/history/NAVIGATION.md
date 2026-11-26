@@ -78,21 +78,21 @@ The input app is not modified, and the output directory must not already exist. 
 
 1. In the AMap console, create an **iOS platform key** bound to the real app Bundle ID; the target here is `com.rayneo.venus.pub`. A Web service key or TinyFish key cannot replace the iOS key.
 2. Enable the map, search and navigation services your account needs; AMap manages service permissions and quotas.
-3. In the app, go to **TurboIO → 资料 (Profile) → 步行 / 骑行 / 驾车导航 (Walking / Cycling / Driving navigation) → 更多 (More) at the top right → 高德 Key 设置 (AMap key settings)** and paste your key.
+3. In the app, go to "TurboIO → 资料 → 步行 / 骑行 / 驾车导航" (TurboIO → Profile → Walking / Cycling / Driving navigation), open "更多" (More) at the top right, choose "高德 Key 设置" (AMap key settings) and paste your key.
 4. The key is stored only in the local keychain, and the old value is never shown again. The public build has no maintainer key and no logic that imports a key from a private build. To change the key, restart the app first and change it before the map initializes.
 5. Tap "开启地图" (Turn on map), read the privacy notice, then decide whether to agree. If you decline, the map SDK is not initialized. Location is requested only when you tap "我的位置" (My location) or use live navigation; simulation does not need your real location.
 
 ## 5. Use simulation for the first run
 
-1. On the RayNeo app home page, confirm the glasses are connected, and end any recording, teleprompter, subtitles, smart notes and conversation. V2 works inside the same host, so V1 does not need to be opened; do not unpair repeatedly to use navigation.
-2. Open navigation, choose **步行 / 骑行 / 驾车** (Walking / Cycling / Driving) first, and keep **模拟验收** (Simulation check). Tap "去哪里？" (Where to?), enter a place and an optional city, then tap **搜索地点** (Search place) or the keyboard's search key. Typing alone does not upload a query per character; you can tap cancel while a search runs.
+1. On the RayNeo app home page, confirm the glasses are connected, and end any recording, teleprompter, subtitles, Lifelog and conversation. V2 works inside the same host, so V1 does not need to be opened; do not unpair repeatedly to use navigation.
+2. Open navigation, choose "步行 / 骑行 / 驾车" (Walking / Cycling / Driving) first, and keep "模拟验收" (Simulation check). Tap "去哪里？" (Where to?), enter a place and an optional city, then tap "搜索地点" (Search place) or the keyboard's search key. Typing alone does not upload a query per character; you can tap cancel while a search runs.
 3. Pick a search result, or **tap** the map to choose the destination. You can also drag the map and tap "将地图中心设为终点" (Set map center as destination).
-4. The simulation start and the destination are independent. The initial Beijing start has a clear label. To test elsewhere, switch to **选模拟起点** (Pick simulation start) and tap the map, or tap "我的位置" (My location) to use the phone's current position. Searching or dragging the map does not change the start.
+4. The simulation start and the destination are independent. The initial Beijing start has a clear label. To test elsewhere, switch to "选模拟起点" (Pick simulation start) and tap the map, or tap "我的位置" (My location) to use the phone's current position. Searching or dragging the map does not change the start.
 5. The **＋ / －** buttons on the right zoom; the crosshair in the middle is not a button. The map can be dragged, and a tap or long press picks a point for the current role.
-6. Tap **规划路线** (Plan route), check the route, distance and time for the chosen travel mode, then tap **开始模拟** (Start simulation). The 更多 (More) menu at the top right has a public Beijing demo route, so you can run the check without a private location.
-7. When live guidance appears on the phone, tap **开启眼镜字幕显示** (Turn on glasses subtitle display) and confirm the lens home page has no other task. Text starts only after a new session ACK.
+6. Tap "规划路线" (Plan route), check the route, distance and time for the chosen travel mode, then tap "开始模拟" (Start simulation). The "更多" (More) menu at the top right has a public Beijing demo route, so you can run the check without a private location.
+7. When live guidance appears on the phone, tap "开启眼镜字幕显示" (Turn on glasses subtitle display) and confirm the lens home page has no other task. Text starts only after a new session ACK.
 8. On normally supported versions you do not need to go through the official "实时字幕→预览→退出" (Live subtitles → Preview → Exit) every time. Only the layout and configuration are restored; an expired SID is not reused and Bluetooth is not assumed to be connected.
-9. **停止眼镜显示** (Stop glasses display) keeps the phone simulation running; **结束导航** (End navigation) stops this task. If the exit acknowledgement is unclear, the state stays uncertain. If the lens does not close, exit with the physical button; do not stack sessions one after another.
+9. "停止眼镜显示" (Stop glasses display) keeps the phone simulation running; "结束导航" (End navigation) stops this task. If the exit acknowledgement is unclear, the state stays uncertain. If the lens does not close, exit with the physical button; do not stack sessions one after another.
 
 Changing the start, destination or travel mode of a planned route that has not started clears the old route, and you must plan again. During real navigation, stop first before changing the destination. The 4-minute subtitle guard is not a fault; do not work around it with an automatic restart loop.
 
@@ -116,7 +116,7 @@ Changing the start, destination or travel mode of a planned route that has not s
 | Offline preview / SDK not linked message | Rebuild with `TIO_AMAP_ENABLED=1` and pass the resource parameter; entering a key cannot supply missing binary dependencies |
 | Start and destination less than 30 m apart | Choose the start or destination again. Dragging the map alone does not change the fixed start |
 | Glasses display button unavailable | Start a real AMap simulation first and wait for a fresh navigation callback; stop other display tasks. It is not live navigation mode and not an offline fixture |
-| Display still asks for format/connection | Confirm the current connection on the home page; by default only supported versions match. An unknown format is relearned in the subtitle check under 更多 (More); do not reuse an old session |
+| Display still asks for format/connection | Confirm the current connection on the home page; by default only supported versions match. An unknown format is relearned in the subtitle check under "更多" (More); do not reuse an old session |
 | Stops after about 4 minutes / stops when leaving the foreground | Current experimental guard. Long outdoor/background runs are not finished; staying on is not promised |
 | Re-signed install will not open | Check unlock, Developer Mode, certificate/provisioning profile and system prompts; do not try to recover by wiping the only original app |
 

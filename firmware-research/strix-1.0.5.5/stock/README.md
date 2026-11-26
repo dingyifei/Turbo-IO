@@ -1,27 +1,27 @@
-# Strix OS 1.0.5.5 · 官方原始固件归档
+# Strix OS 1.0.5.5 · Official original firmware archive
 
-2026-10-14。**这是官方原厂版本，不含 Turbo IO 自定义改动。不是修改版，也不是 ZIP 重封装。**
+2026-10-14. **This is the official stock version, with no Turbo IO changes. It is not a modified build and not a repacked ZIP.**
 
-**[下载原始 ZIP](Strix-OS-1.0.5.5-original.zip) · [SHA256SUMS](SHA256SUMS) · [TMIG1 自定义包与风险](../../README.md)**
+**[Download the original ZIP](Strix-OS-1.0.5.5-original.zip) · [SHA256SUMS](SHA256SUMS) · [TMIG1 custom package and risks](../../README.md)**
 
-- 来源：RayNeo AI iOS **1.0.6（218）** 的真实固件更新响应；仅把官方下载文件原样归档。
-- 官方下载地址：[原始固件文件](https://file-tdp-ffalcon-o.api.leiniao.com/res/e655a4a0/thirdapk_824eb1d21bb2be146ec2b9043cca438e.zip)。服务端链接可能变动，以本仓库固定哈希核对归档。
-- 大小：**8,740,749 字节**。
-- 服务端/原包 MD5：`824eb1d21bb2be146ec2b9043cca438e`。
-- SHA-256：`2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367`。
-- ZIP 共 16 项：15 个原厂负载及 `OtaFileInfo.json`；ZIP CRC 与每个负载 Size/MD5 均核对。包含新 `bt_controller.bin`。
+- Source: a real firmware update response to RayNeo AI iOS **1.0.6 (218)**; only the official download file was archived, exactly as downloaded.
+- Official download address: [original firmware file](https://file-tdp-ffalcon-o.api.leiniao.com/res/e655a4a0/thirdapk_824eb1d21bb2be146ec2b9043cca438e.zip). The server link may change; check the archive against the hash pinned in this repository.
+- Size: **8,740,749 bytes**.
+- Server / original package MD5: `824eb1d21bb2be146ec2b9043cca438e`.
+- SHA-256: `2927917f976ef3c9b183253e2342a7a0c85a3e454e973876100f3158da5ec367`.
+- The ZIP has 16 entries: 15 stock payloads and `OtaFileInfo.json`. The ZIP CRCs and each payload's Size/MD5 were all checked. It includes the new `bt_controller.bin`.
 
 ```sh
 cd firmware-research/strix-1.0.5.5/stock
 shasum -a 256 -c SHA256SUMS
 ```
 
-## 想恢复原厂时
+## If you want to go back to stock
 
-优先使用**雷鸟官方 App 正常提供的兼容固件更新与厂商支持流程**，确认它确实是适用的原厂候选。不要把旧 1.0.4.12 AP 塞进新版完整包，也不要仅根据名称或改名强刷。
+First use **the compatible firmware update and vendor support process that the official RayNeo app normally offers**, and confirm that it really is an applicable stock candidate. Do not put the old 1.0.4.12 AP into a newer full package, and do not force-flash based on a name or a rename alone.
 
-**本次公开 TMIG1 安装器固定绑定自定义包，会拒绝把此原厂 ZIP 当作 TMIG1。** 官方是否提供同版本重装取决于其更新流程；本项目当前没有承诺可直接导入此归档的一键同版本恢复工具。不要为了恢复删掉哈希、设备、清单或刷写保护。需原厂恢复的开发者，应另行核对匹配的正常安装路径，未确认前仅把本文件用于离线分析与比较。
+**The public TMIG1 installer from this release is pinned to the custom package and refuses to treat this stock ZIP as TMIG1.** Whether RayNeo offers a same-version reinstall depends on its update process; this project does not currently promise a one-step same-version recovery tool that can import this archive. Do not remove the hash, device, manifest or flash protections to recover. Developers who need a stock recovery should separately verify a matching normal install path; until that is confirmed, use this file only for offline analysis and comparison.
 
-这是 OTA 文件，不是整机闪存备份、启动器备份或救砖工具。设备已经无法启动、失去蓝牙/OTA 或刷写状态不明时，拿到原厂 ZIP 也不保证可恢复。**非开发者不要刷；掉电、中断、误操作均可能损坏设备。**
+This is an OTA file. It is not a full flash backup, a bootloader backup or an unbricking tool. If the device no longer boots, has lost Bluetooth/OTA, or its flash state is unknown, having the stock ZIP does not guarantee recovery. **Non-developers must not flash it. A power loss, an interruption or a mistake can all damage the device.**
 
-版权仍归雷鸟官方及原权利人，归档不把原厂固件重新许可为本仓库原创开源代码。不包含个人账号、Cookie、Key、设备记录或 Apple 签名材料。
+Copyright stays with RayNeo and the original rights holders; archiving does not relicense the stock firmware as this repository's original open-source code. It contains no personal accounts, cookies, keys, device records or Apple signing material.
