@@ -32,25 +32,23 @@ The glasses pictures are drawn on a Mac by the firmware's own layout code, with 
 
 <a id="ios107-update"></a>
 
-## Current release: C24 + TMG15
+## Current release: C26 + TMG17
 
-Always use the phone build and the firmware as a pair. C24 carries two packages, and you pick one in its flash wizard: TMG15, or stock Strix OS 1.0.6.11 to go back.
+Always use the phone build and the firmware as a pair. C26 carries two packages, and you pick one in its flash wizard: TMG17, or stock Strix OS 1.0.6.11 to go back.
 
 | | |
 |---|---|
-| Phone build | C24: RayNeo AI 1.0.21 (1), full build |
-| Firmware | TMG15: TMG12 plus a PIN lock for the glasses, on stock Strix OS 1.0.6.11 |
-| TMG15 ZIP | `StrixOS-1.0.6.11-TurboIO-TMG15-CANDIDATE-NOT-APPROVED.zip`, 9,559,509 bytes |
-| TMG15 ZIP SHA-256 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
-| Stock ZIP SHA-256 | `5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e` (9,447,267 bytes) |
-| Glasses must report | Strix OS 1.0.5.12 or 1.0.6.11 |
-| Build identity after a TMG15 flash | `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26` |
+| Phone build | C26: RayNeo AI 1.0.21 (1), full build |
+| Firmware | TMG17: TMG15 (TMG12 plus the glasses PIN lock) with a new PIN screen and a Do Not Disturb fix, on stock Strix OS 1.0.6.11 |
+| TMG17 ZIP SHA-256 | `dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01` |
 
-New in this release is the glasses lock. The glasses lock after they have been folded or left idle for a set time. You unlock them with a 4-digit PIN on the knob, or from the phone. While locked, the display is dark and nothing can be started: no key, no wake word, no microphone. With "Stay unlocked while worn" on, glasses on your head do not lock. The lock keeps a casual hand off your glasses; it is not built to resist a determined one. Set it up in Turbo › Glasses › Glasses lock.
+The pair is on the owner's devices (C26 installed and TMG17 flashed on 2026-11-24) but is not yet accepted as released or tagged. The owner's checks of what is new have not been reported yet. Every hash, what was checked and the way back are in the [release record](ios-addon/RELEASE.md). The last accepted pair, C24 + TMG15, is the way back.
 
-TMG15 was flashed from C24 on 2026-11-23 and passed the owner's device check (tags `app/c24` and `fw/tmg15`). It changes two firmware files, the launcher image and the Bluetooth core's image. The pins are the `c24` entry in [releases.json](ios-addon/releases.json).
+The lock came with TMG15. The glasses lock after they have been folded or left idle for a set time. You unlock them with a 4-digit PIN on the knob, or from the phone. While locked, the display is dark and nothing can be started: no key, no wake word, no microphone. With "Stay unlocked while worn" on, glasses on your head do not lock. The lock keeps a casual hand off your glasses; it is not built to resist a determined one. Set it up in Turbo › Glasses › Glasses lock.
 
-To flash, follow [OTA.md](ios-addon/OTA.md). Flash only these ZIPs, and only if the SHA-256 matches the line above.
+New since TMG15: a PIN screen redrawn to the design system, with the digit you are entering drawn large (TMG16), a PIN screen that stays up with Do Not Disturb on, and a wrong-tries notice that goes dark after 30 s (TMG17). TMG16 + C25 were built but never installed or tagged.
+
+To flash, follow [OTA.md](ios-addon/OTA.md). Flash only the ZIPs it lists, and only if the SHA-256 matches.
 
 ### Earlier releases
 
@@ -58,6 +56,7 @@ Each release is an annotated git tag. Run `git show <tag>` to see its ZIP SHA-25
 
 | Phone | Firmware | RayNeo AI host | Stock Strix OS | Tags |
 |---|---|---|---|---|
+| C24 | TMG15 | 1.0.21 (1) | 1.0.6.11 | `app/c24`, `fw/tmg15` |
 | C20, C21 | TMG12 | 1.0.21 (1) | 1.0.6.11 | `app/c20`, `app/c21`, `fw/tmg12` |
 | C18 | TMG11 | 1.0.11 (259) | 1.0.5.12 | `app/c18`, `fw/tmg11` |
 | C16 | TMG10 | 1.0.11 (259) | 1.0.5.12 | `app/c16`, `fw/tmg10` |
@@ -83,7 +82,7 @@ You need your own decrypted copy of RayNeo AI 1.0.21 (1), your own signing setup
 
 1. Run the quick check: `bash scripts/turbo-gate.sh --only-build`
 2. Run the full check: `bash scripts/turbo-gate.sh`
-3. Build and sign C24: `bash scripts/turbo-package.sh --host 1021-full --wire-log <label>`
+3. Build and sign C26: `bash scripts/turbo-package.sh --host 1021-full --wire-log <label>`
 4. Install the IPA over the existing app yourself. Then flash with [OTA.md](ios-addon/OTA.md).
 
 The stock app inputs this project has published (1.0.7 and older) are listed in [official-apps](official-apps/README.md). They contain no Turbo IO code.
@@ -100,7 +99,7 @@ Copy this prompt:
 Help me build Turbo IO from this repository, for personal non-commercial use.
 Read README.md, AGENTS.md and docs/AI_SETUP.md first.
 Check my tools and any uncommitted changes. Do not overwrite or reset anything.
-Use the repo's own scripts: run scripts/turbo-gate.sh, then build C24 with scripts/turbo-package.sh --host 1021-full --wire-log.
+Use the repo's own scripts: run scripts/turbo-gate.sh, then build C26 with scripts/turbo-package.sh --host 1021-full --wire-log.
 If an input does not match its pinned version or hash, stop and tell me what is missing. Never change a check to get past it.
 Do not install the app, flash the glasses or delete any app. I do those myself.
 I enter keys and signing passwords myself. Never ask for them in chat, and never commit them.
@@ -110,7 +109,8 @@ At the end, report what passed, what failed and what was not run. A passing buil
 ## Where to go next
 
 - [OTA.md](ios-addon/OTA.md): flash the current pair, and what to do if the gate refuses.
-- [firmware/README.md](firmware/README.md): the firmware tree, its build and the record of each release.
+- [RELEASE.md](ios-addon/RELEASE.md): the release record, with every hash, the device status and the way back.
+- [firmware/README.md](firmware/README.md): the firmware tree, what the lock does, and the build.
 - [Addon README](ios-addon/README.md): the phone addon, its build and its test groups.
 - [docs/README.md](docs/README.md): the index of all other docs, including the developer SDK and the design system.
 

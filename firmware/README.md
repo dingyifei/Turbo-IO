@@ -6,34 +6,25 @@ There is one tree. The release label is the single line in [`RELEASE`](RELEASE).
 
 Agents never flash. The owner flashes, with the steps in [OTA.md](../ios-addon/OTA.md).
 
-## Current release: TMG15
+## Current release: TMG17
 
-TMG15 is on the owner's glasses: flashed from C24 on 2026-11-23, and the owner's device check passed (see [Device check](#device-check)). It is tagged `fw/tmg15`. The ZIP keeps its pinned file name, `CANDIDATE-NOT-APPROVED` included. The phone build that flashes it is C24 (release `c24` in [releases.json](../ios-addon/releases.json)).
+TMG17 is on the owner's glasses, flashed from C26 on 2026-11-24, but the owner has not yet accepted it as released and it is not tagged. The owner's checks of what is new since TMG15 have not been reported yet. The release record, with every hash, what was checked and the device status, is in [RELEASE.md](../ios-addon/RELEASE.md). The last tagged release is TMG15 (`fw/tmg15`), and C24 + TMG15 is the way back.
 
-TMG15 is TMG12 plus a PIN lock for the glasses, on the same stock base, Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)). It is the first release that changes two payloads: the launcher image `nuttx_ap.bin`, and the Bluetooth core's image `nuttx_bth.bin`. The design is in [docs/lock-design.md](../docs/lock-design.md).
-
-TMG13 (the lock alone) and TMG14 (the lock with head motion) were device candidates on the way to TMG15. They are not tagged.
-
-| Item | Value |
+| | |
 | --- | --- |
-| ZIP | `StrixOS-1.0.6.11-TurboIO-TMG15-CANDIDATE-NOT-APPROVED.zip`, 9,559,509 bytes |
-| ZIP SHA-256 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
-| ZIP MD5 | `0b9dbe99397639c90bde89d534ce7794` |
-| Pinned copy | `$TURBO_INPUTS/tmg15/` |
-| AP (`nuttx_ap.bin`) | 8,147,400 bytes, SHA-256 `ce6815c8a9ec12e555bef80d89f7fcd21dab156bb972125951d4a848f6b6f725`, MD5 `c2233e05c0354d2fb6963beeaa8beadc` |
-| BTH (`nuttx_bth.bin`) | 1,251,308 bytes, SHA-256 `8a101a702e3f6a2eb327747f246c40ea62ace22e86cd5a86e1acc88679466ffd`, MD5 `3544eb350d4ba5b5665c34e0afa56435` |
-| AP module | 180,156 bytes at 0x10929204 |
-| BTH module | 452 bytes at 0x0c131620 |
-| Build identity (status `build` field) | `429943006439d62a611dc7b1af758c2912e7d5190bc1ed5ba2e0372c748f6d26` |
-| Package | 17 entries: 16 payloads and `OtaFileInfo.json`. `nuttx_ap.bin` and `nuttx_bth.bin` differ from stock; the other 14 payloads are stock 1.0.6.11, byte for byte. |
-| Audit | 33 AP patch sites, 3 BTH patch sites, 7 startup descriptors, stock cores `Strix OS 1.0.6` build 11 |
-| Toolchain | LLVM/LLD 23.1.5 |
+| Phone build | C26 (release `c26` in [releases.json](../ios-addon/releases.json)) |
+| ZIP SHA-256 | `dab9cdbde8b5a29eb0f481b062ed3f82af4b56941eac8438d212dee3ffabae01` |
+| Pinned copy | `$TURBO_INPUTS/tmg17/` |
 
-The build identity is 32 bytes in the AP, at AP offset 0x7b7c52. It hashes `build.py` and every source. A plain build and a `--repin` build of the tagged tree give the same ZIP; there is no identity carry-over any more.
+The ZIP keeps its pinned file name, `StrixOS-1.0.6.11-TurboIO-TMG17-CANDIDATE-NOT-APPROVED.zip`, `CANDIDATE-NOT-APPROVED` included. The stock base is Strix OS 1.0.6.11 (`stockBase` in [`build-inputs.json`](build-inputs.json)). Two payloads differ from stock: the launcher image `nuttx_ap.bin` and the Bluetooth core's image `nuttx_bth.bin`. The design is in [docs/lock-design.md](../docs/lock-design.md).
 
-### What TMG15 changes
+TMG17 is TMG15, the PIN lock, with a new PIN screen (TMG16) and a fix for Do Not Disturb (TMG17). TMG13 (the lock alone) and TMG14 (the lock with head motion) were device candidates on the way to TMG15, and TMG16 was built but never flashed. None of the three is tagged.
 
-Everything in TMG12 is still there. TMG15 adds the lock:
+The build identity is 32 bytes in the AP. It hashes `build.py` and every source. A plain build and a `--repin` build of the release tree give the same ZIP; there is no identity carry-over any more.
+
+### What the lock does
+
+Everything in TMG12 is still there. TMG15 added the lock:
 
 - **When it locks.** After the glasses have stayed folded for the fold delay, or have sat unfolded and unused for the idle time. Both default to 5 minutes and are set on the phone, from 1 to 240 minutes. With the lock on, every boot starts locked.
 - **While locked.** The display stays dark until the knob is pressed. A press shows the PIN screen, with the time and battery at the top. Notifications are not shown, then or later. The phone link keeps running.
@@ -44,6 +35,16 @@ Everything in TMG12 is still there. TMG15 adds the lock:
 - **Head motion.** With "Stay unlocked while worn" on, head motion counts as use, so worn glasses do not idle-lock. The signal comes from a hook in the Bluetooth core's head-up detector. The hook is off after every boot; the phone switches it on after it connects.
 - **Factory reset.** The stock factory reset also deletes the lock record.
 
+### What TMG16 and TMG17 change
+
+- **The PIN screen (TMG16).** It follows the design system ([LensLock](../docs/design-system/screens/LensLock.dc.html)). Four places across the bottom band. The digit being entered is drawn as a 34×50 px numeral over a short bar; entered digits show as dots and empty places as short bars. The time and battery are at the top; the hint replaces them for 3 s after the screen opens and after every turn or press. The other lock screens (wrong PIN, waiting, use the phone, the wrong-tries notice, "Unlocked") show one line in the middle band and one in the bottom band. Every buffer the screen hands to the stock drawing code is 64-byte aligned; TMG15's bar under the focused digit was not, and was drawn from the wrong address.
+- **Do Not Disturb (TMG17).** On TMG15 and TMG16, with Do Not Disturb on, every PIN screen went dark about 3 s after it lit: Do Not Disturb's overlay moved to the top, and the lock closed any screen it found covered. Now, while a time-limited lock screen is lit (PIN entry, wrong PIN, waiting, use the phone, "Unlocked"), the lock holds the stock wake lock `turbo_lock_v1`, so stock's screen-off requests are refused. It lets go on every way out. When the one thing on top of the lock screen is Do Not Disturb's own overlay, the lock moves its screen back on top; anything else on top still closes it to dark.
+- **The wrong-tries notice (TMG17).** It goes dark 30 s after it was shown or last touched, and stays dark. The next press or turn shows it again, and a press then dismisses it. Before, it had no timeout, and the lock relit the panel each time stock turned it off.
+
+Without Do Not Disturb the timings are as in TMG15, except that a long PIN entry no longer blinks off when stock's 15 s screen timeout comes. The PIN rules, the phone protocol, the lock record and the Bluetooth image are unchanged.
+
+### Lock record and patch sites
+
 The lock record is two files, `/mnt/nand_data/turbo_lock_v1_0.cfg` and `turbo_lock_v1_1.cfg`. A firmware update keeps them. A damaged record starts locked.
 
 The Bluetooth image gets a 452-byte module and three patch sites: the message switch (0x0c0aa958), the motion hook in the head-up detector (0x0c0bfe30), and the end of the boot-time memory clear (0x0c02a1fc), which makes the hook start switched off.
@@ -52,12 +53,7 @@ Every stock offset the tree uses is named in [`src/stock_layout.h`](src/stock_la
 
 ### What was checked
 
-- The full gate with previews passed on the release commit.
-- A plain build and a `--repin` build give the same ZIP, byte for byte.
-- `build.py --audit` passes on the pinned ZIP: both images differ from stock only at the pinned sites and in the appended modules.
-- The emulator ran the lock from boot: fold and idle locking, PIN entry, wrong-PIN waits, phone commands over the emulated link, and every branch of the Bluetooth hook.
-- `tools/phone_pins.py` builds the phone pins from this ZIP for the 1.0.21 full host (release `c24`).
-- On the glasses: see [Device check](#device-check).
+What was checked for TMG17 is in [RELEASE.md](../ios-addon/RELEASE.md#what-was-checked). For the lock itself, the emulator ran it from boot on TMG15: fold and idle locking, PIN entry, wrong-PIN waits, phone commands over the emulated link, and every branch of the Bluetooth hook.
 
 Not checked on the glasses: the factory reset clearing the lock, a damaged lock record, and a restart with no phone in reach.
 
@@ -82,7 +78,7 @@ These TMG12 limits still apply:
 
 ### Device check
 
-The owner ran these on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed.
+The owner ran items 1 to 10 on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on TMG15 with C24. All passed. Items 11 to 13 are new in TMG16 and TMG17; the owner flashed TMG17 on 2026-11-24 and has not reported them yet.
 
 1. The update completes, also with the glasses locked. They boot, and the phone reconnects without pairing again.
 2. Notifications, head-up wake and the Turbo features work as on TMG12.
@@ -94,8 +90,11 @@ The owner ran these on 2026-11-22 and 2026-11-23, on TMG14 with C23 and then on 
 8. Folded for longer than the fold delay, then unfolded: locked.
 9. "Stay unlocked while worn" on, idle time 1 min: worn glasses stay unlocked. Left unfolded on a desk they lock, and they stay locked when picked up.
 10. After a restart, head motion counts again once the phone has reconnected, with no action on the phone.
+11. The PIN screen shows the digit being entered as a large numeral over a short bar, entered digits as dots and empty places as short bars. After the hint fades, the time and battery show at the top.
+12. With Do Not Disturb on, the PIN screen stays up while you enter the PIN, and the right PIN unlocks.
+13. After an unlock that follows wrong tries, the notice left untouched goes dark after about 30 s and stays dark. The next press shows it again, and a second press dismisses it.
 
-Not part of that run: the build identity row (Turbo › Developer › Glasses runtime, "Firmware and build", must show the identity above), and battery over a full day.
+Not part of that run: the build identity row (Turbo › Developer › Glasses runtime, "Firmware and build", must show the identity in [RELEASE.md](../ios-addon/RELEASE.md)), and battery over a full day.
 
 To go back, see [Going back](../ios-addon/OTA.md#going-back) in OTA.md.
 
@@ -120,7 +119,7 @@ D=$(mktemp -d)
 python3 -I "$FW/tools/rebase_apply.py" --check --stock "$STOCK"
 python3 -I "$FW/build.py" --stock "$STOCK" --llvm-bin "$TC" --out "$D/build"
 python3 -I "$FW/build.py" --stock "$STOCK" --audit "$D/build/$ZIP"
-cmp "$D/build/$ZIP" "$TURBO_INPUTS/tmg15/$ZIP"
+cmp "$D/build/$ZIP" "$TURBO_INPUTS/tmg17/$ZIP"
 ```
 
 - `rebase_apply.py --check` confirms the tree is wholly on its stock base.
@@ -148,7 +147,7 @@ Do this only for a new release. A repin changes the build identity, so the ZIP n
    python3 -I "$FW/tools/phone_pins.py" --write "$R/ios-addon" --inputs "$TURBO_INPUTS"
    python3 -I "$FW/tools/phone_pins.py" --check "$R/ios-addon" --inputs "$TURBO_INPUTS"
    ```
-   `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c24`).
+   `--check` prints `PHONEPINS_OK` and the release names. `--tree-release` prints the release whose ZIP is the tree's build (today `c26`).
 
 `phone_pins.py` refuses emulator-only builds in every mode. It also refuses the superseded TMG12 candidates 1 to 3 by their SHA-256 (`SUPERSEDED_ZIPS`).
 
@@ -185,6 +184,7 @@ The recipe works as written for `fw/tmg10` and `fw/tmg11`, with LLVM/LLD 23.1.5 
 
 | Tag | Stock base | Phone build | ZIP SHA-256 |
 | --- | --- | --- | --- |
+| `fw/tmg15` | 1.0.6.11 | C24 | `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
 | `fw/tmg12` | 1.0.6.11 | C20, C21 | `3abc73ffff78d890a49a0c148c64eef6a8577458bb0d759fca1b032bc031e373` |
 | `fw/tmg11` | 1.0.5.12 | C18 | `edb73a6458b80e57e9bdcb0c1cd068c040b945702c1f096be4b187013cf334e1` |
 | `fw/tmg10` | 1.0.5.12 | C16 | `4a5973636329e8863a8ab7aaea4050a35d964916c3b125f63242b384e018cb6c` |

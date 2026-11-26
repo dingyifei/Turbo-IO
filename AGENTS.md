@@ -65,7 +65,7 @@ Build inputs live outside the repo: the stock app, signing configuration and fir
 - `bash scripts/turbo-gate.sh --only-build` is the quick check for each commit.
 - `bash scripts/turbo-gate.sh --preview` adds the preview screenshot matrix and takes about 15 minutes. Run it once on the final commit before handing off, not after every commit.
 - `python3 ios-addon/test.py --firmware <TMG zip> --stock-package <stock zip> --tree-firmware <tree zip> --app1021 <stock 1.0.21 Runner.app>` runs the test groups directly.
-  - `--firmware` is the TMG package of the phone release under test, and `--stock-package` its stock package (`releases.json`). `--release` defaults to the only release (today `c24`).
+  - `--firmware` is the TMG package of the phone release under test, and `--stock-package` its stock package (`releases.json`). `--release` defaults to the only release (today `c26`).
   - `--tree-firmware` is the ZIP built from the current `firmware/` tree, for the tree audit. It defaults to `--firmware`.
   - The gate fills in these paths from `package.env` and `releases.json` (release ZIPs under `$TURBO_INPUTS`).
 - `bash scripts/turbo-package.sh --host 1021-full <label>` builds and signs an IPA into a new directory (`--host 1021` builds the download-only app). Run it only when the task asks for it. It never installs anything.
