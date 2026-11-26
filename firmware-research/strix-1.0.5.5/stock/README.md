@@ -2,7 +2,7 @@
 
 2026-10-14。**这是官方原厂版本，不含 Turbo IO 自定义改动。不是修改版，也不是 ZIP 重封装。**
 
-**[下载原始 ZIP](Strix-OS-1.0.5.5-original.zip) · [SHA256SUMS](SHA256SUMS) · [TMIG1 自定义包与风险](../README.md)**
+**[下载原始 ZIP](Strix-OS-1.0.5.5-original.zip) · [SHA256SUMS](SHA256SUMS) · [TMIG1 自定义包与风险](../../README.md)**
 
 - 来源：RayNeo AI iOS **1.0.6（218）** 的真实固件更新响应；仅把官方下载文件原样归档。
 - 官方下载地址：[原始固件文件](https://file-tdp-ffalcon-o.api.leiniao.com/res/e655a4a0/thirdapk_824eb1d21bb2be146ec2b9043cca438e.zip)。服务端链接可能变动，以本仓库固定哈希核对归档。

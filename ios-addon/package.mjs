@@ -209,7 +209,7 @@ export function validateOptions(o) {
   if(stockPackage(release)?(typeof o['stock-firmware']!=='string'||!path.isAbsolute(o['stock-firmware'])):o['stock-firmware']!==undefined)throw Error('stock_firmware_resource_required');
 }
 export function validateResearchPair(symbols, kind, firmware, p=releasePins()) {
-  if(kind!==p.name||!symbols.includes('_TIOMenuLayoutController')||!symbols.includes('OBJC_CLASS_$_TIORoadMap'))throw Error('ios107_addon_required');
+  if(kind!==p.name||!symbols.includes('_TIOMenuLayoutController')||!symbols.includes('OBJC_CLASS_$_TIORoadMap'))throw Error('addon_required');
   if(!Buffer.isBuffer(firmware)||firmware.length!==p.zipBytes||createHash('sha256').update(firmware).digest('hex')!==p.zipSHA256)throw Error('navs3_firmware_identity_mismatch');
 
 }
@@ -283,7 +283,7 @@ function main(){
   const translationResources=prepareTranslationResources(o);
   const appleAI=prepareAppleAI(o['apple-ai-dylib'],symbols);
   const source=fs.realpathSync(o.app),destination=path.resolve(o.out);
-  if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=TMG-OTA-PHONE-01;')))throw Error('ios107_addon_marker_required');
+  if(!symbols.includes('_TIOOTAFlashBuild')||!fs.readFileSync(o.addon).includes(Buffer.from('display extension=TMG-OTA-PHONE-01;')))throw Error('addon_marker_required');
   const firmware=o.firmware?fs.readFileSync(o.firmware):undefined;
   // Only a firmware host bundles a release; a download-only build reads no release pins.
   const release=host.firmware?releasePins(o.release):undefined;

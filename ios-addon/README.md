@@ -11,7 +11,7 @@ You build, sign and install the app yourself. No signed IPA is published. Agents
 | Phone build | C24 |
 | Host app | RayNeo AI 1.0.21 (1), full host (`--host 1021-full`; Info.plist `TIOHostProfile` `ios1021`) |
 | Packages | TMG15 (TMG12 plus the glasses PIN lock, on stock Strix OS 1.0.6.11), selected at every launch; stock Strix OS 1.0.6.11, the way back |
-| Release entry | `c24` in [releases.json](releases.json); pins in [firmware-pins-c24.json](firmware-pins-c24.json) |
+| Release entry | `c24` in [releases.json](releases.json); pins in [firmware-pins-c26.json](firmware-pins-c26.json) |
 | TMG15 ZIP | `StrixOS-1.0.6.11-TurboIO-TMG15-CANDIDATE-NOT-APPROVED.zip`, 9,559,509 bytes, SHA-256 `206d19f1bfb4b97f37826ed18c288c975e17ca83a066ad7d00a275c1be697d49` |
 | Stock ZIP | `Strix-OS-1.0.6.11-members-canonical.zip`, 9,447,267 bytes, SHA-256 `5821506f720a43a9a3aea9c5722a1548463dcf1cbedcb2d97a242e2a64037d6e` |
 | Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |

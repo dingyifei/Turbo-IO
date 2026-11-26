@@ -10,7 +10,7 @@ trap 'rmdir "$lock"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-bundle=io.turboio.ios107.preview
+bundle=io.turboio.preview
 app="$PWD/build/preview/TurboPreview.app"
 shots="$PWD/build/preview-shots"
 [[ -x "$app/TurboPreview" ]] || { echo 'PREVIEW SHOOT FAIL: build preview first' >&2; exit 1; }

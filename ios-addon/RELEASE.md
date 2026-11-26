@@ -23,7 +23,7 @@ C24 carries two packages and the wizard picks one: TMG15, selected at every laun
 | Each package | 17 files: 16 payloads and `OtaFileInfo.json`. The two differ only in `nuttx_ap.bin`, `nuttx_bth.bin` and `OtaFileInfo.json`. |
 | Glasses must report | Strix OS 1.0.5.12 or Strix OS 1.0.6.11 |
 
-The pins are in the `c24` entry of [releases.json](releases.json) and in [firmware-pins-c24.json](firmware-pins-c24.json). The firmware release label is in [firmware/RELEASE](../firmware/RELEASE). The firmware build record is in the TMG15 section of [firmware/README.md](../firmware/README.md).
+The pins are in the `c24` entry of [releases.json](releases.json) and in [firmware-pins-c26.json](firmware-pins-c26.json). The firmware release label is in [firmware/RELEASE](../firmware/RELEASE). The firmware build record is in the TMG15 section of [firmware/README.md](../firmware/README.md).
 
 The packager writes `TIOHostProfile = ios1021` into Info.plist. That key is the only thing that separates the full build from the download-only 1.0.21 build (`ios1021-download`); a 1.0.21 app without it is treated as download-only. There is no arming: one confirmation in the wizard allows one transfer. An arm record left on the phone by C20 is never read.
 
