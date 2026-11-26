@@ -49,8 +49,19 @@ if [[ ${TIO_IMAGE_RX_LAB:-0} == 1 ]]; then
   ClenchLabUI.m)
   [[ ${TIO_IMAGE_RX_WIDE:-0} != 1 ]] || image_options+=(-DTIO_IMAGE_RX_WIDE=1)
   # Clench Lab manifests record the build commit: short SHA plus -dirty, else unknown.
-  clench_commit=$(git rev-parse --short=12 HEAD 2>/dev/null || true)
-  if [[ -n "$clench_commit" && -n "$(git status --porcelain 2>/dev/null | head -n 1)" ]]; then clench_commit="$clench_commit-dirty"; fi
+  # A git checkout of this repository reads it from git. Only this repository's own
+  # git counts, so an export unpacked inside some other checkout never picks up that
+  # checkout's HEAD. An export (git archive, or a forge tarball) has no git; it reads
+  # BUILD_COMMIT, which export-subst fills with the full commit hash. Both ways give
+  # the same 12 characters for the same commit, so the dylib is the same either way.
+  clench_commit=''
+  repo_root=$(cd .. && pwd -P)
+  if [[ $(git -C "$repo_root" rev-parse --show-toplevel 2>/dev/null || true) == "$repo_root" ]]; then
+    clench_commit=$(git -C "$repo_root" rev-parse --short=12 HEAD 2>/dev/null || true)
+    if [[ -n "$clench_commit" && -n "$(git -C "$repo_root" status --porcelain 2>/dev/null | head -n 1)" ]]; then clench_commit="$clench_commit-dirty"; fi
+  elif [[ -f BUILD_COMMIT ]]; then
+    clench_commit=$(head -c 40 BUILD_COMMIT | cut -c 1-12)
+  fi
   [[ "$clench_commit" =~ ^[0-9a-f]{7,40}(-dirty)?$ ]] || clench_commit=unknown
   image_options+=("-DTIO_BUILD_COMMIT=\"$clench_commit\"")
 fi

@@ -164,6 +164,9 @@ ADDON=$ED/build/mapkit/TurboIOPrivateAddon.dylib
 rm -f "$ADDON"
 [[ ! -e "$ADDON" ]] || { echo 'PACKAGE FAIL: cannot remove the previous addon build' >&2; exit 1; }
 printf '%s\n' "${build_flags[@]}" >"$LOG_DIR/addon-flags.txt"
+# The dylibs are reproducible only with the same Xcode and SDK (C13's addon, rebuilt
+# from its commit after an Xcode update, differed in the SDK version load commands).
+{ xcodebuild -version; printf 'iphoneos SDK %s\n' "$(xcrun --sdk iphoneos --show-sdk-build-version)"; } >"$LOG_DIR/toolchain.txt" 2>&1 || true
 run_logged addon-build env -i PATH="$PATH" HOME="$HOME" ${DEVELOPER_DIR:+DEVELOPER_DIR="$DEVELOPER_DIR"} "${build_flags[@]}" bash "$ED/build.sh" embedded com.rayneo.venus.pub
 [[ -f "$ADDON" ]] || { echo 'PACKAGE FAIL: the addon was not built in this run' >&2; exit 1; }
 addon_check() {
